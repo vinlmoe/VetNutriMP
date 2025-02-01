@@ -7,13 +7,14 @@ plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
-    alias(libs.plugins.ksp)
-    alias(libs.plugins.room)
+   alias(libs.plugins.ksp)
+    //
+alias(libs.plugins.room)
 }
 
 kotlin {
     androidTarget {
-        @OptIn(ExperimentalKotlinGradlePluginApi::class)
+       // @OptIn(ExperimentalKotlinGradlePluginApi::class)
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_11)
         }
@@ -38,6 +39,7 @@ kotlin {
         androidMain.dependencies {
             implementation(compose.preview)
             implementation(libs.androidx.activity.compose)
+            implementation(libs.androidx.room.paging)
         }
         commonMain.dependencies {
             implementation(compose.runtime)
@@ -48,9 +50,7 @@ kotlin {
             implementation(compose.components.uiToolingPreview)
             implementation(libs.androidx.lifecycle.viewmodel)
             implementation(libs.androidx.lifecycle.runtime.compose)
-
-
-            implementation(libs.room.runtime)
+            implementation(libs.androidx.room.runtime)
             implementation(libs.sqlite.bundled)
         }
         desktopMain.dependencies {
@@ -102,9 +102,13 @@ compose.desktop {
         }
     }
 }
+dependencies {
+    add("kspAndroid", libs.androidx.room.compiler)
+    add("kspIosSimulatorArm64", libs.androidx.room.compiler)
+    add("kspIosX64", libs.androidx.room.compiler)
+    add("kspIosArm64", libs.androidx.room.compiler)
+}
+
 room {
     schemaDirectory("$projectDir/schemas")
-}
-dependencies {
-    ksp(libs.room.compiler)
 }
