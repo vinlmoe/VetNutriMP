@@ -1,8 +1,9 @@
 package fr.vetbrain.vetnutri_mp.Data
 
 import androidx.room.*
+import kotlinx.serialization.Serializable
 
-
+@Serializable
 data class AlimDBList(
     val db: MutableMap<String, alimDB> = mutableMapOf() // Using MutableMap for mutability
 ) {
@@ -18,10 +19,12 @@ data class AlimDBList(
     fun values(): Collection<alimDB> = db.values
 }
 
-@Entity(tableName = "alim_db")
-data class alimDB(
+
+@Entity(tableName = "DataDef")
+@Serializable
+data class AlimDB(
     @PrimaryKey val uuid: String,
-    val sNom: String?,
-    val compNom: String?,
-    var number: Int = 0
+    @ColumnInfo(name = "sNAME") val sNom: String?,
+    @ColumnInfo(name = "compNAME") val compNom: String?,
+     var number: Int = 0 // Ignored by Room, for transient use
 )
