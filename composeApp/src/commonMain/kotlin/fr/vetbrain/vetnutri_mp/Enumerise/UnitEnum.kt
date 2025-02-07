@@ -1,14 +1,15 @@
 package fr.vetbrain.vetnutri_mp.Enumerise
 
+import fr.vetbrain.vetnutri_mp.Data.Labelable
 
 
 enum class UnitEnum(
-    val Name: String,
+   override val label: String,
     val ID: Int,
     val IDFamily: Int,
     val refID: Int,
     val conv: Float
-) {
+) :Labelable{
     BUg("g", 1, 1, 1, 1f),
     BUmg("mg", 2, 1, 1, 0.001f),
     BUmu("µg", 3, 1, 1, 0.000001f),
@@ -26,7 +27,7 @@ enum class UnitEnum(
         }
 
         fun getByName(str: String, family: Int): UnitEnum {
-            return entries.firstOrNull { it.Name == str && it.IDFamily == family } ?: BUg
+            return entries.firstOrNull { it.label == str && it.IDFamily == family } ?: BUg
         }
     }
 }

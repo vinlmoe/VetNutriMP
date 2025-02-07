@@ -5,6 +5,7 @@ import kotlinx.serialization.Serializable
 import kotlin.uuid.*
 import fr.vetbrain.vetnutri_mp.Enumerise.Espece
 
+@OptIn(ExperimentalUuidApi::class)
 @Entity(tableName = "Method")
 @Serializable
 data class AdjustSaveEv(

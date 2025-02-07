@@ -5,9 +5,9 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class AlimDBList(
-    val db: MutableMap<String, alimDB> = mutableMapOf() // Using MutableMap for mutability
+    val db: MutableMap<String, AlimDB> = mutableMapOf() // Using MutableMap for mutability
 ) {
-    fun add(dbEntry: alimDB) {
+    fun add(dbEntry: AlimDB) {
         db[dbEntry.uuid] = dbEntry
     }
 
@@ -15,8 +15,8 @@ data class AlimDBList(
         db[uuid]?.number = number // Assuming alimDB has a 'number' property
     }
 
-    operator fun get(key: String): alimDB? = db[key]
-    fun values(): Collection<alimDB> = db.values
+    operator fun get(key: String): AlimDB? = db[key]
+    fun values(): Collection<AlimDB> = db.values
 }
 
 

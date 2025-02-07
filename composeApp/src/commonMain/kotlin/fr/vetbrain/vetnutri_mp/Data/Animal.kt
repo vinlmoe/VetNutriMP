@@ -25,46 +25,28 @@ data class Animal(
     var resume: String = "",
     var listWeight: MutableList<WeightDate> = mutableListOf(),
     var version: String = TextConstant.VERSION.nameToString(),
-    var list: ListConsultEv = ListConsultEv().apply { addConsult(ConsultationEv(
-    )) }
+    var list: MutableList<ConsultationEv> = mutableListOf()
 ) {
     fun addWeight(w: WeightDate) {
         listWeight.add(w)
     }
 
     fun updateWeight(uuid: String, d: LocalDate, v: Float) {
-        listWeight.find { it.UUID == uuid }?.apply {
+        listWeight.find { it.uuid == uuid }?.apply {
             date = d
             value = v
         }
     }
 
     fun removeWeight(UUIDwd: String) {
-        listWeight = listWeight.filterNot { it.UUID == UUIDwd }.toMutableList()
+        listWeight = listWeight.filterNot { it.uuid == UUIDwd }.toMutableList()
+    }
+    fun setDateNaiss(dateNaisso: LocalDate) {
+
+        dateNaiss = dateNaisso
     }
     }
 
-    fun addConsult(cons: ConsultationEv) {
-        list.addConsult(cons)
-    }
 
-    fun removeConsult(UUID: String) {
-        list.removeConsult(UUID)
-    }
 
-    fun describe() {
-        println(this.nom)
-        list.listConsult.forEach { consult ->
-            consult.rationList.forEach { ration ->
-                ration.alimentList.forEach { aliment ->
-                    println(aliment.nom)
-                }
-            }
-        }
-    }
 
-    fun setDateNaiss(dateNaiss: LocalDate) {
-        println("Date set $dateNaiss")
-        this.dateNaiss = dateNaiss
-    }
-}

@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.Menu?>
+<?import javafx.scene.control.MenuBar?>
+<?import javafx.scene.control.MenuItem?>
+<?import javafx.scene.control.SeparatorMenuItem?>
+<?import javafx.scene.image.Image?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Pane?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.paint.Color?>
+<?import javafx.scene.text.Font?>
+
+<VBox maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="600.0" prefWidth="1200.0" stylesheets="@application.css" xmlns="http://javafx.com/javafx/18" xmlns:fx="http://javafx.com/fxml/1" fx:controller="controller.WindowPaneController">
+   <children>
+      <MenuBar stylesheets="@application.css">
+         <menus>
+            <Menu mnemonicParsing="false" text="%fileMenu">
+               <items>
+                  <Menu mnemonicParsing="false" text="%newMenu">
+                     <items>
+                        <MenuItem id="newAnimalItem" fx:id="menuNewAnimalItem" mnemonicParsing="false" onAction="#handleNewAnimalItem" text="%animalItem" />
+                     </items>
+                  </Menu>
+                  <MenuItem mnemonicParsing="false" onAction="#handleOpenAnimal" text="%openAnimal" />
+                  <MenuItem fx:id="SaveButton" mnemonicParsing="false" onAction="#handleSave" text="%Save" />
+                  <SeparatorMenuItem mnemonicParsing="false" />
+                  <Menu mnemonicParsing="false" text="import">
+                    <items>
+                      <MenuItem mnemonicParsing="false" onAction="#AnimalImportEv" text="%imp_animal_consult" />
+                        <MenuItem mnemonicParsing="false" onAction="#FoodImportEv" text="%foods" />
+                        <MenuItem mnemonicParsing="false" onAction="#RecipeImportEv" text="%recipe" />
+                        <MenuItem mnemonicParsing="false" text="%requirements" />
+                        <MenuItem mnemonicParsing="false" onAction="#MethodImportEv" text="%method" />
+                    </items>
+                  </Menu>
+                  <Menu mnemonicParsing="false" text="Export">
+                     <items>
+                        <MenuItem mnemonicParsing="false" onAction="#AnimalExport" text="%imp_animal_consult" />
+                        <MenuItem mnemonicParsing="false" onAction="#FoodExport" text="%foods" />
+                        <MenuItem mnemonicParsing="false" onAction="#RecipeExport" text="%recipe" />
+                        <MenuItem mnemonicParsing="false" onAction="#RefExport" text="%requirements" />
+                        <MenuItem mnemonicParsing="false" onAction="#MethodExport" text="%method" />
+                     </items>
+                  </Menu>
+                  <SeparatorMenuItem mnemonicParsing="false" />
+                  <MenuItem mnemonicParsing="false" text="Quit" />
+                  <SeparatorMenuItem mnemonicParsing="false" />
+                  <Menu mnemonicParsing="false" text="%old_import">
+                     <items>
+                        <MenuItem mnemonicParsing="false" onAction="#AnimalImport" text="%imp_animal_consult" />
+                        <MenuItem mnemonicParsing="false" onAction="#FoodImport" text="%foods" />
+                        <MenuItem mnemonicParsing="false" onAction="#RecipeImport" text="%recipe" />
+                        <MenuItem mnemonicParsing="false" onAction="#MethodImport" text="%method" />
+                     </items>
+                  </Menu>
+               </items>
+            </Menu>
+            <Menu mnemonicParsing="false" text="%editMenu">
+               <items>
+                  <MenuItem mnemonicParsing="false" onAction="#foodEditor" text="%food" />
+                  <SeparatorMenuItem mnemonicParsing="false" />
+                  <MenuItem mnemonicParsing="false" onAction="#referenceEditor" text="%reference" />
+                  <MenuItem mnemonicParsing="false" onAction="#referenceDisEditor" text="%referenceDis" />
+                  <MenuItem mnemonicParsing="false" onAction="#equationEditor" text="%equation" />
+                  <MenuItem mnemonicParsing="false" onAction="#biblioEditor" text="%biblio" />
+                  <MenuItem mnemonicParsing="false" onAction="#methodEditor" text="%method" />
+               </items>
+            </Menu>
+            <Menu mnemonicParsing="false" text="%analysisMenu">
+               <items>
+                  <MenuItem mnemonicParsing="false" onAction="#analyzeFood" text="%foodAnalysis" />
+               </items>
+            </Menu>
+            <Menu mnemonicParsing="false" text="%optionMenu">
+               <items>
+                <MenuItem mnemonicParsing="false" onAction="#Option" text="Preferences" />
+               </items>
+            </Menu>
+            <Menu mnemonicParsing="false" text="%exportPDF">
+               <items>
+                  <MenuItem mnemonicParsing="false" onAction="#createOrdonnance" text="%ordonnance" />
+                  <MenuItem mnemonicParsing="false" onAction="#createPDFCons" text="%consultation" />
+                  <MenuItem mnemonicParsing="false" onAction="#createPDFRat" text="%ration" />
+               </items>
+            </Menu>
+         </menus>
+      </MenuBar>
+      <VBox fx:id="MainPane">
+         <children>
+            <AnchorPane>
+               <children>
+                  <ImageView fitHeight="550.0" fitWidth="1200.0" layoutX="0.5" layoutY="0.5" pickOnBounds="true" preserveRatio="true" x="100.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+                     <image>
+                        <Image url="@/view/favicon.png" />
+                     </image>
+                  </ImageView>
+               </children>
+            </AnchorPane>
+         </children></VBox>
+      <HBox id="HBox" alignment="CENTER_LEFT" spacing="5.0">
+         <children>
+            <Label fx:id="versionLab" maxHeight="1.7976931348623157E308" maxWidth="-1.0" text="Left status" HBox.hgrow="ALWAYS">
+               <font>
+                  <Font size="11.0" fx:id="x3" />
+               </font>
+               <textFill>
+                  <Color red="0.625" green="0.625" blue="0.625" fx:id="x4" />
+               </textFill>
+            </Label>
+            <Pane prefHeight="-1.0" prefWidth="-1.0" HBox.hgrow="ALWAYS" />
+            <Label font="$x3" maxWidth="-1.0" text="Right status" textFill="$x4" HBox.hgrow="NEVER" />
+         </children>
+         <padding>
+            <Insets bottom="3.0" left="3.0" right="3.0" top="3.0" />
+         </padding>
+      </HBox>
+   </children>
+</VBox>

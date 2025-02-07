@@ -1,10 +1,12 @@
 package fr.vetbrain.vetnutri_mp.Enumerise
 
+import fr.vetbrain.vetnutri_mp.Data.Labelable
+
 enum class Espece(
-    private val nom: String,
-    private val categorie: Int,
-    private val uuid: String
-) {
+  override  val label: String ?,
+    val categorie: Int,
+    val uuid: String
+) :Labelable{
     CH("ALL", 2, "ALL"),
     CHIEN("DOG", 0, "0"),
     CHAT("CAT", 1, "1"),
@@ -20,20 +22,14 @@ enum class Espece(
     FOLIVORE("FOLIVORE", 12, "12");
 
     fun nameToString(): String {
-        return nom
+        return label ?: ""
     }
 
-    fun getCategorie(): Int {
-        return categorie
-    }
-
-    fun getUUID(): String {
-        return uuid
-    }
+   
 
     companion object {
         private val categoryMap: Map<Int, Espece> = values().associateBy { it.categorie }
-        private val nameMap: Map<String, Espece> = values().associateBy { it.nom }
+        private val nameMap: Map<String, Espece> = values().associateBy { it.label ?: "" }
         private val uuidMap: Map<String, Espece> = values().associateBy { it.uuid }
 
         fun getStringFromInt(id: Int): String {
@@ -48,8 +44,8 @@ enum class Espece(
             return nameMap[id] ?: CHIEN // Returns CHIEN enum if not found
         }
 
-        fun getEnumFromStringId(i: String): Espece? { // Return type changed to Espece? to handle null if not found
-            return uuidMap[i] // Returns null if not found
+        fun getFromId(i: String): Espece{ // Return type changed to Espece? to handle null if not found
+            return uuidMap[i]  ?: CHIEN// Returns null if not found
         }
 
         fun valuesExcept(): List<Espece> {

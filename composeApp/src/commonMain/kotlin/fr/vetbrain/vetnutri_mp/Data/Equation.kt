@@ -4,6 +4,7 @@ import androidx.room.*
 import kotlinx.serialization.Serializable
 import kotlin.uuid.*
 
+@OptIn(ExperimentalUuidApi::class)
 @Entity(tableName = "Equation")
 @Serializable
 data class Equation(

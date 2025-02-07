@@ -2,6 +2,7 @@ package fr.vetbrain.vetnutri_mp.Data
 
 import androidx.room.*
 import kotlinx.serialization.Serializable
+import fr.vetbrain.vetnutri_mp.*
 
 @Serializable
 data class AlimP(
@@ -9,23 +10,6 @@ data class AlimP(
     var nameDef: String?,
     var brand: String?,
     var gamme: String?,
-    var price: Float?,
-    @Ignore @Serializable(with = AlimentEvSerializer::class) var alimentEv: AlimentEv? = null
-) {
-    constructor(alimentEv: AlimentEv) : this(
-        alimentEv.uuid,
-        alimentEv.nom,
-        alimentEv.brand,
-        alimentEv.gamme,
-        alimentEv.price,
-        alimentEv
-    )
-    constructor(uuid: String, nameDef: String?, brand: String?, gamme: String?, price: Double?) : this(
-        uuid,
-        nameDef,
-        brand,
-        gamme,
-        price?.toFloat(),
-        null
-    )
-} 
+    var price: Double?,
+    @Ignore  var alimentEv: AlimentEv? = null
+)

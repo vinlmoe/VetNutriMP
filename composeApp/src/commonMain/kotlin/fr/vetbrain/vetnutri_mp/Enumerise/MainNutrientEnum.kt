@@ -1,9 +1,10 @@
 package fr.vetbrain.vetnutri_mp.Enumerise
 
+import fr.vetbrain.vetnutri_mp.Data.Labelable
 import fr.vetbrain.vetnutri_mp.Data.Nutrient
 
 
-enum class MainNutrientEnum(val displayName: String, val coef: Int) {
+enum class MainNutrientEnum(override val label: String, val coef: Int) : Labelable {
     MIN("Mineraux", 0),
     ANA("Analysis", 1),
     MACRO("Macro", 2),
@@ -17,7 +18,7 @@ enum class MainNutrientEnum(val displayName: String, val coef: Int) {
     INGREDIENT("Ingredients", 10),
     INDICAT("Indication", 11);
 
-    val label: String = ""
+  
      val unite: String = ""
 
     companion object {

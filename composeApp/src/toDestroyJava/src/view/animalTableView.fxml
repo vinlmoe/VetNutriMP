@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.layout.VBox?>
+
+<VBox xmlns="http://javafx.com/javafx/18" xmlns:fx="http://javafx.com/fxml/1" fx:controller="controller.TableAnimController">
+   <children>
+      <TableView fx:id="animTable" prefHeight="800.0">
+         <columns>
+            <TableColumn fx:id="specieColumn" prefWidth="75.0" text="%specie" />
+            <TableColumn fx:id="breedColumn" prefWidth="75.0" text="%breed" />
+            <TableColumn fx:id="animalNameColumn" prefWidth="75.0" text="%animalName" />
+            <TableColumn fx:id="ownerNameColumn" prefWidth="75.0" text="%ownerName" />
+            <TableColumn fx:id="idColumn" prefWidth="75.0" text="%id" />
+         </columns>
+         <columnResizePolicy>
+            <TableView fx:constant="CONSTRAINED_RESIZE_POLICY" />
+         </columnResizePolicy>
+      </TableView>
+   </children>
+</VBox>
