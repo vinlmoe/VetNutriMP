@@ -20,7 +20,7 @@ data class AlimentRation @OptIn(ExperimentalUuidApi::class) constructor(
     @ColumnInfo(name = "refRation") var refRation: String? = null, // Foreign key to Ration
     val quantity: Float?,
     @ColumnInfo(name = "refTarget") val refTarget: Int?, // Using Int to store enum coef
-    @Ignore @Serializable(with = AlimentEvSerializer::class) var alim: AlimentEv? = null // Transient and custom serialized for AlimentEv
+    @Ignore  var alim: AlimentEv? = null // Transient and custom serialized for AlimentEv
 )  {
     fun upUUID(rationUUID: String) {
         refRation = rationUUID

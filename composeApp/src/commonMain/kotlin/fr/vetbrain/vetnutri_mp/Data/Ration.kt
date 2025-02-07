@@ -7,13 +7,6 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Ignore
 import androidx.room.PrimaryKey
-import fr.vetbrain.vetnutri_mp.Enumerise.NutrientAnalysis
-import fr.vetbrain.vetnutri_mp.Enumerise.NutrientBase
-import fr.vetbrain.vetnutri_mp.Enumerise.NutrientLipid
-import fr.vetbrain.vetnutri_mp.Enumerise.NutrientMacro
-import fr.vetbrain.vetnutri_mp.Enumerise.NutrientMin
-import fr.vetbrain.vetnutri_mp.Enumerise.NutrientOther
-import fr.vetbrain.vetnutri_mp.Enumerise.TextConstant
 import kotlinx.serialization.Serializable
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
@@ -35,4 +28,11 @@ data class Ration(
     var recette: Boolean?, // Assuming 'recette' column exists
     var description: String?,
     @Ignore var alimentMutableList: MutableList<AlimentRation>  // Transient, loaded separately
-)
+){
+
+    fun getAlimentByUUID(uuiDalim: String): AlimentRation {
+return alimentMutableList.last {
+        al->al.uuid==uuiDalim
+}
+    }
+}

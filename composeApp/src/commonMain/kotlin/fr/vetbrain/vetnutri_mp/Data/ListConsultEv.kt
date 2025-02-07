@@ -17,24 +17,23 @@ class ListConsultEv {
     fun convert() {
         if (listConsult.isNotEmpty()) {
             listConsult.forEach { consult ->
-                consultList[consult.UUID] = consult
+                consultList[consult.uuid] = consult
             }
         }
         listConsult.clear()
     }
 
-    fun getListConsult(): List<ConsultationEv> = consultList.values.toList()
 
     fun getConsultByUUID(UUID: String): ConsultationEv? = consultList[UUID]
 
     fun replaceConsult(ani: ConsultationEv) {
-        consultList[ani.UUID] = ani
+        consultList[ani.uuid] = ani
     }
 
     fun size(): Int = consultList.size
 
     fun addConsult(a: ConsultationEv) {
-        consultList[a.UUID] = a
+        consultList[a.uuid] = a
     }
 
     fun removeConsult(UUID: String) {
@@ -42,11 +41,11 @@ class ListConsultEv {
     }
 
     fun getRation(UUIDcons: String, UUIDrat: String): Ration? {
-        return getConsult(UUIDcons)?.getRationByUUID(UUIDrat)
+        return getConsult(UUIDcons)?.getRationByID(UUIDrat)
     }
 
     fun getAliment(UUIDcons: String, UUIDrat: String, UUIDalim: String): AlimentRation? {
-        return getConsult(UUIDcons)?.getRationByUUID(UUIDrat)?.getAlimentByUUID(UUIDalim)
+        return getConsult(UUIDcons)?.getRationByID(UUIDrat)?.getAlimentByUUID(UUIDalim)
     }
 
     fun getConsult(UUID: String): ConsultationEv? = consultList[UUID]
@@ -54,24 +53,27 @@ class ListConsultEv {
     fun getLastConsult(): ConsultationEv? {
         if (!yetConsult()) return null
 
-        return getListConsult().maxByOrNull { it.date }
+        return listConsult.maxByOrNull { it.date?: LocalDate(1990,7,9) }
     }
 
-    fun getPrevConsult(d: LocalDate): ConsultationEv? {
+   /* fun getPrevConsult(d: LocalDate): ConsultationEv? {
         if (!yetConsult()) return null
 
         return getListConsult()
-            .filter { it.date.isBefore(d) }
-            .maxByOrNull { it.date }
+            .filter { it.date.compareTo(d) }
+            .maxByOrNull { it.date?: LocalDate(1990,7,9)  }
     }
 
     fun getPostConsult(d: LocalDate): ConsultationEv? {
         if (!yetConsult()) return null
 
         return getListConsult()
-            .filter { it.date.isAfter(d) }
-            .minByOrNull { it.date }
+            .filter { it.date?.isAfter(d) ?: false  }
+            .minByOrNull { it.date?: LocalDate(1990,7,9)  }
     }
-
+*/
     fun yetConsult(): Boolean = consultList.isNotEmpty()
+}
+fun LocalDate.isAfter(d: LocalDate): Boolean{
+    return true
 }

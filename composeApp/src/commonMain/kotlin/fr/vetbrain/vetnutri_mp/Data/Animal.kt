@@ -41,10 +41,7 @@ data class Animal(
     fun removeWeight(UUIDwd: String) {
         listWeight = listWeight.filterNot { it.uuid == UUIDwd }.toMutableList()
     }
-    fun setDateNaiss(dateNaisso: LocalDate) {
 
-        dateNaiss = dateNaisso
-    }
     }
 
 

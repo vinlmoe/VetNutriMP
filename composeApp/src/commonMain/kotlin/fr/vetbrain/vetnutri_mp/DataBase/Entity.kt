@@ -160,7 +160,7 @@ data class AnimalEntity(
 data class ConsultationEntity(
     @PrimaryKey val UUID: String,
     val date: String,
-    val object: String?,
+    val subject: String?,
     val observation: String?,
     val cRendu: String,
     val weight: Float,

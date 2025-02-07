@@ -1,6 +1,10 @@
+@file:OptIn(ExperimentalUuidApi::class)
+
 package fr.vetbrain.vetnutri_mp.Data
 
 import androidx.room.*
+import fr.vetbrain.vetnutri_mp.Enumerise.TargetAdjust
+import fr.vetbrain.vetnutri_mp.Enumerise.UnitReqEnum
 import kotlinx.serialization.Serializable
 import kotlin.uuid.*
 

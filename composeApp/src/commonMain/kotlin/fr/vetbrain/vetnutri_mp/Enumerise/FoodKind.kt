@@ -10,7 +10,7 @@ enum class FoodKind(val coef: Int, override val label: String?) : Labelable {
     BARF(5, "barf");
 
     fun nameToString() = label
-    fun getCoef() = coef
+
 
     companion object {
         fun byCoef(coef: Int): FoodKind = entries.find { it.coef == coef } ?: MEN

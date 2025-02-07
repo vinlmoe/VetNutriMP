@@ -48,6 +48,5 @@ enum class AAEnum(
     }
 
 
-   fun getUnite(): String = ue.label
     override fun getMNE(): MainNutrientEnum = MainNutrientEnum.AMA
 } 

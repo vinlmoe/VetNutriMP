@@ -26,10 +26,7 @@ enum class NutrientVitam(
     RETINOL("Retinol", 14, "µg", UnitEnum.BUmu, "Ret"),
     BETACAR("Bêta-carotène", 15, "µg", UnitEnum.BUmu, "Bet");
 
-    fun getAbr() = abr
-    fun getUnite() = unite
-    fun getCoef() = coef
-    fun getUe() = ue
+
     override fun getMNE() = MainNutrientEnum.VITAM
 
     companion object {

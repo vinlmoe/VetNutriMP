@@ -1,6 +1,8 @@
 package fr.vetbrain.vetnutri_mp.Enumerise
 
-enum class ContEnum(private val nom: String, private val id: Int) {
+import fr.vetbrain.vetnutri_mp.Data.Labelable
+
+enum class ContEnum(override val label: String, private val id: Int) :Labelable{
     NO("NO", 0),
     GEL("Gelule", 9),
     CAN("Can", 2),
@@ -13,10 +15,8 @@ enum class ContEnum(private val nom: String, private val id: Int) {
 
     var conv: Float = 1f
 
-    fun nameToString() = nom
-    fun getConv() = conv
-    fun getID() = id
-    fun getName() = nom
+    fun nameToString() = label
+
 
     companion object {
         fun byId(id: Int) = values().find { it.id == id } ?: NO

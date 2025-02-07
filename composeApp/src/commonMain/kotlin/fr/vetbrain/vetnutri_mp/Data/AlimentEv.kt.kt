@@ -5,6 +5,7 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Ignore
 import androidx.room.PrimaryKey
+import fr.vetbrain.vetnutri_mp.Enumerise.*
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.Serializable
 import kotlin.uuid.ExperimentalUuidApi

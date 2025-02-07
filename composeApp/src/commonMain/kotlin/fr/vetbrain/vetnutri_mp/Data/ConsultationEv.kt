@@ -48,4 +48,9 @@ data class ConsultationEv(
     @Ignore var suppVarp: MutableList<SupplementalvariableP>, // Transient
     @Ignore var diseaseRef: MutableList<String>, // Transient
     @Ignore var rationMutableList: MutableList<Ration>  // Transient
-)
+) {
+    fun getRationByID(uuid: String): Ration {
+        return rationMutableList.last { ration: Ration -> ration.uuid == uuid }
+    }
+}
+

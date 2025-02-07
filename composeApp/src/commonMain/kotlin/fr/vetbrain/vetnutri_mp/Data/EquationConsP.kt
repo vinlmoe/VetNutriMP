@@ -5,5 +5,5 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class EquationConsP(
-    @Ignore @Serializable(with = EquationSerializer::class) var equation: Equation? = null
+  var equation: Equation? = null
 ) 

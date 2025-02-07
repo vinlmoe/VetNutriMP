@@ -2,6 +2,7 @@ package fr.vetbrain.vetnutri_mp.Enumerise
 
 import fr.vetbrain.vetnutri_mp.Data.Labelable
 import fr.vetbrain.vetnutri_mp.Data.Nutrient
+import fr.vetbrain.vetnutri_mp.enumerise.AAEnum
 
 
 enum class MainNutrientEnum(override val label: String, val coef: Int) : Labelable {

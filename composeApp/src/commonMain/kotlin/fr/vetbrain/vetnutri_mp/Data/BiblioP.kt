@@ -5,5 +5,5 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class BiblioP(
-    @Ignore @Serializable(with = BiblioRefSerializer::class) var biblio: BiblioRef? = null
+    var biblio: BiblioRef? = null
 ) 

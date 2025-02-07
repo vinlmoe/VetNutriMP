@@ -5,5 +5,5 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class ReferenceP(
-    @Ignore @Serializable(with = ReferenceEvSerializer::class) var reference: ReferenceEv? = null
+    @Ignore  var reference: ReferenceEv? = null
 ) 
