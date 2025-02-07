@@ -4,7 +4,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
-import fr.vetbrain.vetnutri_mp.Enumerise.*
+import fr.vetbrain.vetnutri_mp.Enumer.*
 
 import kotlinx.datetime.LocalDate
 

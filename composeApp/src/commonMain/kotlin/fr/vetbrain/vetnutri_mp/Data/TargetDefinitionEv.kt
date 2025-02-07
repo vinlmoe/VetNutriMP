@@ -3,8 +3,8 @@
 package fr.vetbrain.vetnutri_mp.Data
 
 import androidx.room.*
-import fr.vetbrain.vetnutri_mp.Enumerise.TargetAdjust
-import fr.vetbrain.vetnutri_mp.Enumerise.UnitReqEnum
+import fr.vetbrain.vetnutri_mp.Enumer.TargetAdjust
+import fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum
 import kotlinx.serialization.Serializable
 import kotlin.uuid.*
 

@@ -1,4 +1,4 @@
-package fr.vetbrain.vetnutri_mp.Enumerise
+package fr.vetbrain.vetnutri_mp.Enumer
 
 enum class TextConstant(val value: String) {
     VERSION("0.1.30"),

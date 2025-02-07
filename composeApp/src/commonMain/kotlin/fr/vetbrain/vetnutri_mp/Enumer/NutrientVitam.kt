@@ -1,6 +1,4 @@
-package fr.vetbrain.vetnutri_mp.Enumerise
-
-import fr.vetbrain.vetnutri_mp.Data.Nutrient
+package fr.vetbrain.vetnutri_mp.Enumer
 
 enum class NutrientVitam(
         override val label: String,

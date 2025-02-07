@@ -3,7 +3,7 @@ package fr.vetbrain.vetnutri_mp.Data
 import androidx.room.*
 import kotlinx.serialization.Serializable
 import kotlin.uuid.*
-import fr.vetbrain.vetnutri_mp.Enumerise.Espece
+import fr.vetbrain.vetnutri_mp.Enumer.Espece
 
 @OptIn(ExperimentalUuidApi::class)
 @Entity(tableName = "Method")

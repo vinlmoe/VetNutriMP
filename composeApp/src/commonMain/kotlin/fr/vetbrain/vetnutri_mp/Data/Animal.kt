@@ -1,7 +1,7 @@
 package fr.vetbrain.vetnutri_mp.Data
 
-import fr.vetbrain.vetnutri_mp.Enumerise.Espece
-import fr.vetbrain.vetnutri_mp.Enumerise.TextConstant
+import fr.vetbrain.vetnutri_mp.Enumer.Espece
+import fr.vetbrain.vetnutri_mp.Enumer.TextConstant
 import kotlinx.datetime.LocalDate
 
 

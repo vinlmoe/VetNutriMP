@@ -1,7 +1,6 @@
-package fr.vetbrain.vetnutri_mp.Enumerise
+package fr.vetbrain.vetnutri_mp.Enumer
 
 import fr.vetbrain.vetnutri_mp.Data.Labelable
-import fr.vetbrain.vetnutri_mp.Data.Nutrient
 import fr.vetbrain.vetnutri_mp.enumerise.AAEnum
 
 
@@ -32,7 +31,7 @@ enum class MainNutrientEnum(override val label: String, val coef: Int) : Labelab
     fun getNutrient(i: Int): Nutrient? = when (this) {
        AMA -> AAEnum.getByCoef(i)
         ANA -> NutrientAnalysis.getByCoef(i)
-        BASE -> NutrientBase.getByCoef(i)
+        BASE -> NutrientMain.getByCoef(i)
         ENERGIE -> NutrientEnergy.getByCoef(i)
       LIPID -> NutrientLipid.getByCoef(i)
         MACRO -> NutrientMacro.getByCoef(i)

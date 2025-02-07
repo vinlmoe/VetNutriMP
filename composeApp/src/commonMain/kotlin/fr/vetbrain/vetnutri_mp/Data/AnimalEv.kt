@@ -2,8 +2,8 @@ package fr.vetbrain.vetnutri_mp.Data
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
-import fr.vetbrain.vetnutri_mp.Enumerise.Espece
-import fr.vetbrain.vetnutri_mp.Enumerise.Sex
+import fr.vetbrain.vetnutri_mp.Enumer.Espece
+import fr.vetbrain.vetnutri_mp.Enumer.Sex
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 import kotlinx.datetime.LocalDate

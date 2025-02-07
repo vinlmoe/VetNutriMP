@@ -5,8 +5,8 @@ import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import fr.vetbrain.vetnutri_mp.Enumerise.Espece
-import fr.vetbrain.vetnutri_mp.Enumerise.Sex
+import fr.vetbrain.vetnutri_mp.Enumer.Espece
+import fr.vetbrain.vetnutri_mp.Enumer.Sex
 import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalViewModel
 

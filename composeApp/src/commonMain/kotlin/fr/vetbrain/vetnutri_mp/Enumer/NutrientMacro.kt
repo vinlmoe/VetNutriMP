@@ -1,6 +1,4 @@
-package fr.vetbrain.vetnutri_mp.Enumerise
-
-import fr.vetbrain.vetnutri_mp.Data.Nutrient
+package fr.vetbrain.vetnutri_mp.Enumer
 
 
 enum class NutrientMacro(
@@ -20,7 +18,7 @@ enum class NutrientMacro(
 
     init {
         // Validation des invariants
-        require(label.length == 3) { "Label must be exactly 3 characters long (invalid: $label)" }
+
         require(abr.length in 1..2) { "Abbreviation must be 1-2 characters (invalid: $abr)" }
         require(coef >= 0) { "Coefficient must be positive (invalid: $coef)" }
         require(unite.isNotBlank()) { "Unit must not be blank" }

@@ -2,11 +2,9 @@ package fr.vetbrain.vetnutri_mp.Data
 
 import androidx.room.ColumnInfo
 import androidx.room.Entity
-import androidx.room.ForeignKey
 import androidx.room.Ignore
 import androidx.room.PrimaryKey
-import fr.vetbrain.vetnutri_mp.Enumerise.*
-import kotlinx.datetime.LocalDate
+import fr.vetbrain.vetnutri_mp.Enumer.*
 import kotlinx.serialization.Serializable
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid

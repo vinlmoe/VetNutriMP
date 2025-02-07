@@ -1,8 +1,8 @@
 package fr.vetbrain.vetnutri_mp.enumerise
 
-import fr.vetbrain.vetnutri_mp.Data.Nutrient
-import fr.vetbrain.vetnutri_mp.Enumerise.MainNutrientEnum
-import fr.vetbrain.vetnutri_mp.Enumerise.UnitEnum
+import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
+import fr.vetbrain.vetnutri_mp.Enumer.MainNutrientEnum
+import fr.vetbrain.vetnutri_mp.Enumer.UnitEnum
 
 enum class AAEnum(
     val nom: String,

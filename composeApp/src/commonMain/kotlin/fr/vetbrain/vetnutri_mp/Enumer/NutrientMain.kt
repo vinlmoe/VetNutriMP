@@ -1,8 +1,7 @@
-package fr.vetbrain.vetnutri_mp.Enumerise
+package fr.vetbrain.vetnutri_mp.Enumer
 
-import fr.vetbrain.vetnutri_mp.Data.Nutrient
 
-enum class NutrientBase(
+enum class NutrientMain(
     private val displayName: String,
     override val coef: Int,
     override val unite: String,

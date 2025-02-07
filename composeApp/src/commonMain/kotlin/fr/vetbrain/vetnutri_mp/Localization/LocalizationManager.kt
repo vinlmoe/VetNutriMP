@@ -41,6 +41,7 @@ object LocalizationManager {
     }
 
     fun translate(key: String): String {
-        return strings?.translations?.get(key) ?: key
+        return "NULL"
+        //return strings?.translations?.get(key) ?: key
     }
 }

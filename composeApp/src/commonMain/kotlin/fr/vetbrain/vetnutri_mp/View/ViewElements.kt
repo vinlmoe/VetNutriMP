@@ -74,11 +74,11 @@ fun ComboBox(
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             items.forEach { item ->
                 DropdownMenuItem(
-                        content = { Text(item.label ?: "common.name".translate()) },
+                        content = { Text(item.label?.translate() ?: "common.name".translate()) },
                         onClick = {
-                            selectedText = TextFieldValue(item.label ?: "common.name".translate())
+                            selectedText = TextFieldValue(item.label?.translate() ?: "common.name".translate())
                             expanded = false
-                            onItemSelected(item.label ?: "common.name".translate())
+                            onItemSelected(item.label?.translate() ?: "common.name".translate())
                             selectedObject = item
                         }
                 )

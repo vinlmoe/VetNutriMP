@@ -1,4 +1,4 @@
-package fr.vetbrain.vetnutri_mp.Enumerise
+package fr.vetbrain.vetnutri_mp.Enumer
 
 import fr.vetbrain.vetnutri_mp.Data.Labelable
 
