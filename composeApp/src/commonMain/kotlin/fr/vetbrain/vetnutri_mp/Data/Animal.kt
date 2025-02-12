@@ -1,49 +1,60 @@
 package fr.vetbrain.vetnutri_mp.Data
 
-import fr.vetbrain.vetnutri_mp.Enumer.Espece
-import fr.vetbrain.vetnutri_mp.Enumer.TextConstant
-import kotlinx.datetime.LocalDate
-
-
-import kotlinx.serialization.*
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
+import kotlinx.datetime.LocalDate
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 
-
-@ExperimentalUuidApi
+@OptIn(ExperimentalUuidApi::class)
 @Serializable
 data class Animal(
-    var UUID: String =Uuid.random().toString(),
-    var nom: String = "",
-    var dead: Boolean = false,
-    var id: String? = null,
-    var sex: Int = 0,
-    var espece: Espece,
-    var nomProprio: String = "",
-    var dateNaiss: LocalDate = LocalDate(1990,7,9),
-    var race: String = "",
-    var resume: String = "",
-    var listWeight: MutableList<WeightDate> = mutableListOf(),
-    var version: String = TextConstant.VERSION.nameToString(),
-    var list: MutableList<ConsultationEv> = mutableListOf()
+        var id: Long = 0,
+        var nom: String = "",
+        var espece: Espece = Espece.CHIEN,
+        var sexe: Sexe = Sexe.MALE,
+        var dateNaissance: LocalDate? = null,
+        var mort: Boolean = false,
+        var sterilise: Boolean = false,
+        var race: String = "",
+        var nomProprio: String = "",
+        var resume: String = "",
+        @Transient var poids: MutableList<WeightDate> = mutableListOf(),
+        val uuid: String = Uuid.random().toString()
 ) {
-    fun addWeight(w: WeightDate) {
-        listWeight.add(w)
+    @Serializable
+    enum class Espece {
+        CHIEN,
+        CHAT,
+        CHEVAL,
+        FURET,
+        CANIN,
+        FELIN,
+        FOLIVORE;
+
+        fun nameToString() = name.lowercase()
     }
 
-    fun updateWeight(uuid: String, d: LocalDate, v: Float) {
-        listWeight.find { it.uuid == uuid }?.apply {
-            date = d
-            value = v
+    @Serializable
+    enum class Sexe {
+        MALE,
+        FEMELLE;
+
+        fun nameToString() = name.lowercase()
+    }
+
+    fun addWeight(date: LocalDate, value: Float) {
+        poids.add(WeightDate(date = date, value = value, refAnimal = uuid))
+    }
+
+    fun updateWeight(weightDate: WeightDate, newValue: Float) {
+        val index = poids.indexOfFirst { it.uuid == weightDate.uuid }
+        if (index != -1) {
+            poids[index] = weightDate.copy(value = newValue)
         }
     }
 
-    fun removeWeight(UUIDwd: String) {
-        listWeight = listWeight.filterNot { it.uuid == UUIDwd }.toMutableList()
+    fun removeWeight(uuid: String) {
+        poids.removeAll { it.uuid == uuid }
     }
-
-    }
-
-
-
-
+}

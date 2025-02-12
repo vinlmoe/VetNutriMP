@@ -1,6 +1,7 @@
 package fr.vetbrain.vetnutri_mp.Data
 
 import androidx.room.Entity
+import androidx.room.Ignore
 import androidx.room.PrimaryKey
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.Sex
@@ -14,20 +15,22 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class AnimalEv(
         @PrimaryKey val uuid: String = Uuid.random().toString(),
-        var name: String?,
-        var dead: Boolean?,
-        var id: String?,
-        var sexId: Int?, // Stocke l'ID de l'enum Sex
-        var specieId: String, // Stocke l'ID de l'enum Espece
-        var ownerName: String?,
-        var birthdate: LocalDate?,
-        var race: String?,
-        var summary: String?,
-        var consultations: MutableList<ConsultationEv> = mutableListOf(),
-        var weight: MutableList<WeightDate> = mutableListOf()
+        var name: String? = null,
+        var dead: Boolean? = null,
+        var id: String? = null,
+        var sexId: Int? = null,
+        var specieId: String? = null,
+        var ownerName: String? = null,
+        var birthdate: LocalDate? = null,
+        var race: String? = null,
+        var summary: String? = null,
+        @Ignore var consultations: MutableList<ConsultationEv> = mutableListOf(),
+        @Ignore var weight: MutableList<WeightDate> = mutableListOf()
 ) {
+    constructor() : this(uuid = Uuid.random().toString())
+
     fun getSex(): Sex {
-        return Sex.byId(sexId ?: 0)
+        return Sex.values().firstOrNull { it.id == sexId } ?: Sex.MALE
     }
 
     fun setSex(sex: Sex) {
@@ -35,10 +38,10 @@ data class AnimalEv(
     }
 
     fun getEspece(): Espece {
-        return Espece.getFromId(specieId)
+        return Espece.values().firstOrNull { it.name == specieId } ?: Espece.CHIEN
     }
 
     fun setEspece(espece: Espece) {
-        this.specieId = espece.uuid
+        this.specieId = espece.name
     }
 }

@@ -1,66 +1,51 @@
 package fr.vetbrain.vetnutri_mp
 
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Text
-import androidx.compose.material.TextField
-import androidx.compose.runtime.*
 import androidx.compose.foundation.layout.*
-import org.jetbrains.compose.ui.tooling.preview.Preview
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
+import androidx.compose.material.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro
+import fr.vetbrain.vetnutri_mp.DataBase.DatabaseModule
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationManager
+import fr.vetbrain.vetnutri_mp.Theme.VetNutriTheme
 import fr.vetbrain.vetnutri_mp.View.*
+import fr.vetbrain.vetnutri_mp.ViewModel.AnimalListViewModel
+import fr.vetbrain.vetnutri_mp.ViewModel.CreateAnimalViewModel
 
 @Composable
-@Preview
+
 fun App() {
-    MaterialTheme {
+    // Initialisation de la localisation
+    LocalizationManager.initialize()
 
-        var selectedItem by remember { mutableStateOf<NutrientMacro?>(null)}
-        var text by remember { mutableStateOf("Tester") }
-        var expanded by remember { mutableStateOf(false) }
-        var showContent by remember { mutableStateOf(false) }
+    // Initialisation des dépendances
+    val animalRepository = DatabaseModule.getAnimalRepository()
+    val animalListViewModel = remember { AnimalListViewModel(animalRepository) }
+    val createAnimalViewModel = remember { CreateAnimalViewModel(animalRepository) }
 
+    var currentScreen by remember { mutableStateOf<Screen>(Screen.List) }
 
-
-
-        Column(
-            Modifier.fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            //preie
-
-            TextField(
-                value = text,
-                onValueChange = { text = it },
-                label = { Text("Nom") }
-            )
-            TextField(
-                value = text,
-                onValueChange = { text = it },
-                label = { Text("Race") }
-            )
-
-            ComboBox(
-                items = NutrientMacro.entries,
-                init=null,
-                label = "Choose an option",
-                onItemSelected = {
-                    selectedItem = NutrientMacro.getByLabel(it)?: NutrientMacro.CAL }
-            )
-            TextFieldNut(
-                value= selectedItem,
-                label = "Race"
-            )
-
+    VetNutriTheme {
+        when (currentScreen) {
+            Screen.List -> {
+                AnimalListView(
+                        viewModel = animalListViewModel,
+                        onAddAnimal = { currentScreen = Screen.Create },
+                        onSelectAnimal = { /* TODO: Implémenter la vue de détails */},
+                        modifier = Modifier.fillMaxSize()
+                )
+            }
+            Screen.Create -> {
+                CreateAnimalView(
+                        viewModel = createAnimalViewModel,
+                        onNavigateBack = { currentScreen = Screen.List },
+                        modifier = Modifier.fillMaxSize()
+                )
+            }
         }
     }
-
-
 }
 
-
-
+private sealed class Screen {
+    object List : Screen()
+    object Create : Screen()
+}

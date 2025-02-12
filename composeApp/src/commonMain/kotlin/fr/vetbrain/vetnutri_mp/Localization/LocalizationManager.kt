@@ -8,6 +8,11 @@ import kotlinx.serialization.json.Json
 object LocalizationManager {
     private var strings by mutableStateOf<LocalizedStrings?>(null)
     private var currentLocale by mutableStateOf("fr")
+    private var resourceReader = ResourceReader()
+
+    internal fun setResourceReader(reader: ResourceReader) {
+        resourceReader = reader
+    }
 
     fun initialize(locale: String = "fr") {
         currentLocale = locale
@@ -24,7 +29,7 @@ object LocalizationManager {
     private fun loadStrings() {
         val resourceName = "strings_$currentLocale.json"
         try {
-            val jsonString = readResource(resourceName)
+            val jsonString = resourceReader.readResource(resourceName)
             strings = Json.decodeFromString<LocalizedStrings>(jsonString)
         } catch (e: Exception) {
             println("Error loading strings for locale $currentLocale: ${e.message}")
@@ -35,13 +40,7 @@ object LocalizationManager {
         }
     }
 
-    private fun readResource(name: String): String {
-        return LocalizationManager::class.java.classLoader?.getResource(name)?.readText()
-                ?: throw IllegalStateException("Resource $name not found")
-    }
-
     fun translate(key: String): String {
-        return "NULL"
-        //return strings?.translations?.get(key) ?: key
+        return strings?.translations?.get(key) ?: key
     }
 }

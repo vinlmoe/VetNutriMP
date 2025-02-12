@@ -2,11 +2,7 @@ package fr.vetbrain.vetnutri_mp.Enumer
 
 import fr.vetbrain.vetnutri_mp.Data.Labelable
 
-enum class UnitReqEnum(
-    val id: Int,
-    override val label: String?,
-    val conv: Float = 1f
-) : Labelable {
+enum class UnitReqEnum(val id: Int, override val label: String, val conv: Float = 1f) : Labelable {
     MCAL(0, "mcal"),
     KGBW(1, "kgBw"),
     KGMW(2, "kgMw"),
@@ -19,5 +15,5 @@ enum class UnitReqEnum(
         private val idMap = entries.associateBy { it.id }
     }
 
-    override fun toString() = label ?: ""
-} 
+    override fun toString() = label
+}

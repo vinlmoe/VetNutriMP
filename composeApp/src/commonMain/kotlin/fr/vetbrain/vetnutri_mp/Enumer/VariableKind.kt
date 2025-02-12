@@ -6,7 +6,7 @@ enum class VariableKind(
     val uuid: Int,
     val dup: String,
     val variable: String,
-    override val label: String?
+    override val label: String
 ) : Labelable {
     AdultWeight(0, "AdultWeight", "AW", "adultWeight"),
     LitterSize(1, "LitterSize", "L", "litterSize"),

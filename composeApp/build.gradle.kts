@@ -7,15 +7,15 @@ plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
-    alias(libs.plugins.kotlinxSerialization)
-   alias(libs.plugins.ksp)
+    alias(libs.plugins.ksp)
     //
-alias(libs.plugins.room)
+    alias(libs.plugins.room)
+    kotlin("plugin.serialization") version "2.1.10"
 }
 
 kotlin {
     androidTarget {
-       // @OptIn(ExperimentalKotlinGradlePluginApi::class)
+        // @OptIn(ExperimentalKotlinGradlePluginApi::class)
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_11)
         }
@@ -53,12 +53,8 @@ kotlin {
             implementation(libs.androidx.lifecycle.runtime.compose)
             implementation(libs.androidx.room.runtime)
             implementation(libs.sqlite.bundled)
-            implementation(libs.ktor.serialization.kotlinx.json)
-            implementation(libs.kotlinx.datetime)
-            implementation(libs.androidx.paging.common)
-            api(libs.androidx.datastore.preferences.core)
-            api(libs.androidx.datastore.core.okio)
-            implementation(libs.okio)
+            implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.0")
+            implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.1")
         }
         desktopMain.dependencies {
             implementation(compose.desktop.currentOs)

@@ -1,104 +1,154 @@
 package fr.vetbrain.vetnutri_mp.View
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import fr.vetbrain.vetnutri_mp.Enumer.Espece
-import fr.vetbrain.vetnutri_mp.Enumer.Sex
+import fr.vetbrain.vetnutri_mp.Data.Animal
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Animal as AnimalKeys
 import fr.vetbrain.vetnutri_mp.Localization.translate
-import fr.vetbrain.vetnutri_mp.ViewModel.AnimalViewModel
+import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
+import fr.vetbrain.vetnutri_mp.ViewModel.CreateAnimalViewModel
+import kotlin.uuid.ExperimentalUuidApi
 
+@OptIn(ExperimentalUuidApi::class, ExperimentalMaterialApi::class)
 @Composable
 fun CreateAnimalView(
-        viewModel: AnimalViewModel,
-        onSave: () -> Unit,
+        viewModel: CreateAnimalViewModel,
+        onNavigateBack: () -> Unit,
         modifier: Modifier = Modifier
 ) {
-        Column(modifier = modifier.padding(16.dp).fillMaxWidth()) {
-                // Nom de l'animal
-                OutlinedTextField(
-                        value = viewModel.name ?: "",
-                        onValueChange = { viewModel.name = it },
-                        label = { Text("name".translate()) },
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
-                )
+        val animal by viewModel.animal.collectAsState()
+        val isSaving by viewModel.isSaving.collectAsState()
+        val saveSuccess by viewModel.saveSuccess.collectAsState()
 
-                // Espèce
-                ComboBox(
-                        items = Espece.valuesExcept(),
-                        init = null,
-                        label = "species".translate(),
-                        onItemSelected = { selectedLabel ->
-                                viewModel.selectedEspece =
-                                        Espece.values().find { it.label == selectedLabel }
+        LaunchedEffect(saveSuccess) {
+                if (saveSuccess) {
+                        viewModel.resetSaveStatus()
+                        onNavigateBack()
+                }
+        }
+
+        Column(
+                modifier =
+                        modifier.fillMaxSize().padding(16.dp).verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+                OutlinedTextField(
+                        value = animal.id.toString(),
+                        onValueChange = { newId ->
+                                viewModel.updateAnimal(animal.copy(id = newId.toLongOrNull() ?: 0))
                         },
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+                        label = { Text(AnimalKeys.ID.name) },
+                        modifier = Modifier.fillMaxWidth()
                 )
 
-                // Sexe
-                ComboBox(
-                        items = Sex.entries,
-                        init = null,
-                        label = "sex".translate(),
-                        onItemSelected = { selectedLabel ->
-                                viewModel.selectedSex =
-                                        Sex.values().find { it.label == selectedLabel }
+                OutlinedTextField(
+                        value = animal.nom,
+                        onValueChange = { newName ->
+                                viewModel.updateAnimal(animal.copy(nom = newName))
                         },
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+                        label = { Text(AnimalKeys.NAME.name) },
+                        modifier = Modifier.fillMaxWidth()
                 )
 
-                // Identifiant
                 OutlinedTextField(
-                        value = viewModel.id ?: "",
-                        onValueChange = { viewModel.id = it },
-                        label = { Text("id".translate()) },
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+                        value = animal.nomProprio,
+                        onValueChange = { newOwner ->
+                                viewModel.updateAnimal(animal.copy(nomProprio = newOwner))
+                        },
+                        label = { Text(AnimalKeys.OWNER.name) },
+                        modifier = Modifier.fillMaxWidth()
                 )
 
-                // Propriétaire
                 OutlinedTextField(
-                        value = viewModel.ownerName ?: "",
-                        onValueChange = { viewModel.ownerName = it },
-                        label = { Text("owner".translate()) },
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+                        value = animal.race,
+                        onValueChange = { newBreed ->
+                                viewModel.updateAnimal(animal.copy(race = newBreed))
+                        },
+                        label = { Text(AnimalKeys.BREED.name) },
+                        modifier = Modifier.fillMaxWidth()
                 )
 
-                // Race
                 OutlinedTextField(
-                        value = viewModel.race ?: "",
-                        onValueChange = { viewModel.race = it },
-                        label = { Text("breed".translate()) },
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+                        value = animal.dateNaissance?.toString() ?: "",
+                        onValueChange = { newDate ->
+                                // TODO: Implement proper date parsing
+                                viewModel.updateAnimal(animal.copy(dateNaissance = null))
+                        },
+                        label = { Text(AnimalKeys.BIRTHDATE.name) },
+                        modifier = Modifier.fillMaxWidth()
                 )
 
-                // Résumé
-                OutlinedTextField(
-                        value = viewModel.summary ?: "",
-                        onValueChange = { viewModel.summary = it },
-                        label = { Text("description".translate()) },
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                        maxLines = 3
-                )
-
-                // État (vivant/mort)
                 Row(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                        horizontalArrangement = Arrangement.Start
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                        Checkbox(
-                                checked = viewModel.dead,
-                                onCheckedChange = { viewModel.dead = it }
-                        )
-                        Text(text = "dead".translate(), modifier = Modifier.padding(start = 8.dp))
+                        Animal.Espece.values().forEach { espece ->
+                                RadioButton(
+                                        selected = animal.espece == espece,
+                                        onClick = {
+                                                viewModel.updateAnimal(animal.copy(espece = espece))
+                                        }
+                                )
+                                Text(
+                                        text = espece.nameToString(),
+                                        modifier = Modifier.align(Alignment.CenterVertically)
+                                )
+                        }
                 }
 
-                // Bouton de sauvegarde
+                Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                        Animal.Sexe.values().forEach { sexe ->
+                                RadioButton(
+                                        selected = animal.sexe == sexe,
+                                        onClick = {
+                                                viewModel.updateAnimal(animal.copy(sexe = sexe))
+                                        }
+                                )
+                                Text(
+                                        text = sexe.nameToString(),
+                                        modifier = Modifier.align(Alignment.CenterVertically)
+                                )
+                        }
+                }
+
+                OutlinedTextField(
+                        value = animal.resume,
+                        onValueChange = { newSummary ->
+                                viewModel.updateAnimal(animal.copy(resume = newSummary))
+                        },
+                        label = { Text(AnimalKeys.SUMMARY.name) },
+                        modifier = Modifier.fillMaxWidth(),
+                        minLines = 3
+                )
+
                 Button(
-                        onClick = onSave,
-                        enabled = viewModel.isValid(),
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp)
-                ) { Text("save".translate()) }
+                        onClick = { viewModel.saveAnimal() },
+                        enabled = !isSaving,
+                        colors =
+                                ButtonDefaults.buttonColors(
+                                        backgroundColor = VetNutriColors.Primary,
+                                        contentColor = VetNutriColors.OnPrimary
+                                ),
+                        modifier = Modifier.fillMaxWidth()
+                ) {
+                        if (isSaving) {
+                                CircularProgressIndicator(
+                                        color = VetNutriColors.OnPrimary,
+                                        modifier = Modifier.size(24.dp)
+                                )
+                        } else {
+                                Text("save".translate())
+                        }
+                }
         }
 }

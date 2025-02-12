@@ -2,7 +2,7 @@ package fr.vetbrain.vetnutri_mp.Enumer
 
 import fr.vetbrain.vetnutri_mp.Data.Labelable
 
-enum class AlimIndic(val coef: Int, override val label: String?) : Labelable {
+enum class AlimIndic(val coef: Int, override val label: String) : Labelable {
     ALL(999, "all"),
     PED(0, "pediatric"),
     NEUT(1, "neutered"),
@@ -42,10 +42,10 @@ enum class AlimIndic(val coef: Int, override val label: String?) : Labelable {
         fun isPresent(indic: AlimIndic): Boolean = entries.contains(indic)
 
         fun byName(name: String): AlimIndic =
-                entries.find { it.label?.equals(name, ignoreCase = true) == true } ?: AUTRE
+                entries.find { it.label.equals(name, ignoreCase = true) } ?: AUTRE
 
         fun valuesExcept(): List<AlimIndic> = entries.filter { it != ALL }
     }
 
-    override fun toString() = label ?: "Unknown"
+    override fun toString() = label
 }

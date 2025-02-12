@@ -2,32 +2,16 @@ package fr.vetbrain.vetnutri_mp.Enumer
 
 import fr.vetbrain.vetnutri_mp.Data.Labelable
 
-
-enum class UnitEnum(
-   override val label: String,
-    val ID: Int,
-    val IDFamily: Int,
-    val refID: Int,
-    val conv: Float
-) :Labelable{
-    BUg("g", 1, 1, 1, 1f),
-    BUmg("mg", 2, 1, 1, 0.001f),
-    BUmu("µg", 3, 1, 1, 0.000001f),
-    AUui("UI", 4, 2, 4, 1f),
-    AUmu("µg", 5, 2, 4, 3.33f),
-    DUui("UI", 6, 3, 6, 1f),
-    DUmu("µg", 7, 3, 6, 40f),
-    EUui("UI", 8, 4, 6, 1f),
-    EUmg("mg", 9, 4, 8, 1f),
-    NO("", 0, 5, 10, 0f);
+enum class UnitEnum(val displayName: String, override val label: String) : Labelable {
+    NO("", "NO"),
+    BUg("g", "BUg"),
+    BUmg("mg", "BUmg"),
+    BUmu("µg", "BUmu"),
+    AUui("UI", "AUui"),
+    DUui("UI", "DUui"),
+    EUui("UI", "EUui");
 
     companion object {
-        fun byId(id: Int): UnitEnum {
-            return entries.firstOrNull { it.ID == id } ?: BUg
-        }
-
-        fun getByName(str: String, family: Int): UnitEnum {
-            return entries.firstOrNull { it.label == str && it.IDFamily == family } ?: BUg
-        }
+        fun fromDisplayName(name: String): UnitEnum = values().find { it.displayName == name } ?: NO
     }
 }

@@ -1,79 +1,106 @@
 package fr.vetbrain.vetnutri_mp.Components
 
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.text.BasicText
-import androidx.compose.material.Surface
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.withStyle
-import fr.vetbrain.vetnutri_mp.Theme.AppColors.CodeColors
+import androidx.compose.ui.unit.dp
+import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 
 @Composable
-fun CodeView(code: String, modifier: Modifier = Modifier) {
-    Surface(modifier = modifier) {
-        BasicText(
-            text = highlightKotlinCode(code)
-        )
+fun CodeView(code: String) {
+    Box(modifier = Modifier.fillMaxWidth().background(VetNutriColors.Surface).padding(8.dp)) {
+        Text(text = highlightSyntax(code), modifier = Modifier.fillMaxWidth())
     }
 }
 
-private fun highlightKotlinCode(code: String): AnnotatedString = buildAnnotatedString {
-    // Liste des mots-clés Kotlin
-    val keywords = setOf(
-        "package", "import", "class", "object", "interface", "fun", "val", "var",
-        "if", "else", "when", "for", "while", "do", "try", "catch", "finally",
-        "throw", "return", "continue", "break", "as", "is", "in", "!in", "by",
-        "constructor", "delegate", "dynamic", "field", "file", "get", "init",
-        "param", "property", "receiver", "set", "setparam", "where", "actual",
-        "abstract", "annotation", "companion", "const", "crossinline", "data",
-        "enum", "expect", "external", "final", "infix", "inline", "inner",
-        "internal", "lateinit", "noinline", "open", "operator", "out", "override",
-        "private", "protected", "public", "reified", "sealed", "suspend",
-        "tailrec", "vararg", "null", "true", "false"
-    )
+private fun highlightSyntax(code: String): AnnotatedString {
+    return buildAnnotatedString {
+        val lines = code.split("\n")
+        lines.forEachIndexed { index, line ->
+            if (index > 0) append("\n")
 
-    val lines = code.split("\n")
-    lines.forEachIndexed { index, line ->
-        if (line.trimStart().startsWith("//")) {
-            // Commentaires
-            withStyle(SpanStyle(color = CodeColors.Comment)) {
-                append(line)
-            }
-        } else {
+            // Mots-clés
+            val keywords =
+                    listOf(
+                            "class",
+                            "fun",
+                            "val",
+                            "var",
+                            "if",
+                            "else",
+                            "when",
+                            "for",
+                            "while",
+                            "return",
+                            "private",
+                            "public",
+                            "protected",
+                            "internal",
+                            "object",
+                            "interface",
+                            "enum"
+                    )
             var currentPosition = 0
-            val tokens = line.split(Regex("(\\s+|[(){}\\[\\],.;:])|(?=[(){}\\[\\],.;:])|(?<=[(){}\\[\\],.;:])"))
-            
-            tokens.forEach { token ->
-                when {
-                    token.isBlank() -> append(token)
-                    token.startsWith("@") -> withStyle(SpanStyle(color = CodeColors.Annotation)) {
-                        append(token)
+
+            val words = line.split(" ", "(", ")", "{", "}", "[", "]", ",", ".", ";")
+            words.forEach { word ->
+                val start = line.indexOf(word, currentPosition)
+                if (start >= 0) {
+                    val end = start + word.length
+
+                    when {
+                        keywords.contains(word) -> {
+                            addStyle(
+                                    SpanStyle(color = VetNutriColors.CodeColors.Keyword),
+                                    start,
+                                    end
+                            )
+                        }
+                        word.startsWith("\"") && word.endsWith("\"") -> {
+                            addStyle(
+                                    SpanStyle(color = VetNutriColors.CodeColors.String),
+                                    start,
+                                    end
+                            )
+                        }
+                        word.all { it.isDigit() } -> {
+                            addStyle(
+                                    SpanStyle(color = VetNutriColors.CodeColors.Number),
+                                    start,
+                                    end
+                            )
+                        }
+                        word.startsWith("//") -> {
+                            addStyle(
+                                    SpanStyle(color = VetNutriColors.CodeColors.Comment),
+                                    start,
+                                    line.length
+                            )
+                            currentPosition = line.length
+                            return@forEach
+                        }
+                        word.startsWith("@") -> {
+                            addStyle(
+                                    SpanStyle(color = VetNutriColors.CodeColors.Annotation),
+                                    start,
+                                    end
+                            )
+                        }
+                        word.matches(Regex("[A-Z][a-zA-Z]*")) -> {
+                            addStyle(SpanStyle(color = VetNutriColors.CodeColors.Type), start, end)
+                        }
                     }
-                    token.matches(Regex("\".*\"")) -> withStyle(SpanStyle(color = CodeColors.String)) {
-                        append(token)
-                    }
-                    token.matches(Regex("-?\\d+(\\.\\d+)?")) -> withStyle(SpanStyle(color = CodeColors.Number)) {
-                        append(token)
-                    }
-                    keywords.contains(token) -> withStyle(SpanStyle(color = CodeColors.Keyword)) {
-                        append(token)
-                    }
-                    token.matches(Regex("[A-Z][A-Za-z]*")) -> withStyle(SpanStyle(color = CodeColors.Type)) {
-                        append(token)
-                    }
-                    token.matches(Regex("[a-z][A-Za-z]*")) -> withStyle(SpanStyle(color = CodeColors.Property)) {
-                        append(token)
-                    }
-                    else -> append(token)
+                    currentPosition = end
                 }
-                currentPosition += token.length
             }
-        }
-        if (index < lines.size - 1) {
-            append("\n")
+            append(line)
         }
     }
-} 
+}

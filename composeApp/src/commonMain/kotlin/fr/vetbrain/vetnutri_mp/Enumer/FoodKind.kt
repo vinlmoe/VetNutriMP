@@ -2,7 +2,7 @@ package fr.vetbrain.vetnutri_mp.Enumer
 
 import fr.vetbrain.vetnutri_mp.Data.Labelable
 
-enum class FoodKind(val coef: Int, override val label: String?) : Labelable {
+enum class FoodKind(val coef: Int, override val label: String) : Labelable {
     ALL(100, "all"),
     COMPLET(2, "complete"),
     COMPLEMENTAIRE(3, "complementary"),
@@ -11,12 +11,11 @@ enum class FoodKind(val coef: Int, override val label: String?) : Labelable {
 
     fun nameToString() = label
 
-
     companion object {
         fun byCoef(coef: Int): FoodKind = entries.find { it.coef == coef } ?: MEN
 
         fun valuesExcept(): List<FoodKind> = entries.filter { it != ALL }
     }
 
-    override fun toString() = label ?: "Unknown"
+    override fun toString() = label
 }
