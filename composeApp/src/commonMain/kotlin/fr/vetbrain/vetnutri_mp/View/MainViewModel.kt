@@ -18,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import fr.vetbrain.vetnutri_mp.Greeting
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.General
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Minerals
 import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.ViewModel.MainViewModel
 import org.jetbrains.compose.ui.tooling.preview.Preview
@@ -28,14 +29,17 @@ fun MainViewModel() {
     MaterialTheme {
         var text by remember { mutableStateOf("aa") }
         var showContent by remember { mutableStateOf(false) }
+        var name by remember { mutableStateOf("aa") }
+        var greetingText by remember { mutableStateOf("aa") }
         Row(Modifier.fillMaxHeight(), verticalAlignment = Alignment.CenterVertically) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Button(onClick = {
-                    showContent = !showContent
+                    text = "Hello, $name!"
+                    greetingText = text
                 }) { Text(General.VALIDATE.translate()) }
                 TextField(
-                    value = text,
-                    onValueChange = { text = it },
+                    value = name,
+                    onValueChange = { name = it },
                     label = { Text(General.SEARCH.translate()) }
                 )
             }
@@ -45,7 +49,7 @@ fun MainViewModel() {
                     Modifier.fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text("CAL".translate())
+                    Text(Minerals.CALCIUM.translate())
                 }
             }
         }

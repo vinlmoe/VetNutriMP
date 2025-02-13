@@ -10,6 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Data.Animal
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Animal as AnimalKeys
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.General
 import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.CreateAnimalViewModel
@@ -44,7 +45,7 @@ fun CreateAnimalView(
                         onValueChange = { newId ->
                                 viewModel.updateAnimal(animal.copy(id = newId.toLongOrNull() ?: 0))
                         },
-                        label = { Text(AnimalKeys.ID.name) },
+                        label = { Text(AnimalKeys.ID.translate()) },
                         modifier = Modifier.fillMaxWidth()
                 )
 
@@ -53,7 +54,7 @@ fun CreateAnimalView(
                         onValueChange = { newName ->
                                 viewModel.updateAnimal(animal.copy(nom = newName))
                         },
-                        label = { Text(AnimalKeys.NAME.name) },
+                        label = { Text(AnimalKeys.NAME.translate()) },
                         modifier = Modifier.fillMaxWidth()
                 )
 
@@ -62,7 +63,7 @@ fun CreateAnimalView(
                         onValueChange = { newOwner ->
                                 viewModel.updateAnimal(animal.copy(nomProprio = newOwner))
                         },
-                        label = { Text(AnimalKeys.OWNER.name) },
+                        label = { Text(AnimalKeys.OWNER.translate()) },
                         modifier = Modifier.fillMaxWidth()
                 )
 
@@ -71,7 +72,7 @@ fun CreateAnimalView(
                         onValueChange = { newBreed ->
                                 viewModel.updateAnimal(animal.copy(race = newBreed))
                         },
-                        label = { Text(AnimalKeys.BREED.name) },
+                        label = { Text(AnimalKeys.BREED.translate()) },
                         modifier = Modifier.fillMaxWidth()
                 )
 
@@ -81,7 +82,7 @@ fun CreateAnimalView(
                                 // TODO: Implement proper date parsing
                                 viewModel.updateAnimal(animal.copy(dateNaissance = null))
                         },
-                        label = { Text(AnimalKeys.BIRTHDATE.name) },
+                        label = { Text(AnimalKeys.BIRTH_DATE.translate()) },
                         modifier = Modifier.fillMaxWidth()
                 )
 
@@ -126,20 +127,19 @@ fun CreateAnimalView(
                         onValueChange = { newSummary ->
                                 viewModel.updateAnimal(animal.copy(resume = newSummary))
                         },
-                        label = { Text(AnimalKeys.SUMMARY.name) },
+                        label = { Text(AnimalKeys.SUMMARY.translate()) },
                         modifier = Modifier.fillMaxWidth(),
                         minLines = 3
                 )
 
                 Button(
                         onClick = { viewModel.saveAnimal() },
-                        enabled = !isSaving,
+                        modifier = Modifier.fillMaxWidth(),
                         colors =
                                 ButtonDefaults.buttonColors(
                                         backgroundColor = VetNutriColors.Primary,
                                         contentColor = VetNutriColors.OnPrimary
-                                ),
-                        modifier = Modifier.fillMaxWidth()
+                                )
                 ) {
                         if (isSaving) {
                                 CircularProgressIndicator(
@@ -147,7 +147,7 @@ fun CreateAnimalView(
                                         modifier = Modifier.size(24.dp)
                                 )
                         } else {
-                                Text("save".translate())
+                                Text(General.SAVE.translate())
                         }
                 }
         }

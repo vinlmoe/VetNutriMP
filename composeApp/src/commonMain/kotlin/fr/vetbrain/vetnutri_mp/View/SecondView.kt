@@ -9,6 +9,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.General
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Animal
 import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import org.jetbrains.compose.ui.tooling.preview.Preview
@@ -25,8 +27,8 @@ fun SecondView(onClose: () -> Unit = {}, modifier: Modifier = Modifier) {
             verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Text(
-                "second.view.title".translate(),
-                style = MaterialTheme.typography.h5,
+                General.APP_NAME.translate(),
+                style = MaterialTheme.typography.h6,
                 modifier = Modifier.padding(bottom = 16.dp)
         )
 
@@ -35,7 +37,7 @@ fun SecondView(onClose: () -> Unit = {}, modifier: Modifier = Modifier) {
         OutlinedTextField(
                 value = textInput,
                 onValueChange = { textInput = it },
-                label = { Text("name".translate(), style = MaterialTheme.typography.body1) },
+                label = { Text(Animal.NAME.translate(), style = MaterialTheme.typography.body1) },
                 textStyle = MaterialTheme.typography.body1,
                 modifier = Modifier.fillMaxWidth()
         )
@@ -43,7 +45,7 @@ fun SecondView(onClose: () -> Unit = {}, modifier: Modifier = Modifier) {
         ComboBox(
                 items = Espece.valuesExcept(),
                 init = null,
-                label = "species".translate(),
+                label = Animal.SPECIES.translate(),
                 onItemSelected = { selectedLabel ->
                     selectedEspece = Espece.values().find { it.label == selectedLabel }
                 },
@@ -60,6 +62,6 @@ fun SecondView(onClose: () -> Unit = {}, modifier: Modifier = Modifier) {
                                 backgroundColor = VetNutriColors.Primary,
                                 contentColor = VetNutriColors.OnPrimary
                         )
-        ) { Text("cancel".translate(), style = MaterialTheme.typography.button) }
+        ) { Text(General.CANCEL.translate(), style = MaterialTheme.typography.button) }
     }
 }

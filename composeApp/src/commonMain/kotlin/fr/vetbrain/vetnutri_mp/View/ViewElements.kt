@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Data.Labelable
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.General
 import fr.vetbrain.vetnutri_mp.Localization.translate
 import org.jetbrains.compose.ui.tooling.preview.Preview
 
@@ -43,7 +44,9 @@ fun ComboBox(
         var expanded by remember { mutableStateOf(false) }
         var selectedObject by remember { mutableStateOf(init) }
         var selectedText by remember {
-                mutableStateOf(TextFieldValue(init?.label ?: "common.value".translate()))
+                mutableStateOf(
+                        TextFieldValue(init?.label?.translate() ?: General.VALUE.translate())
+                )
         }
 
         Column(modifier = modifier) {
@@ -61,12 +64,13 @@ fun ComboBox(
                                 value = selectedText,
                                 onValueChange = {},
                                 readOnly = true,
-                                label = { Text(label.translate()) },
+                                label = { Text(General.LABEL.translate()) },
+                                placeholder = { Text(General.DESCRIPTION.translate()) },
                                 modifier = Modifier.clickable { expanded = !expanded }
                         )
                         Icon(
                                 Icons.Filled.ArrowDropDown,
-                                "common.description".translate(),
+                                LocalizationKeys.General.DESCRIPTION.translate(),
                                 Modifier.align(Alignment.CenterEnd).clickable {
                                         expanded = !expanded
                                 }
@@ -79,14 +83,14 @@ fun ComboBox(
                                         content = {
                                                 Text(
                                                         item.label?.translate()
-                                                                ?: "common.name".translate()
+                                                                ?: General.NAME.translate()
                                                 )
                                         },
                                         onClick = {
                                                 selectedText =
                                                         TextFieldValue(
                                                                 item.label?.translate()
-                                                                        ?: "common.name".translate()
+                                                                        ?: General.NAME.translate()
                                                         )
                                                 expanded = false
                                                 onItemSelected(item.label ?: "null")

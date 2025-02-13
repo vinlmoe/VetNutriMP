@@ -2,11 +2,11 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "e3641f44aca9a7b407623fa93a53affe",
+    "identityHash": "cafc5d766bd8351e88c21ca566d8a2bb",
     "entities": [
       {
         "tableName": "Animals",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`uuid` TEXT NOT NULL, `name` TEXT, `dead` INTEGER, `id` TEXT, `sexId` INTEGER, `specieId` TEXT NOT NULL, `ownerName` TEXT, `birthdate` TEXT, `race` TEXT, `summary` TEXT, `consultations` TEXT NOT NULL, `weight` TEXT NOT NULL, PRIMARY KEY(`uuid`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`uuid` TEXT NOT NULL, `name` TEXT, `dead` INTEGER, `id` TEXT, `sexId` INTEGER, `specieId` TEXT, `ownerName` TEXT, `birthdate` TEXT, `race` TEXT, `summary` TEXT, PRIMARY KEY(`uuid`))",
         "fields": [
           {
             "fieldPath": "uuid",
@@ -37,8 +37,7 @@
           {
             "fieldPath": "specieId",
             "columnName": "specieId",
-            "affinity": "TEXT",
-            "notNull": true
+            "affinity": "TEXT"
           },
           {
             "fieldPath": "ownerName",
@@ -59,18 +58,6 @@
             "fieldPath": "summary",
             "columnName": "summary",
             "affinity": "TEXT"
-          },
-          {
-            "fieldPath": "consultations",
-            "columnName": "consultations",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "weight",
-            "columnName": "weight",
-            "affinity": "TEXT",
-            "notNull": true
           }
         ],
         "primaryKey": {
@@ -315,7 +302,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'e3641f44aca9a7b407623fa93a53affe')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'cafc5d766bd8351e88c21ca566d8a2bb')"
     ]
   }
 }
