@@ -1,34 +1,26 @@
 package fr.vetbrain.vetnutri_mp.Data
 
-import androidx.room.Entity
-import androidx.room.Ignore
-import androidx.room.PrimaryKey
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.Sex
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 import kotlinx.datetime.LocalDate
-import kotlinx.serialization.Serializable
 
 @OptIn(ExperimentalUuidApi::class)
-@Entity(tableName = "Animals")
-@Serializable
 data class AnimalEv(
-        @PrimaryKey val uuid: String = Uuid.random().toString(),
-        var name: String? = null,
-        var dead: Boolean? = null,
+        var uuid: String = Uuid.random().toString(),
+        var nom: String = "",
+        var dead: Boolean = false,
         var id: String? = null,
-        var sexId: Int? = null,
-        var specieId: String? = null,
-        var ownerName: String? = null,
+        var sexId: Int = Sex.MALE.id,
+        var specieId: String = Espece.CHIEN.name,
+        var ownerName: String = "",
         var birthdate: LocalDate? = null,
-        var race: String? = null,
-        var summary: String? = null,
-        @Ignore var consultations: MutableList<ConsultationEv> = mutableListOf(),
-        @Ignore var weight: MutableList<WeightDate> = mutableListOf()
+        var race: String = "",
+        var summary: String = "",
+        var consultations: MutableList<ConsultationEv> = mutableListOf(),
+        var weightHistory: MutableList<WeightDate> = mutableListOf()
 ) {
-    constructor() : this(uuid = Uuid.random().toString())
-
     fun getSex(): Sex {
         return Sex.values().firstOrNull { it.id == sexId } ?: Sex.MALE
     }
@@ -43,5 +35,21 @@ data class AnimalEv(
 
     fun setEspece(espece: Espece) {
         this.specieId = espece.name
+    }
+
+    companion object {
+        fun createTestAnimal(): AnimalEv {
+            return AnimalEv(
+                    nom = "Rex",
+                    dead = false,
+                    id = "TEST001",
+                    sexId = Sex.MALE.id,
+                    specieId = Espece.CHIEN.name,
+                    ownerName = "Jean Dupont",
+                    birthdate = LocalDate(2020, 1, 1),
+                    race = "Labrador",
+                    summary = "Animal de test"
+            )
+        }
     }
 }

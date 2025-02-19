@@ -1,39 +1,22 @@
 package fr.vetbrain.vetnutri_mp.Data
 
-import androidx.room.ColumnInfo
-import androidx.room.Entity
-import androidx.room.ForeignKey
-import androidx.room.Ignore
-import androidx.room.PrimaryKey
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 import kotlinx.datetime.LocalDate
-import kotlinx.serialization.Serializable
 
 @OptIn(ExperimentalUuidApi::class)
-@Entity(
-        tableName = "Consultations",
-        foreignKeys =
-                [
-                        ForeignKey(
-                                entity = AnimalEv::class,
-                                parentColumns = ["uuid"],
-                                childColumns = ["idAnim"],
-                                onDelete = ForeignKey.CASCADE
-                        )]
-)
-@Serializable
 data class ConsultationEv(
-        @PrimaryKey val uuid: String = Uuid.random().toString(),
+        var uuid: String = Uuid.random().toString(),
+        var idAnim: String = "",
         var date: LocalDate? = null,
-        var objectConsult: String? = null,
-        var observation: String? = null,
-        var cRendu: String? = null,
+        var objectConsult: String = "",
+        var observation: String = "",
+        var cRendu: String = "",
         var weight: Float? = null,
         var idealWeight: Float? = null,
         var water: Float? = null,
         var bodyFat: Float? = null,
-        var methodAnalysis: String? = null,
+        var methodAnalysis: String = "",
         var BCS: Int? = null,
         var k1Id: String? = null,
         var k1Value: Float? = null,
@@ -49,15 +32,42 @@ data class ConsultationEv(
         var pAdult: Float? = null,
         var coefGes: Int? = null,
         var coefLact: Int? = null,
-        @ColumnInfo(name = "idAnim") var idAnim: String? = null,
         var MCS: Int? = null,
-        @Ignore var suppVarp: MutableList<SupplementalvariableP> = mutableListOf(),
-        @Ignore var diseaseRef: MutableList<String> = mutableListOf(),
-        @Ignore var rationMutableList: MutableList<Ration> = mutableListOf()
+        var suppVarp: MutableList<SupplementalvariableP> = mutableListOf(),
+        var rations: MutableList<Ration> = mutableListOf()
 ) {
-    constructor() : this(uuid = Uuid.random().toString())
+        constructor() :
+                this(
+                        uuid = Uuid.random().toString(),
+                        date = null,
+                        objectConsult = "",
+                        observation = "",
+                        cRendu = "",
+                        weight = null,
+                        idealWeight = null,
+                        water = null,
+                        bodyFat = null,
+                        methodAnalysis = "",
+                        BCS = null,
+                        k1Id = null,
+                        k1Value = null,
+                        k2Id = null,
+                        k2Value = null,
+                        k3Id = null,
+                        k3Value = null,
+                        k4Id = null,
+                        k4Value = null,
+                        k5Id = null,
+                        k5Value = null,
+                        nLittle = null,
+                        pAdult = null,
+                        coefGes = null,
+                        coefLact = null,
+                        idAnim = "",
+                        MCS = null
+                )
 
-    fun getRationByID(uuid: String): Ration {
-        return rationMutableList.last { ration: Ration -> ration.uuid == uuid }
-    }
+        fun getRationByID(uuid: String): Ration {
+                return rations.last { ration: Ration -> ration.uuid == uuid }
+        }
 }

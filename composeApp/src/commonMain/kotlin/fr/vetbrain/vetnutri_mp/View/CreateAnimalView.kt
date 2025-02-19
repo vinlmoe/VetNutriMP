@@ -8,7 +8,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import fr.vetbrain.vetnutri_mp.Data.Animal
+import fr.vetbrain.vetnutri_mp.Enumer.Espece
+import fr.vetbrain.vetnutri_mp.Enumer.Sex
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Animal as AnimalKeys
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.General
 import fr.vetbrain.vetnutri_mp.Localization.translate
@@ -23,9 +24,9 @@ fun CreateAnimalView(
         onNavigateBack: () -> Unit,
         modifier: Modifier = Modifier
 ) {
-        val animal by viewModel.animal.collectAsState()
-        val isSaving by viewModel.isSaving.collectAsState()
-        val saveSuccess by viewModel.saveSuccess.collectAsState()
+        val animal = viewModel.animal.collectAsState().value
+        val isSaving = viewModel.isSaving.collectAsState().value
+        val saveSuccess = viewModel.saveSuccess.collectAsState().value
 
         LaunchedEffect(saveSuccess) {
                 if (saveSuccess) {
@@ -41,9 +42,9 @@ fun CreateAnimalView(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
                 OutlinedTextField(
-                        value = animal.id.toString(),
-                        onValueChange = { newId ->
-                                viewModel.updateAnimal(animal.copy(id = newId.toLongOrNull() ?: 0))
+                        value = animal.id ?: "",
+                        onValueChange = { newId: String ->
+                                viewModel.updateAnimal(animal.copy(id = newId))
                         },
                         label = { Text(AnimalKeys.ID.translate()) },
                         modifier = Modifier.fillMaxWidth()
@@ -51,7 +52,7 @@ fun CreateAnimalView(
 
                 OutlinedTextField(
                         value = animal.nom,
-                        onValueChange = { newName ->
+                        onValueChange = { newName: String ->
                                 viewModel.updateAnimal(animal.copy(nom = newName))
                         },
                         label = { Text(AnimalKeys.NAME.translate()) },
@@ -59,9 +60,9 @@ fun CreateAnimalView(
                 )
 
                 OutlinedTextField(
-                        value = animal.nomProprio,
-                        onValueChange = { newOwner ->
-                                viewModel.updateAnimal(animal.copy(nomProprio = newOwner))
+                        value = animal.ownerName,
+                        onValueChange = { newOwner: String ->
+                                viewModel.updateAnimal(animal.copy(ownerName = newOwner))
                         },
                         label = { Text(AnimalKeys.OWNER.translate()) },
                         modifier = Modifier.fillMaxWidth()
@@ -69,7 +70,7 @@ fun CreateAnimalView(
 
                 OutlinedTextField(
                         value = animal.race,
-                        onValueChange = { newBreed ->
+                        onValueChange = { newBreed: String ->
                                 viewModel.updateAnimal(animal.copy(race = newBreed))
                         },
                         label = { Text(AnimalKeys.BREED.translate()) },
@@ -77,10 +78,10 @@ fun CreateAnimalView(
                 )
 
                 OutlinedTextField(
-                        value = animal.dateNaissance?.toString() ?: "",
-                        onValueChange = { newDate ->
+                        value = animal.birthdate?.toString() ?: "",
+                        onValueChange = { newDate: String ->
                                 // TODO: Implement proper date parsing
-                                viewModel.updateAnimal(animal.copy(dateNaissance = null))
+                                viewModel.updateAnimal(animal.copy(birthdate = null))
                         },
                         label = { Text(AnimalKeys.BIRTH_DATE.translate()) },
                         modifier = Modifier.fillMaxWidth()
@@ -90,15 +91,17 @@ fun CreateAnimalView(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                        Animal.Espece.values().forEach { espece ->
+                        Espece.values().forEach { espece ->
                                 RadioButton(
-                                        selected = animal.espece == espece,
+                                        selected = animal.getEspece() == espece,
                                         onClick = {
-                                                viewModel.updateAnimal(animal.copy(espece = espece))
+                                                val newAnimal = animal.copy()
+                                                newAnimal.specieId = espece.name
+                                                viewModel.updateAnimal(newAnimal)
                                         }
                                 )
                                 Text(
-                                        text = espece.nameToString(),
+                                        text = espece.label,
                                         modifier = Modifier.align(Alignment.CenterVertically)
                                 )
                         }
@@ -108,24 +111,26 @@ fun CreateAnimalView(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                        Animal.Sexe.values().forEach { sexe ->
+                        Sex.values().forEach { sexe ->
                                 RadioButton(
-                                        selected = animal.sexe == sexe,
+                                        selected = animal.getSex() == sexe,
                                         onClick = {
-                                                viewModel.updateAnimal(animal.copy(sexe = sexe))
+                                                val newAnimal = animal.copy()
+                                                newAnimal.sexId = sexe.id
+                                                viewModel.updateAnimal(newAnimal)
                                         }
                                 )
                                 Text(
-                                        text = sexe.nameToString(),
+                                        text = sexe.label,
                                         modifier = Modifier.align(Alignment.CenterVertically)
                                 )
                         }
                 }
 
                 OutlinedTextField(
-                        value = animal.resume,
-                        onValueChange = { newSummary ->
-                                viewModel.updateAnimal(animal.copy(resume = newSummary))
+                        value = animal.summary,
+                        onValueChange = { newSummary: String ->
+                                viewModel.updateAnimal(animal.copy(summary = newSummary))
                         },
                         label = { Text(AnimalKeys.SUMMARY.translate()) },
                         modifier = Modifier.fillMaxWidth(),

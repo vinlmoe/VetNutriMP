@@ -1,6 +1,5 @@
 package fr.vetbrain.vetnutri_mp.ViewModel
 
-import fr.vetbrain.vetnutri_mp.Data.Animal
 import fr.vetbrain.vetnutri_mp.Repository.TestAnimalRepository
 import kotlin.test.*
 import kotlin.uuid.ExperimentalUuidApi

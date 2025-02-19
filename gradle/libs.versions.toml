@@ -11,22 +11,26 @@ androidx-espresso-core = "3.6.1"
 androidx-lifecycle = "2.8.4"
 androidx-material = "1.12.0"
 androidx-test-junit = "1.2.1"
+androidxSqliteKtx = "2.4.0"
 compose-multiplatform = "1.7.0"
 junit = "4.13.2"
-kotlin = "2.1.10"
+kotlin = "2.1.0"
 kotlinx-coroutines = "1.10.1"
+kotlinxDatetimeVersion = "0.4.1"
 libraryBase = "3.0.0"
-navigationCompose = "2.8.6"
+navigationCompose = "2.8.7"
 componentsSplitpaneDesktop = "1.8.0-alpha01"
+sqliteJdbcVersion = "3.45.1.0"
+sqliterDriver = "1.2.3"
 uiDesktop = "1.7.0"
 kotlinxDatetime = "0.6.1"
 kotlinxSerializationCore = "1.8.0"
-compose = "1.7.7"
+compose = "1.7.8"
 androidx-room = "2.7.0-alpha12"
 ksp = "2.1.0-1.0.29"
 ktorVersion = "3.0.3"
 sqlite = "2.5.0-alpha12"
-androidx-paging = "3.3.5"
+androidx-paging = "3.3.6"
 compose-material3 = "1.3.1"
 dataStore = "1.1.2"
 okio = "3.10.2"
@@ -39,15 +43,20 @@ androidx-datastore-core-okio = { group = "androidx.datastore", name = "datastore
 androidx-datastore-preferences-core = { group = "androidx.datastore", name = "datastore-preferences-core", version.ref = "dataStore" }
 androidx-paging-common = { module = "androidx.paging:paging-common", version.ref = "androidx-paging" }
 androidx-paging-compose-android = { group = "androidx.paging", name = "paging-compose-android", version.ref = "pagingComposeAndroid" }
+androidx-sqlite-sqlite-framework3 = { module = "androidx.sqlite:sqlite-framework", version.ref = "androidxSqliteKtx" }
+androidx-sqlite-sqlite-ktx = { module = "androidx.sqlite:sqlite-ktx", version.ref = "androidxSqliteKtx" }
 compose-material3 = { module = "androidx.compose.material3:material3", version.ref = "compose-material3" }
 compose-ui = { module = "androidx.compose.ui:ui", version.ref = "compose" }
 compose-ui-tooling = { module = "androidx.compose.ui:ui-tooling", version.ref = "compose" }
 compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview", version.ref = "compose" }
+kotlinx-datetime-v041 = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinxDatetimeVersion" }
+kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerializationCore" }
 ktor-serialization-kotlinx-json = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktorVersion" }
 okio = { module = "com.squareup.okio:okio", version.ref = "okio" }
 
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
 kotlin-test-junit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin" }
+kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinx-coroutines" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "androidx-core-ktx" }
 androidx-test-junit = { group = "androidx.test.ext", name = "junit", version.ref = "androidx-test-junit" }
@@ -74,6 +83,8 @@ ktor-client-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "kto
 androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "androidx-room" }
 androidx-room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "androidx-room" }
 androidx-room-paging = { group = "androidx.room", name = "room-paging", version.ref = "androidx-room" }
+sqliter-driver = { module = "co.touchlab:sqliter-driver", version.ref = "sqliterDriver" }
+xerial-sqlite-jdbc = { module = "org.xerial:sqlite-jdbc", version.ref = "sqliteJdbcVersion" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

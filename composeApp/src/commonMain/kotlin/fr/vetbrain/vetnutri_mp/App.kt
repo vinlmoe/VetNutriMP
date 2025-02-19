@@ -4,7 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import fr.vetbrain.vetnutri_mp.DataBase.DatabaseModule
+import fr.vetbrain.vetnutri_mp.DataBase.DatabaseBuilder
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationManager
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriTheme
 import fr.vetbrain.vetnutri_mp.View.*
@@ -12,13 +12,15 @@ import fr.vetbrain.vetnutri_mp.ViewModel.AnimalListViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.CreateAnimalViewModel
 
 @Composable
-
 fun App() {
     // Initialisation de la localisation
     LocalizationManager.initialize()
 
+    // Initialisation de la base de données
+    DatabaseBuilder.initialize()
+
     // Initialisation des dépendances
-    val animalRepository = DatabaseModule.getAnimalRepository()
+    val animalRepository = DatabaseBuilder.getAnimalRepository()
     val animalListViewModel = remember { AnimalListViewModel(animalRepository) }
     val createAnimalViewModel = remember { CreateAnimalViewModel(animalRepository) }
 

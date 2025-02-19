@@ -1,52 +1,49 @@
 package fr.vetbrain.vetnutri_mp.Repository
 
-import fr.vetbrain.vetnutri_mp.Data.Animal
+import fr.vetbrain.vetnutri_mp.Data.AnimalEv
 import fr.vetbrain.vetnutri_mp.DataBase.AnimalDao
 import fr.vetbrain.vetnutri_mp.DataBase.AnimalEntity
 import kotlin.uuid.ExperimentalUuidApi
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.LocalDate
 
 @OptIn(ExperimentalUuidApi::class)
 class DatabaseAnimalRepository(private val animalDao: AnimalDao) : AnimalRepository {
-        override suspend fun saveAnimal(animal: Animal): Unit =
+        override suspend fun saveAnimal(animal: AnimalEv): Unit =
                 withContext(Dispatchers.Default) {
                         val entity =
                                 AnimalEntity(
-                                        UUID = animal.uuid,
-                                        name = animal.nom,
-                                        dead = if (animal.mort) 1 else 0,
-                                        id = animal.id.toString(),
-                                        sex = animal.sexe.ordinal,
-                                        specie = animal.espece.name,
-                                        ownerName = animal.nomProprio,
-                                        birthdate = animal.dateNaissance?.toString() ?: "",
+                                        uuid = animal.uuid,
+                                        nom = animal.nom,
+                                        dead = animal.dead,
+                                        id = animal.id,
+                                        sexId = animal.sexId,
+                                        specieId = animal.specieId,
+                                        ownerName = animal.ownerName,
+                                        birthdate = animal.birthdate.toString(),
                                         race = animal.race,
-                                        summary = animal.resume
+                                        summary = animal.summary
                                 )
-                        animalDao.insertAnimal(entity)
+                        animalDao.insert(entity)
                 }
 
-        override suspend fun getAllAnimals(): List<Animal> =
-                withContext(Dispatchers.Default) {
-                        animalDao.getAllAnimals().first().map { entity ->
-                                Animal(
-                                        uuid = entity.UUID,
-                                        id = entity.id.toLongOrNull() ?: 0L,
-                                        nom = entity.name,
-                                        espece = Animal.Espece.valueOf(entity.specie),
-                                        sexe = Animal.Sexe.values()[entity.sex],
-                                        race = entity.race,
-                                        dateNaissance =
-                                                if (entity.birthdate.isNotEmpty())
-                                                        LocalDate.parse(entity.birthdate)
-                                                else null,
-                                        nomProprio = entity.ownerName,
-                                        resume = entity.summary,
-                                        mort = entity.dead == 1
+        override suspend fun getAllAnimals(): List<AnimalEv> {
+                return withContext(Dispatchers.Default) {
+                        animalDao.getAllAnimals().map { entity ->
+                                AnimalEv(
+                                        uuid = entity.uuid ?: "",
+                                        nom = entity.nom ?: "",
+                                        dead = entity.dead ?: false,
+                                        id = entity.id,
+                                        sexId = entity.sexId ?: 0,
+                                        specieId = entity.specieId ?: "",
+                                        ownerName = entity.ownerName ?: "",
+                                        birthdate = entity.birthdate?.let { LocalDate.parse(it) },
+                                        race = entity.race ?: "",
+                                        summary = entity.summary ?: ""
                                 )
                         }
                 }
+        }
 }

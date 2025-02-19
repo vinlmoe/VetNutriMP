@@ -9,19 +9,15 @@ import kotlinx.serialization.Serializable
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
-
-@Entity(tableName = "Food", foreignKeys = [
-    ForeignKey(entity = Ration::class, parentColumns = ["uuid"], childColumns = ["refRation"], onDelete = ForeignKey.CASCADE)
-])
-@Serializable
-data class AlimentRation @OptIn(ExperimentalUuidApi::class) constructor(
-    @PrimaryKey val uuid: String =  Uuid.random().toString(), // Unique ID for each ration item
-    @ColumnInfo(name = "refAlimUnif") val refAlimUnif: String, // Reference to the base AlimentEv
-    @ColumnInfo(name = "refRation") var refRation: String? = null, // Foreign key to Ration
-    val quantity: Float?,
-    @ColumnInfo(name = "refTarget") val refTarget: Int?, // Using Int to store enum coef
-    @Ignore  var alim: AlimentEv? = null // Transient and custom serialized for AlimentEv
-)  {
+@OptIn(ExperimentalUuidApi::class)
+data class AlimentRation (
+    var uuid: String = Uuid.random().toString(),
+    var refAlimUnif: String? = null,
+    var refRation: String? = null,
+    var quantity: Float? = null,
+    var refTarget: Int? = null,
+    var alim: AlimentEv? = null
+) {
     fun upUUID(rationUUID: String) {
         refRation = rationUUID
     }

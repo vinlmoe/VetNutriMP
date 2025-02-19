@@ -2,16 +2,17 @@ package fr.vetbrain.vetnutri_mp.DataBase
 
 import androidx.room.TypeConverter
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.toLocalDate
 
 class Converters {
     @TypeConverter
-    fun fromTimestamp(value: String?): LocalDate? {
-        return value?.let { LocalDate.parse(it) }
+    fun fromLocalDate(date: LocalDate?): String? {
+        return date?.toString()
     }
 
     @TypeConverter
-    fun dateToTimestamp(date: LocalDate?): String? {
-        return date?.toString()
+    fun toLocalDate(value: String?): LocalDate? {
+        return value?.toLocalDate()
     }
 
     @TypeConverter
@@ -22,5 +23,25 @@ class Converters {
     @TypeConverter
     fun toBoolean(value: Int?): Boolean? {
         return value?.let { it == 1 }
+    }
+
+    @TypeConverter
+    fun fromFloat(value: Float?): String? {
+        return value?.toString()
+    }
+
+    @TypeConverter
+    fun toFloat(value: String?): Float? {
+        return value?.toFloatOrNull()
+    }
+
+    @TypeConverter
+    fun fromDouble(value: Double?): String? {
+        return value?.toString()
+    }
+
+    @TypeConverter
+    fun toDouble(value: String?): Double? {
+        return value?.toDoubleOrNull()
     }
 }

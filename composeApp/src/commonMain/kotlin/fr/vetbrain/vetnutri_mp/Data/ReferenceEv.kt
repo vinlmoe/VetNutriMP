@@ -1,14 +1,11 @@
-package fr.vetbrain.vetnutri_mp.Data
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
+import fr.vetbrain.vetnutri_mp.Data.CoefP
 
-import androidx.room.*
-import kotlin.uuid.*
-import kotlinx.serialization.Serializable
 
 @OptIn(ExperimentalUuidApi::class)
-@Entity(tableName = "DataRef")
-@Serializable
 data class ReferenceEv(
-        @PrimaryKey val uuid: String = Uuid.random().toString(),
+        val uuid: String = Uuid.random().toString(),
         var name: String?,
         var description: String?,
         var disease: Boolean?,
@@ -29,14 +26,14 @@ data class ReferenceEv(
         var k5Ref: String?,
         var specie: String?,
         var consistent: Int?,
-        @Ignore var BWEqu: Equation? = null,
-        @Ignore var BEEqu: Equation? = null,
-        @Ignore var DEcomEqu: Equation? = null,
-        @Ignore var DErawEqu: Equation? = null,
-        @Ignore var modk1: MutableList<CoefP>,
-        @Ignore var modk2: MutableList<CoefP>,
-        @Ignore var modk3: MutableList<CoefP>,
-        @Ignore var modk4: MutableList<CoefP>,
-        @Ignore var modk5: MutableList<CoefP>,
-        @Ignore var nutEqu: MutableList<Equation>
+        var BWEqu: Equation? = null,
+        var BEEqu: Equation? = null,
+        var DEcomEqu: Equation? = null,
+        var DErawEqu: Equation? = null,
+        var modk1: MutableList<CoefP>,
+        var modk2: MutableList<CoefP>,
+        var modk3: MutableList<CoefP>,
+        var modk4: MutableList<CoefP>,
+        var modk5: MutableList<CoefP>,
+        var nutEqu: MutableList<Equation>
 )

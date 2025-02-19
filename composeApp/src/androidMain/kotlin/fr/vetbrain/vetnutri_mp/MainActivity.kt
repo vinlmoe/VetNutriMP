@@ -5,7 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
-import fr.vetbrain.vetnutri_mp.DataBase.DatabaseModule
+import fr.vetbrain.vetnutri_mp.DataBase.DatabaseFactory
 import fr.vetbrain.vetnutri_mp.Localization.AndroidContext
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationManager
 
@@ -20,7 +20,7 @@ class MainActivity : ComponentActivity() {
         LocalizationManager.initialize()
 
         // Initialisation de la base de données
-        DatabaseModule.initialize()
+        DatabaseFactory.initialize()
 
         setContent { App() }
     }

@@ -1,42 +1,31 @@
 package fr.vetbrain.vetnutri_mp.Data
 
-import androidx.room.ColumnInfo
-import androidx.room.Entity
-import androidx.room.ForeignKey
-import androidx.room.Ignore
-import androidx.room.PrimaryKey
+import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
-import kotlinx.serialization.Serializable
 
 @OptIn(ExperimentalUuidApi::class)
-@Entity(
-        tableName = "Ration",
-        foreignKeys =
-                [
-                        ForeignKey(
-                                entity = ConsultationEv::class,
-                                parentColumns = ["uuid"],
-                                childColumns = ["idConsult"],
-                                onDelete = ForeignKey.CASCADE
-                        )]
-)
-@Serializable
 data class Ration(
-        @PrimaryKey val uuid: String = Uuid.random().toString(),
-        @ColumnInfo(name = "idConsult") var idConsult: String? = null,
-        var name: String? = null,
-        var coef: Float? = null,
-        var actual: Boolean? = null,
-        var number: Int? = null,
+        var uuid: String = Uuid.random().toString(),
+        var idConsult: String = "",
+        var name: String = "",
+        var coef: Float = 1.0f,
+        var actual: Boolean = false,
+        var number: Int = 1,
         var espece: String? = null,
-        var recette: Boolean? = null,
-        var description: String? = null,
-        @Ignore var alimentMutableList: MutableList<AlimentRation> = mutableListOf()
+        var recette: Boolean = false,
+        var description: String = "",
+        var alimentMutableList: MutableList<AlimentRation> = mutableListOf()
 ) {
-    constructor() : this(uuid = Uuid.random().toString())
+        fun getAlimentByUUID(uuiDalim: String): AlimentRation {
+                return alimentMutableList.last { al -> al.uuid == uuiDalim }
+        }
 
-    fun getAlimentByUUID(uuiDalim: String): AlimentRation {
-        return alimentMutableList.last { al -> al.uuid == uuiDalim }
-    }
+        fun getEspece(): Espece {
+                return Espece.getByLabel(espece ?: "") ?: Espece.CHIEN
+        }
+
+        fun setEspece(especeEnum: Espece) {
+                this.espece = especeEnum.label
+        }
 }

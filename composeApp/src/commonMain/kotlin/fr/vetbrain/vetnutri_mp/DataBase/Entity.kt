@@ -130,72 +130,208 @@ data class DataDefEntity(@PrimaryKey val UUID: String, val sNAME: String, val co
 @Serializable
 @Entity(tableName = "ANIMALS")
 data class AnimalEntity(
-        @PrimaryKey val UUID: String,
-        val name: String,
-        val dead: Int,
-        val id: String,
-        val sex: Int,
-        val specie: String,
-        val ownerName: String,
-        val birthdate: String,
-        val race: String,
-        val summary: String
+        @PrimaryKey val uuid: String,
+        val nom: String?,
+        val dead: Boolean?,
+        val id: String?,
+        val sexId: Int?,
+        val specieId: String?,
+        val ownerName: String?,
+        val birthdate: String?,
+        val race: String?,
+        val summary: String?
 )
 
 @Serializable
-@Entity(tableName = "CONSULTATIONS")
+@Entity(
+        tableName = "CONSULTATIONS",
+        foreignKeys =
+                [
+                        ForeignKey(
+                                entity = AnimalEntity::class,
+                                parentColumns = ["uuid"],
+                                childColumns = ["idAnim"],
+                                onDelete = ForeignKey.CASCADE
+                        )],
+        indices = [Index("idAnim")]
+)
 data class ConsultationEntity(
-        @PrimaryKey val UUID: String,
-        val date: String,
-        val subject: String?,
+        @PrimaryKey val uuid: String,
+        val idAnim: String?,
+        val date: String?,
+        val objectConsult: String?,
         val observation: String?,
-        val cRendu: String,
-        val weight: Float,
-        val idealWeight: Float,
-        val water: Float,
-        val bodyFat: Float,
+        val cRendu: String?,
+        val weight: Float?,
+        val idealWeight: Float?,
+        val water: Float?,
+        val bodyFat: Float?,
         val methodAnalysis: String?,
-        val BCS: Int,
+        val BCS: Int?,
         val k1Id: String?,
-        val k1Value: Float,
+        val k1Value: Float?,
         val k2Id: String?,
-        val k2Value: Float,
+        val k2Value: Float?,
         val k3Id: String?,
-        val k3Value: Float,
+        val k3Value: Float?,
         val k4Id: String?,
-        val k4Value: Float,
+        val k4Value: Float?,
         val k5Id: String?,
-        val k5Value: Float,
-        val nLittle: Int,
-        val pAdult: Float,
-        val coefGes: Int,
-        val coefLact: Int,
-        val idAnim: String,
-        val MCS: Int
+        val k5Value: Float?,
+        val nLittle: Int?,
+        val pAdult: Float?,
+        val coefGes: Int?,
+        val coefLact: Int?,
+        val MCS: Int?
 )
 
 @Serializable
-@Entity(tableName = "Weight")
+@Entity(
+        tableName = "WEIGHT",
+        foreignKeys =
+                [
+                        ForeignKey(
+                                entity = AnimalEntity::class,
+                                parentColumns = ["uuid"],
+                                childColumns = ["refAnimal"],
+                                onDelete = ForeignKey.CASCADE
+                        )],
+        indices = [Index("refAnimal")]
+)
 data class WeightEntity(
-        @PrimaryKey(autoGenerate = true) val id: Int = 0,
+        @PrimaryKey val uuid: String,
         val refAnimal: String,
         val date: String,
-        val value: Float,
-        val UUID: String
+        val value: Float
 )
 
 @Serializable
-@Entity(tableName = "RATION")
+@Entity(
+        tableName = "RATIONS",
+        foreignKeys =
+                [
+                        ForeignKey(
+                                entity = ConsultationEntity::class,
+                                parentColumns = ["uuid"],
+                                childColumns = ["idConsult"],
+                                onDelete = ForeignKey.CASCADE
+                        )],
+        indices = [Index("idConsult")]
+)
 data class RationEntity(
-        @PrimaryKey val UUID: String,
+        @PrimaryKey val uuid: String,
         val idConsult: String?,
-        val name: String,
-        val coef: Float,
-        val actual: Int,
-        val number: Int,
+        val name: String?,
+        val coef: Float?,
+        val actual: Boolean?,
+        val number: Int?,
         val espece: String?,
-        val recette: Int,
+        val recette: Boolean?,
         val description: String?
+)
+
+@Serializable
+@Entity(
+        tableName = "ALIMENTS",
+        foreignKeys =
+                [
+                        ForeignKey(
+                                entity = RationEntity::class,
+                                parentColumns = ["uuid"],
+                                childColumns = ["refRation"],
+                                onDelete = ForeignKey.CASCADE
+                        ),
+                        ForeignKey(
+                                entity = FoodEntity::class,
+                                parentColumns = ["UUID"],
+                                childColumns = ["refAlimUnif"],
+                                onDelete = ForeignKey.SET_NULL
+                        )],
+        indices = [Index("refRation"), Index("refAlimUnif")]
+)
+data class AlimentRationEntity(
+        @PrimaryKey val uuid: String,
+        val refAlimUnif: String?,
+        val refRation: String?,
+        val quantity: Float?,
+        val refTarget: Int?
+)
+
+@Serializable
+@Entity(tableName = "ALIMENTS_BASE")
+data class AlimentEntity(
+        @PrimaryKey val uuid: String,
+        val group: Int?,
+        val typeAliment: Int?,
+        val ingredients: String?,
+        val price: Double?,
+        val categPrice: String?,
+        val brand: String?,
+        val gamme: String?,
+        val nom: String?,
+        val consistent: Boolean,
+        val cont: Int?,
+        val quantInt: Float?,
+        val deprecated: Int?,
+        val dataB: String?
+)
+
+@Serializable
+@Entity(
+        tableName = "ESPECES_ALIMENTS",
+        foreignKeys =
+                [
+                        ForeignKey(
+                                entity = AlimentEntity::class,
+                                parentColumns = ["uuid"],
+                                childColumns = ["refAliment"],
+                                onDelete = ForeignKey.CASCADE
+                        )],
+        indices = [Index("refAliment")]
+)
+data class EspeceAlimentEntity(
+        @PrimaryKey(autoGenerate = true) val id: Int = 0,
+        val refAliment: String,
+        val espece: String
+)
+
+@Serializable
+@Entity(
+        tableName = "INDICATIONS_ALIMENTS",
+        foreignKeys =
+                [
+                        ForeignKey(
+                                entity = AlimentEntity::class,
+                                parentColumns = ["uuid"],
+                                childColumns = ["refAliment"],
+                                onDelete = ForeignKey.CASCADE
+                        )],
+        indices = [Index("refAliment")]
+)
+data class IndicationAlimentEntity(
+        @PrimaryKey(autoGenerate = true) val id: Int = 0,
+        val refAliment: String,
+        val indication: Int
+)
+
+@Serializable
+@Entity(
+        tableName = "SUPPLEMENTAL_VARIABLES",
+        foreignKeys =
+                [
+                        ForeignKey(
+                                entity = ConsultationEntity::class,
+                                parentColumns = ["uuid"],
+                                childColumns = ["idConsult"],
+                                onDelete = ForeignKey.CASCADE
+                        )],
+        indices = [Index("idConsult")]
+)
+data class SupplementalVariableEntity(
+        @PrimaryKey(autoGenerate = true) val id: Int = 0,
+        val idConsult: String,
+        val variableKind: Int,
+        val value: Float?
 )
 
 @Serializable
@@ -336,3 +472,25 @@ data class CoefEntity(
 @Serializable
 @Entity(tableName = "speReqEq", primaryKeys = ["refEq", "refRef"])
 data class SpeReqEqEntity(val refEq: String, val refRef: String)
+
+@Serializable
+@Entity(
+        tableName = "ALIMENT_REFERENCES",
+        foreignKeys =
+                [
+                        ForeignKey(
+                                entity = FoodEntity::class,
+                                parentColumns = ["UUID"],
+                                childColumns = ["foodId"],
+                                onDelete = ForeignKey.CASCADE
+                        )],
+        indices = [Index("foodId")]
+)
+data class AlimentReferenceEntity(
+        @PrimaryKey val uuid: String,
+        val foodId: String,
+        val referenceType: String,
+        val referenceValue: String,
+        val version: Int,
+        val date: String
+)

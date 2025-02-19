@@ -1,24 +1,18 @@
-package fr.vetbrain.vetnutri_mp.Data
-
-import androidx.room.*
 import fr.vetbrain.vetnutri_mp.Enumer.VariableKind
-import kotlinx.serialization.Serializable
-
-import kotlin.uuid.*
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 @OptIn(ExperimentalUuidApi::class)
-@Entity(tableName = "Equation")
-@Serializable
 data class Equation(
-    @PrimaryKey val uuid: String = Uuid.random().toString(),
-    var script: String?,
-    @ColumnInfo(name = "refBiblio") var refBiblio: String?,
-    var name: String?,
-    var description: String?,
-    @ColumnInfo(name = "speciesRef") var specie: String?,
-    var kind: Int?,
-    var consistent: Boolean?,
-    var nutrient: Int?,
-    @Ignore var bib: BiblioRef? = null,
-    @Ignore var varMutableList: MutableList<VariableKind>
-) 
+        val uuid: String = Uuid.random().toString(),
+        var script: String?,
+        var refBiblio: String?,
+        var name: String?,
+        var description: String?,
+        var specie: String?,
+        var kind: Int?,
+        var consistent: Boolean?,
+        var nutrient: Int?,
+        var bib: BiblioRef? = null,
+        var varMutableList: MutableList<VariableKind>
+)

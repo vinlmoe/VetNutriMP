@@ -45,7 +45,7 @@ fun ComboBox(
         var selectedObject by remember { mutableStateOf(init) }
         var selectedText by remember {
                 mutableStateOf(
-                        TextFieldValue(init?.label?.translate() ?: General.VALUE.translate())
+                        TextFieldValue(init?.label?.translate() ?: General.VALIDATE.translate())
                 )
         }
 
@@ -64,13 +64,13 @@ fun ComboBox(
                                 value = selectedText,
                                 onValueChange = {},
                                 readOnly = true,
-                                label = { Text(General.LABEL.translate()) },
-                                placeholder = { Text(General.DESCRIPTION.translate()) },
+                                label = { Text(General.CALCULATE.translate()) },
+                                placeholder = { Text(General.CALCULATE.translate()) },
                                 modifier = Modifier.clickable { expanded = !expanded }
                         )
                         Icon(
                                 Icons.Filled.ArrowDropDown,
-                                LocalizationKeys.General.DESCRIPTION.translate(),
+                                General.VALIDATE.translate(),
                                 Modifier.align(Alignment.CenterEnd).clickable {
                                         expanded = !expanded
                                 }
@@ -83,14 +83,14 @@ fun ComboBox(
                                         content = {
                                                 Text(
                                                         item.label?.translate()
-                                                                ?: General.NAME.translate()
+                                                                ?: General.VALIDATE.translate()
                                                 )
                                         },
                                         onClick = {
                                                 selectedText =
                                                         TextFieldValue(
                                                                 item.label?.translate()
-                                                                        ?: General.NAME.translate()
+                                                                        ?: General.VALIDATE.translate()
                                                         )
                                                 expanded = false
                                                 onItemSelected(item.label ?: "null")

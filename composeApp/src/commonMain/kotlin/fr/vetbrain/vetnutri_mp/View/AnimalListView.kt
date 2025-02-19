@@ -8,7 +8,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import fr.vetbrain.vetnutri_mp.Data.Animal
+import fr.vetbrain.vetnutri_mp.Data.AnimalEv
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Animal
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.General
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalListViewModel
 import kotlin.uuid.ExperimentalUuidApi
@@ -18,10 +21,10 @@ import kotlin.uuid.ExperimentalUuidApi
 fun AnimalListView(
         viewModel: AnimalListViewModel,
         onAddAnimal: () -> Unit,
-        onSelectAnimal: (Animal) -> Unit,
+        onSelectAnimal: (AnimalEv) -> Unit,
         modifier: Modifier = Modifier
 ) {
-    val animals by viewModel.animals.collectAsState()
+    val animals: List<AnimalEv> = viewModel.animals.collectAsState().value
 
     LaunchedEffect(Unit) { viewModel.loadAnimals() }
 
@@ -36,7 +39,7 @@ fun AnimalListView(
                                 backgroundColor = VetNutriColors.Primary,
                                 contentColor = VetNutriColors.OnPrimary
                         )
-        ) { Text("Ajouter un animal") }
+        ) { Text(General.ADD.translate()) }
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -53,7 +56,11 @@ fun AnimalListView(
 
 @OptIn(ExperimentalUuidApi::class, ExperimentalMaterialApi::class)
 @Composable
-private fun AnimalCard(animal: Animal, onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun AnimalCard(
+        animal: AnimalEv,
+        onClick: () -> Unit,
+        modifier: Modifier = Modifier
+) {
     Card(modifier = modifier.fillMaxWidth(), elevation = 4.dp, onClick = onClick) {
         Column(
                 modifier = Modifier.padding(16.dp),
@@ -61,15 +68,18 @@ private fun AnimalCard(animal: Animal, onClick: () -> Unit, modifier: Modifier =
         ) {
             Text(text = animal.nom, style = MaterialTheme.typography.h6)
             Text(
-                    text = "Espèce: ${animal.espece.nameToString()}",
+                    text = "${Animal.SPECIES.translate()}: ${animal.getEspece().label}",
                     style = MaterialTheme.typography.body1
             )
             if (animal.race.isNotEmpty()) {
-                Text(text = "Race: ${animal.race}", style = MaterialTheme.typography.body2)
-            }
-            if (animal.nomProprio.isNotEmpty()) {
                 Text(
-                        text = "Propriétaire: ${animal.nomProprio}",
+                        text = "${Animal.BREED.translate()}: ${animal.race}",
+                        style = MaterialTheme.typography.body2
+                )
+            }
+            if (animal.ownerName.isNotEmpty()) {
+                Text(
+                        text = "${Animal.OWNER.translate()}: ${animal.ownerName}",
                         style = MaterialTheme.typography.body2
                 )
             }

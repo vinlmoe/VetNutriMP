@@ -4,8 +4,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
-import fr.vetbrain.vetnutri_mp.Enumer.*
-
+import fr.vetbrain.vetnutri_mp.Enumer.Espece
+import fr.vetbrain.vetnutri_mp.Enumer.Sex
 import kotlinx.datetime.LocalDate
 
 class AnimalViewModel {
@@ -22,15 +22,15 @@ class AnimalViewModel {
     fun createAnimal(): AnimalEv? {
         return selectedEspece?.let { espece ->
             AnimalEv(
-                    name = name,
-                    dead = dead,
-                    id = id,
-                    sexId = selectedSex?.id,
-                    specieId = espece.uuid,
-                    ownerName = ownerName,
-                    birthdate = birthdate,
-                    race = race,
-                    summary = summary
+                nom = name ?: "",
+                dead = dead,
+                id = id,
+                sexId = selectedSex?.id ?: Sex.MALE.id,
+                specieId = espece.name,
+                ownerName = ownerName ?: "",
+                birthdate = birthdate,
+                race = race ?: "",
+                summary = summary ?: ""
             )
         }
     }
