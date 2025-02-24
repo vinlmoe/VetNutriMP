@@ -14,12 +14,11 @@ plugins {
 
 kotlin {
     androidTarget {
-        // @OptIn(ExperimentalKotlinGradlePluginApi::class)
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_11)
         }
     }
-
+    
     listOf(
         iosX64(),
         iosArm64(),
@@ -28,34 +27,29 @@ kotlin {
         iosTarget.binaries.framework {
             baseName = "ComposeApp"
             isStatic = true
+            linkerOpts.add("-lsqlite3")
         }
     }
 
     jvm("desktop")
 
     sourceSets {
-        val desktopMain by getting {
-            dependencies {
-                implementation(libs.sqlite.bundled)
-                implementation(libs.xerial.sqlite.jdbc)
-                implementation(libs.androidx.sqlite.sqlite.framework3)
-                implementation(libs.androidx.sqlite.sqlite.ktx)
-            }
+
+           androidMain.dependencies {
+                implementation(libs.androidx.activity.compose)
+                implementation(libs.androidx.room.runtime)
+                implementation(libs.androidx.room.paging)
+               // implementation(libs.androidx.sqlite.sqlite.ktx)
+
         }
 
-        androidMain.dependencies {
-            implementation(compose.preview)
-            implementation(libs.androidx.activity.compose)
-            implementation(libs.androidx.room.paging)
-            implementation("androidx.sqlite:sqlite-framework:2.4.0")
-            implementation("androidx.sqlite:sqlite-ktx:2.4.0")
-            implementation(libs.androidx.paging.compose.android)
-            implementation(libs.compose.material3)
-        }
         commonMain.dependencies {
+
+            implementation(libs.androidx.sqlite.bundled)
             implementation(compose.runtime)
             implementation(compose.foundation)
             implementation(compose.material)
+
             implementation(compose.ui)
             implementation(compose.components.resources)
             implementation(compose.components.uiToolingPreview)
@@ -63,7 +57,6 @@ kotlin {
             implementation(libs.androidx.lifecycle.runtime.compose)
             implementation(libs.androidx.room.runtime)
             implementation(libs.androidx.room.paging)
-            implementation(libs.sqlite.bundled)
             implementation(libs.okio)
             implementation(libs.okio)
             implementation(libs.kotlinx.serialization.json)
@@ -75,21 +68,27 @@ kotlin {
             implementation(libs.ktor.serialization.kotlinx.json)
             implementation(libs.androidx.paging.common)
         }
+       val desktopMain by getting {
+            dependencies {
+                implementation(compose.desktop.macos_arm64)
+                implementation(libs.skiko.awt)
+                implementation(libs.junit.jupiter)
+                implementation(libs.junit.junit)
+
+            /*    implementation(libs.xerial.sqlite.jdbc)
+                implementation(libs.androidx.sqlite.sqlite.framework3)
+                implementation(libs.androidx.sqlite.sqlite.ktx)*/
+                implementation(libs.compose.ui.test.manifest)
+            }
+        }
         commonTest.dependencies {
-            implementation(libs.kotlinx.coroutines.test)
-            implementation(libs.junit)
-
+            implementation(libs.kotlin.test)
+            implementation(kotlin("test-annotations-common"))
+            implementation(libs.assertk)
 
         }
-        desktopMain.dependencies {
-            implementation(compose.desktop.currentOs)
-            implementation(libs.kotlinx.coroutines.swing)
-            implementation(libs.xerial.sqlite.jdbc)
-            implementation(libs.androidx.sqlite.sqlite.framework3)
-            implementation(libs.androidx.sqlite.sqlite.ktx)
-        }
-        iosMain.dependencies {
-            implementation(libs.sqliter.driver)
+       iosMain.dependencies {
+                implementation(libs.sqliter.driver)
 
         }
         iosTest.dependencies {
@@ -107,13 +106,15 @@ android {
     sourceSets["main"].resources.srcDirs("src/commonMain/resources")
 
     defaultConfig {
-        applicationId = "fr.vetbrain.vetnutri_mp"
+        applicationId = "fr.vetbrain.vetnutri_mp.androidApp"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1
         versionName = "1.0"
-    }
+        
+        // Configuration de Room
 
+    }
 
     packaging {
         resources {
@@ -129,6 +130,8 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+
+
 }
 
 dependencies {
@@ -148,7 +151,10 @@ compose.desktop {
 }
 
 dependencies {
-    implementation(project(":composeApp"))
+
+    implementation(libs.skiko.awt)
+    implementation(libs.androidx.sqlite.bundled)
+    implementation(libs.testng)
     add("kspAndroid", libs.androidx.room.compiler)
     add("kspIosSimulatorArm64", libs.androidx.room.compiler)
     add("kspIosX64", libs.androidx.room.compiler)

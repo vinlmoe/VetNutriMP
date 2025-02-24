@@ -6,12 +6,11 @@ import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Update
 
-
 @Dao
 interface AnimalDao {
     @Insert suspend fun insert(animal: AnimalEntity)
 
-    @Update suspend fun update(animal:  AnimalEntity)
+    @Update suspend fun update(animal: AnimalEntity)
 
     @Delete suspend fun delete(animal: AnimalEntity)
 
@@ -28,7 +27,7 @@ interface FoodDao {
 
     @Delete suspend fun delete(food: FoodEntity)
 
-    @Query("SELECT * FROM foods") suspend fun getAllFoods(): List<FoodEntity>
+    @Query("SELECT * FROM FOOD") suspend fun getAllFoods(): List<FoodEntity>
 
-    @Query("SELECT * FROM foods WHERE id = :id") suspend fun getFoodById(id: Int): FoodEntity?
+    @Query("SELECT * FROM FOOD WHERE UUID = :id") suspend fun getFoodById(id: Int): FoodEntity?
 }

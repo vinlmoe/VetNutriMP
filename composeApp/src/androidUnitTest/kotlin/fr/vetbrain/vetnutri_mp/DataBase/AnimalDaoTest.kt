@@ -2,20 +2,18 @@ package fr.vetbrain.vetnutri_mp.DataBase
 
 import android.content.Context
 import androidx.room.Room
-import androidx.test.core.app.ApplicationProvider
-import androidx.test.ext.junit.runners.AndroidJUnit4
+
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
-import kotlinx.coroutines.test.runTest
+
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.robolectric.annotation.Config
 
-@RunWith(AndroidJUnit4::class)
-@Config(manifest = Config.NONE)
+
+
 class AnimalDaoTest {
     private lateinit var database: AppDatabase
     private lateinit var animalDao: AnimalDao
