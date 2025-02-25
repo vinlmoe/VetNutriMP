@@ -6,7 +6,7 @@ import fr.vetbrain.vetnutri_mp.Localization.LocalizationManager
 
 fun main() = application {
     // Initialisation de la localisation
-    LocalizationManager.initialize()
+//    LocalizationManager.initialize()
 
     Window(
             onCloseRequest = ::exitApplication,

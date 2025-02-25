@@ -44,11 +44,12 @@ kotlin {
         }
 
         commonMain.dependencies {
-
             implementation(libs.androidx.sqlite.bundled)
             implementation(compose.runtime)
             implementation(compose.foundation)
             implementation(compose.material)
+            implementation(libs.kotlinx.coroutines.core)
+            implementation(libs.kotlinx.coroutines.test)
 
             implementation(compose.ui)
             implementation(compose.components.resources)
@@ -61,6 +62,7 @@ kotlin {
             implementation(libs.okio)
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.kotlinx.datetime)
+
             implementation(libs.kotlinx.serialization.core)
             implementation(libs.androidx.datastore.core.okio)
             implementation(libs.androidx.datastore.preferences.core)
@@ -68,22 +70,28 @@ kotlin {
             implementation(libs.ktor.serialization.kotlinx.json)
             implementation(libs.androidx.paging.common)
         }
+ 
        val desktopMain by getting {
             dependencies {
+
+                implementation(libs.kotlinx.coroutines.core)
+                implementation(libs.kotlinx.coroutines.test)
+                implementation(libs.kotlinx.coroutines.swing)
                 implementation(compose.desktop.macos_arm64)
                 implementation(libs.skiko.awt)
-                implementation(libs.junit.jupiter)
-                implementation(libs.junit.junit)
+              //  implementation(libs.junit.jupiter)
+               // implementation(libs.junit.junit)
 
             /*    implementation(libs.xerial.sqlite.jdbc)
                 implementation(libs.androidx.sqlite.sqlite.framework3)
                 implementation(libs.androidx.sqlite.sqlite.ktx)*/
                 implementation(libs.compose.ui.test.manifest)
             }
+
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
-            implementation(kotlin("test-annotations-common"))
+           // implementation(kotlin("test-annotations-common"))
             implementation(libs.assertk)
 
         }
@@ -154,7 +162,7 @@ dependencies {
 
     implementation(libs.skiko.awt)
     implementation(libs.androidx.sqlite.bundled)
-    implementation(libs.testng)
+
     add("kspAndroid", libs.androidx.room.compiler)
     add("kspIosSimulatorArm64", libs.androidx.room.compiler)
     add("kspIosX64", libs.androidx.room.compiler)
