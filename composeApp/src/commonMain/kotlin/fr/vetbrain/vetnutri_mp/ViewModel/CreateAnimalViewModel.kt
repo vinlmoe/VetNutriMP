@@ -42,4 +42,8 @@ class CreateAnimalViewModel(private val animalRepository: AnimalRepository) : Vi
     fun resetSaveStatus() {
         _saveSuccess.value = false
     }
+
+    fun resetAnimal() {
+        _animal.value = AnimalEv(specieId = Espece.CHIEN.name)
+    }
 }
