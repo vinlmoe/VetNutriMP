@@ -16,7 +16,41 @@ interface AnimalDao {
 
     @Query("SELECT * FROM animals") suspend fun getAllAnimals(): List<AnimalEntity>
 
-    @Query("SELECT * FROM animals WHERE id = :id") suspend fun getAnimalById(id: Int): AnimalEntity?
+    @Query("SELECT * FROM animals WHERE uuid = :id")
+    suspend fun getAnimalById(id: String): AnimalEntity?
+}
+
+@Dao
+interface ConsultationDao {
+    @Insert suspend fun insert(consultation: ConsultationEntity)
+
+    @Update suspend fun update(consultation: ConsultationEntity)
+
+    @Delete suspend fun delete(consultation: ConsultationEntity)
+
+    @Query("SELECT * FROM CONSULTATIONS WHERE idAnim = :animalId")
+    suspend fun getConsultationsForAnimal(animalId: String): List<ConsultationEntity>
+
+    @Query("SELECT * FROM CONSULTATIONS WHERE uuid = :id")
+    suspend fun getConsultationById(id: String): ConsultationEntity?
+
+    @Query("SELECT * FROM SUPPLEMENTAL_VARIABLES WHERE idConsult = :consultationId")
+    suspend fun getSupplementalVariablesForConsultation(
+            consultationId: String
+    ): List<SupplementalVariableEntity>
+
+    @Query("SELECT * FROM RATIONS WHERE idConsult = :consultationId")
+    suspend fun getRationsForConsultation(consultationId: String): List<RationEntity>
+
+    @Insert suspend fun insertSupplementalVariable(supplementalVariable: SupplementalVariableEntity)
+
+    @Insert suspend fun insertRation(ration: RationEntity)
+
+    @Query("DELETE FROM RATIONS WHERE idConsult = :consultationId")
+    suspend fun deleteRationsForConsultation(consultationId: String)
+
+    @Query("DELETE FROM SUPPLEMENTAL_VARIABLES WHERE idConsult = :consultationId")
+    suspend fun deleteSupplementalVariablesForConsultation(consultationId: String)
 }
 
 @Dao
@@ -29,5 +63,5 @@ interface FoodDao {
 
     @Query("SELECT * FROM FOOD") suspend fun getAllFoods(): List<FoodEntity>
 
-    @Query("SELECT * FROM FOOD WHERE UUID = :id") suspend fun getFoodById(id: Int): FoodEntity?
+    @Query("SELECT * FROM FOOD WHERE UUID = :id") suspend fun getFoodById(id: String): FoodEntity?
 }

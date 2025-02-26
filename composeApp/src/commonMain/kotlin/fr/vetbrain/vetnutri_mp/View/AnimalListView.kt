@@ -8,6 +8,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import fr.vetbrain.vetnutri_mp.Components.ConfirmDialog
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Animal
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.General
@@ -52,7 +53,8 @@ fun AnimalListView(
                                 AnimalCard(
                                         animal = animal,
                                         onClick = { onSelectAnimal(animal) },
-                                        onEdit = { onEditAnimal(animal) }
+                                        onEdit = { onEditAnimal(animal) },
+                                        onDelete = { viewModel.deleteAnimal(animal) }
                                 )
                         }
                 }
@@ -65,8 +67,11 @@ private fun AnimalCard(
         animal: AnimalEv,
         onClick: () -> Unit,
         onEdit: () -> Unit,
+        onDelete: () -> Unit,
         modifier: Modifier = Modifier
 ) {
+        var showDeleteConfirmation by remember { mutableStateOf(false) }
+
         Card(modifier = modifier.fillMaxWidth(), elevation = 4.dp) {
                 Column(
                         modifier = Modifier.padding(16.dp),
@@ -108,8 +113,24 @@ private fun AnimalCard(
                                                 // TODO: Ajouter une icône de détails
                                                 Text("→")
                                         }
+                                        IconButton(onClick = { showDeleteConfirmation = true }) {
+                                                // TODO: Ajouter une icône de suppression
+                                                Text("🗑")
+                                        }
                                 }
                         }
                 }
+        }
+
+        if (showDeleteConfirmation) {
+                ConfirmDialog(
+                        title = Animal.DELETE_ANIMAL.translate(),
+                        message = Animal.DELETE_ANIMAL_CONFIRM.translate(),
+                        onConfirm = {
+                                onDelete()
+                                showDeleteConfirmation = false
+                        },
+                        onDismiss = { showDeleteConfirmation = false }
+                )
         }
 }

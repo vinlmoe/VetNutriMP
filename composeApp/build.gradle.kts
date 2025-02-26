@@ -73,7 +73,6 @@ kotlin {
  
        val desktopMain by getting {
             dependencies {
-
                 implementation(libs.kotlinx.coroutines.core)
                 implementation(libs.kotlinx.coroutines.test)
                 implementation(libs.kotlinx.coroutines.swing)
@@ -93,7 +92,8 @@ kotlin {
             implementation(libs.kotlin.test)
            // implementation(kotlin("test-annotations-common"))
             implementation(libs.assertk)
-
+            implementation(kotlin("test"))
+            implementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
         }
        iosMain.dependencies {
                 implementation(libs.sqliter.driver)

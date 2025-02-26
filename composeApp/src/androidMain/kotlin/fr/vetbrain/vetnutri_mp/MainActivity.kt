@@ -5,6 +5,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
+import fr.vetbrain.vetnutri_mp.DataBase.getDatabaseBuilder
+import fr.vetbrain.vetnutri_mp.DataBase.getRoomDatabase
 import fr.vetbrain.vetnutri_mp.Localization.AndroidContext
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationManager
 
@@ -18,14 +20,16 @@ class MainActivity : ComponentActivity() {
         // Initialisation de la localisation
         LocalizationManager.initialize()
 
+        // Initialisation de la base de données
+        val appDatabase = getRoomDatabase(getDatabaseBuilder(this))
 
-
-        setContent { App() }
+        setContent { App(appDatabase) }
     }
 }
 
 @Preview
 @Composable
 fun AppAndroidPreview() {
-    App()
+    // Note: Cette preview ne peut pas utiliser la base de données
+    // App(appDatabase)
 }

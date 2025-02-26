@@ -17,4 +17,11 @@ class AnimalListViewModel(private val animalRepository: AnimalRepository) : View
     fun loadAnimals() {
         viewModelScope.launch { _animals.value = animalRepository.getAllAnimals() }
     }
+
+    fun deleteAnimal(animal: AnimalEv) {
+        viewModelScope.launch {
+            animalRepository.deleteAnimal(animal)
+            loadAnimals() // Refresh the list after deletion
+        }
+    }
 }

@@ -14,7 +14,7 @@ androidx-test-junit = "1.2.1"
 androidxSqliteKtx = "2.4.0"
 compose-multiplatform = "1.7.0"
 junit = "4.13.2"
-kotlin = "2.1.10"
+kotlin = "2.1.0"
 kotlinx-coroutines = "1.10.1"
 kotlinxDatetimeVersion = "0.4.1"
 libraryBase = "3.0.0"
@@ -45,6 +45,7 @@ junitJupiter = "5.10.1"
 testng = "6.13.1"
 sqliteBundled = "2.5.0-beta01"
 skikoAwt = "0.8.25"
+coroutines = "1.7.3"
 
 
 [libraries]
@@ -80,7 +81,7 @@ androidx-constraintlayout = { group = "androidx.constraintlayout", name = "const
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidx-activityCompose" }
 androidx-lifecycle-viewmodel = { group = "org.jetbrains.androidx.lifecycle", name = "lifecycle-viewmodel", version.ref = "androidx-lifecycle" }
 androidx-lifecycle-runtime-compose = { group = "org.jetbrains.androidx.lifecycle", name = "lifecycle-runtime-compose", version.ref = "androidx-lifecycle" }
-kotlinx-coroutines-swing = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-swing", version.ref = "kotlinx-coroutines" }
+kotlinx-coroutines-swing = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-swing", version.ref = "coroutines" }
 library-base = { group = "io.realm.kotlin", name = "library-base", version.ref = "libraryBase" }
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
 components-splitpane-desktop = { group = "org.jetbrains.compose.components", name = "components-splitpane-desktop", version.ref = "componentsSplitpaneDesktop" }
@@ -104,7 +105,7 @@ testng = { group = "org.testng", name = "testng", version.ref = "testng" }
 androidx-sqlite-bundled = { group = "androidx.sqlite", name = "sqlite-bundled", version.ref = "sqliteBundled" }
 skiko-awt = { group = "org.jetbrains.skiko", name = "skiko-awt", version.ref = "skikoAwt" }
 
-kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
+kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
 kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "kotlinx-coroutines" }
 
 [plugins]

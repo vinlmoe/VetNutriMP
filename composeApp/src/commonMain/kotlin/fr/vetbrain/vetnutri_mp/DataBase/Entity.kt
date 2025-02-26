@@ -219,15 +219,15 @@ data class WeightEntity(
         indices = [Index("idConsult")]
 )
 data class RationEntity(
-        @PrimaryKey val uuid: String,
-        val idConsult: String?,
-        val name: String?,
-        val coef: Float?,
-        val actual: Boolean?,
-        val number: Int?,
-        val espece: String?,
-        val recette: Boolean?,
-        val description: String?
+    @PrimaryKey val uuid: String,
+    var idConsult: String?,
+    val name: String?,
+    val coef: Float?,
+    val actual: Boolean?,
+    val number: Int?,
+    val espece: String?,
+    val recette: Boolean?,
+    val description: String?
 )
 
 @Serializable

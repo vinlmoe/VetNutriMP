@@ -14,18 +14,19 @@ import kotlinx.coroutines.IO
  * DAOs. Elle est utilisée à la fois sur Android et iOS.
  */
 @Database(
-        entities = [
-            AnimalEntity::class,
-            ConsultationEntity::class,
-            WeightEntity::class,
-            RationEntity::class,
-            AlimentRationEntity::class,
-            AlimentEntity::class,
-            EspeceAlimentEntity::class,
-            IndicationAlimentEntity::class,
-            SupplementalVariableEntity::class,
-            FoodEntity::class,
-            AlimentReferenceEntity::class],
+        entities =
+                [
+                        AnimalEntity::class,
+                        ConsultationEntity::class,
+                        WeightEntity::class,
+                        RationEntity::class,
+                        AlimentRationEntity::class,
+                        AlimentEntity::class,
+                        EspeceAlimentEntity::class,
+                        IndicationAlimentEntity::class,
+                        SupplementalVariableEntity::class,
+                        FoodEntity::class,
+                        AlimentReferenceEntity::class],
         version = 1,
         exportSchema = true
 )
@@ -34,13 +35,12 @@ import kotlinx.coroutines.IO
 abstract class AppDatabase : RoomDatabase() {
     abstract fun foodDao(): FoodDao
     abstract fun animalDao(): AnimalDao
-
+    abstract fun consultationDao(): ConsultationDao
 
     companion object {
         const val DATABASE_NAME = "vetnutri.db"
     }
 }
-
 
 /**
  * Fonction de création de la base de données. L'implémentation spécifique à la plateforme est
@@ -51,16 +51,13 @@ expect object AppDatabaseConstructor : RoomDatabaseConstructor<AppDatabase> {
     override fun initialize(): AppDatabase
 }
 
-
-fun getRoomDatabase(
-    builder: RoomDatabase.Builder<AppDatabase>
-): AppDatabase {
+fun getRoomDatabase(builder: RoomDatabase.Builder<AppDatabase>): AppDatabase {
     return builder
-       // .addMigrations(MIGRATIONS)
-        /*.fallbackToDestructiveMigrationOnDowngrade(
-            dropAllTables = true
-        )*/
-        .setDriver(BundledSQLiteDriver())
-        .setQueryCoroutineContext(Dispatchers.IO)
-        .build()
+            // .addMigrations(MIGRATIONS)
+            /*.fallbackToDestructiveMigrationOnDowngrade(
+                dropAllTables = true
+            )*/
+            .setDriver(BundledSQLiteDriver())
+            .setQueryCoroutineContext(Dispatchers.IO)
+            .build()
 }
