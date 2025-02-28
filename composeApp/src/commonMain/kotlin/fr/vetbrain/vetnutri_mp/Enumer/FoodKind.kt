@@ -1,7 +1,9 @@
 package fr.vetbrain.vetnutri_mp.Enumer
 
 import fr.vetbrain.vetnutri_mp.Data.Labelable
+import kotlinx.serialization.Serializable
 
+@Serializable
 enum class FoodKind(val coef: Int, override val label: String) : Labelable {
     ALL(100, "all"),
     COMPLET(2, "complete"),

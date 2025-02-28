@@ -58,7 +58,7 @@ fun ConsultationDetailView(
 
         if (showDateError) {
             Text(
-                    text = "Format de date invalide (YYYY-MM-DD)",
+                    text = Consultation.INVALID_DATE_FORMAT.translate(),
                     color = MaterialTheme.colors.error,
                     style = MaterialTheme.typography.caption
             )
@@ -85,7 +85,7 @@ fun ConsultationDetailView(
         )
 
         // Liste des rations
-        Text(text = "Rations", style = MaterialTheme.typography.subtitle1)
+        Text(text = Consultation.RATIONS.translate(), style = MaterialTheme.typography.subtitle1)
 
         LazyColumn(
                 modifier = Modifier.weight(1f),
@@ -143,7 +143,10 @@ private fun RationCard(
         ) {
             Column {
                 Text(text = ration.name, style = MaterialTheme.typography.subtitle1)
-                Text(text = "Coef: ${ration.coef}", style = MaterialTheme.typography.body2)
+                Text(
+                        text = Consultation.RATION_COEF.translate() + ": " + ration.coef.toString(),
+                        style = MaterialTheme.typography.body2
+                )
             }
 
             Row {

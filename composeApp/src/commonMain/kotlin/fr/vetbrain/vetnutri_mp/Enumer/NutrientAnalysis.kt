@@ -1,12 +1,10 @@
 package fr.vetbrain.vetnutri_mp.Enumer
 
-
 enum class NutrientAnalysis(
-    val displayName: String,
-    override val coef: Int,
-    override val unite: String,
-    override val label: String
-
+        val displayName: String,
+        override val coef: Int,
+        override val unite: String,
+        override val label: String
 ) : Nutrient {
     NaK("Rapport K/NA", 0, "", "KNA"),
     PCa("Rapport phosphocalcique", 1, "", "CAP"),
@@ -20,14 +18,14 @@ enum class NutrientAnalysis(
     PhenTyr("Phénylalanine+tyrosine", 6, "g", "PHENTYR");
 
     companion object {
-        private val coefMap = mutableMapOf<Int, NutrientAnalysis>().apply {
-            values().forEach { put(it.coef, it) }
-        }
+        private val coefMap =
+                mutableMapOf<Int, NutrientAnalysis>().apply {
+                    values().forEach { put(it.coef, it) }
+                }
 
         fun getByCoef(coef: Int) = coefMap[coef]
         fun size() = 7 // A vérifier selon la logique métier (incohérence détectée)
     }
-
 
     override fun getMNE() = MainNutrientEnum.ANA
     override val ue = UnitEnum.NO

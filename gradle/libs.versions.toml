@@ -37,6 +37,7 @@ compose-plugin = "1.6.11"
 assertk = "0.28.1"
 coreKtx = "1.6.1"
 composeTest = "1.7.8"
+compose-icons = "1.5.11"
 
 
 pagingComposeAndroid = "3.3.5"
@@ -107,6 +108,8 @@ skiko-awt = { group = "org.jetbrains.skiko", name = "skiko-awt", version.ref = "
 
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
 kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "kotlinx-coroutines" }
+
+compose-material-icons-extended = { group = "org.jetbrains.compose.material", name = "material-icons-extended", version.ref = "compose-icons" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

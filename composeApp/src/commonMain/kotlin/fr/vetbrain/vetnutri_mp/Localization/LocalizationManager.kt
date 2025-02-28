@@ -1,46 +1,55 @@
 package fr.vetbrain.vetnutri_mp.Localization
 
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.serialization.json.Json
 
 object LocalizationManager {
-    private var strings by mutableStateOf<LocalizedStrings?>(null)
-    private var currentLocale by mutableStateOf("fr")
+    private val _strings = MutableStateFlow<LocalizedStrings?>(null)
+    private val _currentLocale = MutableStateFlow("fr")
     private var resourceReader = ResourceReader()
+
+    val currentLocale: StateFlow<String> = _currentLocale.asStateFlow()
+    val strings: StateFlow<LocalizedStrings?> = _strings.asStateFlow()
 
     internal fun setResourceReader(reader: ResourceReader) {
         resourceReader = reader
     }
 
     fun initialize(locale: String = "fr") {
-        currentLocale = locale
+        _currentLocale.value = locale
         loadStrings()
     }
 
     fun setLocale(locale: String) {
-        if (currentLocale != locale) {
-            currentLocale = locale
+        if (_currentLocale.value != locale) {
+            _currentLocale.value = locale
             loadStrings()
+            // Force une mise à jour des strings pour déclencher une recomposition
+            _strings.value = _strings.value
         }
     }
 
+    fun getCurrentLocale(): String {
+        return _currentLocale.value
+    }
+
     private fun loadStrings() {
-        val resourceName = "strings_$currentLocale.json"
+        val resourceName = "strings_${_currentLocale.value}.json"
         try {
             val jsonString = resourceReader.readResource(resourceName)
-            strings = Json.decodeFromString<LocalizedStrings>(jsonString)
+            _strings.value = Json.decodeFromString<LocalizedStrings>(jsonString)
         } catch (e: Exception) {
-            println("Error loading strings for locale $currentLocale: ${e.message}")
-            if (currentLocale != "fr") {
-                currentLocale = "fr"
+            println("Error loading strings for locale ${_currentLocale.value}: ${e.message}")
+            if (_currentLocale.value != "fr") {
+                _currentLocale.value = "fr"
                 loadStrings()
             }
         }
     }
 
     fun translate(key: String): String {
-        return strings?.translations?.get(key) ?: key
+        return _strings.value?.translations?.get(key) ?: key
     }
 }

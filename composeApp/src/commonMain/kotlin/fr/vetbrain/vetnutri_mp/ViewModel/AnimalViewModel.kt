@@ -22,15 +22,15 @@ class AnimalViewModel {
     fun createAnimal(): AnimalEv? {
         return selectedEspece?.let { espece ->
             AnimalEv(
-                nom = name ?: "",
-                dead = dead,
-                id = id,
-                sexId = selectedSex?.id ?: Sex.MALE.id,
-                specieId = espece.name,
-                ownerName = ownerName ?: "",
-                birthdate = birthdate,
-                race = race ?: "",
-                summary = summary ?: ""
+                    nom = name ?: "",
+                    dead = dead,
+                    id = id,
+                    sexId = selectedSex?.id ?: Sex.MALEE.id,
+                    specieId = espece.name,
+                    ownerName = ownerName ?: "",
+                    birthdate = birthdate,
+                    race = race ?: "",
+                    summary = summary ?: ""
             )
         }
     }

@@ -2,7 +2,7 @@ package fr.vetbrain.vetnutri_mp.Enumer
 
 import fr.vetbrain.vetnutri_mp.Data.Labelable
 
-enum class ContEnum(override val label: String, private val id: Int) : Labelable {
+enum class ContEnum(override val label: String, val id: Int) : Labelable {
     NO("no", 0),
     GEL("gel", 9),
     CAN("can", 2),

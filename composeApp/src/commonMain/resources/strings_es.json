@@ -145,6 +145,26 @@
         "barf": "BARF",
         "cracker": "Galleta",
         "can": "Lata",
-        "dosette": "Medidor"
+        "dosette": "Medidor",
+        "consultation.date": "Fecha",
+        "consultation.objective": "Objetivo",
+        "consultation.observation": "Observación",
+        "consultation.report": "Informe",
+        "consultation.idealWeight": "Peso ideal",
+        "consultation.bodyFat": "Grasa corporal",
+        "consultation.bcs": "CC",
+        "consultation.mcs": "MCS",
+        "consultation.water": "Agua",
+        "consultation.delete": "Eliminar consulta",
+        "consultation.deleteConfirm": "¿Está seguro de que desea eliminar esta consulta?",
+        "consultation.new": "Nueva consulta",
+        "consultation.edit": "Editar consulta",
+        "consultation.listTitle": "Consultas",
+        "consultation.increaseDay": "Aumentar día",
+        "consultation.decreaseDay": "Disminuir día",
+        "consultation.unspecifiedDate": "Fecha no especificada",
+        "consultation.invalidDateFormat": "Formato de fecha inválido (AAAA-MM-DD)",
+        "consultation.rations": "Raciones",
+        "consultation.rationCoef": "Coeficiente: {0}"
     }
 }

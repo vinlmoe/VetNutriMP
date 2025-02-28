@@ -125,6 +125,15 @@ object LocalizationKeys {
         const val WATER = "consultation.water"
         const val DELETE_CONSULTATION = "consultation.delete"
         const val DELETE_CONSULTATION_CONFIRM = "consultation.deleteConfirm"
+        const val NEW_CONSULTATION = "consultation.new"
+        const val EDIT_CONSULTATION = "consultation.edit"
+        const val LIST_TITLE = "consultation.listTitle"
+        const val INCREASE_DAY = "consultation.increaseDay"
+        const val DECREASE_DAY = "consultation.decreaseDay"
+        const val UNSPECIFIED_DATE = "consultation.unspecifiedDate"
+        val INVALID_DATE_FORMAT = "consultation.invalidDateFormat"
+        val RATIONS = "consultation.rations"
+        val RATION_COEF = "consultation.rationCoef"
     }
 
     // Clés pour les rations

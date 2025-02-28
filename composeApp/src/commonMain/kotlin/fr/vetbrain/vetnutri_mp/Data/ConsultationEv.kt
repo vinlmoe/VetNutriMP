@@ -3,7 +3,9 @@ package fr.vetbrain.vetnutri_mp.Data
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 import kotlinx.datetime.LocalDate
+import kotlinx.serialization.Serializable
 
+@Serializable
 @OptIn(ExperimentalUuidApi::class)
 data class ConsultationEv(
         var uuid: String = Uuid.random().toString(),

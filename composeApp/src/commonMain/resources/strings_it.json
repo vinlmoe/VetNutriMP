@@ -145,6 +145,26 @@
         "barf": "BARF",
         "cracker": "Biscotto",
         "can": "Lattina",
-        "dosette": "Misurino"
+        "dosette": "Misurino",
+        "consultation.date": "Data",
+        "consultation.objective": "Obiettivo",
+        "consultation.observation": "Osservazione",
+        "consultation.report": "Referto",
+        "consultation.idealWeight": "Peso ideale",
+        "consultation.bodyFat": "Grasso corporeo",
+        "consultation.bcs": "BCS",
+        "consultation.mcs": "MCS",
+        "consultation.water": "Acqua",
+        "consultation.delete": "Elimina consultazione",
+        "consultation.deleteConfirm": "Sei sicuro di voler eliminare questa consultazione?",
+        "consultation.new": "Nuova consultazione",
+        "consultation.edit": "Modifica consultazione",
+        "consultation.listTitle": "Consultazioni",
+        "consultation.increaseDay": "Aumenta giorno",
+        "consultation.decreaseDay": "Diminuisci giorno",
+        "consultation.unspecifiedDate": "Data non specificata",
+        "consultation.invalidDateFormat": "Formato data non valido (AAAA-MM-GG)",
+        "consultation.rations": "Razioni",
+        "consultation.rationCoef": "Coefficiente: {0}"
     }
 }

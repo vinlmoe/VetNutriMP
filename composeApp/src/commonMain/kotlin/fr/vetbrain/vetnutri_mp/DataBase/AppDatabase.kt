@@ -26,8 +26,9 @@ import kotlinx.coroutines.IO
                         IndicationAlimentEntity::class,
                         SupplementalVariableEntity::class,
                         FoodEntity::class,
-                        AlimentReferenceEntity::class],
-        version = 1,
+                        AlimentReferenceEntity::class,
+                        NutrientValueEntity::class],
+        version = 2,
         exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -36,6 +37,9 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun foodDao(): FoodDao
     abstract fun animalDao(): AnimalDao
     abstract fun consultationDao(): ConsultationDao
+    abstract fun rationDao(): RationDao
+    abstract fun alimentBaseDao(): AlimentBaseDao
+    abstract fun nutrientValueDao(): NutrientValueDao
 
     companion object {
         const val DATABASE_NAME = "vetnutri.db"
@@ -60,4 +64,5 @@ fun getRoomDatabase(builder: RoomDatabase.Builder<AppDatabase>): AppDatabase {
             .setDriver(BundledSQLiteDriver())
             .setQueryCoroutineContext(Dispatchers.IO)
             .build()
+}
 }

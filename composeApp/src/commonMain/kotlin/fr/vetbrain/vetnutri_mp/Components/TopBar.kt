@@ -16,28 +16,31 @@ fun TopBar(
         modifier: Modifier = Modifier,
         actions: @Composable RowScope.() -> Unit = {}
 ) {
-    Row(
-            modifier = modifier.fillMaxWidth().padding(AppSizes.paddingMedium),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(text = title, style = MaterialTheme.typography.h5.copy(fontSize = AppSizes.fontSizeH5))
-
         Row(
-                horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall),
+                modifier = modifier.fillMaxWidth().padding(AppSizes.paddingMedium),
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
         ) {
-            actions()
-            IconButton(
-                    onClick = onSettingsClick,
-                    modifier = Modifier.size(AppSizes.iconSizeLarge)
-            ) {
-                Icon(
-                        Icons.Default.Settings,
-                        contentDescription = "Paramètres",
-                        modifier = Modifier.size(AppSizes.iconSizeMedium)
+                Text(
+                        text = title,
+                        style = MaterialTheme.typography.h5.copy(fontSize = AppSizes.fontSizeH5)
                 )
-            }
+
+                Row(
+                        horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall),
+                        verticalAlignment = Alignment.CenterVertically
+                ) {
+                        actions()
+                        IconButton(
+                                onClick = onSettingsClick,
+                                modifier = Modifier.size(AppSizes.iconSizeLarge)
+                        ) {
+                                Icon(
+                                        Icons.Default.Settings,
+                                        contentDescription = "Paramètres",
+                                        modifier = Modifier.size(AppSizes.iconSizeMedium)
+                                )
+                        }
+                }
         }
-    }
 }

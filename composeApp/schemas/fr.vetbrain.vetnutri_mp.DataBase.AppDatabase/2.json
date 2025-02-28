@@ -1,8 +1,8 @@
 {
   "formatVersion": 1,
   "database": {
-    "version": 1,
-    "identityHash": "a42baf7452961ed73c6b4ec396da661e",
+    "version": 2,
+    "identityHash": "d239bb9faa8168ecf6263b111dee7852",
     "entities": [
       {
         "tableName": "ANIMALS",
@@ -383,7 +383,7 @@
       },
       {
         "tableName": "ALIMENTS",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`uuid` TEXT NOT NULL, `refAlimUnif` TEXT, `refRation` TEXT, `quantity` REAL, `target` INTEGER, `weight` REAL, `density` REAL, `prop` REAL, PRIMARY KEY(`uuid`), FOREIGN KEY(`refRation`) REFERENCES `RATIONS`(`uuid`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`refAlimUnif`) REFERENCES `FOOD`(`UUID`) ON UPDATE NO ACTION ON DELETE SET NULL )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`uuid` TEXT NOT NULL, `refAlimUnif` TEXT, `refRation` TEXT, `quantity` REAL, `refTarget` INTEGER, PRIMARY KEY(`uuid`), FOREIGN KEY(`refRation`) REFERENCES `RATIONS`(`uuid`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`refAlimUnif`) REFERENCES `FOOD`(`UUID`) ON UPDATE NO ACTION ON DELETE SET NULL )",
         "fields": [
           {
             "fieldPath": "uuid",
@@ -407,24 +407,9 @@
             "affinity": "REAL"
           },
           {
-            "fieldPath": "target",
-            "columnName": "target",
+            "fieldPath": "refTarget",
+            "columnName": "refTarget",
             "affinity": "INTEGER"
-          },
-          {
-            "fieldPath": "weight",
-            "columnName": "weight",
-            "affinity": "REAL"
-          },
-          {
-            "fieldPath": "density",
-            "columnName": "density",
-            "affinity": "REAL"
-          },
-          {
-            "fieldPath": "prop",
-            "columnName": "prop",
-            "affinity": "REAL"
           }
         ],
         "primaryKey": {
@@ -480,7 +465,7 @@
       },
       {
         "tableName": "ALIMENTS_BASE",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`uuid` TEXT NOT NULL, `group` INTEGER, `typeAliment` INTEGER, `ingredients` TEXT, `price` REAL, `categPrice` TEXT, `brand` TEXT, `gamme` TEXT, `nom` TEXT, `consistent` INTEGER NOT NULL, `cont` INTEGER, `quantInt` REAL, `deprecated` INTEGER, `dataB` TEXT, PRIMARY KEY(`uuid`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`uuid` TEXT NOT NULL, `group` INTEGER, `typeAliment` INTEGER, `ingredients` TEXT, `price` REAL, `categPrice` TEXT, `brand` TEXT, `gamme` TEXT, `nom` TEXT, `consistent` INTEGER NOT NULL, `cont` INTEGER, `quantInt` REAL, `deprecated` INTEGER NOT NULL, `dataB` TEXT, PRIMARY KEY(`uuid`))",
         "fields": [
           {
             "fieldPath": "uuid",
@@ -547,7 +532,8 @@
           {
             "fieldPath": "deprecated",
             "columnName": "deprecated",
-            "affinity": "INTEGER"
+            "affinity": "INTEGER",
+            "notNull": true
           },
           {
             "fieldPath": "dataB",
@@ -858,456 +844,6 @@
         }
       },
       {
-        "tableName": "NAMEFOOD",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`refFood` TEXT NOT NULL, `lang` TEXT NOT NULL, `value` TEXT NOT NULL, PRIMARY KEY(`refFood`))",
-        "fields": [
-          {
-            "fieldPath": "refFood",
-            "columnName": "refFood",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "lang",
-            "columnName": "lang",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "value",
-            "columnName": "value",
-            "affinity": "TEXT",
-            "notNull": true
-          }
-        ],
-        "primaryKey": {
-          "autoGenerate": false,
-          "columnNames": [
-            "refFood"
-          ]
-        }
-      },
-      {
-        "tableName": "ESPECE",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`refFood` TEXT NOT NULL, `value` TEXT NOT NULL, PRIMARY KEY(`refFood`))",
-        "fields": [
-          {
-            "fieldPath": "refFood",
-            "columnName": "refFood",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "value",
-            "columnName": "value",
-            "affinity": "TEXT",
-            "notNull": true
-          }
-        ],
-        "primaryKey": {
-          "autoGenerate": false,
-          "columnNames": [
-            "refFood"
-          ]
-        }
-      },
-      {
-        "tableName": "VALUEAA",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `kind` INTEGER NOT NULL, `refFood` TEXT NOT NULL, `version` INTEGER NOT NULL, `value` REAL NOT NULL, `date` TEXT NOT NULL)",
-        "fields": [
-          {
-            "fieldPath": "id",
-            "columnName": "id",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "kind",
-            "columnName": "kind",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "refFood",
-            "columnName": "refFood",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "version",
-            "columnName": "version",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "value",
-            "columnName": "value",
-            "affinity": "REAL",
-            "notNull": true
-          },
-          {
-            "fieldPath": "date",
-            "columnName": "date",
-            "affinity": "TEXT",
-            "notNull": true
-          }
-        ],
-        "primaryKey": {
-          "autoGenerate": true,
-          "columnNames": [
-            "id"
-          ]
-        }
-      },
-      {
-        "tableName": "VALUEBASE",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `kind` INTEGER NOT NULL, `refFood` TEXT NOT NULL, `version` INTEGER NOT NULL, `value` REAL NOT NULL, `date` TEXT NOT NULL)",
-        "fields": [
-          {
-            "fieldPath": "id",
-            "columnName": "id",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "kind",
-            "columnName": "kind",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "refFood",
-            "columnName": "refFood",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "version",
-            "columnName": "version",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "value",
-            "columnName": "value",
-            "affinity": "REAL",
-            "notNull": true
-          },
-          {
-            "fieldPath": "date",
-            "columnName": "date",
-            "affinity": "TEXT",
-            "notNull": true
-          }
-        ],
-        "primaryKey": {
-          "autoGenerate": true,
-          "columnNames": [
-            "id"
-          ]
-        }
-      },
-      {
-        "tableName": "VALUELIPID",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `kind` INTEGER NOT NULL, `refFood` TEXT NOT NULL, `version` INTEGER NOT NULL, `value` REAL NOT NULL, `date` TEXT NOT NULL)",
-        "fields": [
-          {
-            "fieldPath": "id",
-            "columnName": "id",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "kind",
-            "columnName": "kind",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "refFood",
-            "columnName": "refFood",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "version",
-            "columnName": "version",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "value",
-            "columnName": "value",
-            "affinity": "REAL",
-            "notNull": true
-          },
-          {
-            "fieldPath": "date",
-            "columnName": "date",
-            "affinity": "TEXT",
-            "notNull": true
-          }
-        ],
-        "primaryKey": {
-          "autoGenerate": true,
-          "columnNames": [
-            "id"
-          ]
-        }
-      },
-      {
-        "tableName": "VALUEMACRO",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `kind` INTEGER NOT NULL, `refFood` TEXT NOT NULL, `version` INTEGER NOT NULL, `value` REAL NOT NULL, `date` TEXT NOT NULL)",
-        "fields": [
-          {
-            "fieldPath": "id",
-            "columnName": "id",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "kind",
-            "columnName": "kind",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "refFood",
-            "columnName": "refFood",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "version",
-            "columnName": "version",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "value",
-            "columnName": "value",
-            "affinity": "REAL",
-            "notNull": true
-          },
-          {
-            "fieldPath": "date",
-            "columnName": "date",
-            "affinity": "TEXT",
-            "notNull": true
-          }
-        ],
-        "primaryKey": {
-          "autoGenerate": true,
-          "columnNames": [
-            "id"
-          ]
-        }
-      },
-      {
-        "tableName": "VALUEMIN",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `kind` INTEGER NOT NULL, `refFood` TEXT NOT NULL, `version` INTEGER NOT NULL, `value` REAL NOT NULL, `date` TEXT NOT NULL)",
-        "fields": [
-          {
-            "fieldPath": "id",
-            "columnName": "id",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "kind",
-            "columnName": "kind",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "refFood",
-            "columnName": "refFood",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "version",
-            "columnName": "version",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "value",
-            "columnName": "value",
-            "affinity": "REAL",
-            "notNull": true
-          },
-          {
-            "fieldPath": "date",
-            "columnName": "date",
-            "affinity": "TEXT",
-            "notNull": true
-          }
-        ],
-        "primaryKey": {
-          "autoGenerate": true,
-          "columnNames": [
-            "id"
-          ]
-        }
-      },
-      {
-        "tableName": "VALUEVITAM",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `kind` INTEGER NOT NULL, `refFood` TEXT NOT NULL, `version` INTEGER NOT NULL, `value` REAL NOT NULL, `date` TEXT NOT NULL)",
-        "fields": [
-          {
-            "fieldPath": "id",
-            "columnName": "id",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "kind",
-            "columnName": "kind",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "refFood",
-            "columnName": "refFood",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "version",
-            "columnName": "version",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "value",
-            "columnName": "value",
-            "affinity": "REAL",
-            "notNull": true
-          },
-          {
-            "fieldPath": "date",
-            "columnName": "date",
-            "affinity": "TEXT",
-            "notNull": true
-          }
-        ],
-        "primaryKey": {
-          "autoGenerate": true,
-          "columnNames": [
-            "id"
-          ]
-        }
-      },
-      {
-        "tableName": "VALUEOTHER",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `kind` INTEGER NOT NULL, `refFood` TEXT NOT NULL, `version` INTEGER NOT NULL, `value` REAL NOT NULL, `date` TEXT NOT NULL)",
-        "fields": [
-          {
-            "fieldPath": "id",
-            "columnName": "id",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "kind",
-            "columnName": "kind",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "refFood",
-            "columnName": "refFood",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "version",
-            "columnName": "version",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "value",
-            "columnName": "value",
-            "affinity": "REAL",
-            "notNull": true
-          },
-          {
-            "fieldPath": "date",
-            "columnName": "date",
-            "affinity": "TEXT",
-            "notNull": true
-          }
-        ],
-        "primaryKey": {
-          "autoGenerate": true,
-          "columnNames": [
-            "id"
-          ]
-        }
-      },
-      {
-        "tableName": "INDICATION",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `refFood` TEXT NOT NULL, `value` INTEGER NOT NULL)",
-        "fields": [
-          {
-            "fieldPath": "id",
-            "columnName": "id",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "refFood",
-            "columnName": "refFood",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "value",
-            "columnName": "value",
-            "affinity": "INTEGER",
-            "notNull": true
-          }
-        ],
-        "primaryKey": {
-          "autoGenerate": true,
-          "columnNames": [
-            "id"
-          ]
-        }
-      },
-      {
-        "tableName": "dataDef",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`UUID` TEXT NOT NULL, `sNAME` TEXT NOT NULL, `compNAME` TEXT NOT NULL, PRIMARY KEY(`UUID`))",
-        "fields": [
-          {
-            "fieldPath": "UUID",
-            "columnName": "UUID",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "sNAME",
-            "columnName": "sNAME",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "compNAME",
-            "columnName": "compNAME",
-            "affinity": "TEXT",
-            "notNull": true
-          }
-        ],
-        "primaryKey": {
-          "autoGenerate": false,
-          "columnNames": [
-            "UUID"
-          ]
-        }
-      },
-      {
         "tableName": "ALIMENT_REFERENCES",
         "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`uuid` TEXT NOT NULL, `foodId` TEXT NOT NULL, `referenceType` TEXT NOT NULL, `referenceValue` TEXT NOT NULL, `version` INTEGER NOT NULL, `date` TEXT NOT NULL, PRIMARY KEY(`uuid`), FOREIGN KEY(`foodId`) REFERENCES `FOOD`(`UUID`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
@@ -1380,25 +916,31 @@
         ]
       },
       {
-        "tableName": "aliment_nutriment",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`uuid` TEXT NOT NULL, `ref_aliment` TEXT NOT NULL, `ref_nutriment` TEXT NOT NULL, `value` REAL NOT NULL, PRIMARY KEY(`uuid`))",
+        "tableName": "NUTRIENT_VALUES",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `alimentId` TEXT NOT NULL, `nutrientType` INTEGER NOT NULL, `nutrientId` INTEGER NOT NULL, `value` REAL NOT NULL, FOREIGN KEY(`alimentId`) REFERENCES `ALIMENTS_BASE`(`uuid`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
-            "fieldPath": "uuid",
-            "columnName": "uuid",
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "alimentId",
+            "columnName": "alimentId",
             "affinity": "TEXT",
             "notNull": true
           },
           {
-            "fieldPath": "refAliment",
-            "columnName": "ref_aliment",
-            "affinity": "TEXT",
+            "fieldPath": "nutrientType",
+            "columnName": "nutrientType",
+            "affinity": "INTEGER",
             "notNull": true
           },
           {
-            "fieldPath": "refNutriment",
-            "columnName": "ref_nutriment",
-            "affinity": "TEXT",
+            "fieldPath": "nutrientId",
+            "columnName": "nutrientId",
+            "affinity": "INTEGER",
             "notNull": true
           },
           {
@@ -1409,16 +951,40 @@
           }
         ],
         "primaryKey": {
-          "autoGenerate": false,
+          "autoGenerate": true,
           "columnNames": [
-            "uuid"
+            "id"
           ]
-        }
+        },
+        "indices": [
+          {
+            "name": "index_NUTRIENT_VALUES_alimentId",
+            "unique": false,
+            "columnNames": [
+              "alimentId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_NUTRIENT_VALUES_alimentId` ON `${TABLE_NAME}` (`alimentId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "ALIMENTS_BASE",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "alimentId"
+            ],
+            "referencedColumns": [
+              "uuid"
+            ]
+          }
+        ]
       }
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'a42baf7452961ed73c6b4ec396da661e')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'd239bb9faa8168ecf6263b111dee7852')"
     ]
   }
 }

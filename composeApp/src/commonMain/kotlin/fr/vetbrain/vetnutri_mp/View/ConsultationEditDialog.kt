@@ -3,14 +3,13 @@ package fr.vetbrain.vetnutri_mp.View
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import fr.vetbrain.vetnutri_mp.Components.DatePicker
 import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
 import fr.vetbrain.vetnutri_mp.Data.Ration
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Consultation
@@ -46,33 +45,18 @@ fun ConsultationEditDialog(
                         style = MaterialTheme.typography.h6
                 )
 
-                // Date
-                OutlinedTextField(
-                        value = dateText,
-                        onValueChange = { newValue: String ->
-                            dateText = newValue
-                            try {
-                                val date = LocalDate.parse(newValue)
-                                editedConsultation = editedConsultation.copy(date = date)
-                                showDateError = false
-                            } catch (e: Exception) {
-                                showDateError = true
-                            }
+                DatePicker(
+                        selectedDate = editedConsultation.date,
+                        onDateSelected = { date ->
+                            editedConsultation = editedConsultation.copy(date = date)
+                            showDateError = false
                         },
-                        label = { Text(Consultation.DATE.translate()) },
-                        modifier = Modifier.fillMaxWidth(),
+                        label = Consultation.DATE.translate(),
                         isError = showDateError,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
-                        singleLine = true
+                        errorMessage =
+                                if (showDateError) "general.date_format".translate() else null,
+                        modifier = Modifier.fillMaxWidth()
                 )
-
-                if (showDateError) {
-                    Text(
-                            text = "Format de date invalide (YYYY-MM-DD)",
-                            color = MaterialTheme.colors.error,
-                            style = MaterialTheme.typography.caption
-                    )
-                }
 
                 // Bouton pour définir la date à aujourd'hui
                 TextButton(
@@ -81,11 +65,10 @@ fun ConsultationEditDialog(
                                     Clock.System.now()
                                             .toLocalDateTime(TimeZone.currentSystemDefault())
                                             .date
-                            dateText = today.toString()
                             editedConsultation = editedConsultation.copy(date = today)
                             showDateError = false
                         }
-                ) { Text("Aujourd'hui") }
+                ) { Text("general.today".translate()) }
 
                 // Objectif
                 OutlinedTextField(
@@ -108,7 +91,10 @@ fun ConsultationEditDialog(
                 )
 
                 // Liste des rations
-                Text(text = "Rations", style = MaterialTheme.typography.subtitle1)
+                Text(
+                        text = Consultation.RATIONS.translate(),
+                        style = MaterialTheme.typography.subtitle1
+                )
 
                 LazyColumn(
                         modifier = Modifier.weight(1f),
@@ -171,7 +157,10 @@ private fun RationCard(
         ) {
             Column {
                 Text(text = ration.name, style = MaterialTheme.typography.subtitle1)
-                Text(text = "Coef: ${ration.coef}", style = MaterialTheme.typography.body2)
+                Text(
+                        text = Consultation.RATION_COEF.translate() + ": " + ration.coef.toString(),
+                        style = MaterialTheme.typography.body2
+                )
             }
 
             Row {

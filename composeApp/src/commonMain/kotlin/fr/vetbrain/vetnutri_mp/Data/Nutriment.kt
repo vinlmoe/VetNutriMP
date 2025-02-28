@@ -2,14 +2,14 @@ package fr.vetbrain.vetnutri_mp.Data
 
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
-import kotlinx.datetime.LocalDate
 import kotlinx.serialization.Serializable
 
 @Serializable
 @OptIn(ExperimentalUuidApi::class)
-data class WeightDate(
+data class Nutriment(
         var uuid: String = Uuid.random().toString(),
-        var refAnimal: String,
-        var date: LocalDate,
-        var value: Float
+        var name: String = "",
+        var code: String = "",
+        var unite: String = "",
+        var description: String? = null
 )

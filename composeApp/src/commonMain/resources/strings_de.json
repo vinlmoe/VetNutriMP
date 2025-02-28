@@ -145,6 +145,26 @@
         "barf": "BARF",
         "cracker": "Keks",
         "can": "Dose",
-        "dosette": "Portionslöffel"
+        "dosette": "Portionslöffel",
+        "consultation.date": "Datum",
+        "consultation.objective": "Ziel",
+        "consultation.observation": "Beobachtung",
+        "consultation.report": "Bericht",
+        "consultation.idealWeight": "Idealgewicht",
+        "consultation.bodyFat": "Körperfett",
+        "consultation.bcs": "BCS",
+        "consultation.mcs": "MCS",
+        "consultation.water": "Wasser",
+        "consultation.delete": "Konsultation löschen",
+        "consultation.deleteConfirm": "Sind Sie sicher, dass Sie diese Konsultation löschen möchten?",
+        "consultation.new": "Neue Konsultation",
+        "consultation.edit": "Konsultation bearbeiten",
+        "consultation.listTitle": "Konsultationen",
+        "consultation.increaseDay": "Tag erhöhen",
+        "consultation.decreaseDay": "Tag verringern",
+        "consultation.unspecifiedDate": "Nicht spezifiziertes Datum",
+        "consultation.invalidDateFormat": "Ungültiges Datumsformat (JJJJ-MM-TT)",
+        "consultation.rations": "Rationen",
+        "consultation.rationCoef": "Koeffizient: {0}"
     }
 }

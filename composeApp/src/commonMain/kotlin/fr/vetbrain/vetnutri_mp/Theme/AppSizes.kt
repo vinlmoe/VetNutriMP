@@ -60,6 +60,8 @@ object AppSizes {
     // Tailles de composants
     val buttonHeight
         get() = (36 * sizeMultiplier).dp
+    val textFieldHeight
+        get() = (56 * sizeMultiplier).dp
     val cardElevationNormal
         get() = (2 * sizeMultiplier).dp
     val cardElevationSelected

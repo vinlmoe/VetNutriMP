@@ -3,7 +3,9 @@ package fr.vetbrain.vetnutri_mp.Data
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
+import kotlinx.serialization.Serializable
 
+@Serializable
 @OptIn(ExperimentalUuidApi::class)
 data class Ration(
         var uuid: String = Uuid.random().toString(),

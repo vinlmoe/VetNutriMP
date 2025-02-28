@@ -9,15 +9,25 @@ import fr.vetbrain.vetnutri_mp.Data.AnimalEv
 import fr.vetbrain.vetnutri_mp.DataBase.AppDatabase
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationManager
+import fr.vetbrain.vetnutri_mp.Repository.DatabaseAlimentRationRepository
+import fr.vetbrain.vetnutri_mp.Repository.DatabaseAlimentRepository
 import fr.vetbrain.vetnutri_mp.Repository.DatabaseAnimalRepository
 import fr.vetbrain.vetnutri_mp.Repository.DatabaseConsultationRepository
+import fr.vetbrain.vetnutri_mp.Repository.DatabaseRationRepository
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriTheme
 import fr.vetbrain.vetnutri_mp.View.*
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalListViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.CreateAnimalViewModel
+import fr.vetbrain.vetnutri_mp.ViewModel.RationsViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.SettingsViewModel
 import kotlinx.coroutines.runBlocking
+
+enum class Screen {
+    LIST,
+    ANIMAL_DETAIL,
+    RATIONS
+}
 
 @Composable
 fun App(appDatabase: AppDatabase) {
@@ -48,13 +58,39 @@ fun App(appDatabase: AppDatabase) {
         DatabaseConsultationRepository(appDatabase.consultationDao())
     }
 
+    val rationRepository = remember { DatabaseRationRepository(appDatabase.rationDao()) }
+    val alimentRationRepository = remember {
+        DatabaseAlimentRationRepository(appDatabase.alimentRationDao())
+    }
+    val alimentRepository = remember {
+        DatabaseAlimentRepository(
+                alimentBaseDao = appDatabase.alimentBaseDao(),
+                nutrientValueDao = appDatabase.nutrientValueDao()
+        )
+    }
+
     // Initialisation des ViewModels
     val animalListViewModel = remember { AnimalListViewModel(animalRepository) }
     val createAnimalViewModel = remember { CreateAnimalViewModel(animalRepository) }
-    val animalDetailViewModel = remember { AnimalDetailViewModel(consultationRepository) }
-    val settingsViewModel = remember { SettingsViewModel() }
+    val animalDetailViewModel =
+            AnimalDetailViewModel(
+                    consultationRepository = consultationRepository,
+                    repository = animalRepository,
+                    rationRepository = rationRepository,
+                    alimentRationRepository = alimentRationRepository,
+                    alimentRepository = alimentRepository
+            )
 
-    var currentScreen by remember { mutableStateOf<Screen>(Screen.List) }
+    val rationsViewModel =
+            RationsViewModel(
+                    rationRepository = rationRepository,
+                    alimentRationRepository = alimentRationRepository,
+                    alimentRepository = alimentRepository
+            )
+
+    val settingsViewModel = SettingsViewModel()
+
+    var currentScreen by remember { mutableStateOf(Screen.LIST) }
     var selectedAnimal by remember { mutableStateOf<AnimalEv?>(null) }
     var isEditing by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
@@ -63,7 +99,7 @@ fun App(appDatabase: AppDatabase) {
         Box(modifier = Modifier.fillMaxSize()) {
             Column(modifier = Modifier.fillMaxSize()) {
                 when (currentScreen) {
-                    Screen.List -> {
+                    Screen.LIST -> {
                         Column(modifier = Modifier.fillMaxSize()) {
                             TopBar(
                                     title = "Liste des animaux",
@@ -75,56 +111,47 @@ fun App(appDatabase: AppDatabase) {
                                         isEditing = false
                                         selectedAnimal = null
                                         createAnimalViewModel.resetAnimal()
-                                        currentScreen = Screen.Create
+                                        currentScreen = Screen.ANIMAL_DETAIL
                                     },
                                     onSelectAnimal = { animal ->
                                         selectedAnimal = animal
                                         animalDetailViewModel.setAnimal(animal)
-                                        currentScreen = Screen.Detail
+                                        currentScreen = Screen.ANIMAL_DETAIL
                                     },
                                     onEditAnimal = { animal ->
                                         selectedAnimal = animal
                                         createAnimalViewModel.updateAnimal(animal)
                                         isEditing = true
-                                        currentScreen = Screen.Create
+                                        currentScreen = Screen.ANIMAL_DETAIL
                                     },
                                     modifier = Modifier.fillMaxWidth().weight(1f)
                             )
                         }
                     }
-                    Screen.Create -> {
-                        Column(modifier = Modifier.fillMaxSize()) {
-                            TopBar(
-                                    title =
-                                            if (isEditing) "Modifier un animal"
-                                            else "Ajouter un animal",
-                                    onSettingsClick = { showSettings = true }
-                            )
-                            CreateAnimalView(
-                                    viewModel = createAnimalViewModel,
-                                    onNavigateBack = {
-                                        isEditing = false
-                                        selectedAnimal = null
-                                        currentScreen = Screen.List
-                                    },
-                                    isEditing = isEditing,
-                                    modifier = Modifier.fillMaxWidth().weight(1f)
-                            )
-                        }
+                    Screen.ANIMAL_DETAIL -> {
+                        AnimalDetailView(
+                                viewModel = animalDetailViewModel,
+                                settingsViewModel = settingsViewModel,
+                                onNavigateBack = {
+                                    selectedAnimal = null
+                                    currentScreen = Screen.LIST
+                                },
+                                onNavigateToRations = { currentScreen = Screen.RATIONS },
+                                modifier = Modifier.fillMaxSize()
+                        )
                     }
-                    Screen.Detail -> {
-                        Column(modifier = Modifier.fillMaxSize()) {
-                            TopBar(
-                                    title = selectedAnimal?.nom ?: "",
-                                    onSettingsClick = { showSettings = true }
-                            )
-                            AnimalDetailView(
-                                    viewModel = animalDetailViewModel,
-                                    settingsViewModel = settingsViewModel,
-                                    onNavigateBack = { currentScreen = Screen.List },
-                                    modifier = Modifier.fillMaxWidth().weight(1f)
-                            )
-                        }
+                    Screen.RATIONS -> {
+                        AnimalDetailView(
+                                viewModel = animalDetailViewModel,
+                                settingsViewModel = settingsViewModel,
+                                onNavigateBack = {
+                                    selectedAnimal = null
+                                    currentScreen = Screen.LIST
+                                },
+                                onNavigateToRations = { currentScreen = Screen.RATIONS },
+                                initialSection = MainSection.RATIONS,
+                                modifier = Modifier.fillMaxSize()
+                        )
                     }
                 }
             }
@@ -134,10 +161,4 @@ fun App(appDatabase: AppDatabase) {
             }
         }
     }
-}
-
-private sealed class Screen {
-    object List : Screen()
-    object Create : Screen()
-    object Detail : Screen()
 }

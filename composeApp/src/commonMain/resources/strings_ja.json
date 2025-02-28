@@ -145,6 +145,26 @@
         "barf": "BARF",
         "cracker": "クラッカー",
         "can": "缶詰",
-        "dosette": "計量スプーン"
+        "dosette": "計量スプーン",
+        "consultation.date": "日付",
+        "consultation.objective": "目的",
+        "consultation.observation": "観察",
+        "consultation.report": "報告書",
+        "consultation.idealWeight": "理想体重",
+        "consultation.bodyFat": "体脂肪",
+        "consultation.bcs": "BCS",
+        "consultation.mcs": "MCS",
+        "consultation.water": "水分",
+        "consultation.delete": "診察を削除",
+        "consultation.deleteConfirm": "この診察を削除してもよろしいですか？",
+        "consultation.new": "新規診察",
+        "consultation.edit": "診察を編集",
+        "consultation.listTitle": "診察一覧",
+        "consultation.increaseDay": "日を増やす",
+        "consultation.decreaseDay": "日を減らす",
+        "consultation.unspecifiedDate": "日付未指定",
+        "consultation.invalidDateFormat": "日付形式が無効です（YYYY-MM-DD）",
+        "consultation.rations": "配給量",
+        "consultation.rationCoef": "係数：{0}"
     }
 }

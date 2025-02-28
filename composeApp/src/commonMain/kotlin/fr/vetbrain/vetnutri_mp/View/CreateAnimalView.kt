@@ -8,6 +8,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import fr.vetbrain.vetnutri_mp.Components.ComboBox
+import fr.vetbrain.vetnutri_mp.Components.DatePicker
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.Sex
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Animal as AnimalKeys
@@ -16,7 +18,8 @@ import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.CreateAnimalViewModel
 import kotlin.uuid.ExperimentalUuidApi
-import kotlinx.datetime.LocalDate
+import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 
 @OptIn(ExperimentalUuidApi::class, ExperimentalMaterialApi::class)
@@ -93,46 +96,29 @@ fun CreateAnimalView(
                         modifier = Modifier.fillMaxWidth()
                 )
 
-                OutlinedTextField(
-                        value = dateText,
-                        onValueChange = { newDate: String ->
-                                dateText = newDate
-                                try {
-                                        val date = LocalDate.parse(newDate)
-                                        viewModel.updateAnimal(animal.copy(birthdate = date))
-                                        showDateError = false
-                                } catch (e: Exception) {
-                                        showDateError = true
-                                }
+                DatePicker(
+                        selectedDate = animal.birthdate,
+                        onDateSelected = { date ->
+                                viewModel.updateAnimal(animal.copy(birthdate = date))
                         },
-                        label = { Text(AnimalKeys.BIRTH_DATE.translate()) },
-                        modifier = Modifier.fillMaxWidth(),
-                        isError = showDateError
+                        label = AnimalKeys.BIRTH_DATE.translate(),
+                        isError = showDateError,
+                        errorMessage =
+                                if (showDateError) "general.date_format".translate() else null,
+                        modifier = Modifier.fillMaxWidth()
                 )
-
-                if (showDateError) {
-                        Text(
-                                text = "Format de date invalide (YYYY-MM-DD)",
-                                color = MaterialTheme.colors.error,
-                                style = MaterialTheme.typography.caption
-                        )
-                }
 
                 // Bouton pour définir la date à aujourd'hui
                 TextButton(
                         onClick = {
                                 val today =
-                                        kotlinx.datetime.Clock.System.now()
-                                                .toLocalDateTime(
-                                                        kotlinx.datetime.TimeZone
-                                                                .currentSystemDefault()
-                                                )
+                                        Clock.System.now()
+                                                .toLocalDateTime(TimeZone.currentSystemDefault())
                                                 .date
-                                dateText = today.toString()
                                 viewModel.updateAnimal(animal.copy(birthdate = today))
                                 showDateError = false
                         }
-                ) { Text("Aujourd'hui") }
+                ) { Text("general.today".translate()) }
 
                 ComboBox(
                         items = Espece.values().toList(),
@@ -164,7 +150,7 @@ fun CreateAnimalView(
                                         }
                                 )
                                 Text(
-                                        text = sexe.label,
+                                        text = sexe.label.translate(),
                                         modifier = Modifier.align(Alignment.CenterVertically)
                                 )
                         }

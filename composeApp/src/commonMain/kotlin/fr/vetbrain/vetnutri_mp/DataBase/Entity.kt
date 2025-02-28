@@ -16,7 +16,7 @@ data class FoodEntity(
         val brand: String,
         val gamme: String,
         val unitPres: Int,
-        val quantityPres: Float,
+        val quantityPres: Double,
         val version: Int,
         val date: String,
         val nameDef: String,
@@ -24,7 +24,7 @@ data class FoodEntity(
         val deprecated: Int,
         val DataB: String,
         val RefRation: String? = null,
-        val quantity: Float? = null,
+        val quantity: Double? = null,
         val RefAlimUnif: String? = null,
         val refTarget: Int? = null
 )
@@ -44,7 +44,7 @@ data class ValueAAEntity(
         val kind: Int,
         val refFood: String,
         val version: Int,
-        val value: Float,
+        val value: Double,
         val date: String
 )
 
@@ -55,7 +55,7 @@ data class ValueBaseEntity(
         val kind: Int,
         val refFood: String,
         val version: Int,
-        val value: Float,
+        val value: Double,
         val date: String
 )
 
@@ -66,7 +66,7 @@ data class ValueLipidEntity(
         val kind: Int,
         val refFood: String,
         val version: Int,
-        val value: Float,
+        val value: Double,
         val date: String
 )
 
@@ -77,7 +77,7 @@ data class ValueMacroEntity(
         val kind: Int,
         val refFood: String,
         val version: Int,
-        val value: Float,
+        val value: Double,
         val date: String
 )
 
@@ -88,7 +88,7 @@ data class ValueMinEntity(
         val kind: Int,
         val refFood: String,
         val version: Int,
-        val value: Float,
+        val value: Double,
         val date: String
 )
 
@@ -99,7 +99,7 @@ data class ValueVitamEntity(
         val kind: Int,
         val refFood: String,
         val version: Int,
-        val value: Float,
+        val value: Double,
         val date: String
 )
 
@@ -110,7 +110,7 @@ data class ValueOtherEntity(
         val kind: Int,
         val refFood: String,
         val version: Int,
-        val value: Float,
+        val value: Double,
         val date: String
 )
 
@@ -162,24 +162,24 @@ data class ConsultationEntity(
         val objectConsult: String?,
         val observation: String?,
         val cRendu: String?,
-        val weight: Float?,
-        val idealWeight: Float?,
-        val water: Float?,
-        val bodyFat: Float?,
+        val weight: Double?,
+        val idealWeight: Double?,
+        val water: Double?,
+        val bodyFat: Double?,
         val methodAnalysis: String?,
         val BCS: Int?,
         val k1Id: String?,
-        val k1Value: Float?,
+        val k1Value: Double?,
         val k2Id: String?,
-        val k2Value: Float?,
+        val k2Value: Double?,
         val k3Id: String?,
-        val k3Value: Float?,
+        val k3Value: Double?,
         val k4Id: String?,
-        val k4Value: Float?,
+        val k4Value: Double?,
         val k5Id: String?,
-        val k5Value: Float?,
+        val k5Value: Double?,
         val nLittle: Int?,
-        val pAdult: Float?,
+        val pAdult: Double?,
         val coefGes: Int?,
         val coefLact: Int?,
         val MCS: Int?
@@ -202,7 +202,7 @@ data class WeightEntity(
         @PrimaryKey val uuid: String,
         val refAnimal: String,
         val date: String,
-        val value: Float
+        val value: Double
 )
 
 @Serializable
@@ -219,15 +219,15 @@ data class WeightEntity(
         indices = [Index("idConsult")]
 )
 data class RationEntity(
-    @PrimaryKey val uuid: String,
-    var idConsult: String?,
-    val name: String?,
-    val coef: Float?,
-    val actual: Boolean?,
-    val number: Int?,
-    val espece: String?,
-    val recette: Boolean?,
-    val description: String?
+        @PrimaryKey val uuid: String,
+        var idConsult: String?,
+        val name: String?,
+        val coef: Double?,
+        val actual: Boolean?,
+        val number: Int?,
+        val espece: String?,
+        val recette: Boolean?,
+        val description: String?
 )
 
 @Serializable
@@ -253,8 +253,17 @@ data class AlimentRationEntity(
         @PrimaryKey val uuid: String,
         val refAlimUnif: String?,
         val refRation: String?,
-        val quantity: Float?,
+        val quantity: Double?,
         val refTarget: Int?
+)
+
+@Serializable
+@Entity(tableName = "aliment_nutriment")
+data class AlimentNutrimentEntity(
+        @PrimaryKey var uuid: String,
+        @ColumnInfo(name = "ref_aliment") var refAliment: String,
+        @ColumnInfo(name = "ref_nutriment") var refNutriment: String,
+        @ColumnInfo(name = "value") var value: Double
 )
 
 @Serializable
@@ -269,10 +278,10 @@ data class AlimentEntity(
         val brand: String?,
         val gamme: String?,
         val nom: String?,
-        val consistent: Boolean,
+        val consistent: Int = 1,
         val cont: Int?,
-        val quantInt: Float?,
-        val deprecated: Int?,
+        val quantInt: Double?,
+        val deprecated: Int = 0,
         val dataB: String?
 )
 
@@ -331,7 +340,7 @@ data class SupplementalVariableEntity(
         @PrimaryKey(autoGenerate = true) val id: Int = 0,
         val idConsult: String,
         val variableKind: Int,
-        val value: Float?
+        val value: Double?
 )
 
 @Serializable
@@ -340,7 +349,7 @@ data class SupVarEntity(
         @PrimaryKey(autoGenerate = true) val id: Int = 0,
         val idCons: String,
         val idVar: Int,
-        val value: Float
+        val value: Double
 )
 
 @Serializable
@@ -427,10 +436,10 @@ data class TargetMethodEntity(
         val refMethod: String,
         val ord: Int,
         val kind: Int,
-        val value: Float,
+        val value: Double,
         val unit: Int,
-        val percent: Float,
-        val measure: Float
+        val percent: Double,
+        val measure: Double
 )
 
 @Serializable
@@ -464,7 +473,7 @@ data class DataRefEntity(
 data class CoefEntity(
         @PrimaryKey(autoGenerate = true) val id: Int = 0,
         val coefName: String,
-        val value: Float,
+        val value: Double,
         val groupUUID: Int,
         val refRef: String
 )
@@ -493,4 +502,26 @@ data class AlimentReferenceEntity(
         val referenceValue: String,
         val version: Int,
         val date: String
+)
+
+// Ajout d'une entité pour stocker les valeurs nutritionnelles
+@Serializable
+@Entity(
+        tableName = "NUTRIENT_VALUES",
+        foreignKeys =
+                [
+                        ForeignKey(
+                                entity = AlimentEntity::class,
+                                parentColumns = ["uuid"],
+                                childColumns = ["alimentId"],
+                                onDelete = ForeignKey.CASCADE
+                        )],
+        indices = [Index("alimentId")]
+)
+data class NutrientValueEntity(
+        @PrimaryKey(autoGenerate = true) val id: Int = 0,
+        val alimentId: String,
+        val nutrientType: Int, // Type de nutriment (MainNutrientEnum)
+        val nutrientId: Int, // ID du nutriment dans son type
+        val value: Double
 )

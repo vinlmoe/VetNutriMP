@@ -1,13 +1,12 @@
 package fr.vetbrain.vetnutri_mp.Enumer
 
-
-enum class NutrientMain(
-    private val displayName: String,
-    override val coef: Int,
-    override val unite: String,
-    override val ue: UnitEnum,
-    override val label: String,
-    val color: String
+enum class NutrientBase(
+        private val displayName: String,
+        override val coef: Int,
+        override val unite: String,
+        override val ue: UnitEnum,
+        override val label: String,
+        val color: String
 ) : Nutrient {
     HUMIDITE("Humidité", 0, "g", UnitEnum.BUg, "HUM", "#5DFFFA"),
     PROTEINE("Protéines", 1, "g", UnitEnum.BUg, "PROT", "#3358FF"),

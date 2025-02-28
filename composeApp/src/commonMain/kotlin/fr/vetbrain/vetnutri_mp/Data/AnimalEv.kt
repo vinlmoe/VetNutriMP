@@ -5,24 +5,28 @@ import fr.vetbrain.vetnutri_mp.Enumer.Sex
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 import kotlinx.datetime.LocalDate
+import kotlinx.serialization.Contextual
+import kotlinx.serialization.Serializable
 
+@Serializable
 @OptIn(ExperimentalUuidApi::class)
 data class AnimalEv(
         var uuid: String = Uuid.random().toString(),
         var nom: String = "",
         var dead: Boolean = false,
         var id: String? = null,
-        var sexId: Int = Sex.MALE.id,
+        var sexId: Int = Sex.MALEE.id,
         var specieId: String = Espece.CHIEN.name,
         var ownerName: String = "",
         var birthdate: LocalDate? = null,
         var race: String = "",
         var summary: String = "",
-        var consultations: MutableList<ConsultationEv> = mutableListOf(),
-        var weightHistory: MutableList<WeightDate> = mutableListOf()
+        @Contextual var consultations: MutableList<ConsultationEv> = mutableListOf(),
+        @Contextual var weightHistory: MutableList<WeightDate> = mutableListOf(),
+        @Contextual var rations: MutableList<Ration> = mutableListOf()
 ) {
     fun getSex(): Sex {
-        return Sex.values().firstOrNull { it.id == sexId } ?: Sex.MALE
+        return Sex.values().find { it.id == sexId } ?: Sex.MALEE
     }
 
     fun setSex(sex: Sex) {
@@ -30,7 +34,7 @@ data class AnimalEv(
     }
 
     fun getEspece(): Espece {
-        return Espece.values().firstOrNull { it.name == specieId } ?: Espece.CHIEN
+        return Espece.valueOf(specieId)
     }
 
     fun setEspece(espece: Espece) {
@@ -43,7 +47,7 @@ data class AnimalEv(
                     nom = "Rex",
                     dead = false,
                     id = "TEST001",
-                    sexId = Sex.MALE.id,
+                    sexId = Sex.MALEE.id,
                     specieId = Espece.CHIEN.name,
                     ownerName = "Jean Dupont",
                     birthdate = LocalDate(2020, 1, 1),
