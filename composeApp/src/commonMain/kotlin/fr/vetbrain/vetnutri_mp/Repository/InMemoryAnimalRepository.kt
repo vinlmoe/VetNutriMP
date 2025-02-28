@@ -1,6 +1,9 @@
 package fr.vetbrain.vetnutri_mp.Repository
 
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
+import fr.vetbrain.vetnutri_mp.Data.AnimalEvJson
+import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
+import fr.vetbrain.vetnutri_mp.Data.WeightDate
 import kotlinx.coroutines.flow.MutableStateFlow
 
 class InMemoryAnimalRepository : AnimalRepository {
@@ -24,6 +27,82 @@ class InMemoryAnimalRepository : AnimalRepository {
     override suspend fun deleteAnimal(animal: AnimalEv) {
         animals.removeIf { it.uuid == animal.uuid }
         updateFlow()
+    }
+
+    override suspend fun importAnimals(animalsJson: List<AnimalEvJson>): Int {
+        var importedCount = 0
+
+        animalsJson.forEach { animalJson ->
+            try {
+                // Convertir manuellement AnimalEvJson en AnimalEv
+                val animal =
+                        AnimalEv(
+                                uuid = animalJson.UUID,
+                                nom = animalJson.nom,
+                                dead = animalJson.dead,
+                                id = animalJson.id,
+                                sexId = animalJson.sex,
+                                specieId = animalJson.espece,
+                                ownerName = animalJson.nomProprio,
+                                birthdate = animalJson.dateNaiss,
+                                race = animalJson.race,
+                                summary = animalJson.resume
+                        )
+
+                // Ajouter les poids à l'historique
+                animal.weightHistory =
+                        animalJson
+                                .listWeight
+                                .map { weightJson ->
+                                    WeightDate(
+                                            uuid = weightJson.UUID,
+                                            refAnimal = animalJson.UUID,
+                                            date = weightJson.date,
+                                            value = weightJson.value
+                                    )
+                                }
+                                .toMutableList()
+
+                // Ajouter les consultations - gérer les deux formats possibles
+                val consultations =
+                        when {
+                            // Format 1: consultations directement dans l'objet animal
+                            animalJson.consultations != null -> animalJson.consultations
+
+                            // Format 2: consultations dans list.consultations
+                            animalJson.list != null -> animalJson.list.consultations
+
+                            // Aucune consultation
+                            else -> emptyList()
+                        }
+
+                animal.consultations =
+                        consultations
+                                .map { consultJson ->
+                                    ConsultationEv(
+                                            uuid = consultJson.UUID,
+                                            idAnim = animalJson.UUID,
+                                            date = consultJson.date,
+                                            objectConsult = consultJson.objet ?: "",
+                                            observation = consultJson.observation ?: "",
+                                            cRendu = consultJson.CRendu,
+                                            weight = consultJson.Poids,
+                                            idealWeight = consultJson.PoidsIdeal,
+                                            water = consultJson.Boisson,
+                                            bodyFat = consultJson.TauxMG
+                                    )
+                                }
+                                .toMutableList()
+
+                saveAnimal(animal)
+                importedCount++
+            } catch (e: Exception) {
+                // Ignorer les erreurs d'importation pour un animal spécifique
+                println("Erreur lors de l'importation de l'animal: ${e.message}")
+            }
+        }
+
+        return importedCount
     }
 
     private fun updateFlow() {

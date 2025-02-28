@@ -19,6 +19,8 @@ import fr.vetbrain.vetnutri_mp.ViewModel.CreateAnimalViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.SettingsViewModel
 import kotlinx.coroutines.runBlocking
 
+expect fun importAnimalsFromFile(viewModel: AnimalListViewModel)
+
 @Composable
 fun App(appDatabase: AppDatabase) {
     // Initialisation de la localisation
@@ -59,6 +61,22 @@ fun App(appDatabase: AppDatabase) {
     var isEditing by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
 
+    // Observer le résultat de l'importation
+    val importResult = animalListViewModel.importResult.collectAsState().value
+    var showImportResult by remember { mutableStateOf(false) }
+
+    LaunchedEffect(importResult) {
+        if (importResult != null) {
+            showImportResult = true
+        }
+    }
+
+    // Fonction locale pour importer les animaux
+    val handleImportAnimals: () -> Unit = {
+        // Appel à la fonction expect/actual
+        importAnimalsFromFile(animalListViewModel)
+    }
+
     VetNutriTheme {
         Box(modifier = Modifier.fillMaxSize()) {
             Column(modifier = Modifier.fillMaxSize()) {
@@ -88,6 +106,7 @@ fun App(appDatabase: AppDatabase) {
                                         isEditing = true
                                         currentScreen = Screen.Create
                                     },
+                                    onImportAnimals = handleImportAnimals,
                                     modifier = Modifier.fillMaxWidth().weight(1f)
                             )
                         }
@@ -131,6 +150,37 @@ fun App(appDatabase: AppDatabase) {
 
             if (showSettings) {
                 SettingsDialog(viewModel = settingsViewModel, onDismiss = { showSettings = false })
+            }
+
+            // Afficher le résultat de l'importation
+            if (showImportResult && importResult != null) {
+                AlertDialog(
+                        onDismissRequest = {
+                            showImportResult = false
+                            animalListViewModel.resetImportResult()
+                        },
+                        title = { Text("Résultat de l'importation") },
+                        text = {
+                            when (importResult) {
+                                is AnimalListViewModel.ImportResult.Success -> {
+                                    Text(
+                                            "${importResult.count} animaux ont été importés avec succès."
+                                    )
+                                }
+                                is AnimalListViewModel.ImportResult.Error -> {
+                                    Text("Erreur lors de l'importation : ${importResult.message}")
+                                }
+                            }
+                        },
+                        confirmButton = {
+                            Button(
+                                    onClick = {
+                                        showImportResult = false
+                                        animalListViewModel.resetImportResult()
+                                    }
+                            ) { Text("OK") }
+                        }
+                )
             }
         }
     }

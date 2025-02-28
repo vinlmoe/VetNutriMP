@@ -1,7 +1,7 @@
+import fr.vetbrain.vetnutri_mp.Data.CoefP
+import fr.vetbrain.vetnutri_mp.Data.Equation
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
-import fr.vetbrain.vetnutri_mp.Data.CoefP
-
 
 @OptIn(ExperimentalUuidApi::class)
 data class ReferenceEv(

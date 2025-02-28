@@ -1,3 +1,5 @@
+package fr.vetbrain.vetnutri_mp.Data
+
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 

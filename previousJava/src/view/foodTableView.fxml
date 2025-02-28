@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.layout.VBox?>
+
+
+<VBox xmlns="http://javafx.com/javafx/18" xmlns:fx="http://javafx.com/fxml/1" fx:controller="controller.TableFoodController">
+   <children>
+      <TableView fx:id="alimTable" prefHeight="800.0">
+         <columns>
+            <TableColumn fx:id="idColumn" editable="false" maxWidth="800.0" prefWidth="75.0" text="ID" />
+            <TableColumn fx:id="brandColumn" prefWidth="75.0" text="%brand" />
+            <TableColumn fx:id="rangeColumn" prefWidth="75.0" text="%range" />
+            <TableColumn fx:id="nameColumn" prefWidth="75.0" text="%Name" />
+         </columns>
+         <columnResizePolicy>
+            <TableView fx:constant="CONSTRAINED_RESIZE_POLICY" />
+         </columnResizePolicy>
+      </TableView>
+   </children>
+</VBox>

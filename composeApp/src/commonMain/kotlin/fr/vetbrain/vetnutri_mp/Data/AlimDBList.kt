@@ -1,6 +1,6 @@
-data class AlimDBList(
-    val db: MutableMap<String, AlimDB> = mutableMapOf()
-) {
+package fr.vetbrain.vetnutri_mp.Data
+
+data class AlimDBList(val db: MutableMap<String, AlimDB> = mutableMapOf()) {
     fun add(dbEntry: AlimDB) {
         db[dbEntry.uuid] = dbEntry
     }
@@ -13,9 +13,4 @@ data class AlimDBList(
     fun values(): Collection<AlimDB> = db.values
 }
 
-data class AlimDB(
-    val uuid: String,
-    val sNom: String?,
-    val compNom: String?,
-    var number: Int = 0
-)
+data class AlimDB(val uuid: String, val sNom: String?, val compNom: String?, var number: Int = 0)

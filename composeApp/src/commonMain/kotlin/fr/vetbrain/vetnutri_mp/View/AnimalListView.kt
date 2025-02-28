@@ -24,6 +24,7 @@ fun AnimalListView(
         onAddAnimal: () -> Unit,
         onSelectAnimal: (AnimalEv) -> Unit,
         onEditAnimal: (AnimalEv) -> Unit,
+        onImportAnimals: () -> Unit,
         modifier: Modifier = Modifier
 ) {
         val animals: List<AnimalEv> = viewModel.animals.collectAsState().value
@@ -34,14 +35,28 @@ fun AnimalListView(
                 modifier = modifier.fillMaxSize().padding(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
         ) {
-                Button(
-                        onClick = onAddAnimal,
-                        colors =
-                                ButtonDefaults.buttonColors(
-                                        backgroundColor = VetNutriColors.Primary,
-                                        contentColor = VetNutriColors.OnPrimary
-                                )
-                ) { Text(General.ADD.translate()) }
+                Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                        Button(
+                                onClick = onAddAnimal,
+                                colors =
+                                        ButtonDefaults.buttonColors(
+                                                backgroundColor = VetNutriColors.Primary,
+                                                contentColor = VetNutriColors.OnPrimary
+                                        )
+                        ) { Text(General.ADD.translate()) }
+
+                        Button(
+                                onClick = onImportAnimals,
+                                colors =
+                                        ButtonDefaults.buttonColors(
+                                                backgroundColor = VetNutriColors.Secondary,
+                                                contentColor = VetNutriColors.OnSecondary
+                                        )
+                        ) { Text("Importer") }
+                }
 
                 Spacer(modifier = Modifier.height(16.dp))
 

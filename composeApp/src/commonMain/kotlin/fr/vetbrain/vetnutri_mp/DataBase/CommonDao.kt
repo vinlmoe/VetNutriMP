@@ -18,6 +18,33 @@ interface AnimalDao {
 
     @Query("SELECT * FROM animals WHERE uuid = :id")
     suspend fun getAnimalById(id: String): AnimalEntity?
+
+    @Insert suspend fun insertWeight(weight: WeightEntity)
+
+    @Insert suspend fun insertConsultation(consultation: ConsultationEntity)
+
+    @Insert suspend fun insertRation(ration: RationEntity)
+
+    @Insert suspend fun insertAlimentRation(aliment: AlimentRationEntity)
+
+    @Insert suspend fun insertSupplementalVariable(supplementalVariable: SupplementalVariableEntity)
+
+    @Query("SELECT * FROM WEIGHT WHERE refAnimal = :animalId")
+    suspend fun getWeightsForAnimal(animalId: String): List<WeightEntity>
+
+    @Query("DELETE FROM WEIGHT WHERE refAnimal = :animalId")
+    suspend fun deleteWeightsForAnimal(animalId: String)
+
+    @Query("SELECT * FROM CONSULTATIONS WHERE idAnim = :animalId")
+    suspend fun getConsultationsForAnimal(animalId: String): List<ConsultationEntity>
+
+    @Delete suspend fun deleteConsultation(consultation: ConsultationEntity)
+
+    @Query("DELETE FROM SUPPLEMENTAL_VARIABLES WHERE idConsult = :consultationId")
+    suspend fun deleteSupplementalVariablesForConsultation(consultationId: String)
+
+    @Query("DELETE FROM RATIONS WHERE idConsult = :consultationId")
+    suspend fun deleteRationsForConsultation(consultationId: String)
 }
 
 @Dao

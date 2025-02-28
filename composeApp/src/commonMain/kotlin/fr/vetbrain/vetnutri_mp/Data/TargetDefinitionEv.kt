@@ -1,3 +1,5 @@
+package fr.vetbrain.vetnutri_mp.Data
+
 import fr.vetbrain.vetnutri_mp.Enumer.TargetAdjust
 import fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum
 import kotlin.uuid.ExperimentalUuidApi
