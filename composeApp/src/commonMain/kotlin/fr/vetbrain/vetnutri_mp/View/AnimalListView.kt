@@ -4,12 +4,19 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Components.ConfirmDialog
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
+import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Animal
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.General
 import fr.vetbrain.vetnutri_mp.Localization.translate
@@ -28,6 +35,8 @@ fun AnimalListView(
         modifier: Modifier = Modifier
 ) {
         val animals: List<AnimalEv> = viewModel.animals.collectAsState().value
+        val searchQuery = viewModel.searchQuery.collectAsState().value
+        val selectedEspece = viewModel.selectedEspece.collectAsState().value
 
         LaunchedEffect(Unit) { viewModel.loadAnimals() }
 
@@ -55,22 +64,137 @@ fun AnimalListView(
                                                 backgroundColor = VetNutriColors.Secondary,
                                                 contentColor = VetNutriColors.OnSecondary
                                         )
-                        ) { Text("Importer") }
+                        ) { Text(General.IMPORT.translate()) }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                LazyColumn(
+                // Filtres de recherche
+                Row(
                         modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                        items(animals) { animal ->
-                                AnimalCard(
-                                        animal = animal,
-                                        onClick = { onSelectAnimal(animal) },
-                                        onEdit = { onEditAnimal(animal) },
-                                        onDelete = { viewModel.deleteAnimal(animal) }
+                        // Champ de recherche
+                        OutlinedTextField(
+                                value = searchQuery,
+                                onValueChange = { viewModel.setSearchQuery(it) },
+                                modifier = Modifier.weight(2f),
+                                placeholder = {
+                                        Text(
+                                                "${General.SEARCH.translate()} (nom, propriétaire, race)"
+                                        )
+                                },
+                                leadingIcon = {
+                                        Icon(Icons.Default.Search, contentDescription = null)
+                                },
+                                trailingIcon = {
+                                        if (searchQuery.isNotEmpty()) {
+                                                IconButton(
+                                                        onClick = { viewModel.setSearchQuery("") }
+                                                ) {
+                                                        Icon(
+                                                                Icons.Default.Clear,
+                                                                contentDescription = null
+                                                        )
+                                                }
+                                        }
+                                },
+                                singleLine = true,
+                                colors =
+                                        TextFieldDefaults.outlinedTextFieldColors(
+                                                focusedBorderColor = VetNutriColors.Primary,
+                                                unfocusedBorderColor = Color.Gray
+                                        )
+                        )
+
+                        // Combobox pour filtrer par espèce
+                        EspeceDropdown(
+                                selectedEspece = selectedEspece,
+                                onEspeceSelected = { viewModel.setSelectedEspece(it) },
+                                availableEspeces = viewModel.availableEspeces,
+                                modifier = Modifier.weight(1f)
+                        )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                if (animals.isEmpty()) {
+                        Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                        ) {
+                                Text(
+                                        text =
+                                                if (searchQuery.isEmpty() && selectedEspece == null)
+                                                        "Aucun animal trouvé"
+                                                else "Aucun résultat pour les filtres sélectionnés",
+                                        style = MaterialTheme.typography.body1
                                 )
+                        }
+                } else {
+                        LazyColumn(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                                items(animals) { animal ->
+                                        AnimalCard(
+                                                animal = animal,
+                                                onClick = { onSelectAnimal(animal) },
+                                                onEdit = { onEditAnimal(animal) },
+                                                onDelete = { viewModel.deleteAnimal(animal) }
+                                        )
+                                }
+                        }
+                }
+        }
+}
+
+@OptIn(ExperimentalMaterialApi::class)
+@Composable
+private fun EspeceDropdown(
+        selectedEspece: Espece?,
+        onEspeceSelected: (Espece?) -> Unit,
+        availableEspeces: List<Espece?>,
+        modifier: Modifier = Modifier
+) {
+        var expanded by remember { mutableStateOf(false) }
+
+        ExposedDropdownMenuBox(
+                expanded = expanded,
+                onExpandedChange = { expanded = !expanded },
+                modifier = modifier
+        ) {
+                OutlinedTextField(
+                        value = selectedEspece?.label ?: "Toutes espèces",
+                        onValueChange = {},
+                        readOnly = true,
+                        trailingIcon = {
+                                Icon(
+                                        if (expanded) Icons.Default.KeyboardArrowUp
+                                        else Icons.Default.KeyboardArrowDown,
+                                        contentDescription = null
+                                )
+                        },
+                        colors =
+                                TextFieldDefaults.outlinedTextFieldColors(
+                                        focusedBorderColor = VetNutriColors.Primary,
+                                        unfocusedBorderColor = Color.Gray
+                                ),
+                        modifier = Modifier.fillMaxWidth()
+                )
+
+                DropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false },
+                        modifier = Modifier.exposedDropdownSize()
+                ) {
+                        availableEspeces.forEach { espece ->
+                                DropdownMenuItem(
+                                        onClick = {
+                                                onEspeceSelected(espece)
+                                                expanded = false
+                                        }
+                                ) { Text(espece?.label ?: "Toutes espèces") }
                         }
                 }
         }
