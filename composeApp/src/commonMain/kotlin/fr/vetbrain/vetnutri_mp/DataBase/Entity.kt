@@ -220,9 +220,15 @@ data class WeightEntity(
 )
 data class RationEntity(
         @PrimaryKey val uuid: String,
+<<<<<<< HEAD
         var idConsult: String?,
         val name: String?,
         val coef: Double?,
+=======
+        val idConsult: String?,
+        val name: String?,
+        val coef: Float?,
+>>>>>>> parent of f5d4378 (Houra cela marche reste des petit truc et es fonctionalité)
         val actual: Boolean?,
         val number: Int?,
         val espece: String?,

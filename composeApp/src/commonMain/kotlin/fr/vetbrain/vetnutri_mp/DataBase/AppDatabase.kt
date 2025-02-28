@@ -14,6 +14,7 @@ import kotlinx.coroutines.IO
  * DAOs. Elle est utilisée à la fois sur Android et iOS.
  */
 @Database(
+<<<<<<< HEAD
         entities =
                 [
                         AnimalEntity::class,
@@ -29,6 +30,21 @@ import kotlinx.coroutines.IO
                         AlimentReferenceEntity::class,
                         NutrientValueEntity::class],
         version = 2,
+=======
+        entities = [
+            AnimalEntity::class,
+            ConsultationEntity::class,
+            WeightEntity::class,
+            RationEntity::class,
+            AlimentRationEntity::class,
+            AlimentEntity::class,
+            EspeceAlimentEntity::class,
+            IndicationAlimentEntity::class,
+            SupplementalVariableEntity::class,
+            FoodEntity::class,
+            AlimentReferenceEntity::class],
+        version = 1,
+>>>>>>> parent of f5d4378 (Houra cela marche reste des petit truc et es fonctionalité)
         exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -36,15 +52,20 @@ import kotlinx.coroutines.IO
 abstract class AppDatabase : RoomDatabase() {
     abstract fun foodDao(): FoodDao
     abstract fun animalDao(): AnimalDao
+<<<<<<< HEAD
     abstract fun consultationDao(): ConsultationDao
     abstract fun rationDao(): RationDao
     abstract fun alimentBaseDao(): AlimentBaseDao
     abstract fun nutrientValueDao(): NutrientValueDao
+=======
+
+>>>>>>> parent of f5d4378 (Houra cela marche reste des petit truc et es fonctionalité)
 
     companion object {
         const val DATABASE_NAME = "vetnutri.db"
     }
 }
+
 
 /**
  * Fonction de création de la base de données. L'implémentation spécifique à la plateforme est
@@ -55,8 +76,12 @@ expect object AppDatabaseConstructor : RoomDatabaseConstructor<AppDatabase> {
     override fun initialize(): AppDatabase
 }
 
-fun getRoomDatabase(builder: RoomDatabase.Builder<AppDatabase>): AppDatabase {
+
+fun getRoomDatabase(
+    builder: RoomDatabase.Builder<AppDatabase>
+): AppDatabase {
     return builder
+<<<<<<< HEAD
             // .addMigrations(MIGRATIONS)
             /*.fallbackToDestructiveMigrationOnDowngrade(
                 dropAllTables = true
@@ -66,3 +91,13 @@ fun getRoomDatabase(builder: RoomDatabase.Builder<AppDatabase>): AppDatabase {
             .build()
 }
 }
+=======
+       // .addMigrations(MIGRATIONS)
+        /*.fallbackToDestructiveMigrationOnDowngrade(
+            dropAllTables = true
+        )*/
+        .setDriver(BundledSQLiteDriver())
+        .setQueryCoroutineContext(Dispatchers.IO)
+        .build()
+}
+>>>>>>> parent of f5d4378 (Houra cela marche reste des petit truc et es fonctionalité)

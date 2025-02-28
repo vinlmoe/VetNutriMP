@@ -4,22 +4,19 @@ object LocalizationKeys {
     // Clés générales de l'application
     object General {
         const val WELCOME = "welcome"
-        const val APP_NAME = "general.appName"
+        const val APP_NAME = "app_name"
         const val LOADING = "loading"
         const val SAVE = "save"
-        const val CANCEL = "general.cancel"
-        const val DELETE = "general.delete"
-        const val EDIT = "general.edit"
-        const val UPDATE = "update"
-        const val ADD = "general.add"
+        const val CANCEL = "cancel"
+        const val DELETE = "delete"
+        const val EDIT = "edit"
+        const val ADD = "add"
         const val REMOVE = "remove"
-        const val SEARCH = "general.search"
+        const val SEARCH = "search"
         const val CALCULATE = "calculate"
-        const val VALIDATE = "general.validate"
+        const val VALIDATE = "validate"
         const val EXPORT = "export"
         const val IMPORT = "import"
-        const val CONFIRM = "general.confirm"
-        const val CONFIRM_DELETE = "general.confirmDelete"
     }
 
     // Clés pour les animaux
@@ -37,10 +34,6 @@ object LocalizationKeys {
         const val SUMMARY = "animal.summary"
         const val STERILIZED = "animal.sterilized"
         const val DEAD = "animal.dead"
-        const val EDIT_ANIMAL = "animal.edit"
-        const val NEW_ANIMAL = "animal.new"
-        const val DELETE_ANIMAL = "animal.delete"
-        const val DELETE_ANIMAL_CONFIRM = "animal.deleteConfirm"
     }
 
     // Clés pour les espèces
@@ -123,6 +116,7 @@ object LocalizationKeys {
         const val BCS = "consultation.bcs"
         const val MCS = "consultation.mcs"
         const val WATER = "consultation.water"
+<<<<<<< HEAD
         const val DELETE_CONSULTATION = "consultation.delete"
         const val DELETE_CONSULTATION_CONFIRM = "consultation.deleteConfirm"
         const val NEW_CONSULTATION = "consultation.new"
@@ -134,6 +128,8 @@ object LocalizationKeys {
         val INVALID_DATE_FORMAT = "consultation.invalidDateFormat"
         val RATIONS = "consultation.rations"
         val RATION_COEF = "consultation.rationCoef"
+=======
+>>>>>>> parent of f5d4378 (Houra cela marche reste des petit truc et es fonctionalité)
     }
 
     // Clés pour les rations

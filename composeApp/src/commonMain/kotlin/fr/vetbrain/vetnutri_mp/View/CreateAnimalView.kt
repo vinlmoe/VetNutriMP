@@ -27,7 +27,6 @@ import kotlinx.datetime.toLocalDateTime
 fun CreateAnimalView(
         viewModel: CreateAnimalViewModel,
         onNavigateBack: () -> Unit,
-        isEditing: Boolean = false,
         modifier: Modifier = Modifier
 ) {
         val animal = viewModel.animal.collectAsState().value
@@ -39,9 +38,6 @@ fun CreateAnimalView(
         LaunchedEffect(saveSuccess) {
                 if (saveSuccess) {
                         viewModel.resetSaveStatus()
-                        if (!isEditing) {
-                                viewModel.resetAnimal()
-                        }
                         onNavigateBack()
                 }
         }
@@ -52,14 +48,6 @@ fun CreateAnimalView(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-                Text(
-                        text =
-                                if (isEditing) AnimalKeys.EDIT_ANIMAL.translate()
-                                else AnimalKeys.NEW_ANIMAL.translate(),
-                        style = MaterialTheme.typography.h6,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                )
-
                 OutlinedTextField(
                         value = animal.id ?: "",
                         onValueChange = { newId: String ->
@@ -171,12 +159,7 @@ fun CreateAnimalView(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                         Button(
-                                onClick = {
-                                        if (!isEditing) {
-                                                viewModel.resetAnimal()
-                                        }
-                                        onNavigateBack()
-                                },
+                                onClick = { onNavigateBack() },
                                 modifier = Modifier.weight(1f),
                                 colors =
                                         ButtonDefaults.buttonColors(
@@ -200,10 +183,7 @@ fun CreateAnimalView(
                                                 modifier = Modifier.size(24.dp)
                                         )
                                 } else {
-                                        Text(
-                                                if (isEditing) General.UPDATE.translate()
-                                                else General.SAVE.translate()
-                                        )
+                                        Text(General.SAVE.translate())
                                 }
                         }
                 }
