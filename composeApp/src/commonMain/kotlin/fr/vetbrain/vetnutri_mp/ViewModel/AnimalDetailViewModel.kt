@@ -9,6 +9,7 @@ import fr.vetbrain.vetnutri_mp.Data.Ration
 import fr.vetbrain.vetnutri_mp.Repository.AnimalRepository
 import fr.vetbrain.vetnutri_mp.Repository.ConsultationRepository
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
+import kotlin.uuid.ExperimentalUuidApi
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -285,8 +286,14 @@ class AnimalDetailViewModel(
         }
     }
 
+    @OptIn(ExperimentalUuidApi::class)
     fun prepareNewConsultation(date: LocalDate) {
-        val newConsultation = ConsultationEv(date = date)
+        val newConsultation =
+                ConsultationEv(
+                        uuid = kotlin.uuid.Uuid.random().toString(),
+                        date = date,
+                        idAnim = _animal.value?.uuid ?: ""
+                )
         _selectedConsultation.value = newConsultation
     }
 }
