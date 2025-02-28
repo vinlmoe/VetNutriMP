@@ -6,6 +6,7 @@ import androidx.compose.runtime.setValue
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
 import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
 import fr.vetbrain.vetnutri_mp.Data.Ration
+import fr.vetbrain.vetnutri_mp.Repository.AnimalRepository
 import fr.vetbrain.vetnutri_mp.Repository.ConsultationRepository
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import kotlinx.coroutines.CoroutineScope
@@ -16,7 +17,16 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
 
-class AnimalDetailViewModel(private val consultationRepository: ConsultationRepository) {
+/** Énumération des différentes sections de la vue détaillée d'un animal */
+enum class AnimalDetailSection {
+    IDENTIFICATION, // Informations d'identification de l'animal
+    CONSULTATIONS // Liste des consultations
+}
+
+class AnimalDetailViewModel(
+        private val consultationRepository: ConsultationRepository,
+        private val animalRepository: AnimalRepository
+) {
     private val viewModelScope = CoroutineScope(AppDispatchers.Main)
     private val _animal = MutableStateFlow<AnimalEv?>(null)
     val animal: StateFlow<AnimalEv?> = _animal.asStateFlow()
@@ -27,21 +37,50 @@ class AnimalDetailViewModel(private val consultationRepository: ConsultationRepo
     private val _selectedRation = MutableStateFlow<Ration?>(null)
     val selectedRation: StateFlow<Ration?> = _selectedRation.asStateFlow()
 
+    // Section actuellement sélectionnée dans la vue détaillée
+    private val _currentSection = MutableStateFlow(AnimalDetailSection.IDENTIFICATION)
+    val currentSection: StateFlow<AnimalDetailSection> = _currentSection.asStateFlow()
+
     var isEditingConsultation by mutableStateOf(false)
         private set
 
     var isEditingRation by mutableStateOf(false)
         private set
 
+    var isEditingAnimal by mutableStateOf(false)
+        private set
+
     fun setAnimal(animal: AnimalEv) {
-        _animal.value = animal.copy()
-        // Charger les consultations depuis la base de données
         viewModelScope.launch {
-            val consultations = consultationRepository.getConsultationsForAnimal(animal.uuid)
-            _animal.update { currentAnimal ->
-                currentAnimal?.copy(consultations = consultations.toMutableList())
+            // Conserver une référence à l'animal original
+            val originalAnimal = animal.copy()
+
+            // Mettre à jour l'animal dans le ViewModel
+            _animal.value = originalAnimal
+
+            // Charger les consultations depuis la base de données
+            try {
+                val consultations = consultationRepository.getConsultationsForAnimal(animal.uuid)
+
+                // Mettre à jour l'animal avec les consultations chargées
+                _animal.update { currentAnimal ->
+                    currentAnimal?.copy(consultations = consultations.toMutableList())
+                }
+            } catch (e: Exception) {
+                // Gérer les erreurs potentielles lors du chargement des consultations
+                println("Erreur lors du chargement des consultations: ${e.message}")
             }
+
+            // Réinitialiser les états
+            _selectedConsultation.value = null
+            isEditingConsultation = false
+            isEditingRation = false
+            isEditingAnimal = false
         }
+    }
+
+    fun navigateTo(section: AnimalDetailSection) {
+        _currentSection.value = section
     }
 
     fun selectConsultation(consultation: ConsultationEv) {
@@ -73,34 +112,105 @@ class AnimalDetailViewModel(private val consultationRepository: ConsultationRepo
         _selectedRation.value = null
     }
 
+    fun startEditingAnimal() {
+        isEditingAnimal = true
+    }
+
+    fun stopEditingAnimal() {
+        isEditingAnimal = false
+    }
+
     fun addConsultation(consultation: ConsultationEv) {
         viewModelScope.launch {
-            consultation.idAnim = _animal.value?.uuid ?: return@launch
-            consultationRepository.saveConsultation(consultation)
+            try {
+                // Assigner l'ID de l'animal à la consultation
+                val animalId = _animal.value?.uuid ?: return@launch
+                println("Tentative d'ajout d'une consultation pour l'animal avec ID: $animalId")
 
-            // Rafraîchir les consultations depuis la base de données au lieu de mettre à jour
-            // manuellement
-            val updatedConsultations =
-                    consultationRepository.getConsultationsForAnimal(consultation.idAnim)
-            _animal.update { currentAnimal ->
-                currentAnimal?.copy(consultations = updatedConsultations.toMutableList())
+                // Vérifier que l'animal existe dans la base de données
+                val animalExists = animalRepository.getAnimalById(animalId) != null
+                if (!animalExists) {
+                    println(
+                            "Erreur: Impossible d'ajouter une consultation car l'animal avec l'ID $animalId n'existe pas dans la base de données"
+                    )
+                    return@launch
+                }
+
+                // Créer une copie de la consultation avec l'ID de l'animal
+                val consultationToSave = consultation.copy(idAnim = animalId)
+                println("UUID de la consultation à sauvegarder: ${consultationToSave.uuid}")
+                println("Date de la consultation à sauvegarder: ${consultationToSave.date}")
+                println(
+                        "Objet de la consultation à sauvegarder: ${consultationToSave.objectConsult}"
+                )
+
+                // Sauvegarder la consultation
+                consultationRepository.saveConsultation(consultationToSave)
+                println("Consultation sauvegardée avec succès")
+
+                // Rafraîchir les consultations depuis la base de données
+                val updatedConsultations =
+                        consultationRepository.getConsultationsForAnimal(animalId)
+                println(
+                        "Nombre de consultations récupérées après sauvegarde: ${updatedConsultations.size}"
+                )
+
+                // Mettre à jour l'animal avec les consultations rafraîchies
+                _animal.update { currentAnimal ->
+                    currentAnimal?.copy(consultations = updatedConsultations.toMutableList())
+                }
+
+                // Récupérer la consultation complète depuis la base de données
+                val savedConsultation =
+                        consultationRepository.getConsultationById(consultationToSave.uuid)
+                if (savedConsultation != null) {
+                    println("Consultation récupérée depuis la base de données avec succès")
+                    _selectedConsultation.value = savedConsultation
+                } else {
+                    println(
+                            "Erreur: Impossible de récupérer la consultation sauvegardée depuis la base de données"
+                    )
+                }
+
+                // Arrêter le mode édition
+                isEditingConsultation = false
+            } catch (e: Exception) {
+                println("Erreur lors de l'ajout de la consultation: ${e.message}")
+                e.printStackTrace()
             }
-
-            // Sélectionner la nouvelle consultation
-            _selectedConsultation.value = consultation
         }
     }
 
     fun updateConsultation(consultation: ConsultationEv) {
         viewModelScope.launch {
-            consultationRepository.saveConsultation(consultation)
+            try {
+                // Vérifier que l'animal existe dans la base de données
+                val animalId = consultation.idAnim ?: return@launch
+                val animalExists = animalRepository.getAnimalById(animalId) != null
 
-            // Rafraîchir les consultations depuis la base de données au lieu de mettre à jour
-            // manuellement
-            val updatedConsultations =
-                    consultationRepository.getConsultationsForAnimal(consultation.idAnim)
-            _animal.update { currentAnimal ->
-                currentAnimal?.copy(consultations = updatedConsultations.toMutableList())
+                if (!animalExists) {
+                    println(
+                            "Erreur: Impossible de mettre à jour la consultation car l'animal avec l'ID $animalId n'existe pas dans la base de données"
+                    )
+                    return@launch
+                }
+
+                // Sauvegarder la consultation
+                consultationRepository.saveConsultation(consultation)
+
+                // Rafraîchir les consultations depuis la base de données au lieu de mettre à jour
+                // manuellement
+                val updatedConsultations =
+                        consultationRepository.getConsultationsForAnimal(consultation.idAnim)
+                _animal.update { currentAnimal ->
+                    currentAnimal?.copy(consultations = updatedConsultations.toMutableList())
+                }
+
+                // Mettre à jour la consultation sélectionnée
+                _selectedConsultation.value = consultation
+            } catch (e: Exception) {
+                println("Erreur lors de la mise à jour de la consultation: ${e.message}")
+                e.printStackTrace()
             }
         }
     }
@@ -139,23 +249,44 @@ class AnimalDetailViewModel(private val consultationRepository: ConsultationRepo
         viewModelScope.launch {
             consultationRepository.deleteConsultation(consultation)
 
-            // Rafraîchir les consultations depuis la base de données au lieu de mettre à jour
-            // manuellement
+            // Rafraîchir les consultations depuis la base de données
             val updatedConsultations =
                     consultationRepository.getConsultationsForAnimal(consultation.idAnim)
             _animal.update { currentAnimal ->
                 currentAnimal?.copy(consultations = updatedConsultations.toMutableList())
             }
 
-            // Si la consultation supprimée était sélectionnée, la désélectionner
+            // Désélectionner la consultation supprimée
             if (_selectedConsultation.value?.uuid == consultation.uuid) {
                 _selectedConsultation.value = null
             }
         }
     }
 
+    fun updateAnimal(updatedAnimal: AnimalEv) {
+        viewModelScope.launch {
+            // Conserver l'UUID et les consultations de l'animal original
+            val animalToUpdate =
+                    _animal.value?.let { originalAnimal ->
+                        updatedAnimal.copy(
+                                uuid = originalAnimal.uuid,
+                                consultations = originalAnimal.consultations
+                        )
+                    }
+                            ?: return@launch
+
+            animalRepository.updateAnimal(animalToUpdate)
+
+            // Mettre à jour l'animal dans le ViewModel
+            _animal.value = animalToUpdate
+
+            // Arrêter le mode édition
+            isEditingAnimal = false
+        }
+    }
+
     fun prepareNewConsultation(date: LocalDate) {
-        _selectedConsultation.value =
-                ConsultationEv(idAnim = _animal.value?.uuid ?: "", date = date)
+        val newConsultation = ConsultationEv(date = date)
+        _selectedConsultation.value = newConsultation
     }
 }

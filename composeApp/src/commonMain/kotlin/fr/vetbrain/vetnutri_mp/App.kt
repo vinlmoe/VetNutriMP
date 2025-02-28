@@ -53,7 +53,9 @@ fun App(appDatabase: AppDatabase) {
     // Initialisation des ViewModels
     val animalListViewModel = remember { AnimalListViewModel(animalRepository) }
     val createAnimalViewModel = remember { CreateAnimalViewModel(animalRepository) }
-    val animalDetailViewModel = remember { AnimalDetailViewModel(consultationRepository) }
+    val animalDetailViewModel = remember {
+        AnimalDetailViewModel(consultationRepository, animalRepository)
+    }
     val settingsViewModel = remember { SettingsViewModel() }
 
     var currentScreen by remember { mutableStateOf<Screen>(Screen.List) }

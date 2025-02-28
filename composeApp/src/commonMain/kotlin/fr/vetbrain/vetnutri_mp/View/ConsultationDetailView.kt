@@ -12,12 +12,15 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
 import fr.vetbrain.vetnutri_mp.Data.Ration
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Animal
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Consultation
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.General
 import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
+import kotlin.uuid.ExperimentalUuidApi
 import kotlinx.datetime.LocalDate
 
+@OptIn(ExperimentalUuidApi::class)
 @Composable
 fun ConsultationDetailView(
         consultation: ConsultationEv?,
@@ -26,12 +29,15 @@ fun ConsultationDetailView(
 ) {
     var editedConsultation by remember { mutableStateOf(consultation ?: ConsultationEv()) }
     var dateText by remember { mutableStateOf(editedConsultation.date?.toString() ?: "") }
+    var weightText by remember { mutableStateOf(editedConsultation.weight?.toString() ?: "") }
     var showDateError by remember { mutableStateOf(false) }
+    var showWeightError by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text(
                 text =
-                        if (consultation == null) General.ADD.translate()
+                        if (consultation == null || consultation.uuid.isEmpty())
+                                General.ADD.translate()
                         else General.EDIT.translate(),
                 style = MaterialTheme.typography.h6
         )
@@ -59,6 +65,39 @@ fun ConsultationDetailView(
         if (showDateError) {
             Text(
                     text = "Format de date invalide (YYYY-MM-DD)",
+                    color = MaterialTheme.colors.error,
+                    style = MaterialTheme.typography.caption
+            )
+        }
+
+        // Poids
+        OutlinedTextField(
+                value = weightText,
+                onValueChange = { newValue: String ->
+                    weightText = newValue
+                    try {
+                        if (newValue.isNotEmpty()) {
+                            val weight = newValue.toFloat()
+                            editedConsultation = editedConsultation.copy(weight = weight)
+                            showWeightError = false
+                        } else {
+                            editedConsultation = editedConsultation.copy(weight = null)
+                            showWeightError = false
+                        }
+                    } catch (e: Exception) {
+                        showWeightError = true
+                    }
+                },
+                label = { Text(Animal.WEIGHT.translate()) },
+                modifier = Modifier.fillMaxWidth(),
+                isError = showWeightError,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                singleLine = true
+        )
+
+        if (showWeightError) {
+            Text(
+                    text = "Format de poids invalide (nombre décimal)",
                     color = MaterialTheme.colors.error,
                     style = MaterialTheme.typography.caption
             )
@@ -113,11 +152,18 @@ fun ConsultationDetailView(
 
             Button(
                     onClick = {
-                        if (!showDateError && editedConsultation.date != null) {
+                        if (!showDateError && !showWeightError && editedConsultation.date != null) {
+                            // S'assurer que l'UUID est généré si c'est une nouvelle consultation
+                            if (editedConsultation.uuid.isEmpty()) {
+                                editedConsultation =
+                                        editedConsultation.copy(
+                                                uuid = kotlin.uuid.Uuid.random().toString()
+                                        )
+                            }
                             onSave(editedConsultation)
                         }
                     },
-                    enabled = !showDateError && editedConsultation.date != null,
+                    enabled = !showDateError && !showWeightError && editedConsultation.date != null,
                     colors =
                             ButtonDefaults.buttonColors(
                                     backgroundColor = VetNutriColors.Primary,

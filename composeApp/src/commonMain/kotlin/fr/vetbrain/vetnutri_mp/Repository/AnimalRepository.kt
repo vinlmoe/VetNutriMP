@@ -11,6 +11,21 @@ interface AnimalRepository {
     suspend fun deleteAnimal(animal: AnimalEv)
 
     /**
+     * Met à jour un animal existant dans la base de données
+     *
+     * @param animal L'animal à mettre à jour
+     */
+    suspend fun updateAnimal(animal: AnimalEv)
+
+    /**
+     * Récupère un animal par son identifiant
+     *
+     * @param id L'identifiant de l'animal à récupérer
+     * @return L'animal correspondant à l'identifiant ou null s'il n'existe pas
+     */
+    suspend fun getAnimalById(id: String): AnimalEv?
+
+    /**
      * Importe une liste d'animaux à partir de leurs représentations JSON
      *
      * @param animalsJson La liste des animaux au format JSON

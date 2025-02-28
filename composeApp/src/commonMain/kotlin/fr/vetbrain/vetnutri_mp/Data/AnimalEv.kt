@@ -12,7 +12,7 @@ data class AnimalEv(
         var nom: String = "",
         var dead: Boolean = false,
         var id: String? = null,
-        var sexId: Int = Sex.MALE.id,
+        var sexId: Int = Sex.MALE_ENTIER.id,
         var specieId: String = Espece.CHIEN.name,
         var ownerName: String = "",
         var birthdate: LocalDate? = null,
@@ -22,7 +22,7 @@ data class AnimalEv(
         var weightHistory: MutableList<WeightDate> = mutableListOf()
 ) {
     fun getSex(): Sex {
-        return Sex.values().firstOrNull { it.id == sexId } ?: Sex.MALE
+        return Sex.values().firstOrNull { it.id == sexId } ?: Sex.MALE_ENTIER
     }
 
     fun setSex(sex: Sex) {
@@ -43,7 +43,7 @@ data class AnimalEv(
                     nom = "Rex",
                     dead = false,
                     id = "TEST001",
-                    sexId = Sex.MALE.id,
+                    sexId = Sex.MALE_ENTIER.id,
                     specieId = Espece.CHIEN.name,
                     ownerName = "Jean Dupont",
                     birthdate = LocalDate(2020, 1, 1),

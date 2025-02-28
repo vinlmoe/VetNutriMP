@@ -45,6 +45,32 @@ class DatabaseAnimalRepository(private val animalDao: AnimalDao) : AnimalReposit
         }
     }
 
+    override suspend fun updateAnimal(animal: AnimalEv) {
+        withContext(AppDispatchers.Default) {
+            animalDao.update(animal.toEntity(includeRelations = false))
+        }
+    }
+
+    override suspend fun getAnimalById(id: String): AnimalEv? {
+        return withContext(AppDispatchers.Default) {
+            val entity = animalDao.getAnimalById(id) ?: return@withContext null
+
+            // Convertir l'entité en objet de domaine
+            AnimalEv(
+                    uuid = entity.uuid,
+                    nom = entity.nom ?: "",
+                    dead = entity.dead ?: false,
+                    id = entity.id,
+                    sexId = entity.sexId ?: 0,
+                    specieId = entity.specieId ?: "",
+                    ownerName = entity.ownerName ?: "",
+                    birthdate = entity.birthdate?.let { LocalDate.parse(it) },
+                    race = entity.race ?: "",
+                    summary = entity.summary ?: ""
+            )
+        }
+    }
+
     override suspend fun importAnimals(animalsJson: List<AnimalEvJson>): Int {
         return withContext(AppDispatchers.Default) {
             var importedCount = 0

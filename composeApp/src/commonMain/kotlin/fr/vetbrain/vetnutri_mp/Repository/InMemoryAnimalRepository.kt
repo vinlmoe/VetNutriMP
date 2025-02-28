@@ -29,6 +29,18 @@ class InMemoryAnimalRepository : AnimalRepository {
         updateFlow()
     }
 
+    override suspend fun updateAnimal(animal: AnimalEv) {
+        val existingIndex = animals.indexOfFirst { it.uuid == animal.uuid }
+        if (existingIndex >= 0) {
+            animals[existingIndex] = animal
+            updateFlow()
+        }
+    }
+
+    override suspend fun getAnimalById(id: String): AnimalEv? {
+        return animals.find { it.uuid == id }
+    }
+
     override suspend fun importAnimals(animalsJson: List<AnimalEvJson>): Int {
         var importedCount = 0
 

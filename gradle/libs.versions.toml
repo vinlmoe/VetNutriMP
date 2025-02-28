@@ -46,6 +46,7 @@ testng = "6.13.1"
 sqliteBundled = "2.5.0-beta01"
 skikoAwt = "0.8.25"
 coroutines = "1.7.3"
+materialIconsExtended = "1.7.8"
 
 
 [libraries]
@@ -107,6 +108,7 @@ skiko-awt = { group = "org.jetbrains.skiko", name = "skiko-awt", version.ref = "
 
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
 kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "kotlinx-coroutines" }
+androidx-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended", version.ref = "materialIconsExtended" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

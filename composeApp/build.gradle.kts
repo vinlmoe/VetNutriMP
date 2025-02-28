@@ -160,6 +160,7 @@ compose.desktop {
 
 dependencies {
 
+    implementation(libs.androidx.material.icons.extended)
     implementation(libs.skiko.awt)
     implementation(libs.androidx.sqlite.bundled)
 
