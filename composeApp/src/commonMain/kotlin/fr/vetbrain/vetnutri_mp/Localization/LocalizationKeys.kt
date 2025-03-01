@@ -20,6 +20,16 @@ object LocalizationKeys {
         const val IMPORT = "import"
         const val CONFIRM = "general.confirm"
         const val CONFIRM_DELETE = "general.confirmDelete"
+        const val DATE_PICKER = "general.datePicker"
+        const val YEAR = "general.year"
+        const val MONTH = "general.month"
+        const val DAY = "general.day"
+        const val PREVIOUS_YEAR = "general.previousYear"
+        const val NEXT_YEAR = "general.nextYear"
+        const val PREVIOUS_MONTH = "general.previousMonth"
+        const val NEXT_MONTH = "general.nextMonth"
+        const val PREVIOUS_DAY = "general.previousDay"
+        const val NEXT_DAY = "general.nextDay"
     }
 
     // Clés pour les animaux

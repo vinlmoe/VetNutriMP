@@ -73,6 +73,13 @@ fun App(appDatabase: AppDatabase) {
         }
     }
 
+    // Effet pour recharger la liste des animaux lorsque l'utilisateur revient à l'écran de liste
+    LaunchedEffect(currentScreen) {
+        if (currentScreen == Screen.List) {
+            animalListViewModel.loadAnimals()
+        }
+    }
+
     // Fonction locale pour importer les animaux
     val handleImportAnimals: () -> Unit = {
         // Appel à la fonction expect/actual
@@ -135,14 +142,11 @@ fun App(appDatabase: AppDatabase) {
                     }
                     Screen.Detail -> {
                         Column(modifier = Modifier.fillMaxSize()) {
-                            TopBar(
-                                    title = selectedAnimal?.nom ?: "",
-                                    onSettingsClick = { showSettings = true }
-                            )
                             AnimalDetailView(
                                     viewModel = animalDetailViewModel,
                                     settingsViewModel = settingsViewModel,
                                     onNavigateBack = { currentScreen = Screen.List },
+                                    onOpenSettings = { showSettings = true },
                                     modifier = Modifier.fillMaxWidth().weight(1f)
                             )
                         }

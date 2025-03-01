@@ -1,39 +1,48 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.Color
+import fr.vetbrain.vetnutri_mp.Components.AppDatePicker
+import fr.vetbrain.vetnutri_mp.Components.AppTextField
+import fr.vetbrain.vetnutri_mp.Components.NumberTextField
 import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
 import fr.vetbrain.vetnutri_mp.Data.Ration
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Animal
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Consultation
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.General
 import fr.vetbrain.vetnutri_mp.Localization.translate
+import fr.vetbrain.vetnutri_mp.Theme.AppIcons
+import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import kotlin.uuid.ExperimentalUuidApi
 import kotlinx.datetime.LocalDate
 
 @OptIn(ExperimentalUuidApi::class)
 @Composable
-fun ConsultationDetailView(
+fun AppConsultationDetailView(
         consultation: ConsultationEv?,
         onDismiss: () -> Unit,
         onSave: (ConsultationEv) -> Unit
 ) {
     var editedConsultation by remember { mutableStateOf(consultation ?: ConsultationEv()) }
-    var dateText by remember { mutableStateOf(editedConsultation.date?.toString() ?: "") }
     var weightText by remember { mutableStateOf(editedConsultation.weight?.toString() ?: "") }
     var showDateError by remember { mutableStateOf(false) }
     var showWeightError by remember { mutableStateOf(false) }
+    var dateErrorMessage by remember { mutableStateOf<String?>(null) }
+    var weightErrorMessage by remember { mutableStateOf<String?>(null) }
 
-    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    Column(
+            modifier = Modifier.padding(AppSizes.paddingMedium),
+            verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
+    ) {
+        // Titre
         Text(
                 text =
                         if (consultation == null || consultation.uuid.isEmpty())
@@ -42,36 +51,27 @@ fun ConsultationDetailView(
                 style = MaterialTheme.typography.h6
         )
 
-        // Date
-        OutlinedTextField(
-                value = dateText,
-                onValueChange = { newValue: String ->
-                    dateText = newValue
-                    try {
-                        val date = LocalDate.parse(newValue)
-                        editedConsultation = editedConsultation.copy(date = date)
-                        showDateError = false
-                    } catch (e: Exception) {
-                        showDateError = true
-                    }
-                },
-                label = { Text(Consultation.DATE.translate()) },
-                modifier = Modifier.fillMaxWidth(),
-                isError = showDateError,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
-                singleLine = true
+        Divider(
+                color = MaterialTheme.colors.onSurface.copy(alpha = 0.12f),
+                thickness = AppSizes.dividerHeight
         )
 
-        if (showDateError) {
-            Text(
-                    text = "Format de date invalide (YYYY-MM-DD)",
-                    color = MaterialTheme.colors.error,
-                    style = MaterialTheme.typography.caption
-            )
-        }
+        // Date
+        AppDatePicker(
+                selectedDate = editedConsultation.date,
+                onDateSelected = { date: LocalDate ->
+                    editedConsultation = editedConsultation.copy(date = date)
+                    showDateError = false
+                    dateErrorMessage = null
+                },
+                label = Consultation.DATE.translate(),
+                isError = showDateError,
+                errorMessage = dateErrorMessage,
+                modifier = Modifier.fillMaxWidth()
+        )
 
         // Poids
-        OutlinedTextField(
+        NumberTextField(
                 value = weightText,
                 onValueChange = { newValue: String ->
                     weightText = newValue
@@ -80,47 +80,46 @@ fun ConsultationDetailView(
                             val weight = newValue.toFloat()
                             editedConsultation = editedConsultation.copy(weight = weight)
                             showWeightError = false
+                            weightErrorMessage = null
                         } else {
                             editedConsultation = editedConsultation.copy(weight = null)
                             showWeightError = false
+                            weightErrorMessage = null
                         }
                     } catch (e: Exception) {
                         showWeightError = true
+                        weightErrorMessage = "Format de poids invalide (nombre décimal)"
                     }
                 },
-                label = { Text(Animal.WEIGHT.translate()) },
-                modifier = Modifier.fillMaxWidth(),
+                label = Animal.WEIGHT.translate(),
+                leadingIcon = AppIcons.Weight,
                 isError = showWeightError,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                singleLine = true
+                errorMessage = weightErrorMessage,
+                modifier = Modifier.fillMaxWidth()
         )
 
-        if (showWeightError) {
-            Text(
-                    text = "Format de poids invalide (nombre décimal)",
-                    color = MaterialTheme.colors.error,
-                    style = MaterialTheme.typography.caption
-            )
-        }
-
         // Objectif
-        OutlinedTextField(
+        AppTextField(
                 value = editedConsultation.objectConsult,
                 onValueChange = { newValue: String ->
                     editedConsultation = editedConsultation.copy(objectConsult = newValue)
                 },
-                label = { Text(Consultation.OBJECTIVE.translate()) },
+                label = Consultation.OBJECTIVE.translate(),
+                leadingIcon = AppIcons.Info,
                 modifier = Modifier.fillMaxWidth()
         )
 
         // Observations
-        OutlinedTextField(
+        AppTextField(
                 value = editedConsultation.observation,
                 onValueChange = { newValue: String ->
                     editedConsultation = editedConsultation.copy(observation = newValue)
                 },
-                label = { Text(Consultation.OBSERVATION.translate()) },
-                modifier = Modifier.fillMaxWidth().weight(1f)
+                label = Consultation.OBSERVATION.translate(),
+                leadingIcon = AppIcons.Info,
+                modifier = Modifier.fillMaxWidth().weight(1f),
+                maxLines = 5,
+                singleLine = false
         )
 
         // Liste des rations
@@ -128,7 +127,7 @@ fun ConsultationDetailView(
 
         LazyColumn(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
         ) {
             items(editedConsultation.rations) { ration ->
                 RationCard(
@@ -139,16 +138,37 @@ fun ConsultationDetailView(
             }
         }
 
+        Divider(
+                color = MaterialTheme.colors.onSurface.copy(alpha = 0.12f),
+                thickness = AppSizes.dividerHeight
+        )
+
         // Boutons d'action
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
+        ) {
             Button(
                     onClick = onDismiss,
                     colors =
                             ButtonDefaults.buttonColors(
                                     backgroundColor = VetNutriColors.Secondary,
                                     contentColor = VetNutriColors.OnSecondary
-                            )
-            ) { Text(General.CANCEL.translate()) }
+                            ),
+                    modifier = Modifier.weight(1f)
+            ) {
+                Row(
+                        horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall),
+                        verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                            AppIcons.Cancel,
+                            contentDescription = null,
+                            modifier = Modifier.size(AppSizes.iconSizeSmall)
+                    )
+                    Text(General.CANCEL.translate())
+                }
+            }
 
             Button(
                     onClick = {
@@ -161,15 +181,31 @@ fun ConsultationDetailView(
                                         )
                             }
                             onSave(editedConsultation)
+                        } else if (editedConsultation.date == null) {
+                            showDateError = true
+                            dateErrorMessage = "La date est obligatoire"
                         }
                     },
-                    enabled = !showDateError && !showWeightError && editedConsultation.date != null,
+                    enabled = !showDateError && !showWeightError,
                     colors =
                             ButtonDefaults.buttonColors(
                                     backgroundColor = VetNutriColors.Primary,
                                     contentColor = VetNutriColors.OnPrimary
-                            )
-            ) { Text(General.SAVE.translate()) }
+                            ),
+                    modifier = Modifier.weight(1f)
+            ) {
+                Row(
+                        horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall),
+                        verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                            AppIcons.Save,
+                            contentDescription = null,
+                            modifier = Modifier.size(AppSizes.iconSizeSmall)
+                    )
+                    Text(General.SAVE.translate())
+                }
+            }
         }
     }
 }
@@ -181,23 +217,53 @@ private fun RationCard(
         onDelete: () -> Unit,
         modifier: Modifier = Modifier
 ) {
-    Card(modifier = modifier.fillMaxWidth(), elevation = 2.dp) {
+    Card(
+            modifier = modifier.fillMaxWidth(),
+            elevation = AppSizes.elevationSmall,
+            backgroundColor = MaterialTheme.colors.surface,
+            shape = MaterialTheme.shapes.medium,
+            border = BorderStroke(AppSizes.borderWidth, Color.LightGray.copy(alpha = 0.5f))
+    ) {
         Row(
-                modifier = Modifier.padding(8.dp),
+                modifier = Modifier.padding(AppSizes.paddingMedium),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
         ) {
-            Column {
-                Text(text = ration.name, style = MaterialTheme.typography.subtitle1)
-                Text(text = "Coef: ${ration.coef}", style = MaterialTheme.typography.body2)
+            Row(
+                    modifier = Modifier.weight(1f),
+                    horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall),
+                    verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                        AppIcons.Ration,
+                        contentDescription = null,
+                        tint = VetNutriColors.Primary,
+                        modifier = Modifier.size(AppSizes.iconSizeMedium)
+                )
+                Column {
+                    Text(text = ration.name, style = MaterialTheme.typography.subtitle1)
+                    Text(
+                            text = "Coef: ${ration.coef}",
+                            style = MaterialTheme.typography.body2,
+                            color = Color.Gray
+                    )
+                }
             }
 
             Row {
                 IconButton(onClick = onEdit) {
-                    // TODO: Ajouter une icône d'édition
+                    Icon(
+                            imageVector = AppIcons.Edit,
+                            contentDescription = "Modifier la ration",
+                            tint = VetNutriColors.Primary
+                    )
                 }
                 IconButton(onClick = onDelete) {
-                    // TODO: Ajouter une icône de suppression
+                    Icon(
+                            imageVector = AppIcons.Delete,
+                            contentDescription = "Supprimer la ration",
+                            tint = Color.Red
+                    )
                 }
             }
         }

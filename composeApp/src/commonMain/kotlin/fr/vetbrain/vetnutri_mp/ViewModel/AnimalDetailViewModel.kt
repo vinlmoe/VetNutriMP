@@ -21,7 +21,8 @@ import kotlinx.datetime.LocalDate
 /** Énumération des différentes sections de la vue détaillée d'un animal */
 enum class AnimalDetailSection {
     IDENTIFICATION, // Informations d'identification de l'animal
-    CONSULTATIONS // Liste des consultations
+    CONSULTATIONS, // Liste des consultations
+    RATIONS // Vue des rations
 }
 
 class AnimalDetailViewModel(
@@ -295,5 +296,35 @@ class AnimalDetailViewModel(
                         idAnim = _animal.value?.uuid ?: ""
                 )
         _selectedConsultation.value = newConsultation
+    }
+
+    /**
+     * Supprime l'animal actuel de la base de données
+     *
+     * @return true si la suppression a réussi, false sinon
+     */
+    fun deleteAnimal(): Boolean {
+        val animalToDelete = _animal.value ?: return false
+
+        viewModelScope.launch {
+            try {
+                // Supprimer l'animal de la base de données
+                animalRepository.deleteAnimal(animalToDelete)
+
+                // Réinitialiser les états
+                _animal.value = null
+                _selectedConsultation.value = null
+                _currentSection.value = AnimalDetailSection.IDENTIFICATION
+                isEditingConsultation = false
+                isEditingRation = false
+                isEditingAnimal = false
+            } catch (e: Exception) {
+                println("Erreur lors de la suppression de l'animal: ${e.message}")
+                e.printStackTrace()
+                return@launch
+            }
+        }
+
+        return true
     }
 }
