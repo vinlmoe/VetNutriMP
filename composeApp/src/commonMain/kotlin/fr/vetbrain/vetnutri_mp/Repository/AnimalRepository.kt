@@ -32,7 +32,15 @@ interface AnimalRepository {
      * @return Le nombre d'animaux importés avec succès
      */
     suspend fun importAnimals(animalsJson: List<AnimalEvJson>): Int
-
+    
+    /**
+     * Récupère un animal avec toutes ses relations (consultations, rations, aliments)
+     * 
+     * @param id L'identifiant de l'animal à récupérer
+     * @return L'animal complet avec toutes ses relations ou null si non trouvé
+     */
+    suspend fun getAnimalWithRelations(id: String): AnimalEv?
+    
     /**
      * Récupère le repository des aliments
      *

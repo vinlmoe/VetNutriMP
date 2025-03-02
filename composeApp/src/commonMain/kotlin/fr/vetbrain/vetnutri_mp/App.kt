@@ -31,21 +31,26 @@ fun App(appDatabase: AppDatabase) {
 
     // Création des repositories avec la base de données
     val animalRepository = remember {
-        DatabaseAnimalRepository(appDatabase.animalDao(), appDatabase.foodDao()).apply {
-            // Ajout de quelques animaux de test uniquement si la base est vide
-            runBlocking {
-                if (getAllAnimals().isEmpty()) {
-                    saveAnimal(AnimalEv.createTestAnimal())
-                    saveAnimal(
-                            AnimalEv.createTestAnimal()
-                                    .copy(
-                                            nom = "Felix",
-                                            specieId = Espece.CHAT.name,
-                                    )
-                    )
+        DatabaseAnimalRepository(
+                        appDatabase.animalDao(),
+                        appDatabase.foodDao(),
+                        appDatabase.consultationDao()
+                )
+                .apply {
+                    // Ajout de quelques animaux de test uniquement si la base est vide
+                    runBlocking {
+                        if (getAllAnimals().isEmpty()) {
+                            saveAnimal(AnimalEv.createTestAnimal())
+                            saveAnimal(
+                                    AnimalEv.createTestAnimal()
+                                            .copy(
+                                                    nom = "Felix",
+                                                    specieId = Espece.CHAT.name,
+                                            )
+                            )
+                        }
+                    }
                 }
-            }
-        }
     }
 
     // Création du repository pour les aliments

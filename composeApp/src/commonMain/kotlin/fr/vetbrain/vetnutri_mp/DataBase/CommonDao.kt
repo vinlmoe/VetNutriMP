@@ -46,6 +46,9 @@ interface AnimalDao {
 
     @Query("DELETE FROM RATIONS WHERE idConsult = :consultationId")
     suspend fun deleteRationsForConsultation(consultationId: String)
+
+    @Query("SELECT * FROM ALIMENTS WHERE refRation = :rationId")
+    suspend fun getAlimentRationsForRation(rationId: String): List<AlimentRationEntity>
 }
 
 @Dao

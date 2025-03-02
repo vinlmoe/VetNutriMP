@@ -62,11 +62,28 @@ class AnimalDetailViewModel(
 
             // Charger les consultations depuis la base de données
             try {
-                val consultations = consultationRepository.getConsultationsForAnimal(animal.uuid)
+                val completeAnimal = animalRepository.getAnimalWithRelations(animal.uuid)
 
                 // Mettre à jour l'animal avec les consultations chargées
                 _animal.update { currentAnimal ->
-                    currentAnimal?.copy(consultations = consultations.toMutableList())
+                    currentAnimal?.copy(
+                            consultations = completeAnimal?.consultations?.toMutableList()
+                                            ?: mutableListOf()
+                    )
+                }
+
+                // Log des aliments dans les rations pour débogage
+                completeAnimal?.consultations?.forEach { consultation ->
+                    consultation.rations.forEach { ration ->
+                        println(
+                                "Ration ${ration.name} contient ${ration.alimentMutableList.size} aliments"
+                        )
+                        ration.alimentMutableList.forEach { alimentRation ->
+                            println(
+                                    "AlimentRation: ${alimentRation.uuid}, aliment: ${alimentRation.aliment?.nom ?: "non défini"}"
+                            )
+                        }
+                    }
                 }
             } catch (e: Exception) {
                 // Gérer les erreurs potentielles lors du chargement des consultations
