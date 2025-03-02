@@ -54,6 +54,8 @@ class AnimalDetailViewModel(
 
     fun setAnimal(animal: AnimalEv) {
         viewModelScope.launch {
+            println("DEBUG_ALIMENTS: Début setAnimal pour ${animal.nom}")
+
             // Conserver une référence à l'animal original
             val originalAnimal = animal.copy()
 
@@ -63,14 +65,37 @@ class AnimalDetailViewModel(
             // Charger les consultations depuis la base de données
             try {
                 val consultations = consultationRepository.getConsultationsForAnimal(animal.uuid)
+                println(
+                        "DEBUG_ALIMENTS: ${consultations.size} consultations chargées pour ${animal.nom}"
+                )
+
+                // Pour chaque consultation, vérifiez combien de rations et d'aliments elle contient
+                consultations.forEachIndexed { i, c ->
+                    println(
+                            "DEBUG_ALIMENTS: Consultation $i (${c.date}) a ${c.rations.size} rations"
+                    )
+                    c.rations.forEachIndexed { j, r ->
+                        println(
+                                "DEBUG_ALIMENTS: --Ration $j (${r.name}) a ${r.alimentMutableList.size} aliments"
+                        )
+                        r.alimentMutableList.forEachIndexed { k, a ->
+                            println(
+                                    "DEBUG_ALIMENTS: ----Aliment $k: UUID=${a.uuid}, refAlimUnif=${a.refAlimUnif}, nom=${a.aliment?.nom ?: "ALIMENT NULL"}"
+                            )
+                        }
+                    }
+                }
 
                 // Mettre à jour l'animal avec les consultations chargées
                 _animal.update { currentAnimal ->
                     currentAnimal?.copy(consultations = consultations.toMutableList())
                 }
+
+                println("DEBUG_ALIMENTS: Animal mis à jour avec les consultations")
             } catch (e: Exception) {
                 // Gérer les erreurs potentielles lors du chargement des consultations
-                println("Erreur lors du chargement des consultations: ${e.message}")
+                println("DEBUG_ALIMENTS: Erreur lors du chargement des consultations: ${e.message}")
+                e.printStackTrace()
             }
 
             // Réinitialiser les états
@@ -78,6 +103,8 @@ class AnimalDetailViewModel(
             isEditingConsultation = false
             isEditingRation = false
             isEditingAnimal = false
+
+            println("DEBUG_ALIMENTS: Fin setAnimal pour ${animal.nom}")
         }
     }
 
@@ -89,11 +116,58 @@ class AnimalDetailViewModel(
         viewModelScope.launch {
             val fullConsultation = consultationRepository.getConsultationById(consultation.uuid)
             _selectedConsultation.value = fullConsultation
+
+            // Afficher des détails de débogage pour s'assurer que les aliments sont bien chargés
+            println(
+                    "DEBUG selectConsultation - Consultation sélectionnée: ${fullConsultation?.date}, Rations: ${fullConsultation?.rations?.size}"
+            )
+            fullConsultation?.rations?.forEachIndexed { index, ration ->
+                println(
+                        "DEBUG selectConsultation - Ration[$index]: ${ration.name}, Aliments: ${ration.alimentMutableList.size}"
+                )
+                ration.alimentMutableList.forEachIndexed { alimentIndex, aliment ->
+                    println(
+                            "DEBUG selectConsultation - Aliment[$alimentIndex]: UUID=${aliment.uuid}, refAlimUnif=${aliment.refAlimUnif}, aliment=${aliment.aliment?.nom ?: "null"}"
+                    )
+                }
+            }
+
+            // Si aucune ration n'est sélectionnée mais qu'il y en a dans la consultation, en
+            // sélectionner une
+            if (_selectedRation.value == null && !fullConsultation?.rations.isNullOrEmpty()) {
+                selectRation(fullConsultation!!.rations.first())
+            }
         }
     }
 
     fun selectRation(ration: Ration) {
-        _selectedRation.value = ration.copy()
+        println("DEBUG_ALIMENTS: Début selectRation pour ration ${ration.uuid} (${ration.name})")
+        println("DEBUG_ALIMENTS: Ration a ${ration.alimentMutableList.size} aliments avant copie")
+
+        ration.alimentMutableList.forEachIndexed { k, a ->
+            println(
+                    "DEBUG_ALIMENTS: --Avant copie - Aliment $k: UUID=${a.uuid}, refAlimUnif=${a.refAlimUnif}, nom=${a.aliment?.nom ?: "ALIMENT NULL"}"
+            )
+        }
+
+        // Créer une copie profonde de la ration, y compris sa liste d'aliments
+        val rationCopy =
+                ration.copy(
+                        alimentMutableList =
+                                ration.alimentMutableList.map { it.copy() }.toMutableList()
+                )
+
+        println("DEBUG_ALIMENTS: Ration copiée a ${rationCopy.alimentMutableList.size} aliments")
+        rationCopy.alimentMutableList.forEachIndexed { k, a ->
+            println(
+                    "DEBUG_ALIMENTS: --Après copie - Aliment $k: UUID=${a.uuid}, refAlimUnif=${a.refAlimUnif}, nom=${a.aliment?.nom ?: "ALIMENT NULL"}"
+            )
+        }
+
+        _selectedRation.value = rationCopy
+        println("DEBUG_ALIMENTS: Ration sélectionnée mise à jour")
+
+        println("DEBUG_ALIMENTS: Fin selectRation")
     }
 
     fun startEditingConsultation() {
@@ -227,15 +301,47 @@ class AnimalDetailViewModel(
     }
 
     fun updateRationInConsultation(ration: Ration) {
+        println(
+                "DEBUG_ALIMENTS: Début updateRationInConsultation pour ration ${ration.uuid} (${ration.name})"
+        )
+        println(
+                "DEBUG_ALIMENTS: Ration à mettre à jour contient ${ration.alimentMutableList.size} aliments"
+        )
+
+        ration.alimentMutableList.forEachIndexed { k, a ->
+            println(
+                    "DEBUG_ALIMENTS: --Ration à mettre à jour - Aliment $k: UUID=${a.uuid}, refAlimUnif=${a.refAlimUnif}, nom=${a.aliment?.nom ?: "ALIMENT NULL"}"
+            )
+        }
+
         val consultation = _selectedConsultation.value?.copy() ?: return
+        println("DEBUG_ALIMENTS: Consultation actuelle: ${consultation.uuid}, ${consultation.date}")
+        println("DEBUG_ALIMENTS: Consultation contient ${consultation.rations.size} rations")
+
         val updatedRations = consultation.rations.toMutableList()
         val index = updatedRations.indexOfFirst { it.uuid == ration.uuid }
+
         if (index >= 0) {
+            println("DEBUG_ALIMENTS: Ration trouvée à l'index $index")
             updatedRations[index] = ration
             val updatedConsultation = consultation.copy(rations = updatedRations)
+
+            println("DEBUG_ALIMENTS: Mise à jour de la consultation avec la ration modifiée")
+            println(
+                    "DEBUG_ALIMENTS: Consultation mise à jour contient ${updatedConsultation.rations.size} rations"
+            )
+
             _selectedConsultation.value = updatedConsultation
+
+            println(
+                    "DEBUG_ALIMENTS: Sauvegarde des modifications dans la base de données via updateConsultation"
+            )
             updateConsultation(updatedConsultation)
+        } else {
+            println("DEBUG_ALIMENTS: ERREUR - Ration non trouvée dans la consultation")
         }
+
+        println("DEBUG_ALIMENTS: Fin updateRationInConsultation")
     }
 
     fun removeRationFromConsultation(ration: Ration) {
@@ -326,5 +432,38 @@ class AnimalDetailViewModel(
         }
 
         return true
+    }
+
+    /**
+     * Met à jour la quantité d'un aliment dans la ration sélectionnée
+     *
+     * @param alimentUuid UUID de l'aliment à mettre à jour
+     * @param newQuantity Nouvelle quantité de l'aliment
+     */
+    fun updateAlimentQuantity(alimentUuid: String, newQuantity: Float) {
+        val currentRation = _selectedRation.value?.copy() ?: return
+
+        // Créer une nouvelle liste d'aliments avec la quantité mise à jour
+        val updatedAliments =
+                currentRation
+                        .alimentMutableList
+                        .map { aliment ->
+                            if (aliment.uuid == alimentUuid) {
+                                // Créer une copie de l'aliment avec la nouvelle quantité
+                                aliment.copy(quantity = newQuantity)
+                            } else {
+                                aliment
+                            }
+                        }
+                        .toMutableList()
+
+        // Créer une nouvelle ration avec la liste d'aliments mise à jour
+        val updatedRation = currentRation.copy(alimentMutableList = updatedAliments)
+
+        // Mettre à jour la ration sélectionnée
+        _selectedRation.value = updatedRation
+
+        // Mettre à jour la ration dans la consultation
+        updateRationInConsultation(updatedRation)
     }
 }

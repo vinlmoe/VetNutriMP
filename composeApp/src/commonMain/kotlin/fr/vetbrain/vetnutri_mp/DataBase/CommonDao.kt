@@ -77,6 +77,8 @@ interface ConsultationDao {
 
     @Insert suspend fun insertRation(ration: RationEntity)
 
+    @Insert suspend fun insertAlimentRation(aliment: AlimentRationEntity)
+
     @Query("DELETE FROM RATIONS WHERE idConsult = :consultationId")
     suspend fun deleteRationsForConsultation(consultationId: String)
 

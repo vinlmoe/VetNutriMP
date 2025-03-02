@@ -191,7 +191,15 @@ fun RationsView(viewModel: AnimalDetailViewModel, modifier: Modifier = Modifier)
                                     ) {
                                         items(selectedRation?.alimentMutableList ?: emptyList()) {
                                                 aliment ->
-                                            AlimentItem(aliment = aliment)
+                                            AlimentItem(
+                                                    aliment = aliment,
+                                                    onQuantityChange = { newQuantity ->
+                                                        viewModel.updateAlimentQuantity(
+                                                                aliment.uuid,
+                                                                newQuantity
+                                                        )
+                                                    }
+                                            )
                                         }
                                     }
                                 }

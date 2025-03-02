@@ -55,6 +55,32 @@ class DatabaseConsultationRepository(
                 val rationEntity = ration.toEntity()
                 rationEntity.idConsult = consultation.uuid
                 consultationDao.insertRation(rationEntity)
+
+                // Sauvegarder les aliments de la ration
+                ration.alimentMutableList.forEach { aliment ->
+                    // S'assurer que la référence à la ration est bien définie
+                    aliment.refRation = ration.uuid
+
+                    // Vérifier si l'aliment a une référence valide
+                    if (aliment.refAlimUnif != null) {
+                        try {
+                            // Convertir l'AlimentRation en AlimentRationEntity et l'insérer
+                            val alimentEntity = aliment.toEntity()
+                            consultationDao.insertAlimentRation(alimentEntity)
+                            println(
+                                    "Inséré: AlimentRation avec ID=${aliment.uuid}, référençant l'aliment ${aliment.refAlimUnif}"
+                            )
+                        } catch (e: Exception) {
+                            println(
+                                    "Erreur lors de l'insertion de l'AlimentRation avec ID=${aliment.uuid}: ${e.message}"
+                            )
+                        }
+                    } else {
+                        println(
+                                "Ignoré: AlimentRation avec ID=${aliment.uuid} n'a pas de référence d'aliment"
+                        )
+                    }
+                }
             }
         }
     }
