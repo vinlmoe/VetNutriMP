@@ -69,35 +69,66 @@ class DatabaseConsultationRepository(
                         )
                 val rations = consultationDao.getRationsForConsultation(consultationEntity.uuid)
 
-                // Pour chaque ration, récupérer les aliments associés
-                val rationsWithAliments =
-                        rations.map { rationEntity ->
-                            // Récupérer les entités AlimentRation pour cette ration
-                            val alimentRationEntities =
-                                    consultationDao.getAlimentsForRation(rationEntity.uuid)
+                println(
+                        "DEBUG ConsultationRepo - Consultation ${consultationEntity.uuid} chargée avec ${rations.size} rations"
+                )
 
-                            // Convertir la ration et ses aliments en objets de domaine
-                            val ration = rationEntity.toData(alimentRationEntities)
+                // Créer d'abord la consultation avec les entités RationEntity
+                val consultation = consultationEntity.toData(rations = rations, suppVars = suppVars)
 
-                            // Pour chaque AlimentRation, charger les détails complets de l'aliment
-                            ration.alimentMutableList.forEachIndexed { index, alimentRation ->
-                                alimentRation.refAlimUnif?.let { alimentUuid ->
-                                    // Charger l'aliment complet depuis le FoodRepository
-                                    val alimentEv = foodRepository.getFood(alimentUuid)
+                // Maintenant, pour chaque ration dans la consultation créée, récupérer et associer
+                // les aliments
+                consultation.rations.forEach { ration ->
+                    // Charger les aliments pour cette ration
+                    val aliments = consultationDao.getAlimentsForRation(ration.uuid)
+                    println(
+                            "DEBUG ConsultationRepo - Ration ${ration.name} a ${aliments.size} aliments"
+                    )
 
-                                    // Mettre à jour l'objet AlimentRation avec les détails complets
-                                    if (alimentEv != null) {
-                                        ration.alimentMutableList[index] =
-                                                alimentRation.copy(aliment = alimentEv)
-                                    }
+                    // Remplacer la liste d'aliments vide par les aliments chargés
+                    ration.alimentMutableList.clear()
+                    ration.alimentMutableList.addAll(aliments.map { it.toData() })
+
+                    println(
+                            "DEBUG ConsultationRepo - Chargement des détails pour la ration ${ration.name} (${ration.alimentMutableList.size} aliments)"
+                    )
+
+                    // Pour chaque AlimentRation, charger les détails complets de l'aliment
+                    ration.alimentMutableList.forEachIndexed { index, alimentRation ->
+                        alimentRation.refAlimUnif?.let { alimentUuid ->
+                            // Charger l'aliment complet depuis le FoodRepository
+                            val alimentEv = foodRepository.getFood(alimentUuid)
+
+                            if (alimentEv != null) {
+                                println(
+                                        "DEBUG ConsultationRepo - Aliment trouvé et associé: ${alimentEv.nom}"
+                                )
+                                // Mettre à jour l'objet AlimentRation avec les détails complets
+                                ration.alimentMutableList[index] =
+                                        alimentRation.copy(aliment = alimentEv)
+                            } else {
+                                // Essayer avec getFoodById au cas où
+                                val alimentById = foodRepository.getFoodById(alimentUuid)
+                                if (alimentById != null) {
+                                    println(
+                                            "DEBUG ConsultationRepo - Aliment trouvé par ID et associé: ${alimentById.nom}"
+                                    )
+                                    ration.alimentMutableList[index] =
+                                            alimentRation.copy(aliment = alimentById)
+                                } else {
+                                    println(
+                                            "DEBUG ConsultationRepo - ERREUR: Impossible de trouver l'aliment avec UUID=$alimentUuid"
+                                    )
                                 }
                             }
-
-                            ration
                         }
+                                ?: println(
+                                        "DEBUG ConsultationRepo - ATTENTION: refAlimUnif est null pour l'AlimentRation ${alimentRation.uuid}"
+                                )
+                    }
+                }
 
-                // Construire la consultation avec ses rations complètes
-                consultationEntity.toData(rations = rations, suppVars = suppVars)
+                consultation
             }
         }
     }
@@ -109,35 +140,75 @@ class DatabaseConsultationRepository(
                     consultationDao.getSupplementalVariablesForConsultation(consultation.uuid)
             val rations = consultationDao.getRationsForConsultation(consultation.uuid)
 
-            // Pour chaque ration, récupérer les aliments associés
-            val rationsWithAliments =
-                    rations.map { rationEntity ->
-                        // Récupérer les entités AlimentRation pour cette ration
-                        val alimentRationEntities =
-                                consultationDao.getAlimentsForRation(rationEntity.uuid)
+            println(
+                    "DEBUG ConsultationRepo - Consultation ${consultation.uuid} chargée avec ${rations.size} rations"
+            )
 
-                        // Convertir la ration et ses aliments en objets de domaine
-                        val ration = rationEntity.toData(alimentRationEntities)
+            // Créer d'abord la consultation avec les entités RationEntity
+            val consultationEv = consultation.toData(rations = rations, suppVars = suppVars)
 
-                        // Pour chaque AlimentRation, charger les détails complets de l'aliment
-                        ration.alimentMutableList.forEachIndexed { index, alimentRation ->
-                            alimentRation.refAlimUnif?.let { alimentUuid ->
-                                // Charger l'aliment complet depuis le FoodRepository
-                                val alimentEv = foodRepository.getFood(alimentUuid)
+            // Maintenant, pour chaque ration dans la consultation créée, récupérer et associer les
+            // aliments
+            consultationEv.rations.forEach { ration ->
+                // Charger les aliments pour cette ration
+                val aliments = consultationDao.getAlimentsForRation(ration.uuid)
+                println(
+                        "DEBUG ConsultationRepo - Ration ${ration.name} a ${aliments.size} aliments"
+                )
 
-                                // Mettre à jour l'objet AlimentRation avec les détails complets
-                                if (alimentEv != null) {
-                                    ration.alimentMutableList[index] =
-                                            alimentRation.copy(aliment = alimentEv)
-                                }
+                // Remplacer la liste d'aliments vide par les aliments chargés
+                ration.alimentMutableList.clear()
+                ration.alimentMutableList.addAll(aliments.map { it.toData() })
+
+                println(
+                        "DEBUG ConsultationRepo - Chargement des détails pour la ration ${ration.name} (${ration.alimentMutableList.size} aliments)"
+                )
+
+                // Pour chaque AlimentRation, charger les détails complets de l'aliment
+                ration.alimentMutableList.forEachIndexed { index, alimentRation ->
+                    val alimentUuid = alimentRation.refAlimUnif
+                    println(
+                            "DEBUG ConsultationRepo - AlimentRation[$index]: UUID=${alimentRation.uuid}, refAlimUnif=$alimentUuid"
+                    )
+
+                    if (alimentUuid != null) {
+                        // Charger l'aliment complet depuis le FoodRepository
+                        val alimentEv = foodRepository.getFood(alimentUuid)
+                        println(
+                                "DEBUG ConsultationRepo - Aliment trouvé: ${alimentEv?.nom ?: "null"}"
+                        )
+
+                        // Mettre à jour l'objet AlimentRation avec les détails complets
+                        if (alimentEv != null) {
+                            ration.alimentMutableList[index] =
+                                    alimentRation.copy(aliment = alimentEv)
+                            println(
+                                    "DEBUG ConsultationRepo - Aliment associé à la ration: ${alimentEv.nom}"
+                            )
+                        } else {
+                            // Essayer avec getFoodById au cas où
+                            val alimentById = foodRepository.getFoodById(alimentUuid)
+                            if (alimentById != null) {
+                                ration.alimentMutableList[index] =
+                                        alimentRation.copy(aliment = alimentById)
+                                println(
+                                        "DEBUG ConsultationRepo - Aliment trouvé par ID et associé: ${alimentById.nom}"
+                                )
+                            } else {
+                                println(
+                                        "DEBUG ConsultationRepo - ERREUR: Impossible de trouver l'aliment avec UUID=$alimentUuid"
+                                )
                             }
                         }
-
-                        rationEntity
+                    } else {
+                        println(
+                                "DEBUG ConsultationRepo - ATTENTION: refAlimUnif est null pour l'AlimentRation ${alimentRation.uuid}"
+                        )
                     }
+                }
+            }
 
-            // Construire la consultation avec ses rations complètes
-            consultation.toData(rations = rations, suppVars = suppVars)
+            consultationEv
         }
     }
 

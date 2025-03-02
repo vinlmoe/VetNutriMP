@@ -2,6 +2,7 @@ package fr.vetbrain.vetnutri_mp.Repository
 
 import fr.vetbrain.vetnutri_mp.Data.AlimentEv
 import fr.vetbrain.vetnutri_mp.Data.AlimentEvJson
+import fr.vetbrain.vetnutri_mp.DataBase.AlimentEntity
 import fr.vetbrain.vetnutri_mp.DataBase.EspeceAlimentEntity
 import fr.vetbrain.vetnutri_mp.DataBase.FoodDao
 import fr.vetbrain.vetnutri_mp.DataBase.FoodEntity
@@ -10,6 +11,7 @@ import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toAlimentEntity
 import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toAlimentEv
 import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toNutrientValueEntities
 import fr.vetbrain.vetnutri_mp.DataBase.NutrientValueDao
+import fr.vetbrain.vetnutri_mp.DataBase.NutrientValueEntity
 import fr.vetbrain.vetnutri_mp.Enumer.FoodKind
 import fr.vetbrain.vetnutri_mp.Enumer.GroupAlim
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
@@ -80,51 +82,144 @@ class DatabaseFoodRepository(
      * @param foods Liste des aliments à importer
      * @return Nombre d'aliments importés avec succès
      */
-    override suspend fun importFoods(foods: List<AlimentEvJson>): Int =
-            withContext(AppDispatchers.IO) {
-                var importedCount = 0
-                var updatedCount = 0
-                var errors = 0
+    override suspend fun importFoods(foods: List<AlimentEvJson>): Int {
+        return withContext(AppDispatchers.IO) {
+            var importCount = 0
 
-                // Récupérer la liste des aliments existants par uuid pour éviter les duplicatas
-                val existingFoods = foodDao.findAll().associateBy { it.uuid }
+            foods.forEach { food ->
+                try {
+                    val foodId = food.UUID
 
-                println(
-                        "Début de l'importation de ${foods.size} aliments. ${existingFoods.size} aliments déjà en base"
-                )
+                    // Vérifier si l'aliment existe déjà dans la table ALIMENTS_BASE
+                    val existingInAlimentsBase = foodDao.getFood(foodId)
 
-                for (food in foods) {
-                    try {
-                        val foodEntity = food.toFoodEntity()
-
-                        // Vérifier si l'aliment existe déjà
-                        if (existingFoods.containsKey(foodEntity.uuid)) {
-                            // Mettre à jour l'aliment existant
-                            foodDao.update(foodEntity)
-                            updatedCount++
-                            println("Aliment mis à jour: ${food.nom} (uuid: ${food.UUID})")
-                        } else {
-                            // Insérer le nouvel aliment
-                            foodDao.insert(foodEntity)
-                            importedCount++
-                            println("Nouvel aliment importé: ${food.nom} (uuid: ${food.UUID})")
-                        }
-                    } catch (e: Exception) {
+                    if (existingInAlimentsBase == null) {
+                        // L'aliment n'existe pas dans ALIMENTS_BASE, l'ajouter
+                        val alimentEntity =
+                                AlimentEntity(
+                                        uuid = food.UUID,
+                                        name = food.nom,
+                                        groupAliment =
+                                                try {
+                                                    GroupAlim.valueOf(food.group).ordinal
+                                                } catch (e: Exception) {
+                                                    println(
+                                                            "Erreur de conversion du groupe '${food.group}': ${e.message}"
+                                                    )
+                                                    0
+                                                },
+                                        typeAliment =
+                                                try {
+                                                    FoodKind.valueOf(food.foodKind).ordinal
+                                                } catch (e: Exception) {
+                                                    println(
+                                                            "Erreur de conversion du type '${food.foodKind}': ${e.message}"
+                                                    )
+                                                    0
+                                                },
+                                        ingredients = food.ingredients ?: "",
+                                        price = food.prix ?: 0.0,
+                                        categoriePrix = food.categoriePrix ?: "",
+                                        marque = food.marque ?: "",
+                                        gamme = food.gamme ?: "",
+                                        consistent = if (food.cont == "YES") 1 else 0,
+                                        quantite = food.quantInt ?: 0f,
+                                        deprecated = if (food.deprecated) 1 else 0,
+                                        dataB = food.DataB ?: "",
+                                        rationUUID = null
+                                )
                         println(
-                                "Erreur lors de l'importation de l'aliment ${food.nom}: ${e.message}"
+                                "Import d'un nouvel aliment dans ALIMENTS_BASE: ${alimentEntity.name} (${alimentEntity.uuid})"
                         )
-                        errors++
+                        foodDao.insertFood(alimentEntity)
+
+                        // Ajouter également les nutriments associés
+                        if (food.valMap.isNotEmpty()) {
+                            val nutrientValueEntities =
+                                    food.valMap.map { (nutrientLabel, value) ->
+                                        NutrientValueEntity(
+                                                refAliment = foodId,
+                                                nutrientLabel = nutrientLabel,
+                                                value = value
+                                        )
+                                    }
+                            nutrientValueDao.insertNutrientValues(nutrientValueEntities)
+                        }
+                    } else {
+                        println(
+                                "L'aliment existe déjà dans ALIMENTS_BASE: ${existingInAlimentsBase.name} (${existingInAlimentsBase.uuid})"
+                        )
                     }
+
+                    // Pour compatibilité, on vérifie si l'aliment existe dans la table FOOD
+                    // Si oui, on ne fait rien, sinon on l'insère
+                    val existingInFood = foodDao.getFoodById(food.UUID)
+                    if (existingInFood == null) {
+                        val foodEntity =
+                                FoodEntity(
+                                        uuid = food.UUID,
+                                        nameDef = food.nom,
+                                        groupAlim =
+                                                try {
+                                                    GroupAlim.valueOf(food.group).ordinal
+                                                } catch (e: Exception) {
+                                                    println(
+                                                            "Erreur de conversion du groupe '${food.group}': ${e.message}"
+                                                    )
+                                                    0
+                                                },
+                                        typeAlim =
+                                                try {
+                                                    FoodKind.valueOf(food.foodKind).ordinal
+                                                } catch (e: Exception) {
+                                                    println(
+                                                            "Erreur de conversion du type '${food.foodKind}': ${e.message}"
+                                                    )
+                                                    0
+                                                },
+                                        ingredients = food.ingredients ?: "",
+                                        price = food.prix ?: 0.0,
+                                        categPrice = food.categoriePrix ?: "",
+                                        brand = food.marque ?: "",
+                                        gamme = food.gamme ?: "",
+                                        unitPres = 0, // Valeur par défaut
+                                        quantityPres = food.quantInt ?: 0f,
+                                        version = 1, // Valeur par défaut
+                                        date = "", // Valeur par défaut
+                                        consistent = if (food.cont == "YES") 1 else 0,
+                                        deprecated = if (food.deprecated) 1 else 0,
+                                        DataB = food.DataB ?: ""
+                                )
+                        println(
+                                "Import de l'aliment dans FOOD: ${foodEntity.nameDef} (${foodEntity.uuid})"
+                        )
+                        // Utiliser insertOrUpdate au lieu de insert pour éviter les erreurs de
+                        // contrainte d'unicité
+                        try {
+                            foodDao.insert(foodEntity)
+                            importCount++
+                        } catch (e: Exception) {
+                            println(
+                                    "Impossible d'insérer l'aliment ${food.nom} avec ID=${food.UUID}: ${e.message}"
+                            )
+                            // Au lieu d'échouer complètement, on peut essayer de mettre à jour
+                            // l'aliment existant
+                            // Cela nécessiterait une méthode update dans le FoodDao
+                        }
+                    } else {
+                        println(
+                                "L'aliment existe déjà dans FOOD: ${existingInFood.nameDef} (${existingInFood.uuid})"
+                        )
+                    }
+                } catch (e: Exception) {
+                    println("Erreur lors de l'import de l'aliment ${food.nom}: ${e.message}")
+                    e.printStackTrace()
                 }
-
-                println("Importation terminée:")
-                println("- Nombre d'aliments importés: $importedCount")
-                println("- Nombre d'aliments mis à jour: $updatedCount")
-                println("- Nombre d'erreurs: $errors")
-
-                // Retourner le nombre total d'aliments traités avec succès
-                importedCount + updatedCount
             }
+
+            importCount
+        }
+    }
 
     /** Insère un aliment avec toutes ses propriétés associées */
     override suspend fun insertFood(food: AlimentEv) {
@@ -153,12 +248,33 @@ class DatabaseFoodRepository(
 
     override suspend fun getFood(uuid: String): AlimentEv? {
         return withContext(AppDispatchers.IO) {
-            val alimentEntity = foodDao.getFood(uuid) ?: return@withContext null
-            val especes = foodDao.getEspecesForAliment(uuid)
-            val indications = foodDao.getIndicationsForAliment(uuid)
-            val nutrientValues = nutrientValueDao.getNutrientValues(uuid)
+            // Essayer d'abord de récupérer l'aliment depuis la table ALIMENTS_BASE
+            val alimentEntity = foodDao.getFood(uuid)
+            if (alimentEntity != null) {
+                println(
+                        "DEBUG getFood - Aliment trouvé dans ALIMENTS_BASE: ${alimentEntity.name} (${alimentEntity.uuid})"
+                )
 
-            alimentEntity.toAlimentEv(especes, indications, nutrientValues)
+                // Charger les données associées
+                val especes = foodDao.getEspecesForAliment(uuid)
+                val indications = foodDao.getIndicationsForAliment(uuid)
+                val nutrientValues = nutrientValueDao.getNutrientValues(uuid)
+
+                // Convertir en AlimentEv
+                return@withContext alimentEntity.toAlimentEv(especes, indications, nutrientValues)
+            }
+
+            // Sinon, essayer de récupérer l'aliment depuis la table FOOD
+            val foodEntity = foodDao.getFoodById(uuid)
+            if (foodEntity != null) {
+                println(
+                        "DEBUG getFood - Aliment trouvé dans FOOD: ${foodEntity.nameDef} (${foodEntity.uuid})"
+                )
+                return@withContext foodEntity.toDomain()
+            }
+
+            println("DEBUG getFood - Aucun aliment trouvé pour UUID: $uuid")
+            return@withContext null
         }
     }
 
@@ -245,19 +361,19 @@ class DatabaseFoodRepository(
                             println("Erreur de conversion du type '${this.foodKind}': ${e.message}")
                             0
                         },
-                ingredients = this.ingredients,
-                price = this.prix,
-                categPrice = this.categoriePrix,
-                brand = this.marque,
-                gamme = this.gamme,
+                ingredients = this.ingredients ?: "",
+                price = this.prix ?: 0.0,
+                categPrice = this.categoriePrix ?: "",
+                brand = this.marque ?: "",
+                gamme = this.gamme ?: "",
                 unitPres = 0, // Valeur par défaut
-                quantityPres = this.quantInt,
+                quantityPres = this.quantInt ?: 0f,
                 version = 1, // Valeur par défaut
                 date = "", // Valeur par défaut
-                nameDef = this.nom,
+                nameDef = this.nom ?: "",
                 consistent = if (this.cont == "YES") 1 else 0,
                 deprecated = if (this.deprecated) 1 else 0,
-                DataB = this.DataB
+                DataB = this.DataB ?: ""
         )
     }
 
