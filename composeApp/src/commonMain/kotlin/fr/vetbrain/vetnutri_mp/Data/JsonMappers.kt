@@ -4,6 +4,8 @@ import fr.vetbrain.vetnutri_mp.Enumer.AlimIndic
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.FoodKind
 import fr.vetbrain.vetnutri_mp.Enumer.GroupAlim
+import fr.vetbrain.vetnutri_mp.Enumer.NutrientMain
+import fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver.AllNutrientResolver
 import fr.vetbrain.vetnutri_mp.Enumer.TargetAdjust
 import fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum
 import fr.vetbrain.vetnutri_mp.Enumer.VariableKind
@@ -31,47 +33,103 @@ fun AlimentEv.toJson(): AlimentEvJson {
             cont = this.cont?.toString() ?: "NO",
             deprecated = this.deprecated == 1,
             DataB = this.dataB ?: "6",
-            valMap = mapOf() // À adapter selon votre logique
+            valMap = this.valMap.mapKeys { (key, _) -> key.label } // Ajoute un préfixe à chaque clé
+                .mapValues { (_, value) ->
+                    value
+                }
+                .toMutableMap() // À adapter selon votre logique
     )
 }
 
 fun AlimentEvJson.toData(): AlimentEv {
     return AlimentEv(
-            uuid = this.UUID,
-            nom = this.nom,
-            group =
-                    try {
-                        GroupAlim.valueOf(this.group)
-                    } catch (e: Exception) {
-                        null
-                    },
-            typeAliment =
-                    try {
-                        FoodKind.valueOf(this.foodKind)
-                    } catch (e: Exception) {
-                        null
-                    },
-            ingredients = this.ingredients,
-            price = this.prix,
-            categPrice = this.categoriePrix,
-            brand = this.marque,
-            gamme = this.gamme,
-            consistent = true,
-            cont = if (this.cont == "NO") 0 else 1,
-            quantInt = this.quantInt,
-            deprecated = if (this.deprecated) 1 else 0,
-            dataB = this.DataB,
-            especes = this.Especes.toMutableList(),
-            indicat =
-                    this.indication
-                            .mapNotNull {
-                                try {
-                                    AlimIndic.valueOf(it)
-                                } catch (e: Exception) {
-                                    null
-                                }
-                            }
-                            .toMutableList()
+        uuid = this.UUID,
+        nom = this.nom,
+        group =
+        try {
+            GroupAlim.valueOf(this.group)
+        } catch (e: Exception) {
+            null
+        },
+        typeAliment =
+        try {
+            FoodKind.valueOf(this.foodKind)
+        } catch (e: Exception) {
+            null
+        },
+        ingredients = this.ingredients,
+        price = this.prix,
+        categPrice = this.categoriePrix,
+        brand = this.marque,
+        gamme = this.gamme,
+        consistent = true,
+        cont = if (this.cont == "NO") 0 else 1,
+        quantInt = this.quantInt,
+        deprecated = if (this.deprecated) 1 else 0,
+        dataB = this.DataB,
+        especes = this.Especes.toMutableList(),
+        indicat =
+        this.indication
+            .mapNotNull {
+                try {
+                    AlimIndic.valueOf(it)
+                } catch (e: Exception) {
+                    null
+                }
+            }
+            .toMutableList(),
+        valMap = this.valMap.mapKeys { (key, _) -> AllNutrientResolver(key) ?:NutrientMain.PROTEINE } // Ajoute un préfixe à chaque clé
+            .mapValues { (_, value) ->
+                value
+            }
+
+            .toMutableMap(),
+        rationUUID =null
+    )
+}
+fun AlimentEvJson.toData(ratUUID :String): AlimentEv {
+    return AlimentEv(
+        uuid = this.UUID,
+        nom = this.nom,
+        group =
+        try {
+            GroupAlim.valueOf(this.group)
+        } catch (e: Exception) {
+            null
+        },
+        typeAliment =
+        try {
+            FoodKind.valueOf(this.foodKind)
+        } catch (e: Exception) {
+            null
+        },
+        ingredients = this.ingredients,
+        price = this.prix,
+        categPrice = this.categoriePrix,
+        brand = this.marque,
+        gamme = this.gamme,
+        consistent = true,
+        cont = if (this.cont == "NO") 0 else 1,
+        quantInt = this.quantInt,
+        deprecated = if (this.deprecated) 1 else 0,
+        dataB = this.DataB,
+        especes = this.Especes.toMutableList(),
+        indicat =
+        this.indication
+            .mapNotNull {
+                try {
+                    AlimIndic.valueOf(it)
+                } catch (e: Exception) {
+                    null
+                }
+            }
+            .toMutableList(),
+        valMap = this.valMap.mapKeys { (key, _) -> AllNutrientResolver(key) ?:NutrientMain.PROTEINE } // Ajoute un préfixe à chaque clé
+            .mapValues { (_, value) ->
+                value
+            }
+            .toMutableMap(),
+        rationUUID =ratUUID
     )
 }
 
@@ -192,8 +250,8 @@ fun ConsultationEvJson.toData(): ConsultationEv {
 fun Ration.toJson(): RationJson {
     return RationJson(
             UUID = this.uuid,
-            nom = this.name,
-            aliments = this.alimentMutableList.map { it.toJson() },
+            Nom = this.name,
+            alimentList = this.alimentMutableList.map { it.toJson() },
             actual = this.actual
     )
 }
@@ -201,9 +259,9 @@ fun Ration.toJson(): RationJson {
 fun RationJson.toData(): Ration {
     return Ration(
             uuid = this.UUID,
-            name = this.nom,
+            name = this.Nom,
             actual = this.actual,
-            alimentMutableList = this.aliments.map { it.toData() }.toMutableList()
+            alimentMutableList = this.alimentList.map { it.toData() }.toMutableList()
     )
 }
 
@@ -228,7 +286,7 @@ fun AlimentRationJson.toData(): AlimentRation {
             uuidUnif = this.UUIDunif,
             quantity = this.quantite,
             proportion = this.prop,
-            aliment = this.alime.toData(),
+            aliment = this.alime.toData(this.UUID),
             weight = this.weight,
             category = this.categ,
             density = this.density
@@ -365,3 +423,5 @@ fun AlimDBListJson.toData(): AlimDBList {
                             .toMutableMap()
     )
 }
+
+

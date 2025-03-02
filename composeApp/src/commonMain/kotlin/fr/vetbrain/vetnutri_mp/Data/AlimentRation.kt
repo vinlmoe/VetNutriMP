@@ -9,11 +9,13 @@ data class AlimentRation(
         val uuidUnif: String = "",
         val quantity: Float = 0f,
         val proportion: Float = 0f,
-        val aliment: AlimentEv? = null,
+        var aliment: AlimentEv? = null,
         val weight: Float = 1f,
         val category: Int = 0,
         val density: Double = 0.0,
         val refAlimUnif: String? = null,
         var refRation: String? = null,
         val refTarget: Int? = null
+
+
 )

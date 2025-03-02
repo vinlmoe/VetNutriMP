@@ -1,8 +1,8 @@
 {
   "formatVersion": 1,
   "database": {
-    "version": 1,
-    "identityHash": "0cfd7935fe89c5bb5491111218bc7f2c",
+    "version": 3,
+    "identityHash": "1cc7a701bcd1b52a85dacde2fe601d98",
     "entities": [
       {
         "tableName": "ANIMALS",
@@ -383,7 +383,7 @@
       },
       {
         "tableName": "ALIMENTS",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`uuid` TEXT NOT NULL, `refAlimUnif` TEXT, `refRation` TEXT, `quantity` REAL, `refTarget` INTEGER, PRIMARY KEY(`uuid`), FOREIGN KEY(`refRation`) REFERENCES `RATIONS`(`uuid`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`refAlimUnif`) REFERENCES `FOOD`(`UUID`) ON UPDATE NO ACTION ON DELETE SET NULL )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`uuid` TEXT NOT NULL, `refAlimUnif` TEXT, `refRation` TEXT, `quantity` REAL, `refTarget` INTEGER, PRIMARY KEY(`uuid`), FOREIGN KEY(`refRation`) REFERENCES `RATIONS`(`uuid`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`refAlimUnif`) REFERENCES `FOOD`(`uuid`) ON UPDATE NO ACTION ON DELETE SET NULL )",
         "fields": [
           {
             "fieldPath": "uuid",
@@ -458,14 +458,14 @@
               "refAlimUnif"
             ],
             "referencedColumns": [
-              "UUID"
+              "uuid"
             ]
           }
         ]
       },
       {
         "tableName": "ALIMENTS_BASE",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`uuid` TEXT NOT NULL, `group` INTEGER, `typeAliment` INTEGER, `ingredients` TEXT, `price` REAL, `categPrice` TEXT, `brand` TEXT, `gamme` TEXT, `nom` TEXT, `consistent` INTEGER NOT NULL, `cont` INTEGER, `quantInt` REAL, `deprecated` INTEGER, `dataB` TEXT, PRIMARY KEY(`uuid`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`uuid` TEXT NOT NULL, `groupAliment` INTEGER NOT NULL, `typeAliment` INTEGER NOT NULL, `ingredients` TEXT, `price` REAL, `categoriePrix` TEXT, `marque` TEXT, `gamme` TEXT, `name` TEXT, `consistent` INTEGER NOT NULL, `quantite` REAL, `deprecated` INTEGER, `dataB` TEXT, `rationUUID` TEXT, PRIMARY KEY(`uuid`))",
         "fields": [
           {
             "fieldPath": "uuid",
@@ -474,14 +474,16 @@
             "notNull": true
           },
           {
-            "fieldPath": "group",
-            "columnName": "group",
-            "affinity": "INTEGER"
+            "fieldPath": "groupAliment",
+            "columnName": "groupAliment",
+            "affinity": "INTEGER",
+            "notNull": true
           },
           {
             "fieldPath": "typeAliment",
             "columnName": "typeAliment",
-            "affinity": "INTEGER"
+            "affinity": "INTEGER",
+            "notNull": true
           },
           {
             "fieldPath": "ingredients",
@@ -494,13 +496,13 @@
             "affinity": "REAL"
           },
           {
-            "fieldPath": "categPrice",
-            "columnName": "categPrice",
+            "fieldPath": "categoriePrix",
+            "columnName": "categoriePrix",
             "affinity": "TEXT"
           },
           {
-            "fieldPath": "brand",
-            "columnName": "brand",
+            "fieldPath": "marque",
+            "columnName": "marque",
             "affinity": "TEXT"
           },
           {
@@ -509,8 +511,8 @@
             "affinity": "TEXT"
           },
           {
-            "fieldPath": "nom",
-            "columnName": "nom",
+            "fieldPath": "name",
+            "columnName": "name",
             "affinity": "TEXT"
           },
           {
@@ -520,13 +522,8 @@
             "notNull": true
           },
           {
-            "fieldPath": "cont",
-            "columnName": "cont",
-            "affinity": "INTEGER"
-          },
-          {
-            "fieldPath": "quantInt",
-            "columnName": "quantInt",
+            "fieldPath": "quantite",
+            "columnName": "quantite",
             "affinity": "REAL"
           },
           {
@@ -537,6 +534,11 @@
           {
             "fieldPath": "dataB",
             "columnName": "dataB",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "rationUUID",
+            "columnName": "rationUUID",
             "affinity": "TEXT"
           }
         ],
@@ -716,11 +718,11 @@
       },
       {
         "tableName": "FOOD",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`UUID` TEXT NOT NULL, `groupAlim` INTEGER NOT NULL, `typeAlim` INTEGER NOT NULL, `ingredients` TEXT NOT NULL, `price` REAL NOT NULL, `categPrice` TEXT NOT NULL, `brand` TEXT NOT NULL, `gamme` TEXT NOT NULL, `unitPres` INTEGER NOT NULL, `quantityPres` REAL NOT NULL, `version` INTEGER NOT NULL, `date` TEXT NOT NULL, `nameDef` TEXT NOT NULL, `consistent` INTEGER NOT NULL, `deprecated` INTEGER NOT NULL, `DataB` TEXT NOT NULL, `RefRation` TEXT, `quantity` REAL, `RefAlimUnif` TEXT, `refTarget` INTEGER, `rationName` TEXT, `rationUUID` TEXT, `animalUUID` TEXT, `animalNom` TEXT, `animalEspece` TEXT, `consultationUUID` TEXT, `consultationDate` TEXT, PRIMARY KEY(`UUID`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`uuid` TEXT NOT NULL, `groupAlim` INTEGER NOT NULL, `typeAlim` INTEGER NOT NULL, `ingredients` TEXT NOT NULL, `price` REAL NOT NULL, `categPrice` TEXT NOT NULL, `brand` TEXT NOT NULL, `gamme` TEXT NOT NULL, `unitPres` INTEGER NOT NULL, `quantityPres` REAL NOT NULL, `version` INTEGER NOT NULL, `date` TEXT NOT NULL, `nameDef` TEXT NOT NULL, `consistent` INTEGER NOT NULL, `deprecated` INTEGER NOT NULL, `DataB` TEXT NOT NULL, `RefRation` TEXT, `quantity` REAL, `RefAlimUnif` TEXT, `refTarget` INTEGER, `rationName` TEXT, `rationUUID` TEXT, `animalUUID` TEXT, `animalNom` TEXT, `animalEspece` TEXT, `consultationUUID` TEXT, `consultationDate` TEXT, PRIMARY KEY(`uuid`))",
         "fields": [
           {
-            "fieldPath": "UUID",
-            "columnName": "UUID",
+            "fieldPath": "uuid",
+            "columnName": "uuid",
             "affinity": "TEXT",
             "notNull": true
           },
@@ -873,78 +875,61 @@
         "primaryKey": {
           "autoGenerate": false,
           "columnNames": [
-            "UUID"
+            "uuid"
           ]
         }
       },
       {
-        "tableName": "ALIMENT_REFERENCES",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`uuid` TEXT NOT NULL, `foodId` TEXT NOT NULL, `referenceType` TEXT NOT NULL, `referenceValue` TEXT NOT NULL, `version` INTEGER NOT NULL, `date` TEXT NOT NULL, PRIMARY KEY(`uuid`), FOREIGN KEY(`foodId`) REFERENCES `FOOD`(`UUID`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "tableName": "NUTRIENT_VALUES",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`refAliment` TEXT NOT NULL, `nutrientLabel` TEXT NOT NULL, `value` REAL NOT NULL, PRIMARY KEY(`refAliment`, `nutrientLabel`), FOREIGN KEY(`refAliment`) REFERENCES `ALIMENTS_BASE`(`uuid`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
-            "fieldPath": "uuid",
-            "columnName": "uuid",
+            "fieldPath": "refAliment",
+            "columnName": "refAliment",
             "affinity": "TEXT",
             "notNull": true
           },
           {
-            "fieldPath": "foodId",
-            "columnName": "foodId",
+            "fieldPath": "nutrientLabel",
+            "columnName": "nutrientLabel",
             "affinity": "TEXT",
             "notNull": true
           },
           {
-            "fieldPath": "referenceType",
-            "columnName": "referenceType",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "referenceValue",
-            "columnName": "referenceValue",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "version",
-            "columnName": "version",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "date",
-            "columnName": "date",
-            "affinity": "TEXT",
+            "fieldPath": "value",
+            "columnName": "value",
+            "affinity": "REAL",
             "notNull": true
           }
         ],
         "primaryKey": {
           "autoGenerate": false,
           "columnNames": [
-            "uuid"
+            "refAliment",
+            "nutrientLabel"
           ]
         },
         "indices": [
           {
-            "name": "index_ALIMENT_REFERENCES_foodId",
+            "name": "index_NUTRIENT_VALUES_refAliment",
             "unique": false,
             "columnNames": [
-              "foodId"
+              "refAliment"
             ],
             "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_ALIMENT_REFERENCES_foodId` ON `${TABLE_NAME}` (`foodId`)"
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_NUTRIENT_VALUES_refAliment` ON `${TABLE_NAME}` (`refAliment`)"
           }
         ],
         "foreignKeys": [
           {
-            "table": "FOOD",
+            "table": "ALIMENTS_BASE",
             "onDelete": "CASCADE",
             "onUpdate": "NO ACTION",
             "columns": [
-              "foodId"
+              "refAliment"
             ],
             "referencedColumns": [
-              "UUID"
+              "uuid"
             ]
           }
         ]
@@ -952,7 +937,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '0cfd7935fe89c5bb5491111218bc7f2c')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '1cc7a701bcd1b52a85dacde2fe601d98')"
     ]
   }
 }

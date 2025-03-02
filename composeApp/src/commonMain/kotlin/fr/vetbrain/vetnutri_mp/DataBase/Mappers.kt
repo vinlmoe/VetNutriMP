@@ -2,6 +2,11 @@ package fr.vetbrain.vetnutri_mp.DataBase
 
 import fr.vetbrain.vetnutri_mp.Data.*
 import fr.vetbrain.vetnutri_mp.Enumer.*
+import fr.vetbrain.vetnutri_mp.Enumer.AlimIndic
+import fr.vetbrain.vetnutri_mp.Enumer.FoodKind
+import fr.vetbrain.vetnutri_mp.Enumer.GroupAlim
+import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
+import fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver
 import kotlinx.datetime.LocalDate
 
 object Mappers {
@@ -218,66 +223,70 @@ object Mappers {
         }
 
         // AlimentEv Mappers avec relations
-        fun AlimentEv.toEntity(includeRelations: Boolean = true): AlimentEntity {
-                val entity =
-                        AlimentEntity(
-                                uuid = this.uuid,
-                                group = this.group?.id,
-                                typeAliment = this.typeAliment?.coef,
-                                ingredients = this.ingredients,
-                                price = this.price,
-                                categPrice = this.categPrice,
-                                brand = this.brand,
-                                gamme = this.gamme,
-                                nom = this.nom,
-                                consistent = this.consistent,
-                                cont = this.cont,
-                                quantInt = this.quantInt,
-                                deprecated = this.deprecated,
-                                dataB = this.dataB
-                        )
-
-                if (includeRelations) {
-                        // Créer les entités EspeceAliment
-                        this.especes.forEach { espece ->
-                                EspeceAlimentEntity(refAliment = this.uuid, espece = espece)
-                        }
-                        // Créer les entités IndicationAliment
-                        this.indicat.forEach { indication ->
-                                IndicationAlimentEntity(
-                                        refAliment = this.uuid,
-                                        indication = indication.coef
-                                )
-                        }
-                }
-
-                return entity
+        fun AlimentEv.toAlimentEntity(): AlimentEntity {
+                return AlimentEntity(
+                        uuid = this.uuid,
+                        name = this.nom ?: "",
+                        typeAliment = this.typeAliment?.ordinal ?: 0,
+                        groupAliment = this.group?.ordinal ?: 0,
+                        consistent = if (this.consistent) 1 else 0,
+                        deprecated = this.deprecated ?: 0,
+                        price = this.price ?: 0.0,
+                        categoriePrix = this.categPrice ?: "",
+                        ingredients = this.ingredients ?: "",
+                        marque = this.brand ?: "",
+                        gamme = this.gamme ?: "",
+                        quantite = this.quantInt ?: 0f,
+                        dataB = this.dataB ?: "",
+                        rationUUID = this.rationUUID
+                )
         }
 
-        fun AlimentEntity.toData(
+        // Fonction pour convertir les entités en AlimentEv
+        fun AlimentEntity.toAlimentEv(
                 especes: List<EspeceAlimentEntity> = emptyList(),
-                indications: List<IndicationAlimentEntity> = emptyList()
+                indications: List<IndicationAlimentEntity> = emptyList(),
+                nutrientValues: List<NutrientValueEntity> = emptyList()
         ): AlimentEv {
                 return AlimentEv(
                         uuid = this.uuid,
-                        group = this.group?.let { GroupAlim.byId(it) },
-                        typeAliment = this.typeAliment?.let { FoodKind.byCoef(it) },
-                        ingredients = this.ingredients ?: "",
+                        nom = this.name,
+                        typeAliment =
+                                try {
+                                        this.typeAliment.let { FoodKind.entries.getOrNull(it) }
+                                } catch (e: Exception) {
+                                        null
+                                },
+                        group =
+                                try {
+                                        this.groupAliment.let { GroupAlim.entries.getOrNull(it) }
+                                } catch (e: Exception) {
+                                        null
+                                },
+                        consistent = this.consistent == 1,
+                        deprecated = this.deprecated,
                         price = this.price,
-                        categPrice = this.categPrice ?: "",
-                        brand = this.brand ?: "",
-                        gamme = this.gamme ?: "",
-                        nom = this.nom ?: "",
-                        consistent = this.consistent,
-                        cont = this.cont,
-                        quantInt = this.quantInt,
-                        deprecated = this.deprecated ?: 0,
-                        dataB = this.dataB ?: "",
+                        categPrice = this.categoriePrix,
+                        ingredients = this.ingredients,
+                        brand = this.marque,
+                        gamme = this.gamme,
+                        quantInt = this.quantite,
+                        dataB = this.dataB,
                         especes = especes.map { it.espece }.toMutableList(),
                         indicat =
                                 indications
-                                        .mapNotNull { AlimIndic.byCoef(it.indication) }
-                                        .toMutableList()
+                                        .mapNotNull { entity ->
+                                                try {
+                                                        AlimIndic.entries.getOrNull(
+                                                                entity.indication
+                                                        )
+                                                } catch (e: Exception) {
+                                                        null
+                                                }
+                                        }
+                                        .toMutableList(),
+                        valMap = nutrientValues.toNutrientValueMap(),
+                        rationUUID = this.rationUUID
                 )
         }
 
@@ -298,5 +307,34 @@ object Mappers {
                         date = LocalDate.parse(this.date),
                         value = this.value
                 )
+        }
+
+        /**
+         * Convertit une map de nutriments et valeurs en liste d'entités de valeurs de nutriments.
+         */
+        fun Map<Nutrient, Float>.toNutrientValueEntities(
+                alimentUuid: String
+        ): List<NutrientValueEntity> {
+                return map { (nutrient, value) ->
+                        NutrientValueEntity(
+                                refAliment = alimentUuid,
+                                nutrientLabel = nutrient.label,
+                                value = value
+                        )
+                }
+        }
+
+        /**
+         * Convertit une liste d'entités de valeurs de nutriments en map de nutriments et valeurs.
+         */
+        fun List<NutrientValueEntity>.toNutrientValueMap(): Map<Nutrient, Float> {
+                val result = mutableMapOf<Nutrient, Float>()
+                forEach { entity ->
+                        val nutrient = NutrientResolver.AllNutrientResolver(entity.nutrientLabel)
+                        if (nutrient != null) {
+                                result[nutrient] = entity.value
+                        }
+                }
+                return result
         }
 }

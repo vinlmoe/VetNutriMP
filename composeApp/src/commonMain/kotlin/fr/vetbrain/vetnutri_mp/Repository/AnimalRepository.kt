@@ -32,4 +32,11 @@ interface AnimalRepository {
      * @return Le nombre d'animaux importés avec succès
      */
     suspend fun importAnimals(animalsJson: List<AnimalEvJson>): Int
+
+    /**
+     * Récupère le repository des aliments
+     *
+     * @return Le repository des aliments ou null s'il n'est pas disponible
+     */
+    fun getFoodRepository(): FoodRepository?
 }

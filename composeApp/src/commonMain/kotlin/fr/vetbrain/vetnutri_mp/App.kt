@@ -11,6 +11,7 @@ import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationManager
 import fr.vetbrain.vetnutri_mp.Repository.DatabaseAnimalRepository
 import fr.vetbrain.vetnutri_mp.Repository.DatabaseConsultationRepository
+import fr.vetbrain.vetnutri_mp.Repository.DatabaseFoodRepository
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriTheme
 import fr.vetbrain.vetnutri_mp.View.*
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailViewModel
@@ -21,6 +22,8 @@ import kotlinx.coroutines.runBlocking
 
 expect fun importAnimalsFromFile(viewModel: AnimalListViewModel)
 
+expect fun importFoodsFromFile(viewModel: SettingsViewModel)
+
 @Composable
 fun App(appDatabase: AppDatabase) {
     // Initialisation de la localisation
@@ -28,7 +31,7 @@ fun App(appDatabase: AppDatabase) {
 
     // Création des repositories avec la base de données
     val animalRepository = remember {
-        DatabaseAnimalRepository(appDatabase.animalDao()).apply {
+        DatabaseAnimalRepository(appDatabase.animalDao(), appDatabase.foodDao()).apply {
             // Ajout de quelques animaux de test uniquement si la base est vide
             runBlocking {
                 if (getAllAnimals().isEmpty()) {
@@ -38,7 +41,6 @@ fun App(appDatabase: AppDatabase) {
                                     .copy(
                                             nom = "Felix",
                                             specieId = Espece.CHAT.name,
-                                            race = "Siamois"
                                     )
                     )
                 }
@@ -46,17 +48,22 @@ fun App(appDatabase: AppDatabase) {
         }
     }
 
+    // Création du repository pour les aliments
+    val foodRepository = remember {
+        DatabaseFoodRepository(appDatabase.foodDao(), appDatabase.nutrientValueDao())
+    }
+
     val consultationRepository = remember {
         DatabaseConsultationRepository(appDatabase.consultationDao())
     }
 
-    // Initialisation des ViewModels
+    // Création des ViewModels
     val animalListViewModel = remember { AnimalListViewModel(animalRepository) }
-    val createAnimalViewModel = remember { CreateAnimalViewModel(animalRepository) }
     val animalDetailViewModel = remember {
         AnimalDetailViewModel(consultationRepository, animalRepository)
     }
-    val settingsViewModel = remember { SettingsViewModel() }
+    val createAnimalViewModel = remember { CreateAnimalViewModel(animalRepository) }
+    val settingsViewModel = remember { SettingsViewModel(animalRepository, foodRepository) }
 
     var currentScreen by remember { mutableStateOf<Screen>(Screen.List) }
     var selectedAnimal by remember { mutableStateOf<AnimalEv?>(null) }
