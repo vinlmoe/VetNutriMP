@@ -15,8 +15,10 @@ interface ConsultationRepository {
     suspend fun deleteConsultation(consultation: ConsultationEv)
 }
 
-class DatabaseConsultationRepository(private val consultationDao: ConsultationDao) :
-        ConsultationRepository {
+class DatabaseConsultationRepository(
+        private val consultationDao: ConsultationDao,
+        private val foodRepository: FoodRepository
+) : ConsultationRepository {
     override suspend fun saveConsultation(consultation: ConsultationEv) {
         withContext(AppDispatchers.IO) {
             // Vérifier si la consultation existe déjà
@@ -66,6 +68,35 @@ class DatabaseConsultationRepository(private val consultationDao: ConsultationDa
                                 consultationEntity.uuid
                         )
                 val rations = consultationDao.getRationsForConsultation(consultationEntity.uuid)
+
+                // Pour chaque ration, récupérer les aliments associés
+                val rationsWithAliments =
+                        rations.map { rationEntity ->
+                            // Récupérer les entités AlimentRation pour cette ration
+                            val alimentRationEntities =
+                                    consultationDao.getAlimentsForRation(rationEntity.uuid)
+
+                            // Convertir la ration et ses aliments en objets de domaine
+                            val ration = rationEntity.toData(alimentRationEntities)
+
+                            // Pour chaque AlimentRation, charger les détails complets de l'aliment
+                            ration.alimentMutableList.forEachIndexed { index, alimentRation ->
+                                alimentRation.refAlimUnif?.let { alimentUuid ->
+                                    // Charger l'aliment complet depuis le FoodRepository
+                                    val alimentEv = foodRepository.getFood(alimentUuid)
+
+                                    // Mettre à jour l'objet AlimentRation avec les détails complets
+                                    if (alimentEv != null) {
+                                        ration.alimentMutableList[index] =
+                                                alimentRation.copy(aliment = alimentEv)
+                                    }
+                                }
+                            }
+
+                            ration
+                        }
+
+                // Construire la consultation avec ses rations complètes
                 consultationEntity.toData(rations = rations, suppVars = suppVars)
             }
         }
@@ -77,6 +108,35 @@ class DatabaseConsultationRepository(private val consultationDao: ConsultationDa
             val suppVars =
                     consultationDao.getSupplementalVariablesForConsultation(consultation.uuid)
             val rations = consultationDao.getRationsForConsultation(consultation.uuid)
+
+            // Pour chaque ration, récupérer les aliments associés
+            val rationsWithAliments =
+                    rations.map { rationEntity ->
+                        // Récupérer les entités AlimentRation pour cette ration
+                        val alimentRationEntities =
+                                consultationDao.getAlimentsForRation(rationEntity.uuid)
+
+                        // Convertir la ration et ses aliments en objets de domaine
+                        val ration = rationEntity.toData(alimentRationEntities)
+
+                        // Pour chaque AlimentRation, charger les détails complets de l'aliment
+                        ration.alimentMutableList.forEachIndexed { index, alimentRation ->
+                            alimentRation.refAlimUnif?.let { alimentUuid ->
+                                // Charger l'aliment complet depuis le FoodRepository
+                                val alimentEv = foodRepository.getFood(alimentUuid)
+
+                                // Mettre à jour l'objet AlimentRation avec les détails complets
+                                if (alimentEv != null) {
+                                    ration.alimentMutableList[index] =
+                                            alimentRation.copy(aliment = alimentEv)
+                                }
+                            }
+                        }
+
+                        rationEntity
+                    }
+
+            // Construire la consultation avec ses rations complètes
             consultation.toData(rations = rations, suppVars = suppVars)
         }
     }

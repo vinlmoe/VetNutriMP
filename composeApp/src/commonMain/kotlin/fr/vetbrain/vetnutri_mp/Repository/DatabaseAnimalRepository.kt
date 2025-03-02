@@ -149,36 +149,25 @@ class DatabaseAnimalRepository(private val animalDao: AnimalDao, private val foo
                                         val foodEntity =
                                                 FoodEntity(
                                                         uuid = uuid,
-                                                        groupAlim = 0, // Valeur par défaut
-                                                        typeAlim = 0, // Valeur par défaut
-                                                        ingredients = aliment.ingredients,
-                                                        price = aliment.prix,
-                                                        categPrice = aliment.categoriePrix,
-                                                        brand = aliment.marque,
-                                                        gamme = aliment.gamme,
-                                                        unitPres = 0, // Valeur par défaut
-                                                        quantityPres = aliment.quantInt,
-                                                        version = 1, // Valeur par défaut
-                                                        date = "", // Valeur par défaut
-                                                        nameDef = aliment.nom,
-                                                        consistent =
-                                                                1, // Par défaut, considérer comme
-                                                        // consistent
+                                                        groupAlim = 0, // Par défaut
+                                                        typeAlim = 0, // Par défaut
+                                                        ingredients = aliment.ingredients ?: "",
+                                                        price = aliment.prix ?: 0.0,
+                                                        categPrice = aliment.categoriePrix ?: "",
+                                                        brand = aliment.marque ?: "",
+                                                        gamme = aliment.gamme ?: "",
+                                                        unitPres = 0, // Par défaut
+                                                        quantityPres = aliment.quantInt ?: 0f,
+                                                        version = 1, // Par défaut
+                                                        date = "", // Par défaut
+                                                        nameDef = aliment.nom ?: "",
+                                                        consistent = 1, // Par défaut
                                                         deprecated =
-                                                                if (aliment.deprecated) 1 else 0,
-                                                        DataB = aliment.DataB,
-                                                        // Champs optionnels avec valeurs par défaut
+                                                                if (aliment.deprecated == true) 1
+                                                                else 0,
+                                                        DataB = aliment.DataB ?: "",
                                                         RefRation = null,
-                                                        quantity = null,
-                                                        RefAlimUnif = null,
-                                                        refTarget = null,
-                                                        rationName = null,
-                                                        rationUUID = null,
-                                                        animalUUID = null,
-                                                        animalNom = null,
-                                                        animalEspece = null,
-                                                        consultationUUID = null,
-                                                        consultationDate = null
+                                                        RefAlimUnif = null
                                                 )
 
                                         // Insérer l'aliment dans la base de données
@@ -533,22 +522,20 @@ class DatabaseAnimalRepository(private val animalDao: AnimalDao, private val foo
                                                                                 // des données
                                                                                 // disponibles
                                                                                 try {
-                                                                                        // Créer un
-                                                                                        // FoodEntity minimal avec l'UUID
                                                                                         val foodEntity =
                                                                                                 FoodEntity(
                                                                                                         uuid =
                                                                                                                 refAlimUnif,
                                                                                                         groupAlim =
-                                                                                                                0, // Valeur par défaut
+                                                                                                                0,
                                                                                                         typeAlim =
-                                                                                                                0, // Valeur par défaut
+                                                                                                                0,
                                                                                                         ingredients =
                                                                                                                 "",
                                                                                                         price =
-                                                                                                                0.0, // Correction du type Float -> Double
+                                                                                                                0.0,
                                                                                                         categPrice =
-                                                                                                                "0", // Correction du type Int -> String
+                                                                                                                "",
                                                                                                         brand =
                                                                                                                 "",
                                                                                                         gamme =
@@ -556,7 +543,7 @@ class DatabaseAnimalRepository(private val animalDao: AnimalDao, private val foo
                                                                                                         unitPres =
                                                                                                                 0,
                                                                                                         quantityPres =
-                                                                                                                0f, // Correction du type Double -> Float
+                                                                                                                0f,
                                                                                                         version =
                                                                                                                 1,
                                                                                                         date =
@@ -571,25 +558,7 @@ class DatabaseAnimalRepository(private val animalDao: AnimalDao, private val foo
                                                                                                                 "",
                                                                                                         RefRation =
                                                                                                                 null,
-                                                                                                        quantity =
-                                                                                                                null,
                                                                                                         RefAlimUnif =
-                                                                                                                null,
-                                                                                                        refTarget =
-                                                                                                                null,
-                                                                                                        rationName =
-                                                                                                                null,
-                                                                                                        rationUUID =
-                                                                                                                null,
-                                                                                                        animalUUID =
-                                                                                                                null,
-                                                                                                        animalNom =
-                                                                                                                null,
-                                                                                                        animalEspece =
-                                                                                                                null,
-                                                                                                        consultationUUID =
-                                                                                                                null,
-                                                                                                        consultationDate =
                                                                                                                 null
                                                                                                 )
 
@@ -617,11 +586,6 @@ class DatabaseAnimalRepository(private val animalDao: AnimalDao, private val foo
                                                                                         )
                                                                                         return@filter false
                                                                                 }
-
-                                                                                println(
-                                                                                        "Ignoré: AlimentRation avec ID=${aliment.uuid} référence un aliment inconnu: ${refAlimUnif}"
-                                                                                )
-                                                                                return@filter false
                                                                         }
                                                                 }
 

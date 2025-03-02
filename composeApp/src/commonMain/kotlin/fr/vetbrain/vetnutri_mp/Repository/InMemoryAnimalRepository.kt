@@ -25,7 +25,7 @@ class InMemoryAnimalRepository : AnimalRepository {
     }
 
     override suspend fun deleteAnimal(animal: AnimalEv) {
-        animals.removeIf { it.uuid == animal.uuid }
+        animals.removeAll { it.uuid == animal.uuid }
         updateFlow()
     }
 
@@ -39,12 +39,6 @@ class InMemoryAnimalRepository : AnimalRepository {
 
     override suspend fun getAnimalById(id: String): AnimalEv? {
         return animals.find { it.uuid == id }
-    }
-
-    override suspend fun getAnimalWithRelations(id: String): AnimalEv? {
-        // Pour l'implémentation en mémoire, on retourne simplement l'animal
-        // car les relations sont déjà chargées en mémoire
-        return getAnimalById(id)
     }
 
     override suspend fun importAnimals(animalsJson: List<AnimalEvJson>): Int {
@@ -125,5 +119,14 @@ class InMemoryAnimalRepository : AnimalRepository {
 
     private fun updateFlow() {
         animalsFlow.value = animals.toList()
+    }
+
+    /**
+     * Récupère le repository des aliments
+     *
+     * @return Le repository des aliments ou null s'il n'est pas disponible
+     */
+    override fun getFoodRepository(): FoodRepository? {
+        return null
     }
 }

@@ -3,6 +3,7 @@ package fr.vetbrain.vetnutri_mp.DataBase
 import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 
@@ -45,9 +46,6 @@ interface AnimalDao {
 
     @Query("DELETE FROM RATIONS WHERE idConsult = :consultationId")
     suspend fun deleteRationsForConsultation(consultationId: String)
-
-    @Query("SELECT * FROM ALIMENTS WHERE refRation = :rationId")
-    suspend fun getAlimentRationsForRation(rationId: String): List<AlimentRationEntity>
 }
 
 @Dao
@@ -72,6 +70,9 @@ interface ConsultationDao {
     @Query("SELECT * FROM RATIONS WHERE idConsult = :consultationId")
     suspend fun getRationsForConsultation(consultationId: String): List<RationEntity>
 
+    @Query("SELECT * FROM ALIMENTS WHERE refRation = :rationId")
+    suspend fun getAlimentsForRation(rationId: String): List<AlimentRationEntity>
+
     @Insert suspend fun insertSupplementalVariable(supplementalVariable: SupplementalVariableEntity)
 
     @Insert suspend fun insertRation(ration: RationEntity)
@@ -91,7 +92,50 @@ interface FoodDao {
 
     @Delete suspend fun delete(food: FoodEntity)
 
-    @Query("SELECT * FROM FOOD") suspend fun getAllFoods(): List<FoodEntity>
+    @Query("SELECT * FROM FOOD") suspend fun findAll(): List<FoodEntity>
 
-    @Query("SELECT * FROM FOOD WHERE UUID = :id") suspend fun getFoodById(id: String): FoodEntity?
+    @Query("SELECT * FROM FOOD WHERE uuid = :id") suspend fun getFoodById(id: String): FoodEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun insertFood(food: AlimentEntity)
+
+    @Update suspend fun updateFood(food: AlimentEntity)
+
+    @Query("DELETE FROM ALIMENTS_BASE WHERE uuid = :uuid") suspend fun deleteFood(uuid: String)
+
+    @Query("SELECT * FROM ALIMENTS_BASE WHERE uuid = :uuid")
+    suspend fun getFood(uuid: String): AlimentEntity?
+
+    @Query("SELECT * FROM ALIMENTS_BASE") suspend fun getAllFoods(): List<AlimentEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertEspeces(especes: List<EspeceAlimentEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertIndications(indications: List<IndicationAlimentEntity>)
+
+    @Query("DELETE FROM ESPECES_ALIMENTS WHERE refAliment = :alimentUuid")
+    suspend fun deleteEspecesForAliment(alimentUuid: String)
+
+    @Query("DELETE FROM INDICATIONS_ALIMENTS WHERE refAliment = :alimentUuid")
+    suspend fun deleteIndicationsForAliment(alimentUuid: String)
+
+    @Query("SELECT * FROM ESPECES_ALIMENTS WHERE refAliment = :alimentUuid")
+    suspend fun getEspecesForAliment(alimentUuid: String): List<EspeceAlimentEntity>
+
+    @Query("SELECT * FROM INDICATIONS_ALIMENTS WHERE refAliment = :alimentUuid")
+    suspend fun getIndicationsForAliment(alimentUuid: String): List<IndicationAlimentEntity>
+}
+
+@Dao
+interface NutrientValueDao {
+    @Query("SELECT * FROM NUTRIENT_VALUES WHERE refAliment = :alimentUuid")
+    suspend fun getNutrientValues(alimentUuid: String): List<NutrientValueEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertNutrientValues(values: List<NutrientValueEntity>)
+
+    @Delete suspend fun deleteNutrientValues(values: List<NutrientValueEntity>)
+
+    @Query("DELETE FROM NUTRIENT_VALUES WHERE refAliment = :alimentUuid")
+    suspend fun deleteAllNutrientValuesForAliment(alimentUuid: String)
 }

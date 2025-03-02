@@ -23,7 +23,11 @@ data class AlimentEvJson(
         val cont: String = "NO",
         val deprecated: Boolean = false,
         val DataB: String = "6",
-        val valMap: Map<String, NutrientQuantity> = mapOf()
+        val valMap: Map<String, Float> = mapOf()
+
+
+
+
 )
 
 /** Structure JSON pour AnimalEv */
@@ -130,8 +134,8 @@ data class AlimentRationJson(
 @Serializable
 data class RationJson(
         val UUID: String,
-        val nom: String = "",
-        val aliments: List<AlimentRationJson> = listOf(),
+        val Nom: String = "",
+        val alimentList: List<AlimentRationJson> = listOf(),
         val actual: Boolean = false
 )
 
@@ -150,4 +154,4 @@ data class TargetDefinitionEvJson(
 
 @Serializable data class SupplementalvariablePJson(val variable: String, val value: Float)
 
-@Serializable data class NutrientQuantity(val value: Float, val present: Boolean)
+@Serializable data class NutrientQuantity(val value: Float, val nut: String)

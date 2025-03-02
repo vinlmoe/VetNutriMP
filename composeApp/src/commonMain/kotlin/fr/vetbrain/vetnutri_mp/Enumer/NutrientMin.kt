@@ -1,12 +1,12 @@
 package fr.vetbrain.vetnutri_mp.Enumer
 
 enum class NutrientMin(
-    private val displayName: String,
-    override val coef: Int,
-    override val unite: String,
-    override val ue: UnitEnum,
-    override val label: String,
-    val abr: String
+        private val displayName: String,
+        override val coef: Int,
+        override val unite: String,
+        override val ue: UnitEnum,
+        override val label: String,
+        val abr: String
 ) : Nutrient {
     FE("Fer", 0, "mg", UnitEnum.BUmg, "FE", "Fe"),
     CU("Cuivre", 1, "mg", UnitEnum.BUmg, "CU", "Cu"),
@@ -27,11 +27,10 @@ enum class NutrientMin(
         private val coefMap by lazy { entries.associateBy { it.coef } }
         private val labelMap by lazy { entries.associateBy { it.label } }
 
-        fun getByCoef(coef: Int) = coefMap[coef]
-            ?: throw IllegalArgumentException("No NutrientMin with coef=$coef")
+        fun getByCoef(coef: Int) =
+                coefMap[coef] ?: throw IllegalArgumentException("No NutrientMin with coef=$coef")
 
         fun getByLabel(label: String) = labelMap[label]
-            ?: throw IllegalArgumentException("No NutrientMin with label=$label")
 
         fun isByLabel(label: String) = label in labelMap
         fun size() = entries.size
@@ -39,5 +38,4 @@ enum class NutrientMin(
 
     override fun getMNE() = MainNutrientEnum.MIN
     fun nameToString() = displayName
-
 }

@@ -22,6 +22,7 @@ import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Animal
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.General
 import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
+import kotlinx.datetime.LocalDate
 import kotlinx.datetime.toLocalDate
 
 @Composable
@@ -114,7 +115,7 @@ fun AnimalEditView(
                                         birthDateText = it
                                         isDateValid =
                                                 try {
-                                                        if (it.isNotEmpty()) it.toLocalDate()
+                                                        if (it.isNotEmpty()) LocalDate.parse(it)
                                                         true
                                                 } catch (e: Exception) {
                                                         false
@@ -246,7 +247,7 @@ fun AnimalEditView(
                                                 val birthdate =
                                                         try {
                                                                 if (birthDateText.isNotEmpty())
-                                                                        birthDateText.toLocalDate()
+                                                                        LocalDate.parse(birthDateText)
                                                                 else null
                                                         } catch (e: Exception) {
                                                                 null

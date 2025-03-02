@@ -10,20 +10,3 @@ fun getDatabaseBuilder(): RoomDatabase.Builder<AppDatabase> {
             name = dbFile.absolutePath,
     )
 }
-
-actual object AppDatabaseConstructor : RoomDatabaseConstructor<AppDatabase> {
-    private lateinit var instance: AppDatabase
-
-    override fun initialize(): AppDatabase {
-        if (!::instance.isInitialized) {
-            throw IllegalStateException(
-                    "La base de données n'a pas été initialisée. Assurez-vous d'appeler getRoomDatabase() d'abord."
-            )
-        }
-        return instance
-    }
-
-    fun setInstance(database: AppDatabase) {
-        instance = database
-    }
-}

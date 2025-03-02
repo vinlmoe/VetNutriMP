@@ -1,0 +1,214 @@
+package fr.vetbrain.vetnutri_mp.View
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.*
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
+import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Consultation
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.General
+import fr.vetbrain.vetnutri_mp.Localization.translate
+import fr.vetbrain.vetnutri_mp.Theme.AppIcons
+import fr.vetbrain.vetnutri_mp.Theme.AppSizes
+import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
+import fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailViewModel
+import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
+
+/**
+ * Vue pour afficher la liste des consultations d'un animal
+ *
+ * @param viewModel ViewModel contenant les données de l'animal
+ * @param showConsultationDetail Indique si le détail d'une consultation est affiché
+ * @param onShowConsultationDetail Action à exécuter pour afficher/masquer le détail d'une
+ * consultation
+ * @param modifier Modificateur optionnel pour personnaliser l'apparence
+ */
+@Composable
+fun ConsultationsView(
+        viewModel: AnimalDetailViewModel,
+        showConsultationDetail: Boolean,
+        onShowConsultationDetail: (Boolean) -> Unit,
+        modifier: Modifier = Modifier
+) {
+    val animal by viewModel.animal.collectAsState()
+    val selectedConsultation by viewModel.selectedConsultation.collectAsState()
+    val isEditingConsultation by remember { derivedStateOf { viewModel.isEditingConsultation } }
+    var showDeleteConfirmation by remember { mutableStateOf(false) }
+    var consultationToDelete by remember { mutableStateOf<ConsultationEv?>(null) }
+
+    // Dialogue de confirmation de suppression
+    if (showDeleteConfirmation) {
+        AlertDialog(
+                onDismissRequest = { showDeleteConfirmation = false },
+                title = { Text(Consultation.DELETE_CONSULTATION.translate()) },
+                text = { Text(Consultation.DELETE_CONSULTATION_CONFIRM.translate()) },
+                confirmButton = {
+                    Button(
+                            onClick = {
+                                consultationToDelete?.let { consultation ->
+                                    viewModel.deleteConsultation(consultation)
+                                }
+                                showDeleteConfirmation = false
+                            },
+                            colors =
+                                    ButtonDefaults.buttonColors(
+                                            backgroundColor = Color.Red,
+                                            contentColor = Color.White
+                                    )
+                    ) { Text(General.CONFIRM.translate()) }
+                },
+                dismissButton = {
+                    Button(
+                            onClick = { showDeleteConfirmation = false },
+                            colors =
+                                    ButtonDefaults.buttonColors(
+                                            backgroundColor = VetNutriColors.Secondary,
+                                            contentColor = VetNutriColors.OnSecondary
+                                    )
+                    ) { Text(General.CANCEL.translate()) }
+                }
+        )
+    }
+
+    Row(modifier = modifier.fillMaxSize()) {
+        // Liste des consultations
+        Column(
+                modifier = Modifier.weight(0.4f).fillMaxHeight().padding(AppSizes.paddingMedium),
+                verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
+        ) {
+            Button(
+                    onClick = {
+                        val currentMoment = Clock.System.now()
+                        val localDateTime =
+                                currentMoment.toLocalDateTime(TimeZone.currentSystemDefault())
+                        val currentDate = localDateTime.date
+                        viewModel.prepareNewConsultation(currentDate)
+                        viewModel.startEditingConsultation()
+                        onShowConsultationDetail(true)
+                    },
+                    colors =
+                            ButtonDefaults.buttonColors(
+                                    backgroundColor = VetNutriColors.Primary,
+                                    contentColor = VetNutriColors.OnPrimary
+                            ),
+                    modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                        horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall),
+                        verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                            AppIcons.Add,
+                            contentDescription = "Ajouter une consultation",
+                            modifier = Modifier.size(AppSizes.iconSizeSmall)
+                    )
+                    Text(text = "Nouvelle consultation")
+                }
+            }
+
+            Divider(
+                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.12f),
+                    thickness = AppSizes.dividerHeight
+            )
+
+            Text(
+                    text = "Consultations",
+                    style = MaterialTheme.typography.h6,
+                    color = VetNutriColors.Primary
+            )
+
+            animal?.let { animalDetails ->
+                if (animalDetails.consultations.isEmpty()) {
+                    Box(
+                            modifier = Modifier.fillMaxWidth().weight(1f),
+                            contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                                text = "Aucune consultation",
+                                style = MaterialTheme.typography.body1,
+                                color = Color.Gray
+                        )
+                    }
+                } else {
+                    // Déterminer si la suppression est autorisée (plus d'une consultation)
+                    val canDeleteConsultation = animalDetails.consultations.size > 1
+
+                    LazyColumn(
+                            modifier = Modifier.fillMaxWidth().weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(AppSizes.cardSpacing)
+                    ) {
+                        items(animalDetails.consultations) { consultation ->
+                            ConsultationCard(
+                                    consultation = consultation,
+                                    isSelected = selectedConsultation?.uuid == consultation.uuid,
+                                    onEdit = {
+                                        viewModel.selectConsultation(consultation)
+                                        viewModel.startEditingConsultation()
+                                        onShowConsultationDetail(true)
+                                    },
+                                    onDelete = {
+                                        consultationToDelete = consultation
+                                        showDeleteConfirmation = true
+                                    },
+                                    isDeleteEnabled = canDeleteConsultation,
+                                    onClick = {
+                                        viewModel.selectConsultation(consultation)
+                                        onShowConsultationDetail(true)
+                                    }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // Séparateur vertical
+        Divider(
+                modifier = Modifier.fillMaxHeight().width(1.dp),
+                color = MaterialTheme.colors.onSurface.copy(alpha = 0.12f)
+        )
+
+        // Détail de la consultation
+        if (showConsultationDetail) {
+            Box(modifier = Modifier.weight(0.6f).fillMaxHeight()) {
+                selectedConsultation?.let { consultation ->
+                    AppConsultationDetailView(
+                            consultation = consultation,
+                            onDismiss = {
+                                if (isEditingConsultation && consultation.uuid.isEmpty()) {
+                                    // Si on annule l'ajout d'une nouvelle consultation
+                                    viewModel.stopEditingConsultation()
+                                }
+                                onShowConsultationDetail(false)
+                            },
+                            onSave = { updatedConsultation ->
+                                if (isEditingConsultation && consultation.uuid.isEmpty()) {
+                                    // Nouvelle consultation
+                                    viewModel.addConsultation(updatedConsultation)
+                                } else {
+                                    // Mise à jour d'une consultation existante
+                                    viewModel.updateConsultation(updatedConsultation)
+                                }
+                                viewModel.stopEditingConsultation()
+                                onShowConsultationDetail(false)
+                            }
+                    )
+                }
+            }
+        } else {
+            // Message indiquant de sélectionner une consultation
+            CenteredMessage(
+                    message = "Sélectionnez une consultation pour afficher les détails",
+                    modifier = Modifier.weight(0.6f).fillMaxHeight()
+            )
+        }
+    }
+}

@@ -54,7 +54,7 @@ fun App(appDatabase: AppDatabase) {
     }
 
     val consultationRepository = remember {
-        DatabaseConsultationRepository(appDatabase.consultationDao())
+        DatabaseConsultationRepository(appDatabase.consultationDao(), foodRepository)
     }
 
     // Création des ViewModels

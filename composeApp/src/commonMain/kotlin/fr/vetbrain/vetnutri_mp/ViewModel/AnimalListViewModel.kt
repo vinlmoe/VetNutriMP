@@ -148,6 +148,100 @@ class AnimalListViewModel(private val animalRepository: AnimalRepository) : View
         _importResult.value = null
     }
 
+    /**
+     * Importe des animaux à partir d'une chaîne JSON
+     *
+     * @param jsonContent Le contenu JSON à désérialiser
+     */
+    fun importAnimalsFromJson(jsonContent: String) {
+        viewModelScope.launch {
+            try {
+                val importResult =
+                        fr.vetbrain.vetnutri_mp.Utils.ImportUtils.importAnimalsFromJson(jsonContent)
+
+                if (importResult.animals.isNotEmpty()) {
+                    var foodsImported = false
+
+                    // Importer d'abord les aliments extraits des rations s'il y en a
+                    if (importResult.foods.isNotEmpty()) {
+                        println(
+                                "Importation de ${importResult.foods.size} aliments extraits des rations..."
+                        )
+                        try {
+                            // Obtenir le repository des aliments
+                            val foodRepository = animalRepository.getFoodRepository()
+                            if (foodRepository != null) {
+                                try {
+                                    val importedFoodsCount =
+                                            foodRepository.importFoods(importResult.foods)
+                                    println("${importedFoodsCount} aliments importés avec succès")
+                                    foodsImported = importedFoodsCount > 0
+                                } catch (e: Exception) {
+                                    println(
+                                            "Erreur lors de l'importation des aliments: ${e.message}"
+                                    )
+                                    e.printStackTrace()
+                                    // Continuer l'importation des animaux même si l'importation des
+                                    // aliments échoue
+                                }
+                            } else {
+                                println(
+                                        "Le repository des aliments n'est pas disponible. Les aliments ne seront pas importés."
+                                )
+                                // Continuer sans importer les aliments
+                            }
+                        } catch (e: Exception) {
+                            println(
+                                    "Erreur lors de l'accès au repository des aliments: ${e.message}"
+                            )
+                            e.printStackTrace()
+                            // Continuer l'importation des animaux même si l'accès au repository des
+                            // aliments échoue
+                        }
+                    }
+
+                    // Importer ensuite les animaux
+                    try {
+                        val importedCount = animalRepository.importAnimals(importResult.animals)
+
+                        if (importedCount > 0) {
+                            if (foodsImported) {
+                                _importResult.value = ImportResult.Success(importedCount)
+                                println(
+                                        "${importedCount} animaux et leurs aliments importés avec succès"
+                                )
+                            } else {
+                                _importResult.value = ImportResult.Success(importedCount)
+                                println(
+                                        "${importedCount} animaux importés avec succès (sans aliments)"
+                                )
+                            }
+                            loadAnimals() // Actualiser la liste après l'importation
+                        } else {
+                            _importResult.value =
+                                    ImportResult.Error("Échec de l'importation des animaux")
+                            println("Échec de l'importation des animaux")
+                        }
+                    } catch (e: Exception) {
+                        _importResult.value =
+                                ImportResult.Error(
+                                        "Erreur lors de l'importation des animaux: ${e.message}"
+                                )
+                        println("Erreur lors de l'importation des animaux: ${e.message}")
+                        e.printStackTrace()
+                    }
+                } else {
+                    _importResult.value =
+                            ImportResult.Error("Aucun animal trouvé dans le fichier JSON")
+                }
+            } catch (e: Exception) {
+                _importResult.value = ImportResult.Error(e.message ?: "Erreur inconnue")
+                println("Erreur lors du traitement du JSON: ${e.message}")
+                e.printStackTrace()
+            }
+        }
+    }
+
     sealed class ImportResult {
         data class Success(val count: Int) : ImportResult()
         data class Error(val message: String) : ImportResult()

@@ -7,7 +7,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 @Entity(tableName = "FOOD")
 data class FoodEntity(
-        @PrimaryKey val UUID: String,
+        @PrimaryKey val uuid: String,
         val groupAlim: Int,
         val typeAlim: Int,
         val ingredients: String,
@@ -24,9 +24,7 @@ data class FoodEntity(
         val deprecated: Int,
         val DataB: String,
         val RefRation: String? = null,
-        val quantity: Float? = null,
-        val RefAlimUnif: String? = null,
-        val refTarget: Int? = null
+        val RefAlimUnif: String? = null
 )
 
 @Serializable
@@ -124,7 +122,7 @@ data class IndicationEntity(
 
 @Serializable
 @Entity(tableName = "dataDef")
-data class DataDefEntity(@PrimaryKey val UUID: String, val sNAME: String, val compNAME: String)
+data class DataDefEntity(@PrimaryKey val uuid: String, val sNAME: String, val compNAME: String)
 
 // Entités pour la base de données des animaux
 @Serializable
@@ -219,15 +217,15 @@ data class WeightEntity(
         indices = [Index("idConsult")]
 )
 data class RationEntity(
-    @PrimaryKey val uuid: String,
-    var idConsult: String?,
-    val name: String?,
-    val coef: Float?,
-    val actual: Boolean?,
-    val number: Int?,
-    val espece: String?,
-    val recette: Boolean?,
-    val description: String?
+        @PrimaryKey val uuid: String,
+        var idConsult: String?,
+        val name: String?,
+        val coef: Float?,
+        val actual: Boolean?,
+        val number: Int?,
+        val espece: String?,
+        val recette: Boolean?,
+        val description: String?
 )
 
 @Serializable
@@ -243,11 +241,15 @@ data class RationEntity(
                         ),
                         ForeignKey(
                                 entity = FoodEntity::class,
-                                parentColumns = ["UUID"],
+                                parentColumns = ["uuid"],
                                 childColumns = ["refAlimUnif"],
                                 onDelete = ForeignKey.SET_NULL
                         )],
-        indices = [Index("refRation"), Index("refAlimUnif")]
+        indices =
+                [
+                        Index("refRation"),
+                        Index("refAlimUnif"),
+                        Index(value = ["refAlimUnif", "refRation"], unique = true)]
 )
 data class AlimentRationEntity(
         @PrimaryKey val uuid: String,
@@ -261,19 +263,19 @@ data class AlimentRationEntity(
 @Entity(tableName = "ALIMENTS_BASE")
 data class AlimentEntity(
         @PrimaryKey val uuid: String,
-        val group: Int?,
-        val typeAliment: Int?,
+        val groupAliment: Int,
+        val typeAliment: Int,
         val ingredients: String?,
         val price: Double?,
-        val categPrice: String?,
-        val brand: String?,
+        val categoriePrix: String?,
+        val marque: String?,
         val gamme: String?,
-        val nom: String?,
-        val consistent: Boolean,
-        val cont: Int?,
-        val quantInt: Float?,
+        val name: String?,
+        val consistent: Int,
+        val quantite: Float?,
         val deprecated: Int?,
-        val dataB: String?
+        val dataB: String?,
+        val rationUUID: String?
 )
 
 @Serializable
@@ -353,7 +355,7 @@ data class ReferenceDiseaseEntity(
 
 @Serializable
 @Entity(tableName = "Breed")
-data class BreedEntity(@PrimaryKey val ID: String, val refSpecie: Int)
+data class BreedEntity(@PrimaryKey val id: String, val refSpecie: Int)
 
 @Serializable
 @Entity(tableName = "breedName")
@@ -366,7 +368,7 @@ data class BreedNameEntity(
 
 @Serializable
 @Entity(tableName = "Especes")
-data class EspecesEntity(@PrimaryKey val ID: String, val category: String, val value: String)
+data class EspecesEntity(@PrimaryKey val id: String, val category: String, val value: String)
 
 @Serializable
 @Entity(tableName = "EspeceName")
@@ -381,7 +383,7 @@ data class EspeceNameEntity(
 @Serializable
 @Entity(tableName = "equation")
 data class EquationEntity(
-        @PrimaryKey val UUID: String,
+        @PrimaryKey val uuid: String,
         val script: String,
         val refBiblio: String,
         val name: String,
@@ -403,7 +405,7 @@ data class SupplementVariableEntity(
 @Serializable
 @Entity(tableName = "Biblio")
 data class BiblioEntity(
-        @PrimaryKey val UUID: String,
+        @PrimaryKey val uuid: String,
         val fAuthor: String,
         val year: String,
         val fullRef: String,
@@ -414,7 +416,7 @@ data class BiblioEntity(
 @Serializable
 @Entity(tableName = "method")
 data class MethodEntity(
-        @PrimaryKey val UUID: String,
+        @PrimaryKey val uuid: String,
         val name: String,
         val species: String,
         val description: String
@@ -436,7 +438,7 @@ data class TargetMethodEntity(
 @Serializable
 @Entity(tableName = "dataRef")
 data class DataRefEntity(
-        @PrimaryKey val UUID: String,
+        @PrimaryKey val uuid: String,
         val name: String,
         val description: String,
         val disease: Int,
@@ -480,7 +482,7 @@ data class SpeReqEqEntity(val refEq: String, val refRef: String)
                 [
                         ForeignKey(
                                 entity = FoodEntity::class,
-                                parentColumns = ["UUID"],
+                                parentColumns = ["uuid"],
                                 childColumns = ["foodId"],
                                 onDelete = ForeignKey.CASCADE
                         )],
@@ -493,4 +495,24 @@ data class AlimentReferenceEntity(
         val referenceValue: String,
         val version: Int,
         val date: String
+)
+
+@Serializable
+@Entity(
+        tableName = "NUTRIENT_VALUES",
+        foreignKeys =
+                [
+                        ForeignKey(
+                                entity = AlimentEntity::class,
+                                parentColumns = ["uuid"],
+                                childColumns = ["refAliment"],
+                                onDelete = ForeignKey.CASCADE
+                        )],
+        indices = [Index("refAliment")],
+        primaryKeys = ["refAliment", "nutrientLabel"]
+)
+data class NutrientValueEntity(
+        val refAliment: String, // UUID de l'aliment
+        val nutrientLabel: String, // Label du nutriment
+        val value: Float // Valeur du nutriment
 )
