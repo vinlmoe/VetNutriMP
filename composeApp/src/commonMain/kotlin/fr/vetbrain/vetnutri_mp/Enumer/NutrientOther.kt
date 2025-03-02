@@ -1,11 +1,12 @@
 package fr.vetbrain.vetnutri_mp.Enumer
 
+
 enum class NutrientOther(
-        private val displayName: String,
-        override val coef: Int,
-        override val unite: String,
-        override val ue: UnitEnum,
-        override val label: String
+    private val displayName: String,
+    override val coef: Int,
+    override val unite: String,
+    override val ue: UnitEnum,
+    override val label: String
 ) : Nutrient {
     TAURINE("Taurine", 0, "g", UnitEnum.BUg, "TAURINE"),
     CARNITINE("L-Carnitine", 1, "mg", UnitEnum.BUmg, "CARNITINE"),
@@ -31,10 +32,11 @@ enum class NutrientOther(
         private val coefMap by lazy { entries.associateBy { it.coef } }
         private val labelMap by lazy { entries.associateBy { it.label } }
 
-        fun getByCoef(coef: Int) =
-                coefMap[coef] ?: throw IllegalArgumentException("No NutrientOther with coef=$coef")
+        fun getByCoef(coef: Int) = coefMap[coef]
+            ?: throw IllegalArgumentException("No NutrientOther with coef=$coef")
 
         fun getByLabel(label: String) = labelMap[label]
+            ?: throw IllegalArgumentException("No NutrientOther with label=$label")
 
         fun isByLabel(label: String) = label in labelMap
         fun size() = entries.size
@@ -42,4 +44,5 @@ enum class NutrientOther(
 
     override fun getMNE() = MainNutrientEnum.OTHER
     fun nameToString() = displayName
+
 }

@@ -10,7 +10,6 @@ import fr.vetbrain.vetnutri_mp.Data.Ration
 import fr.vetbrain.vetnutri_mp.Data.SupplementalvariableP
 import fr.vetbrain.vetnutri_mp.Data.WeightDate
 import fr.vetbrain.vetnutri_mp.DataBase.AnimalDao
-import fr.vetbrain.vetnutri_mp.DataBase.ConsultationDao
 import fr.vetbrain.vetnutri_mp.DataBase.FoodDao
 import fr.vetbrain.vetnutri_mp.DataBase.FoodEntity
 import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toEntity
@@ -20,11 +19,8 @@ import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.LocalDate
 
-class DatabaseAnimalRepository(
-        private val animalDao: AnimalDao,
-        private val foodDao: FoodDao,
-        private val consultationDao: ConsultationDao
-) : AnimalRepository {
+class DatabaseAnimalRepository(private val animalDao: AnimalDao, private val foodDao: FoodDao) :
+        AnimalRepository {
         override suspend fun saveAnimal(animal: AnimalEv) {
                 withContext(AppDispatchers.Default) { animalDao.insert(animal.toEntity()) }
         }
@@ -334,7 +330,10 @@ class DatabaseAnimalRepository(
                                                                                                                         .UUID,
                                                                                                         name =
                                                                                                                 rationJson
-                                                                                                                        .Nom
+                                                                                                                        .Nom,
+                                                                                                        actual =
+                                                                                                                rationJson
+                                                                                                                        .actual
                                                                                                 )
 
                                                                                         // Ajouter
@@ -747,195 +746,5 @@ class DatabaseAnimalRepository(
                 // nutrientValueDao()
                 // Retournons null pour indiquer que le repository n'est pas disponible
                 return null
-        }
-
-        /**
-         * Récupère un animal avec toutes ses relations (consultations, rations, aliments)
-         * @param id Identifiant de l'animal
-         * @return L'animal complet avec toutes ses relations ou null si non trouvé
-         */
-        override suspend fun getAnimalWithRelations(id: String): AnimalEv? {
-                return withContext(AppDispatchers.Default) {
-                        // Récupérer l'animal de base
-                        val animal = getAnimalById(id) ?: return@withContext null
-
-                        // Récupérer toutes les consultations pour cet animal
-                        val consultationEntities = animalDao.getConsultationsForAnimal(animal.uuid)
-                        val consultations = mutableListOf<ConsultationEv>()
-
-                        for (consultationEntity in consultationEntities) {
-                                // Créer l'objet consultation avec les propriétés appropriées
-                                val consultation =
-                                        ConsultationEv(
-                                                uuid = consultationEntity.uuid,
-                                                idAnim = consultationEntity.idAnim ?: "",
-                                                date =
-                                                        consultationEntity.date?.let { dateStr ->
-                                                                try {
-                                                                        LocalDate.parse(dateStr)
-                                                                } catch (e: Exception) {
-                                                                        null
-                                                                }
-                                                        },
-                                                objectConsult = consultationEntity.objectConsult
-                                                                ?: "",
-                                                observation = consultationEntity.observation ?: "",
-                                                cRendu = consultationEntity.cRendu ?: "",
-                                                weight = consultationEntity.weight,
-                                                idealWeight = consultationEntity.idealWeight,
-                                                water = consultationEntity.water,
-                                                bodyFat = consultationEntity.bodyFat
-                                        )
-
-                                // Récupérer les rations pour cette consultation
-                                val rationEntities =
-                                        consultationDao.getRationsForConsultation(
-                                                consultationEntity.uuid
-                                        )
-
-                                // Pour chaque ration, créer un objet Ration et l'ajouter à la
-                                // consultation
-                                for (rationEntity in rationEntities) {
-                                        // Vérifier que rationEntity est bien du type RationEntity
-                                        val rationName =
-                                                try {
-                                                        rationEntity.name ?: ""
-                                                } catch (e: Exception) {
-                                                        // Si une exception est levée, utiliser une
-                                                        // valeur par défaut
-                                                        ""
-                                                }
-
-                                        val ration =
-                                                Ration(
-                                                        uuid = rationEntity.uuid,
-                                                        idConsult = consultationEntity.uuid,
-                                                        name = rationName,
-                                                        actual = rationEntity.actual ?: false
-                                                )
-
-                                        // Récupérer les alimentRation pour cette ration
-                                        val alimentRationEntities =
-                                                animalDao.getAlimentRationsForRation(
-                                                        rationEntity.uuid
-                                                )
-
-                                        // Pour chaque alimentRation, créer un objet AlimentRation
-                                        // et l'ajouter à la ration
-                                        for (alimentRationEntity in alimentRationEntities) {
-                                                val alimentRation =
-                                                        AlimentRation(
-                                                                uuid = alimentRationEntity.uuid,
-                                                                uuidUnif =
-                                                                        alimentRationEntity
-                                                                                .refAlimUnif
-                                                                                ?: "",
-                                                                quantity =
-                                                                        alimentRationEntity.quantity
-                                                                                ?: 0f,
-                                                                proportion =
-                                                                        0f, // Valeur par défaut car
-                                                                // non présente dans
-                                                                // l'entité
-                                                                weight =
-                                                                        0f, // Valeur par défaut car
-                                                                // non présente dans
-                                                                // l'entité
-                                                                category =
-                                                                        0, // Valeur par défaut car
-                                                                // non présente dans
-                                                                // l'entité
-                                                                density = 0.0, // Valeur par défaut
-                                                                // car non présente
-                                                                // dans l'entité
-                                                                refAlimUnif =
-                                                                        alimentRationEntity
-                                                                                .refAlimUnif,
-                                                                refRation =
-                                                                        alimentRationEntity
-                                                                                .refRation,
-                                                                refTarget =
-                                                                        alimentRationEntity
-                                                                                .refTarget
-                                                        )
-
-                                                // Récupérer l'aliment correspondant à cet
-                                                // alimentRation
-                                                if (alimentRationEntity.refAlimUnif != null) {
-                                                        val foodEntity =
-                                                                foodDao.getFoodById(
-                                                                        alimentRationEntity
-                                                                                .refAlimUnif
-                                                                )
-                                                        if (foodEntity != null) {
-                                                                // Créer l'objet AlimentEv à partir
-                                                                // du FoodEntity avec les propriétés
-                                                                // disponibles
-                                                                val alimentEv =
-                                                                        AlimentEv(
-                                                                                uuid =
-                                                                                        foodEntity
-                                                                                                .uuid,
-                                                                                nom =
-                                                                                        foodEntity
-                                                                                                .nameDef
-                                                                                                ?: "",
-                                                                                ingredients =
-                                                                                        foodEntity
-                                                                                                .ingredients,
-                                                                                price =
-                                                                                        foodEntity
-                                                                                                .price,
-                                                                                brand =
-                                                                                        foodEntity
-                                                                                                .brand,
-                                                                                gamme =
-                                                                                        foodEntity
-                                                                                                .gamme,
-                                                                                consistent =
-                                                                                        foodEntity
-                                                                                                .consistent !=
-                                                                                                0,
-                                                                                cont =
-                                                                                        foodEntity
-                                                                                                .consistent,
-                                                                                quantInt =
-                                                                                        foodEntity
-                                                                                                .quantityPres,
-                                                                                deprecated =
-                                                                                        foodEntity
-                                                                                                .deprecated,
-                                                                                dataB =
-                                                                                        foodEntity
-                                                                                                .DataB,
-                                                                                rationUUID =
-                                                                                        alimentRation
-                                                                                                .uuid // Ajouter le UUID de l'AlimentRation
-                                                                        )
-
-                                                                // Associer l'aliment à
-                                                                // l'alimentRation
-                                                                alimentRation.aliment = alimentEv
-                                                        }
-                                                }
-
-                                                // Ajouter l'alimentRation à la ration
-                                                ration.alimentMutableList.add(alimentRation)
-                                        }
-
-                                        // Ajouter la ration à la consultation
-                                        consultation.rations.add(ration)
-                                }
-
-                                // Ajouter la consultation à la liste
-                                consultations.add(consultation)
-                        }
-
-                        // Associer les consultations à l'animal
-                        animal.consultations.clear()
-                        animal.consultations.addAll(consultations)
-
-                        return@withContext animal
-                }
         }
 }

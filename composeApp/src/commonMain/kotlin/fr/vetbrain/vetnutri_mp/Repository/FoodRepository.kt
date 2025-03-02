@@ -1,7 +1,6 @@
 package fr.vetbrain.vetnutri_mp.Repository
 
 import fr.vetbrain.vetnutri_mp.Data.AlimentEv
-import fr.vetbrain.vetnutri_mp.Data.AlimentEvJson
 import kotlinx.coroutines.flow.Flow
 
 /** Interface définissant les opérations de base pour la gestion des aliments. */
@@ -12,36 +11,4 @@ interface FoodRepository {
     suspend fun getAllFoods(): List<AlimentEv>
     suspend fun getFoodById(id: String): AlimentEv?
     fun observeAllFoods(): Flow<List<AlimentEv>>
-
-    /**
-     * Importe une liste d'aliments et les insère dans la base de données
-     * @param foods Liste des aliments à importer
-     * @return Nombre d'aliments importés avec succès
-     */
-    suspend fun importFoods(foods: List<AlimentEvJson>): Int
-
-    /**
-     * Insère un aliment avec ses propriétés associées (espèces, indications, valeurs de nutriments)
-     * @param food Aliment à insérer
-     */
-    suspend fun insertFood(food: AlimentEv)
-
-    /**
-     * Récupère un aliment avec toutes ses propriétés associées par UUID
-     * @param uuid UUID de l'aliment à récupérer
-     * @return L'aliment complet ou null si non trouvé
-     */
-    suspend fun getFood(uuid: String): AlimentEv?
-
-    /**
-     * Supprime un aliment et toutes ses propriétés associées
-     * @param uuid UUID de l'aliment à supprimer
-     */
-    suspend fun deleteFood(uuid: String)
-
-    /**
-     * Met à jour un aliment et toutes ses propriétés associées
-     * @param food Aliment à mettre à jour
-     */
-    suspend fun updateFood(food: AlimentEv)
 }

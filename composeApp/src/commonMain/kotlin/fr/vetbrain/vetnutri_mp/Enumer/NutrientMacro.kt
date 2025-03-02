@@ -30,7 +30,9 @@ enum class NutrientMacro(
         fun getByCoef(coef: Int) =
                 coefMap[coef] ?: throw IllegalArgumentException("No NutrientMacro with coef=$coef")
 
-        fun getByLabel(label: String) = labelMap[label]
+        fun getByLabel(label: String) =
+                labelMap[label]
+                        ?: throw IllegalArgumentException("No NutrientMacro with label=$label")
 
         fun isByLabel(label: String) = label in labelMap
         fun size() = entries.size

@@ -2,6 +2,7 @@ package fr.vetbrain.vetnutri_mp.DataBase
 
 import androidx.room.TypeConverter
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.toLocalDate
 
 class Converters {
     @TypeConverter
@@ -11,7 +12,7 @@ class Converters {
 
     @TypeConverter
     fun toLocalDate(value: String?): LocalDate? {
-        return value?.let { LocalDate.parse(it) }
+        return value?.toLocalDate()
     }
 
     @TypeConverter

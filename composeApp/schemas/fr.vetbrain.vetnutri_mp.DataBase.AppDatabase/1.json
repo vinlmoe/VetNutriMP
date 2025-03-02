@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "0cfd7935fe89c5bb5491111218bc7f2c",
+    "identityHash": "fdc97555017b347f03af50c06ecc8f81",
     "entities": [
       {
         "tableName": "ANIMALS",
@@ -716,7 +716,7 @@
       },
       {
         "tableName": "FOOD",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`UUID` TEXT NOT NULL, `groupAlim` INTEGER NOT NULL, `typeAlim` INTEGER NOT NULL, `ingredients` TEXT NOT NULL, `price` REAL NOT NULL, `categPrice` TEXT NOT NULL, `brand` TEXT NOT NULL, `gamme` TEXT NOT NULL, `unitPres` INTEGER NOT NULL, `quantityPres` REAL NOT NULL, `version` INTEGER NOT NULL, `date` TEXT NOT NULL, `nameDef` TEXT NOT NULL, `consistent` INTEGER NOT NULL, `deprecated` INTEGER NOT NULL, `DataB` TEXT NOT NULL, `RefRation` TEXT, `quantity` REAL, `RefAlimUnif` TEXT, `refTarget` INTEGER, `rationName` TEXT, `rationUUID` TEXT, `animalUUID` TEXT, `animalNom` TEXT, `animalEspece` TEXT, `consultationUUID` TEXT, `consultationDate` TEXT, PRIMARY KEY(`UUID`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`UUID` TEXT NOT NULL, `groupAlim` INTEGER NOT NULL, `typeAlim` INTEGER NOT NULL, `ingredients` TEXT NOT NULL, `price` REAL NOT NULL, `categPrice` TEXT NOT NULL, `brand` TEXT NOT NULL, `gamme` TEXT NOT NULL, `unitPres` INTEGER NOT NULL, `quantityPres` REAL NOT NULL, `version` INTEGER NOT NULL, `date` TEXT NOT NULL, `nameDef` TEXT NOT NULL, `consistent` INTEGER NOT NULL, `deprecated` INTEGER NOT NULL, `DataB` TEXT NOT NULL, `RefRation` TEXT, `quantity` REAL, `RefAlimUnif` TEXT, `refTarget` INTEGER, PRIMARY KEY(`UUID`))",
         "fields": [
           {
             "fieldPath": "UUID",
@@ -833,41 +833,6 @@
             "fieldPath": "refTarget",
             "columnName": "refTarget",
             "affinity": "INTEGER"
-          },
-          {
-            "fieldPath": "rationName",
-            "columnName": "rationName",
-            "affinity": "TEXT"
-          },
-          {
-            "fieldPath": "rationUUID",
-            "columnName": "rationUUID",
-            "affinity": "TEXT"
-          },
-          {
-            "fieldPath": "animalUUID",
-            "columnName": "animalUUID",
-            "affinity": "TEXT"
-          },
-          {
-            "fieldPath": "animalNom",
-            "columnName": "animalNom",
-            "affinity": "TEXT"
-          },
-          {
-            "fieldPath": "animalEspece",
-            "columnName": "animalEspece",
-            "affinity": "TEXT"
-          },
-          {
-            "fieldPath": "consultationUUID",
-            "columnName": "consultationUUID",
-            "affinity": "TEXT"
-          },
-          {
-            "fieldPath": "consultationDate",
-            "columnName": "consultationDate",
-            "affinity": "TEXT"
           }
         ],
         "primaryKey": {
@@ -952,7 +917,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '0cfd7935fe89c5bb5491111218bc7f2c')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'fdc97555017b347f03af50c06ecc8f81')"
     ]
   }
 }

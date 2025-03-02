@@ -25,7 +25,7 @@ class InMemoryAnimalRepository : AnimalRepository {
     }
 
     override suspend fun deleteAnimal(animal: AnimalEv) {
-        animals.removeAll { it.uuid == animal.uuid }
+        animals.removeIf { it.uuid == animal.uuid }
         updateFlow()
     }
 
@@ -125,14 +125,5 @@ class InMemoryAnimalRepository : AnimalRepository {
 
     private fun updateFlow() {
         animalsFlow.value = animals.toList()
-    }
-
-    /**
-     * Récupère le repository des aliments
-     *
-     * @return Le repository des aliments ou null s'il n'est pas disponible
-     */
-    override fun getFoodRepository(): FoodRepository? {
-        return null
     }
 }
