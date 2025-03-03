@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Components.ConfirmDialog
+import fr.vetbrain.vetnutri_mp.Components.TopBar
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
@@ -154,8 +155,11 @@ private fun WideScreenLayout(
         Row(modifier = Modifier.fillMaxSize()) {
                 // Sidebar
                 Column(
-                        modifier = Modifier.width(250.dp).fillMaxHeight().padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                        modifier =
+                                Modifier.width(250.dp)
+                                        .fillMaxHeight()
+                                        .padding(AppSizes.paddingMedium),
+                        verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
                 ) {
                         // En-tête avec nom et espèce de l'animal
                         Column(modifier = Modifier.fillMaxWidth()) {
@@ -194,12 +198,12 @@ private fun WideScreenLayout(
                                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                                         contentDescription = "Retour"
                                 )
-                                Spacer(modifier = Modifier.width(8.dp))
+                                Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
                                 Text(text = "Retour")
                         }
 
                         // Ajout de l'option Paramètres en bas du menu
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
                         MenuOptionItem(
                                 option =
                                         MenuOption(
@@ -228,7 +232,9 @@ private fun WideScreenLayout(
                                                         onCancel = { onIsEditingChange(false) },
                                                         modifier =
                                                                 Modifier.fillMaxSize()
-                                                                        .padding(16.dp)
+                                                                        .padding(
+                                                                                AppSizes.paddingMedium
+                                                                        )
                                                 )
                                         } else {
                                                 AnimalIdentificationView(
@@ -237,7 +243,9 @@ private fun WideScreenLayout(
                                                         onDelete = onShowDeleteConfirmation,
                                                         modifier =
                                                                 Modifier.fillMaxSize()
-                                                                        .padding(16.dp)
+                                                                        .padding(
+                                                                                AppSizes.paddingMedium
+                                                                        )
                                                 )
                                         }
                                 }
@@ -281,8 +289,11 @@ private fun NarrowScreenLayout(
                 drawerState = drawerState,
                 drawerContent = {
                         Column(
-                                modifier = Modifier.fillMaxHeight().width(250.dp).padding(16.dp),
-                                verticalArrangement = Arrangement.spacedBy(16.dp)
+                                modifier =
+                                        Modifier.fillMaxHeight()
+                                                .width(250.dp)
+                                                .padding(AppSizes.paddingMedium),
+                                verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
                         ) {
                                 // En-tête avec nom et espèce de l'animal
                                 Column(modifier = Modifier.fillMaxWidth()) {
@@ -327,12 +338,12 @@ private fun NarrowScreenLayout(
                                                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                                                 contentDescription = "Retour"
                                         )
-                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
                                         Text(text = "Retour")
                                 }
 
                                 // Ajout de l'option Paramètres en bas du menu
-                                Spacer(modifier = Modifier.height(8.dp))
+                                Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
                                 MenuOptionItem(
                                         option =
                                                 MenuOption(
@@ -353,7 +364,9 @@ private fun NarrowScreenLayout(
                         Column(modifier = Modifier.fillMaxSize()) {
                                 // En-tête avec bouton menu (remplace la TopAppBar)
                                 Row(
-                                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                        modifier =
+                                                Modifier.fillMaxWidth()
+                                                        .padding(AppSizes.paddingMedium),
                                         horizontalArrangement = Arrangement.SpaceBetween,
                                         verticalAlignment = Alignment.CenterVertically
                                 ) {
@@ -374,7 +387,7 @@ private fun NarrowScreenLayout(
                                         )
 
                                         // Espace vide pour équilibrer la mise en page
-                                        Spacer(modifier = Modifier.size(48.dp))
+                                        Spacer(modifier = Modifier.size(AppSizes.iconSizeLarge))
                                 }
 
                                 Divider(
@@ -406,7 +419,7 @@ private fun NarrowScreenLayout(
                                                                         modifier =
                                                                                 Modifier.fillMaxSize()
                                                                                         .padding(
-                                                                                                16.dp
+                                                                                                AppSizes.paddingMedium
                                                                                         )
                                                                 )
                                                         } else {
@@ -422,7 +435,7 @@ private fun NarrowScreenLayout(
                                                                         modifier =
                                                                                 Modifier.fillMaxSize()
                                                                                         .padding(
-                                                                                                16.dp
+                                                                                                AppSizes.paddingMedium
                                                                                         )
                                                                 )
                                                         }
@@ -448,4 +461,28 @@ private fun NarrowScreenLayout(
                         }
                 }
         )
+}
+
+@OptIn(ExperimentalMaterialApi::class)
+@Composable
+private fun AnimaTablDetailScreenDesktop(
+        animal: AnimalEv?,
+        currentSection: AnimalDetailSection,
+        viewModel: AnimalDetailViewModel,
+        settingsViewModel: SettingsViewModel,
+        onChangeSection: (AnimalDetailSection) -> Unit,
+        onNavigateBack: () -> Unit,
+        onOpenSettings: () -> Unit,
+        modifier: Modifier = Modifier
+) {
+        Column(modifier = modifier.fillMaxSize().padding(16.dp)) {
+                // Utiliser la nouvelle signature de TopBar avec onBackClick
+                TopBar(
+                        title = animal?.nom ?: "Détail de l'animal",
+                        onBackClick = onNavigateBack,
+                        onSettingsClick = onOpenSettings
+                )
+
+                // ... existing code ...
+        }
 }

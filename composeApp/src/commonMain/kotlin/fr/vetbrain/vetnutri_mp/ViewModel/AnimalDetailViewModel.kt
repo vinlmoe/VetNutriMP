@@ -298,6 +298,10 @@ class AnimalDetailViewModel(
         val updatedConsultation = consultation.copy(rations = updatedRations)
         _selectedConsultation.value = updatedConsultation
         updateConsultation(updatedConsultation)
+
+        // Log pour déboguer
+        println("DEBUG: Ration ajoutée avec UUID=${ration.uuid}, nom=${ration.name}")
+        println("DEBUG: La consultation a maintenant ${updatedRations.size} rations")
     }
 
     fun updateRationInConsultation(ration: Ration) {
@@ -349,8 +353,22 @@ class AnimalDetailViewModel(
         val updatedRations = consultation.rations.toMutableList()
         updatedRations.removeAll { it.uuid == ration.uuid }
         val updatedConsultation = consultation.copy(rations = updatedRations)
+
+        // Forcer la mise à jour du StateFlow pour notifier l'interface
         _selectedConsultation.value = updatedConsultation
+
+        // Mettre à jour dans la base de données
         updateConsultation(updatedConsultation)
+
+        // Si la ration supprimée était sélectionnée, sélectionner une autre ration si disponible
+        if (_selectedRation.value?.uuid == ration.uuid) {
+            updatedRations.firstOrNull()?.let { selectRation(it) }
+                    ?: run { _selectedRation.value = null }
+        }
+
+        // Log pour déboguer
+        println("DEBUG: Ration supprimée avec UUID=${ration.uuid}, nom=${ration.name}")
+        println("DEBUG: La consultation a maintenant ${updatedRations.size} rations")
     }
 
     fun deleteConsultation(consultation: ConsultationEv) {
@@ -465,5 +483,74 @@ class AnimalDetailViewModel(
 
         // Mettre à jour la ration dans la consultation
         updateRationInConsultation(updatedRation)
+    }
+
+    /**
+     * Crée une ration par défaut pour une consultation
+     *
+     * @param consultation La consultation pour laquelle créer une ration
+     */
+    fun createDefaultRation(consultation: ConsultationEv) {
+        viewModelScope.launch {
+            // Créer une nouvelle ration avec un nom par défaut
+            val newRation =
+                    Ration(
+                            name = "Ration proposée",
+                            actual = false,
+                            alimentMutableList = mutableListOf()
+                    )
+
+            // Créer une copie de la liste des rations et y ajouter la nouvelle ration
+            val updatedRations = consultation.rations.toMutableList()
+            updatedRations.add(newRation)
+
+            // Créer une copie de la consultation avec la liste mise à jour
+            val updatedConsultation = consultation.copy(rations = updatedRations)
+
+            // Mettre à jour le StateFlow avec la nouvelle consultation
+            _selectedConsultation.value = updatedConsultation
+
+            // Sauvegarder la consultation mise à jour
+            consultationRepository.saveConsultation(updatedConsultation)
+
+            // Sélectionner la nouvelle ration
+            selectRation(newRation)
+
+            // Log pour débogage
+            println("DEBUG: Ration créée avec UUID=${newRation.uuid}, nom=${newRation.name}")
+            println("DEBUG: La consultation a maintenant ${updatedRations.size} rations")
+        }
+    }
+
+    /**
+     * Supprime un aliment d'une ration
+     *
+     * @param alimentUuid UUID de l'aliment à supprimer
+     */
+    fun removeAlimentFromRation(alimentUuid: String) {
+        val currentRation = _selectedRation.value?.copy() ?: return
+
+        // Créer une nouvelle liste d'aliments sans l'aliment à supprimer
+        val updatedAliments =
+                currentRation.alimentMutableList.filter { it.uuid != alimentUuid }.toMutableList()
+
+        // Créer une nouvelle ration avec la liste d'aliments mise à jour
+        val updatedRation = currentRation.copy(alimentMutableList = updatedAliments)
+
+        // Mettre à jour la ration sélectionnée
+        _selectedRation.value = updatedRation
+
+        // Mettre à jour la ration dans la consultation
+        updateRationInConsultation(updatedRation)
+    }
+
+    /**
+     * Récupère une consultation par son identifiant
+     *
+     * @param consultationId Identifiant de la consultation
+     * @return La consultation ou null si elle n'est pas trouvée
+     */
+    suspend fun getConsultationById(consultationId: String): ConsultationEv? {
+        return consultationRepository.getConsultationById(consultationId)
     }
 }

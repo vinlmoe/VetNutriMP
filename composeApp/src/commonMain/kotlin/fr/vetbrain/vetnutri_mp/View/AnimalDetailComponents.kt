@@ -5,7 +5,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
@@ -18,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.*
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -41,13 +41,13 @@ data class MenuOption(val section: AnimalDetailSection, val title: String, val i
 @Composable
 fun InfoRow(label: String, value: String) {
         Row(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                modifier = Modifier.fillMaxWidth().padding(vertical = AppSizes.paddingXSmall),
                 horizontalArrangement = Arrangement.Start
         ) {
                 Text(
                         text = "$label :",
                         style = MaterialTheme.typography.subtitle1,
-                        modifier = Modifier.width(150.dp)
+                        modifier = Modifier.width(AppSizes.textFieldHeight.times(2.7f))
                 )
                 Text(text = value, style = MaterialTheme.typography.body1)
         }
@@ -80,8 +80,7 @@ fun ConsultationCard(
                                 .padding(
                                         vertical = AppSizes.paddingSmall,
                                         horizontal = AppSizes.paddingXXSmall
-                                )
-                                .clickable(onClick = onClick),
+                                ),
                 elevation =
                         if (isSelected) AppSizes.cardElevationSelected
                         else AppSizes.cardElevationNormal,
@@ -91,19 +90,28 @@ fun ConsultationCard(
                 shape = MaterialTheme.shapes.medium,
                 border =
                         if (isSelected)
-                                BorderStroke(1.dp, VetNutriColors.Primary.copy(alpha = 0.5f))
-                        else BorderStroke(0.5.dp, Color.LightGray.copy(alpha = 0.5f))
+                                BorderStroke(
+                                        AppSizes.borderWidth,
+                                        VetNutriColors.Primary.copy(alpha = 0.5f)
+                                )
+                        else
+                                BorderStroke(
+                                        AppSizes.borderWidth.times(0.5f),
+                                        Color.LightGray.copy(alpha = 0.5f)
+                                )
         ) {
-                Column(
-                        modifier = Modifier.fillMaxWidth().padding(AppSizes.paddingMedium),
-                        verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
+                Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                        // Date de la consultation et boutons d'action
-                        Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
+                        Column(
+                                modifier =
+                                        Modifier.weight(1f)
+                                                .clickable(onClick = onClick)
+                                                .padding(AppSizes.paddingMedium),
+                                verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
                         ) {
+                                // Date de la consultation
                                 Row(
                                         horizontalArrangement =
                                                 Arrangement.spacedBy(AppSizes.paddingSmall),
@@ -123,86 +131,40 @@ fun ConsultationCard(
                                         )
                                 }
 
-                                Row {
-                                        // Bouton d'édition
-                                        IconButton(
-                                                onClick = onEdit,
-                                                modifier = Modifier.size(AppSizes.iconSizeMedium)
+                                // Afficher le poids si disponible
+                                consultation.weight?.let { weight ->
+                                        Row(
+                                                horizontalArrangement =
+                                                        Arrangement.spacedBy(AppSizes.paddingSmall),
+                                                verticalAlignment = Alignment.CenterVertically
                                         ) {
                                                 Icon(
-                                                        imageVector = AppIcons.Edit,
-                                                        contentDescription =
-                                                                "Modifier la consultation",
-                                                        tint = VetNutriColors.Primary
+                                                        AppIcons.Weight,
+                                                        contentDescription = null,
+                                                        tint = Color.Gray,
+                                                        modifier =
+                                                                Modifier.size(
+                                                                        AppSizes.iconSizeXSmall
+                                                                )
                                                 )
-                                        }
-
-                                        // Bouton de suppression
-                                        IconButton(
-                                                onClick = onDelete,
-                                                enabled = isDeleteEnabled,
-                                                modifier = Modifier.size(AppSizes.iconSizeMedium)
-                                        ) {
-                                                Icon(
-                                                        imageVector = AppIcons.Delete,
-                                                        contentDescription =
-                                                                "Supprimer la consultation",
-                                                        tint =
-                                                                if (isDeleteEnabled) Color.Red
-                                                                else Color.Gray.copy(alpha = 0.5f)
+                                                Text(
+                                                        text = "$weight kg",
+                                                        style = MaterialTheme.typography.caption,
+                                                        color = Color.Gray
                                                 )
                                         }
                                 }
-                        }
 
-                        // Afficher le poids si disponible
-                        consultation.weight?.let { weight ->
-                                Row(
-                                        horizontalArrangement =
-                                                Arrangement.spacedBy(AppSizes.paddingSmall),
-                                        verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                        Icon(
-                                                AppIcons.Weight,
-                                                contentDescription = null,
-                                                tint = Color.Gray,
-                                                modifier = Modifier.size(AppSizes.iconSizeXSmall)
-                                        )
-                                        Text(
-                                                text = "$weight kg",
-                                                style = MaterialTheme.typography.caption,
-                                                color = Color.Gray
-                                        )
-                                }
-                        }
-
-                        Divider(
-                                modifier = Modifier.padding(vertical = AppSizes.paddingXXSmall),
-                                color = Color.LightGray,
-                                thickness = 0.5.dp
-                        )
-
-                        // Motif de la consultation
-                        Row(
-                                horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall),
-                                verticalAlignment = Alignment.Top
-                        ) {
-                                Icon(
-                                        AppIcons.Info,
-                                        contentDescription = null,
-                                        tint = VetNutriColors.Secondary,
-                                        modifier = Modifier.size(AppSizes.iconSizeSmall)
+                                Divider(
+                                        modifier =
+                                                Modifier.padding(
+                                                        vertical = AppSizes.paddingXXSmall
+                                                ),
+                                        color = Color.LightGray,
+                                        thickness = AppSizes.dividerHeight.times(0.5f)
                                 )
-                                Text(
-                                        text = consultation.objectConsult,
-                                        style = MaterialTheme.typography.body1,
-                                        maxLines = 2,
-                                        overflow = TextOverflow.Ellipsis
-                                )
-                        }
 
-                        // Afficher un aperçu des observations si disponibles
-                        if (!consultation.observation.isNullOrEmpty()) {
+                                // Motif de la consultation
                                 Row(
                                         horizontalArrangement =
                                                 Arrangement.spacedBy(AppSizes.paddingSmall),
@@ -211,36 +173,103 @@ fun ConsultationCard(
                                         Icon(
                                                 AppIcons.Info,
                                                 contentDescription = null,
-                                                tint = Color.Gray,
+                                                tint = VetNutriColors.Secondary,
                                                 modifier = Modifier.size(AppSizes.iconSizeSmall)
                                         )
                                         Text(
-                                                text = consultation.observation,
-                                                style = MaterialTheme.typography.body2,
-                                                color = Color.Gray,
-                                                maxLines = 1,
+                                                text = consultation.objectConsult,
+                                                style = MaterialTheme.typography.body1,
+                                                maxLines = 2,
                                                 overflow = TextOverflow.Ellipsis
                                         )
                                 }
-                        }
 
-                        // Afficher le nombre de rations si disponibles
-                        if (consultation.rations.isNotEmpty()) {
-                                Row(
-                                        horizontalArrangement =
-                                                Arrangement.spacedBy(AppSizes.paddingSmall),
-                                        verticalAlignment = Alignment.CenterVertically
+                                // Afficher un aperçu des observations si disponibles
+                                if (!consultation.observation.isNullOrEmpty()) {
+                                        Row(
+                                                horizontalArrangement =
+                                                        Arrangement.spacedBy(AppSizes.paddingSmall),
+                                                verticalAlignment = Alignment.Top
+                                        ) {
+                                                Icon(
+                                                        AppIcons.Info,
+                                                        contentDescription = null,
+                                                        tint = Color.Gray,
+                                                        modifier =
+                                                                Modifier.size(
+                                                                        AppSizes.iconSizeSmall
+                                                                )
+                                                )
+                                                Text(
+                                                        text = consultation.observation,
+                                                        style = MaterialTheme.typography.body2,
+                                                        color = Color.Gray,
+                                                        maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis
+                                                )
+                                        }
+                                }
+
+                                // Afficher le nombre de rations si disponibles
+                                if (consultation.rations.isNotEmpty()) {
+                                        Row(
+                                                horizontalArrangement =
+                                                        Arrangement.spacedBy(AppSizes.paddingSmall),
+                                                verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                                Icon(
+                                                        AppIcons.Ration,
+                                                        contentDescription = null,
+                                                        tint = VetNutriColors.Secondary,
+                                                        modifier =
+                                                                Modifier.size(
+                                                                        AppSizes.iconSizeXSmall
+                                                                )
+                                                )
+                                                Text(
+                                                        text =
+                                                                "Rations: ${consultation.rations.size}",
+                                                        style = MaterialTheme.typography.caption,
+                                                        color = VetNutriColors.Secondary
+                                                )
+                                        }
+                                }
+                        }
+                        // Boutons d'action dans une colonne séparée
+                        Column(
+                                modifier =
+                                        Modifier.padding(
+                                                top = AppSizes.paddingMedium,
+                                                end = AppSizes.paddingMedium
+                                        ),
+                                verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
+                        ) {
+                                // Bouton d'édition
+                                IconButton(
+                                        onClick = onEdit,
+                                        modifier = Modifier.size(AppSizes.iconSizeMedium)
                                 ) {
                                         Icon(
-                                                AppIcons.Ration,
-                                                contentDescription = null,
-                                                tint = VetNutriColors.Secondary,
-                                                modifier = Modifier.size(AppSizes.iconSizeXSmall)
+                                                imageVector = AppIcons.Edit,
+                                                contentDescription = "Modifier la consultation",
+                                                tint = VetNutriColors.Primary,
+                                                modifier = Modifier.size(AppSizes.iconSizeSmall)
                                         )
-                                        Text(
-                                                text = "Rations: ${consultation.rations.size}",
-                                                style = MaterialTheme.typography.caption,
-                                                color = VetNutriColors.Secondary
+                                }
+
+                                // Bouton de suppression
+                                IconButton(
+                                        onClick = onDelete,
+                                        enabled = isDeleteEnabled,
+                                        modifier = Modifier.size(AppSizes.iconSizeMedium)
+                                ) {
+                                        Icon(
+                                                imageVector = AppIcons.Delete,
+                                                contentDescription = "Supprimer la consultation",
+                                                tint =
+                                                        if (isDeleteEnabled) Color.Red
+                                                        else Color.Gray.copy(alpha = 0.5f),
+                                                modifier = Modifier.size(AppSizes.iconSizeSmall)
                                         )
                                 }
                         }
@@ -254,6 +283,9 @@ fun ConsultationCard(
  * @param ration La ration à afficher
  * @param isSelected Indique si la ration est sélectionnée
  * @param onClick Action à exécuter lors du clic sur l'élément
+ * @param onDelete Action à exécuter lors du clic sur le bouton de suppression
+ * @param isDeleteEnabled Indique si le bouton de suppression est activé
+ * @param onEdit Action à exécuter lors du clic sur le bouton d'édition
  * @param modifier Modificateur optionnel pour personnaliser l'apparence
  */
 @Composable
@@ -261,6 +293,9 @@ fun RationItem(
         ration: Ration,
         isSelected: Boolean,
         onClick: () -> Unit,
+        onDelete: () -> Unit = {},
+        isDeleteEnabled: Boolean = true,
+        onEdit: () -> Unit = {},
         modifier: Modifier = Modifier
 ) {
         Row(
@@ -272,7 +307,7 @@ fun RationItem(
                                         else Color.Transparent
                                 )
                                 .border(
-                                        width = if (isSelected) 1.dp else 0.dp,
+                                        width = if (isSelected) AppSizes.borderWidth else 0.dp,
                                         color =
                                                 if (isSelected)
                                                         VetNutriColors.Primary.copy(alpha = 0.5f)
@@ -291,18 +326,55 @@ fun RationItem(
                                         if (isSelected) VetNutriColors.Primary
                                         else MaterialTheme.colors.onSurface
                         )
-                        Text(
-                                text = if (ration.actual) "Actuelle" else "Proposée",
-                                style = MaterialTheme.typography.caption,
-                                color = if (ration.actual) VetNutriColors.Primary else Color.Gray
-                        )
+                        Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
+                        ) {
+                                Text(
+                                        text = if (ration.actual) "Proposée" else "Actuelle",
+                                        style = MaterialTheme.typography.caption,
+                                        color =
+                                                if (ration.actual) VetNutriColors.Primary
+                                                else Color.Gray
+                                )
+                                Text(
+                                        text = "Coef: ${ration.coef}",
+                                        style = MaterialTheme.typography.caption,
+                                        color = Color.Gray
+                                )
+                        }
                 }
 
-                Text(
-                        text = "${ration.alimentMutableList.size} aliments",
-                        style = MaterialTheme.typography.caption,
-                        color = Color.Gray
-                )
+                // Boutons d'action (édition et suppression)
+                Row(
+                        horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingXSmall),
+                        verticalAlignment = Alignment.CenterVertically
+                ) {
+                        IconButton(
+                                onClick = { onEdit() },
+                                modifier = Modifier.size(AppSizes.iconSizeLarge)
+                        ) {
+                                Icon(
+                                        Icons.Default.Edit,
+                                        contentDescription = "Modifier",
+                                        tint = VetNutriColors.Primary.copy(alpha = 0.8f)
+                                )
+                        }
+
+                        IconButton(
+                                onClick = { onDelete() },
+                                modifier = Modifier.size(AppSizes.iconSizeLarge),
+                                enabled = isDeleteEnabled
+                        ) {
+                                Icon(
+                                        AppIcons.Delete,
+                                        contentDescription = "Supprimer",
+                                        tint =
+                                                if (isDeleteEnabled) Color.Red.copy(alpha = 0.8f)
+                                                else Color.Gray.copy(alpha = 0.5f)
+                                )
+                        }
+                }
         }
 }
 
@@ -310,30 +382,39 @@ fun RationItem(
  * Composant réutilisable pour afficher un élément d'aliment dans une liste
  *
  * @param aliment L'aliment à afficher
+ * @param isEditing Indique si cet aliment est en mode édition
+ * @param onStartEditing Callback appelé quand l'édition commence
+ * @param onEndEditing Callback appelé quand l'édition se termine sans changement
+ * @param onQuantityChange Callback appelé quand la quantité est changée et validée
+ * @param onDelete Callback appelé lors du clic sur le bouton de suppression
  * @param modifier Modificateur optionnel pour personnaliser l'apparence
  */
 @Composable
 fun AlimentItem(
         aliment: AlimentRation,
-        modifier: Modifier = Modifier,
-        onQuantityChange: (Float) -> Unit = {}
+        isEditing: Boolean = false,
+        onStartEditing: () -> Unit = {},
+        onEndEditing: () -> Unit = {},
+        onQuantityChange: (Float) -> Unit = {},
+        onDelete: () -> Unit = {},
+        modifier: Modifier = Modifier
 ) {
-        var quantityText by remember { mutableStateOf(aliment.quantity.toString()) }
-        var isEditing by remember { mutableStateOf(false) }
-        val initialQuantityText = remember(isEditing) { if (isEditing) quantityText else "" }
+        var quantityText by
+                remember(isEditing) {
+                        mutableStateOf(
+                                if (isEditing) aliment.quantity.toString()
+                                else aliment.quantity.toString()
+                        )
+                }
 
         // Fonction de validation de la quantité
         val validateQuantity = {
                 val newQuantity = quantityText.toFloatOrNull() ?: aliment.quantity
                 onQuantityChange(newQuantity)
-                isEditing = false
         }
 
         // Fonction d'annulation de l'édition
-        val cancelEdit = {
-                quantityText = aliment.quantity.toString()
-                isEditing = false
-        }
+        val cancelEdit = { onEndEditing() }
 
         Row(
                 modifier = modifier.fillMaxWidth().padding(AppSizes.paddingSmall),
@@ -352,108 +433,66 @@ fun AlimentItem(
                         )
                 }
 
-                Column(horizontalAlignment = Alignment.End) {
-                        if (isEditing) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                        OutlinedTextField(
-                                                value = quantityText,
-                                                onValueChange = { newValue ->
-                                                        // N'accepter que les nombres pour la
-                                                        // quantité
-                                                        if (newValue.isEmpty() ||
-                                                                        newValue.all {
-                                                                                it.isDigit() ||
-                                                                                        it == '.'
-                                                                        }
-                                                        ) {
-                                                                quantityText = newValue
-                                                        }
-                                                },
-                                                keyboardOptions =
-                                                        KeyboardOptions(
-                                                                keyboardType = KeyboardType.Number
-                                                        ),
-                                                keyboardActions =
-                                                        KeyboardActions(
-                                                                onDone = { validateQuantity() }
-                                                        ),
-                                                singleLine = true,
-                                                modifier =
-                                                        Modifier.width(100.dp)
-                                                                .height(50.dp)
-                                                                .onKeyEvent { keyEvent ->
-                                                                        if (keyEvent.type ==
-                                                                                        KeyEventType
-                                                                                                .KeyDown
-                                                                        ) {
-                                                                                when (keyEvent.key
-                                                                                ) {
-                                                                                        Key.Enter -> {
-                                                                                                validateQuantity()
-                                                                                                true
-                                                                                        }
-                                                                                        Key.Escape -> {
-                                                                                                cancelEdit()
-                                                                                                true
-                                                                                        }
-                                                                                        else ->
-                                                                                                false
-                                                                                }
-                                                                        } else {
-                                                                                false
-                                                                        }
-                                                                },
-                                                textStyle = MaterialTheme.typography.body2
+                // Affichage et édition de la quantité
+                if (isEditing) {
+                        // Mode édition de la quantité
+                        Row(
+                                modifier = Modifier.padding(horizontal = AppSizes.paddingSmall),
+                                verticalAlignment = Alignment.CenterVertically
+                        ) {
+                                OutlinedTextField(
+                                        value = quantityText,
+                                        onValueChange = { quantityText = it },
+                                        label = { Text("Quantité") },
+                                        keyboardOptions =
+                                                KeyboardOptions(keyboardType = KeyboardType.Number),
+                                        singleLine = true,
+                                        modifier =
+                                                Modifier.width(AppSizes.textFieldHeight.times(2.2f))
+                                )
+                                Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
+                                IconButton(onClick = validateQuantity) {
+                                        Icon(
+                                                AppIcons.Check,
+                                                contentDescription = "Valider",
+                                                tint = Color.Green
                                         )
-
-                                        Spacer(modifier = Modifier.width(8.dp))
-
-                                        Row {
-                                                IconButton(onClick = { validateQuantity() }) {
-                                                        Icon(
-                                                                imageVector = Icons.Default.Check,
-                                                                contentDescription = "Valider",
-                                                                tint = VetNutriColors.Primary
-                                                        )
-                                                }
-
-                                                IconButton(onClick = { cancelEdit() }) {
-                                                        Icon(
-                                                                imageVector = AppIcons.Cancel,
-                                                                contentDescription = "Annuler",
-                                                                tint = Color.Gray
-                                                        )
-                                                }
-                                        }
                                 }
-                        } else {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Text(
-                                                text = "${aliment.quantity} g",
-                                                style = MaterialTheme.typography.body2,
-                                                modifier = Modifier.clickable { isEditing = true }
+                                IconButton(onClick = cancelEdit) {
+                                        Icon(
+                                                AppIcons.Close,
+                                                contentDescription = "Annuler",
+                                                tint = Color.Red
                                         )
-
-                                        Spacer(modifier = Modifier.width(8.dp))
-
-                                        IconButton(
-                                                onClick = { isEditing = true },
-                                                modifier = Modifier.size(24.dp)
-                                        ) {
-                                                Icon(
-                                                        imageVector = Icons.Default.Edit,
-                                                        contentDescription = "Modifier la quantité",
-                                                        tint = VetNutriColors.Primary
-                                                )
-                                        }
                                 }
                         }
-
-                        Text(
-                                text = "Proportion: ${aliment.proportion}%",
-                                style = MaterialTheme.typography.caption,
-                                color = Color.Gray
-                        )
+                } else {
+                        // Mode affichage de la quantité
+                        Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
+                        ) {
+                                Text(
+                                        text = "${aliment.quantity} g",
+                                        style = MaterialTheme.typography.body1,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.clickable(onClick = onStartEditing)
+                                )
+                                IconButton(onClick = onStartEditing) {
+                                        Icon(
+                                                AppIcons.Edit,
+                                                contentDescription = "Modifier la quantité",
+                                                tint = VetNutriColors.Primary
+                                        )
+                                }
+                                IconButton(onClick = onDelete) {
+                                        Icon(
+                                                AppIcons.Delete,
+                                                contentDescription = "Supprimer",
+                                                tint = Color.Red.copy(alpha = 0.8f)
+                                        )
+                                }
+                        }
                 }
         }
 }
@@ -541,7 +580,7 @@ fun MenuOptionItem(
                 modifier =
                         modifier.fillMaxWidth()
                                 .clickable(onClick = onClick)
-                                .padding(vertical = 8.dp),
+                                .padding(vertical = AppSizes.paddingSmall),
                 verticalAlignment = Alignment.CenterVertically
         ) {
                 Icon(
@@ -549,7 +588,7 @@ fun MenuOptionItem(
                         contentDescription = option.title,
                         tint = if (isSelected) VetNutriColors.Primary else Color.Gray
                 )
-                Spacer(modifier = Modifier.width(16.dp))
+                Spacer(modifier = Modifier.width(AppSizes.paddingMedium))
                 Text(
                         text = option.title,
                         style = MaterialTheme.typography.body1,

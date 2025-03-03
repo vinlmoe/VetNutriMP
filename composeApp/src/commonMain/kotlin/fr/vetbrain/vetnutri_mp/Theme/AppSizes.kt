@@ -85,6 +85,8 @@ object AppSizes {
         get() = (8 * sizeMultiplier).dp
     val dividerHeight
         get() = (1 * sizeMultiplier).dp
+    val dividerWidth
+        get() = (1 * sizeMultiplier).dp
     val borderWidth
         get() = (1 * sizeMultiplier).dp
     val cornerRadius
@@ -93,6 +95,8 @@ object AppSizes {
         get() = (8 * sizeMultiplier).dp
     val cornerRadiusXLarge
         get() = (16 * sizeMultiplier).dp
+    val inputMultilineHeight
+        get() = (120 * sizeMultiplier).dp
 
     // Breakpoints
     val breakpointWideScreen = 840.dp

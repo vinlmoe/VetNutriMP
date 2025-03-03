@@ -9,7 +9,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Consultation
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.General
@@ -19,6 +18,7 @@ import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailViewModel
 import kotlinx.datetime.Clock
+import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 
@@ -43,6 +43,14 @@ fun ConsultationsView(
     val isEditingConsultation by remember { derivedStateOf { viewModel.isEditingConsultation } }
     var showDeleteConfirmation by remember { mutableStateOf(false) }
     var consultationToDelete by remember { mutableStateOf<ConsultationEv?>(null) }
+
+    // Trier les consultations de la plus récente à la plus ancienne
+    val sortedConsultations =
+            remember(animal) {
+                val defaultDate =
+                        LocalDate(2000, 1, 1) // Date par défaut pour les consultations sans date
+                animal?.consultations?.sortedByDescending { it.date ?: defaultDate } ?: emptyList()
+            }
 
     // Dialogue de confirmation de suppression
     if (showDeleteConfirmation) {
@@ -145,7 +153,7 @@ fun ConsultationsView(
                             modifier = Modifier.fillMaxWidth().weight(1f),
                             verticalArrangement = Arrangement.spacedBy(AppSizes.cardSpacing)
                     ) {
-                        items(animalDetails.consultations) { consultation ->
+                        items(sortedConsultations) { consultation ->
                             ConsultationCard(
                                     consultation = consultation,
                                     isSelected = selectedConsultation?.uuid == consultation.uuid,
@@ -159,10 +167,7 @@ fun ConsultationsView(
                                         showDeleteConfirmation = true
                                     },
                                     isDeleteEnabled = canDeleteConsultation,
-                                    onClick = {
-                                        viewModel.selectConsultation(consultation)
-                                        onShowConsultationDetail(true)
-                                    }
+                                    onClick = { viewModel.selectConsultation(consultation) }
                             )
                         }
                     }
@@ -172,7 +177,7 @@ fun ConsultationsView(
 
         // Séparateur vertical
         Divider(
-                modifier = Modifier.fillMaxHeight().width(1.dp),
+                modifier = Modifier.fillMaxHeight().width(AppSizes.dividerWidth),
                 color = MaterialTheme.colors.onSurface.copy(alpha = 0.12f)
         )
 

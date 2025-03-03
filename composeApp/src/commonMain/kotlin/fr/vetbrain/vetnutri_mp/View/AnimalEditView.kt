@@ -15,15 +15,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
 import fr.vetbrain.vetnutri_mp.Enumer.Sex
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Animal
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.General
 import fr.vetbrain.vetnutri_mp.Localization.translate
+import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import kotlinx.datetime.LocalDate
-import kotlinx.datetime.toLocalDate
 
 @Composable
 fun AnimalEditView(
@@ -48,13 +47,15 @@ fun AnimalEditView(
 
         Card(
                 modifier = modifier.fillMaxSize(),
-                elevation = 4.dp,
+                elevation = AppSizes.elevationMedium,
                 backgroundColor = MaterialTheme.colors.surface
         ) {
                 Column(
                         modifier =
-                                Modifier.fillMaxSize().padding(24.dp).verticalScroll(scrollState),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                                Modifier.fillMaxSize()
+                                        .padding(AppSizes.paddingLarge)
+                                        .verticalScroll(scrollState),
+                        verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
                 ) {
                         // Titre avec style amélioré
                         Text(
@@ -63,9 +64,9 @@ fun AnimalEditView(
                                 color = VetNutriColors.Primary
                         )
 
-                        Divider(color = Color.LightGray, thickness = 1.dp)
+                        Divider(color = Color.LightGray, thickness = AppSizes.dividerHeight)
 
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
 
                         // Nom de l'animal
                         OutlinedTextField(
@@ -187,9 +188,9 @@ fun AnimalEditView(
                         Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 modifier =
-                                        Modifier.padding(vertical = 8.dp)
+                                        Modifier.padding(vertical = AppSizes.paddingSmall)
                                                 .fillMaxWidth()
-                                                .padding(horizontal = 8.dp)
+                                                .padding(horizontal = AppSizes.paddingSmall)
                         ) {
                                 Checkbox(
                                         checked = isDead,
@@ -201,7 +202,7 @@ fun AnimalEditView(
                                 )
                                 Text(
                                         text = Animal.DEAD.translate(),
-                                        modifier = Modifier.padding(start = 8.dp),
+                                        modifier = Modifier.padding(start = AppSizes.paddingSmall),
                                         style = MaterialTheme.typography.body1
                                 )
                         }
@@ -211,18 +212,23 @@ fun AnimalEditView(
                                 value = summary,
                                 onValueChange = { summary = it },
                                 label = { Text(Animal.SUMMARY.translate()) },
-                                modifier = Modifier.fillMaxWidth().height(120.dp),
+                                modifier =
+                                        Modifier.fillMaxWidth()
+                                                .height(AppSizes.inputMultilineHeight),
                                 maxLines = 5
                         )
 
-                        Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(AppSizes.paddingMedium))
 
-                        Divider(color = Color.LightGray, thickness = 1.dp)
+                        Divider(color = Color.LightGray, thickness = AppSizes.dividerHeight)
 
                         // Boutons d'action
                         Row(
-                                modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
-                                horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.End),
+                                modifier =
+                                        Modifier.fillMaxWidth()
+                                                .padding(top = AppSizes.paddingMedium),
+                                horizontalArrangement =
+                                        Arrangement.spacedBy(AppSizes.paddingMedium, Alignment.End),
                                 verticalAlignment = Alignment.CenterVertically
                         ) {
                                 OutlinedButton(
@@ -247,7 +253,9 @@ fun AnimalEditView(
                                                 val birthdate =
                                                         try {
                                                                 if (birthDateText.isNotEmpty())
-                                                                        LocalDate.parse(birthDateText)
+                                                                        LocalDate.parse(
+                                                                                birthDateText
+                                                                        )
                                                                 else null
                                                         } catch (e: Exception) {
                                                                 null

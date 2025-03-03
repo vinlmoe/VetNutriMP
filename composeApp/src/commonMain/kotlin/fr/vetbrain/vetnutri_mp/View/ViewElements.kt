@@ -15,10 +15,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Data.Labelable
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.General
 import fr.vetbrain.vetnutri_mp.Localization.translate
+import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import org.jetbrains.compose.ui.tooling.preview.Preview
 
 @Composable
@@ -53,10 +53,10 @@ fun ComboBox(
                 Box(
                         contentAlignment = Alignment.CenterStart,
                         modifier =
-                                Modifier.clip(RoundedCornerShape(4.dp))
+                                Modifier.clip(RoundedCornerShape(AppSizes.cornerRadius))
                                         .border(
-                                                BorderStroke(1.dp, Color.LightGray),
-                                                RoundedCornerShape(4.dp)
+                                                BorderStroke(AppSizes.borderWidth, Color.LightGray),
+                                                RoundedCornerShape(AppSizes.cornerRadius)
                                         )
                                         .clickable { expanded = !expanded }
                 ) {
@@ -90,7 +90,8 @@ fun ComboBox(
                                                 selectedText =
                                                         TextFieldValue(
                                                                 item.label?.translate()
-                                                                        ?: General.VALIDATE.translate()
+                                                                        ?: General.VALIDATE
+                                                                                .translate()
                                                         )
                                                 expanded = false
                                                 onItemSelected(item.label ?: "null")

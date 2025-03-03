@@ -7,12 +7,12 @@ import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.Sex
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Animal as AnimalKeys
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.General
 import fr.vetbrain.vetnutri_mp.Localization.translate
+import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.CreateAnimalViewModel
 import kotlin.uuid.ExperimentalUuidApi
@@ -45,16 +45,18 @@ fun CreateAnimalView(
 
         Column(
                 modifier =
-                        modifier.fillMaxSize().padding(16.dp).verticalScroll(rememberScrollState()),
+                        modifier.fillMaxSize()
+                                .padding(AppSizes.paddingMedium)
+                                .verticalScroll(rememberScrollState()),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
         ) {
                 Text(
                         text =
                                 if (isEditing) AnimalKeys.EDIT_ANIMAL.translate()
                                 else AnimalKeys.NEW_ANIMAL.translate(),
                         style = MaterialTheme.typography.h6,
-                        modifier = Modifier.padding(bottom = 8.dp)
+                        modifier = Modifier.padding(bottom = AppSizes.paddingSmall)
                 )
 
                 OutlinedTextField(
@@ -152,7 +154,7 @@ fun CreateAnimalView(
 
                 Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
                 ) {
                         Sex.values().forEach { sexe ->
                                 RadioButton(
@@ -182,7 +184,7 @@ fun CreateAnimalView(
 
                 Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
                 ) {
                         Button(
                                 onClick = {
@@ -211,7 +213,7 @@ fun CreateAnimalView(
                                 if (isSaving) {
                                         CircularProgressIndicator(
                                                 color = VetNutriColors.OnPrimary,
-                                                modifier = Modifier.size(24.dp)
+                                                modifier = Modifier.size(AppSizes.iconSizeMedium)
                                         )
                                 } else {
                                         Text(

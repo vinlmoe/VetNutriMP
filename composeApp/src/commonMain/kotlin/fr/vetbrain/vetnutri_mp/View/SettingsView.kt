@@ -4,13 +4,12 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
+import fr.vetbrain.vetnutri_mp.Components.TopBar
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.SettingsViewModel
@@ -73,36 +72,19 @@ fun SettingsDialog(viewModel: SettingsViewModel, onDismiss: () -> Unit) {
 }
 
 @Composable
-fun TopBar(title: String, onBackClick: () -> Unit) {
-        Row(
-                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-        ) {
-                IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Retour")
-                }
-                Text(
-                        text = title,
-                        style = MaterialTheme.typography.h6,
-                        modifier = Modifier.padding(start = 8.dp)
-                )
-        }
-}
-
-@Composable
 fun SettingsView(viewModel: SettingsViewModel, onImportAnimals: () -> Unit, onBack: () -> Unit) {
         Column(
-                modifier = Modifier.fillMaxSize().padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                modifier = Modifier.fillMaxSize().padding(AppSizes.paddingMedium),
+                verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
         ) {
-                TopBar(title = "Paramètres", onBackClick = onBack)
+                TopBar(title = "Paramètres", onBackClick = onBack, onSettingsClick = {})
 
                 // Échelle de l'interface
                 Text(text = "Échelle de l'interface", style = MaterialTheme.typography.h6)
 
                 Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
                 ) {
                         IconButton(onClick = { viewModel.decrementUiScale() }) {
                                 Text("-", style = MaterialTheme.typography.h6)
@@ -126,19 +108,16 @@ fun SettingsView(viewModel: SettingsViewModel, onImportAnimals: () -> Unit, onBa
 
                 Button(onClick = onImportAnimals, modifier = Modifier.fillMaxWidth()) {
                         Text("+", style = MaterialTheme.typography.button)
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
                         Text("Importer des animaux")
                 }
 
                 Button(
-                        onClick = {
-                                // Ouvrir un sélecteur de fichier pour importer les aliments
-                                importFoodsFromFile(viewModel)
-                        },
+                        onClick = { importFoodsFromFile(viewModel) },
                         modifier = Modifier.fillMaxWidth()
                 ) {
                         Text("+", style = MaterialTheme.typography.button)
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
                         Text("Importer des aliments")
                 }
         }

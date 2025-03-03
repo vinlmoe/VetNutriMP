@@ -17,9 +17,11 @@ import fr.vetbrain.vetnutri_mp.View.*
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalListViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.CreateAnimalViewModel
+import fr.vetbrain.vetnutri_mp.ViewModel.FoodListViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.SettingsViewModel
 import kotlinx.coroutines.runBlocking
 
+// Fonctions d'importation de fichiers - implémentées par plateforme spécifique
 expect fun importAnimalsFromFile(viewModel: AnimalListViewModel)
 
 expect fun importFoodsFromFile(viewModel: SettingsViewModel)
@@ -64,6 +66,7 @@ fun App(appDatabase: AppDatabase) {
     }
     val createAnimalViewModel = remember { CreateAnimalViewModel(animalRepository) }
     val settingsViewModel = remember { SettingsViewModel(animalRepository, foodRepository) }
+    val foodListViewModel = remember { FoodListViewModel(foodRepository) }
 
     var currentScreen by remember { mutableStateOf<Screen>(Screen.List) }
     var selectedAnimal by remember { mutableStateOf<AnimalEv?>(null) }
@@ -74,9 +77,19 @@ fun App(appDatabase: AppDatabase) {
     val importResult = animalListViewModel.importResult.collectAsState().value
     var showImportResult by remember { mutableStateOf(false) }
 
+    // Observer le résultat de l'importation des aliments
+    val foodImportResult = settingsViewModel.importResult.collectAsState().value
+    var showFoodImportResult by remember { mutableStateOf(false) }
+
     LaunchedEffect(importResult) {
         if (importResult != null) {
             showImportResult = true
+        }
+    }
+
+    LaunchedEffect(foodImportResult) {
+        if (foodImportResult != null) {
+            showFoodImportResult = true
         }
     }
 
@@ -84,13 +97,21 @@ fun App(appDatabase: AppDatabase) {
     LaunchedEffect(currentScreen) {
         if (currentScreen == Screen.List) {
             animalListViewModel.loadAnimals()
+        } else if (currentScreen == Screen.FoodList) {
+            foodListViewModel.loadFoods()
         }
     }
 
     // Fonction locale pour importer les animaux
     val handleImportAnimals: () -> Unit = {
-        // Appel à la fonction expect/actual
+        // Maintenant que les conflits sont résolus, nous pouvons appeler directement les fonctions
         importAnimalsFromFile(animalListViewModel)
+    }
+
+    // Fonction locale pour importer les aliments
+    val handleImportFoods: () -> Unit = {
+        // Maintenant que les conflits sont résolus, nous pouvons appeler directement les fonctions
+        importFoodsFromFile(settingsViewModel)
     }
 
     VetNutriTheme {
@@ -111,18 +132,20 @@ fun App(appDatabase: AppDatabase) {
                                         createAnimalViewModel.resetAnimal()
                                         currentScreen = Screen.Create
                                     },
-                                    onSelectAnimal = { animal ->
+                                    onSelectAnimal = { animal: AnimalEv ->
                                         selectedAnimal = animal
                                         animalDetailViewModel.setAnimal(animal)
                                         currentScreen = Screen.Detail
                                     },
-                                    onEditAnimal = { animal ->
+                                    onEditAnimal = { animal: AnimalEv ->
                                         selectedAnimal = animal
                                         createAnimalViewModel.updateAnimal(animal)
                                         isEditing = true
                                         currentScreen = Screen.Create
                                     },
                                     onImportAnimals = handleImportAnimals,
+                                    onImportFoods = handleImportFoods,
+                                    onShowFoodList = { currentScreen = Screen.FoodList },
                                     modifier = Modifier.fillMaxWidth().weight(1f)
                             )
                         }
@@ -158,6 +181,14 @@ fun App(appDatabase: AppDatabase) {
                             )
                         }
                     }
+                    Screen.FoodList -> {
+                        FoodListView(
+                                viewModel = foodListViewModel,
+                                onNavigateBack = { currentScreen = Screen.List },
+                                onOpenSettings = { showSettings = true },
+                                modifier = Modifier.fillMaxSize()
+                        )
+                    }
                 }
             }
 
@@ -165,7 +196,7 @@ fun App(appDatabase: AppDatabase) {
                 SettingsDialog(viewModel = settingsViewModel, onDismiss = { showSettings = false })
             }
 
-            // Afficher le résultat de l'importation
+            // Afficher le résultat de l'importation des animaux
             if (showImportResult && importResult != null) {
                 AlertDialog(
                         onDismissRequest = {
@@ -195,6 +226,39 @@ fun App(appDatabase: AppDatabase) {
                         }
                 )
             }
+
+            // Afficher le résultat de l'importation des aliments
+            if (showFoodImportResult && foodImportResult != null) {
+                AlertDialog(
+                        onDismissRequest = {
+                            showFoodImportResult = false
+                            settingsViewModel.resetImportResult()
+                        },
+                        title = { Text("Résultat de l'importation des aliments") },
+                        text = {
+                            when (foodImportResult) {
+                                is SettingsViewModel.ImportResult.Success -> {
+                                    Text(
+                                            "${foodImportResult.count} aliments ont été importés avec succès."
+                                    )
+                                }
+                                is SettingsViewModel.ImportResult.Error -> {
+                                    Text(
+                                            "Erreur lors de l'importation : ${foodImportResult.message}"
+                                    )
+                                }
+                            }
+                        },
+                        confirmButton = {
+                            Button(
+                                    onClick = {
+                                        showFoodImportResult = false
+                                        settingsViewModel.resetImportResult()
+                                    }
+                            ) { Text("OK") }
+                        }
+                )
+            }
         }
     }
 }
@@ -203,4 +267,5 @@ private sealed class Screen {
     object List : Screen()
     object Create : Screen()
     object Detail : Screen()
+    object FoodList : Screen()
 }

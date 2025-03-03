@@ -32,6 +32,8 @@ fun AnimalListView(
         onSelectAnimal: (AnimalEv) -> Unit,
         onEditAnimal: (AnimalEv) -> Unit,
         onImportAnimals: () -> Unit,
+        onImportFoods: () -> Unit,
+        onShowFoodList: () -> Unit,
         modifier: Modifier = Modifier
 ) {
         val animals: List<AnimalEv> = viewModel.animals.collectAsState().value
@@ -57,15 +59,39 @@ fun AnimalListView(
                                         )
                         ) { Text(General.ADD.translate()) }
 
-                        Button(
-                                onClick = onImportAnimals,
-                                colors =
-                                        ButtonDefaults.buttonColors(
-                                                backgroundColor = VetNutriColors.Secondary,
-                                                contentColor = VetNutriColors.OnSecondary
-                                        )
-                        ) { Text(General.IMPORT.translate()) }
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Button(
+                                        onClick = onImportAnimals,
+                                        colors =
+                                                ButtonDefaults.buttonColors(
+                                                        backgroundColor = VetNutriColors.Secondary,
+                                                        contentColor = VetNutriColors.OnSecondary
+                                                )
+                                ) { Text(General.IMPORT.translate() + " " + "Animaux") }
+
+                                Button(
+                                        onClick = onImportFoods,
+                                        colors =
+                                                ButtonDefaults.buttonColors(
+                                                        backgroundColor = VetNutriColors.Secondary,
+                                                        contentColor = VetNutriColors.OnSecondary
+                                                )
+                                ) { Text(General.IMPORT.translate() + " " + "Aliments") }
+                        }
                 }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Bouton pour accéder à la liste des aliments
+                Button(
+                        onClick = onShowFoodList,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors =
+                                ButtonDefaults.buttonColors(
+                                        backgroundColor = VetNutriColors.Primary,
+                                        contentColor = VetNutriColors.OnPrimary
+                                )
+                ) { Text("Liste des aliments") }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
