@@ -1,8 +1,8 @@
 {
   "formatVersion": 1,
   "database": {
-    "version": 4,
-    "identityHash": "159e818c88cd701a7552cc22d9f6983d",
+    "version": 6,
+    "identityHash": "82e4588652aaab83c69878544f75e342",
     "entities": [
       {
         "tableName": "ANIMALS",
@@ -728,7 +728,7 @@
       },
       {
         "tableName": "FOOD",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`uuid` TEXT NOT NULL, `groupAlim` INTEGER NOT NULL, `typeAlim` INTEGER NOT NULL, `ingredients` TEXT NOT NULL, `price` REAL NOT NULL, `categPrice` TEXT NOT NULL, `brand` TEXT NOT NULL, `gamme` TEXT NOT NULL, `unitPres` INTEGER NOT NULL, `quantityPres` REAL NOT NULL, `version` INTEGER NOT NULL, `date` TEXT NOT NULL, `nameDef` TEXT NOT NULL, `consistent` INTEGER NOT NULL, `deprecated` INTEGER NOT NULL, `DataB` TEXT NOT NULL, `RefRation` TEXT, `RefAlimUnif` TEXT, `especesJson` TEXT, PRIMARY KEY(`uuid`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`uuid` TEXT NOT NULL, `groupAlim` INTEGER NOT NULL, `typeAlim` INTEGER NOT NULL, `ingredients` TEXT NOT NULL, `price` REAL NOT NULL, `categPrice` TEXT NOT NULL, `brand` TEXT NOT NULL, `gamme` TEXT NOT NULL, `cont` TEXT NOT NULL, `unitPres` INTEGER NOT NULL, `quantityPres` REAL NOT NULL, `version` INTEGER NOT NULL, `date` TEXT NOT NULL, `nameDef` TEXT NOT NULL, `consistent` INTEGER NOT NULL, `deprecated` INTEGER NOT NULL, `DataB` TEXT NOT NULL, `RefRation` TEXT, `RefAlimUnif` TEXT, `especesJson` TEXT, `indicationsJson` TEXT, PRIMARY KEY(`uuid`))",
         "fields": [
           {
             "fieldPath": "uuid",
@@ -775,6 +775,12 @@
           {
             "fieldPath": "gamme",
             "columnName": "gamme",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "cont",
+            "columnName": "cont",
             "affinity": "TEXT",
             "notNull": true
           },
@@ -839,6 +845,11 @@
           {
             "fieldPath": "especesJson",
             "columnName": "especesJson",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "indicationsJson",
+            "columnName": "indicationsJson",
             "affinity": "TEXT"
           }
         ],
@@ -907,7 +918,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '159e818c88cd701a7552cc22d9f6983d')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '82e4588652aaab83c69878544f75e342')"
     ]
   }
 }

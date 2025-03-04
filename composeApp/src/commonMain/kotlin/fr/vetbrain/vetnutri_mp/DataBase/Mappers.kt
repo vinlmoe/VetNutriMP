@@ -5,8 +5,8 @@ import fr.vetbrain.vetnutri_mp.Enumer.*
 import fr.vetbrain.vetnutri_mp.Enumer.AlimIndic
 import fr.vetbrain.vetnutri_mp.Enumer.FoodKind
 import fr.vetbrain.vetnutri_mp.Enumer.GroupAlim
-import fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver
 import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
+import fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver
 import kotlinx.datetime.LocalDate
 
 object Mappers {
@@ -230,7 +230,7 @@ object Mappers {
                         typeAliment = this.typeAliment?.ordinal ?: 0,
                         groupAliment = this.group?.ordinal ?: 0,
                         consistent = if (this.consistent) 1 else 0,
-                        deprecated = this.deprecated ?: 0,
+                        deprecated = if (this.deprecated) 1 else 0,
                         price = this.price ?: 0.0,
                         categoriePrix = this.categPrice ?: "",
                         ingredients = this.ingredients ?: "",
@@ -264,7 +264,7 @@ object Mappers {
                                         null
                                 },
                         consistent = this.consistent == 1,
-                        deprecated = this.deprecated,
+                        deprecated = this.deprecated == 1,
                         price = this.price,
                         categPrice = this.categoriePrix,
                         ingredients = this.ingredients,
@@ -286,6 +286,7 @@ object Mappers {
                                         }
                                         .toMutableList(),
                         valMap = nutrientValues.toNutrientValueMap(),
+                        cont = fr.vetbrain.vetnutri_mp.Enumer.ContEnum.NO,
                         rationUUID = this.rationUUID
                 )
         }

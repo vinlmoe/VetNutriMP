@@ -13,7 +13,7 @@ data class AnimalEv(
         var dead: Boolean = false,
         var id: String? = null,
         var sexId: Int = Sex.MALE_ENTIER.id,
-        var specieId: String = Espece.CHIEN.name,
+        var specieId: String = Espece.CHIEN.label,
         var ownerName: String = "",
         var birthdate: LocalDate? = null,
         var race: String = "",

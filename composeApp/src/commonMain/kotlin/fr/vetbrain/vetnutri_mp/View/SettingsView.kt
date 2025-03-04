@@ -1,21 +1,28 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
+import fr.vetbrain.vetnutri_mp.Components.Section
 import fr.vetbrain.vetnutri_mp.Components.TopBar
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.SettingsViewModel
-import fr.vetbrain.vetnutri_mp.importFoodsFromFile
 import kotlin.math.roundToInt
+import kotlinx.coroutines.launch
 
+/**
+ * Dialogue simple pour les paramètres d'affichage
+ * @param viewModel Le ViewModel des paramètres
+ * @param onDismiss Callback appelé lorsque l'utilisateur ferme le dialogue
+ */
 @Composable
 fun SettingsDialog(viewModel: SettingsViewModel, onDismiss: () -> Unit) {
         val uiScale by viewModel.uiScale.collectAsState()
@@ -63,7 +70,7 @@ fun SettingsDialog(viewModel: SettingsViewModel, onDismiss: () -> Unit) {
                                 colors =
                                         ButtonDefaults.buttonColors(
                                                 backgroundColor = VetNutriColors.Primary,
-                                                contentColor = VetNutriColors.OnPrimary
+                                                contentColor = Color.White
                                         )
                         ) { Text("Fermer") }
                 },
@@ -71,54 +78,159 @@ fun SettingsDialog(viewModel: SettingsViewModel, onDismiss: () -> Unit) {
         )
 }
 
+@OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun SettingsView(viewModel: SettingsViewModel, onImportAnimals: () -> Unit, onBack: () -> Unit) {
+        // État pour le dialogue de confirmation de suppression
+        var isDialogVisible by remember { mutableStateOf(false) }
+        var isProcessing by remember { mutableStateOf(false) }
+        var resultMessage by remember { mutableStateOf("") }
+        val coroutineScope = rememberCoroutineScope()
+        val uiScale by viewModel.uiScale.collectAsState()
+
         Column(
                 modifier = Modifier.fillMaxSize().padding(AppSizes.paddingMedium),
                 verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
         ) {
                 TopBar(title = "Paramètres", onBackClick = onBack, onSettingsClick = {})
 
-                // Échelle de l'interface
-                Text(text = "Échelle de l'interface", style = MaterialTheme.typography.h6)
+                // Section pour l'échelle de l'interface
+                Section(title = "Échelle de l'interface") {
+                        Row(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                        ) {
+                                Button(
+                                        onClick = { viewModel.decrementUiScale() },
+                                        enabled = uiScale > 0.5f,
+                                        modifier = Modifier.size(AppSizes.buttonHeight)
+                                ) { Text("-") }
 
-                Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
-                ) {
-                        IconButton(onClick = { viewModel.decrementUiScale() }) {
-                                Text("-", style = MaterialTheme.typography.h6)
+                                Text(
+                                        "${(uiScale * 100).roundToInt()}%",
+                                        style = MaterialTheme.typography.body1
+                                )
+
+                                Button(
+                                        onClick = { viewModel.incrementUiScale() },
+                                        enabled = uiScale < 2f,
+                                        modifier = Modifier.size(AppSizes.buttonHeight)
+                                ) { Text("+") }
                         }
+                }
 
-                        Text(
-                                text =
-                                        "${(viewModel.uiScale.collectAsState().value * 100).toInt()}%",
-                                style = MaterialTheme.typography.body1
+                // Section pour l'importation des données
+                Section(title = "Importation des données") {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Button(
+                                        onClick = onImportAnimals,
+                                        colors =
+                                                ButtonDefaults.buttonColors(
+                                                        backgroundColor = VetNutriColors.Primary
+                                                ),
+                                        modifier = Modifier.fillMaxWidth()
+                                ) { Text("Importer des animaux", color = Color.White) }
+
+                                // Bouton pour importer des aliments avec lambda pour éviter
+                                // l'ambiguïté
+                                Button(
+                                        onClick = {
+                                                try {
+                                                        // Utilisons la méthode du ViewModel qui
+                                                        // encapsule l'appel à importFoodsFromFile
+                                                        viewModel.importFoodsFromFileUI()
+                                                } catch (e: Exception) {
+                                                        resultMessage =
+                                                                "Erreur lors de l'importation : ${e.message}"
+                                                }
+                                        },
+                                        colors =
+                                                ButtonDefaults.buttonColors(
+                                                        backgroundColor = VetNutriColors.Primary
+                                                ),
+                                        modifier = Modifier.fillMaxWidth()
+                                ) { Text("Importer des aliments", color = Color.White) }
+                        }
+                }
+
+                // Section pour l'administration de la base de données
+                Section(title = "Administration de la base de données") {
+                        Button(
+                                onClick = { isDialogVisible = true },
+                                colors =
+                                        ButtonDefaults.buttonColors(
+                                                backgroundColor = VetNutriColors.Error,
+                                                contentColor = Color.White
+                                        ),
+                                modifier = Modifier.fillMaxWidth()
+                        ) { Text("Vider la base de données des aliments") }
+                }
+
+                // Dialogue de confirmation pour vider la base de données
+                if (isDialogVisible) {
+                        AlertDialog(
+                                onDismissRequest = { isDialogVisible = false },
+                                title = { Text("Confirmation") },
+                                text = {
+                                        Text(
+                                                "Êtes-vous sûr de vouloir supprimer TOUS les aliments de la base de données ? Cette action est irréversible."
+                                        )
+                                },
+                                confirmButton = {
+                                        Button(
+                                                onClick = {
+                                                        isDialogVisible = false
+                                                        isProcessing = true
+                                                        coroutineScope.launch {
+                                                                try {
+                                                                        val count =
+                                                                                viewModel
+                                                                                        .clearAllFoods()
+                                                                        resultMessage =
+                                                                                "$count aliments ont été supprimés avec succès."
+                                                                } catch (e: Exception) {
+                                                                        resultMessage =
+                                                                                "Erreur lors de la suppression : ${e.message}"
+                                                                } finally {
+                                                                        isProcessing = false
+                                                                }
+                                                        }
+                                                },
+                                                colors =
+                                                        ButtonDefaults.buttonColors(
+                                                                backgroundColor =
+                                                                        VetNutriColors.Error,
+                                                                contentColor = Color.White
+                                                        )
+                                        ) { Text("Oui, vider la base") }
+                                },
+                                dismissButton = {
+                                        Button(onClick = { isDialogVisible = false }) {
+                                                Text("Annuler")
+                                        }
+                                }
                         )
-
-                        IconButton(onClick = { viewModel.incrementUiScale() }) {
-                                Icon(Icons.Default.Add, contentDescription = "Augmenter")
-                        }
                 }
 
-                Divider()
-
-                // Importation des données
-                Text(text = "Importation des données", style = MaterialTheme.typography.h6)
-
-                Button(onClick = onImportAnimals, modifier = Modifier.fillMaxWidth()) {
-                        Text("+", style = MaterialTheme.typography.button)
-                        Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
-                        Text("Importer des animaux")
+                // Affichage du résultat
+                if (resultMessage.isNotEmpty()) {
+                        Snackbar(
+                                modifier = Modifier.padding(16.dp),
+                                action = {
+                                        TextButton(onClick = { resultMessage = "" }) { Text("OK") }
+                                }
+                        ) { Text(resultMessage) }
                 }
 
-                Button(
-                        onClick = { importFoodsFromFile(viewModel) },
-                        modifier = Modifier.fillMaxWidth()
-                ) {
-                        Text("+", style = MaterialTheme.typography.button)
-                        Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
-                        Text("Importer des aliments")
+                // Indicateur de progression pendant le traitement
+                if (isProcessing) {
+                        Box(
+                                modifier =
+                                        Modifier.fillMaxSize()
+                                                .background(Color.Black.copy(alpha = 0.5f)),
+                                contentAlignment = Alignment.Center
+                        ) { CircularProgressIndicator(color = VetNutriColors.Primary) }
                 }
         }
 }

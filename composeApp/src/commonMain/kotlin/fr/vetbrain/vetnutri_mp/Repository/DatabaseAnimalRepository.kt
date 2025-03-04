@@ -14,6 +14,7 @@ import fr.vetbrain.vetnutri_mp.DataBase.FoodDao
 import fr.vetbrain.vetnutri_mp.DataBase.FoodEntity
 import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toEntity
 import fr.vetbrain.vetnutri_mp.DataBase.SupplementalVariableEntity
+import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.VariableKind
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import kotlinx.coroutines.withContext
@@ -167,7 +168,8 @@ class DatabaseAnimalRepository(private val animalDao: AnimalDao, private val foo
                                                                 else 0,
                                                         DataB = aliment.DataB ?: "",
                                                         RefRation = null,
-                                                        RefAlimUnif = null
+                                                        RefAlimUnif = null,
+                                                        cont = "NO" // Valeur par défaut
                                                 )
 
                                         // Insérer l'aliment dans la base de données
@@ -193,7 +195,7 @@ class DatabaseAnimalRepository(private val animalDao: AnimalDao, private val foo
                         // Troisième passe : importer les animaux avec leurs relations
                         for (animalJson in animalsJson) {
                                 try {
-                                        // Convertir manuellement AnimalEvJson en AnimalEv
+                                        // Créer un nouvel animal à partir des données JSON
                                         val animal =
                                                 AnimalEv(
                                                         uuid = animalJson.UUID,
@@ -201,7 +203,10 @@ class DatabaseAnimalRepository(private val animalDao: AnimalDao, private val foo
                                                         dead = animalJson.dead,
                                                         id = animalJson.id,
                                                         sexId = animalJson.sex,
-                                                        specieId = animalJson.espece,
+                                                        specieId =
+                                                                convertEspeceIdToName(
+                                                                        animalJson.espece
+                                                                ),
                                                         ownerName = animalJson.nomProprio,
                                                         birthdate = animalJson.dateNaiss,
                                                         race = animalJson.race,
@@ -559,7 +564,9 @@ class DatabaseAnimalRepository(private val animalDao: AnimalDao, private val foo
                                                                                                         RefRation =
                                                                                                                 null,
                                                                                                         RefAlimUnif =
-                                                                                                                null
+                                                                                                                null,
+                                                                                                        cont =
+                                                                                                                "NO"
                                                                                                 )
 
                                                                                         // Insérer
@@ -658,14 +665,21 @@ class DatabaseAnimalRepository(private val animalDao: AnimalDao, private val foo
                                                                                                         .consistent !=
                                                                                                         0,
                                                                                         cont =
-                                                                                                foodEntity
-                                                                                                        .consistent,
+                                                                                                fr.vetbrain
+                                                                                                        .vetnutri_mp
+                                                                                                        .Enumer
+                                                                                                        .ContEnum
+                                                                                                        .byId(
+                                                                                                                foodEntity
+                                                                                                                        .consistent
+                                                                                                        ),
                                                                                         quantInt =
                                                                                                 foodEntity
                                                                                                         .quantityPres,
                                                                                         deprecated =
                                                                                                 foodEntity
-                                                                                                        .deprecated,
+                                                                                                        .deprecated >
+                                                                                                        0,
                                                                                         dataB =
                                                                                                 foodEntity
                                                                                                         .DataB,
@@ -710,5 +724,47 @@ class DatabaseAnimalRepository(private val animalDao: AnimalDao, private val foo
                 // nutrientValueDao()
                 // Retournons null pour indiquer que le repository n'est pas disponible
                 return null
+        }
+
+        /**
+         * Convertit un identifiant d'espèce (numérique ou chaîne) en nom d'énumération Espece
+         * @param especeId L'identifiant d'espèce à convertir
+         * @return Le nom de l'énumération Espece correspondante
+         */
+        private fun convertEspeceIdToName(especeId: String): String {
+                // Essayer de convertir en entier si c'est un nombre
+                val especeNumId = especeId.toIntOrNull()
+
+                return if (especeNumId != null) {
+                        // Si c'est un nombre, utiliser getEnumFromInt
+                        try {
+                                val espece = Espece.getEnumFromInt(especeNumId)
+                                espece.label
+                        } catch (e: Exception) {
+                                // En cas d'erreur, utiliser CHIEN par défaut
+                                println(
+                                        "Erreur lors de la conversion de l'espèce $especeId: ${e.message}"
+                                )
+                                Espece.CHIEN.label
+                        }
+                } else {
+                        // Si c'est une chaîne, essayer de trouver par label
+                        val espece = Espece.getByLabel(especeId)
+                        if (espece != null) {
+                                espece.label
+                        } else {
+                                // Essayer de trouver par nom d'énumération
+                                try {
+                                        val especeEnum = Espece.valueOf(especeId)
+                                        especeEnum.label
+                                } catch (e: Exception) {
+                                        // En cas d'erreur, utiliser CHIEN par défaut
+                                        println(
+                                                "Espèce non reconnue: $especeId, utilisation de CHIEN par défaut"
+                                        )
+                                        Espece.CHIEN.label
+                                }
+                        }
+                }
         }
 }

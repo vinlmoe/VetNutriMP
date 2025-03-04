@@ -110,19 +110,10 @@ interface FoodDao {
     @Query("SELECT * FROM ALIMENTS_BASE") suspend fun getAllFoods(): List<AlimentEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertEspeces(especes: List<EspeceAlimentEntity>)
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertIndications(indications: List<IndicationAlimentEntity>)
-
-    @Query("DELETE FROM ESPECES_ALIMENTS WHERE refAliment = :alimentUuid")
-    suspend fun deleteEspecesForAliment(alimentUuid: String)
 
     @Query("DELETE FROM INDICATIONS_ALIMENTS WHERE refAliment = :alimentUuid")
     suspend fun deleteIndicationsForAliment(alimentUuid: String)
-
-    @Query("SELECT * FROM ESPECES_ALIMENTS WHERE refAliment = :alimentUuid")
-    suspend fun getEspecesForAliment(alimentUuid: String): List<EspeceAlimentEntity>
 
     @Query("SELECT * FROM INDICATIONS_ALIMENTS WHERE refAliment = :alimentUuid")
     suspend fun getIndicationsForAliment(alimentUuid: String): List<IndicationAlimentEntity>

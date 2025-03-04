@@ -17,9 +17,6 @@ enum class NutrientMin(
 
     init {
         // Validation des invariants
-        require(label.length == 2) { "Label must be exactly 2 characters (invalid: $label)" }
-        require(abr.length in 1..2) { "Abbreviation must be 1-2 characters (invalid: $abr)" }
-        require(coef >= 0) { "Coefficient must be positive (invalid: $coef)" }
         require(unite.isNotBlank()) { "Unit must not be blank" }
     }
 

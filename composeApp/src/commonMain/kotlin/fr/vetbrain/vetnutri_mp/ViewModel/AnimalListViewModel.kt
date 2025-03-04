@@ -149,6 +149,14 @@ class AnimalListViewModel(private val animalRepository: AnimalRepository) : View
     }
 
     /**
+     * Délègue l'importation des animaux à la fonction de plateforme spécifique Cela permet d'éviter
+     * l'ambiguïté d'appel direct dans la vue
+     */
+    fun importAnimalsFromFileUI() {
+        fr.vetbrain.vetnutri_mp.importAnimalsFromFile(this)
+    }
+
+    /**
      * Importe des animaux à partir d'une chaîne JSON
      *
      * @param jsonContent Le contenu JSON à désérialiser

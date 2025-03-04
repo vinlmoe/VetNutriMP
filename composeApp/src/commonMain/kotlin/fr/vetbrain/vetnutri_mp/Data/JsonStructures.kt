@@ -24,10 +24,6 @@ data class AlimentEvJson(
         val deprecated: Boolean = false,
         val DataB: String = "6",
         val valMap: Map<String, Float> = mapOf()
-
-
-
-
 )
 
 /** Structure JSON pour AnimalEv */
@@ -37,10 +33,11 @@ data class AnimalEvJson(
         val version: String = "22.1",
         val nom: String = "",
         val dead: Boolean = false,
-        val id: String?,
+        val id: String? = null,
         val sex: Int = 0,
         val espece: String = "1",
         val nomProprio: String = "",
+        @Serializable(with = LocalDateSerializer::class)
         val dateNaiss: LocalDate = LocalDate(2023, 1, 1),
         val race: String = "",
         val resume: String = "",

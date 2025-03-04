@@ -109,6 +109,37 @@ class SettingsViewModel(
         }
     }
 
+    /**
+     * Vide entièrement la base de données des aliments
+     *
+     * @return Le nombre d'aliments supprimés
+     */
+    suspend fun clearAllFoods(): Int {
+        return foodRepository.clearAllFoods()
+    }
+
+    /**
+     * Vide entièrement la base de données des animaux
+     *
+     * @return Le nombre d'animaux supprimés
+     */
+    suspend fun clearAllAnimals(): Int {
+        val animals = animalRepository.getAllAnimals()
+        val count = animals.size
+
+        animals.forEach { animal -> animalRepository.deleteAnimal(animal) }
+
+        return count
+    }
+
+    /**
+     * Délègue l'importation des aliments à la fonction de plateforme spécifique Cela permet
+     * d'éviter l'ambiguïté d'appel direct dans la vue
+     */
+    fun importFoodsFromFileUI() {
+        fr.vetbrain.vetnutri_mp.importFoodsFromFile(this)
+    }
+
     /** Classe scellée représentant le résultat de l'importation */
     sealed class ImportResult {
         data class Success(val count: Int) : ImportResult()

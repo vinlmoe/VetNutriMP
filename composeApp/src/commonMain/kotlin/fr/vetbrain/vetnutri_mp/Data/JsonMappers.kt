@@ -30,107 +30,163 @@ fun AlimentEv.toJson(): AlimentEvJson {
             gamme = this.gamme ?: "",
             presentation = "", // Non présent dans AlimentEv
             quantInt = this.quantInt ?: 0f,
-            cont = this.cont?.toString() ?: "NO",
-            deprecated = this.deprecated == 1,
+            cont = if (this.cont != null) this.cont.name else "NO",
+            deprecated = this.deprecated,
             DataB = this.dataB ?: "6",
-            valMap = this.valMap.mapKeys { (key, _) -> key.label } // Ajoute un préfixe à chaque clé
-                .mapValues { (_, value) ->
-                    value
-                }
-                .toMutableMap() // À adapter selon votre logique
+            valMap =
+                    this.valMap
+                            .mapKeys { (key, _) -> key.label } // Ajoute un préfixe à chaque clé
+                            .mapValues { (_, value) -> value }
+                            .toMutableMap() // À adapter selon votre logique
     )
+}
+
+// Fonction utilitaire pour convertir une chaîne en AlimIndic
+private fun stringToAlimIndic(indicStr: String): AlimIndic? {
+    return try {
+        // Essayer d'abord par le nom de l'énumération (PED, NEUT, etc.)
+        AlimIndic.valueOf(indicStr)
+    } catch (e: Exception) {
+        try {
+            // Si ça échoue, essayer par le label (Pédiatrique, Stérilisé, etc.)
+            AlimIndic.byName(indicStr)
+        } catch (e: Exception) {
+            // Si ça échoue encore, retourner null
+            null
+        }
+    }
 }
 
 fun AlimentEvJson.toData(): AlimentEv {
-    return AlimentEv(
-        uuid = this.UUID,
-        nom = this.nom,
-        group =
-        try {
-            GroupAlim.valueOf(this.group)
-        } catch (e: Exception) {
-            null
-        },
-        typeAliment =
-        try {
-            FoodKind.valueOf(this.foodKind)
-        } catch (e: Exception) {
-            null
-        },
-        ingredients = this.ingredients,
-        price = this.prix,
-        categPrice = this.categoriePrix,
-        brand = this.marque,
-        gamme = this.gamme,
-        consistent = true,
-        cont = if (this.cont == "NO") 0 else 1,
-        quantInt = this.quantInt,
-        deprecated = if (this.deprecated) 1 else 0,
-        dataB = this.DataB,
-        especes = this.Especes.toMutableList(),
-        indicat =
-        this.indication
-            .mapNotNull {
-                try {
-                    AlimIndic.valueOf(it)
-                } catch (e: Exception) {
-                    null
-                }
-            }
-            .toMutableList(),
-        valMap = this.valMap.mapKeys { (key, _) -> AllNutrientResolver(key) ?:NutrientMain.PROTEINE } // Ajoute un préfixe à chaque clé
-            .mapValues { (_, value) ->
-                value
-            }
+    // Convertir les espèces: transformer les ID numériques en labels
+    val especesConverties = convertirEspecesEnLabels(this.Especes, this.espece)
 
-            .toMutableMap(),
-        rationUUID =null
+    return AlimentEv(
+            uuid = this.UUID,
+            nom = this.nom,
+            group =
+                    try {
+                        GroupAlim.valueOf(this.group)
+                    } catch (e: Exception) {
+                        null
+                    },
+            typeAliment =
+                    try {
+                        FoodKind.valueOf(this.foodKind)
+                    } catch (e: Exception) {
+                        null
+                    },
+            ingredients = this.ingredients,
+            price = this.prix,
+            categPrice = this.categoriePrix,
+            brand = this.marque,
+            gamme = this.gamme,
+            cont =
+                    fr.vetbrain.vetnutri_mp.Enumer.ContEnum.getByName(
+                            if (this.cont == "YES") "CAN" else "NO"
+                    ),
+            quantInt = this.quantInt,
+            deprecated = this.deprecated,
+            dataB = this.DataB,
+            especes = especesConverties.toMutableList(),
+            indicat = this.indication.mapNotNull { stringToAlimIndic(it) }.toMutableList(),
+            valMap =
+                    this.valMap
+                            .mapKeys { (key, _) ->
+                                AllNutrientResolver(key) ?: NutrientMain.PROTEINE
+                            } // Ajoute un préfixe à chaque clé
+                            .mapValues { (_, value) -> value }
+                            .toMutableMap(),
+            rationUUID = null
     )
 }
-fun AlimentEvJson.toData(ratUUID :String): AlimentEv {
+
+fun AlimentEvJson.toData(ratUUID: String): AlimentEv {
+    // Convertir les espèces: transformer les ID numériques en labels
+    val especesConverties = convertirEspecesEnLabels(this.Especes, this.espece)
+
     return AlimentEv(
-        uuid = this.UUID,
-        nom = this.nom,
-        group =
-        try {
-            GroupAlim.valueOf(this.group)
-        } catch (e: Exception) {
-            null
-        },
-        typeAliment =
-        try {
-            FoodKind.valueOf(this.foodKind)
-        } catch (e: Exception) {
-            null
-        },
-        ingredients = this.ingredients,
-        price = this.prix,
-        categPrice = this.categoriePrix,
-        brand = this.marque,
-        gamme = this.gamme,
-        consistent = true,
-        cont = if (this.cont == "NO") 0 else 1,
-        quantInt = this.quantInt,
-        deprecated = if (this.deprecated) 1 else 0,
-        dataB = this.DataB,
-        especes = this.Especes.toMutableList(),
-        indicat =
-        this.indication
-            .mapNotNull {
-                try {
-                    AlimIndic.valueOf(it)
-                } catch (e: Exception) {
-                    null
-                }
-            }
-            .toMutableList(),
-        valMap = this.valMap.mapKeys { (key, _) -> AllNutrientResolver(key) ?:NutrientMain.PROTEINE } // Ajoute un préfixe à chaque clé
-            .mapValues { (_, value) ->
-                value
-            }
-            .toMutableMap(),
-        rationUUID =ratUUID
+            uuid = this.UUID,
+            nom = this.nom,
+            group =
+                    try {
+                        GroupAlim.valueOf(this.group)
+                    } catch (e: Exception) {
+                        null
+                    },
+            typeAliment =
+                    try {
+                        FoodKind.valueOf(this.foodKind)
+                    } catch (e: Exception) {
+                        null
+                    },
+            ingredients = this.ingredients,
+            price = this.prix,
+            categPrice = this.categoriePrix,
+            brand = this.marque,
+            gamme = this.gamme,
+            cont =
+                    fr.vetbrain.vetnutri_mp.Enumer.ContEnum.getByName(
+                            if (this.cont == "YES") "CAN" else "NO"
+                    ),
+            quantInt = this.quantInt,
+            deprecated = this.deprecated,
+            dataB = this.DataB,
+            especes = especesConverties.toMutableList(),
+            indicat = this.indication.mapNotNull { stringToAlimIndic(it) }.toMutableList(),
+            valMap =
+                    this.valMap
+                            .mapKeys { (key, _) ->
+                                AllNutrientResolver(key) ?: NutrientMain.PROTEINE
+                            } // Ajoute un préfixe à chaque clé
+                            .mapValues { (_, value) -> value }
+                            .toMutableMap(),
+            rationUUID = ratUUID
     )
+}
+
+/**
+ * Convertit une liste d'identifiants d'espèces en leurs labels correspondants. Si la liste est vide
+ * mais qu'un id d'espèce est fourni, il sera également converti.
+ *
+ * @param especes Liste des espèces (qui peuvent être sous forme d'ID ou de labels)
+ * @param especeId ID numérique d'une espèce (utilisé si la liste est vide)
+ * @return Liste des labels d'espèces convertis
+ */
+private fun convertirEspecesEnLabels(especes: List<String>, especeId: Int): List<String> {
+    // Si la liste d'espèces n'est pas vide, la traiter
+    if (especes.isNotEmpty()) {
+        return especes.map { especeStr ->
+            // Vérifier si l'espèce est un identifiant numérique
+            val especeInt = especeStr.toIntOrNull()
+            if (especeInt != null) {
+                // C'est un ID numérique, essayer de le convertir en label
+                try {
+                    val espece = Espece.getEnumFromInt(especeInt)
+                    espece?.label
+                            ?: especeStr // Utiliser le label si trouvé, sinon garder la chaîne
+                    // d'origine
+                } catch (e: Exception) {
+                    especeStr // En cas d'erreur, garder la chaîne d'origine
+                }
+            } else {
+                // Ce n'est pas un ID numérique, donc c'est probablement déjà un label
+                especeStr
+            }
+        }
+    }
+    // Si la liste est vide mais qu'un ID d'espèce est fourni
+    else if (especeId > 0) {
+        try {
+            val espece = Espece.getEnumFromInt(especeId)
+            return listOf(espece?.label ?: especeId.toString())
+        } catch (e: Exception) {
+            return listOf(especeId.toString())
+        }
+    }
+
+    // Si aucune espèce n'est spécifiée
+    return emptyList()
 }
 
 // AnimalEv <-> AnimalEvJson
@@ -153,29 +209,87 @@ fun AnimalEv.toJson(): AnimalEvJson {
 
 fun AnimalEvJson.toData(): AnimalEv {
     val consultationsList =
-            when {
-                // Format 1: consultations directement dans l'objet animal
-                this.consultations != null -> this.consultations.map { it.toData() }
+            try {
+                when {
+                    // Format 1: consultations directement dans l'objet animal
+                    this.consultations != null -> this.consultations.map { it.toData() }
 
-                // Format 2: consultations dans list.consultations
-                this.list != null -> this.list.consultations.map { it.toData() }
+                    // Format 2: consultations dans list.consultations
+                    this.list != null -> this.list.consultations.map { it.toData() }
 
-                // Aucune consultation
-                else -> emptyList()
+                    // Aucune consultation
+                    else -> emptyList()
+                }
+            } catch (e: Exception) {
+                println(
+                        "Erreur lors de la conversion des consultations pour ${this.nom}: ${e.message}"
+                )
+                emptyList()
+            }
+
+    // Récupération de l'espèce avec gestion des erreurs
+    val especeStr = this.espece.toString()
+    val specieId =
+            try {
+                val especeId = especeStr.toIntOrNull()
+                if (especeId != null) {
+                    try {
+                        // Si c'est un ID numérique, récupérer le label
+                        val especeEnum = Espece.getEnumFromInt(especeId)
+                        especeEnum.label
+                    } catch (e: Exception) {
+                        println(
+                                "Erreur lors de la conversion de l'ID d'espèce $especeStr: ${e.message}"
+                        )
+                        // Fallback au label CHIEN
+                        Espece.CHIEN.label
+                    }
+                } else {
+                    // Si c'est déjà un label, vérifier qu'il est valide
+                    try {
+                        val especeEnum = Espece.valueOf(especeStr)
+                        especeEnum.label
+                    } catch (e: Exception) {
+                        // Essayer de trouver par label
+                        val especeByLabel = Espece.getByLabel(especeStr)
+                        if (especeByLabel != null) {
+                            especeByLabel.label
+                        } else {
+                            println(
+                                    "Espèce non reconnue: '$especeStr', utilisation de CHIEN par défaut"
+                            )
+                            Espece.CHIEN.label
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                println(
+                        "Erreur lors de la détermination de l'espèce pour ${this.nom}: ${e.message}"
+                )
+                // Valeur par défaut en cas d'erreur
+                Espece.CHIEN.label
             }
 
     return AnimalEv(
             uuid = this.UUID,
             nom = this.nom,
             dead = this.dead,
-            id = this.id,
+            id = this.id ?: "",
             sexId = this.sex,
-            specieId = this.espece,
+            specieId = specieId,
             ownerName = this.nomProprio,
             birthdate = this.dateNaiss,
             race = this.race,
             summary = this.resume,
-            weightHistory = this.listWeight.map { it.toData() }.toMutableList(),
+            weightHistory =
+                    try {
+                        this.listWeight.map { it.toData() }.toMutableList()
+                    } catch (e: Exception) {
+                        println(
+                                "Erreur lors de la conversion de l'historique de poids pour ${this.nom}: ${e.message}"
+                        )
+                        mutableListOf()
+                    },
             consultations = consultationsList.toMutableList()
     )
 }
@@ -423,5 +537,3 @@ fun AlimDBListJson.toData(): AlimDBList {
                             .toMutableMap()
     )
 }
-
-

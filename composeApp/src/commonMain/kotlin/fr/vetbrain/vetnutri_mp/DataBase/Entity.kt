@@ -15,6 +15,7 @@ data class FoodEntity(
         val categPrice: String,
         val brand: String,
         val gamme: String,
+        val cont: String,
         val unitPres: Int,
         val quantityPres: Float,
         val version: Int,
@@ -24,7 +25,9 @@ data class FoodEntity(
         val deprecated: Int,
         val DataB: String,
         val RefRation: String? = null,
-        val RefAlimUnif: String? = null
+        val RefAlimUnif: String? = null,
+        val especesJson: String? = null,
+        val indicationsJson: String? = null
 )
 
 @Serializable

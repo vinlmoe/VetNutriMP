@@ -1,9 +1,9 @@
 package fr.vetbrain.vetnutri_mp.Data
 
+import fr.vetbrain.vetnutri_mp.Enumer.*
 import fr.vetbrain.vetnutri_mp.Enumer.AlimIndic
 import fr.vetbrain.vetnutri_mp.Enumer.FoodKind
 import fr.vetbrain.vetnutri_mp.Enumer.GroupAlim
-import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
@@ -19,9 +19,9 @@ data class AlimentEv(
         val gamme: String? = null,
         val nom: String? = null,
         val consistent: Boolean = false,
-        val cont: Int? = null,
+        val cont: ContEnum? = null,
         var quantInt: Float? = null,
-        var deprecated: Int? = null,
+        var deprecated: Boolean = false,
         var dataB: String? = null,
         var especes: MutableList<String> = mutableListOf(),
         var indicat: MutableList<AlimIndic> = mutableListOf(),
