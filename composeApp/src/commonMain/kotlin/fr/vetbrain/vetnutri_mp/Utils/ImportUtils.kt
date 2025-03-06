@@ -145,6 +145,9 @@ object ImportUtils {
                 "Début de l'importation JSON des aliments. Taille du contenu: ${jsonContent.length} caractères"
         )
 
+        // Collecter les nutriments non résolus
+        val nonResolvedNutrients = mutableSetOf<String>()
+
         try {
             // Diagnostic : Examiner les données d'espèces dans le JSON brut
             val rawJson = json.parseToJsonElement(jsonContent)
@@ -168,6 +171,24 @@ object ImportUtils {
                         ) {
                             println("  => Especes est un tableau vide pour $nom")
                         }
+
+                        // Examiner les nutriments
+                        if (item.containsKey("valMap")) {
+                            val valMap = item["valMap"]
+                            if (valMap is JsonObject) {
+                                // Collecter les clés de nutriments
+                                for (key in valMap.keys) {
+                                    // On stockera ces clés pour plus tard vérifier lesquelles n'ont
+                                    // pas été résolues
+                                    val nutrient =
+                                            fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver
+                                                    .AllNutrientResolver(key)
+                                    if (nutrient == null) {
+                                        nonResolvedNutrients.add(key)
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -188,6 +209,26 @@ object ImportUtils {
                     println(
                             "Aliment: ${food.nom}, Especes: ${food.Especes}, espece: ${food.espece}"
                     )
+
+                    // Vérifier les nutriments dans chaque aliment
+                    food.valMap.forEach { (_, nutrientQuantity) ->
+                        val nutrientKey = nutrientQuantity.nut
+                        val nutrient =
+                                fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver.AllNutrientResolver(
+                                        nutrientKey
+                                )
+                        if (nutrient == null) {
+                            nonResolvedNutrients.add(nutrientKey)
+                        }
+                    }
+                }
+
+                // Afficher les nutriments non résolus
+                if (nonResolvedNutrients.isNotEmpty()) {
+                    println("\nNutriments non résolus dans le JSON (${nonResolvedNutrients.size}):")
+                    nonResolvedNutrients.sorted().forEach { nutrientKey ->
+                        println("  - $nutrientKey")
+                    }
                 }
 
                 return foods
@@ -198,6 +239,29 @@ object ImportUtils {
                     println("Tentative d'importation comme un seul aliment...")
                     val food = json.decodeFromString<AlimentEvJson>(preprocessedJsonString)
                     println("Importation réussie: 1 aliment trouvé")
+
+                    // Vérifier les nutriments dans l'aliment unique
+                    food.valMap.forEach { (_, nutrientQuantity) ->
+                        val nutrientKey = nutrientQuantity.nut
+                        val nutrient =
+                                fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver.AllNutrientResolver(
+                                        nutrientKey
+                                )
+                        if (nutrient == null) {
+                            nonResolvedNutrients.add(nutrientKey)
+                        }
+                    }
+
+                    // Afficher les nutriments non résolus
+                    if (nonResolvedNutrients.isNotEmpty()) {
+                        println(
+                                "\nNutriments non résolus dans le JSON (${nonResolvedNutrients.size}):"
+                        )
+                        nonResolvedNutrients.sorted().forEach { nutrientKey ->
+                            println("  - $nutrientKey")
+                        }
+                    }
+
                     return listOf(food)
                 } catch (e: Exception) {
                     println("Erreur lors de l'importation comme un seul aliment: ${e.message}")
@@ -211,6 +275,29 @@ object ImportUtils {
                 println("Tentative d'importation standard comme liste d'aliments...")
                 val foods = json.decodeFromString<List<AlimentEvJson>>(jsonContent)
                 println("Importation réussie: ${foods.size} aliments trouvés")
+
+                // Vérifier les nutriments dans chaque aliment
+                foods.forEach { food ->
+                    food.valMap.forEach { (_, nutrientQuantity) ->
+                        val nutrientKey = nutrientQuantity.nut
+                        val nutrient =
+                                fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver.AllNutrientResolver(
+                                        nutrientKey
+                                )
+                        if (nutrient == null) {
+                            nonResolvedNutrients.add(nutrientKey)
+                        }
+                    }
+                }
+
+                // Afficher les nutriments non résolus
+                if (nonResolvedNutrients.isNotEmpty()) {
+                    println("\nNutriments non résolus dans le JSON (${nonResolvedNutrients.size}):")
+                    nonResolvedNutrients.sorted().forEach { nutrientKey ->
+                        println("  - $nutrientKey")
+                    }
+                }
+
                 return foods
             } catch (e: Exception) {
                 println("Erreur lors de l'importation standard comme liste: ${e.message}")
@@ -219,6 +306,29 @@ object ImportUtils {
                     println("Tentative d'importation standard comme un seul aliment...")
                     val food = json.decodeFromString<AlimentEvJson>(jsonContent)
                     println("Importation réussie: 1 aliment trouvé")
+
+                    // Vérifier les nutriments dans l'aliment unique
+                    food.valMap.forEach { (_, nutrientQuantity) ->
+                        val nutrientKey = nutrientQuantity.nut
+                        val nutrient =
+                                fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver.AllNutrientResolver(
+                                        nutrientKey
+                                )
+                        if (nutrient == null) {
+                            nonResolvedNutrients.add(nutrientKey)
+                        }
+                    }
+
+                    // Afficher les nutriments non résolus
+                    if (nonResolvedNutrients.isNotEmpty()) {
+                        println(
+                                "\nNutriments non résolus dans le JSON (${nonResolvedNutrients.size}):"
+                        )
+                        nonResolvedNutrients.sorted().forEach { nutrientKey ->
+                            println("  - $nutrientKey")
+                        }
+                    }
+
                     return listOf(food)
                 } catch (e: Exception) {
                     println(
@@ -229,6 +339,13 @@ object ImportUtils {
         }
 
         println("Échec de l'importation. Retour d'une liste vide.")
+
+        // Même en cas d'échec, afficher les nutriments non résolus collectés lors de l'analyse
+        if (nonResolvedNutrients.isNotEmpty()) {
+            println("\nNutriments non résolus dans le JSON (${nonResolvedNutrients.size}):")
+            nonResolvedNutrients.sorted().forEach { nutrientKey -> println("  - $nutrientKey") }
+        }
+
         return emptyList()
     }
 

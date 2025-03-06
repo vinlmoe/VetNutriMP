@@ -18,8 +18,8 @@ enum class NutrientMain(
     AMIDON("Amidon", 7, "g", UnitEnum.BUg, "AMIDON", "#820326"),
     FIBRESOL("Fibre soluble", 8, "g", UnitEnum.BUg, "FIBRSOL", "#20C300"),
     FIBRETOT("Fibre totale", 9, "g", UnitEnum.BUg, "FIBRTOT", "#1A7D07"),
-    NDF("Fibre soluble", 10, "g", UnitEnum.BUg, "NDF", "#20C300"),
-    ADF("Fibre totale", 11, "g", UnitEnum.BUg, "ADF", "#1A7D07");
+    NDF("NDF", 10, "g", UnitEnum.BUg, "NDF", "#20C300"),
+    ADF("ADFe", 11, "g", UnitEnum.BUg, "ADF", "#1A7D07");
 
     companion object {
         private val coefMap by lazy { entries.associateBy { it.coef } }

@@ -114,6 +114,9 @@ class DatabaseFoodRepository(
             var updateCount = 0
             var deleteCount = 0
 
+            // Collecter les nutriments non résolus
+            val nonResolvedNutrients = mutableSetOf<String>()
+
             // Collecter les UUIDs de tous les aliments présents dans le fichier JSON
             val importedUUIDs = foods.map { it.UUID }.toSet()
 
@@ -238,6 +241,9 @@ class DatabaseFoodRepository(
                                     println(
                                             "DEBUG importFoods - Nutriment non résolu: $nutrientKey"
                                     )
+                                    // Ajouter à la liste des nutriments non résolus
+                                    nonResolvedNutrients.add(nutrientKey)
+
                                     // Essayer de nettoyer la clé
                                     val cleanedKey = nutrientKey.trim().replace("_", " ")
                                     val nutrientAfterClean =
@@ -358,6 +364,9 @@ class DatabaseFoodRepository(
                                     println(
                                             "DEBUG importFoods - Nutriment non résolu: $nutrientKey"
                                     )
+                                    // Ajouter à la liste des nutriments non résolus
+                                    nonResolvedNutrients.add(nutrientKey)
+
                                     // Essayer de nettoyer la clé
                                     val cleanedKey = nutrientKey.trim().replace("_", " ")
                                     val nutrientAfterClean =
@@ -396,6 +405,13 @@ class DatabaseFoodRepository(
             println(
                     "Importation terminée. ${importCount} aliments importés, ${updateCount} aliments mis à jour, ${deleteCount} aliments supprimés."
             )
+
+            // Afficher les nutriments non résolus
+            if (nonResolvedNutrients.isNotEmpty()) {
+                println("\nNutriments non résolus (${nonResolvedNutrients.size}):")
+                nonResolvedNutrients.sorted().forEach { nutrientKey -> println("  - $nutrientKey") }
+            }
+
             println("Base de données vidée : ${deleteCount} aliments supprimés")
             importCount + updateCount
         }
@@ -527,6 +543,9 @@ class DatabaseFoodRepository(
                         "DEBUG getFood - Nombre de valeurs nutritionnelles trouvées: ${nutrientValues.size}"
                 )
 
+                // Collecter les nutriments non résolus
+                val nonResolvedNutrients = mutableListOf<String>()
+
                 if (nutrientValues.isNotEmpty()) {
                     // Convertir les valeurs des nutriments en Map<Nutrient, NutrientQuantity>
                     val nutrientMap =
@@ -539,6 +558,7 @@ class DatabaseFoodRepository(
                                             println(
                                                     "DEBUG getFood - Nutriment non résolu: ${entity.nutrientLabel}"
                                             )
+                                            nonResolvedNutrients.add(entity.nutrientLabel)
                                         } else {
                                             println(
                                                     "DEBUG getFood - Nutriment résolu: ${entity.nutrientLabel} -> ${nutrient.label} = ${entity.value}"
@@ -566,6 +586,16 @@ class DatabaseFoodRepository(
                         println(
                                 "DEBUG getFood - valMap contient: ${nutrient.label} = ${value.value}"
                         )
+                    }
+
+                    // Afficher les nutriments non résolus
+                    if (nonResolvedNutrients.isNotEmpty()) {
+                        println(
+                                "\nNutriments non résolus (${nonResolvedNutrients.size}) pour ${alimentEv.nom}:"
+                        )
+                        nonResolvedNutrients.distinct().sorted().forEach { nutrientKey ->
+                            println("  - $nutrientKey")
+                        }
                     }
                 } else {
                     println(

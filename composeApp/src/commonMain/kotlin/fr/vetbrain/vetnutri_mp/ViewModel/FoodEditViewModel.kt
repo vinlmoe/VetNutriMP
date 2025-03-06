@@ -103,9 +103,17 @@ class FoodEditViewModel(
                     println("DEBUG FoodEditViewModel: Aliment trouvé: ${aliment.nom}")
                     _alimentState.value = aliment
 
-                    // Remplir la liste des nutriments avec ceux trouvés dans l'aliment
+                    // S'assurer que la liste des nutriments est chargée
+                    if (_allNutrients.isEmpty()) {
+                        loadNutrients()
+                    }
+
+                    // Collecter les labels existants pour éviter les doublons
+                    val existingLabels = _allNutrients.map { it.label }.toSet()
+
+                    // Ajouter uniquement les nutriments qui ne sont pas déjà dans la liste
                     aliment.valMap.keys.forEach { nutrient ->
-                        if (!_allNutrients.contains(nutrient)) {
+                        if (nutrient.label !in existingLabels) {
                             _allNutrients.add(nutrient)
                         }
                     }
