@@ -52,6 +52,13 @@ object NutrientResolver {
         } catch (e: IllegalArgumentException) {
             // Ignorer, continuer à chercher dans les autres enums
         }
+        try {
+            if (AAEnum.isByLabel(label)) {
+                return AAEnum.getByLabel(label)
+            }
+        } catch (e: IllegalArgumentException) {
+            // Ignorer, continuer à chercher dans les autres enums
+        }
 
         // Vérifier dans NutrientEnergy - pas de isByLabel direct, utiliser une approche différente
         val nutrientEnergy = NutrientEnergy.entries.find { it.label == label }
@@ -70,7 +77,3 @@ object NutrientResolver {
         return null
     }
 }
-        
-
-
-

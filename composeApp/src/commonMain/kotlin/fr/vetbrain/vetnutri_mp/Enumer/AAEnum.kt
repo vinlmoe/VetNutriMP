@@ -1,14 +1,10 @@
-package fr.vetbrain.vetnutri_mp.enumerise
-
-import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
-import fr.vetbrain.vetnutri_mp.Enumer.MainNutrientEnum
-import fr.vetbrain.vetnutri_mp.Enumer.UnitEnum
+package fr.vetbrain.vetnutri_mp.Enumer
 
 enum class AAEnum(
-    val nom: String,
-    override val coef: Int,
-    override val ue: UnitEnum,
-    override val label: String
+        val nom: String,
+        override val coef: Int,
+        override val ue: UnitEnum,
+        override val label: String
 ) : Nutrient {
     ALANINE("Alanine", 0, UnitEnum.BUg, "ALANINE"),
     ARGININE("Arginine", 1, UnitEnum.BUg, "ARGININE"),
@@ -33,7 +29,7 @@ enum class AAEnum(
     TYROSINE("Tyrosine", 20, UnitEnum.BUg, "TYROSINE"),
     VALINE("Valine", 21, UnitEnum.BUg, "VALINE");
 
-    override val unite ="g"
+    override val unite = "g"
 
     companion object {
         private val map = values().associateBy { it.coef }
@@ -45,8 +41,11 @@ enum class AAEnum(
         fun getByCoef(i: Int): AAEnum {
             return map[i] ?: ASPARAGINE
         }
+
+        fun isByLabel(label: String): Boolean {
+            return values().any { it.label == label }
+        }
     }
 
-
     override fun getMNE(): MainNutrientEnum = MainNutrientEnum.AMA
-} 
+}

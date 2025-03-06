@@ -1,9 +1,8 @@
 package fr.vetbrain.vetnutri_mp.ViewModel
 
 import androidx.compose.runtime.mutableStateListOf
-import fr.vetbrain.vetnutri_mp.Data.AlimentEv
-import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
-import fr.vetbrain.vetnutri_mp.Enumer.NutrientMin
+import fr.vetbrain.vetnutri_mp.Data.*
+import fr.vetbrain.vetnutri_mp.Enumer.*
 import fr.vetbrain.vetnutri_mp.Repository.AlimentRepository
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import kotlin.uuid.ExperimentalUuidApi
@@ -41,13 +40,57 @@ class FoodEditViewModel(
     }
 
     private fun loadNutrients() {
-        // Pour simplifier, nous allons seulement charger les nutriments minéraux (NutrientMin)
-        // Les autres types pourraient être ajoutés plus tard
+        // Charger tous les types de nutriments
+
+        // Nutriments principaux
+        NutrientMain.entries.forEach { nutrient ->
+            if (!_allNutrients.contains(nutrient)) {
+                _allNutrients.add(nutrient)
+            }
+        }
+
+        // Lipides
+        NutrientLipid.entries.forEach { nutrient ->
+            if (!_allNutrients.contains(nutrient)) {
+                _allNutrients.add(nutrient)
+            }
+        }
+
+        // Macronutriments
+        NutrientMacro.entries.forEach { nutrient ->
+            if (!_allNutrients.contains(nutrient)) {
+                _allNutrients.add(nutrient)
+            }
+        }
+
+        // Minéraux
         NutrientMin.entries.forEach { nutrient ->
             if (!_allNutrients.contains(nutrient)) {
                 _allNutrients.add(nutrient)
             }
         }
+
+        // Vitamines
+        NutrientVitam.entries.forEach { nutrient ->
+            if (!_allNutrients.contains(nutrient)) {
+                _allNutrients.add(nutrient)
+            }
+        }
+
+        // Acides aminés
+        AAEnum.entries.forEach { nutrient ->
+            if (!_allNutrients.contains(nutrient)) {
+                _allNutrients.add(nutrient)
+            }
+        }
+
+        // Autres nutriments
+        NutrientOther.entries.forEach { nutrient ->
+            if (!_allNutrients.contains(nutrient)) {
+                _allNutrients.add(nutrient)
+            }
+        }
+
         println("DEBUG FoodEditViewModel: ${_allNutrients.size} nutriments chargés")
     }
 

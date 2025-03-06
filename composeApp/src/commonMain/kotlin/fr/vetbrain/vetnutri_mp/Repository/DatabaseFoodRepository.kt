@@ -6,10 +6,12 @@ import fr.vetbrain.vetnutri_mp.DataBase.FoodDao
 import fr.vetbrain.vetnutri_mp.DataBase.FoodEntity
 import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toAlimentEv
 import fr.vetbrain.vetnutri_mp.DataBase.NutrientValueDao
+import fr.vetbrain.vetnutri_mp.DataBase.NutrientValueEntity
 import fr.vetbrain.vetnutri_mp.Enumer.AlimIndic
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.FoodKind
 import fr.vetbrain.vetnutri_mp.Enumer.GroupAlim
+import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import fr.vetbrain.vetnutri_mp.Utils.ImportTester
 import kotlinx.coroutines.flow.Flow
@@ -206,6 +208,64 @@ class DatabaseFoodRepository(
                         )
                         foodDao.insert(foodEntity)
                         importCount++
+
+                        // Traiter les valeurs nutritionnelles
+                        if (food.valMap.isNotEmpty()) {
+                            println(
+                                    "DEBUG importFoods - Traitement de ${food.valMap.size} valeurs nutritionnelles pour ${food.nom} (${food.UUID})"
+                            )
+                            val nutrientValues = mutableListOf<NutrientValueEntity>()
+
+                            food.valMap.forEach { (key, nutrientQuantity) ->
+                                val nutrientKey = nutrientQuantity.nut
+                                val value = nutrientQuantity.value
+
+                                val nutrient =
+                                        fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver
+                                                .AllNutrientResolver(nutrientKey)
+                                if (nutrient != null) {
+                                    println(
+                                            "DEBUG importFoods - Nutriment résolu: $nutrientKey -> ${nutrient.label} = $value"
+                                    )
+                                    nutrientValues.add(
+                                            NutrientValueEntity(
+                                                    refAliment = food.UUID,
+                                                    nutrientLabel = nutrient.label,
+                                                    value = value
+                                            )
+                                    )
+                                } else {
+                                    println(
+                                            "DEBUG importFoods - Nutriment non résolu: $nutrientKey"
+                                    )
+                                    // Essayer de nettoyer la clé
+                                    val cleanedKey = nutrientKey.trim().replace("_", " ")
+                                    val nutrientAfterClean =
+                                            fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver
+                                                    .AllNutrientResolver(cleanedKey)
+                                    if (nutrientAfterClean != null) {
+                                        println(
+                                                "DEBUG importFoods - Nutriment résolu après nettoyage: $cleanedKey -> ${nutrientAfterClean.label} = $value"
+                                        )
+                                        nutrientValues.add(
+                                                NutrientValueEntity(
+                                                        refAliment = food.UUID,
+                                                        nutrientLabel = nutrientAfterClean.label,
+                                                        value = value
+                                                )
+                                        )
+                                    }
+                                }
+                            }
+
+                            if (nutrientValues.isNotEmpty()) {
+                                nutrientValueDao.deleteAllNutrientValuesForAliment(food.UUID)
+                                nutrientValueDao.insertNutrientValues(nutrientValues)
+                                println(
+                                        "DEBUG importFoods - ${nutrientValues.size} valeurs nutritionnelles insérées pour ${food.nom} (${food.UUID})"
+                                )
+                            }
+                        }
                     } else {
                         // L'aliment existe déjà dans FOOD, le mettre à jour
                         // Déterminer le JSON des espèces à utiliser
@@ -268,6 +328,64 @@ class DatabaseFoodRepository(
                         )
                         foodDao.update(foodEntity)
                         updateCount++
+
+                        // Traiter les valeurs nutritionnelles
+                        if (food.valMap.isNotEmpty()) {
+                            println(
+                                    "DEBUG importFoods - Mise à jour de ${food.valMap.size} valeurs nutritionnelles pour ${food.nom} (${food.UUID})"
+                            )
+                            val nutrientValues = mutableListOf<NutrientValueEntity>()
+
+                            food.valMap.forEach { (key, nutrientQuantity) ->
+                                val nutrientKey = nutrientQuantity.nut
+                                val value = nutrientQuantity.value
+
+                                val nutrient =
+                                        fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver
+                                                .AllNutrientResolver(nutrientKey)
+                                if (nutrient != null) {
+                                    println(
+                                            "DEBUG importFoods - Nutriment résolu: $nutrientKey -> ${nutrient.label} = $value"
+                                    )
+                                    nutrientValues.add(
+                                            NutrientValueEntity(
+                                                    refAliment = food.UUID,
+                                                    nutrientLabel = nutrient.label,
+                                                    value = value
+                                            )
+                                    )
+                                } else {
+                                    println(
+                                            "DEBUG importFoods - Nutriment non résolu: $nutrientKey"
+                                    )
+                                    // Essayer de nettoyer la clé
+                                    val cleanedKey = nutrientKey.trim().replace("_", " ")
+                                    val nutrientAfterClean =
+                                            fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver
+                                                    .AllNutrientResolver(cleanedKey)
+                                    if (nutrientAfterClean != null) {
+                                        println(
+                                                "DEBUG importFoods - Nutriment résolu après nettoyage: $cleanedKey -> ${nutrientAfterClean.label} = $value"
+                                        )
+                                        nutrientValues.add(
+                                                NutrientValueEntity(
+                                                        refAliment = food.UUID,
+                                                        nutrientLabel = nutrientAfterClean.label,
+                                                        value = value
+                                                )
+                                        )
+                                    }
+                                }
+                            }
+
+                            if (nutrientValues.isNotEmpty()) {
+                                nutrientValueDao.deleteAllNutrientValuesForAliment(food.UUID)
+                                nutrientValueDao.insertNutrientValues(nutrientValues)
+                                println(
+                                        "DEBUG importFoods - ${nutrientValues.size} valeurs nutritionnelles mises à jour pour ${food.nom} (${food.UUID})"
+                                )
+                            }
+                        }
                     }
                 } catch (e: Exception) {
                     println("Erreur lors de l'import de l'aliment ${food.nom}: ${e.message}")
@@ -368,6 +486,22 @@ class DatabaseFoodRepository(
                 // Insertion de l'entité dans la base de données
                 foodDao.insert(foodEntity)
 
+                // Ajouter les valeurs de nutriments
+                if (food.valMap.isNotEmpty()) {
+                    val nutrientValues = mutableListOf<NutrientValueEntity>()
+                    food.valMap.forEach { (nutrient, nutrientQuantity) ->
+                        nutrientValues.add(
+                                NutrientValueEntity(
+                                        refAliment = food.uuid,
+                                        nutrientLabel = nutrient.label,
+                                        value = nutrientQuantity.value
+                                )
+                        )
+                    }
+                    nutrientValueDao.deleteAllNutrientValuesForAliment(food.uuid)
+                    nutrientValueDao.insertNutrientValues(nutrientValues)
+                }
+
                 // Nous n'avons plus besoin d'insérer les indications dans la table d'association
                 // car elles sont maintenant stockées dans le champ indicationsJson
             } catch (e: Exception) {
@@ -384,8 +518,62 @@ class DatabaseFoodRepository(
                 println(
                         "DEBUG getFood - Aliment trouvé dans FOOD: ${foodEntity.name} (${foodEntity.uuid})"
                 )
-                // Utiliser la méthode de conversion standard
-                return@withContext foodEntity.toAlimentEv()
+                // Convertir l'entité en objet de domaine
+                val alimentEv = foodEntity.toAlimentEv()
+
+                // Charger les valeurs des nutriments
+                val nutrientValues = nutrientValueDao.getNutrientValues(uuid)
+                println(
+                        "DEBUG getFood - Nombre de valeurs nutritionnelles trouvées: ${nutrientValues.size}"
+                )
+
+                if (nutrientValues.isNotEmpty()) {
+                    // Convertir les valeurs des nutriments en Map<Nutrient, NutrientQuantity>
+                    val nutrientMap =
+                            nutrientValues
+                                    .associate { entity ->
+                                        val nutrient =
+                                                fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver
+                                                        .AllNutrientResolver(entity.nutrientLabel)
+                                        if (nutrient == null) {
+                                            println(
+                                                    "DEBUG getFood - Nutriment non résolu: ${entity.nutrientLabel}"
+                                            )
+                                        } else {
+                                            println(
+                                                    "DEBUG getFood - Nutriment résolu: ${entity.nutrientLabel} -> ${nutrient.label} = ${entity.value}"
+                                            )
+                                        }
+                                        nutrient to
+                                                fr.vetbrain.vetnutri_mp.Data.NutrientQuantity(
+                                                        entity.value,
+                                                        nutrient?.label ?: ""
+                                                )
+                                    }
+                                    .filterKeys { it != null }
+                                    .mapKeys { it.key!! }
+
+                    println(
+                            "DEBUG getFood - Nombre de nutriments après résolution: ${nutrientMap.size}"
+                    )
+
+                    // Mettre à jour valMap avec les valeurs chargées
+                    alimentEv.valMap = nutrientMap.toMutableMap()
+                    println(
+                            "DEBUG getFood - valMap après chargement: ${alimentEv.valMap.size} valeurs"
+                    )
+                    alimentEv.valMap.forEach { (nutrient, value) ->
+                        println(
+                                "DEBUG getFood - valMap contient: ${nutrient.label} = ${value.value}"
+                        )
+                    }
+                } else {
+                    println(
+                            "DEBUG getFood - Aucune valeur nutritionnelle trouvée pour l'aliment ${alimentEv.nom} (${alimentEv.uuid})"
+                    )
+                }
+
+                return@withContext alimentEv
             }
 
             println("DEBUG getFood - Aliment non trouvé: $uuid")
@@ -409,6 +597,22 @@ class DatabaseFoodRepository(
 
                 // Mise à jour de l'entité dans la base de données
                 foodDao.update(foodEntity)
+
+                // Mise à jour des valeurs de nutriments
+                if (food.valMap.isNotEmpty()) {
+                    val nutrientValues = mutableListOf<NutrientValueEntity>()
+                    food.valMap.forEach { (nutrient, nutrientQuantity) ->
+                        nutrientValues.add(
+                                NutrientValueEntity(
+                                        refAliment = food.uuid,
+                                        nutrientLabel = nutrient.label,
+                                        value = nutrientQuantity.value
+                                )
+                        )
+                    }
+                    nutrientValueDao.deleteAllNutrientValuesForAliment(food.uuid)
+                    nutrientValueDao.insertNutrientValues(nutrientValues)
+                }
 
                 // Nous n'avons plus besoin de mettre à jour les indications dans la table
                 // d'association
@@ -653,6 +857,20 @@ class DatabaseFoodRepository(
                     "Base de données vidée : $totalCount aliments supprimés (${count1} de ALIMENTS_BASE, ${count2} de FOOD)"
             )
             totalCount
+        }
+    }
+
+    /** Convertit une map de nutriments et valeurs en liste d'entités de valeurs de nutriments. */
+    private fun Map<
+            Nutrient, fr.vetbrain.vetnutri_mp.Data.NutrientQuantity>.toNutrientValueEntities(
+            alimentUuid: String
+    ): List<NutrientValueEntity> {
+        return map { (nutrient, nutrientQuantity) ->
+            NutrientValueEntity(
+                    refAliment = alimentUuid,
+                    nutrientLabel = nutrient.label,
+                    value = nutrientQuantity.value
+            )
         }
     }
 }

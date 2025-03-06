@@ -25,6 +25,6 @@ data class AlimentEv(
         var dataB: String? = null,
         var especes: MutableList<String> = mutableListOf(),
         var indicat: MutableList<AlimIndic> = mutableListOf(),
-        var valMap: Map<Nutrient, Float> = mutableMapOf(),
+        var valMap: MutableMap<Nutrient, NutrientQuantity> = mutableMapOf(),
         val rationUUID: String?
 )

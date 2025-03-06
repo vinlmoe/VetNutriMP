@@ -1,8 +1,6 @@
 package fr.vetbrain.vetnutri_mp.Enumer
 
 import fr.vetbrain.vetnutri_mp.Data.Labelable
-import fr.vetbrain.vetnutri_mp.enumerise.AAEnum
-
 
 enum class MainNutrientEnum(override val label: String, val coef: Int) : Labelable {
     MIN("Mineraux", 0),
@@ -18,8 +16,7 @@ enum class MainNutrientEnum(override val label: String, val coef: Int) : Labelab
     INGREDIENT("Ingredients", 10),
     INDICAT("Indication", 11);
 
-  
-     val unite: String = ""
+    val unite: String = ""
 
     companion object {
         private val coefMap by lazy { values().associateBy { it.coef } }
@@ -28,20 +25,22 @@ enum class MainNutrientEnum(override val label: String, val coef: Int) : Labelab
         fun size() = 7 // À vérifier (incohérence avec le nombre réel de valeurs)
     }
 
-    fun getNutrient(i: Int): Nutrient? = when (this) {
-       AMA -> AAEnum.getByCoef(i)
-        ANA -> NutrientAnalysis.getByCoef(i)
-        BASE -> NutrientMain.getByCoef(i)
-        ENERGIE -> NutrientEnergy.getByCoef(i)
-      LIPID -> NutrientLipid.getByCoef(i)
-        MACRO -> NutrientMacro.getByCoef(i)
-        MIN -> NutrientMin.getByCoef(i)
-        OTHER -> NutrientOther.getByCoef(i)
-        VITAM -> NutrientVitam.getByCoef(i)
-        else -> null.also {
-            if (this !in setOf(INGREDIENT, INDICAT, NO)) {
-                error("Unhandled type: $this")
+    fun getNutrient(i: Int): Nutrient? =
+            when (this) {
+                AMA -> AAEnum.getByCoef(i)
+                ANA -> NutrientAnalysis.getByCoef(i)
+                BASE -> NutrientMain.getByCoef(i)
+                ENERGIE -> NutrientEnergy.getByCoef(i)
+                LIPID -> NutrientLipid.getByCoef(i)
+                MACRO -> NutrientMacro.getByCoef(i)
+                MIN -> NutrientMin.getByCoef(i)
+                OTHER -> NutrientOther.getByCoef(i)
+                VITAM -> NutrientVitam.getByCoef(i)
+                else ->
+                        null.also {
+                            if (this !in setOf(INGREDIENT, INDICAT, NO)) {
+                                error("Unhandled type: $this")
+                            }
+                        }
             }
-        }
-    }
 }

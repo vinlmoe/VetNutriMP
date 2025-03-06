@@ -242,17 +242,92 @@ object ImportUtils {
                 if (result.containsKey("valMap")) {
                     val valMap = result["valMap"]
                     if (valMap is JsonObject) {
-                        val newValMap = valMap.toMutableMap()
+                        val newValMap = mutableMapOf<String, JsonElement>()
 
                         // Parcourir les entrées de valMap
                         for ((key, value) in valMap.entries) {
-                            if (value is JsonObject && value.contains("value")) {
-                                // Si la valeur est un objet avec un champ "value", extraire ce
-                                // champ
-                                val valueField = value["value"]
-                                if (valueField is JsonPrimitive) {
-                                    // Remplacer l'objet par la valeur directe
-                                    newValMap[key] = valueField
+                            // Vérifier les différents formats possibles
+                            when {
+                                // Format 1: Déjà un objet NutrientQuantity
+                                value is JsonObject &&
+                                        value.contains("value") &&
+                                        value.contains("nut") -> {
+                                    // Déjà dans le bon format, conserver tel quel
+                                    newValMap[key] = value
+                                }
+
+                                // Format 2: Objet avec seulement "value"
+                                value is JsonObject && value.contains("value") -> {
+                                    // Créer un nouvel objet avec "nut" qui reprend la clé
+                                    val nutritionValue =
+                                            JsonObject(
+                                                    mapOf(
+                                                            "value" to value["value"]!!,
+                                                            "nut" to JsonPrimitive(key)
+                                                    )
+                                            )
+                                    newValMap[key] = nutritionValue
+                                }
+
+                                // Format 3: Valeur numérique directe
+                                value is JsonPrimitive &&
+                                        value.isString &&
+                                        value.content.toFloatOrNull() != null -> {
+                                    // Convertir en objet NutrientQuantity
+                                    val nutritionValue =
+                                            JsonObject(
+                                                    mapOf(
+                                                            "value" to
+                                                                    JsonPrimitive(
+                                                                            value.content.toFloat()
+                                                                    ),
+                                                            "nut" to JsonPrimitive(key)
+                                                    )
+                                            )
+                                    newValMap[key] = nutritionValue
+                                }
+                                value is JsonPrimitive &&
+                                        (value.isString ||
+                                                value.content.toFloatOrNull() != null) -> {
+                                    // Convertir en objet NutrientQuantity
+                                    val floatValue =
+                                            if (value.isString) {
+                                                value.content.toFloatOrNull() ?: 0f
+                                            } else {
+                                                value.content.toFloatOrNull() ?: 0f
+                                            }
+
+                                    val nutritionValue =
+                                            JsonObject(
+                                                    mapOf(
+                                                            "value" to JsonPrimitive(floatValue),
+                                                            "nut" to JsonPrimitive(key)
+                                                    )
+                                            )
+                                    newValMap[key] = nutritionValue
+                                }
+
+                                // Autres cas
+                                else -> {
+                                    println(
+                                            "Format non reconnu pour la valeur nutritionnelle $key: $value"
+                                    )
+                                    // Essayer de convertir en flottant si possible
+                                    val floatValue = value.toString().toFloatOrNull()
+                                    if (floatValue != null) {
+                                        val nutritionValue =
+                                                JsonObject(
+                                                        mapOf(
+                                                                "value" to
+                                                                        JsonPrimitive(floatValue),
+                                                                "nut" to JsonPrimitive(key)
+                                                        )
+                                                )
+                                        newValMap[key] = nutritionValue
+                                    } else {
+                                        // Conserver tel quel si la conversion échoue
+                                        newValMap[key] = value
+                                    }
                                 }
                             }
                         }
@@ -284,7 +359,7 @@ object ImportUtils {
                                                     listOf(JsonPrimitive(especeEnum.label))
                                             )
                                     println(
-                                            "Prétraitement: Ajout de l'espèce ${especeEnum.label} (${especeEnum.id}) à Especes pour l'aliment ${result["nom"]}"
+                                            "Prétraitement: Conversion de l'espèce $especeValue en ${especeEnum.label}"
                                     )
                                 } catch (e: Exception) {
                                     // Fallback à l'ancienne méthode si la conversion échoue
@@ -583,7 +658,7 @@ object ImportUtils {
                             if (firstAnimal.containsKey("espece")) {
                                 val especeValue = firstAnimal["espece"]
                                 diagnosticBuilder.append(
-                                        "Type du champ espece: ${especeValue?.javaClass?.simpleName}\n"
+                                        "Type du champ espece: ${if (especeValue != null) especeValue::class.simpleName else "null"}\n"
                                 )
                                 diagnosticBuilder.append("Valeur du champ espece: $especeValue\n")
                             } else {
@@ -647,7 +722,7 @@ object ImportUtils {
                     if (jsonElement.containsKey("espece")) {
                         val especeValue = jsonElement["espece"]
                         diagnosticBuilder.append(
-                                "Type du champ espece: ${especeValue?.javaClass?.simpleName}\n"
+                                "Type du champ espece: ${if (especeValue != null) especeValue::class.simpleName else "null"}\n"
                         )
                         diagnosticBuilder.append("Valeur du champ espece: $especeValue\n")
                     } else {

@@ -345,14 +345,14 @@ object Mappers {
         /**
          * Convertit une map de nutriments et valeurs en liste d'entités de valeurs de nutriments.
          */
-        fun Map<Nutrient, Float>.toNutrientValueEntities(
+        fun Map<Nutrient, fr.vetbrain.vetnutri_mp.Data.NutrientQuantity>.toNutrientValueEntities(
                 alimentUuid: String
         ): List<NutrientValueEntity> {
-                return map { (nutrient, value) ->
+                return map { (nutrient, nutrientQuantity) ->
                         NutrientValueEntity(
                                 refAliment = alimentUuid,
                                 nutrientLabel = nutrient.label,
-                                value = value
+                                value = nutrientQuantity.value
                         )
                 }
         }
@@ -360,12 +360,17 @@ object Mappers {
         /**
          * Convertit une liste d'entités de valeurs de nutriments en map de nutriments et valeurs.
          */
-        fun List<NutrientValueEntity>.toNutrientValueMap(): Map<Nutrient, Float> {
-                val result = mutableMapOf<Nutrient, Float>()
+        fun List<NutrientValueEntity>.toNutrientValueMap():
+                MutableMap<Nutrient, fr.vetbrain.vetnutri_mp.Data.NutrientQuantity> {
+                val result = mutableMapOf<Nutrient, fr.vetbrain.vetnutri_mp.Data.NutrientQuantity>()
                 forEach { entity ->
                         val nutrient = NutrientResolver.AllNutrientResolver(entity.nutrientLabel)
                         if (nutrient != null) {
-                                result[nutrient] = entity.value
+                                result[nutrient] =
+                                        fr.vetbrain.vetnutri_mp.Data.NutrientQuantity(
+                                                entity.value,
+                                                entity.nutrientLabel
+                                        )
                         }
                 }
                 return result

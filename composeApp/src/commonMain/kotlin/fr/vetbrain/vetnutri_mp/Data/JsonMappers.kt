@@ -4,7 +4,7 @@ import fr.vetbrain.vetnutri_mp.Enumer.AlimIndic
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.FoodKind
 import fr.vetbrain.vetnutri_mp.Enumer.GroupAlim
-import fr.vetbrain.vetnutri_mp.Enumer.NutrientMain
+import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver.AllNutrientResolver
 import fr.vetbrain.vetnutri_mp.Enumer.TargetAdjust
 import fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum
@@ -25,7 +25,7 @@ fun AlimentEv.toJson(): AlimentEvJson {
             categoriePrix = this.categPrice ?: "i",
             marque = this.brand ?: "",
             indication = this.indicat.map { it.name },
-            espece = 1, // Valeur par défaut, à adapter selon votre logique
+            espece = 0, // À adapter selon votre logique
             Especes = this.especes,
             gamme = this.gamme ?: "",
             presentation = "", // Non présent dans AlimentEv
@@ -35,9 +35,11 @@ fun AlimentEv.toJson(): AlimentEvJson {
             DataB = this.dataB ?: "6",
             valMap =
                     this.valMap
-                            .mapKeys { (key, _) -> key.label } // Ajoute un préfixe à chaque clé
-                            .mapValues { (_, value) -> value }
-                            .toMutableMap() // À adapter selon votre logique
+                            .map { (nutrient, nutrientQuantity) ->
+                                nutrient.label to
+                                        NutrientQuantity(nutrientQuantity.value, nutrient.label)
+                            }
+                            .toMap()
     )
 }
 
@@ -61,50 +63,118 @@ fun AlimentEvJson.toData(): AlimentEv {
     // Convertir les espèces: transformer les ID numériques en labels
     val especesConverties = convertirEspecesEnLabels(this.Especes, this.espece)
 
-    return AlimentEv(
-            uuid = this.UUID,
-            nom = this.nom,
-            group =
-                    try {
-                        GroupAlim.valueOf(this.group)
-                    } catch (e: Exception) {
-                        null
-                    },
-            typeAliment =
-                    try {
-                        FoodKind.valueOf(this.foodKind)
-                    } catch (e: Exception) {
-                        null
-                    },
-            ingredients = this.ingredients,
-            price = this.prix,
-            categPrice = this.categoriePrix,
-            brand = this.marque,
-            gamme = this.gamme,
-            cont =
-                    fr.vetbrain.vetnutri_mp.Enumer.ContEnum.getByName(
-                            if (this.cont == "YES") "CAN" else "NO"
-                    ),
-            quantInt = this.quantInt,
-            deprecated = this.deprecated,
-            dataB = this.DataB,
-            especes = especesConverties.toMutableList(),
-            indicat = this.indication.mapNotNull { stringToAlimIndic(it) }.toMutableList(),
-            valMap =
-                    this.valMap
-                            .mapKeys { (key, _) ->
-                                AllNutrientResolver(key) ?: NutrientMain.PROTEINE
-                            } // Ajoute un préfixe à chaque clé
-                            .mapValues { (_, value) -> value }
-                            .toMutableMap(),
-            rationUUID = null
+    // Vérifier si le JSON contient des valeurs de nutriments
+    println(
+            "DEBUG JsonMappers - AlimentEvJson.toData - ${this.nom} (${this.UUID}) - valMap dans JSON: ${this.valMap.size} valeurs"
     )
+
+    // Améliorer la conversion des nutriments
+    val nutrientMap = mutableMapOf<Nutrient, NutrientQuantity>()
+    if (this.valMap.isNotEmpty()) {
+        println("Conversion des nutriments pour ${this.nom} (${this.UUID}):")
+        this.valMap.forEach { (key, nutrientQuantity) ->
+            // Récupérer le nom du nutriment et sa valeur
+            val nutrientKey = nutrientQuantity.nut
+            val value = nutrientQuantity.value
+
+            println("  • Traitement de nutriment: $nutrientKey avec valeur: $value")
+
+            val nutrient = AllNutrientResolver(nutrientKey)
+            if (nutrient != null) {
+                nutrientMap[nutrient] = NutrientQuantity(value, nutrient.label)
+                println("  • $nutrientKey -> ${nutrient.label}: $value (Résolu avec succès)")
+            } else {
+                println("  • $nutrientKey: $value (Non résolu)")
+                // Essayer de nettoyer la clé pour trouver une correspondance
+                val cleanedKey = nutrientKey.trim().replace("_", " ")
+                val nutrientAfterClean = AllNutrientResolver(cleanedKey)
+                if (nutrientAfterClean != null) {
+                    nutrientMap[nutrientAfterClean] =
+                            NutrientQuantity(value, nutrientAfterClean.label)
+                    println(
+                            "  • $nutrientKey -> ${nutrientAfterClean.label}: $value (Résolu après nettoyage)"
+                    )
+                }
+            }
+        }
+        println(
+                "Résultat de la conversion: ${nutrientMap.size} nutriments mappés pour ${this.nom} (${this.UUID})"
+        )
+    } else {
+        println("Aucun nutriment à convertir pour ${this.nom} (${this.UUID})")
+    }
+
+    // Créer l'objet AlimentEv
+    val alimentEv =
+            AlimentEv(
+                    uuid = this.UUID,
+                    nom = this.nom,
+                    group =
+                            try {
+                                GroupAlim.valueOf(this.group)
+                            } catch (e: Exception) {
+                                null
+                            },
+                    typeAliment =
+                            try {
+                                FoodKind.valueOf(this.foodKind)
+                            } catch (e: Exception) {
+                                null
+                            },
+                    ingredients = this.ingredients,
+                    price = this.prix,
+                    categPrice = this.categoriePrix,
+                    brand = this.marque,
+                    gamme = this.gamme,
+                    cont =
+                            fr.vetbrain.vetnutri_mp.Enumer.ContEnum.getByName(
+                                    if (this.cont == "YES") "CAN" else "NO"
+                            ),
+                    quantInt = this.quantInt,
+                    deprecated = this.deprecated,
+                    dataB = this.DataB,
+                    especes = especesConverties.toMutableList(),
+                    indicat = this.indication.mapNotNull { stringToAlimIndic(it) }.toMutableList(),
+                    // Assurez-vous que valMap est mutable
+                    valMap = nutrientMap.toMutableMap(),
+                    rationUUID = null
+            )
+
+    // Vérifier l'objet après conversion
+    println(
+            "DEBUG JsonMappers - AlimentEv après conversion - ${alimentEv.nom} (${alimentEv.uuid}) - valMap: ${alimentEv.valMap.size} valeurs"
+    )
+
+    return alimentEv
 }
 
 fun AlimentEvJson.toData(ratUUID: String): AlimentEv {
     // Convertir les espèces: transformer les ID numériques en labels
     val especesConverties = convertirEspecesEnLabels(this.Especes, this.espece)
 
+    // Améliorer la conversion des nutriments
+    val nutrientMap = mutableMapOf<Nutrient, NutrientQuantity>()
+    if (this.valMap.isNotEmpty()) {
+        this.valMap.forEach { (key, nutrientQuantity) ->
+            // Récupérer le nom du nutriment et sa valeur
+            val nutrientKey = nutrientQuantity.nut
+            val value = nutrientQuantity.value
+
+            val nutrient = AllNutrientResolver(nutrientKey)
+            if (nutrient != null) {
+                nutrientMap[nutrient] = NutrientQuantity(value, nutrient.label)
+            } else {
+                // Essayer de nettoyer la clé pour trouver une correspondance
+                val cleanedKey = nutrientKey.trim().replace("_", " ")
+                val nutrientAfterClean = AllNutrientResolver(cleanedKey)
+                if (nutrientAfterClean != null) {
+                    nutrientMap[nutrientAfterClean] =
+                            NutrientQuantity(value, nutrientAfterClean.label)
+                }
+            }
+        }
+    }
+
     return AlimentEv(
             uuid = this.UUID,
             nom = this.nom,
@@ -134,13 +204,7 @@ fun AlimentEvJson.toData(ratUUID: String): AlimentEv {
             dataB = this.DataB,
             especes = especesConverties.toMutableList(),
             indicat = this.indication.mapNotNull { stringToAlimIndic(it) }.toMutableList(),
-            valMap =
-                    this.valMap
-                            .mapKeys { (key, _) ->
-                                AllNutrientResolver(key) ?: NutrientMain.PROTEINE
-                            } // Ajoute un préfixe à chaque clé
-                            .mapValues { (_, value) -> value }
-                            .toMutableMap(),
+            valMap = nutrientMap.toMutableMap(),
             rationUUID = ratUUID
     )
 }

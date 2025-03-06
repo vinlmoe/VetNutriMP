@@ -1,26 +1,24 @@
 package fr.vetbrain.vetnutri_mp.View
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.runtime.*
+import androidx.compose.runtime.key
+import androidx.compose.runtime.snapshots.SnapshotStateMap
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import fr.vetbrain.vetnutri_mp.Components.TopBar
-import fr.vetbrain.vetnutri_mp.Enumer.AlimIndic
-import fr.vetbrain.vetnutri_mp.Enumer.ContEnum
-import fr.vetbrain.vetnutri_mp.Enumer.Espece
-import fr.vetbrain.vetnutri_mp.Enumer.FoodKind
-import fr.vetbrain.vetnutri_mp.Enumer.GroupAlim
-import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
+import fr.vetbrain.vetnutri_mp.Enumer.*
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.FoodEditViewModel
 import kotlinx.coroutines.launch
@@ -37,6 +35,12 @@ fun FoodEditView(
         val scope = rememberCoroutineScope()
         val scrollState = rememberScrollState()
 
+        // État pour les messages d'erreur et de succès
+        var showErrorMessage by remember { mutableStateOf(false) }
+        var errorMessage by remember { mutableStateOf("") }
+        var showSuccessMessage by remember { mutableStateOf(false) }
+
+        // États pour le formulaire
         val nomState = remember { mutableStateOf("") }
         val brandState = remember { mutableStateOf("") }
         val gammeState = remember { mutableStateOf("") }
@@ -49,23 +53,44 @@ fun FoodEditView(
 
         val selectedFoodType = remember { mutableStateOf<FoodKind?>(null) }
         val selectedFoodGroup = remember { mutableStateOf<GroupAlim?>(null) }
-        val selectedEspecesState = remember {
-                mutableStateOf(
-                        Espece.entries
-                                .filter { espece -> aliment.especes.any { id -> id == espece.id } }
-                                .toMutableList()
-                )
-        }
+        val selectedEspecesState = remember { mutableStateOf(mutableListOf<Espece>()) }
         val selectedIndications = remember {
                 mutableStateOf<MutableList<AlimIndic>>(mutableListOf())
         }
 
         val allNutrients = viewModel.getAllNutrients()
         val nutrientValues = remember { mutableStateMapOf<Nutrient, String>() }
+        val nutrientErrors = remember { mutableStateMapOf<Nutrient, Boolean>() }
+
+        // État pour les onglets
+        var selectedTabIndex by remember { mutableStateOf(0) }
+        val tabTitles = listOf("Informations générales", "Composition nutritionnelle")
+
+        // Fonction de validation des nutriments
+        fun validateNutrients(): Boolean {
+                var isValid = true
+                nutrientErrors.clear()
+
+                nutrientValues.forEach { (nutrient, value) ->
+                        if (value.isNotBlank()) {
+                                val floatValue = value.replace(",", ".").toFloatOrNull()
+                                if (floatValue == null || floatValue < 0) {
+                                        nutrientErrors[nutrient] = true
+                                        isValid = false
+                                } else {
+                                        nutrientErrors[nutrient] = false
+                                }
+                        }
+                }
+
+                return isValid
+        }
 
         // Mettre à jour les états locaux lorsque l'aliment change
         LaunchedEffect(aliment) {
                 println("DEBUG FoodEditView: Mise à jour des champs avec aliment: ${aliment.nom}")
+                println("DEBUG FoodEditView: Espèces dans l'aliment: ${aliment.especes}")
+
                 nomState.value = aliment.nom ?: ""
                 brandState.value = aliment.brand ?: ""
                 gammeState.value = aliment.gamme ?: ""
@@ -77,16 +102,34 @@ fun FoodEditView(
                 consistentState.value = aliment.consistent
                 selectedFoodType.value = aliment.typeAliment
                 selectedFoodGroup.value = aliment.group
-                selectedEspecesState.value =
-                        Espece.entries
-                                .filter { espece -> aliment.especes.any { id -> id == espece.id } }
-                                .toMutableList()
+
+                // Nouvelle approche pour initialiser les espèces
+                val matchedEspeces = mutableListOf<Espece>()
+
+                // Pour chaque espèce dans l'aliment
+                aliment.especes.forEach { especeStr ->
+                        // Essayer de trouver l'espèce correspondante de plusieurs façons
+                        val espece = Espece.getFromString(especeStr)
+                        if (espece != null) {
+                                matchedEspeces.add(espece)
+                                println(
+                                        "DEBUG FoodEditView: Espèce trouvée pour $especeStr: ${espece.name}"
+                                )
+                        } else {
+                                println(
+                                        "DEBUG FoodEditView: Aucune espèce trouvée pour: $especeStr"
+                                )
+                        }
+                }
+
+                selectedEspecesState.value = matchedEspeces
                 selectedIndications.value = aliment.indicat.toMutableList()
 
                 // Mettre à jour les valeurs des nutriments
                 nutrientValues.clear()
+                nutrientErrors.clear()
                 aliment.valMap.forEach { (nutrient, value) ->
-                        nutrientValues[nutrient] = value.toString()
+                        nutrientValues[nutrient] = value.value.toString()
                 }
         }
 
@@ -99,370 +142,672 @@ fun FoodEditView(
                                 onBackClick = onNavigateBack,
                                 onSettingsClick = onNavigateToSettings
                         )
+                },
+                snackbarHost = {
+                        SnackbarHost(
+                                hostState =
+                                        remember { SnackbarHostState() }.apply {
+                                                if (showErrorMessage) {
+                                                        scope.launch {
+                                                                showSnackbar(
+                                                                        message = errorMessage,
+                                                                        actionLabel = "OK",
+                                                                        duration =
+                                                                                SnackbarDuration
+                                                                                        .Short
+                                                                )
+                                                                showErrorMessage = false
+                                                        }
+                                                }
+                                                if (showSuccessMessage) {
+                                                        scope.launch {
+                                                                showSnackbar(
+                                                                        message =
+                                                                                "Aliment enregistré avec succès",
+                                                                        actionLabel = "OK",
+                                                                        duration =
+                                                                                SnackbarDuration
+                                                                                        .Short
+                                                                )
+                                                                showSuccessMessage = false
+                                                        }
+                                                }
+                                        }
+                        )
                 }
         ) { paddingValues ->
-                Column(
-                        modifier =
-                                Modifier.padding(paddingValues)
-                                        .fillMaxSize()
-                                        .padding(16.dp)
-                                        .verticalScroll(scrollState),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
+                Column(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
                         // Bouton d'enregistrement
                         Button(
                                 onClick = {
                                         scope.launch {
-                                                val updatedAliment =
-                                                        aliment.copy(
-                                                                nom =
-                                                                        nomState.value.takeIf {
-                                                                                it.isNotBlank()
-                                                                        },
-                                                                brand =
-                                                                        brandState.value.takeIf {
-                                                                                it.isNotBlank()
-                                                                        },
-                                                                gamme =
-                                                                        gammeState.value.takeIf {
-                                                                                it.isNotBlank()
-                                                                        },
-                                                                ingredients =
-                                                                        ingredientsState.value
-                                                                                .takeIf {
-                                                                                        it.isNotBlank()
-                                                                                },
-                                                                price =
-                                                                        priceState.value
-                                                                                .toDoubleOrNull(),
-                                                                categPrice =
-                                                                        categPriceState.value
-                                                                                .takeIf {
-                                                                                        it.isNotBlank()
-                                                                                },
-                                                                quantInt =
-                                                                        quantIntState.value
-                                                                                .toFloatOrNull(),
-                                                                cont =
-                                                                        fr.vetbrain.vetnutri_mp
-                                                                                .Enumer.ContEnum
-                                                                                .getByName(
-                                                                                        contState
-                                                                                                .value
-                                                                                ),
-                                                                consistent = consistentState.value,
-                                                                typeAliment =
-                                                                        selectedFoodType.value,
-                                                                group = selectedFoodGroup.value,
-                                                                especes =
-                                                                        selectedEspecesState
-                                                                                .value
-                                                                                .map { it.id }
-                                                                                .toMutableList(),
-                                                                indicat = selectedIndications.value,
-                                                                valMap =
-                                                                        nutrientValues
-                                                                                .mapValues {
-                                                                                        it.value
-                                                                                                .toFloatOrNull()
-                                                                                                ?: 0f
-                                                                                }
-                                                                                .filterValues {
-                                                                                        it > 0f
-                                                                                }
-                                                        )
-                                                viewModel.saveAliment(updatedAliment)
-                                                onNavigateBack()
+                                                // Validation des champs obligatoires
+                                                if (nomState.value.isBlank()) {
+                                                        errorMessage =
+                                                                "Le nom de l'aliment est obligatoire"
+                                                        showErrorMessage = true
+                                                        return@launch
+                                                }
+
+                                                if (selectedEspecesState.value.isEmpty()) {
+                                                        errorMessage =
+                                                                "Sélectionnez au moins une espèce"
+                                                        showErrorMessage = true
+                                                        return@launch
+                                                }
+
+                                                // Validation des nutriments
+                                                if (!validateNutrients()) {
+                                                        errorMessage =
+                                                                "Certaines valeurs nutritionnelles sont invalides"
+                                                        showErrorMessage = true
+                                                        selectedTabIndex =
+                                                                1 // Basculer sur l'onglet des
+                                                        // nutriments
+                                                        return@launch
+                                                }
+
+                                                // Conversion et sauvegarde
+                                                try {
+                                                        val updatedAliment =
+                                                                aliment.copy(
+                                                                        nom = nomState.value,
+                                                                        brand =
+                                                                                brandState.value
+                                                                                        .takeIf {
+                                                                                                it.isNotBlank()
+                                                                                        },
+                                                                        gamme =
+                                                                                gammeState.value
+                                                                                        .takeIf {
+                                                                                                it.isNotBlank()
+                                                                                        },
+                                                                        ingredients =
+                                                                                ingredientsState
+                                                                                        .value
+                                                                                        .takeIf {
+                                                                                                it.isNotBlank()
+                                                                                        },
+                                                                        price =
+                                                                                priceState
+                                                                                        .value
+                                                                                        .replace(
+                                                                                                ",",
+                                                                                                "."
+                                                                                        )
+                                                                                        .toDoubleOrNull(),
+                                                                        categPrice =
+                                                                                categPriceState
+                                                                                        .value
+                                                                                        .takeIf {
+                                                                                                it.isNotBlank()
+                                                                                        },
+                                                                        quantInt =
+                                                                                quantIntState
+                                                                                        .value
+                                                                                        .replace(
+                                                                                                ",",
+                                                                                                "."
+                                                                                        )
+                                                                                        .toFloatOrNull(),
+                                                                        cont =
+                                                                                fr.vetbrain
+                                                                                        .vetnutri_mp
+                                                                                        .Enumer
+                                                                                        .ContEnum
+                                                                                        .getByName(
+                                                                                                contState
+                                                                                                        .value
+                                                                                        ),
+                                                                        consistent =
+                                                                                consistentState
+                                                                                        .value,
+                                                                        typeAliment =
+                                                                                selectedFoodType
+                                                                                        .value,
+                                                                        group =
+                                                                                selectedFoodGroup
+                                                                                        .value,
+                                                                        especes =
+                                                                                selectedEspecesState
+                                                                                        .value
+                                                                                        .map {
+                                                                                                it.id
+                                                                                        }
+                                                                                        .toMutableList(),
+                                                                        indicat =
+                                                                                selectedIndications
+                                                                                        .value,
+                                                                        valMap =
+                                                                                nutrientValues
+                                                                                        .mapValues {
+                                                                                                (
+                                                                                                        nutrient,
+                                                                                                        valueStr)
+                                                                                                ->
+                                                                                                val value =
+                                                                                                        valueStr.replace(
+                                                                                                                        ",",
+                                                                                                                        "."
+                                                                                                                )
+                                                                                                                .toFloatOrNull()
+                                                                                                                ?: 0f
+                                                                                                fr.vetbrain
+                                                                                                        .vetnutri_mp
+                                                                                                        .Data
+                                                                                                        .NutrientQuantity(
+                                                                                                                value,
+                                                                                                                nutrient.label
+                                                                                                        )
+                                                                                        }
+                                                                                        .filterValues {
+                                                                                                it.value >
+                                                                                                        0f
+                                                                                        }
+                                                                                        .toMutableMap()
+                                                                )
+                                                        viewModel.saveAliment(updatedAliment)
+                                                        showSuccessMessage = true
+                                                        onNavigateBack()
+                                                } catch (e: Exception) {
+                                                        errorMessage =
+                                                                "Erreur lors de l'enregistrement: ${e.message}"
+                                                        showErrorMessage = true
+                                                }
                                         }
                                 },
-                                modifier = Modifier.fillMaxWidth()
+                                modifier = Modifier.fillMaxWidth().padding(16.dp)
                         ) {
                                 Icon(Icons.Default.Check, contentDescription = null)
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text("Enregistrer")
                         }
 
-                        // Section Informations générales
-                        Card(modifier = Modifier.fillMaxWidth(), elevation = 4.dp) {
-                                Column(
-                                        modifier = Modifier.padding(16.dp),
-                                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                        Text(
-                                                text = "Informations générales",
-                                                style = MaterialTheme.typography.h6
-                                        )
-
-                                        OutlinedTextField(
-                                                value = nomState.value,
-                                                onValueChange = { nomState.value = it },
-                                                label = { Text("Nom de l'aliment") },
-                                                modifier = Modifier.fillMaxWidth(),
-                                                colors =
-                                                        TextFieldDefaults.outlinedTextFieldColors(
-                                                                focusedBorderColor =
-                                                                        VetNutriColors.Primary,
-                                                                unfocusedBorderColor = Color.Gray
-                                                        )
-                                        )
-
-                                        OutlinedTextField(
-                                                value = brandState.value,
-                                                onValueChange = { brandState.value = it },
-                                                label = { Text("Marque") },
-                                                modifier = Modifier.fillMaxWidth(),
-                                                colors =
-                                                        TextFieldDefaults.outlinedTextFieldColors(
-                                                                focusedBorderColor =
-                                                                        VetNutriColors.Primary,
-                                                                unfocusedBorderColor = Color.Gray
-                                                        )
-                                        )
-
-                                        OutlinedTextField(
-                                                value = gammeState.value,
-                                                onValueChange = { gammeState.value = it },
-                                                label = { Text("Gamme") },
-                                                modifier = Modifier.fillMaxWidth(),
-                                                colors =
-                                                        TextFieldDefaults.outlinedTextFieldColors(
-                                                                focusedBorderColor =
-                                                                        VetNutriColors.Primary,
-                                                                unfocusedBorderColor = Color.Gray
-                                                        )
-                                        )
-
-                                        Row(
-                                                modifier = Modifier.fillMaxWidth(),
-                                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                        ) {
-                                                OutlinedTextField(
-                                                        value = priceState.value,
-                                                        onValueChange = { priceState.value = it },
-                                                        label = { Text("Prix") },
-                                                        modifier = Modifier.weight(1f),
-                                                        colors =
-                                                                TextFieldDefaults
-                                                                        .outlinedTextFieldColors(
-                                                                                focusedBorderColor =
-                                                                                        VetNutriColors
-                                                                                                .Primary,
-                                                                                unfocusedBorderColor =
-                                                                                        Color.Gray
-                                                                        )
-                                                )
-
-                                                OutlinedTextField(
-                                                        value = categPriceState.value,
-                                                        onValueChange = {
-                                                                categPriceState.value = it
-                                                        },
-                                                        label = { Text("Catégorie de prix") },
-                                                        modifier = Modifier.weight(1f),
-                                                        colors =
-                                                                TextFieldDefaults
-                                                                        .outlinedTextFieldColors(
-                                                                                focusedBorderColor =
-                                                                                        VetNutriColors
-                                                                                                .Primary,
-                                                                                unfocusedBorderColor =
-                                                                                        Color.Gray
-                                                                        )
-                                                )
-                                        }
-
-                                        Row(
-                                                modifier = Modifier.fillMaxWidth(),
-                                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                        ) {
-                                                OutlinedTextField(
-                                                        value = quantIntState.value,
-                                                        onValueChange = {
-                                                                quantIntState.value = it
-                                                        },
-                                                        label = { Text("Quantité") },
-                                                        modifier = Modifier.weight(1f),
-                                                        colors =
-                                                                TextFieldDefaults
-                                                                        .outlinedTextFieldColors(
-                                                                                focusedBorderColor =
-                                                                                        VetNutriColors
-                                                                                                .Primary,
-                                                                                unfocusedBorderColor =
-                                                                                        Color.Gray
-                                                                        )
-                                                )
-
-                                                ContDropdown(
-                                                        selectedCont =
-                                                                ContEnum.getByName(contState.value),
-                                                        onContSelected = {
-                                                                contState.value = it.name
-                                                        },
-                                                        availableConts = ContEnum.entries,
-                                                        modifier = Modifier.weight(1f)
-                                                )
-                                        }
-
-                                        Row(
-                                                modifier = Modifier.fillMaxWidth(),
-                                                verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                                Checkbox(
-                                                        checked = consistentState.value,
-                                                        onCheckedChange = {
-                                                                consistentState.value = it
-                                                        },
-                                                        colors =
-                                                                CheckboxDefaults.colors(
-                                                                        checkedColor =
-                                                                                VetNutriColors
-                                                                                        .Primary
-                                                                )
-                                                )
-
-                                                Text("Aliment consistant")
-                                        }
-                                }
-                        }
-
-                        // Section Type et classification
-                        Card(modifier = Modifier.fillMaxWidth(), elevation = 4.dp) {
-                                Column(
-                                        modifier = Modifier.padding(16.dp),
-                                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                        Text(
-                                                text = "Type et classification",
-                                                style = MaterialTheme.typography.h6
-                                        )
-
-                                        // Dropdown pour le type d'aliment
-                                        FoodTypeDropdown(
-                                                selectedFoodType = selectedFoodType.value,
-                                                onFoodTypeSelected = {
-                                                        selectedFoodType.value = it
-                                                },
-                                                availableFoodTypes = FoodKind.valuesExcept(),
-                                                modifier = Modifier.fillMaxWidth()
-                                        )
-
-                                        // Dropdown pour le groupe d'aliment
-                                        FoodGroupDropdown(
-                                                selectedFoodGroup = selectedFoodGroup.value,
-                                                onFoodGroupSelected = {
-                                                        selectedFoodGroup.value = it
-                                                },
-                                                availableFoodGroups = GroupAlim.valuesExcept(),
-                                                modifier = Modifier.fillMaxWidth()
+                        // Onglets
+                        TabRow(
+                                selectedTabIndex = selectedTabIndex,
+                                backgroundColor = MaterialTheme.colors.surface,
+                                contentColor = VetNutriColors.Primary
+                        ) {
+                                tabTitles.forEachIndexed { index, title ->
+                                        Tab(
+                                                selected = selectedTabIndex == index,
+                                                onClick = { selectedTabIndex = index },
+                                                text = { Text(title) }
                                         )
                                 }
                         }
 
-                        // Section Ingrédients
-                        Card(modifier = Modifier.fillMaxWidth(), elevation = 4.dp) {
-                                Column(
-                                        modifier = Modifier.padding(16.dp),
-                                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                        Text(
-                                                text = "Ingrédients",
-                                                style = MaterialTheme.typography.h6
-                                        )
-
-                                        OutlinedTextField(
-                                                value = ingredientsState.value,
-                                                onValueChange = { ingredientsState.value = it },
-                                                label = { Text("Liste des ingrédients") },
-                                                modifier = Modifier.fillMaxWidth().height(120.dp),
-                                                colors =
-                                                        TextFieldDefaults.outlinedTextFieldColors(
-                                                                focusedBorderColor =
-                                                                        VetNutriColors.Primary,
-                                                                unfocusedBorderColor = Color.Gray
-                                                        )
-                                        )
-                                }
-                        }
-
-                        // Section Espèces
-                        EspeceMultiSelectionCard(
-                                title = "Espèces compatibles",
-                                availableItems = Espece.entries,
-                                selectedItems = selectedEspecesState.value,
-                                onSelectionChange = {
-                                        selectedEspecesState.value = it.toMutableList()
-                                }
-                        )
-
-                        // Section Indications
-                        IndicMultiSelectionCard(
-                                title = "Indications",
-                                availableItems = AlimIndic.valuesExcept(),
-                                selectedItems = selectedIndications.value,
-                                onSelectionChange = {
-                                        selectedIndications.value = it.toMutableList()
-                                }
-                        )
-
-                        // Section Valeurs nutritionnelles
-                        Card(modifier = Modifier.fillMaxWidth(), elevation = 4.dp) {
-                                Column(
-                                        modifier = Modifier.padding(16.dp),
-                                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                        Text(
-                                                text = "Valeurs nutritionnelles",
-                                                style = MaterialTheme.typography.h6
-                                        )
-
-                                        allNutrients.forEach { nutrient ->
-                                                Row(
-                                                        modifier = Modifier.fillMaxWidth(),
-                                                        verticalAlignment =
-                                                                Alignment.CenterVertically
-                                                ) {
-                                                        Text(
-                                                                text = "${nutrient}",
-                                                                modifier = Modifier.weight(1f)
-                                                        )
-
-                                                        OutlinedTextField(
-                                                                value =
-                                                                        nutrientValues.getOrDefault(
-                                                                                nutrient,
-                                                                                ""
-                                                                        ),
-                                                                onValueChange = {
-                                                                        nutrientValues[nutrient] =
-                                                                                it
-                                                                },
-                                                                modifier = Modifier.width(120.dp),
-                                                                colors =
-                                                                        TextFieldDefaults
-                                                                                .outlinedTextFieldColors(
-                                                                                        focusedBorderColor =
-                                                                                                VetNutriColors
-                                                                                                        .Primary,
-                                                                                        unfocusedBorderColor =
-                                                                                                Color.Gray
-                                                                                ),
-                                                                trailingIcon = {
-                                                                        Text(
-                                                                                text =
-                                                                                        nutrient.unite,
-                                                                                style =
-                                                                                        MaterialTheme
-                                                                                                .typography
-                                                                                                .caption
-                                                                        )
-                                                                }
-                                                        )
-                                                }
-                                        }
+                        // Contenu de l'onglet
+                        Box(
+                                modifier =
+                                        Modifier.weight(1f)
+                                                .fillMaxWidth()
+                                                .padding(horizontal = 16.dp)
+                        ) {
+                                when (selectedTabIndex) {
+                                        0 ->
+                                                GeneralInfoTab(
+                                                        nomState = nomState,
+                                                        brandState = brandState,
+                                                        gammeState = gammeState,
+                                                        ingredientsState = ingredientsState,
+                                                        priceState = priceState,
+                                                        categPriceState = categPriceState,
+                                                        quantIntState = quantIntState,
+                                                        contState = contState,
+                                                        consistentState = consistentState,
+                                                        selectedFoodType = selectedFoodType,
+                                                        selectedFoodGroup = selectedFoodGroup,
+                                                        selectedEspecesState = selectedEspecesState,
+                                                        selectedIndications = selectedIndications,
+                                                        onSelectEspece = {
+                                                                selectedEspecesState.value =
+                                                                        it.toMutableList()
+                                                        },
+                                                        onSelectIndication = {
+                                                                selectedIndications.value =
+                                                                        it.toMutableList()
+                                                        }
+                                                )
+                                        1 ->
+                                                NutritionInfoTab(
+                                                        allNutrients = allNutrients,
+                                                        nutrientValues = nutrientValues,
+                                                        nutrientErrors = nutrientErrors
+                                                )
                                 }
                         }
                 }
+        }
+}
+
+@Composable
+private fun GeneralInfoTab(
+        nomState: MutableState<String>,
+        brandState: MutableState<String>,
+        gammeState: MutableState<String>,
+        ingredientsState: MutableState<String>,
+        priceState: MutableState<String>,
+        categPriceState: MutableState<String>,
+        quantIntState: MutableState<String>,
+        contState: MutableState<String>,
+        consistentState: MutableState<Boolean>,
+        selectedFoodType: MutableState<FoodKind?>,
+        selectedFoodGroup: MutableState<GroupAlim?>,
+        selectedEspecesState: MutableState<MutableList<Espece>>,
+        selectedIndications: MutableState<MutableList<AlimIndic>>,
+        onSelectEspece: (List<Espece>) -> Unit,
+        onSelectIndication: (List<AlimIndic>) -> Unit
+) {
+        val scrollState = rememberScrollState()
+
+        Column(
+                modifier = Modifier.fillMaxSize().verticalScroll(scrollState),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Section Informations générales
+                Card(modifier = Modifier.fillMaxWidth(), elevation = 4.dp) {
+                        Column(
+                                modifier = Modifier.padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                                Text(
+                                        text = "Informations générales",
+                                        style = MaterialTheme.typography.h6
+                                )
+
+                                OutlinedTextField(
+                                        value = nomState.value,
+                                        onValueChange = { nomState.value = it },
+                                        label = { Text("Nom de l'aliment") },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        colors =
+                                                TextFieldDefaults.outlinedTextFieldColors(
+                                                        focusedBorderColor = VetNutriColors.Primary,
+                                                        unfocusedBorderColor = Color.Gray
+                                                )
+                                )
+
+                                OutlinedTextField(
+                                        value = brandState.value,
+                                        onValueChange = { brandState.value = it },
+                                        label = { Text("Marque") },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        colors =
+                                                TextFieldDefaults.outlinedTextFieldColors(
+                                                        focusedBorderColor = VetNutriColors.Primary,
+                                                        unfocusedBorderColor = Color.Gray
+                                                )
+                                )
+
+                                OutlinedTextField(
+                                        value = gammeState.value,
+                                        onValueChange = { gammeState.value = it },
+                                        label = { Text("Gamme") },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        colors =
+                                                TextFieldDefaults.outlinedTextFieldColors(
+                                                        focusedBorderColor = VetNutriColors.Primary,
+                                                        unfocusedBorderColor = Color.Gray
+                                                )
+                                )
+
+                                Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                        OutlinedTextField(
+                                                value = priceState.value,
+                                                onValueChange = { priceState.value = it },
+                                                label = { Text("Prix") },
+                                                modifier = Modifier.weight(1f),
+                                                colors =
+                                                        TextFieldDefaults.outlinedTextFieldColors(
+                                                                focusedBorderColor =
+                                                                        VetNutriColors.Primary,
+                                                                unfocusedBorderColor = Color.Gray
+                                                        )
+                                        )
+
+                                        OutlinedTextField(
+                                                value = categPriceState.value,
+                                                onValueChange = { categPriceState.value = it },
+                                                label = { Text("Catégorie de prix") },
+                                                modifier = Modifier.weight(1f),
+                                                colors =
+                                                        TextFieldDefaults.outlinedTextFieldColors(
+                                                                focusedBorderColor =
+                                                                        VetNutriColors.Primary,
+                                                                unfocusedBorderColor = Color.Gray
+                                                        )
+                                        )
+                                }
+
+                                Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                        OutlinedTextField(
+                                                value = quantIntState.value,
+                                                onValueChange = { quantIntState.value = it },
+                                                label = { Text("Quantité") },
+                                                modifier = Modifier.weight(1f),
+                                                colors =
+                                                        TextFieldDefaults.outlinedTextFieldColors(
+                                                                focusedBorderColor =
+                                                                        VetNutriColors.Primary,
+                                                                unfocusedBorderColor = Color.Gray
+                                                        )
+                                        )
+
+                                        ContDropdown(
+                                                selectedCont = ContEnum.getByName(contState.value),
+                                                onContSelected = { contState.value = it.name },
+                                                availableConts = ContEnum.entries,
+                                                modifier = Modifier.weight(1f)
+                                        )
+                                }
+
+                                Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                        Checkbox(
+                                                checked = consistentState.value,
+                                                onCheckedChange = { consistentState.value = it },
+                                                colors =
+                                                        CheckboxDefaults.colors(
+                                                                checkedColor =
+                                                                        VetNutriColors.Primary
+                                                        )
+                                        )
+
+                                        Text("Aliment consistant")
+                                }
+                        }
+                }
+
+                // Section Type et classification
+                Card(modifier = Modifier.fillMaxWidth(), elevation = 4.dp) {
+                        Column(
+                                modifier = Modifier.padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                                Text(
+                                        text = "Type et classification",
+                                        style = MaterialTheme.typography.h6
+                                )
+
+                                // Dropdown pour le type d'aliment
+                                FoodTypeDropdown(
+                                        selectedFoodType = selectedFoodType.value,
+                                        onFoodTypeSelected = { selectedFoodType.value = it },
+                                        availableFoodTypes = FoodKind.valuesExcept(),
+                                        modifier = Modifier.fillMaxWidth()
+                                )
+
+                                // Dropdown pour le groupe d'aliment
+                                FoodGroupDropdown(
+                                        selectedFoodGroup = selectedFoodGroup.value,
+                                        onFoodGroupSelected = { selectedFoodGroup.value = it },
+                                        availableFoodGroups = GroupAlim.valuesExcept(),
+                                        modifier = Modifier.fillMaxWidth()
+                                )
+                        }
+                }
+
+                // Section Ingrédients
+                Card(modifier = Modifier.fillMaxWidth(), elevation = 4.dp) {
+                        Column(
+                                modifier = Modifier.padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                                Text(text = "Ingrédients", style = MaterialTheme.typography.h6)
+
+                                OutlinedTextField(
+                                        value = ingredientsState.value,
+                                        onValueChange = { ingredientsState.value = it },
+                                        label = { Text("Liste des ingrédients") },
+                                        modifier = Modifier.fillMaxWidth().height(120.dp),
+                                        colors =
+                                                TextFieldDefaults.outlinedTextFieldColors(
+                                                        focusedBorderColor = VetNutriColors.Primary,
+                                                        unfocusedBorderColor = Color.Gray
+                                                )
+                                )
+                        }
+                }
+
+                // Section Espèces
+                EspeceMultiSelectionCard(
+                        title = "Espèces compatibles",
+                        availableItems = Espece.entries,
+                        selectedItems = selectedEspecesState.value,
+                        onSelectionChange = onSelectEspece
+                )
+
+                // Section Indications
+                IndicMultiSelectionCard(
+                        title = "Indications",
+                        availableItems = AlimIndic.valuesExcept(),
+                        selectedItems = selectedIndications.value,
+                        onSelectionChange = onSelectIndication
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+        }
+}
+
+@Composable
+private fun NutritionInfoTab(
+        allNutrients: List<Nutrient>,
+        nutrientValues: SnapshotStateMap<Nutrient, String>,
+        nutrientErrors: SnapshotStateMap<Nutrient, Boolean>
+) {
+        val scrollState = rememberScrollState()
+
+        // Regrouper les nutriments par catégorie
+        val mainNutrients = allNutrients.filter { it.getMNE() == MainNutrientEnum.BASE }
+        val lipidNutrients = allNutrients.filter { it.getMNE() == MainNutrientEnum.LIPID }
+        val macroNutrients = allNutrients.filter { it.getMNE() == MainNutrientEnum.MACRO }
+        val minNutrients = allNutrients.filter { it.getMNE() == MainNutrientEnum.MIN }
+        val vitamNutrients = allNutrients.filter { it.getMNE() == MainNutrientEnum.VITAM }
+        val otherNutrients = allNutrients.filter { it.getMNE() == MainNutrientEnum.OTHER }
+        // Acides aminés
+        val acidesAminesNutrients = allNutrients.filter { it.getMNE() == MainNutrientEnum.AMA }
+
+        Column(
+                modifier = Modifier.fillMaxSize().verticalScroll(scrollState),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Section Principaux nutriments
+                if (mainNutrients.isNotEmpty()) {
+                        NutrientSection(
+                                title = "Nutriments principaux",
+                                nutrients = mainNutrients,
+                                nutrientValues = nutrientValues,
+                                nutrientErrors = nutrientErrors,
+                                backgroundColor = Color(0xFFE8F5E9)
+                        )
+                }
+
+                // Section Lipides
+                if (lipidNutrients.isNotEmpty()) {
+                        NutrientSection(
+                                title = "Lipides",
+                                nutrients = lipidNutrients,
+                                nutrientValues = nutrientValues,
+                                nutrientErrors = nutrientErrors,
+                                backgroundColor = Color(0xFFFFF8E1)
+                        )
+                }
+
+                // Section Macronutriments
+                if (macroNutrients.isNotEmpty()) {
+                        NutrientSection(
+                                title = "Macronutriments",
+                                nutrients = macroNutrients,
+                                nutrientValues = nutrientValues,
+                                nutrientErrors = nutrientErrors,
+                                backgroundColor = Color(0xFFE0F2F1)
+                        )
+                }
+
+                // Section Minéraux
+                if (minNutrients.isNotEmpty()) {
+                        NutrientSection(
+                                title = "Minéraux",
+                                nutrients = minNutrients,
+                                nutrientValues = nutrientValues,
+                                nutrientErrors = nutrientErrors,
+                                backgroundColor = Color(0xFFF3E5F5)
+                        )
+                }
+
+                // Section Vitamines
+                if (vitamNutrients.isNotEmpty()) {
+                        NutrientSection(
+                                title = "Vitamines",
+                                nutrients = vitamNutrients,
+                                nutrientValues = nutrientValues,
+                                nutrientErrors = nutrientErrors,
+                                backgroundColor = Color(0xFFFFEBEE)
+                        )
+                }
+
+                // Section Acides aminés
+                if (acidesAminesNutrients.isNotEmpty()) {
+                        NutrientSection(
+                                title = "Acides aminés",
+                                nutrients = acidesAminesNutrients,
+                                nutrientValues = nutrientValues,
+                                nutrientErrors = nutrientErrors,
+                                backgroundColor = Color(0xFFE1F5FE) // Bleu clair
+                        )
+                }
+
+                // Section Autres nutriments
+                if (otherNutrients.isNotEmpty()) {
+                        NutrientSection(
+                                title = "Autres nutriments",
+                                nutrients = otherNutrients,
+                                nutrientValues = nutrientValues,
+                                nutrientErrors = nutrientErrors,
+                                backgroundColor = Color(0xFFF1F8E9)
+                        )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+        }
+}
+
+@Composable
+private fun NutrientSection(
+        title: String,
+        nutrients: List<Nutrient>,
+        nutrientValues: SnapshotStateMap<Nutrient, String>,
+        nutrientErrors: SnapshotStateMap<Nutrient, Boolean>,
+        backgroundColor: Color
+) {
+        Card(
+                modifier = Modifier.fillMaxWidth(),
+                elevation = 4.dp,
+                backgroundColor = backgroundColor
+        ) {
+                Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                        Text(
+                                text = title,
+                                style = MaterialTheme.typography.h6,
+                                color = MaterialTheme.colors.onSurface
+                        )
+
+                        Divider(color = MaterialTheme.colors.onSurface.copy(alpha = 0.2f))
+
+                        nutrients.forEach { nutrient ->
+                                val value = nutrientValues[nutrient] ?: ""
+                                val hasError = nutrientErrors[nutrient] == true
+
+                                NutrientInputRow(
+                                        nutrient = nutrient,
+                                        value = value,
+                                        onValueChange = {
+                                                nutrientValues[nutrient] = it
+                                                // Validation en temps réel
+                                                if (it.isNotBlank()) {
+                                                        val floatValue =
+                                                                it.replace(",", ".").toFloatOrNull()
+                                                        nutrientErrors[nutrient] =
+                                                                floatValue == null || floatValue < 0
+                                                } else {
+                                                        nutrientErrors.remove(nutrient)
+                                                }
+                                        },
+                                        isError = hasError
+                                )
+                        }
+                }
+        }
+}
+
+@Composable
+private fun NutrientInputRow(
+        nutrient: Nutrient,
+        value: String,
+        onValueChange: (String) -> Unit,
+        isError: Boolean
+) {
+        Row(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+        ) {
+                Text(
+                        text =
+                                when (nutrient) {
+                                        is NutrientLipid ->
+                                                (nutrient as NutrientLipid).nameToString()
+                                        is NutrientMacro ->
+                                                (nutrient as NutrientMacro).nameToString()
+                                        is NutrientMain -> (nutrient as NutrientMain).nameToString()
+                                        is NutrientMin -> (nutrient as NutrientMin).nameToString()
+                                        is NutrientOther ->
+                                                (nutrient as NutrientOther).nameToString()
+                                        is NutrientVitam -> nutrient.label
+                                        is AAEnum -> (nutrient as AAEnum).nom
+                                        else -> nutrient.toString()
+                                },
+                        modifier = Modifier.weight(1f)
+                )
+
+                OutlinedTextField(
+                        value = value,
+                        onValueChange = onValueChange,
+                        modifier = Modifier.width(120.dp),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        colors =
+                                TextFieldDefaults.outlinedTextFieldColors(
+                                        focusedBorderColor =
+                                                if (isError) Color.Red else VetNutriColors.Primary,
+                                        unfocusedBorderColor =
+                                                if (isError) Color.Red else Color.Gray,
+                                        backgroundColor = Color.White.copy(alpha = 0.8f),
+                                        errorBorderColor = Color.Red
+                                ),
+                        isError = isError,
+                        trailingIcon = {
+                                Text(
+                                        text = nutrient.unite,
+                                        style = MaterialTheme.typography.caption
+                                )
+                        }
+                )
         }
 }
 
@@ -475,6 +820,9 @@ fun EspeceMultiSelectionCard(
         modifier: Modifier = Modifier
 ) {
         var showDialog by remember { mutableStateOf(false) }
+        // Mémoriser la liste pour éviter les recreations
+        val sortedItems by
+                remember(availableItems) { mutableStateOf(availableItems.sortedBy { it.label }) }
 
         Card(modifier = modifier.fillMaxWidth(), elevation = 4.dp) {
                 Column(
@@ -545,79 +893,112 @@ fun EspeceMultiSelectionCard(
         }
 
         if (showDialog) {
-                AlertDialog(
-                        onDismissRequest = { showDialog = false },
-                        title = { Text(title) },
-                        text = {
-                                Box(modifier = Modifier.height(300.dp)) { // Hauteur fixe
-                                        LazyColumn(modifier = Modifier.fillMaxSize()) {
-                                                items(availableItems, key = { it.name }) { espece ->
-                                                        Row(
-                                                                modifier =
-                                                                        Modifier.fillMaxWidth()
-                                                                                .padding(
-                                                                                        vertical =
-                                                                                                4.dp
-                                                                                ),
-                                                                verticalAlignment =
-                                                                        Alignment.CenterVertically
-                                                        ) {
-                                                                Checkbox(
-                                                                        checked =
-                                                                                selectedItems
-                                                                                        .contains(
-                                                                                                espece
-                                                                                        ),
-                                                                        onCheckedChange = { checked
-                                                                                ->
-                                                                                val newList =
-                                                                                        selectedItems
-                                                                                                .toMutableList()
-                                                                                if (checked) {
-                                                                                        if (!newList.contains(
-                                                                                                        espece
-                                                                                                )
-                                                                                        ) {
-                                                                                                newList.add(
-                                                                                                        espece
+                // Utiliser un Dialog avec une taille fixe pour éviter les redimensionnements
+                Dialog(onDismissRequest = { showDialog = false }) {
+                        Surface(
+                                shape = MaterialTheme.shapes.medium,
+                                color = MaterialTheme.colors.surface,
+                                elevation = 8.dp,
+                                modifier = Modifier.fillMaxWidth(0.9f).heightIn(max = 450.dp)
+                        ) {
+                                Column(modifier = Modifier.padding(16.dp)) {
+                                        Text(
+                                                text = title,
+                                                style = MaterialTheme.typography.h6,
+                                                modifier = Modifier.padding(bottom = 16.dp)
+                                        )
+
+                                        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                                                Column(
+                                                        modifier =
+                                                                Modifier.fillMaxSize()
+                                                                        .verticalScroll(
+                                                                                rememberScrollState()
+                                                                        )
+                                                ) {
+                                                        sortedItems.forEach { espece ->
+                                                                // Utiliser key pour optimiser les
+                                                                // recompositions
+                                                                key(espece.id) {
+                                                                        Row(
+                                                                                modifier =
+                                                                                        Modifier.fillMaxWidth()
+                                                                                                .padding(
+                                                                                                        vertical =
+                                                                                                                4.dp
+                                                                                                ),
+                                                                                verticalAlignment =
+                                                                                        Alignment
+                                                                                                .CenterVertically
+                                                                        ) {
+                                                                                Checkbox(
+                                                                                        checked =
+                                                                                                selectedItems
+                                                                                                        .contains(
+                                                                                                                espece
+                                                                                                        ),
+                                                                                        onCheckedChange = {
+                                                                                                checked
+                                                                                                ->
+                                                                                                val newList =
+                                                                                                        selectedItems
+                                                                                                                .toMutableList()
+                                                                                                if (checked
+                                                                                                ) {
+                                                                                                        if (!newList.contains(
+                                                                                                                        espece
+                                                                                                                )
+                                                                                                        ) {
+                                                                                                                newList.add(
+                                                                                                                        espece
+                                                                                                                )
+                                                                                                        }
+                                                                                                } else {
+                                                                                                        newList.remove(
+                                                                                                                espece
+                                                                                                        )
+                                                                                                }
+                                                                                                onSelectionChange(
+                                                                                                        newList
                                                                                                 )
                                                                                         }
-                                                                                } else {
-                                                                                        newList.remove(
-                                                                                                espece
+                                                                                )
+                                                                                Column(
+                                                                                        modifier =
+                                                                                                Modifier.padding(
+                                                                                                        start =
+                                                                                                                8.dp
+                                                                                                )
+                                                                                ) {
+                                                                                        Text(
+                                                                                                text =
+                                                                                                        espece.label
+                                                                                        )
+                                                                                        Text(
+                                                                                                text =
+                                                                                                        "(${espece.name})",
+                                                                                                style =
+                                                                                                        MaterialTheme
+                                                                                                                .typography
+                                                                                                                .caption,
+                                                                                                color =
+                                                                                                        Color.Gray
                                                                                         )
                                                                                 }
-                                                                                onSelectionChange(
-                                                                                        newList
-                                                                                )
                                                                         }
-                                                                )
-                                                                Column(
-                                                                        modifier =
-                                                                                Modifier.padding(
-                                                                                        start = 8.dp
-                                                                                )
-                                                                ) {
-                                                                        Text(text = espece.label)
-                                                                        Text(
-                                                                                text =
-                                                                                        "(${espece.name})",
-                                                                                style =
-                                                                                        MaterialTheme
-                                                                                                .typography
-                                                                                                .caption,
-                                                                                color = Color.Gray
-                                                                        )
                                                                 }
                                                         }
                                                 }
                                         }
+
+                                        Button(
+                                                onClick = { showDialog = false },
+                                                modifier =
+                                                        Modifier.fillMaxWidth().padding(top = 16.dp)
+                                        ) { Text("Fermer") }
                                 }
-                        },
-                        confirmButton = {
-                                Button(onClick = { showDialog = false }) { Text("Fermer") }
                         }
-                )
+                }
         }
 }
 
@@ -630,6 +1011,9 @@ fun IndicMultiSelectionCard(
         modifier: Modifier = Modifier
 ) {
         var showDialog by remember { mutableStateOf(false) }
+        // Mémoriser la liste pour éviter les recreations
+        val sortedItems by
+                remember(availableItems) { mutableStateOf(availableItems.sortedBy { it.label }) }
 
         Card(modifier = modifier.fillMaxWidth(), elevation = 4.dp) {
                 Column(
@@ -699,72 +1083,113 @@ fun IndicMultiSelectionCard(
         }
 
         if (showDialog) {
-                AlertDialog(
-                        onDismissRequest = { showDialog = false },
-                        title = { Text(title) },
-                        text = {
-                                LazyColumn(
-                                        modifier = Modifier.heightIn(max = 300.dp).fillMaxHeight()
-                                ) {
-                                        items(availableItems, key = { it.name }) { indication ->
-                                                Row(
+                // Utiliser un Dialog avec une taille fixe pour éviter les redimensionnements
+                Dialog(onDismissRequest = { showDialog = false }) {
+                        Surface(
+                                shape = MaterialTheme.shapes.medium,
+                                color = MaterialTheme.colors.surface,
+                                elevation = 8.dp,
+                                modifier = Modifier.fillMaxWidth(0.9f).heightIn(max = 450.dp)
+                        ) {
+                                Column(modifier = Modifier.padding(16.dp)) {
+                                        Text(
+                                                text = title,
+                                                style = MaterialTheme.typography.h6,
+                                                modifier = Modifier.padding(bottom = 16.dp)
+                                        )
+
+                                        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                                                Column(
                                                         modifier =
-                                                                Modifier.fillMaxWidth()
-                                                                        .padding(vertical = 4.dp),
-                                                        verticalAlignment =
-                                                                Alignment.CenterVertically
+                                                                Modifier.fillMaxSize()
+                                                                        .verticalScroll(
+                                                                                rememberScrollState()
+                                                                        )
                                                 ) {
-                                                        Checkbox(
-                                                                checked =
-                                                                        selectedItems.contains(
-                                                                                indication
-                                                                        ),
-                                                                onCheckedChange = { checked ->
-                                                                        val newList =
-                                                                                selectedItems
-                                                                                        .toMutableList()
-                                                                        if (checked) {
-                                                                                if (!newList.contains(
-                                                                                                indication
-                                                                                        )
+                                                        sortedItems.forEach { indication ->
+                                                                // Utiliser key pour optimiser les
+                                                                // recompositions
+                                                                key(indication.name) {
+                                                                        Row(
+                                                                                modifier =
+                                                                                        Modifier.fillMaxWidth()
+                                                                                                .padding(
+                                                                                                        vertical =
+                                                                                                                4.dp
+                                                                                                ),
+                                                                                verticalAlignment =
+                                                                                        Alignment
+                                                                                                .CenterVertically
+                                                                        ) {
+                                                                                Checkbox(
+                                                                                        checked =
+                                                                                                selectedItems
+                                                                                                        .contains(
+                                                                                                                indication
+                                                                                                        ),
+                                                                                        onCheckedChange = {
+                                                                                                checked
+                                                                                                ->
+                                                                                                val newList =
+                                                                                                        selectedItems
+                                                                                                                .toMutableList()
+                                                                                                if (checked
+                                                                                                ) {
+                                                                                                        if (!newList.contains(
+                                                                                                                        indication
+                                                                                                                )
+                                                                                                        ) {
+                                                                                                                newList.add(
+                                                                                                                        indication
+                                                                                                                )
+                                                                                                        }
+                                                                                                } else {
+                                                                                                        newList.remove(
+                                                                                                                indication
+                                                                                                        )
+                                                                                                }
+                                                                                                onSelectionChange(
+                                                                                                        newList
+                                                                                                )
+                                                                                        }
+                                                                                )
+                                                                                Column(
+                                                                                        modifier =
+                                                                                                Modifier.padding(
+                                                                                                        start =
+                                                                                                                8.dp
+                                                                                                )
                                                                                 ) {
-                                                                                        newList.add(
-                                                                                                indication
+                                                                                        Text(
+                                                                                                text =
+                                                                                                        indication
+                                                                                                                .label
+                                                                                        )
+                                                                                        Text(
+                                                                                                text =
+                                                                                                        "(${indication.name})",
+                                                                                                style =
+                                                                                                        MaterialTheme
+                                                                                                                .typography
+                                                                                                                .caption,
+                                                                                                color =
+                                                                                                        Color.Gray
                                                                                         )
                                                                                 }
-                                                                        } else {
-                                                                                newList.remove(
-                                                                                        indication
-                                                                                )
                                                                         }
-                                                                        onSelectionChange(newList)
                                                                 }
-                                                        )
-                                                        Column(
-                                                                modifier =
-                                                                        Modifier.padding(
-                                                                                start = 8.dp
-                                                                        )
-                                                        ) {
-                                                                Text(text = indication.label)
-                                                                Text(
-                                                                        text =
-                                                                                "(${indication.name})",
-                                                                        style =
-                                                                                MaterialTheme
-                                                                                        .typography
-                                                                                        .caption,
-                                                                        color = Color.Gray
-                                                                )
                                                         }
                                                 }
                                         }
+
+                                        Button(
+                                                onClick = { showDialog = false },
+                                                modifier =
+                                                        Modifier.fillMaxWidth().padding(top = 16.dp)
+                                        ) { Text("Fermer") }
                                 }
-                        },
-                        confirmButton = {
-                                Button(onClick = { showDialog = false }) { Text("Fermer") }
                         }
-                )
+                }
         }
 }
 

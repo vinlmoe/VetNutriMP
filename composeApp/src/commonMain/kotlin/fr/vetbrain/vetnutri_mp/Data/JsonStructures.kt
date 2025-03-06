@@ -23,7 +23,7 @@ data class AlimentEvJson(
         val cont: String = "NO",
         val deprecated: Boolean = false,
         val DataB: String = "6",
-        val valMap: Map<String, Float> = mapOf()
+        val valMap: Map<String, NutrientQuantity> = mapOf()
 )
 
 /** Structure JSON pour AnimalEv */
