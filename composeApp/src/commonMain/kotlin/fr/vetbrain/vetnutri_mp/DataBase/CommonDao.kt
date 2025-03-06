@@ -98,16 +98,15 @@ interface FoodDao {
 
     @Query("SELECT * FROM FOOD WHERE uuid = :id") suspend fun getFoodById(id: String): FoodEntity?
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun insertFood(food: AlimentEntity)
+    @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun insertFood(food: FoodEntity)
 
-    @Update suspend fun updateFood(food: AlimentEntity)
+    @Update suspend fun updateFood(food: FoodEntity)
 
-    @Query("DELETE FROM ALIMENTS_BASE WHERE uuid = :uuid") suspend fun deleteFood(uuid: String)
+    @Query("DELETE FROM FOOD WHERE uuid = :uuid") suspend fun deleteFood(uuid: String)
 
-    @Query("SELECT * FROM ALIMENTS_BASE WHERE uuid = :uuid")
-    suspend fun getFood(uuid: String): AlimentEntity?
+    @Query("SELECT * FROM FOOD WHERE uuid = :uuid") suspend fun getFood(uuid: String): FoodEntity?
 
-    @Query("SELECT * FROM ALIMENTS_BASE") suspend fun getAllFoods(): List<AlimentEntity>
+    @Query("SELECT * FROM FOOD") suspend fun getAllFoods(): List<FoodEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertIndications(indications: List<IndicationAlimentEntity>)

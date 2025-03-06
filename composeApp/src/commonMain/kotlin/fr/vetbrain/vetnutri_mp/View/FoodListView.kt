@@ -7,8 +7,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -28,6 +26,7 @@ import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.FoodListViewModel
 import kotlin.uuid.ExperimentalUuidApi
 import kotlinx.coroutines.launch
+import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 
 @OptIn(ExperimentalUuidApi::class, ExperimentalMaterialApi::class)
 @Composable
@@ -69,20 +68,25 @@ fun FoodListView(
                         ) {
                                 Text(
                                         "+",
-                                        style = MaterialTheme.typography.h5,
+                                        style = MaterialTheme.typography.h5.copy(
+                                            fontSize = AppSizes.fontSizeH5
+                                        ),
                                         color = MaterialTheme.colors.onPrimary
                                 )
                         }
                 }
         ) { paddingValues ->
                 Column(
-                        modifier = Modifier.fillMaxSize().padding(paddingValues).padding(16.dp),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(paddingValues)
+                            .padding(AppSizes.paddingMedium),
                         horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                         // Filtres de recherche
                         Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
                         ) {
                                 // Champ de recherche
                                 OutlinedTextField(
@@ -91,46 +95,47 @@ fun FoodListView(
                                         modifier = Modifier.weight(1f),
                                         placeholder = {
                                                 Text(
-                                                        "${General.SEARCH.translate()} (nom, marque, ingrédients)"
+                                                        "${General.SEARCH.translate()} (nom, marque, ingrédients)",
+                                                        style = MaterialTheme.typography.body1.copy(
+                                                            fontSize = AppSizes.fontSizeBody1
+                                                        )
                                                 )
                                         },
                                         leadingIcon = {
                                                 Icon(
                                                         Icons.Default.Search,
-                                                        contentDescription = null
+                                                        contentDescription = null,
+                                                        modifier = Modifier.size(AppSizes.iconSizeMedium)
                                                 )
                                         },
                                         trailingIcon = {
                                                 if (searchQuery.isNotEmpty()) {
                                                         IconButton(
-                                                                onClick = {
-                                                                        viewModel.setSearchQuery("")
-                                                                }
+                                                                onClick = { viewModel.setSearchQuery("") }
                                                         ) {
                                                                 Icon(
                                                                         Icons.Default.Clear,
-                                                                        contentDescription = null
+                                                                        contentDescription = null,
+                                                                        modifier = Modifier.size(AppSizes.iconSizeMedium)
                                                                 )
                                                         }
                                                 }
                                         },
                                         singleLine = true,
-                                        colors =
-                                                TextFieldDefaults.outlinedTextFieldColors(
+                                        colors = TextFieldDefaults.outlinedTextFieldColors(
                                                         focusedBorderColor = VetNutriColors.Primary,
                                                         unfocusedBorderColor = Color.Gray
                                                 )
                                 )
                         }
 
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
 
                         // Filtres par type, groupe d'aliment et espèce
                         Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
                         ) {
-                                // Combobox pour filtrer par type d'aliment
                                 FoodTypeDropdown(
                                         selectedFoodType = selectedFoodType,
                                         onFoodTypeSelected = { viewModel.setSelectedFoodType(it) },
@@ -138,17 +143,13 @@ fun FoodListView(
                                         modifier = Modifier.weight(1f)
                                 )
 
-                                // Combobox pour filtrer par groupe d'aliment
                                 FoodGroupDropdown(
                                         selectedFoodGroup = selectedFoodGroup,
-                                        onFoodGroupSelected = {
-                                                viewModel.setSelectedFoodGroup(it)
-                                        },
+                                        onFoodGroupSelected = { viewModel.setSelectedFoodGroup(it) },
                                         availableFoodGroups = availableFoodGroups,
                                         modifier = Modifier.weight(1f)
                                 )
 
-                                // Combobox pour filtrer par espèce
                                 EspeceDropdown(
                                         selectedEspece = selectedEspece,
                                         onEspeceSelected = { viewModel.setSelectedEspece(it) },
@@ -157,25 +158,22 @@ fun FoodListView(
                                 )
                         }
 
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
 
                         // Filtre par indication
                         Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
                         ) {
-                                // Combobox pour filtrer par indication
                                 IndicationDropdown(
                                         selectedIndication = selectedIndication,
-                                        onIndicationSelected = {
-                                                viewModel.setSelectedIndication(it)
-                                        },
+                                        onIndicationSelected = { viewModel.setSelectedIndication(it) },
                                         availableIndications = availableIndications,
                                         modifier = Modifier.fillMaxWidth()
                                 )
                         }
 
-                        Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(AppSizes.paddingMedium))
 
                         if (foods.isEmpty()) {
                                 Box(
@@ -183,23 +181,22 @@ fun FoodListView(
                                         contentAlignment = Alignment.Center
                                 ) {
                                         Text(
-                                                text =
-                                                        if (searchQuery.isEmpty() &&
+                                                text = if (searchQuery.isEmpty() &&
                                                                         selectedFoodType == null &&
                                                                         selectedFoodGroup == null &&
                                                                         selectedEspece == null &&
                                                                         selectedIndication == null
+                                                ) "Aucun aliment trouvé"
+                                                else "Aucun résultat pour les filtres sélectionnés",
+                                                style = MaterialTheme.typography.body1.copy(
+                                                    fontSize = AppSizes.fontSizeBody1
                                                         )
-                                                                "Aucun aliment trouvé"
-                                                        else
-                                                                "Aucun résultat pour les filtres sélectionnés",
-                                                style = MaterialTheme.typography.body1
                                         )
                                 }
                         } else {
                                 LazyColumn(
                                         modifier = Modifier.fillMaxWidth(),
-                                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                                        verticalArrangement = Arrangement.spacedBy(AppSizes.cardSpacing)
                                 ) {
                                         items(foods) { food ->
                                                 FoodCard(
@@ -222,47 +219,14 @@ private fun FoodTypeDropdown(
         availableFoodTypes: List<FoodKind?>,
         modifier: Modifier = Modifier
 ) {
-        var expanded by remember { mutableStateOf(false) }
-
-        ExposedDropdownMenuBox(
-                expanded = expanded,
-                onExpandedChange = { expanded = !expanded },
+        GenericDropdown(
+                selectedItem = selectedFoodType,
+                onItemSelected = onFoodTypeSelected,
+                items = availableFoodTypes,
+                getDisplayText = { it?.name ?: "Tous types" },
+                placeholder = "Tous types",
                 modifier = modifier
-        ) {
-                OutlinedTextField(
-                        value = selectedFoodType?.name ?: "Tous types",
-                        onValueChange = {},
-                        readOnly = true,
-                        trailingIcon = {
-                                Icon(
-                                        if (expanded) Icons.Default.KeyboardArrowUp
-                                        else Icons.Default.KeyboardArrowDown,
-                                        contentDescription = null
-                                )
-                        },
-                        colors =
-                                TextFieldDefaults.outlinedTextFieldColors(
-                                        focusedBorderColor = VetNutriColors.Primary,
-                                        unfocusedBorderColor = Color.Gray
-                                ),
-                        modifier = Modifier.fillMaxWidth()
-                )
-
-                DropdownMenu(
-                        expanded = expanded,
-                        onDismissRequest = { expanded = false },
-                        modifier = Modifier.exposedDropdownSize()
-                ) {
-                        availableFoodTypes.forEach { foodType ->
-                                DropdownMenuItem(
-                                        onClick = {
-                                                onFoodTypeSelected(foodType)
-                                                expanded = false
-                                        }
-                                ) { Text(foodType?.name ?: "Tous types") }
-                        }
-                }
-        }
+        )
 }
 
 @OptIn(ExperimentalMaterialApi::class)
@@ -273,47 +237,14 @@ private fun FoodGroupDropdown(
         availableFoodGroups: List<GroupAlim?>,
         modifier: Modifier = Modifier
 ) {
-        var expanded by remember { mutableStateOf(false) }
-
-        ExposedDropdownMenuBox(
-                expanded = expanded,
-                onExpandedChange = { expanded = !expanded },
+        GenericDropdown(
+                selectedItem = selectedFoodGroup,
+                onItemSelected = onFoodGroupSelected,
+                items = availableFoodGroups,
+                getDisplayText = { it?.name ?: "Tous groupes" },
+                placeholder = "Tous groupes",
                 modifier = modifier
-        ) {
-                OutlinedTextField(
-                        value = selectedFoodGroup?.name ?: "Tous groupes",
-                        onValueChange = {},
-                        readOnly = true,
-                        trailingIcon = {
-                                Icon(
-                                        if (expanded) Icons.Default.KeyboardArrowUp
-                                        else Icons.Default.KeyboardArrowDown,
-                                        contentDescription = null
-                                )
-                        },
-                        colors =
-                                TextFieldDefaults.outlinedTextFieldColors(
-                                        focusedBorderColor = VetNutriColors.Primary,
-                                        unfocusedBorderColor = Color.Gray
-                                ),
-                        modifier = Modifier.fillMaxWidth()
-                )
-
-                DropdownMenu(
-                        expanded = expanded,
-                        onDismissRequest = { expanded = false },
-                        modifier = Modifier.exposedDropdownSize()
-                ) {
-                        availableFoodGroups.forEach { foodGroup ->
-                                DropdownMenuItem(
-                                        onClick = {
-                                                onFoodGroupSelected(foodGroup)
-                                                expanded = false
-                                        }
-                                ) { Text(foodGroup?.name ?: "Tous groupes") }
-                        }
-                }
-        }
+        )
 }
 
 @OptIn(ExperimentalMaterialApi::class)
@@ -324,47 +255,14 @@ private fun EspeceDropdown(
         availableEspeces: List<Espece?>,
         modifier: Modifier = Modifier
 ) {
-        var expanded by remember { mutableStateOf(false) }
-
-        ExposedDropdownMenuBox(
-                expanded = expanded,
-                onExpandedChange = { expanded = !expanded },
+        GenericDropdown(
+                selectedItem = selectedEspece,
+                onItemSelected = onEspeceSelected,
+                items = availableEspeces,
+                getDisplayText = { it?.name ?: "Toutes espèces" },
+                placeholder = "Toutes espèces",
                 modifier = modifier
-        ) {
-                OutlinedTextField(
-                        value = selectedEspece?.name ?: "Toutes espèces",
-                        onValueChange = {},
-                        readOnly = true,
-                        trailingIcon = {
-                                Icon(
-                                        if (expanded) Icons.Default.KeyboardArrowUp
-                                        else Icons.Default.KeyboardArrowDown,
-                                        contentDescription = null
-                                )
-                        },
-                        colors =
-                                TextFieldDefaults.outlinedTextFieldColors(
-                                        focusedBorderColor = VetNutriColors.Primary,
-                                        unfocusedBorderColor = Color.Gray
-                                ),
-                        modifier = Modifier.fillMaxWidth()
-                )
-
-                DropdownMenu(
-                        expanded = expanded,
-                        onDismissRequest = { expanded = false },
-                        modifier = Modifier.exposedDropdownSize()
-                ) {
-                        availableEspeces.forEach { espece ->
-                                DropdownMenuItem(
-                                        onClick = {
-                                                onEspeceSelected(espece)
-                                                expanded = false
-                                        }
-                                ) { Text(espece?.name ?: "Toutes espèces") }
-                        }
-                }
-        }
+        )
 }
 
 @OptIn(ExperimentalMaterialApi::class)
@@ -375,47 +273,14 @@ private fun IndicationDropdown(
         availableIndications: List<AlimIndic?>,
         modifier: Modifier = Modifier
 ) {
-        var expanded by remember { mutableStateOf(false) }
-
-        ExposedDropdownMenuBox(
-                expanded = expanded,
-                onExpandedChange = { expanded = !expanded },
+        GenericDropdown(
+                selectedItem = selectedIndication,
+                onItemSelected = onIndicationSelected,
+                items = availableIndications,
+                getDisplayText = { it?.label ?: "Toutes indications" },
+                placeholder = "Toutes indications",
                 modifier = modifier
-        ) {
-                OutlinedTextField(
-                        value = selectedIndication?.label ?: "Toutes indications",
-                        onValueChange = {},
-                        readOnly = true,
-                        trailingIcon = {
-                                Icon(
-                                        if (expanded) Icons.Default.KeyboardArrowUp
-                                        else Icons.Default.KeyboardArrowDown,
-                                        contentDescription = null
-                                )
-                        },
-                        colors =
-                                TextFieldDefaults.outlinedTextFieldColors(
-                                        focusedBorderColor = VetNutriColors.Primary,
-                                        unfocusedBorderColor = Color.Gray
-                                ),
-                        modifier = Modifier.fillMaxWidth()
-                )
-
-                DropdownMenu(
-                        expanded = expanded,
-                        onDismissRequest = { expanded = false },
-                        modifier = Modifier.exposedDropdownSize()
-                ) {
-                        availableIndications.forEach { indication ->
-                                DropdownMenuItem(
-                                        onClick = {
-                                                onIndicationSelected(indication)
-                                                expanded = false
-                                        }
-                                ) { Text(indication?.label ?: "Toutes indications") }
-                        }
-                }
-        }
+        )
 }
 
 @OptIn(ExperimentalUuidApi::class)
@@ -434,10 +299,13 @@ private fun FoodCard(
                 return Espece.getFromString(especeLabel)
         }
 
-        Card(modifier = modifier.fillMaxWidth().clickable { onEdit() }, elevation = 4.dp) {
+        Card(
+            modifier = modifier.fillMaxWidth().clickable { onEdit() },
+            elevation = AppSizes.cardElevationNormal
+        ) {
                 Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                        modifier = Modifier.padding(AppSizes.paddingMedium),
+                        verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
                 ) {
                         Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -447,268 +315,135 @@ private fun FoodCard(
                                 Column(modifier = Modifier.weight(1f)) {
                                         Text(
                                                 text = food.nom ?: "Sans nom",
-                                                style = MaterialTheme.typography.h6
+                                                style = MaterialTheme.typography.h6.copy(
+                                                    fontSize = AppSizes.fontSizeH6
+                                                )
                                         )
                                         if (food.brand?.isNotEmpty() == true) {
                                                 Text(
                                                         text = "Marque: ${food.brand}",
-                                                        style = MaterialTheme.typography.body1
+                                                        style = MaterialTheme.typography.body1.copy(
+                                                            fontSize = AppSizes.fontSizeBody1
+                                                        )
                                                 )
                                         }
                                         if (food.group != null) {
                                                 Text(
                                                         text = "Groupe: ${food.group.name}",
-                                                        style = MaterialTheme.typography.body2
+                                                        style = MaterialTheme.typography.body2.copy(
+                                                            fontSize = AppSizes.fontSizeBody2
+                                                        )
                                                 )
                                         }
                                         if (food.typeAliment != null) {
                                                 Text(
                                                         text = "Type: ${food.typeAliment.name}",
-                                                        style = MaterialTheme.typography.body2
+                                                        style = MaterialTheme.typography.body2.copy(
+                                                            fontSize = AppSizes.fontSizeBody2
+                                                        )
                                                 )
                                         }
                                 }
                                 Row {
-                                        IconButton(onClick = { showDeleteConfirmation = true }) {
-                                                // TODO: Ajouter une icône de suppression
+                                        IconButton(
+                                            onClick = { showDeleteConfirmation = true },
+                                            modifier = Modifier.size(AppSizes.iconSizeMedium)
+                                        ) {
                                                 Text("🗑")
                                         }
                                 }
                         }
 
-                        // Section dédiée pour les espèces
-                        if (food.especes.isNotEmpty()) {
-                                Divider(modifier = Modifier.padding(vertical = 4.dp))
-                                Column {
+                        // Section dédiée pour les espèces et indications
+                        Divider(
+                            modifier = Modifier.padding(vertical = AppSizes.paddingXSmall),
+                            thickness = AppSizes.dividerHeight
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
                                         Text(
                                                 text = "Espèces",
-                                                style = MaterialTheme.typography.subtitle1,
+                                    style = MaterialTheme.typography.subtitle1.copy(
+                                        fontSize = AppSizes.fontSizeSubtitle1
+                                    ),
                                                 color = VetNutriColors.Primary
                                         )
+                                if (food.especes.isNotEmpty()) {
                                         Row(
                                                 modifier = Modifier.fillMaxWidth(),
-                                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingXSmall),
                                                 verticalAlignment = Alignment.CenterVertically,
                                                 content = {
                                                         food.especes.forEach { especeLabel ->
-                                                                val espece =
-                                                                        getEspeceFromString(
-                                                                                especeLabel
-                                                                        )
-
-                                                                Surface(
-                                                                        color =
-                                                                                if (espece != null)
-                                                                                        VetNutriColors
-                                                                                                .Secondary
-                                                                                                .copy(
-                                                                                                        alpha =
-                                                                                                                0.2f
-                                                                                                )
-                                                                                else
-                                                                                        Color.Gray
-                                                                                                .copy(
-                                                                                                        alpha =
-                                                                                                                0.2f
-                                                                                                ),
-                                                                        shape =
-                                                                                MaterialTheme.shapes
-                                                                                        .small,
-                                                                        modifier =
-                                                                                Modifier.padding(
-                                                                                        vertical =
-                                                                                                2.dp
-                                                                                )
-                                                                ) {
+                                                val espece = getEspeceFromString(especeLabel)
                                                                         if (espece != null) {
-                                                                                Column(
-                                                                                        modifier =
-                                                                                                Modifier.padding(
-                                                                                                        horizontal =
-                                                                                                                8.dp,
-                                                                                                        vertical =
-                                                                                                                4.dp
-                                                                                                ),
-                                                                                        horizontalAlignment =
-                                                                                                Alignment
-                                                                                                        .CenterHorizontally
-                                                                                ) {
-                                                                                        Text(
-                                                                                                text =
-                                                                                                        espece.label,
-                                                                                                style =
-                                                                                                        MaterialTheme
-                                                                                                                .typography
-                                                                                                                .body1
-                                                                                        )
-                                                                                        Row(
-                                                                                                horizontalArrangement =
-                                                                                                        Arrangement
-                                                                                                                .spacedBy(
-                                                                                                                        4.dp
-                                                                                                                ),
-                                                                                                verticalAlignment =
-                                                                                                        Alignment
-                                                                                                                .CenterVertically
-                                                                                        ) {
-                                                                                                if (espece.id !=
-                                                                                                                especeLabel
-                                                                                                ) {
-                                                                                                        Text(
-                                                                                                                text =
-                                                                                                                        "ID: ${espece.id}",
-                                                                                                                style =
-                                                                                                                        MaterialTheme
-                                                                                                                                .typography
-                                                                                                                                .caption,
-                                                                                                                color =
-                                                                                                                        Color.Gray
-                                                                                                        )
-                                                                                                }
-                                                                                                Text(
-                                                                                                        text =
-                                                                                                                "(${espece.name})",
-                                                                                                        style =
-                                                                                                                MaterialTheme
-                                                                                                                        .typography
-                                                                                                                        .caption,
-                                                                                                        color =
-                                                                                                                Color.Gray
-                                                                                                )
-                                                                                        }
-                                                                                }
+                                                    Badge(
+                                                        text = espece.label,
+                                                        subText = espece.name,
+                                                        id = if (espece.id != especeLabel) espece.id else null,
+                                                        backgroundColor = VetNutriColors.Secondary
+                                                    )
                                                                         } else {
-                                                                                Text(
-                                                                                        text =
-                                                                                                especeLabel,
-                                                                                        style =
-                                                                                                MaterialTheme
-                                                                                                        .typography
-                                                                                                        .body2,
-                                                                                        modifier =
-                                                                                                Modifier.padding(
-                                                                                                        horizontal =
-                                                                                                                8.dp,
-                                                                                                        vertical =
-                                                                                                                4.dp
-                                                                                                ),
-                                                                                        color =
-                                                                                                Color.Gray
-                                                                                )
-                                                                        }
-                                                                }
-                                                        }
+                                                    Badge(
+                                                        text = especeLabel,
+                                                        backgroundColor = Color.Gray
+                                                    )
                                                 }
-                                        )
-                                }
+                                            }
+                                        }
+                                    )
                         } else {
-                                Divider(modifier = Modifier.padding(vertical = 4.dp))
                                 Text(
                                         text = "Aucune espèce spécifiée",
-                                        style = MaterialTheme.typography.body2,
+                                        style = MaterialTheme.typography.body2.copy(
+                                            fontSize = AppSizes.fontSizeBody2
+                                        ),
                                         color = Color.Gray,
-                                        modifier = Modifier.padding(vertical = 2.dp)
+                                        modifier = Modifier.padding(vertical = AppSizes.paddingXXSmall)
                                 )
                         }
+                            }
 
-                        // Section dédiée pour les indications alimentaires
-                        if (food.indicat.isNotEmpty()) {
-                                Divider(modifier = Modifier.padding(vertical = 4.dp))
-                                Column {
+                            Spacer(modifier = Modifier.width(AppSizes.paddingMedium))
+
+                            Column(modifier = Modifier.weight(1f)) {
                                         Text(
                                                 text = "Indications",
-                                                style = MaterialTheme.typography.subtitle1,
+                                    style = MaterialTheme.typography.subtitle1.copy(
+                                        fontSize = AppSizes.fontSizeSubtitle1
+                                    ),
                                                 color = VetNutriColors.Primary
                                         )
+                                if (food.indicat.isNotEmpty()) {
                                         Row(
                                                 modifier = Modifier.fillMaxWidth(),
-                                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingXSmall),
                                                 verticalAlignment = Alignment.CenterVertically,
                                                 content = {
                                                         food.indicat.forEach { indication ->
-                                                                Surface(
-                                                                        color =
-                                                                                VetNutriColors
-                                                                                        .Primary
-                                                                                        .copy(
-                                                                                                alpha =
-                                                                                                        0.2f
-                                                                                        ),
-                                                                        shape =
-                                                                                MaterialTheme.shapes
-                                                                                        .small,
-                                                                        modifier =
-                                                                                Modifier.padding(
-                                                                                        vertical =
-                                                                                                2.dp
-                                                                                )
-                                                                ) {
-                                                                        Column(
-                                                                                modifier =
-                                                                                        Modifier.padding(
-                                                                                                horizontal =
-                                                                                                        8.dp,
-                                                                                                vertical =
-                                                                                                        4.dp
-                                                                                        ),
-                                                                                horizontalAlignment =
-                                                                                        Alignment
-                                                                                                .CenterHorizontally
-                                                                        ) {
-                                                                                Text(
-                                                                                        text =
-                                                                                                indication
-                                                                                                        .label,
-                                                                                        style =
-                                                                                                MaterialTheme
-                                                                                                        .typography
-                                                                                                        .body1
-                                                                                )
-                                                                                Row(
-                                                                                        horizontalArrangement =
-                                                                                                Arrangement
-                                                                                                        .spacedBy(
-                                                                                                                4.dp
-                                                                                                        ),
-                                                                                        verticalAlignment =
-                                                                                                Alignment
-                                                                                                        .CenterVertically
-                                                                                ) {
-                                                                                        Text(
-                                                                                                text =
-                                                                                                        "ID: ${indication.coef}",
-                                                                                                style =
-                                                                                                        MaterialTheme
-                                                                                                                .typography
-                                                                                                                .caption,
-                                                                                                color =
-                                                                                                        Color.Gray
-                                                                                        )
-                                                                                        Text(
-                                                                                                text =
-                                                                                                        "(${indication.name})",
-                                                                                                style =
-                                                                                                        MaterialTheme
-                                                                                                                .typography
-                                                                                                                .caption,
-                                                                                                color =
-                                                                                                        Color.Gray
-                                                                                        )
-                                                                                }
-                                                                        }
-                                                                }
-                                                        }
-                                                }
-                                        )
-                                }
+                                                Badge(
+                                                    text = indication.label,
+                                                    subText = indication.name,
+                                                    id = indication.coef,
+                                                    backgroundColor = VetNutriColors.Primary
+                                                )
+                                            }
+                                        }
+                                    )
                         } else {
-                                Divider(modifier = Modifier.padding(vertical = 4.dp))
                                 Text(
                                         text = "Aucune indication spécifiée",
-                                        style = MaterialTheme.typography.body2,
+                                        style = MaterialTheme.typography.body2.copy(
+                                            fontSize = AppSizes.fontSizeBody2
+                                        ),
                                         color = Color.Gray,
-                                        modifier = Modifier.padding(vertical = 2.dp)
+                                        modifier = Modifier.padding(vertical = AppSizes.paddingXXSmall)
                                 )
+                                }
+                            }
                         }
                 }
         }

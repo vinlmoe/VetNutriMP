@@ -21,13 +21,12 @@ import kotlinx.coroutines.IO
                         WeightEntity::class,
                         RationEntity::class,
                         AlimentRationEntity::class,
-                        AlimentEntity::class,
                         EspeceAlimentEntity::class,
                         IndicationAlimentEntity::class,
                         SupplementalVariableEntity::class,
                         FoodEntity::class,
                         NutrientValueEntity::class],
-        version = 6,
+        version = 7,
         exportSchema = true
 )
 @TypeConverters(Converters::class)

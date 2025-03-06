@@ -3,24 +3,28 @@ package fr.vetbrain.vetnutri_mp.View
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Data.Labelable
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.General
 import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
+import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import org.jetbrains.compose.ui.tooling.preview.Preview
 
+@OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun TextFieldNut(value: Labelable?, label: String) {
         TextField(
@@ -77,22 +81,21 @@ fun ComboBox(
                         )
                 }
 
-                DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                DropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false }
+                ) {
                         items.forEach { item ->
                                 DropdownMenuItem(
                                         content = {
                                                 Text(
-                                                        item.label?.translate()
-                                                                ?: General.VALIDATE.translate()
+                                                        item.label?.translate() ?: General.VALIDATE.translate()
                                                 )
                                         },
                                         onClick = {
-                                                selectedText =
-                                                        TextFieldValue(
-                                                                item.label?.translate()
-                                                                        ?: General.VALIDATE
-                                                                                .translate()
-                                                        )
+                                                selectedText = TextFieldValue(
+                                                        item.label?.translate() ?: General.VALIDATE.translate()
+                                                )
                                                 expanded = false
                                                 onItemSelected(item.label ?: "null")
                                                 selectedObject = item
@@ -101,4 +104,118 @@ fun ComboBox(
                         }
                 }
         }
+}
+
+@OptIn(ExperimentalMaterialApi::class)
+@Composable
+fun <T> GenericDropdown(
+    selectedItem: T?,
+    onItemSelected: (T?) -> Unit,
+    items: List<T?>,
+    getDisplayText: (T?) -> String,
+    placeholder: String,
+    modifier: Modifier = Modifier
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = !expanded },
+        modifier = modifier
+    ) {
+        OutlinedTextField(
+            value = selectedItem?.let { getDisplayText(it) } ?: placeholder,
+            onValueChange = {},
+            readOnly = true,
+            trailingIcon = {
+                Icon(
+                    if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                    contentDescription = null,
+                    modifier = Modifier.padding(AppSizes.paddingXSmall)
+                )
+            },
+            colors = TextFieldDefaults.outlinedTextFieldColors(
+                focusedBorderColor = VetNutriColors.Primary,
+                unfocusedBorderColor = Color.Gray
+            ),
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            modifier = Modifier.exposedDropdownSize()
+        ) {
+            items.forEach { item ->
+                DropdownMenuItem(
+                    onClick = {
+                        onItemSelected(item)
+                        expanded = false
+                    }
+                ) {
+                    Text(
+                        text = getDisplayText(item),
+                        style = MaterialTheme.typography.body1.copy(
+                            fontSize = AppSizes.fontSizeBody1
+                        )
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun Badge(
+    text: String,
+    subText: String? = null,
+    id: Any? = null,
+    backgroundColor: Color,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        color = backgroundColor.copy(alpha = 0.2f),
+        shape = MaterialTheme.shapes.small,
+        modifier = modifier.padding(vertical = AppSizes.paddingXXSmall)
+    ) {
+        Column(
+            modifier = Modifier.padding(
+                horizontal = AppSizes.paddingSmall,
+                vertical = AppSizes.paddingXSmall
+            ),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = text,
+                style = MaterialTheme.typography.body1.copy(
+                    fontSize = AppSizes.fontSizeBody1
+                )
+            )
+            if (subText != null || id != null) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingXSmall),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (id != null) {
+                        Text(
+                            text = "ID: $id",
+                            style = MaterialTheme.typography.caption.copy(
+                                fontSize = AppSizes.fontSizeCaption
+                            ),
+                            color = Color.Gray
+                        )
+                    }
+                    if (subText != null) {
+                        Text(
+                            text = "($subText)",
+                            style = MaterialTheme.typography.caption.copy(
+                                fontSize = AppSizes.fontSizeCaption
+                            ),
+                            color = Color.Gray
+                        )
+                    }
+                }
+            }
+        }
+    }
 }

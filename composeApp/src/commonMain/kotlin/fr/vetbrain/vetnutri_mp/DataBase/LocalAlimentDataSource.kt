@@ -2,72 +2,95 @@ package fr.vetbrain.vetnutri_mp.DataBase
 
 import fr.vetbrain.vetnutri_mp.Data.AlimentEv
 import fr.vetbrain.vetnutri_mp.Data.AlimentEvJson
+import fr.vetbrain.vetnutri_mp.Data.toData
+import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toAlimentEv
+import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toFoodEntity
 import fr.vetbrain.vetnutri_mp.Repository.FoodRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 
-/**
- * Implémentation temporaire du FoodRepository utilisant une liste en mémoire. À remplacer par une
- * implémentation utilisant la base de données locale.
- */
-class LocalAlimentDataSource : FoodRepository {
-    private val foods = mutableListOf<AlimentEv>()
+/** Implémentation du FoodRepository utilisant Room Database. */
+class LocalAlimentDataSource(
+        private val foodDao: FoodDao,
+        private val nutrientValueDao: NutrientValueDao
+) : FoodRepository {
     private val _foodsFlow = MutableStateFlow<List<AlimentEv>>(emptyList())
+    private val coroutineScope = CoroutineScope(Dispatchers.IO)
 
     init {
-        // Charger les aliments depuis la base de données locale ou un fichier JSON
+        // Initialiser le flow au démarrage
+        coroutineScope.launch { refreshFoodsFlow() }
     }
 
     override suspend fun insert(food: AlimentEv) {
-        foods.add(food)
-        _foodsFlow.value = foods.toList()
+        val foodEntity = food.toFoodEntity()
+        foodDao.insert(foodEntity)
+        refreshFoodsFlow()
     }
 
     override suspend fun update(food: AlimentEv) {
-        val index = foods.indexOfFirst { it.uuid == food.uuid }
-        if (index != -1) {
-            foods[index] = food
-            _foodsFlow.value = foods.toList()
-        }
+        val foodEntity = food.toFoodEntity()
+        foodDao.update(foodEntity)
+        refreshFoodsFlow()
     }
 
     override suspend fun delete(food: AlimentEv) {
-        foods.removeIf { it.uuid == food.uuid }
-        _foodsFlow.value = foods.toList()
+        val foodEntity = food.toFoodEntity()
+        foodDao.delete(foodEntity)
+        refreshFoodsFlow()
     }
 
     override suspend fun getAllFoods(): List<AlimentEv> {
-        return foods.toList()
+        return foodDao.findAll().map { it.toAlimentEv() }
     }
 
     override suspend fun getFoodById(id: String): AlimentEv? {
-        return foods.find { it.uuid == id }
+        return foodDao.getFoodById(id)?.toAlimentEv()
     }
 
     override fun observeAllFoods(): Flow<List<AlimentEv>> {
+        // Pas besoin d'appeler refreshFoodsFlow() ici, car c'est une fonction suspend
+        // et nous sommes dans une fonction non-suspend
         return _foodsFlow.asStateFlow()
     }
 
     override suspend fun importFoods(foods: List<AlimentEvJson>): Int {
-        // Convertir AlimentEvJson en AlimentEv et les insérer
-        // Cette méthode nécessiterait une logique de conversion
-        return 0
+        var count = 0
+        foods.forEach { foodJson ->
+            // Utiliser la fonction d'extension toData() définie dans JsonMappers.kt
+            val alimentEv = foodJson.toData()
+            insertFood(alimentEv)
+            count++
+        }
+        return count
     }
 
     override suspend fun insertFood(food: AlimentEv) {
-        insert(food)
+        val foodEntity = food.toFoodEntity()
+        foodDao.insertFood(foodEntity)
+        refreshFoodsFlow()
     }
 
     override suspend fun getFood(uuid: String): AlimentEv? {
-        return getFoodById(uuid)
+        return foodDao.getFood(uuid)?.toAlimentEv()
     }
 
     override suspend fun deleteFood(uuid: String) {
-        foods.find { it.uuid == uuid }?.let { delete(it) }
+        foodDao.deleteFood(uuid)
+        refreshFoodsFlow()
     }
 
     override suspend fun updateFood(food: AlimentEv) {
-        update(food)
+        val foodEntity = food.toFoodEntity()
+        foodDao.updateFood(foodEntity)
+        refreshFoodsFlow()
+    }
+
+    private suspend fun refreshFoodsFlow() {
+        _foodsFlow.value = getAllFoods()
     }
 }

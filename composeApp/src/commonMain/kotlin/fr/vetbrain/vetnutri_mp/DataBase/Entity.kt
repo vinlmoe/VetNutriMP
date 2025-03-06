@@ -5,7 +5,18 @@ import kotlinx.serialization.Serializable
 
 // Entités pour la base de données des aliments
 @Serializable
-@Entity(tableName = "FOOD")
+@Entity(
+        tableName = "FOOD",
+        foreignKeys =
+                [
+                        ForeignKey(
+                                entity = RationEntity::class,
+                                parentColumns = ["uuid"],
+                                childColumns = ["RefRation"],
+                                onDelete = ForeignKey.SET_NULL
+                        )],
+        indices = [Index(value = ["uuid", "RefRation"], unique = true)]
+)
 data class FoodEntity(
         @PrimaryKey val uuid: String,
         val groupAlim: Int,
@@ -27,7 +38,9 @@ data class FoodEntity(
         val RefRation: String? = null,
         val RefAlimUnif: String? = null,
         val especesJson: String? = null,
-        val indicationsJson: String? = null
+        val indicationsJson: String? = null,
+        val name: String? = null,
+        val quantite: Float? = null
 )
 
 @Serializable
@@ -263,31 +276,12 @@ data class AlimentRationEntity(
 )
 
 @Serializable
-@Entity(tableName = "ALIMENTS_BASE")
-data class AlimentEntity(
-        @PrimaryKey val uuid: String,
-        val groupAliment: Int,
-        val typeAliment: Int,
-        val ingredients: String?,
-        val price: Double?,
-        val categoriePrix: String?,
-        val marque: String?,
-        val gamme: String?,
-        val name: String?,
-        val consistent: Int,
-        val quantite: Float?,
-        val deprecated: Int?,
-        val dataB: String?,
-        val rationUUID: String?
-)
-
-@Serializable
 @Entity(
         tableName = "ESPECES_ALIMENTS",
         foreignKeys =
                 [
                         ForeignKey(
-                                entity = AlimentEntity::class,
+                                entity = FoodEntity::class,
                                 parentColumns = ["uuid"],
                                 childColumns = ["refAliment"],
                                 onDelete = ForeignKey.CASCADE
@@ -306,7 +300,7 @@ data class EspeceAlimentEntity(
         foreignKeys =
                 [
                         ForeignKey(
-                                entity = AlimentEntity::class,
+                                entity = FoodEntity::class,
                                 parentColumns = ["uuid"],
                                 childColumns = ["refAliment"],
                                 onDelete = ForeignKey.CASCADE
@@ -506,10 +500,9 @@ data class AlimentReferenceEntity(
         foreignKeys =
                 [
                         ForeignKey(
-                                entity = AlimentEntity::class,
+                                entity = FoodEntity::class,
                                 parentColumns = ["uuid"],
-                                childColumns = ["refAliment"],
-                                onDelete = ForeignKey.CASCADE
+                                childColumns = ["refAliment"]
                         )],
         indices = [Index("refAliment")],
         primaryKeys = ["refAliment", "nutrientLabel"]

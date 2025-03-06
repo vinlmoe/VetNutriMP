@@ -378,35 +378,17 @@ class DatabaseFoodRepository(
 
     override suspend fun getFood(uuid: String): AlimentEv? {
         return withContext(AppDispatchers.IO) {
-            // Essayer d'abord de récupérer l'aliment depuis la table ALIMENTS_BASE
-            val alimentEntity = foodDao.getFood(uuid)
-            if (alimentEntity != null) {
-                println(
-                        "DEBUG getFood - Aliment trouvé dans ALIMENTS_BASE: ${alimentEntity.name} (${alimentEntity.uuid})"
-                )
-
-                // Charger les indications
-                val indications = foodDao.getIndicationsForAliment(uuid)
-                val nutrientValues = nutrientValueDao.getNutrientValues(uuid)
-
-                // Convertir en AlimentEv
-                return@withContext alimentEntity.toAlimentEv(
-                        emptyList(),
-                        indications,
-                        nutrientValues
-                )
-            }
-
-            // Sinon, essayer de récupérer l'aliment depuis la table FOOD
-            val foodEntity = foodDao.getFoodById(uuid)
+            // Récupérer l'aliment depuis la table FOOD
+            val foodEntity = foodDao.getFood(uuid)
             if (foodEntity != null) {
                 println(
-                        "DEBUG getFood - Aliment trouvé dans FOOD: ${foodEntity.nameDef} (${foodEntity.uuid})"
+                        "DEBUG getFood - Aliment trouvé dans FOOD: ${foodEntity.name} (${foodEntity.uuid})"
                 )
+                // Utiliser la méthode de conversion standard
                 return@withContext foodEntity.toAlimentEv()
             }
 
-            println("DEBUG getFood - Aucun aliment trouvé pour UUID: $uuid")
+            println("DEBUG getFood - Aliment non trouvé: $uuid")
             return@withContext null
         }
     }
@@ -524,37 +506,42 @@ class DatabaseFoodRepository(
 
     // Extension pour convertir FoodEntity en AlimentEv
     private fun FoodEntity.toAlimentEv(): AlimentEv {
-        // Désérialisation des espèces depuis JSON
+        // Décodage des espèces depuis le JSON
         val especesList = mutableListOf<String>()
         if (!this.especesJson.isNullOrEmpty()) {
             try {
-                val listeEspeces: List<String> = Json.decodeFromString(this.especesJson)
-                especesList.addAll(listeEspeces)
+                especesList.addAll(Json.decodeFromString<List<String>>(this.especesJson))
             } catch (e: Exception) {
-                println("Erreur lors de la désérialisation des espèces: ${e.message}")
+                // Si le décodage JSON échoue, essayer de splitter par virgule
+                especesList.addAll(this.especesJson.split(","))
             }
         }
 
-        // Désérialisation des indications depuis JSON
+        // Décodage des indications depuis le JSON
         val indicationsList = mutableListOf<AlimIndic>()
         if (!this.indicationsJson.isNullOrEmpty()) {
             try {
-                val listeIndications: List<String> = Json.decodeFromString(this.indicationsJson)
-                listeIndications.forEach { indication ->
-                    try {
-                        // Tenter de convertir le label en AlimIndic
-                        val alimIndic = AlimIndic.values().find { it.label == indication }
-                        if (alimIndic != null) {
-                            indicationsList.add(alimIndic)
+                val indicLabels = Json.decodeFromString<List<String>>(this.indicationsJson)
+                indicationsList.addAll(
+                        indicLabels.mapNotNull { label ->
+                            try {
+                                // Essayer d'abord de convertir par le nom de l'énumération
+                                AlimIndic.valueOf(label)
+                            } catch (e: Exception) {
+                                // Si ça échoue, essayer par le label
+                                AlimIndic.byName(label)
+                            }
                         }
+                )
+            } catch (e: Exception) {
+                // Si le décodage JSON échoue, essayer de splitter par virgule
+                this.indicationsJson.split(",").forEach { indic ->
+                    try {
+                        AlimIndic.valueOf(indic)?.let { indicationsList.add(it) }
                     } catch (e: Exception) {
-                        println(
-                                "Erreur lors de la conversion de l'indication '$indication': ${e.message}"
-                        )
+                        AlimIndic.byName(indic)?.let { indicationsList.add(it) }
                     }
                 }
-            } catch (e: Exception) {
-                println("Erreur lors de la désérialisation des indications: ${e.message}")
             }
         }
 
@@ -582,9 +569,10 @@ class DatabaseFoodRepository(
                 cont = fr.vetbrain.vetnutri_mp.Enumer.ContEnum.getByName(this.cont),
                 deprecated = this.deprecated > 0,
                 dataB = this.DataB,
-                especes = especesList,
-                indicat = indicationsList,
-                rationUUID = this.RefRation
+                especes = especesList.toMutableList(),
+                indicat = indicationsList.toMutableList(),
+                rationUUID = this.RefRation,
+                valMap = mutableMapOf() // Les valeurs nutritionnelles seront chargées séparément
         )
     }
 

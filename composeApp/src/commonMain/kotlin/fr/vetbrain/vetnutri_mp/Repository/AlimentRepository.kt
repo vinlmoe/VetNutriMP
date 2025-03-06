@@ -7,7 +7,15 @@ import kotlinx.coroutines.flow.Flow
 /**
  * Implémentation du repository pour les aliments. Cette classe délègue les opérations à la source
  * de données fournie.
+ *
+ * @deprecated Cette classe est maintenue pour des raisons de rétrocompatibilité uniquement.
+ * Utilisez directement FoodRepository à la place, car les tables ALIMENT_BASE et FOOD ont été
+ * fusionnées en une seule table FOOD.
  */
+@Deprecated(
+        "Utilisez directement FoodRepository, car les tables ALIMENT_BASE et FOOD ont été fusionnées",
+        ReplaceWith("FoodRepository")
+)
 class AlimentRepository(private val dataSource: FoodRepository) {
 
     suspend fun getAllAliments(): List<AlimentEv> {
