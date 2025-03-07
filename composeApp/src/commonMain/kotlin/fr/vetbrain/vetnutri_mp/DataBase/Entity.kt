@@ -15,7 +15,7 @@ import kotlinx.serialization.Serializable
                                 childColumns = ["RefRation"],
                                 onDelete = ForeignKey.SET_NULL
                         )],
-        indices = [Index(value = ["uuid", "RefRation"], unique = true)]
+        indices = [Index("RefRation"), Index(value = ["uuid", "RefRation"], unique = true)]
 )
 data class FoodEntity(
         @PrimaryKey val uuid: String,
@@ -40,7 +40,7 @@ data class FoodEntity(
         val especesJson: String? = null,
         val indicationsJson: String? = null,
         val name: String? = null,
-        val quantite: Float? = null
+        val quantite: Float = 0f
 )
 
 @Serializable
@@ -52,89 +52,8 @@ data class NameFoodEntity(@PrimaryKey val refFood: String, val lang: String, val
 data class EspeceEntity(@PrimaryKey val refFood: String, val value: String)
 
 @Serializable
-@Entity(tableName = "VALUEAA")
-data class ValueAAEntity(
-        @PrimaryKey(autoGenerate = true) val id: Int = 0,
-        val kind: Int,
-        val refFood: String,
-        val version: Int,
-        val value: Float,
-        val date: String
-)
-
-@Serializable
-@Entity(tableName = "VALUEBASE")
-data class ValueBaseEntity(
-        @PrimaryKey(autoGenerate = true) val id: Int = 0,
-        val kind: Int,
-        val refFood: String,
-        val version: Int,
-        val value: Float,
-        val date: String
-)
-
-@Serializable
-@Entity(tableName = "VALUELIPID")
-data class ValueLipidEntity(
-        @PrimaryKey(autoGenerate = true) val id: Int = 0,
-        val kind: Int,
-        val refFood: String,
-        val version: Int,
-        val value: Float,
-        val date: String
-)
-
-@Serializable
-@Entity(tableName = "VALUEMACRO")
-data class ValueMacroEntity(
-        @PrimaryKey(autoGenerate = true) val id: Int = 0,
-        val kind: Int,
-        val refFood: String,
-        val version: Int,
-        val value: Float,
-        val date: String
-)
-
-@Serializable
-@Entity(tableName = "VALUEMIN")
-data class ValueMinEntity(
-        @PrimaryKey(autoGenerate = true) val id: Int = 0,
-        val kind: Int,
-        val refFood: String,
-        val version: Int,
-        val value: Float,
-        val date: String
-)
-
-@Serializable
-@Entity(tableName = "VALUEVITAM")
-data class ValueVitamEntity(
-        @PrimaryKey(autoGenerate = true) val id: Int = 0,
-        val kind: Int,
-        val refFood: String,
-        val version: Int,
-        val value: Float,
-        val date: String
-)
-
-@Serializable
-@Entity(tableName = "VALUEOTHER")
-data class ValueOtherEntity(
-        @PrimaryKey(autoGenerate = true) val id: Int = 0,
-        val kind: Int,
-        val refFood: String,
-        val version: Int,
-        val value: Float,
-        val date: String
-)
-
-@Serializable
-@Entity(tableName = "INDICATION")
-data class IndicationEntity(
-        @PrimaryKey(autoGenerate = true) val id: Int = 0,
-        val refFood: String,
-        val value: Int
-)
+@Entity(tableName = "INDICATION", primaryKeys = ["refFood", "value"])
+data class IndicationEntity(val refFood: String, val value: Int = 0)
 
 @Serializable
 @Entity(tableName = "dataDef")
@@ -146,9 +65,9 @@ data class DataDefEntity(@PrimaryKey val uuid: String, val sNAME: String, val co
 data class AnimalEntity(
         @PrimaryKey val uuid: String,
         val nom: String?,
-        val dead: Boolean?,
+        val dead: Boolean = false,
         val id: String?,
-        val sexId: Int?,
+        val sexId: Int = 0,
         val specieId: String?,
         val ownerName: String?,
         val birthdate: String?,
@@ -171,32 +90,32 @@ data class AnimalEntity(
 )
 data class ConsultationEntity(
         @PrimaryKey val uuid: String,
-        val idAnim: String?,
+        val idAnim: String,
         val date: String?,
         val objectConsult: String?,
         val observation: String?,
         val cRendu: String?,
-        val weight: Float?,
-        val idealWeight: Float?,
-        val water: Float?,
-        val bodyFat: Float?,
+        val weight: Float = 0f,
+        val idealWeight: Float = 0f,
+        val water: Float = 0f,
+        val bodyFat: Float = 0f,
         val methodAnalysis: String?,
-        val BCS: Int?,
+        val BCS: Int = 0,
         val k1Id: String?,
-        val k1Value: Float?,
+        val k1Value: Float = 0f,
         val k2Id: String?,
-        val k2Value: Float?,
+        val k2Value: Float = 0f,
         val k3Id: String?,
-        val k3Value: Float?,
+        val k3Value: Float = 0f,
         val k4Id: String?,
-        val k4Value: Float?,
+        val k4Value: Float = 0f,
         val k5Id: String?,
-        val k5Value: Float?,
-        val nLittle: Int?,
-        val pAdult: Float?,
-        val coefGes: Int?,
-        val coefLact: Int?,
-        val MCS: Int?
+        val k5Value: Float = 0f,
+        val nLittle: Int = 0,
+        val pAdult: Float = 0f,
+        val coefGes: Int = 0,
+        val coefLact: Int = 0,
+        val MCS: Int = 0
 )
 
 @Serializable
@@ -234,13 +153,13 @@ data class WeightEntity(
 )
 data class RationEntity(
         @PrimaryKey val uuid: String,
-        var idConsult: String?,
+        var idConsult: String,
         val name: String?,
-        val coef: Float?,
-        val actual: Boolean?,
-        val number: Int?,
+        val coef: Float = 0f,
+        val actual: Boolean = false,
+        val number: Int = 0,
         val espece: String?,
-        val recette: Boolean?,
+        val recette: Boolean = false,
         val description: String?
 )
 
@@ -269,10 +188,10 @@ data class RationEntity(
 )
 data class AlimentRationEntity(
         @PrimaryKey val uuid: String,
-        val refAlimUnif: String?,
-        val refRation: String?,
-        val quantity: Float?,
-        val refTarget: Int?
+        val refAlimUnif: String = "",
+        val refRation: String,
+        val quantity: Float = 0f,
+        val refTarget: Int = 0
 )
 
 @Serializable
@@ -305,13 +224,10 @@ data class EspeceAlimentEntity(
                                 childColumns = ["refAliment"],
                                 onDelete = ForeignKey.CASCADE
                         )],
-        indices = [Index("refAliment")]
+        indices = [Index("refAliment")],
+        primaryKeys = ["refAliment", "indication"]
 )
-data class IndicationAlimentEntity(
-        @PrimaryKey(autoGenerate = true) val id: Int = 0,
-        val refAliment: String,
-        val indication: Int
-)
+data class IndicationAlimentEntity(val refAliment: String, val indication: Int)
 
 @Serializable
 @Entity(
@@ -324,32 +240,23 @@ data class IndicationAlimentEntity(
                                 childColumns = ["idConsult"],
                                 onDelete = ForeignKey.CASCADE
                         )],
-        indices = [Index("idConsult")]
+        indices = [Index("idConsult")],
+        primaryKeys = ["idConsult", "variableKind"]
 )
 data class SupplementalVariableEntity(
-        @PrimaryKey(autoGenerate = true) val id: Int = 0,
         val idConsult: String,
         val variableKind: Int,
-        val value: Float?
+        val value: Float = 0f
 )
 
 @Serializable
-@Entity(tableName = "SupVar")
-data class SupVarEntity(
-        @PrimaryKey(autoGenerate = true) val id: Int = 0,
-        val idCons: String,
-        val idVar: Int,
-        val value: Float
-)
-
-@Serializable
-@Entity(tableName = "ReferenceDisease")
+@Entity(tableName = "ReferenceDisease", primaryKeys = ["idCons", "refRef"])
 data class ReferenceDiseaseEntity(
         @PrimaryKey(autoGenerate = true) val id: Int = 0,
         val idCons: String,
         val refRef: String
 )
-
+/*
 @Serializable
 @Entity(tableName = "Breed")
 data class BreedEntity(@PrimaryKey val id: String, val refSpecie: Int)
@@ -471,7 +378,7 @@ data class CoefEntity(
 @Serializable
 @Entity(tableName = "speReqEq", primaryKeys = ["refEq", "refRef"])
 data class SpeReqEqEntity(val refEq: String, val refRef: String)
-
+*/
 @Serializable
 @Entity(
         tableName = "ALIMENT_REFERENCES",
@@ -507,8 +414,4 @@ data class AlimentReferenceEntity(
         indices = [Index("refAliment")],
         primaryKeys = ["refAliment", "nutrientLabel"]
 )
-data class NutrientValueEntity(
-        val refAliment: String, // UUID de l'aliment
-        val nutrientLabel: String, // Label du nutriment
-        val value: Float // Valeur du nutriment
-)
+data class NutrientValueEntity(val refAliment: String, val nutrientLabel: String, val value: Float)

@@ -44,7 +44,7 @@ class DatabaseConsultationRepository(
                             SupplementalVariableEntity(
                                     idConsult = consultation.uuid,
                                     variableKind = variable.uuid,
-                                    value = suppVar.varue
+                                    value = suppVar.varue ?: 0f
                             )
                     )
                 }

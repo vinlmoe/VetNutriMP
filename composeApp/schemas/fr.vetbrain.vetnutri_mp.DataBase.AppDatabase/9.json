@@ -1,8 +1,8 @@
 {
   "formatVersion": 1,
   "database": {
-    "version": 7,
-    "identityHash": "8734c7b28f5dc69d4c1202309d500051",
+    "version": 9,
+    "identityHash": "7ec1ed276e596b94dd309b80d7156558",
     "entities": [
       {
         "tableName": "ANIMALS",
@@ -660,7 +660,7 @@
       },
       {
         "tableName": "FOOD",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`uuid` TEXT NOT NULL, `groupAlim` INTEGER NOT NULL, `typeAlim` INTEGER NOT NULL, `ingredients` TEXT NOT NULL, `price` REAL NOT NULL, `categPrice` TEXT NOT NULL, `brand` TEXT NOT NULL, `gamme` TEXT NOT NULL, `cont` TEXT NOT NULL, `unitPres` INTEGER NOT NULL, `quantityPres` REAL NOT NULL, `version` INTEGER NOT NULL, `date` TEXT NOT NULL, `nameDef` TEXT NOT NULL, `consistent` INTEGER NOT NULL, `deprecated` INTEGER NOT NULL, `DataB` TEXT NOT NULL, `RefRation` TEXT NOT NULL, `RefAlimUnif` TEXT, `especesJson` TEXT, `indicationsJson` TEXT, `name` TEXT, `quantite` REAL NOT NULL, PRIMARY KEY(`uuid`), FOREIGN KEY(`RefRation`) REFERENCES `RATIONS`(`uuid`) ON UPDATE NO ACTION ON DELETE NO ACTION )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`uuid` TEXT NOT NULL, `groupAlim` INTEGER NOT NULL, `typeAlim` INTEGER NOT NULL, `ingredients` TEXT NOT NULL, `price` REAL NOT NULL, `categPrice` TEXT NOT NULL, `brand` TEXT NOT NULL, `gamme` TEXT NOT NULL, `cont` TEXT NOT NULL, `unitPres` INTEGER NOT NULL, `quantityPres` REAL NOT NULL, `version` INTEGER NOT NULL, `date` TEXT NOT NULL, `nameDef` TEXT NOT NULL, `consistent` INTEGER NOT NULL, `deprecated` INTEGER NOT NULL, `DataB` TEXT NOT NULL, `RefRation` TEXT, `RefAlimUnif` TEXT, `especesJson` TEXT, `indicationsJson` TEXT, `name` TEXT, `quantite` REAL NOT NULL, PRIMARY KEY(`uuid`), FOREIGN KEY(`RefRation`) REFERENCES `RATIONS`(`uuid`) ON UPDATE NO ACTION ON DELETE SET NULL )",
         "fields": [
           {
             "fieldPath": "uuid",
@@ -767,8 +767,7 @@
           {
             "fieldPath": "RefRation",
             "columnName": "RefRation",
-            "affinity": "TEXT",
-            "notNull": true
+            "affinity": "TEXT"
           },
           {
             "fieldPath": "RefAlimUnif",
@@ -827,7 +826,7 @@
         "foreignKeys": [
           {
             "table": "RATIONS",
-            "onDelete": "NO ACTION",
+            "onDelete": "SET NULL",
             "onUpdate": "NO ACTION",
             "columns": [
               "RefRation"
@@ -896,7 +895,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '8734c7b28f5dc69d4c1202309d500051')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '7ec1ed276e596b94dd309b80d7156558')"
     ]
   }
 }

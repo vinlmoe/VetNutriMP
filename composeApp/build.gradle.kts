@@ -34,7 +34,9 @@ kotlin {
     jvm("desktop")
 
     sourceSets {
-
+        /*sourceSets.iosMain {
+            kotlin.srcDir("build/generated/ksp/metadata")
+        }*/
            androidMain.dependencies {
                 implementation(libs.androidx.activity.compose)
                 implementation(libs.androidx.room.runtime)
@@ -50,7 +52,6 @@ kotlin {
             implementation(compose.material)
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.coroutines.test)
-
             implementation(compose.ui)
             implementation(compose.components.resources)
             implementation(compose.components.uiToolingPreview)
@@ -89,10 +90,9 @@ kotlin {
 
         }
         commonTest.dependencies {
-            implementation(libs.kotlin.test)
-           // implementation(kotlin("test-annotations-common"))
-            implementation(libs.assertk)
             implementation(kotlin("test"))
+            implementation(kotlin("test-common"))
+            implementation(kotlin("test-annotations-common"))
             implementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
         }
        iosMain.dependencies {
@@ -144,6 +144,8 @@ android {
 
 dependencies {
     debugImplementation(compose.uiTooling)
+    testImplementation(kotlin("test"))
+    testImplementation(kotlin("test-junit"))
 }
 
 compose.desktop {
@@ -160,10 +162,14 @@ compose.desktop {
 
 dependencies {
 
+    implementation(libs.jansi)
     implementation(libs.androidx.material.icons.extended)
     implementation(libs.skiko.awt)
     implementation(libs.androidx.sqlite.bundled)
-
+    implementation(kotlin("test"))
+    implementation(kotlin("test-common"))
+    implementation(kotlin("test-annotations-common"))
+  //  add("kspCommonMainMetadata", libs.androidx.room.compiler)
     add("kspAndroid", libs.androidx.room.compiler)
     add("kspIosSimulatorArm64", libs.androidx.room.compiler)
     add("kspIosX64", libs.androidx.room.compiler)

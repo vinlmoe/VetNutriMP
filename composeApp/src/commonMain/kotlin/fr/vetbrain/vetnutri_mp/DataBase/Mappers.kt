@@ -63,53 +63,51 @@ object Mappers {
 
         // Consultation Mappers avec relations
         fun ConsultationEv.toEntity(includeRelations: Boolean = true): ConsultationEntity {
-                val entity =
-                        ConsultationEntity(
+                return ConsultationEntity(
                                 uuid = this.uuid,
                                 idAnim = this.idAnim,
                                 date = this.date?.toString() ?: "",
-                                objectConsult = this.objectConsult,
-                                observation = this.observation,
-                                cRendu = this.cRendu,
-                                weight = this.weight,
-                                idealWeight = this.idealWeight,
-                                water = this.water,
-                                bodyFat = this.bodyFat,
-                                methodAnalysis = this.methodAnalysis,
-                                BCS = this.BCS,
-                                k1Id = this.k1Id,
-                                k1Value = this.k1Value,
-                                k2Id = this.k2Id,
-                                k2Value = this.k2Value,
-                                k3Id = this.k3Id,
-                                k3Value = this.k3Value,
-                                k4Id = this.k4Id,
-                                k4Value = this.k4Value,
-                                k5Id = this.k5Id,
-                                k5Value = this.k5Value,
-                                nLittle = this.nLittle,
-                                pAdult = this.pAdult,
-                                coefGes = this.coefGes,
-                                coefLact = this.coefLact,
-                                MCS = this.MCS
+                                objectConsult = this.objectConsult ?: "",
+                                observation = this.observation ?: "",
+                                cRendu = this.cRendu ?: "",
+                                weight = this.weight ?: 0f,
+                                idealWeight = this.idealWeight ?: 0f,
+                                water = this.water ?: 0f,
+                                bodyFat = this.bodyFat ?: 0f,
+                                methodAnalysis = this.methodAnalysis ?: "",
+                                BCS = this.BCS ?: 0,
+                                k1Id = this.k1Id ?: "",
+                                k1Value = this.k1Value ?: 0f,
+                                k2Id = this.k2Id ?: "",
+                                k2Value = this.k2Value ?: 0f,
+                                k3Id = this.k3Id ?: "",
+                                k3Value = this.k3Value ?: 0f,
+                                k4Id = this.k4Id ?: "",
+                                k4Value = this.k4Value ?: 0f,
+                                k5Id = this.k5Id ?: "",
+                                k5Value = this.k5Value ?: 0f,
+                                nLittle = this.nLittle ?: 0,
+                                pAdult = this.pAdult ?: 0f,
+                                coefGes = this.coefGes ?: 0,
+                                coefLact = this.coefLact ?: 0,
+                                MCS = this.MCS ?: 0
                         )
-
-                if (includeRelations) {
-                        // Mettre à jour les références des rations
-                        this.rations.forEach { ration -> ration.idConsult = this.uuid }
-                        // Mettre à jour les références des variables supplémentaires
-                        this.suppVarp.forEach { suppVar ->
-                                suppVar.variable?.let { variable ->
-                                        SupplementalVariableEntity(
-                                                idConsult = this.uuid,
-                                                variableKind = variable.uuid,
-                                                value = suppVar.varue
-                                        )
+                        .apply {
+                                if (includeRelations) {
+                                        this@toEntity.rations.forEach { ration ->
+                                                ration.idConsult = this@toEntity.uuid
+                                        }
+                                        this@toEntity.suppVarp.forEach { suppVar ->
+                                                suppVar.variable?.let { variable ->
+                                                        SupplementalVariableEntity(
+                                                                idConsult = this@toEntity.uuid,
+                                                                variableKind = variable.uuid,
+                                                                value = suppVar.varue ?: 0f
+                                                        )
+                                                }
+                                        }
                                 }
                         }
-                }
-
-                return entity
         }
 
         fun ConsultationEntity.toData(
@@ -123,27 +121,27 @@ object Mappers {
                         objectConsult = this.objectConsult ?: "",
                         observation = this.observation ?: "",
                         cRendu = this.cRendu ?: "",
-                        weight = this.weight,
-                        idealWeight = this.idealWeight,
-                        water = this.water,
-                        bodyFat = this.bodyFat,
+                        weight = this.weight ?: 0f,
+                        idealWeight = this.idealWeight ?: 0f,
+                        water = this.water ?: 0f,
+                        bodyFat = this.bodyFat ?: 0f,
                         methodAnalysis = this.methodAnalysis ?: "",
-                        BCS = this.BCS,
-                        k1Id = this.k1Id,
-                        k1Value = this.k1Value,
-                        k2Id = this.k2Id,
-                        k2Value = this.k2Value,
-                        k3Id = this.k3Id,
-                        k3Value = this.k3Value,
-                        k4Id = this.k4Id,
-                        k4Value = this.k4Value,
-                        k5Id = this.k5Id,
-                        k5Value = this.k5Value,
-                        nLittle = this.nLittle,
-                        pAdult = this.pAdult,
-                        coefGes = this.coefGes,
-                        coefLact = this.coefLact,
-                        MCS = this.MCS,
+                        BCS = this.BCS ?: 0,
+                        k1Id = this.k1Id ?: "",
+                        k1Value = this.k1Value ?: 0f,
+                        k2Id = this.k2Id ?: "",
+                        k2Value = this.k2Value ?: 0f,
+                        k3Id = this.k3Id ?: "",
+                        k3Value = this.k3Value ?: 0f,
+                        k4Id = this.k4Id ?: "",
+                        k4Value = this.k4Value ?: 0f,
+                        k5Id = this.k5Id ?: "",
+                        k5Value = this.k5Value ?: 0f,
+                        nLittle = this.nLittle ?: 0,
+                        pAdult = this.pAdult ?: 0f,
+                        coefGes = this.coefGes ?: 0,
+                        coefLact = this.coefLact ?: 0,
+                        MCS = this.MCS ?: 0,
                         suppVarp =
                                 suppVars
                                         .map { entity ->
@@ -152,7 +150,7 @@ object Mappers {
                                                                 VariableKind.getById(
                                                                         entity.variableKind
                                                                 ),
-                                                        varue = entity.value
+                                                        varue = entity.value ?: 0f
                                                 )
                                         }
                                         .toMutableList(),
@@ -162,25 +160,24 @@ object Mappers {
 
         // Ration Mappers avec relations
         fun Ration.toEntity(includeRelations: Boolean = true): RationEntity {
-                val entity =
-                        RationEntity(
+                return RationEntity(
                                 uuid = this.uuid,
                                 idConsult = this.idConsult,
-                                name = this.name,
-                                coef = this.coef,
-                                actual = this.actual,
-                                number = this.number,
-                                espece = this.espece,
-                                recette = this.recette,
-                                description = this.description
+                                name = this.name ?: "",
+                                coef = this.coef ?: 1.0f,
+                                actual = this.actual ?: false,
+                                number = this.number ?: 1,
+                                espece = this.espece ?: "",
+                                recette = this.recette ?: false,
+                                description = this.description ?: ""
                         )
-
-                if (includeRelations) {
-                        // Mettre à jour les références des aliments
-                        this.alimentMutableList.forEach { aliment -> aliment.refRation = this.uuid }
-                }
-
-                return entity
+                        .apply {
+                                if (includeRelations) {
+                                        this@toEntity.alimentMutableList.forEach { aliment ->
+                                                aliment.refRation = this@toEntity.uuid
+                                        }
+                                }
+                        }
         }
 
         fun RationEntity.toData(aliments: List<AlimentRationEntity> = emptyList()): Ration {
@@ -191,7 +188,7 @@ object Mappers {
                         coef = this.coef ?: 1.0f,
                         actual = this.actual ?: false,
                         number = this.number ?: 1,
-                        espece = this.espece,
+                        espece = this.espece ?: "",
                         recette = this.recette ?: false,
                         description = this.description ?: "",
                         alimentMutableList = aliments.map { it.toData() }.toMutableList()
@@ -200,12 +197,18 @@ object Mappers {
 
         // AlimentRation Mappers
         fun AlimentRation.toEntity(): AlimentRationEntity {
+                // Fournir des valeurs par défaut pour gérer les nullables
+                val safeRefAlimUnif = this.refAlimUnif ?: ""
+                val safeRefRation = this.refRation ?: ""
+                val safeQuantity = this.quantity ?: 0f
+                val safeRefTarget = this.refTarget ?: 0
+
                 return AlimentRationEntity(
                         uuid = this.uuid,
-                        refAlimUnif = this.refAlimUnif,
-                        refRation = this.refRation,
-                        quantity = this.quantity,
-                        refTarget = this.refTarget
+                        refAlimUnif = safeRefAlimUnif,
+                        refRation = safeRefRation,
+                        quantity = safeQuantity,
+                        refTarget = safeRefTarget
                 )
         }
 
@@ -216,14 +219,18 @@ object Mappers {
                         quantity = this.quantity ?: 0f,
                         proportion = 0f,
                         aliment = null,
-                        refAlimUnif = this.refAlimUnif,
-                        refRation = this.refRation,
-                        refTarget = this.refTarget
+                        refAlimUnif = this.refAlimUnif ?: "",
+                        refRation = this.refRation ?: "",
+                        refTarget = this.refTarget ?: 0
                 )
         }
 
         // AlimentEv Mappers avec relations
         fun AlimentEv.toFoodEntity(): FoodEntity {
+                // Assurer que les valeurs ne sont pas nulles
+                val safeRationUUID = this.rationUUID ?: ""
+                val safeQuantInt = this.quantInt ?: 0f
+
                 return FoodEntity(
                         uuid = this.uuid,
                         groupAlim = this.group?.ordinal ?: 0,
@@ -242,9 +249,9 @@ object Mappers {
                         consistent = if (this.consistent) 1 else 0,
                         deprecated = if (this.deprecated) 1 else 0,
                         DataB = this.dataB ?: "",
-                        RefRation = this.rationUUID,
+                        RefRation = safeRationUUID,
                         name = this.nom,
-                        quantite = this.quantInt,
+                        quantite = safeQuantInt,
                         especesJson =
                                 if (this.especes.isNotEmpty()) this.especes.joinToString(",")
                                 else null,
@@ -261,7 +268,6 @@ object Mappers {
                 indications: List<IndicationAlimentEntity> = emptyList(),
                 nutrientValues: List<NutrientValueEntity> = emptyList()
         ): AlimentEv {
-                // Récupérer les espèces à partir du JSON si disponible
                 val especesList = mutableListOf<String>()
                 if (!this.especesJson.isNullOrEmpty()) {
                         especesList.addAll(this.especesJson.split(","))
@@ -269,7 +275,6 @@ object Mappers {
                         especesList.addAll(especes.map { it.espece })
                 }
 
-                // Récupérer les indications à partir du JSON si disponible
                 val indicatList = mutableListOf<AlimIndic>()
                 if (!this.indicationsJson.isNullOrEmpty()) {
                         this.indicationsJson.split(",").forEach { indic ->
@@ -293,7 +298,7 @@ object Mappers {
 
                 return AlimentEv(
                         uuid = this.uuid,
-                        nom = this.nameDef,
+                        nom = this.nameDef ?: "",
                         typeAliment =
                                 try {
                                         this.typeAlim.let { FoodKind.entries.getOrNull(it) }
@@ -309,17 +314,17 @@ object Mappers {
                         consistent = this.consistent == 1,
                         deprecated = this.deprecated == 1,
                         price = this.price,
-                        categPrice = this.categPrice,
-                        ingredients = this.ingredients,
-                        brand = this.brand,
-                        gamme = this.gamme,
-                        quantInt = this.quantityPres,
-                        dataB = this.DataB,
+                        categPrice = this.categPrice ?: "",
+                        ingredients = this.ingredients ?: "",
+                        brand = this.brand ?: "",
+                        gamme = this.gamme ?: "",
+                        quantInt = this.quantityPres ?: 0f,
+                        dataB = this.DataB ?: "",
                         especes = especesList.toMutableList(),
                         indicat = indicatList.toMutableList(),
                         valMap = nutrientValues.toNutrientValueMap(),
-                        cont = fr.vetbrain.vetnutri_mp.Enumer.ContEnum.getByName(this.cont),
-                        rationUUID = this.RefRation
+                        cont = fr.vetbrain.vetnutri_mp.Enumer.ContEnum.getByName(this.cont ?: "NO"),
+                        rationUUID = this.RefRation ?: ""
                 )
         }
 

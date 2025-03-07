@@ -201,7 +201,7 @@ class DatabaseFoodRepository(
                                         deprecated = if (food.deprecated == true) 1 else 0,
                                         DataB = food.DataB ?: "",
                                         RefRation = null,
-                                        RefAlimUnif = null,
+                                        RefAlimUnif = "",
                                         especesJson = especesJson,
                                         indicationsJson = indicationsJson
                                 )
@@ -323,8 +323,8 @@ class DatabaseFoodRepository(
                                         consistent = if (food.cont == "YES") 1 else 0,
                                         deprecated = if (food.deprecated == true) 1 else 0,
                                         DataB = food.DataB ?: existingInFood.DataB,
-                                        RefRation = existingInFood.RefRation,
-                                        RefAlimUnif = existingInFood.RefAlimUnif,
+                                        RefRation = null,
+                                        RefAlimUnif = "",
                                         especesJson = especesJson,
                                         indicationsJson = indicationsJson
                                 )
@@ -683,8 +683,8 @@ class DatabaseFoodRepository(
                 consistent = if (this.cont != null && this.cont.ordinal > 0) 1 else 0,
                 deprecated = if (this.deprecated) 1 else 0,
                 DataB = this.dataB ?: "",
-                RefRation = this.rationUUID,
-                RefAlimUnif = null,
+                RefRation = null,
+                RefAlimUnif = "",
                 especesJson = especesJsonString,
                 indicationsJson = indicationsJsonString
         )
@@ -730,9 +730,9 @@ class DatabaseFoodRepository(
                 cont = this.cont ?: "NO",
                 consistent = if (this.cont == "YES") 1 else 0,
                 deprecated = if (this.deprecated == true) 1 else 0,
-                DataB = this.DataB,
+                DataB = this.DataB ?: "",
                 RefRation = null,
-                RefAlimUnif = null,
+                RefAlimUnif = "",
                 especesJson = especesJsonString,
                 indicationsJson = indicationsJsonString
         )
@@ -802,7 +802,7 @@ class DatabaseFoodRepository(
                 quantInt = this.quantityPres,
                 cont = fr.vetbrain.vetnutri_mp.Enumer.ContEnum.getByName(this.cont),
                 deprecated = this.deprecated > 0,
-                dataB = this.DataB,
+                dataB = this.DataB ?: "",
                 especes = especesList.toMutableList(),
                 indicat = indicationsList.toMutableList(),
                 rationUUID = this.RefRation,

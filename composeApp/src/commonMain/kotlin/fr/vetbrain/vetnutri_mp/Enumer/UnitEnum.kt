@@ -3,7 +3,7 @@ package fr.vetbrain.vetnutri_mp.Enumer
 import fr.vetbrain.vetnutri_mp.Data.Labelable
 
 enum class UnitEnum(
-        private val name: String,
+        private val unitName: String,
         private val id: Int,
         private val idFamily: Int,
         private val refId: Int,
@@ -22,10 +22,10 @@ enum class UnitEnum(
     NO("", 0, 5, 10, 0f, "NO");
 
     val displayName: String
-        get() = name
+        get() = unitName
 
     fun nameToString(): String {
-        return name
+        return unitName
     }
 
     fun getConv(): Float {
@@ -41,7 +41,7 @@ enum class UnitEnum(
     }
 
     fun getName(): String {
-        return name
+        return unitName
     }
 
     fun getRefID(): Int {
@@ -62,7 +62,7 @@ enum class UnitEnum(
 
         fun getByName(str: String, family: Int): UnitEnum {
             for (e in values()) {
-                if (e.name == str && e.idFamily == family) {
+                if (e.unitName == str && e.idFamily == family) {
                     return e
                 }
             }

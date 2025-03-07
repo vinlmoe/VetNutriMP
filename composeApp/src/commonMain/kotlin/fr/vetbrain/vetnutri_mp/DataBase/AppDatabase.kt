@@ -26,7 +26,7 @@ import kotlinx.coroutines.IO
                         SupplementalVariableEntity::class,
                         FoodEntity::class,
                         NutrientValueEntity::class],
-        version = 7,
+        version = 9,
         exportSchema = true
 )
 @TypeConverters(Converters::class)

@@ -167,8 +167,8 @@ class DatabaseAnimalRepository(private val animalDao: AnimalDao, private val foo
                                                                 if (aliment.deprecated == true) 1
                                                                 else 0,
                                                         DataB = aliment.DataB ?: "",
-                                                        RefRation = null,
-                                                        RefAlimUnif = null,
+                                                        RefRation = "",
+                                                        RefAlimUnif = "",
                                                         cont = "NO" // Valeur par défaut
                                                 )
 
@@ -471,6 +471,7 @@ class DatabaseAnimalRepository(private val animalDao: AnimalDao, private val foo
                                                                                                 variable.uuid,
                                                                                         value =
                                                                                                 suppVar.varue
+                                                                                                        ?: 0f
                                                                                 )
                                                                         )
                                                         }
@@ -562,9 +563,9 @@ class DatabaseAnimalRepository(private val animalDao: AnimalDao, private val foo
                                                                                                         DataB =
                                                                                                                 "",
                                                                                                         RefRation =
-                                                                                                                null,
+                                                                                                                "",
                                                                                                         RefAlimUnif =
-                                                                                                                null,
+                                                                                                                "",
                                                                                                         cont =
                                                                                                                 "NO"
                                                                                                 )

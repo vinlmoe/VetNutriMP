@@ -2,7 +2,7 @@ package fr.vetbrain.vetnutri_mp.DataBase
 
 import androidx.room.*
 import kotlinx.coroutines.flow.Flow
-
+/*
 @Dao
 interface ReferenceDao {
     // Opérations pour EquationEntity
@@ -86,4 +86,4 @@ interface ReferenceDao {
 
     @Query("SELECT * FROM speReqEq WHERE refEq = :equationId")
     suspend fun getSpeReqEqsForEquation(equationId: String): List<SpeReqEqEntity>
-}
+}*/
