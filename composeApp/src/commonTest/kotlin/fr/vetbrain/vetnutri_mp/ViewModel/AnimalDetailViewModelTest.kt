@@ -9,6 +9,7 @@ import fr.vetbrain.vetnutri_mp.Repository.ConsultationRepository
 import fr.vetbrain.vetnutri_mp.Repository.FoodRepository
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import fr.vetbrain.vetnutri_mp.Utils.TestDispatchers
+import kotlin.test.*
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -109,9 +110,9 @@ class AnimalDetailViewModelTest : BaseTest() {
                 )
             }
 
-    @kotlin.test.AfterTest
-    fun tearDown() {
-        // Réinitialiser les dispatchers à leur valeur par défaut
+    @AfterTest
+    override fun tearDown() {
+        super.tearDown()
         AppDispatchers.resetDispatchers()
     }
 }

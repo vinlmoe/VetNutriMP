@@ -3,34 +3,41 @@ package fr.vetbrain.vetnutri_mp.Data
 import fr.vetbrain.vetnutri_mp.BaseTest
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.Sex
+import kotlin.test.*
+import kotlin.test.BeforeTest
 import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertNotNull
-import kotlin.test.assertTrue
 import kotlinx.datetime.LocalDate
 
 class AnimalEvTest : BaseTest() {
+    private lateinit var animalTest: AnimalEv
+    private val defaultBirthDate = LocalDate(2020, 1, 1)
+
+    @BeforeTest
+    override fun setUp() {
+        super.setUp()
+        animalTest = AnimalEv()
+    }
+
     @Test
     fun `test création d'un animal avec constructeur par défaut`() {
-        val animal = AnimalEv()
-
-        assertNotNull(animal.uuid)
-        assertEquals("", animal.nom)
-        assertEquals(false, animal.dead)
-        assertEquals(null, animal.id)
-        assertEquals(Sex.MALE_ENTIER.id, animal.sexId)
-        assertEquals(Espece.CHIEN.label, animal.specieId)
-        assertEquals("", animal.ownerName)
-        assertEquals(null, animal.birthdate)
-        assertEquals("", animal.race)
-        assertEquals("", animal.summary)
-        assertTrue(animal.consultations.isEmpty())
-        assertTrue(animal.weightHistory.isEmpty())
+        with(animalTest) {
+            assertNotNull(uuid)
+            assertEquals("", nom)
+            assertFalse(dead)
+            assertNull(id)
+            assertEquals(Sex.MALE_ENTIER.id, sexId)
+            assertEquals(Espece.CHIEN.label, specieId)
+            assertEquals("", ownerName)
+            assertNull(birthdate)
+            assertEquals("", race)
+            assertEquals("", summary)
+            assertTrue(consultations.isEmpty())
+            assertTrue(weightHistory.isEmpty())
+        }
     }
 
     @Test
     fun `test création d'un animal avec paramètres spécifiques`() {
-        val birthDate = LocalDate(2020, 1, 1)
         val animal =
                 AnimalEv(
                         nom = "Rex",
@@ -39,95 +46,134 @@ class AnimalEvTest : BaseTest() {
                         sexId = Sex.MALE_ENTIER.id,
                         specieId = Espece.CHIEN.name,
                         ownerName = "Jean Dupont",
-                        birthdate = birthDate,
+                        birthdate = defaultBirthDate,
                         race = "Labrador",
                         summary = "Animal de test"
                 )
 
-        assertNotNull(animal.uuid)
-        assertEquals("Rex", animal.nom)
-        assertEquals(false, animal.dead)
-        assertEquals("TEST001", animal.id)
-        assertEquals(Sex.MALE_ENTIER.id, animal.sexId)
-        assertEquals(Espece.CHIEN.name, animal.specieId)
-        assertEquals("Jean Dupont", animal.ownerName)
-        assertEquals(birthDate, animal.birthdate)
-        assertEquals("Labrador", animal.race)
-        assertEquals("Animal de test", animal.summary)
+        with(animal) {
+            assertNotNull(uuid)
+            assertEquals("Rex", nom)
+            assertFalse(dead)
+            assertEquals("TEST001", id)
+            assertEquals(Sex.MALE_ENTIER.id, sexId)
+            assertEquals(Espece.CHIEN.name, specieId)
+            assertEquals("Jean Dupont", ownerName)
+            assertEquals(defaultBirthDate, birthdate)
+            assertEquals("Labrador", race)
+            assertEquals("Animal de test", summary)
+            assertTrue(consultations.isEmpty())
+            assertTrue(weightHistory.isEmpty())
+        }
     }
 
     @Test
-    fun `test getSex retourne le bon sexe`() {
-        val animal = AnimalEv(sexId = Sex.FEMELLE_ENTIERE.id)
-        assertEquals(Sex.FEMELLE_ENTIERE, animal.getSex())
+    fun `test gestion du sexe de l'animal`() {
+        // Test par défaut
+        assertEquals(Sex.MALE_ENTIER, animalTest.getSex())
+
+        // Test avec un sexe spécifique
+        animalTest.setSex(Sex.FEMELLE_ENTIERE)
+        assertEquals(Sex.FEMELLE_ENTIERE.id, animalTest.sexId)
+        assertEquals(Sex.FEMELLE_ENTIERE, animalTest.getSex())
+
+        // Test avec un ID invalide
+        val animalInvalide = AnimalEv(sexId = -1)
+        assertEquals(
+                Sex.MALE_ENTIER,
+                animalInvalide.getSex(),
+                "Un ID de sexe invalide devrait retourner MALE_ENTIER"
+        )
     }
 
     @Test
-    fun `test getSex retourne MALE_ENTIER par défaut pour un ID invalide`() {
-        val animal = AnimalEv(sexId = -1)
-        assertEquals(Sex.MALE_ENTIER, animal.getSex())
+    fun `test gestion de l'espèce de l'animal`() {
+        // Test par défaut
+        assertEquals(Espece.CHIEN, animalTest.getEspece())
+
+        // Test avec une espèce spécifique
+        animalTest.setEspece(Espece.CHAT)
+        assertEquals(Espece.CHAT.name, animalTest.specieId)
+        assertEquals(Espece.CHAT, animalTest.getEspece())
+
+        // Test avec un nom invalide
+        val animalInvalide = AnimalEv(specieId = "INVALID")
+        assertEquals(
+                Espece.CHIEN,
+                animalInvalide.getEspece(),
+                "Un nom d'espèce invalide devrait retourner CHIEN"
+        )
     }
 
     @Test
-    fun `test setSex met à jour correctement le sexId`() {
-        val animal = AnimalEv()
-        animal.setSex(Sex.FEMELLE_ENTIERE)
-        assertEquals(Sex.FEMELLE_ENTIERE.id, animal.sexId)
-    }
-
-    @Test
-    fun `test getEspece retourne la bonne espèce`() {
-        val animal = AnimalEv(specieId = Espece.CHAT.name)
-        assertEquals(Espece.CHAT, animal.getEspece())
-    }
-
-    @Test
-    fun `test getEspece retourne CHIEN par défaut pour un nom invalide`() {
-        val animal = AnimalEv(specieId = "INVALID")
-        assertEquals(Espece.CHIEN, animal.getEspece())
-    }
-
-    @Test
-    fun `test setEspece met à jour correctement le specieId`() {
-        val animal = AnimalEv()
-        animal.setEspece(Espece.CHAT)
-        assertEquals(Espece.CHAT.name, animal.specieId)
-    }
-
-    @Test
-    fun `test createTestAnimal crée un animal de test valide`() {
+    fun `test création d'un animal de test`() {
         val testAnimal = AnimalEv.createTestAnimal()
 
-        assertEquals("Rex", testAnimal.nom)
-        assertEquals(false, testAnimal.dead)
-        assertEquals("TEST001", testAnimal.id)
-        assertEquals(Sex.MALE_ENTIER.id, testAnimal.sexId)
-        assertEquals(Espece.CHIEN.name, testAnimal.specieId)
-        assertEquals("Jean Dupont", testAnimal.ownerName)
-        assertEquals(LocalDate(2020, 1, 1), testAnimal.birthdate)
-        assertEquals("Labrador", testAnimal.race)
-        assertEquals("Animal de test", testAnimal.summary)
+        with(testAnimal) {
+            assertNotNull(uuid)
+            assertEquals("Rex", nom)
+            assertFalse(dead)
+            assertEquals("TEST001", id)
+            assertEquals(Sex.MALE_ENTIER.id, sexId)
+            assertEquals(Espece.CHIEN.name, specieId)
+            assertEquals("Jean Dupont", ownerName)
+            assertEquals(defaultBirthDate, birthdate)
+            assertEquals("Labrador", race)
+            assertEquals("Animal de test", summary)
+            assertTrue(consultations.isEmpty())
+            assertTrue(weightHistory.isEmpty())
+        }
     }
 
-    // Ce test ne semble pas correspondre aux paramètres du constructeur de AnimalEv
-    // Il est donc commenté jusqu'à ce que la structure soit mise à jour
-    /*@Test
-    fun testAnimalEvCreation() {
+    @Test
+    fun `test modification des données de l'animal`() {
+        // Test modification du nom
+        animalTest = animalTest.copy(nom = "Nouveau nom")
+        assertEquals("Nouveau nom", animalTest.nom)
+
+        // Test modification du statut de vie
+        animalTest = animalTest.copy(dead = true)
+        assertTrue(animalTest.dead)
+
+        // Test modification de l'ID
+        animalTest = animalTest.copy(id = "NOUVEAU001")
+        assertEquals("NOUVEAU001", animalTest.id)
+
+        // Test modification du propriétaire
+        animalTest = animalTest.copy(ownerName = "Nouveau propriétaire")
+        assertEquals("Nouveau propriétaire", animalTest.ownerName)
+
+        // Test modification de la date de naissance
+        val nouvelleDateNaissance = LocalDate(2021, 6, 15)
+        animalTest = animalTest.copy(birthdate = nouvelleDateNaissance)
+        assertEquals(nouvelleDateNaissance, animalTest.birthdate)
+
+        // Test modification de la race
+        animalTest = animalTest.copy(race = "Nouvelle race")
+        assertEquals("Nouvelle race", animalTest.race)
+
+        // Test modification du résumé
+        animalTest = animalTest.copy(summary = "Nouveau résumé")
+        assertEquals("Nouveau résumé", animalTest.summary)
+    }
+
+    @Test
+    fun `test gestion des chaînes vides et nulles`() {
         val animal =
                 AnimalEv(
-                        id = "TEST002",
-                        nom = "Rex",
-                        specieId = Espece.CHIEN.name,
-                        race = "Labrador",
-                        sexId = Sex.MALE_ENTIER.id,
-                        birthdate = LocalDate(2018, 1, 1),
-                        ownerName = "Jean Dupont"
+                        nom = "",
+                        ownerName = "", // ownerName ne peut pas être null
+                        race = "  ",
+                        summary = "",
+                        id = null
                 )
 
-        assertEquals("TEST002", animal.id)
-        assertEquals("Rex", animal.nom)
-        assertEquals(Espece.CHIEN.name, animal.specieId)
-        assertEquals("Labrador", animal.race)
-        assertEquals(Sex.MALE_ENTIER.id, animal.sexId)
-    }*/
+        with(animal) {
+            assertEquals("", nom, "Le nom vide devrait être préservé")
+            assertEquals("", ownerName, "Le nom du propriétaire vide devrait être préservé")
+            assertEquals("  ", race, "Les espaces dans la race devraient être préservés")
+            assertEquals("", summary, "Le résumé vide devrait être préservé")
+            assertNull(id, "L'ID null devrait rester null")
+        }
+    }
 }

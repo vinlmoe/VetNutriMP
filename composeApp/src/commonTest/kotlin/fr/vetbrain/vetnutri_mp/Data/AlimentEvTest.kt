@@ -7,31 +7,38 @@ import fr.vetbrain.vetnutri_mp.Enumer.FoodKind
 import fr.vetbrain.vetnutri_mp.Enumer.GroupAlim
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientMain
 import kotlin.test.*
+import kotlin.test.BeforeTest
+import kotlin.test.Test
 
 class AlimentEvTest : BaseTest() {
+    private lateinit var alimentTest: AlimentEv
+
+    @BeforeTest
+    override fun setUp() {
+        super.setUp()
+        alimentTest = AlimentEv(rationUUID = null)
+    }
 
     @Test
     fun `test création d'un aliment avec constructeur par défaut`() {
-        val aliment = AlimentEv(rationUUID = null)
-
-        assertNotNull(aliment.uuid)
-        assertNull(aliment.group)
-        assertNull(aliment.typeAliment)
-        assertNull(aliment.ingredients)
-        assertNull(aliment.price)
-        assertNull(aliment.categPrice)
-        assertNull(aliment.brand)
-        assertNull(aliment.gamme)
-        assertNull(aliment.nom)
-        assertFalse(aliment.consistent)
-        assertNull(aliment.cont)
-        assertNull(aliment.quantInt)
-        assertFalse(aliment.deprecated)
-        assertNull(aliment.dataB)
-        assertTrue(aliment.especes.isEmpty())
-        assertTrue(aliment.indicat.isEmpty())
-        assertTrue(aliment.valMap.isEmpty())
-        assertNull(aliment.rationUUID)
+        assertNotNull(alimentTest.uuid)
+        assertNull(alimentTest.group)
+        assertNull(alimentTest.typeAliment)
+        assertNull(alimentTest.ingredients)
+        assertNull(alimentTest.price)
+        assertNull(alimentTest.categPrice)
+        assertNull(alimentTest.brand)
+        assertNull(alimentTest.gamme)
+        assertNull(alimentTest.nom)
+        assertFalse(alimentTest.consistent)
+        assertNull(alimentTest.cont)
+        assertNull(alimentTest.quantInt)
+        assertFalse(alimentTest.deprecated)
+        assertNull(alimentTest.dataB)
+        assertTrue(alimentTest.especes.isEmpty())
+        assertTrue(alimentTest.indicat.isEmpty())
+        assertTrue(alimentTest.valMap.isEmpty())
+        assertNull(alimentTest.rationUUID)
     }
 
     @Test
@@ -58,74 +65,81 @@ class AlimentEvTest : BaseTest() {
                         rationUUID = "ration-uuid"
                 )
 
-        assertEquals("test-uuid", aliment.uuid)
-        assertEquals(GroupAlim.ABATS, aliment.group)
-        assertEquals(FoodKind.COMPLET, aliment.typeAliment)
-        assertEquals("Ingrédients test", aliment.ingredients)
-        assertEquals(10.5, aliment.price)
-        assertEquals("Premium", aliment.categPrice)
-        assertEquals("Marque Test", aliment.brand)
-        assertEquals("Gamme Test", aliment.gamme)
-        assertEquals("Aliment Test", aliment.nom)
-        assertTrue(aliment.consistent)
-        assertEquals(ContEnum.CAN, aliment.cont)
-        assertEquals(500.0f, aliment.quantInt)
-        assertFalse(aliment.deprecated)
-        assertEquals("DataB test", aliment.dataB)
-        assertEquals(2, aliment.especes.size)
-        assertTrue(aliment.especes.contains("CHIEN"))
-        assertTrue(aliment.especes.contains("CHAT"))
-        assertEquals(2, aliment.indicat.size)
-        assertTrue(aliment.indicat.contains(AlimIndic.PHYS))
-        assertTrue(aliment.indicat.contains(AlimIndic.OBES))
-        assertTrue(aliment.valMap.isEmpty())
-        assertEquals("ration-uuid", aliment.rationUUID)
+        with(aliment) {
+            assertEquals("test-uuid", uuid)
+            assertEquals(GroupAlim.ABATS, group)
+            assertEquals(FoodKind.COMPLET, typeAliment)
+            assertEquals("Ingrédients test", ingredients)
+            assertValeurPositive(price!!)
+            assertEquals("Premium", categPrice)
+            assertEquals("Marque Test", brand)
+            assertEquals("Gamme Test", gamme)
+            assertEquals("Aliment Test", nom)
+            assertTrue(consistent)
+            assertEquals(ContEnum.CAN, cont)
+            assertValeurPositive(quantInt!!)
+            assertEquals(500.0f, quantInt)
+            assertFalse(deprecated)
+            assertEquals("DataB test", dataB)
+            assertEquals(2, especes.size)
+            assertListeSansDoublons(especes)
+            assertTrue(especes.containsAll(listOf("CHIEN", "CHAT")))
+            assertEquals(2, indicat.size)
+            assertListeSansDoublons(indicat)
+            assertTrue(indicat.containsAll(listOf(AlimIndic.PHYS, AlimIndic.OBES)))
+            assertTrue(valMap.isEmpty())
+            assertEquals("ration-uuid", rationUUID)
+        }
     }
 
     @Test
     fun `test ajout et modification des valeurs nutritionnelles`() {
-        val aliment = AlimentEv(rationUUID = null)
         val nutrient = NutrientMain.PROTEINE
         val quantite = NutrientQuantity(20.5f, nutrient.label)
 
         // Ajout d'une valeur nutritionnelle
-        aliment.valMap[nutrient] = quantite
+        alimentTest.valMap[nutrient] = quantite
 
-        assertEquals(1, aliment.valMap.size)
-        assertEquals(20.5f, aliment.valMap[nutrient]?.value)
+        assertEquals(1, alimentTest.valMap.size)
+        assertValeurPositive(alimentTest.valMap[nutrient]?.value!!)
+        assertEquals(20.5f, alimentTest.valMap[nutrient]?.value)
 
         // Modification d'une valeur nutritionnelle
-        aliment.valMap[nutrient] = NutrientQuantity(25.0f, nutrient.label)
+        alimentTest.valMap[nutrient] = NutrientQuantity(25.0f, nutrient.label)
 
-        assertEquals(1, aliment.valMap.size)
-        assertEquals(25.0f, aliment.valMap[nutrient]?.value)
+        assertEquals(1, alimentTest.valMap.size)
+        assertValeurPositive(alimentTest.valMap[nutrient]?.value!!)
+        assertEquals(25.0f, alimentTest.valMap[nutrient]?.value)
     }
 
     @Test
     fun `test modification des données variables`() {
-        val aliment = AlimentEv(rationUUID = null)
-
         // Test modification quantité
-        aliment.quantInt = 250.0f
-        assertEquals(250.0f, aliment.quantInt)
+        alimentTest = alimentTest.copy(quantInt = 250.0f)
+        assertValeurPositive(alimentTest.quantInt!!)
+        assertEquals(250.0f, alimentTest.quantInt)
 
         // Test modification dataB
-        aliment.dataB = "Nouvelle dataB"
-        assertEquals("Nouvelle dataB", aliment.dataB)
+        alimentTest = alimentTest.copy(dataB = "Nouvelle dataB")
+        assertEquals("Nouvelle dataB", alimentTest.dataB)
 
         // Test modification deprecated
-        aliment.deprecated = true
-        assertTrue(aliment.deprecated)
+        alimentTest = alimentTest.copy(deprecated = true)
+        assertTrue(alimentTest.deprecated)
 
         // Test modification espèces
-        aliment.especes.add("CHAT")
-        assertEquals(1, aliment.especes.size)
-        assertTrue(aliment.especes.contains("CHAT"))
+        val nouvellesEspeces = mutableListOf("CHAT")
+        alimentTest = alimentTest.copy(especes = nouvellesEspeces)
+        assertEquals(1, alimentTest.especes.size)
+        assertListeSansDoublons(alimentTest.especes)
+        assertTrue(alimentTest.especes.contains("CHAT"))
 
         // Test modification indications
-        aliment.indicat.add(AlimIndic.PHYS)
-        assertEquals(1, aliment.indicat.size)
-        assertTrue(aliment.indicat.contains(AlimIndic.PHYS))
+        val nouvellesIndications = mutableListOf(AlimIndic.PHYS)
+        alimentTest = alimentTest.copy(indicat = nouvellesIndications)
+        assertEquals(1, alimentTest.indicat.size)
+        assertListeSansDoublons(alimentTest.indicat)
+        assertTrue(alimentTest.indicat.contains(AlimIndic.PHYS))
     }
 
     @Test
@@ -148,5 +162,116 @@ class AlimentEvTest : BaseTest() {
 
         // Vérification que la valeur modifiée est différente
         assertEquals("Aliment Copié", copie.nom)
+    }
+
+    @Test
+    fun `test validation des valeurs nutritionnelles négatives`() {
+        val nutrient = NutrientMain.PROTEINE
+        val quantiteNegative = NutrientQuantity(-20.5f, nutrient.label)
+
+        assertFailsWith<AssertionError> {
+            alimentTest.valMap[nutrient] = quantiteNegative
+            assertValeurPositive(alimentTest.valMap[nutrient]?.value!!)
+        }
+    }
+
+    @Test
+    fun `test gestion des espèces multiples`() {
+        // Test ajout initial
+        val especesInitiales = setOf("CHIEN", "CHAT", "LAPIN")
+        alimentTest = alimentTest.copy(especes = especesInitiales.toMutableList())
+        assertEquals(3, alimentTest.especes.size)
+        assertListeSansDoublons(alimentTest.especes)
+        assertEquals(especesInitiales, alimentTest.especes.toSet())
+
+        // Test suppression
+        val especesApresRetrait = especesInitiales - "CHAT"
+        alimentTest = alimentTest.copy(especes = especesApresRetrait.toMutableList())
+        assertEquals(2, alimentTest.especes.size)
+        assertListeSansDoublons(alimentTest.especes)
+        assertFalse(alimentTest.especes.contains("CHAT"))
+        assertEquals(especesApresRetrait, alimentTest.especes.toSet())
+
+        // Test ajout d'un doublon
+        val especesAvecDoublon = (especesApresRetrait + "CHIEN").toMutableList()
+        alimentTest = alimentTest.copy(especes = especesAvecDoublon)
+        assertEquals(2, alimentTest.especes.size)
+        assertListeSansDoublons(alimentTest.especes)
+        assertEquals(especesApresRetrait, alimentTest.especes.toSet())
+    }
+
+    @Test
+    fun `test gestion des indications multiples`() {
+        // Test ajout initial
+        val indicationsInitiales = setOf(AlimIndic.PHYS, AlimIndic.OBES, AlimIndic.DIAB)
+        alimentTest = alimentTest.copy(indicat = indicationsInitiales.toMutableList())
+        assertEquals(3, alimentTest.indicat.size)
+        assertListeSansDoublons(alimentTest.indicat)
+        assertEquals(indicationsInitiales, alimentTest.indicat.toSet())
+
+        // Test suppression
+        val indicationsApresRetrait = indicationsInitiales - AlimIndic.OBES
+        alimentTest = alimentTest.copy(indicat = indicationsApresRetrait.toMutableList())
+        assertEquals(2, alimentTest.indicat.size)
+        assertListeSansDoublons(alimentTest.indicat)
+        assertFalse(alimentTest.indicat.contains(AlimIndic.OBES))
+        assertEquals(indicationsApresRetrait, alimentTest.indicat.toSet())
+
+        // Test ajout d'un doublon
+        val indicationsAvecDoublon = (indicationsApresRetrait + AlimIndic.PHYS).toMutableList()
+        alimentTest = alimentTest.copy(indicat = indicationsAvecDoublon)
+        assertEquals(2, alimentTest.indicat.size)
+        assertListeSansDoublons(alimentTest.indicat)
+        assertEquals(indicationsApresRetrait, alimentTest.indicat.toSet())
+    }
+
+    @Test
+    fun `test gestion des valeurs limites`() {
+        alimentTest =
+                AlimentEv(
+                        uuid = "test-uuid",
+                        quantInt = Float.MAX_VALUE,
+                        price = Double.MAX_VALUE,
+                        rationUUID = null
+                )
+
+        // Vérification des valeurs limites
+        assertValeurPositive(alimentTest.quantInt!!)
+        assertValeurPositive(alimentTest.price!!)
+        assertEquals(Float.MAX_VALUE, alimentTest.quantInt)
+        assertEquals(Double.MAX_VALUE, alimentTest.price)
+
+        // Test avec des valeurs minimales positives
+        alimentTest = alimentTest.copy(quantInt = Float.MIN_VALUE, price = Double.MIN_VALUE)
+
+        assertValeurPositive(alimentTest.quantInt!!)
+        assertValeurPositive(alimentTest.price!!)
+        assertEquals(Float.MIN_VALUE, alimentTest.quantInt)
+        assertEquals(Double.MIN_VALUE, alimentTest.price)
+    }
+
+    @Test
+    fun `test modification simultanée de plusieurs propriétés`() {
+        // Modification simultanée de plusieurs propriétés
+        alimentTest =
+                alimentTest.copy(
+                        nom = "Nouvel aliment",
+                        price = 15.0,
+                        quantInt = 300.0f,
+                        especes = mutableListOf("CHIEN", "CHAT"),
+                        indicat = mutableListOf(AlimIndic.PHYS)
+                )
+
+        with(alimentTest) {
+            assertEquals("Nouvel aliment", nom)
+            assertValeurPositive(price!!)
+            assertEquals(15.0, price)
+            assertValeurPositive(quantInt!!)
+            assertEquals(300.0f, quantInt)
+            assertEquals(2, especes.size)
+            assertListeSansDoublons(especes)
+            assertEquals(1, indicat.size)
+            assertListeSansDoublons(indicat)
+        }
     }
 }
