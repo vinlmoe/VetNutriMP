@@ -23,7 +23,28 @@ import kotlinx.datetime.LocalDate
 class DatabaseAnimalRepository(private val animalDao: AnimalDao, private val foodDao: FoodDao) :
         AnimalRepository {
         override suspend fun saveAnimal(animal: AnimalEv) {
-                withContext(AppDispatchers.Default) { animalDao.insert(animal.toEntity()) }
+                withContext(AppDispatchers.Default) {
+                        // Sauvegarder l'animal
+                        animalDao.insert(animal.toEntity())
+
+                        // Sauvegarder les consultations
+                        animal.consultations.forEach { consultation ->
+                                // S'assurer que l'ID de l'animal est correctement défini
+                                consultation.idAnim = animal.uuid
+                                // Insérer la consultation
+                                animalDao.insertConsultation(
+                                        consultation.toEntity(includeRelations = false)
+                                )
+                        }
+
+                        // Sauvegarder les poids
+                        animal.weightHistory.forEach { weight ->
+                                // S'assurer que la référence de l'animal est correctement définie
+                                weight.refAnimal = animal.uuid
+                                // Insérer le poids
+                                animalDao.insertWeight(weight.toEntity())
+                        }
+                }
         }
 
         override suspend fun getAllAnimals(): List<AnimalEv> {
@@ -62,18 +83,80 @@ class DatabaseAnimalRepository(private val animalDao: AnimalDao, private val foo
                         val entity = animalDao.getAnimalById(id) ?: return@withContext null
 
                         // Convertir l'entité en objet de domaine
-                        AnimalEv(
-                                uuid = entity.uuid,
-                                nom = entity.nom ?: "",
-                                dead = entity.dead ?: false,
-                                id = entity.id,
-                                sexId = entity.sexId ?: 0,
-                                specieId = entity.specieId ?: "",
-                                ownerName = entity.ownerName ?: "",
-                                birthdate = entity.birthdate?.let { LocalDate.parse(it) },
-                                race = entity.race ?: "",
-                                summary = entity.summary ?: ""
-                        )
+                        val animalEv =
+                                AnimalEv(
+                                        uuid = entity.uuid,
+                                        nom = entity.nom ?: "",
+                                        dead = entity.dead ?: false,
+                                        id = entity.id,
+                                        sexId = entity.sexId ?: 0,
+                                        specieId = entity.specieId ?: "",
+                                        ownerName = entity.ownerName ?: "",
+                                        birthdate = entity.birthdate?.let { LocalDate.parse(it) },
+                                        race = entity.race ?: "",
+                                        summary = entity.summary ?: ""
+                                )
+
+                        // Charger les consultations associées
+                        val consultationEntities = animalDao.getConsultationsForAnimal(id)
+                        if (consultationEntities.isNotEmpty()) {
+                                animalEv.consultations.addAll(
+                                        consultationEntities.map { consultEntity ->
+                                                ConsultationEv(
+                                                        uuid = consultEntity.uuid,
+                                                        idAnim = consultEntity.idAnim,
+                                                        date =
+                                                                consultEntity.date?.let {
+                                                                        LocalDate.parse(it)
+                                                                },
+                                                        objectConsult = consultEntity.objectConsult
+                                                                        ?: "",
+                                                        observation = consultEntity.observation
+                                                                        ?: "",
+                                                        cRendu = consultEntity.cRendu ?: "",
+                                                        weight = consultEntity.weight,
+                                                        idealWeight = consultEntity.idealWeight,
+                                                        water = consultEntity.water,
+                                                        bodyFat = consultEntity.bodyFat,
+                                                        methodAnalysis =
+                                                                consultEntity.methodAnalysis ?: "",
+                                                        BCS = consultEntity.BCS,
+                                                        k1Id = consultEntity.k1Id ?: "",
+                                                        k1Value = consultEntity.k1Value,
+                                                        k2Id = consultEntity.k2Id ?: "",
+                                                        k2Value = consultEntity.k2Value,
+                                                        k3Id = consultEntity.k3Id ?: "",
+                                                        k3Value = consultEntity.k3Value,
+                                                        k4Id = consultEntity.k4Id ?: "",
+                                                        k4Value = consultEntity.k4Value,
+                                                        k5Id = consultEntity.k5Id ?: "",
+                                                        k5Value = consultEntity.k5Value,
+                                                        nLittle = consultEntity.nLittle,
+                                                        pAdult = consultEntity.pAdult,
+                                                        coefGes = consultEntity.coefGes,
+                                                        coefLact = consultEntity.coefLact,
+                                                        MCS = consultEntity.MCS
+                                                )
+                                        }
+                                )
+                        }
+
+                        // Charger les poids associés
+                        val weightEntities = animalDao.getWeightsForAnimal(id)
+                        if (weightEntities.isNotEmpty()) {
+                                animalEv.weightHistory.addAll(
+                                        weightEntities.map { weightEntity ->
+                                                WeightDate(
+                                                        uuid = weightEntity.uuid,
+                                                        refAnimal = weightEntity.refAnimal,
+                                                        date = LocalDate.parse(weightEntity.date),
+                                                        value = weightEntity.value
+                                                )
+                                        }
+                                )
+                        }
+
+                        animalEv
                 }
         }
 

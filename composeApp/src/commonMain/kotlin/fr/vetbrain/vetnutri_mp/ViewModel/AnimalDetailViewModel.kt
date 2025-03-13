@@ -57,7 +57,11 @@ class AnimalDetailViewModel(
             println("DEBUG_ALIMENTS: Début setAnimal pour ${animal.nom}")
 
             // Conserver une référence à l'animal original
-            val originalAnimal = animal.copy()
+            val originalAnimal =
+                    animal.copy(
+                            // Assurons-nous de copier les consultations existantes
+                            consultations = animal.consultations.map { it.copy() }.toMutableList()
+                    )
 
             // Mettre à jour l'animal dans le ViewModel
             _animal.value = originalAnimal
@@ -87,8 +91,19 @@ class AnimalDetailViewModel(
                 }
 
                 // Mettre à jour l'animal avec les consultations chargées
-                _animal.update { currentAnimal ->
-                    currentAnimal?.copy(consultations = consultations.toMutableList())
+                if (consultations.isNotEmpty()) {
+                    _animal.update { currentAnimal ->
+                        currentAnimal?.copy(consultations = consultations.toMutableList())
+                    }
+                    println(
+                            "DEBUG_ALIMENTS: Animal mis à jour avec ${consultations.size} consultations"
+                    )
+                } else {
+                    // Si aucune consultation n'est chargée, conservons celles qui étaient déjà dans
+                    // l'animal
+                    println(
+                            "DEBUG_ALIMENTS: Aucune consultation chargée, conservation des ${animal.consultations.size} consultations existantes"
+                    )
                 }
 
                 println("DEBUG_ALIMENTS: Animal mis à jour avec les consultations")
