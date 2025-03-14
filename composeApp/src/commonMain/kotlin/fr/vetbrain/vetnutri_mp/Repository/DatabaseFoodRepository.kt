@@ -61,15 +61,30 @@ class DatabaseFoodRepository(
      */
     override suspend fun getAllFoods(): List<AlimentEv> {
         return withContext(AppDispatchers.IO) {
-            return@withContext foodDao.getAllFoods().map { foodEntity ->
-                val nutrientValues =
-                        if (nutrientValueDao != null) {
-                            nutrientValueDao.getNutrientValues(foodEntity.uuid)
-                        } else {
-                            emptyList()
-                        }
-                foodEntity.toAlimentEv(nutrientValues = nutrientValues)
-            }
+            println(
+                    "DEBUG DatabaseFoodRepository: Récupération de tous les aliments depuis la base de données"
+            )
+
+            // Récupérer tous les aliments de la base de données
+            val foodEntities = foodDao.getAllFoods()
+            println(
+                    "DEBUG DatabaseFoodRepository: ${foodEntities.size} entités d'aliments récupérées"
+            )
+
+            // Transformer chaque entité en modèle de domaine avec ses valeurs nutritionnelles
+            val result =
+                    foodEntities.map { foodEntity ->
+                        val nutrientValues =
+                                if (nutrientValueDao != null) {
+                                    nutrientValueDao.getNutrientValues(foodEntity.uuid)
+                                } else {
+                                    emptyList()
+                                }
+                        foodEntity.toAlimentEv(nutrientValues = nutrientValues)
+                    }
+
+            println("DEBUG DatabaseFoodRepository: ${result.size} aliments transformés avec succès")
+            return@withContext result
         }
     }
 
@@ -621,16 +636,100 @@ class DatabaseFoodRepository(
      * @param food Aliment à mettre à jour
      */
     override suspend fun updateFood(food: AlimentEv) {
-        withContext(AppDispatchers.IO) {
-            // Mettre à jour l'entité principale
-            foodDao.update(food.toFoodEntity())
+        return withContext(AppDispatchers.IO) {
+            try {
+                // Vérifier que l'aliment existe
+                val existingFood = foodDao.getFoodById(food.uuid)
+                if (existingFood == null) {
+                    println(
+                            "DEBUG DatabaseFoodRepository: ERREUR - Aliment non trouvé dans la base de données: ${food.uuid}"
+                    )
+                    throw Exception("Aliment non trouvé dans la base de données: ${food.uuid}")
+                }
 
-            // Supprimer et réinsérer les valeurs nutritionnelles
-            nutrientValueDao?.deleteAllNutrientValuesForAliment(food.uuid)
+                println("DEBUG DatabaseFoodRepository: Aliment trouvé, conversion en FoodEntity")
 
-            val nutrientValues = food.valMap.toNutrientValueEntities(food.uuid)
-            if (nutrientValueDao != null && nutrientValues.isNotEmpty()) {
-                nutrientValueDao.insertNutrientValues(nutrientValues)
+                // Au lieu de modifier toute l'entité, on garde la référence à la ration de
+                // l'existant
+                // pour éviter les problèmes de clé étrangère
+                val foodEntity = food.toFoodEntity().copy(RefRation = existingFood.RefRation)
+                println(
+                        "DEBUG DatabaseFoodRepository: Conversion réussie, mise à jour de l'entité principale"
+                )
+
+                try {
+                    // Mettre à jour l'entité principale
+                    foodDao.update(foodEntity)
+                    println(
+                            "DEBUG DatabaseFoodRepository: Entité principale mise à jour avec succès"
+                    )
+                } catch (e: Exception) {
+                    println(
+                            "DEBUG DatabaseFoodRepository: Erreur lors de la mise à jour de l'entité principale: ${e.message}"
+                    )
+
+                    // Plan B: si la mise à jour échoue, on essaie de mettre à jour sans la
+                    // référence à la ration
+                    println(
+                            "DEBUG DatabaseFoodRepository: Tentative de mise à jour sans référence à la ration"
+                    )
+                    val updatedEntity = foodEntity.copy(RefRation = null)
+                    foodDao.update(updatedEntity)
+                    println(
+                            "DEBUG DatabaseFoodRepository: Entité principale mise à jour sans référence à la ration"
+                    )
+                }
+
+                // Supprimer toutes les anciennes valeurs nutritionnelles quelle que soit la
+                // situation
+                println(
+                        "DEBUG DatabaseFoodRepository: Suppression des anciennes valeurs nutritionnelles"
+                )
+                if (nutrientValueDao != null) {
+                    nutrientValueDao.deleteAllNutrientValuesForAliment(food.uuid)
+                    println(
+                            "DEBUG DatabaseFoodRepository: Anciennes valeurs nutritionnelles supprimées avec succès"
+                    )
+                } else {
+                    println(
+                            "DEBUG DatabaseFoodRepository: AVERTISSEMENT - nutrientValueDao est null, impossible de supprimer les valeurs nutritionnelles"
+                    )
+                }
+
+                // Seulement si des valeurs nutritionnelles existent et que le DAO existe, les
+                // ajouter
+                println(
+                        "DEBUG DatabaseFoodRepository: Conversion des valeurs nutritionnelles en entités"
+                )
+                val nutrientValues = food.valMap.toNutrientValueEntities(food.uuid)
+                println(
+                        "DEBUG DatabaseFoodRepository: Nouvelles valeurs nutritionnelles: ${nutrientValues.size}"
+                )
+
+                if (nutrientValues.isNotEmpty() && nutrientValueDao != null) {
+                    println(
+                            "DEBUG DatabaseFoodRepository: Insertion des nouvelles valeurs nutritionnelles"
+                    )
+                    nutrientValues.forEach { entity ->
+                        println(
+                                "DEBUG DatabaseFoodRepository: Nutriment ${entity.nutrientLabel} = ${entity.value}"
+                        )
+                    }
+                    nutrientValueDao.insertNutrientValues(nutrientValues)
+                    println(
+                            "DEBUG DatabaseFoodRepository: Nouvelles valeurs nutritionnelles insérées avec succès"
+                    )
+                } else {
+                    println("DEBUG DatabaseFoodRepository: Aucune valeur nutritionnelle à insérer")
+                }
+
+                println(
+                        "DEBUG DatabaseFoodRepository: Mise à jour de l'aliment terminée avec succès"
+                )
+            } catch (e: Exception) {
+                println("DEBUG DatabaseFoodRepository: ERREUR lors de la mise à jour: ${e.message}")
+                e.printStackTrace()
+                throw e // Relancer l'exception pour que la chaîne de traitement puisse la gérer
             }
         }
     }

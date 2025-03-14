@@ -119,6 +119,8 @@ fun App(appDatabase: AppDatabase) {
         if (currentScreen == Screen.List) {
             animalListViewModel.loadAnimals()
         } else if (currentScreen == Screen.FoodList) {
+            // Toujours recharger explicitement la liste des aliments quand on affiche la liste
+            println("DEBUG App: Rechargement des aliments lors du changement d'écran vers FoodList")
             foodListViewModel.loadFoods()
         }
     }
@@ -129,6 +131,9 @@ fun App(appDatabase: AppDatabase) {
         // non-null)
         if (selectedFoodUuid == null && currentScreen == Screen.FoodList) {
             // Recharger explicitement la liste des aliments
+            println(
+                    "DEBUG App: Rechargement des aliments après édition (selectedFoodUuid devient null)"
+            )
             foodListViewModel.loadFoods()
         }
     }

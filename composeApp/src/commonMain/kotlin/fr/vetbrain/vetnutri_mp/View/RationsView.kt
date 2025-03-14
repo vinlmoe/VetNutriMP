@@ -148,6 +148,13 @@ fun RationsView(viewModel: AnimalDetailViewModel, modifier: Modifier = Modifier)
                                         }
                                 }
                         }
+                } else {
+                        // Si la consultation n'a pas de rations, réinitialiser la ration
+                        // sélectionnée
+                        println(
+                                "DEBUG Rations - La consultation n'a pas de rations, réinitialisation de la ration sélectionnée"
+                        )
+                        viewModel.resetSelectedRation()
                 }
         }
 
@@ -418,6 +425,12 @@ fun RationsView(viewModel: AnimalDetailViewModel, modifier: Modifier = Modifier)
                                                                                 ?.alimentMutableList
                                                                                 .isNullOrEmpty()
                                                                 ) {
+                                                                        // Message plus explicite et
+                                                                        // vérification que la liste
+                                                                        // est vide
+                                                                        println(
+                                                                                "DEBUG RationsView: La liste d'aliments est vide, affichage du message"
+                                                                        )
                                                                         CenteredMessage(
                                                                                 message =
                                                                                         "Aucun aliment dans cette ration",
@@ -427,6 +440,9 @@ fun RationsView(viewModel: AnimalDetailViewModel, modifier: Modifier = Modifier)
                                                                                         )
                                                                         )
                                                                 } else {
+                                                                        println(
+                                                                                "DEBUG RationsView: Affichage de ${selectedRation?.alimentMutableList?.size ?: 0} aliments"
+                                                                        )
                                                                         LazyColumn(
                                                                                 modifier =
                                                                                         Modifier.weight(

@@ -137,11 +137,45 @@ class FoodEditViewModel(
 
     suspend fun saveAliment(aliment: AlimentEv) {
         try {
+            println("DEBUG FoodEditViewModel: Début saveAliment - UUID: ${aliment.uuid}")
             println("DEBUG FoodEditViewModel: Enregistrement de l'aliment: ${aliment.nom}")
+            println("DEBUG FoodEditViewModel: Nombre de nutriments: ${aliment.valMap.size}")
+
+            // Vérifier si c'est un nouvel aliment ou une mise à jour
+            val existingAliment =
+                    try {
+                        alimentRepository.getAlimentByUUID(aliment.uuid)
+                    } catch (e: Exception) {
+                        println(
+                                "DEBUG FoodEditViewModel: Erreur lors de la recherche de l'aliment existant: ${e.message}"
+                        )
+                        null
+                    }
+
+            if (existingAliment != null) {
+                println("DEBUG FoodEditViewModel: Aliment existant trouvé, mise à jour")
+            } else {
+                println("DEBUG FoodEditViewModel: Nouvel aliment, création")
+            }
+
+            aliment.valMap.forEach { (nutrient, quantity) ->
+                println("DEBUG FoodEditViewModel: Nutriment ${nutrient.label} = ${quantity.value}")
+            }
+
+            // Sauvegarder l'aliment
+            println("DEBUG FoodEditViewModel: Appel à alimentRepository.saveAliment")
             alimentRepository.saveAliment(aliment)
+            println("DEBUG FoodEditViewModel: saveAliment terminé avec succès")
+
+            // Mettre à jour l'état local
+            _alimentState.value = aliment
+            println("DEBUG FoodEditViewModel: État local mis à jour")
         } catch (e: Exception) {
-            println("Erreur lors de l'enregistrement de l'aliment: ${e.message}")
+            println(
+                    "DEBUG FoodEditViewModel: ERREUR lors de l'enregistrement de l'aliment: ${e.message}"
+            )
             e.printStackTrace()
+            throw e // Relancer l'exception pour que la vue puisse la gérer
         }
     }
 }

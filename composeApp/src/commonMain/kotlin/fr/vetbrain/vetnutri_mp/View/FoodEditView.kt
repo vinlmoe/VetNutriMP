@@ -205,6 +205,69 @@ fun FoodEditView(
 
                                                 // Conversion et sauvegarde
                                                 try {
+                                                        // Créer une map de valeurs nutritionnelles
+                                                        // en traitant correctement les valeurs
+                                                        // vides
+                                                        val processedNutrientValues =
+                                                                mutableMapOf<
+                                                                        Nutrient,
+                                                                        fr.vetbrain.vetnutri_mp.Data.NutrientQuantity>()
+
+                                                        // Log pour débugger
+                                                        println(
+                                                                "DEBUG FoodEditView: Nutriments avant traitement: ${nutrientValues.size}"
+                                                        )
+                                                        nutrientValues.forEach { (nutrient, value)
+                                                                ->
+                                                                println(
+                                                                        "DEBUG FoodEditView: Nutriment ${nutrient.label} = '$value'"
+                                                                )
+                                                        }
+
+                                                        // Traiter chaque valeur nutritionnelle
+                                                        allNutrients.forEach { nutrient ->
+                                                                val valueStr =
+                                                                        nutrientValues[nutrient]
+                                                                                ?: ""
+
+                                                                // Si la valeur n'est pas vide et
+                                                                // est valide, l'ajouter à la map
+                                                                if (valueStr.isNotBlank()) {
+                                                                        val value =
+                                                                                valueStr.replace(
+                                                                                                ",",
+                                                                                                "."
+                                                                                        )
+                                                                                        .toFloatOrNull()
+                                                                                        ?: 0f
+                                                                        if (value > 0f) {
+                                                                                processedNutrientValues[
+                                                                                        nutrient] =
+                                                                                        fr.vetbrain
+                                                                                                .vetnutri_mp
+                                                                                                .Data
+                                                                                                .NutrientQuantity(
+                                                                                                        value,
+                                                                                                        nutrient.label
+                                                                                                )
+                                                                        }
+                                                                }
+                                                                // Si vide ou valeur ≤ 0, ne pas
+                                                                // ajouter à la map pour que le
+                                                                // nutriment soit supprimé
+                                                        }
+
+                                                        // Log pour débugger
+                                                        println(
+                                                                "DEBUG FoodEditView: Nutriments après traitement: ${processedNutrientValues.size}"
+                                                        )
+                                                        processedNutrientValues.forEach {
+                                                                (nutrient, quantity) ->
+                                                                println(
+                                                                        "DEBUG FoodEditView: Nutriment traité ${nutrient.label} = ${quantity.value}"
+                                                                )
+                                                        }
+
                                                         val updatedAliment =
                                                                 aliment.copy(
                                                                         nom = nomState.value,
@@ -271,36 +334,45 @@ fun FoodEditView(
                                                                                 selectedIndications
                                                                                         .value,
                                                                         valMap =
-                                                                                nutrientValues
-                                                                                        .mapValues {
-                                                                                                (
-                                                                                                        nutrient,
-                                                                                                        valueStr)
-                                                                                                ->
-                                                                                                val value =
-                                                                                                        valueStr.replace(
-                                                                                                                        ",",
-                                                                                                                        "."
-                                                                                                                )
-                                                                                                                .toFloatOrNull()
-                                                                                                                ?: 0f
-                                                                                                fr.vetbrain
-                                                                                                        .vetnutri_mp
-                                                                                                        .Data
-                                                                                                        .NutrientQuantity(
-                                                                                                                value,
-                                                                                                                nutrient.label
-                                                                                                        )
-                                                                                        }
-                                                                                        .filterValues {
-                                                                                                it.value >
-                                                                                                        0f
-                                                                                        }
-                                                                                        .toMutableMap()
+                                                                                processedNutrientValues
+                                                                                        .toMutableMap(),
+                                                                        // Préserver la référence à
+                                                                        // la ration pour éviter les
+                                                                        // problèmes de clé
+                                                                        // étrangère
+                                                                        rationUUID =
+                                                                                aliment.rationUUID
                                                                 )
-                                                        viewModel.saveAliment(updatedAliment)
-                                                        showSuccessMessage = true
-                                                        onNavigateBack()
+                                                        println(
+                                                                "DEBUG FoodEditView: Avant saveAliment - UUID: ${updatedAliment.uuid}"
+                                                        )
+                                                        println(
+                                                                "DEBUG FoodEditView: Tentative de sauvegarde de l'aliment: ${updatedAliment.nom}"
+                                                        )
+                                                        println(
+                                                                "DEBUG FoodEditView: Nombre de nutriments: ${updatedAliment.valMap.size}"
+                                                        )
+                                                        try {
+                                                                viewModel.saveAliment(
+                                                                        updatedAliment
+                                                                )
+                                                                println(
+                                                                        "DEBUG FoodEditView: Sauvegarde réussie"
+                                                                )
+                                                                showSuccessMessage = true
+                                                                println(
+                                                                        "DEBUG FoodEditView: Navigation vers la liste des aliments après sauvegarde réussie"
+                                                                )
+                                                                onNavigateBack()
+                                                        } catch (e: Exception) {
+                                                                println(
+                                                                        "DEBUG FoodEditView: ERREUR lors de la sauvegarde: ${e.message}"
+                                                                )
+                                                                e.printStackTrace()
+                                                                errorMessage =
+                                                                        "Erreur lors de la sauvegarde: ${e.message}"
+                                                                showErrorMessage = true
+                                                        }
                                                 } catch (e: Exception) {
                                                         errorMessage =
                                                                 "Erreur lors de l'enregistrement: ${e.message}"

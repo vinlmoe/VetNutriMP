@@ -433,16 +433,22 @@ object Mappers {
 
         /**
          * Convertit une map de nutriments et valeurs en liste d'entités de valeurs de nutriments.
+         * Ne crée des entités que pour les nutriments avec des valeurs > 0.
          */
         fun Map<Nutrient, fr.vetbrain.vetnutri_mp.Data.NutrientQuantity>.toNutrientValueEntities(
                 alimentUuid: String
         ): List<NutrientValueEntity> {
-                return map { (nutrient, nutrientQuantity) ->
-                        NutrientValueEntity(
-                                refAliment = alimentUuid,
-                                nutrientLabel = nutrient.label,
-                                value = nutrientQuantity.value
-                        )
+                return mapNotNull { (nutrient, nutrientQuantity) ->
+                        // Ne créer des entités que pour les valeurs strictement positives
+                        if (nutrientQuantity.value > 0) {
+                                NutrientValueEntity(
+                                        refAliment = alimentUuid,
+                                        nutrientLabel = nutrient.label,
+                                        value = nutrientQuantity.value
+                                )
+                        } else {
+                                null
+                        }
                 }
         }
 

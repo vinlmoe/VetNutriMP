@@ -64,21 +64,43 @@ class FoodListViewModel(private val foodRepository: DatabaseFoodRepository) {
         /** Charge la liste des aliments depuis le repository */
         fun loadFoods() {
                 viewModelScope.launch {
+                        println("DEBUG FoodListViewModel: Début du chargement des aliments")
                         val allFoods = foodRepository.getAllFoods()
-                        _foods.value = filterFoods(allFoods)
+                        println(
+                                "DEBUG FoodListViewModel: ${allFoods.size} aliments récupérés de la base de données"
+                        )
 
-                        // Charger les types d'aliments disponibles
-                        val foodTypes = allFoods.mapNotNull { it.typeAliment }.distinct().sorted()
-                        _availableFoodTypes.value = listOf(null) + foodTypes
+                        // Filtrer les aliments selon les critères actuels
+                        val filteredFoods = filterFoods(allFoods)
+                        println(
+                                "DEBUG FoodListViewModel: ${filteredFoods.size} aliments après filtrage"
+                        )
 
-                        // Charger les groupes d'aliments disponibles
-                        val foodGroups = allFoods.mapNotNull { it.group }.distinct().sorted()
-                        _availableFoodGroups.value = listOf(null) + foodGroups
+                        // Mettre à jour l'état
+                        _foods.value = filteredFoods
 
-                        // Charger les indications disponibles
-                        val indications = allFoods.flatMap { it.indicat }.distinct().sorted()
-                        _availableIndications.value = listOf(null) + indications
+                        // Mettre à jour les listes de valeurs disponibles pour les filtres
+                        updateAvailableFilterValues(allFoods)
+
+                        println(
+                                "DEBUG FoodListViewModel: Chargement des aliments terminé avec succès"
+                        )
                 }
+        }
+
+        /** Met à jour les listes de valeurs disponibles pour les filtres */
+        private fun updateAvailableFilterValues(allFoods: List<AlimentEv>) {
+                // Charger les types d'aliments disponibles
+                val foodTypes = allFoods.mapNotNull { it.typeAliment }.distinct().sorted()
+                _availableFoodTypes.value = listOf(null) + foodTypes
+
+                // Charger les groupes d'aliments disponibles
+                val foodGroups = allFoods.mapNotNull { it.group }.distinct().sorted()
+                _availableFoodGroups.value = listOf(null) + foodGroups
+
+                // Charger les indications disponibles
+                val indications = allFoods.flatMap { it.indicat }.distinct().sorted()
+                _availableIndications.value = listOf(null) + indications
         }
 
         /** Définit le filtre de recherche */

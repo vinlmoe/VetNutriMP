@@ -56,6 +56,13 @@ class AnimalDetailViewModel(
         viewModelScope.launch {
             println("DEBUG_ALIMENTS: Début setAnimal pour ${animal.nom}")
 
+            // Réinitialiser les états immédiatement pour éviter toute rémanence
+            _selectedRation.value = null
+            _selectedConsultation.value = null
+            isEditingConsultation = false
+            isEditingRation = false
+            isEditingAnimal = false
+
             // Conserver une référence à l'animal original
             val originalAnimal =
                     animal.copy(
@@ -113,13 +120,9 @@ class AnimalDetailViewModel(
                 e.printStackTrace()
             }
 
-            // Réinitialiser les états
-            _selectedConsultation.value = null
-            isEditingConsultation = false
-            isEditingRation = false
-            isEditingAnimal = false
-
-            println("DEBUG_ALIMENTS: Fin setAnimal pour ${animal.nom}")
+            println(
+                    "DEBUG_ALIMENTS: Fin setAnimal - toutes les données de l'animal précédent ont été réinitialisées"
+            )
         }
     }
 
@@ -183,6 +186,12 @@ class AnimalDetailViewModel(
         println("DEBUG_ALIMENTS: Ration sélectionnée mise à jour")
 
         println("DEBUG_ALIMENTS: Fin selectRation")
+    }
+
+    /** Réinitialise la ration sélectionnée en mettant selectedRation à null */
+    fun resetSelectedRation() {
+        println("DEBUG_ALIMENTS: Réinitialisation de la ration sélectionnée")
+        _selectedRation.value = null
     }
 
     fun startEditingConsultation() {
