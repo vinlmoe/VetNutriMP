@@ -4,6 +4,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -19,10 +20,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import fr.vetbrain.vetnutri_mp.Data.AlimentRation
 import fr.vetbrain.vetnutri_mp.Data.Labelable
 import fr.vetbrain.vetnutri_mp.Enumer.AAEnum
 import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
@@ -457,4 +460,420 @@ fun <T> MultiSelectionCard(
             }
         }
     }
+}
+
+/**
+ * Carte d'analyse nutritionnelle pour afficher les apports nutritionnels d'une ration
+ *
+ * @param nutriments Liste des nutriments à afficher
+ * @param valeursTotales Map des valeurs totales pour chaque nutriment
+ * @param diviseur Valeur utilisée comme diviseur (poids de l'animal ou de la ration)
+ * @param typeDiviseur Type de diviseur utilisé ("poids animal" ou "poids ration")
+ * @param couleurFond Couleur de fond de la carte
+ * @param onModeDivisionChange Callback appelé lors du changement de mode de division
+ * @param modifier Modificateur optionnel pour personnaliser l'apparence
+ */
+@Composable
+fun AnalyseNutritionnelleCard(
+        nutriments: List<Nutrient>,
+        valeursTotales: Map<Nutrient, Float>,
+        diviseur: Float,
+        typeDiviseur: String,
+        couleurFond: Color = MaterialTheme.colors.surface,
+        onModeDivisionChange: () -> Unit,
+        modifier: Modifier = Modifier
+) {
+    Card(modifier = modifier.fillMaxWidth(), elevation = 4.dp, backgroundColor = couleurFond) {
+        Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            // En-tête avec titre et switch pour changer le mode de division
+            Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                        text = "Analyse nutritionnelle",
+                        style = MaterialTheme.typography.h6,
+                        color = VetNutriColors.Primary
+                )
+
+                TextButton(onClick = onModeDivisionChange) {
+                    Text(
+                            text = "Par $typeDiviseur",
+                            style = MaterialTheme.typography.caption,
+                            color = VetNutriColors.Primary
+                    )
+                }
+            }
+
+            Divider()
+
+            // Afficher le message si aucun nutriment ou si diviseur nul
+            if (nutriments.isEmpty() || diviseur <= 0) {
+                Box(
+                        modifier = Modifier.fillMaxWidth().height(150.dp),
+                        contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                            text =
+                                    if (diviseur <= 0)
+                                            "Impossible de calculer les apports (diviseur nul)"
+                                    else "Aucun nutriment à afficher",
+                            style = MaterialTheme.typography.body2,
+                            color = Color.Gray
+                    )
+                }
+            } else {
+                // Tableau des nutriments avec leurs valeurs
+                Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    // En-tête du tableau
+                    Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                                text = "Nutriment",
+                                style =
+                                        MaterialTheme.typography.subtitle2.copy(
+                                                fontWeight = FontWeight.Bold
+                                        ),
+                                modifier = Modifier.weight(2f)
+                        )
+                        Text(
+                                text = "Valeur",
+                                style =
+                                        MaterialTheme.typography.subtitle2.copy(
+                                                fontWeight = FontWeight.Bold
+                                        ),
+                                modifier = Modifier.weight(1f)
+                        )
+                        Text(
+                                text = "Unité",
+                                style =
+                                        MaterialTheme.typography.subtitle2.copy(
+                                                fontWeight = FontWeight.Bold
+                                        ),
+                                modifier = Modifier.weight(1f)
+                        )
+                    }
+
+                    Divider()
+
+                    // Liste des nutriments
+                    nutriments.forEach { nutriment ->
+                        val valeurBrute = valeursTotales[nutriment] ?: 0f
+                        val valeurRapportee = if (diviseur > 0) valeurBrute / diviseur else 0f
+
+                        Row(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Obtenir le nom à afficher selon le type de nutriment
+                            val nomAffiche =
+                                    when (nutriment) {
+                                        is NutrientLipid ->
+                                                (nutriment as NutrientLipid).nameToString()
+                                        is NutrientMacro ->
+                                                (nutriment as NutrientMacro).nameToString()
+                                        is NutrientMain ->
+                                                (nutriment as NutrientMain).nameToString()
+                                        is NutrientMin -> (nutriment as NutrientMin).nameToString()
+                                        is NutrientOther ->
+                                                (nutriment as NutrientOther).nameToString()
+                                        is NutrientVitam -> (nutriment as NutrientVitam).displayName
+                                        is AAEnum -> (nutriment as AAEnum).nom
+                                        else -> nutriment.toString()
+                                    }
+
+                            Text(
+                                    text = nomAffiche,
+                                    style = MaterialTheme.typography.body2,
+                                    modifier = Modifier.weight(2f)
+                            )
+                            Text(
+                                    text = String.format("%.2f", valeurRapportee),
+                                    style = MaterialTheme.typography.body2,
+                                    modifier = Modifier.weight(1f)
+                            )
+                            Text(
+                                    text =
+                                            "${nutriment.unite}/${typeDiviseur.substringAfter("poids ")}",
+                                    style = MaterialTheme.typography.body2,
+                                    modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Version plus compacte de l'analyse nutritionnelle pour les espaces plus restreints
+ *
+ * @param nutriments Liste des nutriments à afficher
+ * @param valeursTotales Map des valeurs totales pour chaque nutriment
+ * @param diviseur Valeur utilisée comme diviseur (poids de l'animal ou de la ration)
+ * @param typeDiviseur Type de diviseur utilisé ("poids animal" ou "poids ration")
+ * @param couleurFond Couleur de fond de la carte
+ * @param onModeDivisionChange Callback appelé lors du changement de mode de division
+ * @param modifier Modificateur optionnel pour personnaliser l'apparence
+ */
+@Composable
+fun AnalyseNutritionnelleCompacte(
+        nutriments: List<Nutrient>,
+        valeursTotales: Map<Nutrient, Float>,
+        diviseur: Float,
+        typeDiviseur: String,
+        couleurFond: Color = MaterialTheme.colors.surface,
+        onModeDivisionChange: () -> Unit,
+        modifier: Modifier = Modifier
+) {
+    Card(modifier = modifier.fillMaxWidth(), elevation = 4.dp, backgroundColor = couleurFond) {
+        Column(
+                modifier = Modifier.padding(8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            // En-tête avec titre et bouton pour changer le mode de division
+            Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                        text = "Analyse nutritionnelle",
+                        style = MaterialTheme.typography.subtitle1,
+                        color = VetNutriColors.Primary
+                )
+
+                TextButton(
+                        onClick = onModeDivisionChange,
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Text(
+                            text = "Par $typeDiviseur",
+                            style = MaterialTheme.typography.caption,
+                            color = VetNutriColors.Primary
+                    )
+                }
+            }
+
+            Divider()
+
+            // Corps de la carte
+            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                if (nutriments.isEmpty() || diviseur <= 0) {
+                    Text(
+                            text = if (diviseur <= 0) "Diviseur nul" else "Aucun nutriment",
+                            style = MaterialTheme.typography.caption,
+                            color = Color.Gray,
+                            modifier = Modifier.padding(vertical = 24.dp)
+                    )
+                } else {
+                    Column(
+                            modifier =
+                                    Modifier.fillMaxWidth()
+                                            .height(150.dp)
+                                            .verticalScroll(rememberScrollState()),
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        // Afficher manuellement chaque élément
+                        nutriments.forEach { nutriment ->
+                            val valeurBrute = valeursTotales[nutriment] ?: 0f
+                            val valeurRapportee = if (diviseur > 0) valeurBrute / diviseur else 0f
+
+                            // Obtenir le nom à afficher selon le type de nutriment
+                            val nomAffiche =
+                                    when (nutriment) {
+                                        is NutrientLipid ->
+                                                (nutriment as NutrientLipid).nameToString()
+                                        is NutrientMacro ->
+                                                (nutriment as NutrientMacro).nameToString()
+                                        is NutrientMain ->
+                                                (nutriment as NutrientMain).nameToString()
+                                        is NutrientMin -> (nutriment as NutrientMin).nameToString()
+                                        is NutrientOther ->
+                                                (nutriment as NutrientOther).nameToString()
+                                        is NutrientVitam -> (nutriment as NutrientVitam).displayName
+                                        is AAEnum -> (nutriment as AAEnum).nom
+                                        else -> nutriment.toString()
+                                    }
+
+                            Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                        text = nomAffiche,
+                                        style = MaterialTheme.typography.caption,
+                                        modifier = Modifier.weight(1.5f)
+                                )
+                                Text(
+                                        text = String.format("%.2f", valeurRapportee),
+                                        style = MaterialTheme.typography.caption,
+                                        modifier = Modifier.weight(0.8f)
+                                )
+                                Text(
+                                        text =
+                                                "${nutriment.unite}/${typeDiviseur.substringAfter("poids ")}",
+                                        style = MaterialTheme.typography.caption,
+                                        modifier = Modifier.weight(0.7f)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Calcule les valeurs nutritionnelles totales d'une ration
+ *
+ * @param alimentsRation Liste des aliments de la ration
+ * @param nutriments Liste des nutriments à considérer
+ * @return Map associant chaque nutriment à sa valeur totale dans la ration
+ */
+fun calculerValeursNutritionnelles(
+        alimentsRation: List<AlimentRation>,
+        nutriments: List<Nutrient>
+): Map<Nutrient, Float> {
+    val resultat = mutableMapOf<Nutrient, Float>()
+
+    // Initialiser tous les nutriments à 0
+    nutriments.forEach { nutriment -> resultat[nutriment] = 0f }
+
+    // Pour chaque aliment, ajouter sa contribution pour chaque nutriment
+    alimentsRation.forEach { alimentRation ->
+        // Si l'aliment a des informations nutritionnelles
+        try {
+            // Utilisation sécurisée pour gérer le cas où ces propriétés pourraient ne pas exister
+            val aliment = alimentRation.aliment ?: return@forEach
+
+            // Accès direct aux valeurs nutritionnelles dans valMap
+            nutriments.forEach { nutriment ->
+                val valeurNutritive = aliment.valMap[nutriment]?.value
+                if (valeurNutritive != null) {
+                    // La valeur est en g/kg ou unités/kg, donc pour obtenir la valeur réelle:
+                    // valeur * quantité(g) / 1000
+                    val quantiteEnKg = alimentRation.quantity / 1000f
+                    val contributionNutriment = valeurNutritive * quantiteEnKg
+                    val valeurCourante = resultat[nutriment] ?: 0f
+                    resultat[nutriment] = valeurCourante + contributionNutriment
+                }
+            }
+
+            // Si la valMap est vide ou si certains nutriments n'y sont pas,
+            // essayer d'accéder via nutritionnalData pour compatibilité
+            if (aliment.valMap.isEmpty() || nutriments.any { it !in aliment.valMap.keys }) {
+                // Accès sécurisé aux propriétés nutritionnelles via réflexion
+                val nutritionnelData =
+                        try {
+                            val field = aliment.javaClass.getDeclaredField("nutritionnalData")
+                            field.isAccessible = true
+                            field.get(aliment)
+                        } catch (e: Exception) {
+                            null
+                        }
+
+                if (nutritionnelData == null) return@forEach
+
+                // Accéder à nutriContent
+                val nutriContent =
+                        try {
+                            val field = nutritionnelData.javaClass.getDeclaredField("nutriContent")
+                            field.isAccessible = true
+                            field.get(nutritionnelData)
+                        } catch (e: Exception) {
+                            null
+                        }
+
+                if (nutriContent == null) return@forEach
+
+                // Pour chaque nutriment demandé
+                nutriments.forEach { nutriment ->
+                    // Vérifier si la valeur existe déjà dans le résultat
+                    if (resultat[nutriment] != 0f) return@forEach
+
+                    // Récupérer la valeur nutritionnelle pour ce nutriment dans cet aliment
+                    val valeurNutriment =
+                            try {
+                                when (nutriment) {
+                                    is NutrientMain -> {
+                                        val mainField =
+                                                nutriContent.javaClass.getDeclaredField("main")
+                                        mainField.isAccessible = true
+                                        val main = mainField.get(nutriContent) as? Map<*, *>
+                                        main?.get(nutriment) as? Float
+                                    }
+                                    is NutrientMacro -> {
+                                        val macrosField =
+                                                nutriContent.javaClass.getDeclaredField("macros")
+                                        macrosField.isAccessible = true
+                                        val macros = macrosField.get(nutriContent) as? Map<*, *>
+                                        macros?.get(nutriment) as? Float
+                                    }
+                                    is NutrientLipid -> {
+                                        val lipidsField =
+                                                nutriContent.javaClass.getDeclaredField("lipids")
+                                        lipidsField.isAccessible = true
+                                        val lipids = lipidsField.get(nutriContent) as? Map<*, *>
+                                        lipids?.get(nutriment) as? Float
+                                    }
+                                    is NutrientVitam -> {
+                                        val vitaminsField =
+                                                nutriContent.javaClass.getDeclaredField("vitamins")
+                                        vitaminsField.isAccessible = true
+                                        val vitamins = vitaminsField.get(nutriContent) as? Map<*, *>
+                                        vitamins?.get(nutriment) as? Float
+                                    }
+                                    is NutrientMin -> {
+                                        val mineralsField =
+                                                nutriContent.javaClass.getDeclaredField("minerals")
+                                        mineralsField.isAccessible = true
+                                        val minerals = mineralsField.get(nutriContent) as? Map<*, *>
+                                        minerals?.get(nutriment) as? Float
+                                    }
+                                    is AAEnum -> {
+                                        val aaField = nutriContent.javaClass.getDeclaredField("aa")
+                                        aaField.isAccessible = true
+                                        val aa = aaField.get(nutriContent) as? Map<*, *>
+                                        aa?.get(nutriment) as? Float
+                                    }
+                                    else -> null
+                                }
+                            } catch (e: Exception) {
+                                null
+                            }
+
+                    // Si la valeur existe, l'ajouter au total en prenant en compte la quantité de
+                    // l'aliment
+                    valeurNutriment?.let { valeur ->
+                        // La valeur est en g/kg ou unités/kg, donc pour obtenir la valeur réelle:
+                        // valeur * quantité(g) / 1000
+                        val quantiteEnKg = alimentRation.quantity / 1000f
+                        // Calcul sécurisé de la contribution
+                        val contributionNutriment = valeur * quantiteEnKg
+                        // Mise à jour sécurisée du résultat
+                        val valeurCourante = resultat[nutriment] ?: 0f
+                        resultat[nutriment] = valeurCourante + contributionNutriment
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            // Ignorer les erreurs et continuer avec les autres aliments
+            println("Erreur lors du calcul des valeurs nutritionnelles: ${e.message}")
+        }
+    }
+
+    return resultat
 }

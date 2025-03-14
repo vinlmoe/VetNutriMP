@@ -1,9 +1,11 @@
 package fr.vetbrain.vetnutri_mp.View
 
 // Importation des composants nécessaires
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
@@ -12,9 +14,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import fr.vetbrain.vetnutri_mp.Data.AlimentRation
 import fr.vetbrain.vetnutri_mp.Data.Ration
+import fr.vetbrain.vetnutri_mp.Enumer.AAEnum
+import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
+import fr.vetbrain.vetnutri_mp.Enumer.NutrientLipid
+import fr.vetbrain.vetnutri_mp.Enumer.NutrientMain
+import fr.vetbrain.vetnutri_mp.Enumer.NutrientMin
+import fr.vetbrain.vetnutri_mp.Enumer.NutrientOther
+import fr.vetbrain.vetnutri_mp.Enumer.NutrientVitam
 import fr.vetbrain.vetnutri_mp.Theme.AppIcons
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
@@ -39,6 +50,119 @@ fun RationsView(viewModel: AnimalDetailViewModel, modifier: Modifier = Modifier)
         // État pour gérer l'affichage du dialogue d'édition de ration
         var showRationEditDialog by remember { mutableStateOf(false) }
         var rationToEdit by remember { mutableStateOf<Ration?>(null) }
+
+        // État pour gérer le mode de division des valeurs nutritionnelles
+        var divisionParPoidsAnimal by remember { mutableStateOf(true) }
+
+        // État pour la gestion des onglets
+        var ongletSelectionne by remember { mutableStateOf(0) }
+
+        // Liste des nutriments principaux à afficher (tous les nutriments de type NutrientMain)
+        val nutrimentsPrincipaux = remember<List<Nutrient>> { NutrientMain.entries.toList() }
+
+        // Liste des minéraux à afficher (tous les nutriments de type NutrientMin)
+        val mineraux = remember<List<Nutrient>> { NutrientMin.entries.toList() }
+
+        // Liste des vitamines à afficher (tous les nutriments de type NutrientVitam)
+        val vitamines = remember<List<Nutrient>> { NutrientVitam.entries.toList() }
+
+        // Liste des lipides à afficher (tous les nutriments de type NutrientLipid)
+        val lipides = remember<List<Nutrient>> { NutrientLipid.entries.toList() }
+
+        // Liste des acides aminés à afficher (tous les nutriments de type AAEnum)
+        val acidesAmines = remember<List<Nutrient>> { AAEnum.entries.toList() }
+
+        // Liste des autres nutriments à afficher (tous les nutriments de type NutrientOther)
+        val autresNutriments = remember<List<Nutrient>> { NutrientOther.entries.toList() }
+
+        // Calculer le poids total de la ration
+        val poidsRation =
+                remember(selectedRation) {
+                        selectedRation
+                                ?.alimentMutableList
+                                ?.sumOf { it.quantity.toDouble() }
+                                ?.toFloat()
+                                ?: 0f
+                }
+
+        // Calculer les valeurs nutritionnelles pour les différentes catégories
+        val valeursNutritionnellesPrincipales =
+                remember(selectedRation) {
+                        selectedRation?.alimentMutableList?.let { aliments ->
+                                calculerValeursNutritionnelles(aliments, nutrimentsPrincipaux)
+                        }
+                                ?: emptyMap()
+                }
+
+        val valeursNutritionnellesMineraux =
+                remember(selectedRation) {
+                        selectedRation?.alimentMutableList?.let { aliments ->
+                                calculerValeursNutritionnelles(aliments, mineraux)
+                        }
+                                ?: emptyMap()
+                }
+
+        val valeursNutritionnellesVitamines =
+                remember(selectedRation) {
+                        selectedRation?.alimentMutableList?.let { aliments ->
+                                calculerValeursNutritionnelles(aliments, vitamines)
+                        }
+                                ?: emptyMap()
+                }
+
+        val valeursNutritionnellesLipides =
+                remember(selectedRation) {
+                        selectedRation?.alimentMutableList?.let { aliments ->
+                                calculerValeursNutritionnelles(aliments, lipides)
+                        }
+                                ?: emptyMap()
+                }
+
+        val valeursNutritionnellesAcidesAmines =
+                remember(selectedRation) {
+                        selectedRation?.alimentMutableList?.let { aliments ->
+                                calculerValeursNutritionnelles(aliments, acidesAmines)
+                        }
+                                ?: emptyMap()
+                }
+
+        val valeursNutritionnellesAutres =
+                remember(selectedRation) {
+                        selectedRation?.alimentMutableList?.let { aliments ->
+                                calculerValeursNutritionnelles(aliments, autresNutriments)
+                        }
+                                ?: emptyMap()
+                }
+
+        // Diviseur en fonction du mode (poids animal ou poids ration)
+        val diviseur =
+                remember(divisionParPoidsAnimal, selectedConsultation, poidsRation) {
+                        // Obtenir le poids de l'animal, ou utiliser une valeur par défaut
+                        if (divisionParPoidsAnimal) {
+                                // Utiliser le poids de la consultation actuelle
+                                selectedConsultation?.weight ?: 0f
+                        } else {
+                                poidsRation / 1000f // Convertir en kg
+                        }
+                }
+
+        // Texte décrivant le diviseur actuel
+        val typeDiviseur =
+                remember(divisionParPoidsAnimal) {
+                        if (divisionParPoidsAnimal) "poids animal" else "poids ration"
+                }
+
+        // Déterminer quels nutriments et valeurs afficher en fonction de l'onglet sélectionné
+        val (nutrimentsCourants, valeursCourantes) =
+                when (ongletSelectionne) {
+                        0 -> Pair(nutrimentsPrincipaux, valeursNutritionnellesPrincipales)
+                        1 -> Pair(mineraux, valeursNutritionnellesMineraux)
+                        2 -> Pair(vitamines, valeursNutritionnellesVitamines)
+                        3 -> Pair(lipides, valeursNutritionnellesLipides)
+                        4 -> Pair(acidesAmines, valeursNutritionnellesAcidesAmines)
+                        5 -> Pair(autresNutriments, valeursNutritionnellesAutres)
+                        else -> Pair(nutrimentsPrincipaux, valeursNutritionnellesPrincipales)
+                }
 
         // DEBUG: Afficher des informations sur les données disponibles
         LaunchedEffect(Unit) {
@@ -521,7 +645,8 @@ fun RationsView(viewModel: AnimalDetailViewModel, modifier: Modifier = Modifier)
                                                 // Segment 4: Détails de la ration
                                                 Card(
                                                         modifier =
-                                                                Modifier.weight(1f).fillMaxWidth(),
+                                                                Modifier.weight(0.4f)
+                                                                        .fillMaxWidth(),
                                                         elevation = AppSizes.elevationMedium,
                                                         backgroundColor =
                                                                 MaterialTheme.colors.surface
@@ -616,70 +741,175 @@ fun RationsView(viewModel: AnimalDetailViewModel, modifier: Modifier = Modifier)
                                                                         value =
                                                                                 "${selectedRation?.alimentMutableList?.size ?: 0}"
                                                                 )
+                                                                InfoRow(
+                                                                        label = "Poids total",
+                                                                        value = "${poidsRation}g"
+                                                                )
                                                         }
                                                 }
 
-                                                // Segment 5: Informations nutritionnelles
+                                                // Segment 5: Informations nutritionnelles avec
+                                                // système d'onglets
                                                 Card(
                                                         modifier =
-                                                                Modifier.weight(1f).fillMaxWidth(),
+                                                                Modifier.weight(1.6f)
+                                                                        .fillMaxWidth(),
                                                         elevation = AppSizes.elevationMedium,
                                                         backgroundColor =
                                                                 MaterialTheme.colors.surface
                                                 ) {
                                                         Column(
-                                                                modifier =
-                                                                        Modifier.fillMaxSize()
-                                                                                .padding(
-                                                                                        AppSizes.paddingMedium
-                                                                                ),
+                                                                modifier = Modifier.fillMaxSize(),
                                                                 verticalArrangement =
-                                                                        Arrangement.spacedBy(
-                                                                                AppSizes.paddingSmall
-                                                                        )
+                                                                        Arrangement.Top
                                                         ) {
-                                                                Text(
-                                                                        text =
-                                                                                "Informations nutritionnelles",
-                                                                        style =
-                                                                                MaterialTheme
-                                                                                        .typography
-                                                                                        .h6,
-                                                                        color =
+                                                                // Système d'onglets
+                                                                TabRow(
+                                                                        selectedTabIndex =
+                                                                                ongletSelectionne,
+                                                                        backgroundColor =
+                                                                                VetNutriColors
+                                                                                        .Surface,
+                                                                        contentColor =
                                                                                 VetNutriColors
                                                                                         .Primary
-                                                                )
-                                                                Divider()
-                                                                if (selectedRation == null) {
-                                                                        CenteredMessage(
-                                                                                message =
-                                                                                        "Aucune ration sélectionnée",
-                                                                                modifier =
-                                                                                        Modifier.weight(
-                                                                                                1f
+                                                                ) {
+                                                                        Tab(
+                                                                                selected =
+                                                                                        ongletSelectionne ==
+                                                                                                0,
+                                                                                onClick = {
+                                                                                        ongletSelectionne =
+                                                                                                0
+                                                                                },
+                                                                                text = {
+                                                                                        Text(
+                                                                                                "Macronutriments",
+                                                                                                style =
+                                                                                                        MaterialTheme
+                                                                                                                .typography
+                                                                                                                .body2
                                                                                         )
+                                                                                }
                                                                         )
-                                                                } else {
-                                                                        Box(
+                                                                        Tab(
+                                                                                selected =
+                                                                                        ongletSelectionne ==
+                                                                                                1,
+                                                                                onClick = {
+                                                                                        ongletSelectionne =
+                                                                                                1
+                                                                                },
+                                                                                text = {
+                                                                                        Text(
+                                                                                                "Minéraux",
+                                                                                                style =
+                                                                                                        MaterialTheme
+                                                                                                                .typography
+                                                                                                                .body2
+                                                                                        )
+                                                                                }
+                                                                        )
+                                                                        Tab(
+                                                                                selected =
+                                                                                        ongletSelectionne ==
+                                                                                                2,
+                                                                                onClick = {
+                                                                                        ongletSelectionne =
+                                                                                                2
+                                                                                },
+                                                                                text = {
+                                                                                        Text(
+                                                                                                "Vitamines",
+                                                                                                style =
+                                                                                                        MaterialTheme
+                                                                                                                .typography
+                                                                                                                .body2
+                                                                                        )
+                                                                                }
+                                                                        )
+                                                                        Tab(
+                                                                                selected =
+                                                                                        ongletSelectionne ==
+                                                                                                3,
+                                                                                onClick = {
+                                                                                        ongletSelectionne =
+                                                                                                3
+                                                                                },
+                                                                                text = {
+                                                                                        Text(
+                                                                                                "Lipides",
+                                                                                                style =
+                                                                                                        MaterialTheme
+                                                                                                                .typography
+                                                                                                                .body2
+                                                                                        )
+                                                                                }
+                                                                        )
+                                                                        Tab(
+                                                                                selected =
+                                                                                        ongletSelectionne ==
+                                                                                                4,
+                                                                                onClick = {
+                                                                                        ongletSelectionne =
+                                                                                                4
+                                                                                },
+                                                                                text = {
+                                                                                        Text(
+                                                                                                "Acides aminés",
+                                                                                                style =
+                                                                                                        MaterialTheme
+                                                                                                                .typography
+                                                                                                                .body2
+                                                                                        )
+                                                                                }
+                                                                        )
+                                                                        Tab(
+                                                                                selected =
+                                                                                        ongletSelectionne ==
+                                                                                                5,
+                                                                                onClick = {
+                                                                                        ongletSelectionne =
+                                                                                                5
+                                                                                },
+                                                                                text = {
+                                                                                        Text(
+                                                                                                "Autres",
+                                                                                                style =
+                                                                                                        MaterialTheme
+                                                                                                                .typography
+                                                                                                                .body2
+                                                                                        )
+                                                                                }
+                                                                        )
+                                                                }
+
+                                                                // Affichage de l'analyse
+                                                                // nutritionnelle selon l'onglet
+                                                                // sélectionné
+                                                                Box(
+                                                                        modifier =
+                                                                                Modifier.fillMaxSize()
+                                                                ) {
+                                                                        AnalyseNutritionnelleCard(
+                                                                                nutriments =
+                                                                                        nutrimentsCourants,
+                                                                                valeursTotales =
+                                                                                        valeursCourantes,
+                                                                                diviseur = diviseur,
+                                                                                typeDiviseur =
+                                                                                        typeDiviseur,
+                                                                                couleurFond =
+                                                                                        MaterialTheme
+                                                                                                .colors
+                                                                                                .surface,
+                                                                                onModeDivisionChange = {
+                                                                                        divisionParPoidsAnimal =
+                                                                                                !divisionParPoidsAnimal
+                                                                                },
                                                                                 modifier =
-                                                                                        Modifier.weight(
-                                                                                                1f
-                                                                                        ),
-                                                                                contentAlignment =
-                                                                                        Alignment
-                                                                                                .Center
-                                                                        ) {
-                                                                                Text(
-                                                                                        text =
-                                                                                                "Les informations nutritionnelles seront calculées à partir des aliments de la ration.",
-                                                                                        style =
-                                                                                                MaterialTheme
-                                                                                                        .typography
-                                                                                                        .body2,
-                                                                                        color =
-                                                                                                Color.Gray
-                                                                                )
-                                                                        }
+                                                                                        Modifier.fillMaxSize()
+                                                                        )
                                                                 }
                                                         }
                                                 }
@@ -828,6 +1058,268 @@ private fun RationEditDialog(ration: Ration?, onDismiss: () -> Unit, onSave: (Ra
                                                         ),
                                                 enabled = !isError.value
                                         ) { Text("Enregistrer", color = Color.White) }
+                                }
+                        }
+                }
+        }
+}
+
+/**
+ * Composant d'affichage d'une ligne d'information avec libellé et valeur
+ *
+ * @param label Libellé de l'information
+ * @param value Valeur à afficher
+ * @param modifier Modificateur optionnel pour personnaliser l'apparence
+ */
+@Composable
+private fun InfoRow(label: String, value: String, modifier: Modifier = Modifier) {
+        Row(
+                modifier = modifier.fillMaxWidth().padding(vertical = 4.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+        ) {
+                Text(
+                        text = label,
+                        style = MaterialTheme.typography.body1,
+                        fontWeight = FontWeight.Medium,
+                        color = Color.Gray,
+                        modifier = Modifier.weight(1f)
+                )
+
+                Text(
+                        text = value,
+                        style = MaterialTheme.typography.body1,
+                        fontWeight = FontWeight.Normal,
+                        modifier = Modifier.weight(1f)
+                )
+        }
+}
+
+/**
+ * Composant d'affichage d'un message centré dans un conteneur
+ *
+ * @param message Message à afficher
+ * @param modifier Modificateur optionnel pour personnaliser l'apparence
+ */
+@Composable
+private fun CenteredMessage(message: String, modifier: Modifier = Modifier) {
+        Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text(text = message, style = MaterialTheme.typography.body2, color = Color.Gray)
+        }
+}
+
+/**
+ * Composant pour afficher un élément de ration dans une liste
+ *
+ * @param ration Ration à afficher
+ * @param isSelected Indique si la ration est sélectionnée
+ * @param onClick Action à exécuter lors du clic sur la ration
+ * @param onDelete Action à exécuter pour supprimer la ration
+ * @param isDeleteEnabled Indique si la suppression est autorisée
+ * @param onEdit Action à exécuter pour éditer la ration
+ */
+@Composable
+private fun RationItem(
+        ration: Ration,
+        isSelected: Boolean,
+        onClick: () -> Unit,
+        onDelete: () -> Unit,
+        isDeleteEnabled: Boolean,
+        onEdit: () -> Unit
+) {
+        val backgroundColor =
+                if (isSelected) VetNutriColors.Primary.copy(alpha = 0.1f) else Color.Transparent
+
+        Card(
+                modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+                elevation = if (isSelected) 4.dp else 2.dp,
+                backgroundColor = backgroundColor
+        ) {
+                Row(
+                        modifier = Modifier.padding(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                        // Informations de la ration
+                        Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                        text = ration.name,
+                                        style = MaterialTheme.typography.subtitle1,
+                                        fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                        text = "Coefficient: ${ration.coef}",
+                                        style = MaterialTheme.typography.caption
+                                )
+                                Text(
+                                        text = if (ration.actual) "Actuelle" else "Proposée",
+                                        style = MaterialTheme.typography.caption,
+                                        color =
+                                                if (ration.actual) Color.Green
+                                                else VetNutriColors.Secondary
+                                )
+                        }
+
+                        // Boutons d'action
+                        Row(
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                        ) {
+                                IconButton(onClick = onEdit, modifier = Modifier.size(32.dp)) {
+                                        Icon(
+                                                imageVector = Icons.Default.Edit,
+                                                contentDescription = "Modifier",
+                                                tint = VetNutriColors.Primary
+                                        )
+                                }
+
+                                IconButton(
+                                        onClick = onDelete,
+                                        enabled = isDeleteEnabled,
+                                        modifier = Modifier.size(32.dp)
+                                ) {
+                                        Icon(
+                                                imageVector = AppIcons.Delete,
+                                                contentDescription = "Supprimer",
+                                                tint =
+                                                        if (isDeleteEnabled)
+                                                                Color.Red.copy(alpha = 0.8f)
+                                                        else Color.Gray
+                                        )
+                                }
+                        }
+                }
+        }
+}
+
+/**
+ * Composant pour afficher un élément d'aliment dans une liste
+ *
+ * @param aliment Aliment à afficher
+ * @param isEditing Indique si l'aliment est en cours d'édition
+ * @param onStartEditing Action à exécuter pour commencer l'édition
+ * @param onEndEditing Action à exécuter pour terminer l'édition
+ * @param onQuantityChange Action à exécuter lors du changement de quantité
+ */
+@Composable
+private fun AlimentItem(
+        aliment: AlimentRation,
+        isEditing: Boolean,
+        onStartEditing: () -> Unit,
+        onEndEditing: () -> Unit,
+        onQuantityChange: (Float) -> Unit
+) {
+        var quantityText by
+                remember(aliment.quantity) { mutableStateOf(aliment.quantity.toString()) }
+        var hasError by remember { mutableStateOf(false) }
+
+        Card(modifier = Modifier.fillMaxWidth(), elevation = 2.dp) {
+                Row(
+                        modifier = Modifier.padding(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                ) {
+                        // Nom de l'aliment
+                        Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                        text = aliment.aliment?.nom ?: "Aliment inconnu",
+                                        style = MaterialTheme.typography.subtitle1,
+                                        fontWeight = FontWeight.Medium
+                                )
+
+                                // Gérer le cas où variete n'existerait pas ou serait null
+                                // Nous utilisons de manière sécurisée une propriété qui devrait
+                                // exister
+                                val varieteTxt =
+                                        try {
+                                                // Essayer d'accéder à une propriété qui peut
+                                                // exister
+                                                val varieteField =
+                                                        aliment.aliment?.javaClass
+                                                                ?.getDeclaredField("variete")
+                                                varieteField?.isAccessible = true
+                                                varieteField?.get(aliment.aliment) as? String ?: ""
+                                        } catch (e: Exception) {
+                                                // En cas d'erreur, utiliser une chaîne vide
+                                                ""
+                                        }
+
+                                if (varieteTxt.isNotBlank()) {
+                                        Text(
+                                                text = varieteTxt,
+                                                style = MaterialTheme.typography.caption,
+                                                color = Color.Gray
+                                        )
+                                }
+                        }
+
+                        // Champ de quantité
+                        if (isEditing) {
+                                OutlinedTextField(
+                                        value = quantityText,
+                                        onValueChange = { newValue ->
+                                                quantityText = newValue
+                                                hasError = newValue.toFloatOrNull() == null
+                                        },
+                                        label = { Text("Quantité (g)") },
+                                        keyboardOptions =
+                                                KeyboardOptions(keyboardType = KeyboardType.Number),
+                                        modifier = Modifier.width(120.dp),
+                                        isError = hasError,
+                                        singleLine = true,
+                                        trailingIcon = {
+                                                Row {
+                                                        Text("g")
+
+                                                        // Bouton OK pour valider
+                                                        IconButton(
+                                                                onClick = {
+                                                                        quantityText.toFloatOrNull()
+                                                                                ?.let { newQuantity
+                                                                                        ->
+                                                                                        onQuantityChange(
+                                                                                                newQuantity
+                                                                                        )
+                                                                                }
+                                                                },
+                                                                enabled =
+                                                                        !hasError &&
+                                                                                quantityText
+                                                                                        .toFloatOrNull() !=
+                                                                                        null
+                                                        ) {
+                                                                Icon(
+                                                                        imageVector =
+                                                                                AppIcons.Check,
+                                                                        contentDescription =
+                                                                                "Valider",
+                                                                        tint =
+                                                                                if (!hasError)
+                                                                                        VetNutriColors
+                                                                                                .Primary
+                                                                                else Color.Gray
+                                                                )
+                                                        }
+                                                }
+                                        }
+                                )
+                        } else {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(
+                                                text = "${aliment.quantity} g",
+                                                style = MaterialTheme.typography.body1
+                                        )
+
+                                        // Bouton d'édition
+                                        IconButton(
+                                                onClick = onStartEditing,
+                                                modifier = Modifier.size(32.dp)
+                                        ) {
+                                                Icon(
+                                                        imageVector = Icons.Default.Edit,
+                                                        contentDescription = "Modifier la quantité",
+                                                        tint = VetNutriColors.Primary
+                                                )
+                                        }
                                 }
                         }
                 }
