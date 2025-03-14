@@ -219,4 +219,25 @@ class LocalAlimentDataSource(
             )
         }
     }
+
+    /**
+     * Supprime tous les aliments de la base de données, ainsi que leurs valeurs nutritionnelles
+     * associées.
+     * @return Le nombre d'aliments supprimés
+     */
+    override suspend fun clearAllFoods(): Int {
+        val allFoods = foodDao.getAllFoods()
+        val count = allFoods.size
+
+        // Supprimer d'abord toutes les valeurs nutritionnelles pour tous les aliments
+        allFoods.forEach { food -> nutrientValueDao.deleteAllNutrientValuesForAliment(food.uuid) }
+
+        // Supprimer tous les aliments
+        foodDao.deleteAllFoods()
+
+        refreshFoodsFlow()
+
+        println("$count aliments ont été supprimés de la base de données")
+        return count
+    }
 }

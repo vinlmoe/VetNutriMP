@@ -270,18 +270,102 @@ object Mappers {
         ): AlimentEv {
                 val especesList = mutableListOf<String>()
                 if (!this.especesJson.isNullOrEmpty()) {
-                        especesList.addAll(this.especesJson.split(","))
+                        // Extraire la liste des espèces du JSON
+                        val especesStringList = this.especesJson.split(",")
+
+                        // Essayer de convertir chaque espèce en énumération
+                        especesStringList.forEach { especeStr ->
+                                try {
+                                        // Utiliser getFromString qui gère désormais le nettoyage et
+                                        // la conversion
+                                        val espece = Espece.getFromString(especeStr)
+                                        if (espece != null) {
+                                                println(
+                                                        "Conversion réussie de l'espèce: $especeStr -> ${espece.name}"
+                                                )
+                                                especesList.add(
+                                                        espece.name
+                                                ) // Utiliser le nom de l'énumération
+                                        } else {
+                                                println(
+                                                        "Espèce non reconnue, conservation du texte original: $especeStr"
+                                                )
+                                                // Nettoyer quand même avant d'ajouter
+                                                val cleanedEspece =
+                                                        especeStr
+                                                                .replace("[", "")
+                                                                .replace("]", "")
+                                                                .replace("\"", "")
+                                                                .trim()
+                                                especesList.add(
+                                                        cleanedEspece
+                                                ) // Conserver le texte original
+                                        }
+                                } catch (e: Exception) {
+                                        println(
+                                                "Erreur lors de la conversion de l'espèce $especeStr: ${e.message}"
+                                        )
+                                        // Nettoyer quand même en cas d'erreur
+                                        val cleanedEspece =
+                                                especeStr
+                                                        .replace("[", "")
+                                                        .replace("]", "")
+                                                        .replace("\"", "")
+                                                        .trim()
+                                        especesList.add(
+                                                cleanedEspece
+                                        ) // Conserver le texte original en cas d'erreur
+                                }
+                        }
                 } else {
-                        especesList.addAll(especes.map { it.espece })
+                        // Si pas de JSON, utiliser les entités directement
+                        especesList.addAll(
+                                especes.map {
+                                        try {
+                                                // Utiliser getFromString qui gère désormais le
+                                                // nettoyage et la conversion
+                                                val espece = Espece.getFromString(it.espece)
+                                                if (espece != null) {
+                                                        espece.name
+                                                } else {
+                                                        // Nettoyer quand même avant d'ajouter
+                                                        it.espece
+                                                                .replace("[", "")
+                                                                .replace("]", "")
+                                                                .replace("\"", "")
+                                                                .trim()
+                                                }
+                                        } catch (e: Exception) {
+                                                // Nettoyer quand même en cas d'erreur
+                                                it.espece
+                                                        .replace("[", "")
+                                                        .replace("]", "")
+                                                        .replace("\"", "")
+                                                        .trim()
+                                        }
+                                }
+                        )
                 }
 
                 val indicatList = mutableListOf<AlimIndic>()
                 if (!this.indicationsJson.isNullOrEmpty()) {
                         this.indicationsJson.split(",").forEach { indic ->
                                 try {
-                                        AlimIndic.valueOf(indic)?.let { indicatList.add(it) }
+                                        // Utiliser getFromString qui gère désormais le nettoyage et
+                                        // la conversion
+                                        val alimIndic = AlimIndic.getFromString(indic)
+                                        if (alimIndic != AlimIndic.AUTRE ||
+                                                        indic.trim().uppercase() == "AUTRE"
+                                        ) {
+                                                indicatList.add(alimIndic)
+                                                println(
+                                                        "Indication reconnue: $indic -> ${alimIndic.name}"
+                                                )
+                                        }
                                 } catch (e: Exception) {
-                                        // Ignorer les indications invalides
+                                        println(
+                                                "Erreur lors du traitement de l'indication $indic: ${e.message}"
+                                        )
                                 }
                         }
                 } else {

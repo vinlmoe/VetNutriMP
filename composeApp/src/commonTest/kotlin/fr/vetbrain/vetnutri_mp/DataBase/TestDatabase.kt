@@ -66,7 +66,26 @@ class TestAnimalDao : AnimalDao {
 
     override suspend fun insertAlimentRation(aliment: AlimentRationEntity) {
         val currentAliments = aliments[aliment.refRation] ?: emptyList()
-        aliments[aliment.refRation] = currentAliments + aliment
+
+        // Vérifier si l'aliment existe déjà pour préserver ses propriétés importantes
+        val existingIndex = currentAliments.indexOfFirst { it.uuid == aliment.uuid }
+        if (existingIndex != -1) {
+            // Mise à jour de l'aliment existant en préservant la quantité
+            val existingAliment = currentAliments[existingIndex]
+            val updatedAliment = aliment.copy(quantity = existingAliment.quantity)
+            aliments[aliment.refRation] =
+                    currentAliments.toMutableList().apply {
+                        removeAt(existingIndex)
+                        add(updatedAliment)
+                    }
+        } else {
+            // Insertion d'un nouvel aliment
+            aliments[aliment.refRation] = currentAliments + aliment
+        }
+
+        println(
+                "Inséré: AlimentRation avec ID=${aliment.uuid}, référençant l'aliment ${aliment.refAlimUnif}"
+        )
     }
 
     override suspend fun insertSupplementalVariable(
@@ -103,6 +122,15 @@ class TestAnimalDao : AnimalDao {
 
     override suspend fun deleteRationsForConsultation(consultationId: String) {
         rations.remove(consultationId)
+    }
+
+    // Ajout des méthodes nécessaires pour les tests
+    suspend fun getRationsForConsultation(consultationId: String): List<RationEntity> {
+        return rations[consultationId] ?: emptyList()
+    }
+
+    suspend fun getAlimentRationsForRation(rationId: String): List<AlimentRationEntity> {
+        return aliments[rationId] ?: emptyList()
     }
 }
 
@@ -163,7 +191,26 @@ class TestConsultationDao : ConsultationDao {
 
     override suspend fun insertAlimentRation(aliment: AlimentRationEntity) {
         val currentAliments = aliments[aliment.refRation] ?: emptyList()
-        aliments[aliment.refRation] = currentAliments + aliment
+
+        // Vérifier si l'aliment existe déjà pour préserver ses propriétés importantes
+        val existingIndex = currentAliments.indexOfFirst { it.uuid == aliment.uuid }
+        if (existingIndex != -1) {
+            // Mise à jour de l'aliment existant en préservant la quantité
+            val existingAliment = currentAliments[existingIndex]
+            val updatedAliment = aliment.copy(quantity = existingAliment.quantity)
+            aliments[aliment.refRation] =
+                    currentAliments.toMutableList().apply {
+                        removeAt(existingIndex)
+                        add(updatedAliment)
+                    }
+        } else {
+            // Insertion d'un nouvel aliment
+            aliments[aliment.refRation] = currentAliments + aliment
+        }
+
+        println(
+                "Inséré: AlimentRation avec ID=${aliment.uuid}, référençant l'aliment ${aliment.refAlimUnif}"
+        )
     }
 
     override suspend fun deleteRationsForConsultation(consultationId: String) {
@@ -209,6 +256,10 @@ class TestFoodDao : FoodDao {
 
     override suspend fun deleteFood(uuid: String) {
         foods.remove(uuid)
+    }
+
+    override suspend fun deleteAllFoods() {
+        foods.clear()
     }
 
     override suspend fun getFood(uuid: String): FoodEntity? {
@@ -409,6 +460,24 @@ class TestFoodRepository(
 
     override suspend fun updateFood(food: AlimentEv) {
         update(food)
+    }
+
+    /**
+     * Supprime tous les aliments de la base de données.
+     * @return Le nombre d'aliments supprimés
+     */
+    override suspend fun clearAllFoods(): Int {
+        val allFoods = foodDao.getAllFoods()
+        val count = allFoods.size
+
+        // Supprimer les valeurs nutritionnelles
+        allFoods.forEach { food -> nutrientValueDao.deleteAllNutrientValuesForAliment(food.uuid) }
+
+        // Supprimer tous les aliments
+        foodDao.deleteAllFoods()
+
+        println("$count aliments ont été supprimés de la base de données")
+        return count
     }
 }
 

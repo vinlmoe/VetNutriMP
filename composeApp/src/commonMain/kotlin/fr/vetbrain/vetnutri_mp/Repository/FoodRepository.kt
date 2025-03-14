@@ -44,4 +44,10 @@ interface FoodRepository {
      * @param food Aliment à mettre à jour
      */
     suspend fun updateFood(food: AlimentEv)
+
+    /**
+     * Supprime tous les aliments de la base de données
+     * @return Le nombre d'aliments supprimés
+     */
+    suspend fun clearAllFoods(): Int
 }

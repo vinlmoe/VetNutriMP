@@ -108,6 +108,8 @@ interface FoodDao {
 
     @Query("SELECT * FROM FOOD") suspend fun getAllFoods(): List<FoodEntity>
 
+    @Query("DELETE FROM FOOD") suspend fun deleteAllFoods()
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertIndications(indications: List<IndicationAlimentEntity>)
 

@@ -5,19 +5,19 @@ import fr.vetbrain.vetnutri_mp.Data.AlimentEvJson
 import fr.vetbrain.vetnutri_mp.DataBase.FoodDao
 import fr.vetbrain.vetnutri_mp.DataBase.FoodEntity
 import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toAlimentEv
+import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toFoodEntity
+import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toNutrientValueEntities
 import fr.vetbrain.vetnutri_mp.DataBase.NutrientValueDao
 import fr.vetbrain.vetnutri_mp.DataBase.NutrientValueEntity
 import fr.vetbrain.vetnutri_mp.Enumer.AlimIndic
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.FoodKind
 import fr.vetbrain.vetnutri_mp.Enumer.GroupAlim
-import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
-import fr.vetbrain.vetnutri_mp.Utils.ImportTester
+import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
@@ -27,92 +27,92 @@ import kotlinx.serialization.json.Json
  */
 class DatabaseFoodRepository(
         private val foodDao: FoodDao,
-        private val nutrientValueDao: NutrientValueDao
+        private val nutrientValueDao: NutrientValueDao?
 ) : FoodRepository {
+    private val json = Json { ignoreUnknownKeys = true }
+
     /**
-     * Insère un aliment basique (sans propriétés associées) Cette méthode est maintenue pour la
-     * compatibilité avec l'interface
+     * Insère un aliment dans la base de données.
+     * @param food L'aliment à insérer
      */
     override suspend fun insert(food: AlimentEv) {
-        withContext(AppDispatchers.IO) {
-            // Déléguer à la méthode complète
-            insertFood(food)
-        }
+        withContext(AppDispatchers.IO) { foodDao.insert(food.toFoodEntity()) }
     }
 
     /**
-     * Met à jour un aliment basique (sans propriétés associées) Cette méthode est maintenue pour la
-     * compatibilité avec l'interface
+     * Met à jour un aliment existant dans la base de données.
+     * @param food L'aliment à mettre à jour
      */
     override suspend fun update(food: AlimentEv) {
-        withContext(AppDispatchers.IO) {
-            // Déléguer à la méthode complète
-            updateFood(food)
+        withContext(AppDispatchers.IO) { foodDao.update(food.toFoodEntity()) }
+    }
+
+    /**
+     * Supprime un aliment de la base de données.
+     * @param food L'aliment à supprimer
+     */
+    override suspend fun delete(food: AlimentEv) {
+        withContext(AppDispatchers.IO) { foodDao.delete(food.toFoodEntity()) }
+    }
+
+    /**
+     * Récupère tous les aliments stockés dans la base de données.
+     * @return Une liste de tous les aliments
+     */
+    override suspend fun getAllFoods(): List<AlimentEv> {
+        return withContext(AppDispatchers.IO) {
+            return@withContext foodDao.getAllFoods().map { foodEntity ->
+                val nutrientValues =
+                        if (nutrientValueDao != null) {
+                            nutrientValueDao.getNutrientValues(foodEntity.uuid)
+                        } else {
+                            emptyList()
+                        }
+                foodEntity.toAlimentEv(nutrientValues = nutrientValues)
+            }
         }
     }
 
     /**
-     * Supprime un aliment basique (sans propriétés associées) Cette méthode est maintenue pour la
-     * compatibilité avec l'interface
+     * Récupère un aliment par son identifiant.
+     * @param id L'identifiant de l'aliment
+     * @return L'aliment correspondant ou null si non trouvé
      */
-    override suspend fun delete(food: AlimentEv) {
-        withContext(AppDispatchers.IO) {
-            // Déléguer à la méthode complète
-            deleteFood(food.uuid)
-        }
-    }
-
-    override suspend fun getAllFoods(): List<AlimentEv> {
-        return withContext(AppDispatchers.IO) {
-            try {
-                val foodEntities = foodDao.findAll()
-
-                // Conversion des entités en objets de domaine
-                val alimentEvList = foodEntities.map { foodEntity -> foodEntity.toAlimentEv() }
-
-                return@withContext alimentEvList
-            } catch (e: Exception) {
-                println("Erreur lors de la récupération de tous les aliments: ${e.message}")
-                return@withContext emptyList()
-            }
-        }
-    }
-
     override suspend fun getFoodById(id: String): AlimentEv? {
         return withContext(AppDispatchers.IO) {
-            try {
-                val foodEntity = foodDao.getFoodById(id)
-                if (foodEntity != null) {
-                    // Conversion de l'entité en objet de domaine
-                    val alimentEv = foodEntity.toAlimentEv()
-
-                    // Nous n'avons plus besoin de récupérer les indications depuis la table
-                    // d'association
-                    // car elles sont maintenant stockées dans le champ indicationsJson
-
-                    return@withContext alimentEv
-                }
-                return@withContext null
-            } catch (e: Exception) {
-                println("Erreur lors de la récupération de l'aliment par ID: ${e.message}")
-                return@withContext null
-            }
+            val food = foodDao.getFoodById(id) ?: return@withContext null
+            val nutrientValues =
+                    if (nutrientValueDao != null) {
+                        nutrientValueDao.getNutrientValues(food.uuid)
+                    } else {
+                        emptyList()
+                    }
+            return@withContext food.toAlimentEv(nutrientValues = nutrientValues)
         }
     }
 
+    /**
+     * Observe tous les aliments via un Flow.
+     * @return Un Flow émettant la liste des aliments à chaque modification
+     */
     override fun observeAllFoods(): Flow<List<AlimentEv>> {
-        return flow {
-            val entities = foodDao.getAllFoods()
-            emit(entities.map { entity -> entity.toAlimentEv() })
-        }
+        return flow { emit(getAllFoods()) }
     }
 
-    /** Importe une liste d'aliments JSON dans la base de données */
+    /**
+     * Importe une liste d'aliments dans la base de données.
+     * @param foods La liste des aliments à importer
+     * @return Le nombre d'aliments importés avec succès
+     */
     override suspend fun importFoods(foods: List<AlimentEvJson>): Int {
         return withContext(AppDispatchers.IO) {
             var importCount = 0
             var updateCount = 0
             var deleteCount = 0
+            var errorCount = 0
+
+            println("===== DÉBUT IMPORTATION ALIMENTS =====")
+            println("Nombre d'aliments à importer: ${foods.size}")
 
             // Collecter les nutriments non résolus
             val nonResolvedNutrients = mutableSetOf<String>()
@@ -122,68 +122,204 @@ class DatabaseFoodRepository(
 
             // Récupérer tous les aliments existants dans la base de données
             val existingFoods = foodDao.getAllFoods()
+            val existingUUIDs = existingFoods.map { it.uuid }.toSet()
+
+            println("Nombre d'aliments existants: ${existingFoods.size}")
+            println("UUIDs des aliments disponibles initialement: $existingUUIDs")
 
             // Identifier les aliments à supprimer (existants mais pas dans la liste importée)
             val foodsToDelete = existingFoods.filter { !importedUUIDs.contains(it.uuid) }
 
+            println("Nombre d'aliments à supprimer: ${foodsToDelete.size}")
+
             // Supprimer les aliments qui ne sont plus présents dans le fichier JSON
             foodsToDelete.forEach { food ->
-                // Supprimer d'abord les valeurs nutritionnelles
-                nutrientValueDao.deleteAllNutrientValuesForAliment(food.uuid)
+                try {
+                    // Supprimer d'abord les valeurs nutritionnelles
+                    nutrientValueDao?.deleteAllNutrientValuesForAliment(food.uuid)
 
-                // Supprimer les indications associées
-                foodDao.deleteIndicationsForAliment(food.uuid)
+                    // Supprimer les indications associées
+                    foodDao.deleteIndicationsForAliment(food.uuid)
 
-                // Supprimer l'aliment lui-même
-                foodDao.deleteFood(food.uuid)
+                    // Supprimer l'aliment lui-même
+                    foodDao.deleteFood(food.uuid)
 
-                deleteCount++
-                println("Suppression de l'aliment: ${food.name ?: "Sans nom"} (${food.uuid})")
+                    deleteCount++
+                    println("Suppression de l'aliment: ${food.name ?: "Sans nom"} (${food.uuid})")
+                } catch (e: Exception) {
+                    errorCount++
+                    println("Erreur lors de la suppression de l'aliment ${food.uuid}: ${e.message}")
+                }
             }
 
+            // Traiter chaque aliment de la liste importée
             foods.forEach { food ->
                 try {
+                    // Vérifier si l'aliment existe déjà
                     val foodId = food.UUID
+                    val existingFood = foodDao.getFoodById(foodId)
 
-                    // Vérifier si l'aliment existe déjà dans la table FOOD
-                    val existingInFood = foodDao.getFoodById(foodId)
+                    if (existingFood == null) {
+                        println("Importation d'un nouvel aliment: ${food.nom} (${food.UUID})")
 
-                    // Convertir les espèces: si c'est un ID numérique, le transformer en label
-                    val especesConverties = convertirEspecesEnLabels(food.Especes, food.espece)
+                        // Convertir les espèces
+                        val especes =
+                                food.Especes.map { especeStr ->
+                                    try {
+                                        // Nettoyer la chaîne d'espèce (supprimer les crochets et
+                                        // guillemets)
+                                        val cleanedEspece =
+                                                especeStr
+                                                        .replace("[", "")
+                                                        .replace("]", "")
+                                                        .replace("\"", "")
+                                                        .trim()
 
-                    if (existingInFood == null) {
-                        // L'aliment n'existe pas dans FOOD, l'ajouter
-                        // Conversion des espèces en JSON
-                        val especesJson =
-                                if (especesConverties.isNotEmpty()) {
-                                    Json.encodeToString(especesConverties)
-                                } else {
-                                    null
+                                        println(
+                                                "Chaîne d'espèce nettoyée: $especeStr -> $cleanedEspece"
+                                        )
+
+                                        // Essayer plusieurs stratégies pour reconnaître l'espèce
+                                        val espece = Espece.getFromString(cleanedEspece)
+                                        if (espece != null) {
+                                            // Si l'espèce est reconnue, utiliser le nom de
+                                            // l'énumération
+                                            println(
+                                                    "Espèce reconnue: $cleanedEspece -> ${espece.name}"
+                                            )
+                                            espece.name
+                                        } else {
+                                            // Si non reconnue, conserver la chaîne originale
+                                            println(
+                                                    "Espèce non reconnue mais conservée: $cleanedEspece"
+                                            )
+                                            cleanedEspece
+                                        }
+                                    } catch (e: Exception) {
+                                        println(
+                                                "Erreur lors de la conversion de l'espèce $especeStr: ${e.message}"
+                                        )
+                                        especeStr // Conserver la valeur originale en cas d'erreur
+                                    }
                                 }
+                        println("Espèces converties: $especes")
+                        val especesJson = json.encodeToString(especes)
 
-                        // Conversion des indications en JSON
-                        val indicationsConverties = convertirIndicationsEnLabels(food.indication)
-                        val indicationsJson =
-                                if (indicationsConverties.isNotEmpty()) {
-                                    Json.encodeToString(indicationsConverties)
-                                } else {
-                                    null
+                        // Convertir les indications pour l'affichage et le stockage
+                        val indications = mutableListOf<String>()
+                        food.indication.forEach { indication ->
+                            try {
+                                when (indication) {
+                                    is String -> {
+                                        // Nettoyer la chaîne d'indication (supprimer les crochets
+                                        // et guillemets)
+                                        val cleanedIndication =
+                                                indication
+                                                        .replace("[", "")
+                                                        .replace("]", "")
+                                                        .replace("\"", "")
+                                                        .trim()
+
+                                        println(
+                                                "Chaîne d'indication nettoyée: $indication -> $cleanedIndication"
+                                        )
+
+                                        // Essayer de convertir en AlimIndic
+                                        try {
+                                            val indicEnum = AlimIndic.valueOf(cleanedIndication)
+                                            println(
+                                                    "Indication reconnue comme enum: $cleanedIndication -> ${indicEnum.name}"
+                                            )
+                                            indications.add(
+                                                    indicEnum.name
+                                            ) // Stocker le nom de l'énumération
+                                        } catch (e: IllegalArgumentException) {
+                                            // Essayer par le label
+                                            val indicByLabel = AlimIndic.byName(cleanedIndication)
+                                            if (indicByLabel != AlimIndic.AUTRE) {
+                                                println(
+                                                        "Indication reconnue par label: $cleanedIndication -> ${indicByLabel.name}"
+                                                )
+                                                indications.add(
+                                                        indicByLabel.name
+                                                ) // Stocker le nom de l'énumération
+                                            } else {
+                                                // Conserver l'indication originale si non reconnue
+                                                println(
+                                                        "Indication non reconnue mais conservée: $cleanedIndication"
+                                                )
+                                                indications.add(cleanedIndication)
+                                            }
+                                        }
+                                    }
+                                    is Int -> {
+                                        // Essayer de convertir l'entier en AlimIndic
+                                        val indicationInt: Int = indication // Typage explicite
+                                        try {
+                                            val indicEnum = AlimIndic.byCoef(indicationInt)
+                                            println(
+                                                    "Indication reconnue par code: $indicationInt -> ${indicEnum.name}"
+                                            )
+                                            indications.add(
+                                                    indicEnum.name
+                                            ) // Stocker le nom de l'énumération
+                                        } catch (e: Exception) {
+                                            // Stocker la valeur sous forme de chaîne
+                                            println(
+                                                    "Code d'indication non reconnu mais conservé: $indicationInt"
+                                            )
+                                            val indicationStr: String = indicationInt.toString()
+                                            indications.add(indicationStr)
+                                        }
+                                    }
+                                    else -> {
+                                        // Pour tout autre type, utiliser toString() après nettoyage
+                                        val cleanedStr =
+                                                indication
+                                                        .toString()
+                                                        .replace("[", "")
+                                                        .replace("]", "")
+                                                        .replace("\"", "")
+                                                        .trim()
+                                        println(
+                                                "Type d'indication non standard conservé: ${indication.toString()} -> $cleanedStr"
+                                        )
+                                        indications.add(cleanedStr)
+                                    }
                                 }
+                            } catch (e: Exception) {
+                                println(
+                                        "Erreur lors du traitement de l'indication $indication: ${e.message}"
+                                )
+                                // Nettoyer la chaîne avant de l'ajouter
+                                val cleanedStr =
+                                        indication
+                                                .toString()
+                                                .replace("[", "")
+                                                .replace("]", "")
+                                                .replace("\"", "")
+                                                .trim()
+                                indications.add(cleanedStr) // Conserver en cas d'erreur
+                            }
+                        }
+                        println("Indications converties: $indications")
+                        val indicationsJson = json.encodeToString(indications)
 
-                        // Créer le FoodEntity avec le JSON des espèces
+                        // Créer une entité FoodEntity avec RefRation à null pour éviter les erreurs
+                        // de clé étrangère
                         val foodEntity =
                                 FoodEntity(
                                         uuid = food.UUID,
                                         nameDef = food.nom ?: "",
                                         groupAlim =
                                                 try {
-                                                    GroupAlim.valueOf(food.group).ordinal
+                                                    GroupAlim.valueOf(food.group ?: "").ordinal
                                                 } catch (e: Exception) {
                                                     0
                                                 },
                                         typeAlim =
                                                 try {
-                                                    FoodKind.valueOf(food.foodKind).ordinal
+                                                    FoodKind.valueOf(food.foodKind ?: "").ordinal
                                                 } catch (e: Exception) {
                                                     0
                                                 },
@@ -200,707 +336,379 @@ class DatabaseFoodRepository(
                                         consistent = if (food.cont == "YES") 1 else 0,
                                         deprecated = if (food.deprecated == true) 1 else 0,
                                         DataB = food.DataB ?: "",
-                                        RefRation = null,
-                                        RefAlimUnif = "",
+                                        RefRation =
+                                                null, // Important: null pour éviter les contraintes
+                                        // de clé étrangère
+                                        RefAlimUnif = food.UUID, // Utiliser l'UUID comme référence
                                         especesJson = especesJson,
-                                        indicationsJson = indicationsJson
+                                        indicationsJson = indicationsJson,
+                                        name = food.nom,
+                                        quantite = 0f
                                 )
 
-                        println(
-                                "Import de l'aliment dans FOOD: ${foodEntity.nameDef} (${foodEntity.uuid})"
-                        )
-                        foodDao.insert(foodEntity)
-                        importCount++
-
-                        // Traiter les valeurs nutritionnelles
-                        if (food.valMap.isNotEmpty()) {
+                        try {
                             println(
-                                    "DEBUG importFoods - Traitement de ${food.valMap.size} valeurs nutritionnelles pour ${food.nom} (${food.UUID})"
+                                    "Insertion de l'aliment: ${foodEntity.nameDef} (${foodEntity.uuid})"
                             )
-                            val nutrientValues = mutableListOf<NutrientValueEntity>()
+                            foodDao.insert(foodEntity)
+                            importCount++
 
-                            food.valMap.forEach { (key, nutrientQuantity) ->
-                                val nutrientKey = nutrientQuantity.nut
-                                val value = nutrientQuantity.value
+                            // Traiter les valeurs nutritionnelles
+                            processNutrientValues(food, nonResolvedNutrients)
+                            println("Aliment importé avec succès: ${food.nom} (${food.UUID})")
 
-                                val nutrient =
-                                        fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver
-                                                .AllNutrientResolver(nutrientKey)
-                                if (nutrient != null) {
+                            // Vérifier que l'aliment est bien présent
+                            val insertedFood = foodDao.getFoodById(food.UUID)
+                            if (insertedFood != null) {
+                                println(
+                                        "Vérification réussie - Aliment trouvé dans la base: ${insertedFood.nameDef}"
+                                )
+                            } else {
+                                println(
+                                        "ERREUR DE VÉRIFICATION - Aliment non trouvé après insertion: ${food.UUID}"
+                                )
+                            }
+                        } catch (e: Exception) {
+                            errorCount++
+                            println(
+                                    "Erreur lors de la création de l'aliment ${food.nom} (${food.UUID}): ${e.message}"
+                            )
+                            e.printStackTrace()
+
+                            // Essayer de créer un aliment minimal en cas d'erreur
+                            try {
+                                println("Tentative d'insertion d'un aliment minimal...")
+                                val minimalFood =
+                                        FoodEntity(
+                                                uuid = food.UUID,
+                                                nameDef = food.nom ?: "",
+                                                groupAlim = 0,
+                                                typeAlim = 0,
+                                                ingredients = "",
+                                                price = 0.0,
+                                                categPrice = "",
+                                                brand = "",
+                                                gamme = "",
+                                                unitPres = 0,
+                                                quantityPres = 0f,
+                                                version = 1,
+                                                date = "",
+                                                cont = "",
+                                                consistent = 0,
+                                                deprecated = 0,
+                                                DataB = "",
+                                                RefRation = null, // Toujours null
+                                                RefAlimUnif =
+                                                        null, // Également null pour éviter les
+                                                // problèmes
+                                                especesJson = "[]",
+                                                indicationsJson = "[]",
+                                                name = food.nom,
+                                                quantite = 0f
+                                        )
+
+                                foodDao.insert(minimalFood)
+                                importCount++
+                                println(
+                                        "Aliment minimal importé avec succès: ${food.nom} (${food.UUID})"
+                                )
+
+                                // Vérifier l'insertion de l'aliment minimal
+                                val insertedMinimalFood = foodDao.getFoodById(food.UUID)
+                                if (insertedMinimalFood != null) {
                                     println(
-                                            "DEBUG importFoods - Nutriment résolu: $nutrientKey -> ${nutrient.label} = $value"
-                                    )
-                                    nutrientValues.add(
-                                            NutrientValueEntity(
-                                                    refAliment = food.UUID,
-                                                    nutrientLabel = nutrient.label,
-                                                    value = value
-                                            )
+                                            "Vérification réussie - Aliment minimal trouvé dans la base"
                                     )
                                 } else {
                                     println(
-                                            "DEBUG importFoods - Nutriment non résolu: $nutrientKey"
+                                            "ERREUR DE VÉRIFICATION - Aliment minimal non trouvé après insertion"
                                     )
-                                    // Ajouter à la liste des nutriments non résolus
-                                    nonResolvedNutrients.add(nutrientKey)
-
-                                    // Essayer de nettoyer la clé
-                                    val cleanedKey = nutrientKey.trim().replace("_", " ")
-                                    val nutrientAfterClean =
-                                            fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver
-                                                    .AllNutrientResolver(cleanedKey)
-                                    if (nutrientAfterClean != null) {
-                                        println(
-                                                "DEBUG importFoods - Nutriment résolu après nettoyage: $cleanedKey -> ${nutrientAfterClean.label} = $value"
-                                        )
-                                        nutrientValues.add(
-                                                NutrientValueEntity(
-                                                        refAliment = food.UUID,
-                                                        nutrientLabel = nutrientAfterClean.label,
-                                                        value = value
-                                                )
-                                        )
-                                    }
                                 }
-                            }
-
-                            if (nutrientValues.isNotEmpty()) {
-                                nutrientValueDao.deleteAllNutrientValuesForAliment(food.UUID)
-                                nutrientValueDao.insertNutrientValues(nutrientValues)
-                                println(
-                                        "DEBUG importFoods - ${nutrientValues.size} valeurs nutritionnelles insérées pour ${food.nom} (${food.UUID})"
-                                )
+                            } catch (e2: Exception) {
+                                println("Échec de l'insertion de l'aliment minimal: ${e2.message}")
+                                e2.printStackTrace()
                             }
                         }
                     } else {
-                        // L'aliment existe déjà dans FOOD, le mettre à jour
-                        // Déterminer le JSON des espèces à utiliser
-                        val especesJson =
-                                if (especesConverties.isNotEmpty()) {
-                                    Json.encodeToString(especesConverties)
-                                } else {
-                                    existingInFood.especesJson // Garder les espèces existantes
-                                }
-
-                        // Déterminer le JSON des indications à utiliser
-                        val indicationsConverties = convertirIndicationsEnLabels(food.indication)
-                        val indicationsJson =
-                                if (indicationsConverties.isNotEmpty()) {
-                                    Json.encodeToString(indicationsConverties)
-                                } else {
-                                    existingInFood
-                                            .indicationsJson // Garder les indications existantes
-                                }
-
-                        val foodEntity =
-                                FoodEntity(
-                                        uuid = food.UUID,
-                                        nameDef = food.nom ?: existingInFood.nameDef,
-                                        groupAlim =
-                                                try {
-                                                    GroupAlim.valueOf(food.group).ordinal
-                                                } catch (e: Exception) {
-                                                    existingInFood.groupAlim
-                                                },
-                                        typeAlim =
-                                                try {
-                                                    FoodKind.valueOf(food.foodKind).ordinal
-                                                } catch (e: Exception) {
-                                                    existingInFood.typeAlim
-                                                },
-                                        ingredients = food.ingredients
-                                                        ?: existingInFood.ingredients,
-                                        price = food.prix ?: existingInFood.price,
-                                        categPrice = food.categoriePrix
-                                                        ?: existingInFood.categPrice,
-                                        brand = food.marque ?: existingInFood.brand,
-                                        gamme = food.gamme ?: existingInFood.gamme,
-                                        unitPres = existingInFood.unitPres,
-                                        quantityPres = food.quantInt ?: existingInFood.quantityPres,
-                                        version = existingInFood.version,
-                                        date = existingInFood.date,
-                                        cont = food.cont ?: existingInFood.cont,
-                                        consistent = if (food.cont == "YES") 1 else 0,
-                                        deprecated = if (food.deprecated == true) 1 else 0,
-                                        DataB = food.DataB ?: existingInFood.DataB,
-                                        RefRation = null,
-                                        RefAlimUnif = "",
-                                        especesJson = especesJson,
-                                        indicationsJson = indicationsJson
-                                )
-
+                        // L'aliment existe déjà, le mettre à jour
                         println(
-                                "Mise à jour de l'aliment dans FOOD: ${foodEntity.nameDef} (${foodEntity.uuid})"
+                                "Mise à jour de l'aliment existant: ${existingFood.nameDef} (${existingFood.uuid})"
                         )
-                        foodDao.update(foodEntity)
                         updateCount++
 
-                        // Traiter les valeurs nutritionnelles
-                        if (food.valMap.isNotEmpty()) {
-                            println(
-                                    "DEBUG importFoods - Mise à jour de ${food.valMap.size} valeurs nutritionnelles pour ${food.nom} (${food.UUID})"
-                            )
-                            val nutrientValues = mutableListOf<NutrientValueEntity>()
+                        // Préserver la référence à la ration si elle existe
+                        val existingRationRef = existingFood.RefRation
 
-                            food.valMap.forEach { (key, nutrientQuantity) ->
-                                val nutrientKey = nutrientQuantity.nut
-                                val value = nutrientQuantity.value
-
-                                val nutrient =
-                                        fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver
-                                                .AllNutrientResolver(nutrientKey)
-                                if (nutrient != null) {
-                                    println(
-                                            "DEBUG importFoods - Nutriment résolu: $nutrientKey -> ${nutrient.label} = $value"
-                                    )
-                                    nutrientValues.add(
-                                            NutrientValueEntity(
-                                                    refAliment = food.UUID,
-                                                    nutrientLabel = nutrient.label,
-                                                    value = value
-                                            )
-                                    )
-                                } else {
-                                    println(
-                                            "DEBUG importFoods - Nutriment non résolu: $nutrientKey"
-                                    )
-                                    // Ajouter à la liste des nutriments non résolus
-                                    nonResolvedNutrients.add(nutrientKey)
-
-                                    // Essayer de nettoyer la clé
-                                    val cleanedKey = nutrientKey.trim().replace("_", " ")
-                                    val nutrientAfterClean =
-                                            fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver
-                                                    .AllNutrientResolver(cleanedKey)
-                                    if (nutrientAfterClean != null) {
-                                        println(
-                                                "DEBUG importFoods - Nutriment résolu après nettoyage: $cleanedKey -> ${nutrientAfterClean.label} = $value"
-                                        )
-                                        nutrientValues.add(
-                                                NutrientValueEntity(
-                                                        refAliment = food.UUID,
-                                                        nutrientLabel = nutrientAfterClean.label,
-                                                        value = value
-                                                )
-                                        )
-                                    }
-                                }
-                            }
-
-                            if (nutrientValues.isNotEmpty()) {
-                                nutrientValueDao.deleteAllNutrientValuesForAliment(food.UUID)
-                                nutrientValueDao.insertNutrientValues(nutrientValues)
-                                println(
-                                        "DEBUG importFoods - ${nutrientValues.size} valeurs nutritionnelles mises à jour pour ${food.nom} (${food.UUID})"
+                        // Mettre à jour l'aliment avec les nouvelles valeurs tout en préservant la
+                        // référence à la ration
+                        val updatedFood =
+                                existingFood.copy(
+                                        nameDef = food.nom ?: existingFood.nameDef,
+                                        ingredients = food.ingredients ?: existingFood.ingredients,
+                                        price = food.prix ?: existingFood.price,
+                                        brand = food.marque ?: existingFood.brand,
+                                        gamme = food.gamme ?: existingFood.gamme,
+                                        // Conserver la référence à la ration
+                                        RefRation = existingRationRef
                                 )
-                            }
+
+                        try {
+                            foodDao.update(updatedFood)
+                            println("Aliment mis à jour avec succès: ${updatedFood.nameDef}")
+
+                            // Traiter les valeurs nutritionnelles
+                            processNutrientValues(food, nonResolvedNutrients)
+                        } catch (e: Exception) {
+                            println("Erreur lors de la mise à jour de l'aliment: ${e.message}")
+                            e.printStackTrace()
                         }
                     }
                 } catch (e: Exception) {
-                    println("Erreur lors de l'import de l'aliment ${food.nom}: ${e.message}")
+                    errorCount++
+                    println(
+                            "Erreur globale lors du traitement de l'aliment ${food.nom} (${food.UUID}): ${e.message}"
+                    )
                     e.printStackTrace()
                 }
             }
 
-            println(
-                    "Importation terminée. ${importCount} aliments importés, ${updateCount} aliments mis à jour, ${deleteCount} aliments supprimés."
-            )
+            // Vérifier le résultat de l'importation
+            val updatedFoods = foodDao.getAllFoods()
+            println("\n===== RÉSULTATS DE L'IMPORTATION =====")
+            println("Nombre d'aliments dans la base après importation: ${updatedFoods.size}")
+            println("$importCount aliments importés")
+            println("$updateCount aliments mis à jour")
+            println("$deleteCount aliments supprimés")
+            println("$errorCount erreurs rencontrées")
 
-            // Afficher les nutriments non résolus
             if (nonResolvedNutrients.isNotEmpty()) {
-                println("\nNutriments non résolus (${nonResolvedNutrients.size}):")
-                nonResolvedNutrients.sorted().forEach { nutrientKey -> println("  - $nutrientKey") }
+                println("${nonResolvedNutrients.size} nutriments non résolus")
             }
 
-            println("Base de données vidée : ${deleteCount} aliments supprimés")
-            importCount + updateCount
+            println("===== FIN IMPORTATION ALIMENTS =====")
+            return@withContext importCount
         }
     }
 
     /**
-     * Convertit une liste d'identifiants d'espèces en leurs labels correspondants. Si la liste est
-     * vide mais qu'un id d'espèce est fourni, il sera également converti.
-     *
-     * @param especes Liste des espèces (qui peuvent être sous forme d'ID ou de labels)
-     * @param especeId ID numérique d'une espèce (utilisé si la liste est vide)
-     * @return Liste des labels d'espèces convertis
+     * Traite les valeurs nutritionnelles pour un aliment.
+     * @param food L'aliment pour lequel traiter les valeurs nutritionnelles
+     * @param nonResolvedNutrients Ensemble mutable pour collecter les nutriments non résolus
      */
-    private fun convertirEspecesEnLabels(especes: List<String>, especeId: Int): List<String> {
-        // Si la liste d'espèces n'est pas vide, la traiter
-        if (especes.isNotEmpty()) {
-            return especes.map { especeStr ->
-                // Vérifier si l'espèce est un identifiant numérique
-                val especeInt = especeStr.toIntOrNull()
-                if (especeInt != null) {
-                    // C'est un ID numérique, essayer de le convertir en label
-                    try {
-                        val espece = Espece.getEnumFromInt(especeInt)
-                        espece?.label
-                                ?: especeStr // Utiliser le label si trouvé, sinon garder la chaîne
-                        // d'origine
-                    } catch (e: Exception) {
-                        especeStr // En cas d'erreur, garder la chaîne d'origine
-                    }
-                } else {
-                    // Ce n'est pas un ID numérique, donc c'est probablement déjà un label
-                    especeStr
-                }
+    private suspend fun processNutrientValues(
+            food: AlimentEvJson,
+            nonResolvedNutrients: MutableSet<String>
+    ) {
+        val nutrientValues = mutableListOf<NutrientValueEntity>()
+        val resolvedCount = AtomicInteger(0)
+        val nonResolvedCount = AtomicInteger(0)
+
+        // Supprimer d'abord toutes les valeurs nutritionnelles existantes
+        if (nutrientValueDao != null) {
+            nutrientValueDao.deleteAllNutrientValuesForAliment(food.UUID)
+        } else {
+            println(
+                    "ATTENTION: nutrientValueDao est null, impossible de supprimer ou insérer les valeurs nutritionnelles"
+            )
+        }
+
+        println("\n===== TRAITEMENT DES NUTRIMENTS POUR ${food.nom} (${food.UUID}) =====")
+        println("Nombre de nutriments à traiter: ${food.valMap.size}")
+
+        // Traiter chaque valeur nutritionnelle
+        food.valMap.forEach { (key, nutrientQuantity) ->
+            val nutrientKey = nutrientQuantity.nut
+            val value = nutrientQuantity.value
+
+            val nutrient =
+                    fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver.AllNutrientResolver(nutrientKey)
+            if (nutrient != null) {
+                resolvedCount.incrementAndGet()
+                println("✓ Nutriment résolu: $nutrientKey -> ${nutrient.label} = $value")
+                nutrientValues.add(
+                        NutrientValueEntity(
+                                refAliment = food.UUID,
+                                nutrientLabel = nutrient.label,
+                                value = value
+                        )
+                )
+            } else {
+                nonResolvedCount.incrementAndGet()
+                nonResolvedNutrients.add(nutrientKey)
+                println("✗ Nutriment NON résolu: $nutrientKey = $value")
             }
         }
-        // Si la liste est vide mais qu'un ID d'espèce est fourni
-        else if (especeId > 0) {
+
+        println("Résultats du traitement des nutriments:")
+        println("- ${resolvedCount.get()} nutriments résolus")
+        println("- ${nonResolvedCount.get()} nutriments non résolus")
+
+        // Insérer toutes les valeurs nutritionnelles
+        if (nutrientValues.isNotEmpty()) {
             try {
-                val espece = Espece.getEnumFromInt(especeId)
-                return listOf(espece?.label ?: especeId.toString())
+                if (nutrientValueDao != null) {
+                    nutrientValueDao.insertNutrientValues(nutrientValues)
+                    println(
+                            "${nutrientValues.size} valeurs nutritionnelles insérées pour l'aliment ${food.nom} (${food.UUID})"
+                    )
+                } else {
+                    println(
+                            "ATTENTION: nutrientValueDao est null, ${nutrientValues.size} valeurs nutritionnelles prêtes mais non insérées"
+                    )
+                }
             } catch (e: Exception) {
-                return listOf(especeId.toString())
+                println("Erreur lors de l'insertion des valeurs nutritionnelles: ${e.message}")
+                e.printStackTrace()
             }
         }
-
-        // Si aucune espèce n'est spécifiée
-        return emptyList()
+        println("===== FIN DU TRAITEMENT DES NUTRIMENTS =====\n")
     }
 
     /**
-     * Convertit une liste d'identifiants d'indications en leurs labels correspondants.
-     *
-     * @param indications Liste des indications (qui peuvent être sous forme de codes ou de labels)
-     * @return Liste des labels d'indications convertis
+     * Insère un aliment avec toutes ses propriétés associées.
+     * @param food L'aliment à insérer
      */
-    private fun convertirIndicationsEnLabels(indications: List<String>): List<String> {
-        // Si la liste d'indications n'est pas vide, la traiter
-        if (indications.isNotEmpty()) {
-            return indications.map { indicStr ->
-                // Vérifier si l'indication est un identifiant numérique
-                val indicInt = indicStr.toIntOrNull()
-                if (indicInt != null) {
-                    // C'est un code numérique, essayer de le convertir en label
-                    try {
-                        val indic = AlimIndic.byCoef(indicInt)
-                        indic.label // Utiliser le label correspondant au code
-                    } catch (e: Exception) {
-                        indicStr // En cas d'erreur, garder la chaîne d'origine
-                    }
-                } else {
-                    // Ce n'est pas un code numérique, donc c'est probablement déjà un label
-                    indicStr
-                }
-            }
-        }
-
-        // Si aucune indication n'est spécifiée
-        return emptyList()
-    }
-
-    /** Insère un aliment avec toutes ses propriétés associées */
     override suspend fun insertFood(food: AlimentEv) {
         withContext(AppDispatchers.IO) {
-            try {
-                // Conversion de l'objet de domaine en entité
-                val foodEntity = food.toFoodEntity()
+            // Convertir en FoodEntity et insérer
+            foodDao.insert(food.toFoodEntity())
 
-                // Insertion de l'entité dans la base de données
-                foodDao.insert(foodEntity)
-
-                // Ajouter les valeurs de nutriments
-                if (food.valMap.isNotEmpty()) {
-                    val nutrientValues = mutableListOf<NutrientValueEntity>()
-                    food.valMap.forEach { (nutrient, nutrientQuantity) ->
-                        nutrientValues.add(
-                                NutrientValueEntity(
-                                        refAliment = food.uuid,
-                                        nutrientLabel = nutrient.label,
-                                        value = nutrientQuantity.value
-                                )
-                        )
-                    }
-                    nutrientValueDao.deleteAllNutrientValuesForAliment(food.uuid)
-                    nutrientValueDao.insertNutrientValues(nutrientValues)
-                }
-
-                // Nous n'avons plus besoin d'insérer les indications dans la table d'association
-                // car elles sont maintenant stockées dans le champ indicationsJson
-            } catch (e: Exception) {
-                println("Erreur lors de l'insertion de l'aliment: ${e.message}")
+            // Traiter les valeurs nutritionnelles
+            val nutrientValues = food.valMap.toNutrientValueEntities(food.uuid)
+            if (nutrientValueDao != null && nutrientValues.isNotEmpty()) {
+                nutrientValueDao.insertNutrientValues(nutrientValues)
             }
         }
     }
 
+    /**
+     * Récupère un aliment avec toutes ses propriétés associées.
+     * @param uuid UUID de l'aliment à récupérer
+     * @return L'aliment complet ou null si non trouvé
+     */
     override suspend fun getFood(uuid: String): AlimentEv? {
         return withContext(AppDispatchers.IO) {
-            // Récupérer l'aliment depuis la table FOOD
-            val foodEntity = foodDao.getFood(uuid)
-            if (foodEntity != null) {
-                println(
-                        "DEBUG getFood - Aliment trouvé dans FOOD: ${foodEntity.name} (${foodEntity.uuid})"
-                )
-                // Convertir l'entité en objet de domaine
-                val alimentEv = foodEntity.toAlimentEv()
-
-                // Charger les valeurs des nutriments
-                val nutrientValues = nutrientValueDao.getNutrientValues(uuid)
-                println(
-                        "DEBUG getFood - Nombre de valeurs nutritionnelles trouvées: ${nutrientValues.size}"
-                )
-
-                // Collecter les nutriments non résolus
-                val nonResolvedNutrients = mutableListOf<String>()
-
-                if (nutrientValues.isNotEmpty()) {
-                    // Convertir les valeurs des nutriments en Map<Nutrient, NutrientQuantity>
-                    val nutrientMap =
-                            nutrientValues
-                                    .associate { entity ->
-                                        val nutrient =
-                                                fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver
-                                                        .AllNutrientResolver(entity.nutrientLabel)
-                                        if (nutrient == null) {
-                                            println(
-                                                    "DEBUG getFood - Nutriment non résolu: ${entity.nutrientLabel}"
-                                            )
-                                            nonResolvedNutrients.add(entity.nutrientLabel)
-                                        } else {
-                                            println(
-                                                    "DEBUG getFood - Nutriment résolu: ${entity.nutrientLabel} -> ${nutrient.label} = ${entity.value}"
-                                            )
-                                        }
-                                        nutrient to
-                                                fr.vetbrain.vetnutri_mp.Data.NutrientQuantity(
-                                                        entity.value,
-                                                        nutrient?.label ?: ""
-                                                )
-                                    }
-                                    .filterKeys { it != null }
-                                    .mapKeys { it.key!! }
-
-                    println(
-                            "DEBUG getFood - Nombre de nutriments après résolution: ${nutrientMap.size}"
-                    )
-
-                    // Mettre à jour valMap avec les valeurs chargées
-                    alimentEv.valMap = nutrientMap.toMutableMap()
-                    println(
-                            "DEBUG getFood - valMap après chargement: ${alimentEv.valMap.size} valeurs"
-                    )
-                    alimentEv.valMap.forEach { (nutrient, value) ->
-                        println(
-                                "DEBUG getFood - valMap contient: ${nutrient.label} = ${value.value}"
-                        )
+            val foodEntity = foodDao.getFoodById(uuid) ?: return@withContext null
+            val nutrientValues =
+                    if (nutrientValueDao != null) {
+                        nutrientValueDao.getNutrientValues(uuid)
+                    } else {
+                        emptyList()
                     }
-
-                    // Afficher les nutriments non résolus
-                    if (nonResolvedNutrients.isNotEmpty()) {
-                        println(
-                                "\nNutriments non résolus (${nonResolvedNutrients.size}) pour ${alimentEv.nom}:"
-                        )
-                        nonResolvedNutrients.distinct().sorted().forEach { nutrientKey ->
-                            println("  - $nutrientKey")
-                        }
-                    }
-                } else {
-                    println(
-                            "DEBUG getFood - Aucune valeur nutritionnelle trouvée pour l'aliment ${alimentEv.nom} (${alimentEv.uuid})"
-                    )
-                }
-
-                return@withContext alimentEv
-            }
-
-            println("DEBUG getFood - Aliment non trouvé: $uuid")
-            return@withContext null
+            return@withContext foodEntity.toAlimentEv(nutrientValues = nutrientValues)
         }
     }
 
+    /**
+     * Supprime un aliment et toutes ses propriétés associées.
+     * @param uuid UUID de l'aliment à supprimer
+     */
     override suspend fun deleteFood(uuid: String) {
         withContext(AppDispatchers.IO) {
-            nutrientValueDao.deleteAllNutrientValuesForAliment(uuid)
+            // Supprimer d'abord les valeurs nutritionnelles
+            nutrientValueDao?.deleteAllNutrientValuesForAliment(uuid)
+
+            // Supprimer les indications associées
             foodDao.deleteIndicationsForAliment(uuid)
+
+            // Supprimer l'aliment lui-même
             foodDao.deleteFood(uuid)
         }
     }
 
+    /**
+     * Met à jour un aliment et toutes ses propriétés associées.
+     * @param food Aliment à mettre à jour
+     */
     override suspend fun updateFood(food: AlimentEv) {
         withContext(AppDispatchers.IO) {
-            try {
-                // Conversion de l'objet de domaine en entité
-                val foodEntity = food.toFoodEntity()
+            // Mettre à jour l'entité principale
+            foodDao.update(food.toFoodEntity())
 
-                // Mise à jour de l'entité dans la base de données
-                foodDao.update(foodEntity)
+            // Supprimer et réinsérer les valeurs nutritionnelles
+            nutrientValueDao?.deleteAllNutrientValuesForAliment(food.uuid)
 
-                // Mise à jour des valeurs de nutriments
-                if (food.valMap.isNotEmpty()) {
-                    val nutrientValues = mutableListOf<NutrientValueEntity>()
-                    food.valMap.forEach { (nutrient, nutrientQuantity) ->
-                        nutrientValues.add(
-                                NutrientValueEntity(
-                                        refAliment = food.uuid,
-                                        nutrientLabel = nutrient.label,
-                                        value = nutrientQuantity.value
-                                )
-                        )
-                    }
-                    nutrientValueDao.deleteAllNutrientValuesForAliment(food.uuid)
-                    nutrientValueDao.insertNutrientValues(nutrientValues)
-                }
-
-                // Nous n'avons plus besoin de mettre à jour les indications dans la table
-                // d'association
-                // car elles sont maintenant stockées dans le champ indicationsJson
-            } catch (e: Exception) {
-                println("Erreur lors de la mise à jour de l'aliment: ${e.message}")
+            val nutrientValues = food.valMap.toNutrientValueEntities(food.uuid)
+            if (nutrientValueDao != null && nutrientValues.isNotEmpty()) {
+                nutrientValueDao.insertNutrientValues(nutrientValues)
             }
-        }
-    }
-
-    // Définition de méthodes d'extension pour la conversion entre AlimentEv et FoodEntity
-    private fun AlimentEv.toFoodEntity(): FoodEntity {
-        // Conversion des espèces en JSON
-        val especesLabels = this.especes.map { it }
-        val especesJsonString =
-                if (especesLabels.isEmpty()) null else Json.encodeToString(especesLabels)
-
-        // Conversion des indications en JSON
-        val indicLabels = this.indicat.map { it.label }
-        val indicationsJsonString =
-                if (indicLabels.isEmpty()) null else Json.encodeToString(indicLabels)
-
-        return FoodEntity(
-                uuid = this.uuid,
-                groupAlim = this.group?.ordinal ?: 0,
-                typeAlim = this.typeAliment?.ordinal ?: 0,
-                ingredients = this.ingredients ?: "",
-                price = this.price ?: 0.0,
-                categPrice = this.categPrice ?: "",
-                brand = this.brand ?: "",
-                gamme = this.gamme ?: "",
-                unitPres = 0, // Valeur par défaut
-                quantityPres = this.quantInt ?: 0f,
-                version = 1, // Valeur par défaut
-                date = "", // Valeur par défaut
-                nameDef = this.nom ?: "",
-                cont = this.cont?.name ?: "NO",
-                consistent = if (this.cont != null && this.cont.ordinal > 0) 1 else 0,
-                deprecated = if (this.deprecated) 1 else 0,
-                DataB = this.dataB ?: "",
-                RefRation = null,
-                RefAlimUnif = "",
-                especesJson = especesJsonString,
-                indicationsJson = indicationsJsonString
-        )
-    }
-
-    // Extension pour convertir AlimentEvJson en FoodEntity
-    private fun AlimentEvJson.toFoodEntity(): FoodEntity {
-        // Conversion des espèces en JSON
-        val especesConverties = convertirEspecesEnLabels(this.Especes, this.espece)
-        val especesJsonString =
-                if (especesConverties.isEmpty()) null else Json.encodeToString(especesConverties)
-
-        // Conversion des indications en JSON
-        val indicationsConverties = convertirIndicationsEnLabels(this.indication)
-        val indicationsJsonString =
-                if (indicationsConverties.isEmpty()) null
-                else Json.encodeToString(indicationsConverties)
-
-        return FoodEntity(
-                uuid = this.UUID,
-                groupAlim =
-                        try {
-                            GroupAlim.valueOf(this.group).ordinal
-                        } catch (e: Exception) {
-                            0
-                        },
-                typeAlim =
-                        try {
-                            FoodKind.valueOf(this.foodKind).ordinal
-                        } catch (e: Exception) {
-                            0
-                        },
-                ingredients = this.ingredients,
-                price = this.prix,
-                categPrice = this.categoriePrix,
-                brand = this.marque,
-                gamme = this.gamme,
-                unitPres = 0, // Valeur par défaut
-                quantityPres = this.quantInt,
-                version = 1, // Valeur par défaut
-                date = "", // Valeur par défaut
-                nameDef = this.nom,
-                cont = this.cont ?: "NO",
-                consistent = if (this.cont == "YES") 1 else 0,
-                deprecated = if (this.deprecated == true) 1 else 0,
-                DataB = this.DataB ?: "",
-                RefRation = null,
-                RefAlimUnif = "",
-                especesJson = especesJsonString,
-                indicationsJson = indicationsJsonString
-        )
-    }
-
-    // Extension pour convertir FoodEntity en AlimentEv
-    private fun FoodEntity.toAlimentEv(): AlimentEv {
-        // Décodage des espèces depuis le JSON
-        val especesList = mutableListOf<String>()
-        if (!this.especesJson.isNullOrEmpty()) {
-            try {
-                especesList.addAll(Json.decodeFromString<List<String>>(this.especesJson))
-            } catch (e: Exception) {
-                // Si le décodage JSON échoue, essayer de splitter par virgule
-                especesList.addAll(this.especesJson.split(","))
-            }
-        }
-
-        // Décodage des indications depuis le JSON
-        val indicationsList = mutableListOf<AlimIndic>()
-        if (!this.indicationsJson.isNullOrEmpty()) {
-            try {
-                val indicLabels = Json.decodeFromString<List<String>>(this.indicationsJson)
-                indicationsList.addAll(
-                        indicLabels.mapNotNull { label ->
-                            try {
-                                // Essayer d'abord de convertir par le nom de l'énumération
-                                AlimIndic.valueOf(label)
-                            } catch (e: Exception) {
-                                // Si ça échoue, essayer par le label
-                                AlimIndic.byName(label)
-                            }
-                        }
-                )
-            } catch (e: Exception) {
-                // Si le décodage JSON échoue, essayer de splitter par virgule
-                this.indicationsJson.split(",").forEach { indic ->
-                    try {
-                        AlimIndic.valueOf(indic)?.let { indicationsList.add(it) }
-                    } catch (e: Exception) {
-                        AlimIndic.byName(indic)?.let { indicationsList.add(it) }
-                    }
-                }
-            }
-        }
-
-        return AlimentEv(
-                uuid = this.uuid,
-                nom = this.nameDef,
-                group =
-                        try {
-                            GroupAlim.values().getOrNull(this.groupAlim)
-                        } catch (e: Exception) {
-                            null
-                        },
-                typeAliment =
-                        try {
-                            FoodKind.values().getOrNull(this.typeAlim)
-                        } catch (e: Exception) {
-                            null
-                        },
-                ingredients = this.ingredients,
-                price = this.price,
-                categPrice = this.categPrice,
-                brand = this.brand,
-                gamme = this.gamme,
-                quantInt = this.quantityPres,
-                cont = fr.vetbrain.vetnutri_mp.Enumer.ContEnum.getByName(this.cont),
-                deprecated = this.deprecated > 0,
-                dataB = this.DataB ?: "",
-                especes = especesList.toMutableList(),
-                indicat = indicationsList.toMutableList(),
-                rationUUID = this.RefRation,
-                valMap = mutableMapOf() // Les valeurs nutritionnelles seront chargées séparément
-        )
-    }
-
-    /**
-     * Diagnostique l'importation des aliments à partir d'un fichier JSON et retourne un rapport
-     * détaillé
-     *
-     * @param jsonContent Le contenu JSON à analyser
-     * @return Un rapport détaillé sur l'importation et les problèmes éventuels
-     */
-    suspend fun diagnosticFoodImport(jsonContent: String): String {
-        return try {
-            // Utiliser l'utilitaire de test pour analyser l'importation
-            val report = ImportTester.testFoodImport(jsonContent)
-
-            // Compter le nombre d'aliments dans la base de données pour référence
-            val currentFoodsCount = getAllFoods().size
-            report +
-                    "\n\nNombre d'aliments actuellement dans la base de données: $currentFoodsCount"
-        } catch (e: Exception) {
-            "ERREUR LORS DU DIAGNOSTIC: ${e.message}\n${e.stackTraceToString()}"
         }
     }
 
     /**
-     * Vide entièrement la base de données des aliments. Supprime tous les aliments, leurs espèces
-     * associées, leurs indications et leurs valeurs nutritionnelles.
-     *
+     * Supprime tous les aliments de la base de données, ainsi que leurs valeurs nutritionnelles
+     * associées.
      * @return Le nombre d'aliments supprimés
      */
-    suspend fun clearAllFoods(): Int {
+    override suspend fun clearAllFoods(): Int {
         return withContext(AppDispatchers.IO) {
-            var totalCount = 0
+            // Récupérer tous les aliments pour connaître leur nombre
+            val allFoods = foodDao.getAllFoods()
+            val count = allFoods.size
 
-            // Récupérer tous les aliments de la table ALIMENTS_BASE
-            val allFoodsFromAlimentBase = foodDao.getAllFoods()
-            val count1 = allFoodsFromAlimentBase.size
-
-            // Pour chaque aliment dans ALIMENTS_BASE, supprimer ses valeurs nutritionnelles et
-            // indications
-            allFoodsFromAlimentBase.forEach { food ->
-                // Supprimer d'abord les valeurs nutritionnelles
-                nutrientValueDao.deleteAllNutrientValuesForAliment(food.uuid)
-
-                // Supprimer les indications associées
+            // Supprimer toutes les valeurs nutritionnelles pour tous les aliments
+            allFoods.forEach { food ->
+                nutrientValueDao?.deleteAllNutrientValuesForAliment(food.uuid)
                 foodDao.deleteIndicationsForAliment(food.uuid)
-
-                // Supprimer l'aliment lui-même
-                foodDao.deleteFood(food.uuid)
             }
 
-            // Récupérer tous les aliments de la table FOOD
-            val allFoodsFromFood = foodDao.findAll()
-            val count2 = allFoodsFromFood.size
+            // Supprimer tous les aliments
+            foodDao.deleteAllFoods()
 
-            // Pour chaque aliment dans FOOD, supprimer ses valeurs nutritionnelles et indications
-            allFoodsFromFood.forEach { food ->
-                // Supprimer d'abord les valeurs nutritionnelles
-                nutrientValueDao.deleteAllNutrientValuesForAliment(food.uuid)
+            println("$count aliments ont été supprimés de la base de données")
 
-                // Supprimer les indications associées
-                foodDao.deleteIndicationsForAliment(food.uuid)
-
-                // Attention: nous utilisons une requête spécifique pour supprimer de la table FOOD
-                try {
-                    // Nous devons appeler delete car il n'y a pas de méthode dédiée pour supprimer
-                    // de FOOD
-                    foodDao.delete(food)
-                } catch (e: Exception) {
-                    println(
-                            "Erreur lors de la suppression de l'aliment ${food.nameDef} (${food.uuid}) de FOOD: ${e.message}"
-                    )
-                }
-            }
-
-            totalCount = count1 + count2
-            println(
-                    "Base de données vidée : $totalCount aliments supprimés (${count1} de ALIMENTS_BASE, ${count2} de FOOD)"
-            )
-            totalCount
+            return@withContext count
         }
     }
 
-    /** Convertit une map de nutriments et valeurs en liste d'entités de valeurs de nutriments. */
-    private fun Map<
-            Nutrient, fr.vetbrain.vetnutri_mp.Data.NutrientQuantity>.toNutrientValueEntities(
-            alimentUuid: String
-    ): List<NutrientValueEntity> {
-        return map { (nutrient, nutrientQuantity) ->
-            NutrientValueEntity(
-                    refAliment = alimentUuid,
-                    nutrientLabel = nutrient.label,
-                    value = nutrientQuantity.value
-            )
+    /**
+     * Associe un aliment à une ration.
+     * @param foodId Identifiant de l'aliment à associer
+     * @param rationId Identifiant de la ration
+     * @return true si l'association a réussi, false sinon
+     */
+    suspend fun associateFoodWithRation(foodId: String, rationId: String): Boolean {
+        return withContext(AppDispatchers.IO) {
+            try {
+                // Vérifier que l'aliment existe
+                val food = foodDao.getFoodById(foodId) ?: return@withContext false
+
+                // Créer une entité d'aliment pour la ration (AlimentRationEntity)
+                // Cette partie dépend de la structure exacte de votre base de données
+                // Si vous avez une table spécifique pour associer les aliments aux rations
+
+                // Mettre à jour la référence de ration dans l'aliment
+                val updatedFood = food.copy(RefRation = rationId)
+                foodDao.update(updatedFood)
+
+                println("Aliment ${food.name} (${food.uuid}) associé à la ration $rationId")
+                return@withContext true
+            } catch (e: Exception) {
+                println(
+                        "Erreur lors de l'association de l'aliment $foodId à la ration $rationId: ${e.message}"
+                )
+                return@withContext false
+            }
+        }
+    }
+
+    /**
+     * Charge les aliments associés à une ration spécifique.
+     * @param rationId Identifiant de la ration
+     * @return Liste des aliments associés à la ration
+     */
+    suspend fun getFoodsForRation(rationId: String): List<AlimentEv> {
+        return withContext(AppDispatchers.IO) {
+            val foods = foodDao.getAllFoods().filter { it.RefRation == rationId }
+            return@withContext foods.map { foodEntity ->
+                val nutrientValues =
+                        if (nutrientValueDao != null) {
+                            nutrientValueDao.getNutrientValues(foodEntity.uuid)
+                        } else {
+                            emptyList()
+                        }
+                foodEntity.toAlimentEv(nutrientValues = nutrientValues)
+            }
         }
     }
 }

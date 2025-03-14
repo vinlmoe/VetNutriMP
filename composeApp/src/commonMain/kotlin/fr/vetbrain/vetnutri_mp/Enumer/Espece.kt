@@ -34,32 +34,43 @@ enum class Espece(override val label: String, val categorie: Int, val id: String
 
     companion object {
         /**
-         * Récupère une espèce à partir d'une chaîne, en essayant plusieurs formats possibles.
+         * Récupère une espèce à partir d'une chaîne, en essayant plusieurs formats possibles. Cette
+         * méthode nettoie automatiquement la chaîne d'entrée (crochets, guillemets, espaces) et
+         * gère l'insensibilité à la casse.
+         *
          * @param value La chaîne à convertir en espèce
          * @return L'espèce correspondante ou null si aucune correspondance n'est trouvée
          */
         fun getFromString(value: String): Espece? {
-            // Vérifier si c'est un nom d'énumération (CHIEN, CHAT, etc.)
+            // Nettoyer la chaîne d'entrée
+            val cleanedValue = value.replace("[", "").replace("]", "").replace("\"", "").trim()
+
+            if (cleanedValue.isEmpty()) {
+                return null
+            }
+
+            // Vérifier si c'est un nom d'énumération (CHIEN, CHAT, etc.) - insensible à la casse
             try {
-                return valueOf(value)
+                val upperCaseValue = cleanedValue.uppercase()
+                return valueOf(upperCaseValue)
             } catch (e: Exception) {
                 // Pas un nom d'énumération valide
             }
 
-            // Vérifier si c'est un label (DOG, CAT, etc.)
-            val byLabel = getByLabel(value)
+            // Vérifier si c'est un label (DOG, CAT, etc.) - insensible à la casse
+            val byLabel = entries.find { it.label.equals(cleanedValue, ignoreCase = true) }
             if (byLabel != null) {
                 return byLabel
             }
 
             // Vérifier si c'est un ID sous forme de chaîne
-            val byId = entries.find { it.id == value }
+            val byId = entries.find { it.id == cleanedValue }
             if (byId != null) {
                 return byId
             }
 
             // Vérifier si c'est un ID numérique
-            val intValue = value.toIntOrNull()
+            val intValue = cleanedValue.toIntOrNull()
             if (intValue != null) {
                 return getEnumFromInt(intValue)
             }

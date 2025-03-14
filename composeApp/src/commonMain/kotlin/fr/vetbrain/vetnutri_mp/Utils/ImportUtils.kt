@@ -225,10 +225,34 @@ object ImportUtils {
 
                 // Afficher les nutriments non résolus
                 if (nonResolvedNutrients.isNotEmpty()) {
-                    println("\nNutriments non résolus dans le JSON (${nonResolvedNutrients.size}):")
-                    nonResolvedNutrients.sorted().forEach { nutrientKey ->
-                        println("  - $nutrientKey")
+                    println("\n========== RAPPORT DES NUTRIMENTS NON RÉSOLUS ==========")
+                    println("${nonResolvedNutrients.size} nutriments n'ont pas pu être résolus:")
+
+                    // Trier et compter par occurrence
+                    val countByNutrient = mutableMapOf<String, Int>()
+                    nonResolvedNutrients.forEach { nutrient ->
+                        countByNutrient[nutrient] = (countByNutrient[nutrient] ?: 0) + 1
                     }
+
+                    // Afficher par ordre de fréquence
+                    countByNutrient.entries.sortedByDescending { it.value }.forEach {
+                            (nutrient, count) ->
+                        println("  - $nutrient (présent dans $count aliments)")
+                    }
+
+                    println("\nSuggestions pour résoudre le problème:")
+                    println(
+                            "1. Vérifiez que les labels des nutriments dans le fichier d'importation correspondent exactement aux labels définis dans les énumérations."
+                    )
+                    println(
+                            "2. Assurez-vous que les énumérations NutrientVitam, NutrientMain, etc. incluent tous les nutriments nécessaires."
+                    )
+                    println(
+                            "3. Les labels de nutriments doivent correspondre aux valeurs de la propriété 'label' dans les énumérations."
+                    )
+                    println("========================================================")
+                } else {
+                    println("\nTous les nutriments ont été résolus avec succès!")
                 }
 
                 return foods

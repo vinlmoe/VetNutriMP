@@ -45,6 +45,46 @@ enum class AlimIndic(val coef: Int, override val label: String) : Labelable {
                 entries.find { it.label.equals(name, ignoreCase = true) } ?: AUTRE
 
         fun valuesExcept(): List<AlimIndic> = entries.filter { it != ALL }
+
+        /**
+         * Récupère une indication à partir d'une chaîne, en essayant plusieurs formats possibles.
+         * Cette méthode nettoie automatiquement la chaîne d'entrée (crochets, guillemets, espaces)
+         * et gère l'insensibilité à la casse.
+         *
+         * @param value La chaîne à convertir en indication
+         * @return L'indication correspondante (AUTRE si aucune correspondance n'est trouvée)
+         */
+        fun getFromString(value: String): AlimIndic {
+            // Nettoyer la chaîne d'entrée
+            val cleanedValue = value.replace("[", "").replace("]", "").replace("\"", "").trim()
+
+            if (cleanedValue.isEmpty()) {
+                return AUTRE
+            }
+
+            // Vérifier si c'est un nom d'énumération (OBES, URO, etc.) - insensible à la casse
+            try {
+                val upperCaseValue = cleanedValue.uppercase()
+                return valueOf(upperCaseValue)
+            } catch (e: Exception) {
+                // Pas un nom d'énumération valide
+            }
+
+            // Vérifier si c'est un label par nom - déjà insensible à la casse via byName
+            val byLabel = byName(cleanedValue)
+            if (byLabel != AUTRE) {
+                return byLabel
+            }
+
+            // Vérifier si c'est un coefficient numérique
+            val coef = cleanedValue.toIntOrNull()
+            if (coef != null) {
+                return byCoef(coef)
+            }
+
+            // Aucune correspondance trouvée
+            return AUTRE
+        }
     }
 
     override fun toString() = label

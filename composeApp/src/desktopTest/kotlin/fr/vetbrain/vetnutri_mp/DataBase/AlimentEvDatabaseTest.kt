@@ -406,6 +406,10 @@ class MockFoodDao : FoodDao {
         foods.remove(uuid)
     }
 
+    override suspend fun deleteAllFoods() {
+        foods.clear()
+    }
+
     override suspend fun getFood(uuid: String): FoodEntity? {
         return getFoodById(uuid)
     }

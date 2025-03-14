@@ -13,7 +13,6 @@ import fr.vetbrain.vetnutri_mp.DataBase.AnimalDao
 import fr.vetbrain.vetnutri_mp.DataBase.FoodDao
 import fr.vetbrain.vetnutri_mp.DataBase.FoodEntity
 import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toEntity
-import fr.vetbrain.vetnutri_mp.DataBase.NutrientValueDao
 import fr.vetbrain.vetnutri_mp.DataBase.SupplementalVariableEntity
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.VariableKind
@@ -21,11 +20,8 @@ import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.LocalDate
 
-class DatabaseAnimalRepository(
-        private val animalDao: AnimalDao,
-        private val foodDao: FoodDao,
-        private val nutrientValueDao: NutrientValueDao? = null
-) : AnimalRepository {
+class DatabaseAnimalRepository(private val animalDao: AnimalDao, private val foodDao: FoodDao) :
+        AnimalRepository {
         override suspend fun saveAnimal(animal: AnimalEv) {
                 withContext(AppDispatchers.Default) {
                         // Sauvegarder l'animal
@@ -164,146 +160,63 @@ class DatabaseAnimalRepository(
                 }
         }
 
-        /**
-         * Convertit un identifiant d'espèce (numérique ou chaîne) en nom d'énumération Espece
-         * @param especeId L'identifiant d'espèce à convertir
-         * @return Le nom de l'énumération Espece correspondante ou l'identifiant original si non
-         * reconnu
-         */
-        private fun convertSpecieId(especeId: String): String {
-                // Si l'entrée est vide ou null, utiliser CHIEN par défaut
-                if (especeId.isBlank()) {
-                        println("Identifiant d'espèce vide, utilisation de CHIEN par défaut")
-                        return Espece.CHIEN.label
-                }
-
-                // Essayer de convertir en entier si c'est un nombre
-                val especeNumId = especeId.toIntOrNull()
-
-                return if (especeNumId != null) {
-                        // Si c'est un nombre, utiliser getEnumFromInt
-                        try {
-                                val espece = Espece.getEnumFromInt(especeNumId)
-                                println(
-                                        "Espèce reconnue par ID numérique: $especeId -> ${espece.label}"
-                                )
-                                espece.label
-                        } catch (e: Exception) {
-                                // Essayer les autres stratégies avant de tomber sur CHIEN par
-                                // défaut
-                                try {
-                                        val especeByName = Espece.valueOf(especeId.uppercase())
-                                        println(
-                                                "Espèce reconnue par nom enum: $especeId -> ${especeByName.label}"
-                                        )
-                                        especeByName.label
-                                } catch (e2: Exception) {
-                                        // Essayer par label
-                                        val especeByLabel = Espece.getByLabel(especeId)
-                                        if (especeByLabel != null) {
-                                                println(
-                                                        "Espèce reconnue par label: $especeId -> ${especeByLabel.label}"
-                                                )
-                                                especeByLabel.label
-                                        } else {
-                                                // En cas d'échec de toutes les méthodes
-                                                println(
-                                                        "Espèce non reconnue: $especeId, utilisation de CHIEN par défaut"
-                                                )
-                                                Espece.CHIEN.label
-                                        }
-                                }
-                        }
-                } else {
-                        // Si c'est une chaîne, essayer d'abord de trouver par nom d'énumération
-                        try {
-                                val especeEnum = Espece.valueOf(especeId.uppercase())
-                                println(
-                                        "Espèce reconnue par nom enum: $especeId -> ${especeEnum.label}"
-                                )
-                                especeEnum.label
-                        } catch (e: Exception) {
-                                // Essayer de trouver par label
-                                val espece = Espece.getByLabel(especeId)
-                                if (espece != null) {
-                                        println(
-                                                "Espèce reconnue par label: $especeId -> ${espece.label}"
-                                        )
-                                        espece.label
-                                } else {
-                                        // En cas d'échec de toutes les méthodes
-                                        println(
-                                                "Espèce non reconnue: $especeId, utilisation de CHIEN par défaut"
-                                        )
-                                        Espece.CHIEN.label
-                                }
-                        }
-                }
-        }
-
         override suspend fun importAnimals(animalsJson: List<AnimalEvJson>): Int {
                 return withContext(AppDispatchers.Default) {
-                        val availableFoodUUIDs = mutableSetOf<String>()
-                        // Map pour stocker les noms des aliments par UUID
-                        val foodNamesMap = mutableMapOf<String, String>()
-
-                        // Récupérer les aliments existants dans la base de données
-                        foodDao.getAllFoods().forEach { food ->
-                                availableFoodUUIDs.add(food.uuid)
-                                // Stocker les noms des aliments déjà présents dans la base
-                                food.name?.let { name -> foodNamesMap[food.uuid] = name }
+                        // Vérifier si les aliments existent dans la base de données
+                        val allFoods = foodDao.getAllFoods()
+                        println("Nombre d'aliments dans la base de données: ${allFoods.size}")
+                        if (allFoods.isNotEmpty()) {
+                                println(
+                                        "Premier aliment: ${allFoods.first().name}, ID: ${allFoods.first().uuid}"
+                                )
                         }
 
+                        // Créer un ensemble des UUIDs des aliments disponibles pour référence
+                        // rapide
+                        val availableFoodUUIDs = allFoods.map { it.uuid }.toMutableSet()
                         println("UUIDs des aliments disponibles initialement: $availableFoodUUIDs")
 
-                        // Première passe : extraire tous les aliments uniques des rations
-                        // et stocker leurs noms dans la map
+                        // Collecter tous les aliments uniques définis dans le JSON
                         val alimToImport = mutableMapOf<String, AlimentEvJson>()
 
-                        // Parcourir tous les animaux pour collecter les noms des aliments
-                        // même s'ils ne sont pas importés directement
-                        animalsJson.forEach { animalJson ->
-                                // Format 1: consultations directement dans l'objet animal
+                        // Première passe : collecter tous les aliments des animaux
+                        for (animalJson in animalsJson) {
+                                // Extraire les consultations - gérer les deux formats possibles
                                 val consultations =
-                                        animalJson.consultations ?: // Format 2: consultations dans
-                                                // list.consultations
-                                                animalJson.list?.consultations
-                                                        ?: // Aucune consultation
-                                                emptyList()
+                                        when {
+                                                // Format 1: consultations directement dans l'objet
+                                                // animal
+                                                animalJson.consultations != null ->
+                                                        animalJson.consultations
+                                                // Format 2: consultations dans list.consultations
+                                                animalJson.list != null ->
+                                                        animalJson.list.consultations
+                                                // Aucune consultation
+                                                else -> emptyList()
+                                        }
 
+                                // Parcourir toutes les consultations et rations pour extraire les
+                                // aliments
                                 consultations.forEach { consultJson ->
                                         consultJson.rationList.values.forEach { rationJson ->
                                                 rationJson.alimentList.forEach { alimentJson ->
-                                                        // Stocker tous les noms d'aliments dans la
-                                                        // map, même si l'aliment
-                                                        // existe déjà dans la base de données
+                                                        // Vérifier si l'aliment n'existe pas déjà
+                                                        // dans la base de données
                                                         if (alimentJson.UUIDunif != null &&
-                                                                        alimentJson.alime != null
+                                                                        alimentJson.alime != null &&
+                                                                        !availableFoodUUIDs
+                                                                                .contains(
+                                                                                        alimentJson
+                                                                                                .UUIDunif
+                                                                                )
                                                         ) {
-                                                                val nomAliment =
-                                                                        alimentJson.alime.nom
-                                                                                ?: "Sans nom"
-                                                                println(
-                                                                        "Stockage du nom: $nomAliment pour UUID=${alimentJson.UUIDunif}"
-                                                                )
-                                                                foodNamesMap[alimentJson.UUIDunif] =
-                                                                        nomAliment
-
-                                                                // Si l'aliment n'existe pas dans la
-                                                                // base, l'ajouter à la liste à
+                                                                // Ajouter l'aliment à la liste à
                                                                 // importer
-                                                                if (!availableFoodUUIDs.contains(
-                                                                                alimentJson.UUIDunif
-                                                                        )
-                                                                ) {
-                                                                        alimToImport[
-                                                                                alimentJson
-                                                                                        .UUIDunif] =
-                                                                                alimentJson.alime
-                                                                        println(
-                                                                                "Extrait: Aliment $nomAliment avec ID=${alimentJson.UUIDunif}"
-                                                                        )
-                                                                }
+                                                                alimToImport[alimentJson.UUIDunif] =
+                                                                        alimentJson.alime
+                                                                println(
+                                                                        "Extrait: Aliment ${alimentJson.alime.nom} avec ID=${alimentJson.UUIDunif}"
+                                                                )
                                                         }
                                                 }
                                         }
@@ -339,11 +252,7 @@ class DatabaseAnimalRepository(
                                                         DataB = aliment.DataB ?: "",
                                                         RefRation = "",
                                                         RefAlimUnif = "",
-                                                        cont = "NO", // Valeur par défaut
-                                                        name = aliment.nom ?: "",
-                                                        quantite = 0f,
-                                                        especesJson = "[]",
-                                                        indicationsJson = "[]"
+                                                        cont = "NO" // Valeur par défaut
                                                 )
 
                                         // Insérer l'aliment dans la base de données
@@ -379,8 +288,7 @@ class DatabaseAnimalRepository(
                                                         dead = animalJson.dead,
                                                         id = animalJson.id,
                                                         sexId = animalJson.sex,
-                                                        specieId =
-                                                                convertSpecieId(animalJson.espece),
+                                                        specieId = convertSpecieId(animalJson.espece),
                                                         ownerName = animalJson.nomProprio,
                                                         birthdate = animalJson.dateNaiss,
                                                         race = animalJson.race,
@@ -409,10 +317,12 @@ class DatabaseAnimalRepository(
                                                         // l'objet animal
                                                         animalJson.consultations != null ->
                                                                 animalJson.consultations
+
                                                         // Format 2: consultations dans
                                                         // list.consultations
                                                         animalJson.list != null ->
                                                                 animalJson.list.consultations
+
                                                         // Aucune consultation
                                                         else -> emptyList()
                                                 }
@@ -700,23 +610,6 @@ class DatabaseAnimalRepository(
                                                                                 // des données
                                                                                 // disponibles
                                                                                 try {
-                                                                                        // Récupérer
-                                                                                        // le nom
-                                                                                        // depuis la
-                                                                                        // map ou
-                                                                                        // utiliser
-                                                                                        // un nom
-                                                                                        // par
-                                                                                        // défaut
-                                                                                        val nomAliment =
-                                                                                                foodNamesMap[
-                                                                                                        refAlimUnif]
-                                                                                                        ?: "Aliment importé ${refAlimUnif}"
-
-                                                                                        println(
-                                                                                                "Utilisation du nom: $nomAliment pour l'aliment minimal avec UUID=${refAlimUnif}"
-                                                                                        )
-
                                                                                         val foodEntity =
                                                                                                 FoodEntity(
                                                                                                         uuid =
@@ -744,7 +637,7 @@ class DatabaseAnimalRepository(
                                                                                                         date =
                                                                                                                 "",
                                                                                                         nameDef =
-                                                                                                                nomAliment,
+                                                                                                                "Aliment importé ${refAlimUnif}",
                                                                                                         consistent =
                                                                                                                 1,
                                                                                                         deprecated =
@@ -752,13 +645,13 @@ class DatabaseAnimalRepository(
                                                                                                         DataB =
                                                                                                                 "",
                                                                                                         RefRation =
-                                                                                                                "",
+                                                                                                                null,
                                                                                                         RefAlimUnif =
-                                                                                                                "",
+                                                                                                                null,
                                                                                                         cont =
                                                                                                                 "NO",
                                                                                                         name =
-                                                                                                                nomAliment,
+                                                                                                                "Aliment importé ${refAlimUnif}",
                                                                                                         quantite =
                                                                                                                 0f,
                                                                                                         especesJson =
@@ -780,14 +673,14 @@ class DatabaseAnimalRepository(
                                                                                                         refAlimUnif
                                                                                                 )
                                                                                         println(
-                                                                                                "Créé: Aliment avec nom '${nomAliment}' et ID=${refAlimUnif}"
+                                                                                                "Créé: Aliment minimal avec ID=${refAlimUnif} pour satisfaire la contrainte de clé étrangère"
                                                                                         )
                                                                                         return@filter true
                                                                                 } catch (
                                                                                         e:
                                                                                                 Exception) {
                                                                                         println(
-                                                                                                "Erreur lors de la création de l'aliment avec ID=${refAlimUnif}: ${e.message}"
+                                                                                                "Erreur lors de la création de l'aliment minimal avec ID=${refAlimUnif}: ${e.message}"
                                                                                         )
                                                                                         return@filter false
                                                                                 }
@@ -799,10 +692,10 @@ class DatabaseAnimalRepository(
                                                                 aliment.refRation = ration.uuid
                                                                 try {
                                                                         // Insérer l'AlimentRation
-                                                                        animalDao
-                                                                                .insertAlimentRation(
-                                                                                        aliment.toEntity()
-                                                                                )
+                                                                        animalDao.insertAlimentRation(
+                                                                                aliment.toEntity()
+                                                                        )
+                                                                        
                                                                         println(
                                                                                 "Inséré: AlimentRation avec ID=${aliment.uuid}, référençant l'aliment ${aliment.refAlimUnif}"
                                                                         )
@@ -899,27 +792,24 @@ class DatabaseAnimalRepository(
                                                         totalAlimentsInRations +=
                                                                 consultation.rations.size
                                                 }
-                                        }
 
                                         importedCount++
-                                        println("Animal importé: ${animal.nom} (ID=${animal.uuid})")
                                 } catch (e: Exception) {
                                         // Ignorer les erreurs d'importation pour un animal
                                         // spécifique
                                         println(
-                                                "Erreur lors de l'importation de l'animal ${animalJson.nom}: ${e.message}"
+                                                "Erreur lors de l'importation de l'animal: ${e.message}"
                                         )
                                         e.printStackTrace() // Ajouter la trace de la pile pour le
                                         // débogage
                                 }
                         }
 
-                        println(
-                                "${importedCount} animaux importés avec succès (avec leurs aliments)"
-                        )
+                        println("$importedCount animaux importés avec succès (avec leurs aliments)")
                         println("${rationsWithAliments} rations avec des aliments importés")
                         println("${totalAlimentsInRations} aliments importés dans les rations")
-                        return@withContext importedCount
+
+                        importedCount
                 }
         }
 
@@ -929,7 +819,88 @@ class DatabaseAnimalRepository(
          * @return Le repository des aliments ou null s'il n'est pas disponible
          */
         override fun getFoodRepository(): FoodRepository? {
-                // Créer une instance de DatabaseFoodRepository avec le FoodDao et NutrientValueDao
-                return DatabaseFoodRepository(foodDao, nutrientValueDao)
+                // Nous n'avons pas accès à AppDatabase depuis cette classe pour obtenir
+                // nutrientValueDao()
+                // Retournons null pour indiquer que le repository n'est pas disponible
+                return null
+        }
+
+        /**
+         * Convertit un identifiant d'espèce (numérique ou chaîne) en nom d'énumération Espece
+         * @param especeId L'identifiant d'espèce à convertir
+         * @return Le nom de l'énumération Espece correspondante
+         */
+        private fun convertEspeceIdToName(especeId: String): String {
+                // Essayer de convertir en entier si c'est un nombre
+                val especeNumId = especeId.toIntOrNull()
+
+                return if (especeNumId != null) {
+                        // Si c'est un nombre, utiliser getEnumFromInt
+                        try {
+                                val espece = Espece.getEnumFromInt(especeNumId)
+                                espece.label
+                        } catch (e: Exception) {
+                                // En cas d'erreur, utiliser CHIEN par défaut
+                                println(
+                                        "Erreur lors de la conversion de l'espèce $especeId: ${e.message}"
+                                )
+                                Espece.CHIEN.label
+                        }
+                } else {
+                        // Si c'est une chaîne, essayer de trouver par label
+                        val espece = Espece.getByLabel(especeId)
+                        if (espece != null) {
+                                espece.label
+                        } else {
+                                // Essayer de trouver par nom d'énumération
+                                try {
+                                        val especeEnum = Espece.valueOf(especeId)
+                                        especeEnum.label
+                                } catch (e: Exception) {
+                                        // En cas d'erreur, utiliser CHIEN par défaut
+                                        println(
+                                                "Espèce non reconnue: $especeId, utilisation de CHIEN par défaut"
+                                        )
+                                        Espece.CHIEN.label
+                                }
+                        }
+                }
+        }
+
+        private fun convertSpecieId(especeId: String): String {
+                // Essayer de convertir en entier si c'est un nombre
+                val especeNumId = especeId.toIntOrNull()
+
+                return if (especeNumId != null) {
+                        // Si c'est un nombre, utiliser getEnumFromInt
+                        try {
+                                val espece = Espece.getEnumFromInt(especeNumId)
+                                espece.label
+                        } catch (e: Exception) {
+                                // En cas d'erreur, utiliser CHIEN par défaut
+                                println(
+                                        "Erreur lors de la conversion de l'espèce $especeId: ${e.message}"
+                                )
+                                Espece.CHIEN.label
+                        }
+                } else {
+                        // Si c'est une chaîne, essayer de trouver par label
+                        val espece = Espece.getByLabel(especeId)
+                        if (espece != null) {
+                                espece.label
+                        } else {
+                                // Essayer de trouver par nom d'énumération
+                                try {
+                                        val especeEnum = Espece.valueOf(especeId)
+                                        especeEnum.label
+                                } catch (e: Exception) {
+                                        // En cas d'erreur, utiliser CHIEN par défaut
+                                        println(
+                                                "Espèce non reconnue: $especeId, utilisation de CHIEN par défaut"
+                                        )
+                                        Espece.CHIEN.label
+                                }
+                        }
+                }
         }
 }
