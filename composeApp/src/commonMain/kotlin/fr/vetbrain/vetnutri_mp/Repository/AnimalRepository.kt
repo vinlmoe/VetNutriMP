@@ -4,6 +4,15 @@ import fr.vetbrain.vetnutri_mp.Data.AnimalEv
 import fr.vetbrain.vetnutri_mp.Data.AnimalEvJson
 import kotlin.uuid.ExperimentalUuidApi
 
+/** Résultat de l'importation d'animaux contenant des statistiques détaillées */
+data class AnimalImportResult(
+        val importedCount: Int,
+        val updatedCount: Int,
+        val errorCount: Int,
+        val totalCount: Int,
+        val foodsImportedCount: Int
+)
+
 @OptIn(ExperimentalUuidApi::class)
 interface AnimalRepository {
     suspend fun saveAnimal(animal: AnimalEv)
@@ -29,9 +38,9 @@ interface AnimalRepository {
      * Importe une liste d'animaux à partir de leurs représentations JSON
      *
      * @param animalsJson La liste des animaux au format JSON
-     * @return Le nombre d'animaux importés avec succès
+     * @return Le résultat détaillé de l'importation
      */
-    suspend fun importAnimals(animalsJson: List<AnimalEvJson>): Int
+    suspend fun importAnimals(animalsJson: List<AnimalEvJson>): AnimalImportResult
 
     /**
      * Récupère le repository des aliments

@@ -3,6 +3,7 @@ package fr.vetbrain.vetnutri_mp.Repository
 import fr.vetbrain.vetnutri_mp.Data.AlimentEv
 import fr.vetbrain.vetnutri_mp.Data.AlimentEvJson
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.runBlocking
 
 /**
  * Implémentation du repository pour les aliments. Cette classe délègue les opérations à la source
@@ -68,7 +69,35 @@ class AlimentRepository(private val dataSource: FoodRepository) {
         dataSource.deleteFood(aliment.uuid)
     }
 
-    suspend fun importAliments(aliments: List<AlimentEvJson>): Int {
+    suspend fun importAliments(aliments: List<AlimentEvJson>): FoodImportResult {
         return dataSource.importFoods(aliments)
+    }
+
+    companion object {
+        private var instance: AlimentRepository? = null
+        private var _databaseFoodRepository: FoodRepository? = null
+
+        fun getInstance(foodRepository: FoodRepository): AlimentRepository {
+            if (instance == null) {
+                instance = AlimentRepository(foodRepository)
+            }
+            return instance!!
+        }
+
+        // Méthode pour initialiser le repository
+        fun initializeDatabaseFoodRepository(databaseFoodRepository: FoodRepository) {
+            _databaseFoodRepository = databaseFoodRepository
+        }
+
+        // Pour les besoins du ViewModel, fournir une méthode statique simplifiée
+        fun getAllAliments(): List<AlimentEv> {
+            // Utiliser le repository réel si disponible
+            return if (_databaseFoodRepository != null) {
+                runBlocking { _databaseFoodRepository!!.getAllFoods() }
+            } else {
+                // Retourner une liste vide si le repository n'est pas initialisé
+                emptyList()
+            }
+        }
     }
 }

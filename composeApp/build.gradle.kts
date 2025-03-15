@@ -64,7 +64,6 @@ kotlin {
             implementation(libs.okio)
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.kotlinx.datetime)
-
             implementation(libs.kotlinx.serialization.core)
             implementation(libs.androidx.datastore.core.okio)
             implementation(libs.androidx.datastore.preferences.core)
@@ -176,6 +175,10 @@ dependencies {
     add("kspIosX64", libs.androidx.room.compiler)
     add("kspIosArm64", libs.androidx.room.compiler)
     add("kspDesktop", libs.androidx.room.compiler)
+    implementation("io.github.kevinnzou:compose-webview-multiplatform:1.9.40")
+    
+    // Reorderable - Drag and Drop pour Compose
+    implementation("org.burnoutcrew.composereorderable:reorderable:0.9.6")
 }
 
 room {

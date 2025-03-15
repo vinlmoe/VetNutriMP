@@ -166,7 +166,6 @@ fun AnimalListView(
                                         AnimalCard(
                                                 animal = animal,
                                                 onClick = { onSelectAnimal(animal) },
-                                                onEdit = { onEditAnimal(animal) },
                                                 onDelete = { viewModel.deleteAnimal(animal) }
                                         )
                                 }
@@ -231,7 +230,6 @@ private fun EspeceDropdown(
 private fun AnimalCard(
         animal: AnimalEv,
         onClick: () -> Unit,
-        onEdit: () -> Unit,
         onDelete: () -> Unit,
         modifier: Modifier = Modifier
 ) {
@@ -270,10 +268,6 @@ private fun AnimalCard(
                                         }
                                 }
                                 Row {
-                                        IconButton(onClick = onEdit) {
-                                                // TODO: Ajouter une icône d'édition
-                                                Text("✎")
-                                        }
                                         IconButton(onClick = onClick) {
                                                 // TODO: Ajouter une icône de détails
                                                 Text("→")

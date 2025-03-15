@@ -16,6 +16,41 @@ object NutrientResolver {
 
         println("Résolution du nutriment: original='$label', normalisé='$cleanedLabel'")
 
+        // Traitement de cas spéciaux pour éviter les confusions connues
+        when (cleanedLabel) {
+            "CARNITINE" -> {
+                val nutrient = NutrientOther.getByLabel(cleanedLabel)
+                println("  → Résolu comme NutrientOther: ${nutrient?.label}")
+                return nutrient
+            }
+            "FE" -> {
+                val nutrient = NutrientMin.getByLabel(cleanedLabel)
+                println("  → Résolu comme NutrientMin: ${nutrient?.label}")
+                return nutrient
+            }
+            "VITB9" -> {
+                val nutrient = NutrientVitam.getByLabel(cleanedLabel)
+                println("  → Résolu comme NutrientVitam: ${nutrient?.label}")
+                return nutrient
+            }
+            "FIBRETOT" -> {
+                // Corriger vers FIBRTOT (sans le E)
+                val nutrient = NutrientMain.getByLabel("FIBRTOT")
+                println(
+                        "  → Résolu comme NutrientMain: ${nutrient?.label} (corrigé depuis FIBRETOT)"
+                )
+                return nutrient
+            }
+            "FIBRESOL" -> {
+                // Corriger vers FIBRSOL (sans le E)
+                val nutrient = NutrientMain.getByLabel("FIBRSOL")
+                println(
+                        "  → Résolu comme NutrientMain: ${nutrient?.label} (corrigé depuis FIBRESOL)"
+                )
+                return nutrient
+            }
+        }
+
         // Vérifier dans NutrientMain
         if (NutrientMain.isByLabel(cleanedLabel)) {
             val nutrient = NutrientMain.getByLabel(cleanedLabel)

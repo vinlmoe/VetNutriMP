@@ -145,7 +145,10 @@ fun CreateAnimalView(
                                         Espece.values().find { it.label == selectedLabel }
                                 selectedEspece?.let {
                                         viewModel.updateAnimal(
-                                                animal.copy().apply { specieId = it.name }
+                                                animal.copy().apply { specieId = it.label }
+                                        )
+                                        println(
+                                                "DEBUG_CREATE_VIEW: Espèce sélectionnée - name=${it.name}, label=${it.label}, id=${it.id}"
                                         )
                                 }
                         },
@@ -202,7 +205,14 @@ fun CreateAnimalView(
                         ) { Text(General.CANCEL.translate()) }
 
                         Button(
-                                onClick = { viewModel.saveAnimal() },
+                                onClick = {
+                                        println(
+                                                "DEBUG_CREATE_VIEW: Tentative de sauvegarde d'animal - nom=${animal.nom}, specieId=${animal.specieId}, espece=${animal.getEspece().label}"
+                                        )
+                                        viewModel.saveAnimal()
+                                        
+                                        onNavigateBack()
+                                },
                                 modifier = Modifier.weight(1f),
                                 colors =
                                         ButtonDefaults.buttonColors(

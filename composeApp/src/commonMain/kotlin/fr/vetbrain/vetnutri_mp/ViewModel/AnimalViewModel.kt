@@ -26,7 +26,7 @@ class AnimalViewModel {
                     dead = dead,
                     id = id,
                     sexId = selectedSex?.id ?: Sex.MALE_ENTIER.id,
-                    specieId = espece.name,
+                    specieId = espece.label,
                     ownerName = ownerName ?: "",
                     birthdate = birthdate,
                     race = race ?: "",

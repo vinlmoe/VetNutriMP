@@ -5,11 +5,30 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
+import androidx.compose.material.Button
+import androidx.compose.material.Card
+import androidx.compose.material.Icon
+import androidx.compose.material.IconButton
+import androidx.compose.material.OutlinedTextField
+import androidx.compose.material.Slider
+import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.*
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -17,9 +36,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import fr.vetbrain.vetnutri_mp.Data.AlimentEv
 import fr.vetbrain.vetnutri_mp.Data.AlimentRation
 import fr.vetbrain.vetnutri_mp.Data.Ration
 import fr.vetbrain.vetnutri_mp.Enumer.AAEnum
+import fr.vetbrain.vetnutri_mp.Enumer.AlimIndic
+import fr.vetbrain.vetnutri_mp.Enumer.Espece
+import fr.vetbrain.vetnutri_mp.Enumer.FoodKind
+import fr.vetbrain.vetnutri_mp.Enumer.GroupAlim
 import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientLipid
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientMain
@@ -30,16 +54,17 @@ import fr.vetbrain.vetnutri_mp.Theme.AppIcons
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailViewModel
+import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
 
 /**
  * Vue pour afficher les rations d'un animal
  *
  * @param viewModel ViewModel contenant les données de l'animal
- * @param modifier Modificateur optionnel pour personnaliser l'apparence
+ * @param showSnackbar Action à exécuter pour afficher un message snackbar
  */
 @Composable
-fun RationsView(viewModel: AnimalDetailViewModel, modifier: Modifier = Modifier) {
+fun RationsView(viewModel: AnimalDetailViewModel, showSnackbar: (String) -> Unit) {
         val animal by viewModel.animal.collectAsState()
         val selectedConsultation by viewModel.selectedConsultation.collectAsState()
         val selectedRation by viewModel.selectedRation.collectAsState()
@@ -51,11 +76,18 @@ fun RationsView(viewModel: AnimalDetailViewModel, modifier: Modifier = Modifier)
         var showRationEditDialog by remember { mutableStateOf(false) }
         var rationToEdit by remember { mutableStateOf<Ration?>(null) }
 
+        // État pour gérer l'affichage du dialogue d'ajout d'aliment
+        var showAddAlimentDialog by remember { mutableStateOf(false) }
+        var searchQuery by remember { mutableStateOf("") }
+
         // État pour gérer le mode de division des valeurs nutritionnelles
         var divisionParPoidsAnimal by remember { mutableStateOf(true) }
 
         // État pour la gestion des onglets
         var ongletSelectionne by remember { mutableStateOf(0) }
+
+        // État pour la répartition de l'espace entre les colonnes (valeur entre 0.2f et 0.8f)
+        var repartitionColonnes by remember { mutableStateOf(0.5f) }
 
         // Liste des nutriments principaux à afficher (tous les nutriments de type NutrientMain)
         val nutrimentsPrincipaux = remember<List<Nutrient>> { NutrientMain.entries.toList() }
@@ -308,7 +340,24 @@ fun RationsView(viewModel: AnimalDetailViewModel, modifier: Modifier = Modifier)
                 )
         }
 
-        Box(modifier = modifier.fillMaxSize()) {
+        // Afficher le dialogue d'ajout d'aliment si nécessaire
+        if (showAddAlimentDialog) {
+                AddAlimentDialog(
+                        onDismiss = { showAddAlimentDialog = false },
+                        onAlimentSelected = { aliment, quantity ->
+                                // Ajouter l'aliment à la ration via le viewModel
+                                selectedRation?.let { ration ->
+                                        viewModel.addAlimentToRation(ration, aliment, quantity)
+                                        showSnackbar("Aliment ajouté à la ration")
+                                }
+                                // Fermer le dialogue
+                                showAddAlimentDialog = false
+                        },
+                        viewModel = viewModel
+                )
+        }
+
+        Box(modifier = Modifier.fillMaxSize()) {
                 Column(
                         modifier = Modifier.fillMaxSize().padding(AppSizes.paddingMedium),
                         verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
@@ -350,6 +399,65 @@ fun RationsView(viewModel: AnimalDetailViewModel, modifier: Modifier = Modifier)
                                                         )
                                                 }
                                         }
+
+                                        // Contrôle de répartition de l'espace
+                                        Column(
+                                                horizontalAlignment = Alignment.CenterHorizontally,
+                                                modifier =
+                                                        Modifier.width(
+                                                                AppSizes.iconSizeXLarge.times(3f)
+                                                        )
+                                        ) {
+                                                Text(
+                                                        text = "Répartition",
+                                                        style = MaterialTheme.typography.caption,
+                                                        color = Color.Gray
+                                                )
+                                                Slider(
+                                                        value = repartitionColonnes,
+                                                        onValueChange = {
+                                                                repartitionColonnes = it
+                                                        },
+                                                        valueRange = 0.2f..0.8f,
+                                                        steps = 5,
+                                                        colors =
+                                                                SliderDefaults.colors(
+                                                                        thumbColor =
+                                                                                VetNutriColors
+                                                                                        .Primary,
+                                                                        activeTrackColor =
+                                                                                VetNutriColors
+                                                                                        .Primary,
+                                                                        inactiveTrackColor =
+                                                                                VetNutriColors
+                                                                                        .Primary
+                                                                                        .copy(
+                                                                                                alpha =
+                                                                                                        0.3f
+                                                                                        )
+                                                                )
+                                                )
+                                                Row(
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        horizontalArrangement =
+                                                                Arrangement.SpaceBetween
+                                                ) {
+                                                        Text(
+                                                                text = "Listes",
+                                                                style =
+                                                                        MaterialTheme.typography
+                                                                                .caption,
+                                                                color = Color.Gray
+                                                        )
+                                                        Text(
+                                                                text = "Analyse",
+                                                                style =
+                                                                        MaterialTheme.typography
+                                                                                .caption,
+                                                                color = Color.Gray
+                                                        )
+                                                }
+                                        }
                                 }
                         }
 
@@ -360,9 +468,10 @@ fun RationsView(viewModel: AnimalDetailViewModel, modifier: Modifier = Modifier)
                                         horizontalArrangement =
                                                 Arrangement.spacedBy(AppSizes.paddingMedium)
                                 ) {
-                                        // Colonne gauche
+                                        // Colonne gauche (listes) - poids dynamique basé sur
+                                        // repartitionColonnes
                                         Column(
-                                                modifier = Modifier.weight(1f),
+                                                modifier = Modifier.weight(repartitionColonnes),
                                                 verticalArrangement =
                                                         Arrangement.spacedBy(AppSizes.paddingMedium)
                                         ) {
@@ -506,6 +615,16 @@ fun RationsView(viewModel: AnimalDetailViewModel, modifier: Modifier = Modifier)
                                                                                                         println(
                                                                                                                 "DEBUG: Demande d'édition de la ration ${ration.uuid}, coefficient=${ration.coef}"
                                                                                                         )
+                                                                                                },
+                                                                                                onDuplicate = {
+                                                                                                        // Appeler la fonction duplicateRation du ViewModel
+                                                                                                        viewModel
+                                                                                                                .duplicateRation(
+                                                                                                                        ration
+                                                                                                                )
+                                                                                                        println(
+                                                                                                                "DEBUG: Demande de duplication de la ration ${ration.uuid}"
+                                                                                                        )
                                                                                                 }
                                                                                         )
                                                                                 }
@@ -533,18 +652,70 @@ fun RationsView(viewModel: AnimalDetailViewModel, modifier: Modifier = Modifier)
                                                                                 AppSizes.paddingSmall
                                                                         )
                                                         ) {
-                                                                Text(
-                                                                        text =
-                                                                                "Aliments de la ration",
-                                                                        style =
-                                                                                MaterialTheme
-                                                                                        .typography
-                                                                                        .h6,
-                                                                        color =
-                                                                                VetNutriColors
-                                                                                        .Primary
-                                                                )
+                                                                // Modification: Placer le titre et
+                                                                // le bouton + sur la même ligne
+                                                                Row(
+                                                                        modifier =
+                                                                                Modifier.fillMaxWidth(),
+                                                                        horizontalArrangement =
+                                                                                Arrangement
+                                                                                        .SpaceBetween,
+                                                                        verticalAlignment =
+                                                                                Alignment
+                                                                                        .CenterVertically
+                                                                ) {
+                                                                        Text(
+                                                                                text =
+                                                                                        "Aliments de la ration",
+                                                                                style =
+                                                                                        MaterialTheme
+                                                                                                .typography
+                                                                                                .h6,
+                                                                                color =
+                                                                                        VetNutriColors
+                                                                                                .Primary
+                                                                        )
+
+                                                                        // Bouton pour ajouter un
+                                                                        // aliment déplacé ici
+                                                                        IconButton(
+                                                                                onClick = {
+                                                                                        // Vérifier
+                                                                                        // que la
+                                                                                        // ration
+                                                                                        // existe
+                                                                                        // avant
+                                                                                        // d'afficher le dialogue
+                                                                                        if (selectedRation !=
+                                                                                                        null
+                                                                                        ) {
+                                                                                                showAddAlimentDialog =
+                                                                                                        true
+                                                                                        } else {
+                                                                                                showSnackbar(
+                                                                                                        "Sélectionnez d'abord une ration"
+                                                                                                )
+                                                                                        }
+                                                                                },
+                                                                                modifier =
+                                                                                        Modifier.size(
+                                                                                                AppSizes.iconSizeMedium
+                                                                                        )
+                                                                        ) {
+                                                                                Icon(
+                                                                                        imageVector =
+                                                                                                AppIcons.Add,
+                                                                                        contentDescription =
+                                                                                                "Ajouter un aliment",
+                                                                                        tint =
+                                                                                                VetNutriColors
+                                                                                                        .Primary
+                                                                                )
+                                                                        }
+                                                                }
+
                                                                 Divider()
+
                                                                 if (selectedRation
                                                                                 ?.alimentMutableList
                                                                                 .isNullOrEmpty()
@@ -627,6 +798,17 @@ fun RationsView(viewModel: AnimalDetailViewModel, modifier: Modifier = Modifier)
                                                                                                         // Sortir du mode d'édition après validation
                                                                                                         editingAlimentId =
                                                                                                                 null
+                                                                                                },
+                                                                                                onDelete = {
+                                                                                                        uuid
+                                                                                                        ->
+                                                                                                        viewModel
+                                                                                                                .removeAlimentFromRation(
+                                                                                                                        uuid
+                                                                                                                )
+                                                                                                        println(
+                                                                                                                "DEBUG: Demande de suppression de l'aliment $uuid"
+                                                                                                        )
                                                                                                 }
                                                                                         )
                                                                                 }
@@ -636,17 +818,19 @@ fun RationsView(viewModel: AnimalDetailViewModel, modifier: Modifier = Modifier)
                                                 }
                                         }
 
-                                        // Colonne droite
+                                        // Colonne droite (analyse nutritionnelle) - poids dynamique
+                                        // complémentaire
                                         Column(
-                                                modifier = Modifier.weight(1f),
+                                                modifier =
+                                                        Modifier.weight(1f - repartitionColonnes),
                                                 verticalArrangement =
                                                         Arrangement.spacedBy(AppSizes.paddingMedium)
                                         ) {
-                                                // Segment 4: Détails de la ration
+                                                // Segment 4: Détails d'analyse nutritionnelle avec
+                                                // onglets
                                                 Card(
                                                         modifier =
-                                                                Modifier.weight(0.4f)
-                                                                        .fillMaxWidth(),
+                                                                Modifier.weight(1f).fillMaxWidth(),
                                                         elevation = AppSizes.elevationMedium,
                                                         backgroundColor =
                                                                 MaterialTheme.colors.surface
@@ -890,26 +1074,47 @@ fun RationsView(viewModel: AnimalDetailViewModel, modifier: Modifier = Modifier)
                                                                 Box(
                                                                         modifier =
                                                                                 Modifier.fillMaxSize()
+                                                                                        .padding(
+                                                                                                AppSizes.paddingSmall
+                                                                                        )
                                                                 ) {
-                                                                        AnalyseNutritionnelleCard(
-                                                                                nutriments =
-                                                                                        nutrimentsCourants,
-                                                                                valeursTotales =
-                                                                                        valeursCourantes,
-                                                                                diviseur = diviseur,
-                                                                                typeDiviseur =
-                                                                                        typeDiviseur,
-                                                                                couleurFond =
-                                                                                        MaterialTheme
-                                                                                                .colors
-                                                                                                .surface,
-                                                                                onModeDivisionChange = {
-                                                                                        divisionParPoidsAnimal =
-                                                                                                !divisionParPoidsAnimal
-                                                                                },
+                                                                        Column(
                                                                                 modifier =
                                                                                         Modifier.fillMaxSize()
-                                                                        )
+                                                                                                .verticalScroll(
+                                                                                                        rememberScrollState()
+                                                                                                ),
+                                                                                verticalArrangement =
+                                                                                        Arrangement
+                                                                                                .spacedBy(
+                                                                                                        AppSizes.paddingMedium
+                                                                                                )
+                                                                        ) {
+                                                                                AnalyseNutritionnelleCard(
+                                                                                        nutriments =
+                                                                                                nutrimentsCourants,
+                                                                                        valeursTotales =
+                                                                                                valeursCourantes,
+                                                                                        diviseur =
+                                                                                                diviseur,
+                                                                                        typeDiviseur =
+                                                                                                typeDiviseur,
+                                                                                        couleurFond =
+                                                                                                MaterialTheme
+                                                                                                        .colors
+                                                                                                        .surface,
+                                                                                        onModeDivisionChange = {
+                                                                                                divisionParPoidsAnimal =
+                                                                                                        !divisionParPoidsAnimal
+                                                                                        },
+                                                                                        modifier =
+                                                                                                Modifier.fillMaxWidth()
+                                                                                                        .padding(
+                                                                                                                vertical =
+                                                                                                                        AppSizes.paddingSmall
+                                                                                                        )
+                                                                                )
+                                                                        }
                                                                 }
                                                         }
                                                 }
@@ -1054,7 +1259,11 @@ private fun RationEditDialog(ration: Ration?, onDismiss: () -> Unit, onSave: (Ra
                                                 colors =
                                                         ButtonDefaults.buttonColors(
                                                                 backgroundColor =
-                                                                        VetNutriColors.Primary
+                                                                        VetNutriColors.Primary,
+                                                                contentColor = Color.White,
+                                                                disabledBackgroundColor =
+                                                                        Color.Gray,
+                                                                disabledContentColor = Color.White
                                                         ),
                                                 enabled = !isError.value
                                         ) { Text("Enregistrer", color = Color.White) }
@@ -1117,6 +1326,7 @@ private fun CenteredMessage(message: String, modifier: Modifier = Modifier) {
  * @param onDelete Action à exécuter pour supprimer la ration
  * @param isDeleteEnabled Indique si la suppression est autorisée
  * @param onEdit Action à exécuter pour éditer la ration
+ * @param onDuplicate Action à exécuter pour dupliquer la ration
  */
 @Composable
 private fun RationItem(
@@ -1125,18 +1335,19 @@ private fun RationItem(
         onClick: () -> Unit,
         onDelete: () -> Unit,
         isDeleteEnabled: Boolean,
-        onEdit: () -> Unit
+        onEdit: () -> Unit,
+        onDuplicate: () -> Unit
 ) {
         val backgroundColor =
                 if (isSelected) VetNutriColors.Primary.copy(alpha = 0.1f) else Color.Transparent
 
         Card(
                 modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
-                elevation = if (isSelected) 4.dp else 2.dp,
+                elevation = if (isSelected) AppSizes.elevationMedium else AppSizes.elevationSmall,
                 backgroundColor = backgroundColor
         ) {
                 Row(
-                        modifier = Modifier.padding(8.dp),
+                        modifier = Modifier.padding(AppSizes.paddingSmall),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                 ) {
@@ -1162,10 +1373,27 @@ private fun RationItem(
 
                         // Boutons d'action
                         Row(
-                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                horizontalArrangement =
+                                        Arrangement.spacedBy(AppSizes.paddingXSmall),
                                 verticalAlignment = Alignment.CenterVertically
                         ) {
-                                IconButton(onClick = onEdit, modifier = Modifier.size(32.dp)) {
+                                // Bouton de duplication
+                                IconButton(
+                                        onClick = onDuplicate,
+                                        modifier = Modifier.size(AppSizes.iconSizeMedium)
+                                ) {
+                                        Icon(
+                                                imageVector = AppIcons.ContentCopy,
+                                                contentDescription = "Dupliquer",
+                                                tint = VetNutriColors.Primary
+                                        )
+                                }
+
+                                // Bouton d'édition
+                                IconButton(
+                                        onClick = onEdit,
+                                        modifier = Modifier.size(AppSizes.iconSizeMedium)
+                                ) {
                                         Icon(
                                                 imageVector = Icons.Default.Edit,
                                                 contentDescription = "Modifier",
@@ -1176,7 +1404,7 @@ private fun RationItem(
                                 IconButton(
                                         onClick = onDelete,
                                         enabled = isDeleteEnabled,
-                                        modifier = Modifier.size(32.dp)
+                                        modifier = Modifier.size(AppSizes.iconSizeMedium)
                                 ) {
                                         Icon(
                                                 imageVector = AppIcons.Delete,
@@ -1200,6 +1428,7 @@ private fun RationItem(
  * @param onStartEditing Action à exécuter pour commencer l'édition
  * @param onEndEditing Action à exécuter pour terminer l'édition
  * @param onQuantityChange Action à exécuter lors du changement de quantité
+ * @param onDelete Action à exécuter pour supprimer l'aliment
  */
 @Composable
 private fun AlimentItem(
@@ -1207,15 +1436,16 @@ private fun AlimentItem(
         isEditing: Boolean,
         onStartEditing: () -> Unit,
         onEndEditing: () -> Unit,
-        onQuantityChange: (Float) -> Unit
+        onQuantityChange: (Float) -> Unit,
+        onDelete: (String) -> Unit = {}
 ) {
         var quantityText by
                 remember(aliment.quantity) { mutableStateOf(aliment.quantity.toString()) }
         var hasError by remember { mutableStateOf(false) }
 
-        Card(modifier = Modifier.fillMaxWidth(), elevation = 2.dp) {
+        Card(modifier = Modifier.fillMaxWidth(), elevation = AppSizes.elevationSmall) {
                 Row(
-                        modifier = Modifier.padding(8.dp),
+                        modifier = Modifier.padding(AppSizes.paddingSmall),
                         verticalAlignment = Alignment.CenterVertically
                 ) {
                         // Nom de l'aliment
@@ -1263,11 +1493,19 @@ private fun AlimentItem(
                                         label = { Text("Quantité (g)") },
                                         keyboardOptions =
                                                 KeyboardOptions(keyboardType = KeyboardType.Number),
-                                        modifier = Modifier.width(120.dp),
+                                        modifier =
+                                                Modifier.width(AppSizes.iconSizeXLarge.times(2.5f)),
                                         isError = hasError,
                                         singleLine = true,
                                         trailingIcon = {
-                                                Row {
+                                                Row(
+                                                        verticalAlignment =
+                                                                Alignment.CenterVertically,
+                                                        horizontalArrangement =
+                                                                Arrangement.spacedBy(
+                                                                        AppSizes.paddingXSmall
+                                                                )
+                                                ) {
                                                         Text("g")
 
                                                         // Bouton OK pour valider
@@ -1285,7 +1523,11 @@ private fun AlimentItem(
                                                                         !hasError &&
                                                                                 quantityText
                                                                                         .toFloatOrNull() !=
-                                                                                        null
+                                                                                        null,
+                                                                modifier =
+                                                                        Modifier.size(
+                                                                                AppSizes.iconSizeMedium
+                                                                        )
                                                         ) {
                                                                 Icon(
                                                                         imageVector =
@@ -1303,7 +1545,11 @@ private fun AlimentItem(
                                         }
                                 )
                         } else {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement =
+                                                Arrangement.spacedBy(AppSizes.paddingXSmall)
+                                ) {
                                         Text(
                                                 text = "${aliment.quantity} g",
                                                 style = MaterialTheme.typography.body1
@@ -1312,13 +1558,464 @@ private fun AlimentItem(
                                         // Bouton d'édition
                                         IconButton(
                                                 onClick = onStartEditing,
-                                                modifier = Modifier.size(32.dp)
+                                                modifier = Modifier.size(AppSizes.iconSizeMedium)
                                         ) {
                                                 Icon(
                                                         imageVector = Icons.Default.Edit,
                                                         contentDescription = "Modifier la quantité",
                                                         tint = VetNutriColors.Primary
                                                 )
+                                        }
+
+                                        // Bouton de suppression
+                                        IconButton(
+                                                onClick = { onDelete(aliment.uuid) },
+                                                modifier = Modifier.size(AppSizes.iconSizeMedium)
+                                        ) {
+                                                Icon(
+                                                        imageVector = Icons.Default.Delete,
+                                                        contentDescription = "Supprimer l'aliment",
+                                                        tint = VetNutriColors.Error
+                                                )
+                                        }
+                                }
+                        }
+                }
+        }
+}
+
+/**
+ * Dialogue pour ajouter un aliment à une ration
+ *
+ * @param onDismiss Action à exécuter lors de la fermeture du dialogue
+ * @param onAlimentSelected Action à exécuter lors de la sélection d'un aliment
+ * @param viewModel ViewModel contenant les données
+ */
+@Composable
+private fun AddAlimentDialog(
+        onDismiss: () -> Unit,
+        onAlimentSelected: (AlimentEv, Float) -> Unit,
+        viewModel: AnimalDetailViewModel
+) {
+        val scope = rememberCoroutineScope()
+        var searchQuery by remember { mutableStateOf("") }
+        var selectedAliment by remember { mutableStateOf<AlimentEv?>(null) }
+        var quantityText by remember { mutableStateOf("") }
+        var errorMessage by remember { mutableStateOf<String?>(null) }
+
+        // États pour les filtres (désactivés pour le moment)
+        var selectedFoodType by remember { mutableStateOf<FoodKind?>(null) }
+        var selectedFoodGroup by remember { mutableStateOf<GroupAlim?>(null) }
+        var selectedEspece by remember { mutableStateOf<Espece?>(null) }
+        var selectedIndication by remember { mutableStateOf<AlimIndic?>(null) }
+
+        // Charger les aliments disponibles
+        LaunchedEffect(Unit) { scope.launch { viewModel.loadAvailableFoods() } }
+
+        // Obtenir la liste filtrée des aliments
+        val filteredFoods = viewModel.getFilteredFoods(searchQuery)
+
+        Dialog(onDismissRequest = onDismiss) {
+                Card(
+                        modifier = Modifier.fillMaxWidth().heightIn(max = AppSizes.dialogMaxHeight),
+                        elevation = AppSizes.elevationMedium
+                ) {
+                        Column(modifier = Modifier.padding(AppSizes.paddingMedium).fillMaxWidth()) {
+                                Text(
+                                        text = "Ajouter un aliment à la ration",
+                                        style = MaterialTheme.typography.h6,
+                                        modifier =
+                                                Modifier.padding(bottom = AppSizes.paddingMedium),
+                                        color = VetNutriColors.Primary
+                                )
+
+                                // Barre de recherche
+                                OutlinedTextField(
+                                        value = searchQuery,
+                                        onValueChange = {
+                                                searchQuery = it
+                                                viewModel.setAlimentSearchQuery(it)
+                                        },
+                                        label = {
+                                                Text(
+                                                        "Rechercher un aliment (nom, marque, ingrédients)"
+                                                )
+                                        },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        leadingIcon = {
+                                                Icon(
+                                                        imageVector = Icons.Default.Search,
+                                                        contentDescription = "Recherche"
+                                                )
+                                        },
+                                        trailingIcon = {
+                                                if (searchQuery.isNotEmpty()) {
+                                                        IconButton(
+                                                                onClick = {
+                                                                        searchQuery = ""
+                                                                        viewModel
+                                                                                .setAlimentSearchQuery(
+                                                                                        ""
+                                                                                )
+                                                                }
+                                                        ) {
+                                                                Icon(
+                                                                        imageVector =
+                                                                                Icons.Default.Clear,
+                                                                        contentDescription =
+                                                                                "Effacer"
+                                                                )
+                                                        }
+                                                }
+                                        },
+                                        singleLine = true,
+                                        colors =
+                                                TextFieldDefaults.outlinedTextFieldColors(
+                                                        focusedBorderColor = VetNutriColors.Primary,
+                                                        unfocusedBorderColor = Color.Gray
+                                                )
+                                )
+
+                                Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
+
+                                // Note: les filtres sont désactivés pour l'instant jusqu'à ce que
+                                // le ViewModel prenne en charge le filtrage avancé
+
+                                // Résultats de recherche ou formulaire de quantité
+                                if (selectedAliment == null) {
+                                        // Liste des aliments correspondant aux critères
+                                        LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                                                items(filteredFoods) { aliment ->
+                                                        EnhancedFoodSearchItem(
+                                                                aliment = aliment,
+                                                                onClick = {
+                                                                        selectedAliment = aliment
+                                                                }
+                                                        )
+                                                }
+                                        }
+                                } else {
+                                        // Afficher l'aliment sélectionné avec le champ de quantité
+                                        Column(
+                                                modifier =
+                                                        Modifier.fillMaxWidth()
+                                                                .padding(AppSizes.paddingMedium)
+                                        ) {
+                                                Text(
+                                                        text = "Aliment sélectionné:",
+                                                        style = MaterialTheme.typography.subtitle1,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = VetNutriColors.Primary
+                                                )
+
+                                                Spacer(
+                                                        modifier =
+                                                                Modifier.height(
+                                                                        AppSizes.paddingSmall
+                                                                )
+                                                )
+
+                                                // Afficher l'aliment sélectionné sous forme de
+                                                // carte
+                                                EnhancedFoodSearchItem(
+                                                        aliment = selectedAliment!!,
+                                                        onClick = {},
+                                                        isSelected = true
+                                                )
+
+                                                Spacer(
+                                                        modifier =
+                                                                Modifier.height(
+                                                                        AppSizes.paddingMedium
+                                                                )
+                                                )
+
+                                                // Champ de saisie pour la quantité
+                                                OutlinedTextField(
+                                                        value = quantityText,
+                                                        onValueChange = {
+                                                                quantityText = it
+                                                                errorMessage = null
+                                                        },
+                                                        label = { Text("Quantité (g)") },
+                                                        keyboardOptions =
+                                                                KeyboardOptions(
+                                                                        keyboardType =
+                                                                                KeyboardType.Number
+                                                                ),
+                                                        isError = errorMessage != null,
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        colors =
+                                                                TextFieldDefaults
+                                                                        .outlinedTextFieldColors(
+                                                                                focusedBorderColor =
+                                                                                        VetNutriColors
+                                                                                                .Primary,
+                                                                                unfocusedBorderColor =
+                                                                                        Color.Gray
+                                                                        )
+                                                )
+
+                                                if (errorMessage != null) {
+                                                        Text(
+                                                                text = errorMessage!!,
+                                                                color = Color.Red,
+                                                                style =
+                                                                        MaterialTheme.typography
+                                                                                .caption,
+                                                                modifier =
+                                                                        Modifier.padding(
+                                                                                start =
+                                                                                        AppSizes.paddingSmall
+                                                                        )
+                                                        )
+                                                }
+
+                                                Spacer(
+                                                        modifier =
+                                                                Modifier.height(
+                                                                        AppSizes.paddingSmall
+                                                                )
+                                                )
+
+                                                // Option pour revenir à la liste des aliments
+                                                TextButton(
+                                                        onClick = { selectedAliment = null },
+                                                        modifier = Modifier.align(Alignment.Start)
+                                                ) {
+                                                        Text(
+                                                                "← Retour à la liste",
+                                                                color = VetNutriColors.Primary
+                                                        )
+                                                }
+                                        }
+                                }
+
+                                // Boutons d'action
+                                Row(
+                                        modifier =
+                                                Modifier.fillMaxWidth()
+                                                        .padding(top = AppSizes.paddingMedium),
+                                        horizontalArrangement = Arrangement.End
+                                ) {
+                                        Button(
+                                                onClick = { onDismiss() },
+                                                colors =
+                                                        ButtonDefaults.buttonColors(
+                                                                backgroundColor = Color.LightGray
+                                                        )
+                                        ) { Text("Annuler") }
+
+                                        Spacer(modifier = Modifier.width(AppSizes.paddingMedium))
+
+                                        Button(
+                                                onClick = {
+                                                        if (selectedAliment != null) {
+                                                                try {
+                                                                        val quantity =
+                                                                                quantityText
+                                                                                        .toFloatOrNull()
+                                                                        if (quantity == null ||
+                                                                                        quantity <=
+                                                                                                0
+                                                                        ) {
+                                                                                errorMessage =
+                                                                                        "Veuillez entrer une quantité valide"
+                                                                        } else {
+                                                                                onAlimentSelected(
+                                                                                        selectedAliment!!,
+                                                                                        quantity
+                                                                                )
+                                                                                onDismiss()
+                                                                        }
+                                                                } catch (e: Exception) {
+                                                                        errorMessage =
+                                                                                "Veuillez entrer une quantité valide"
+                                                                }
+                                                        }
+                                                },
+                                                enabled = selectedAliment != null,
+                                                colors =
+                                                        ButtonDefaults.buttonColors(
+                                                                backgroundColor =
+                                                                        VetNutriColors.Primary,
+                                                                contentColor = Color.White,
+                                                                disabledBackgroundColor =
+                                                                        Color.Gray,
+                                                                disabledContentColor = Color.White
+                                                        )
+                                        ) { Text("Ajouter") }
+                                }
+                        }
+                }
+        }
+}
+
+/**
+ * Élément d'aliment amélioré pour la recherche et la sélection
+ *
+ * @param aliment Aliment à afficher
+ * @param onClick Action à exécuter lors du clic sur l'aliment
+ * @param isSelected Indique si l'aliment est sélectionné
+ */
+@Composable
+private fun EnhancedFoodSearchItem(
+        aliment: AlimentEv,
+        onClick: () -> Unit,
+        isSelected: Boolean = false
+) {
+        val backgroundColor =
+                if (isSelected) VetNutriColors.Primary.copy(alpha = 0.1f) else Color.Transparent
+
+        Card(
+                modifier =
+                        Modifier.fillMaxWidth()
+                                .padding(vertical = AppSizes.paddingXSmall)
+                                .clickable { onClick() },
+                elevation = if (isSelected) AppSizes.elevationMedium else AppSizes.elevationSmall,
+                backgroundColor = backgroundColor
+        ) {
+                Column(modifier = Modifier.padding(AppSizes.paddingSmall)) {
+                        Text(
+                                text = aliment.nom ?: "Sans nom",
+                                style = MaterialTheme.typography.subtitle1,
+                                fontWeight = FontWeight.Bold
+                        )
+
+                        if (aliment.brand != null && aliment.brand.isNotEmpty()) {
+                                Text(
+                                        text = "Marque: ${aliment.brand}",
+                                        style = MaterialTheme.typography.body2
+                                )
+                        }
+
+                        Row {
+                                if (aliment.group != null) {
+                                        Text(
+                                                text = "Groupe: ${aliment.group.label}",
+                                                style = MaterialTheme.typography.caption,
+                                                color = Color.Gray
+                                        )
+                                }
+
+                                Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
+
+                                if (aliment.typeAliment != null) {
+                                        Text(
+                                                text = "Type: ${aliment.typeAliment.label}",
+                                                style = MaterialTheme.typography.caption,
+                                                color = Color.Gray
+                                        )
+                                }
+                        }
+
+                        // Afficher les espèces et indications si disponibles
+                        if (aliment.especes.isNotEmpty() || aliment.indicat.isNotEmpty()) {
+                                Divider(
+                                        modifier =
+                                                Modifier.padding(vertical = AppSizes.paddingXSmall),
+                                        thickness = 0.5.dp
+                                )
+
+                                if (aliment.especes.isNotEmpty()) {
+                                        Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement =
+                                                        Arrangement.spacedBy(
+                                                                AppSizes.paddingXSmall
+                                                        ),
+                                                verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                                Text(
+                                                        text = "Espèces:",
+                                                        style = MaterialTheme.typography.caption,
+                                                        color = VetNutriColors.Primary
+                                                )
+
+                                                Row(
+                                                        horizontalArrangement =
+                                                                Arrangement.spacedBy(
+                                                                        AppSizes.paddingXSmall
+                                                                ),
+                                                        verticalAlignment =
+                                                                Alignment.CenterVertically
+                                                ) {
+                                                        aliment.especes.take(3).forEach {
+                                                                especeLabel ->
+                                                                val espece =
+                                                                        Espece.getFromString(
+                                                                                especeLabel
+                                                                        )
+                                                                if (espece != null) {
+                                                                        Badge(
+                                                                                text = espece.label,
+                                                                                backgroundColor =
+                                                                                        VetNutriColors
+                                                                                                .Secondary
+                                                                        )
+                                                                }
+                                                        }
+
+                                                        if (aliment.especes.size > 3) {
+                                                                Text(
+                                                                        text =
+                                                                                "+${aliment.especes.size - 3}",
+                                                                        style =
+                                                                                MaterialTheme
+                                                                                        .typography
+                                                                                        .caption,
+                                                                        color = Color.Gray
+                                                                )
+                                                        }
+                                                }
+                                        }
+                                }
+
+                                if (aliment.indicat.isNotEmpty()) {
+                                        Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement =
+                                                        Arrangement.spacedBy(
+                                                                AppSizes.paddingXSmall
+                                                        ),
+                                                verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                                Text(
+                                                        text = "Indications:",
+                                                        style = MaterialTheme.typography.caption,
+                                                        color = VetNutriColors.Primary
+                                                )
+
+                                                Row(
+                                                        horizontalArrangement =
+                                                                Arrangement.spacedBy(
+                                                                        AppSizes.paddingXSmall
+                                                                ),
+                                                        verticalAlignment =
+                                                                Alignment.CenterVertically
+                                                ) {
+                                                        aliment.indicat.take(2).forEach { indication
+                                                                ->
+                                                                Badge(
+                                                                        text = indication.label,
+                                                                        backgroundColor =
+                                                                                VetNutriColors
+                                                                                        .Primary
+                                                                )
+                                                        }
+
+                                                        if (aliment.indicat.size > 2) {
+                                                                Text(
+                                                                        text =
+                                                                                "+${aliment.indicat.size - 2}",
+                                                                        style =
+                                                                                MaterialTheme
+                                                                                        .typography
+                                                                                        .caption,
+                                                                        color = Color.Gray
+                                                                )
+                                                        }
+                                                }
                                         }
                                 }
                         }

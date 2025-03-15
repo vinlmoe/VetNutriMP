@@ -220,9 +220,15 @@ class TestDatabaseAnimalRepository(private val animalDao: AnimalDao, private val
         }
     }
 
-    override suspend fun importAnimals(animalsJson: List<AnimalEvJson>): Int {
+    override suspend fun importAnimals(animalsJson: List<AnimalEvJson>): AnimalImportResult {
         // Non implémenté pour les tests
-        return 0
+        return AnimalImportResult(
+                importedCount = 0,
+                updatedCount = 0,
+                errorCount = 0,
+                totalCount = 0,
+                foodsImportedCount = 0
+        )
     }
 
     override fun getFoodRepository(): FoodRepository? {

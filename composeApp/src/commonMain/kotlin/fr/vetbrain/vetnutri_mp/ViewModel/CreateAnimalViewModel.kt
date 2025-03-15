@@ -12,7 +12,7 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalUuidApi::class)
 class CreateAnimalViewModel(private val animalRepository: AnimalRepository) : ViewModel() {
-    private val _animal = MutableStateFlow(AnimalEv(specieId = Espece.CHIEN.name))
+    private val _animal = MutableStateFlow(AnimalEv(specieId = Espece.CHIEN.label))
     val animal: StateFlow<AnimalEv> = _animal
 
     private val _isSaving = MutableStateFlow(false)
@@ -44,6 +44,6 @@ class CreateAnimalViewModel(private val animalRepository: AnimalRepository) : Vi
     }
 
     fun resetAnimal() {
-        _animal.value = AnimalEv(specieId = Espece.CHIEN.name)
+        _animal.value = AnimalEv(specieId = Espece.CHIEN.label)
     }
 }

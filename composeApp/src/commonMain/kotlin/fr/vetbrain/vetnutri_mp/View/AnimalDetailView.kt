@@ -50,6 +50,9 @@ fun AnimalDetailView(
         val drawerState = rememberDrawerState(DrawerValue.Closed)
         val scope = rememberCoroutineScope()
 
+        // État pour les messages Snackbar
+        val snackbarHostState = remember { SnackbarHostState() }
+
         // Options du menu
         val menuOptions =
                 listOf(
@@ -260,7 +263,9 @@ private fun WideScreenLayout(
                                 AnimalDetailSection.RATIONS -> {
                                         RationsView(
                                                 viewModel = viewModel,
-                                                modifier = Modifier.fillMaxSize()
+                                                showSnackbar = { message ->
+                                                        println("Snackbar: $message")
+                                                }
                                         )
                                 }
                         }
@@ -453,7 +458,11 @@ private fun NarrowScreenLayout(
                                                 AnimalDetailSection.RATIONS -> {
                                                         RationsView(
                                                                 viewModel = viewModel,
-                                                                modifier = Modifier.fillMaxSize()
+                                                                showSnackbar = { message ->
+                                                                        println(
+                                                                                "Snackbar: $message"
+                                                                        )
+                                                                }
                                                         )
                                                 }
                                         }

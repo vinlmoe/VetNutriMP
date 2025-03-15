@@ -22,7 +22,6 @@ import fr.vetbrain.vetnutri_mp.ViewModel.CreateAnimalViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.FoodEditViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.FoodListViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.SettingsViewModel
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
 // Fonctions d'importation de fichiers - implémentées par plateforme spécifique
@@ -63,6 +62,9 @@ fun App(appDatabase: AppDatabase) {
     val foodRepository = remember {
         DatabaseFoodRepository(appDatabase.foodDao(), appDatabase.nutrientValueDao())
     }
+
+    // Initialiser le repository statique AlimentRepository avec le DatabaseFoodRepository
+    AlimentRepository.initializeDatabaseFoodRepository(foodRepository)
 
     val consultationRepository = remember {
         DatabaseConsultationRepository(appDatabase.consultationDao(), foodRepository)
@@ -160,6 +162,15 @@ fun App(appDatabase: AppDatabase) {
                                     title = "Liste des animaux",
                                     onSettingsClick = { showSettings = true }
                             )
+
+                            // Ajout d'un LaunchedEffect pour recharger la liste lorsque l'écran
+                            // devient visible
+                            LaunchedEffect(currentScreen) {
+                                if (currentScreen == Screen.List) {
+                                    animalListViewModel.loadAnimals()
+                                }
+                            }
+
                             AnimalListView(
                                     viewModel = animalListViewModel,
                                     onAddAnimal = {
@@ -271,205 +282,31 @@ fun App(appDatabase: AppDatabase) {
             }
 
             if (showSettings) {
-                // Simple AlertDialog pour remplacer SettingsDialog
-                val uiScale by settingsViewModel.uiScale.collectAsState()
-                var showConfirmClearFoods by remember { mutableStateOf(false) }
-                var showConfirmClearAnimals by remember { mutableStateOf(false) }
-                var isProcessing by remember { mutableStateOf(false) }
-                var resultMessage by remember { mutableStateOf<String?>(null) }
-                val coroutineScope = rememberCoroutineScope()
-
+                // Afficher SettingsView dans une boîte de dialogue modale
                 AlertDialog(
                         onDismissRequest = { showSettings = false },
                         title = { Text("Paramètres") },
                         text = {
-                            Column(modifier = Modifier.fillMaxWidth()) {
-                                // Section taille d'interface
-                                Text(
-                                        "Taille de l'interface: ${(uiScale * 100).toInt()}%",
-                                        style = MaterialTheme.typography.subtitle1
+                            // Nous utilisons une Box pour contenir SettingsView avec une taille
+                            // maximale
+                            Box(modifier = Modifier.fillMaxWidth().heightIn(max = 600.dp)) {
+                                // Utiliser le composant SettingsView à l'intérieur de la boîte de
+                                // dialogue
+                                SettingsView(
+                                        viewModel = settingsViewModel,
+                                        onImportAnimals = handleImportAnimals,
+                                        onBack = { showSettings = false },
+                                        onAnimalListRefresh = { animalListViewModel.loadAnimals() },
+                                        onFoodListRefresh = { foodListViewModel.loadFoods() }
                                 )
-
-                                Row(modifier = Modifier.padding(vertical = 8.dp)) {
-                                    Button(
-                                            onClick = { settingsViewModel.decrementUiScale() },
-                                            enabled = uiScale > 0.5f
-                                    ) { Text("-") }
-
-                                    Spacer(modifier = Modifier.width(8.dp))
-
-                                    Button(
-                                            onClick = { settingsViewModel.incrementUiScale() },
-                                            enabled = uiScale < 2f
-                                    ) { Text("+") }
-                                }
-
-                                Divider(modifier = Modifier.padding(vertical = 8.dp))
-
-                                // Section importation de données
-                                Text(
-                                        "Importation de données",
-                                        style = MaterialTheme.typography.subtitle1
-                                )
-
-                                Row(modifier = Modifier.padding(vertical = 8.dp)) {
-                                    Button(
-                                            onClick = handleImportAnimals,
-                                            modifier = Modifier.padding(end = 8.dp)
-                                    ) { Text("Importer animaux") }
-
-                                    Button(onClick = handleImportFoods) {
-                                        Text("Importer aliments")
-                                    }
-                                }
-
-                                Divider(modifier = Modifier.padding(vertical = 8.dp))
-
-                                // Section administration de base de données
-                                Text(
-                                        "Administration de la base de données",
-                                        style = MaterialTheme.typography.subtitle1
-                                )
-
-                                Row(modifier = Modifier.padding(vertical = 8.dp)) {
-                                    Button(
-                                            onClick = { showConfirmClearFoods = true },
-                                            colors =
-                                                    ButtonDefaults.buttonColors(
-                                                            backgroundColor =
-                                                                    MaterialTheme.colors.error
-                                                    ),
-                                            modifier = Modifier.padding(end = 8.dp)
-                                    ) {
-                                        Text(
-                                                "Vider BD aliments",
-                                                color = MaterialTheme.colors.onError
-                                        )
-                                    }
-
-                                    Button(
-                                            onClick = { showConfirmClearAnimals = true },
-                                            colors =
-                                                    ButtonDefaults.buttonColors(
-                                                            backgroundColor =
-                                                                    MaterialTheme.colors.error
-                                                    )
-                                    ) {
-                                        Text(
-                                                "Vider BD animaux",
-                                                color = MaterialTheme.colors.onError
-                                        )
-                                    }
-                                }
-
-                                // Affichage du message de résultat
-                                resultMessage?.let {
-                                    Text(
-                                            text = it,
-                                            style = MaterialTheme.typography.caption,
-                                            modifier = Modifier.padding(top = 8.dp)
-                                    )
-                                }
-
-                                // Indicateur de progression
-                                if (isProcessing) {
-                                    LinearProgressIndicator(
-                                            modifier =
-                                                    Modifier.fillMaxWidth().padding(vertical = 8.dp)
-                                    )
-                                }
                             }
                         },
                         confirmButton = {
                             Button(onClick = { showSettings = false }) { Text("Fermer") }
-                        }
+                        },
+                        // Définir une largeur maximale pour la boîte de dialogue
+                        modifier = Modifier.widthIn(max = 800.dp)
                 )
-
-                // Boîte de dialogue de confirmation pour vider la base de données des aliments
-                if (showConfirmClearFoods) {
-                    AlertDialog(
-                            onDismissRequest = { showConfirmClearFoods = false },
-                            title = { Text("Confirmation") },
-                            text = {
-                                Text(
-                                        "Êtes-vous sûr de vouloir vider la base de données des aliments?"
-                                )
-                            },
-                            confirmButton = {
-                                Button(
-                                        onClick = {
-                                            showConfirmClearFoods = false
-                                            isProcessing = true
-                                            // Vider la base de données des aliments
-                                            coroutineScope.launch {
-                                                try {
-                                                    val count = settingsViewModel.clearAllFoods()
-                                                    resultMessage =
-                                                            "$count aliments ont été supprimés."
-                                                } catch (e: Exception) {
-                                                    resultMessage =
-                                                            "Erreur lors de la suppression des aliments: ${e.message}"
-                                                } finally {
-                                                    isProcessing = false
-                                                }
-                                            }
-                                        },
-                                        colors =
-                                                ButtonDefaults.buttonColors(
-                                                        backgroundColor = MaterialTheme.colors.error
-                                                )
-                                ) { Text("Confirmer", color = MaterialTheme.colors.onError) }
-                            },
-                            dismissButton = {
-                                Button(onClick = { showConfirmClearFoods = false }) {
-                                    Text("Annuler")
-                                }
-                            }
-                    )
-                }
-
-                // Boîte de dialogue de confirmation pour vider la base de données des animaux
-                if (showConfirmClearAnimals) {
-                    AlertDialog(
-                            onDismissRequest = { showConfirmClearAnimals = false },
-                            title = { Text("Confirmation") },
-                            text = {
-                                Text(
-                                        "Êtes-vous sûr de vouloir vider la base de données des animaux?"
-                                )
-                            },
-                            confirmButton = {
-                                Button(
-                                        onClick = {
-                                            showConfirmClearAnimals = false
-                                            isProcessing = true
-                                            // Vider la base de données des animaux
-                                            coroutineScope.launch {
-                                                try {
-                                                    val count = settingsViewModel.clearAllAnimals()
-                                                    resultMessage =
-                                                            "$count animaux ont été supprimés."
-                                                } catch (e: Exception) {
-                                                    resultMessage =
-                                                            "Erreur lors de la suppression des animaux: ${e.message}"
-                                                } finally {
-                                                    isProcessing = false
-                                                }
-                                            }
-                                        },
-                                        colors =
-                                                ButtonDefaults.buttonColors(
-                                                        backgroundColor = MaterialTheme.colors.error
-                                                )
-                                ) { Text("Confirmer", color = MaterialTheme.colors.onError) }
-                            },
-                            dismissButton = {
-                                Button(onClick = { showConfirmClearAnimals = false }) {
-                                    Text("Annuler")
-                                }
-                            }
-                    )
-                }
             }
 
             // Afficher le résultat de l'importation des animaux
@@ -514,9 +351,51 @@ fun App(appDatabase: AppDatabase) {
                         text = {
                             when (foodImportResult) {
                                 is SettingsViewModel.ImportResult.Success -> {
-                                    Text(
-                                            "${foodImportResult.count} aliments ont été importés avec succès."
-                                    )
+                                    Column {
+                                        Text(
+                                                "${foodImportResult.count} aliments ont été importés avec succès.",
+                                                style = MaterialTheme.typography.subtitle1
+                                        )
+                                        Spacer(modifier = Modifier.height(8.dp))
+
+                                        // Afficher les statistiques détaillées
+                                        Text(
+                                                "Détails de l'importation:",
+                                                style = MaterialTheme.typography.subtitle2
+                                        )
+                                        Text(
+                                                "• ${foodImportResult.importedCount} nouveaux aliments"
+                                        )
+
+                                        if (foodImportResult.updatedCount > 0) {
+                                            Text(
+                                                    "• ${foodImportResult.updatedCount} aliments mis à jour"
+                                            )
+                                        }
+
+                                        if (foodImportResult.deletedCount > 0) {
+                                            Text(
+                                                    "• ${foodImportResult.deletedCount} aliments supprimés"
+                                            )
+                                        }
+
+                                        if (foodImportResult.errorCount > 0) {
+                                            Text(
+                                                    "• ${foodImportResult.errorCount} erreurs rencontrées",
+                                                    color = MaterialTheme.colors.error
+                                            )
+                                        }
+
+                                        if (foodImportResult.nonResolvedNutrients > 0) {
+                                            Text(
+                                                    "• ${foodImportResult.nonResolvedNutrients} nutriments non résolus",
+                                                    color =
+                                                            MaterialTheme.colors.error.copy(
+                                                                    alpha = 0.7f
+                                                            )
+                                            )
+                                        }
+                                    }
                                 }
                                 is SettingsViewModel.ImportResult.Error -> {
                                     Text(

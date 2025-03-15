@@ -44,7 +44,7 @@ class SqliteFoodRepository : FoodRepository {
         return foodsFlow.asStateFlow()
     }
 
-    override suspend fun importFoods(foods: List<AlimentEvJson>): Int {
+    override suspend fun importFoods(foods: List<AlimentEvJson>): FoodImportResult {
         var importCount = 0
 
         foods.forEach { jsonFood ->
@@ -76,7 +76,15 @@ class SqliteFoodRepository : FoodRepository {
         }
 
         refreshFoods()
-        return importCount
+
+        return FoodImportResult(
+                importedCount = importCount,
+                updatedCount = 0,
+                deletedCount = 0,
+                errorCount = 0,
+                totalCount = _foods.size,
+                nonResolvedNutrientsCount = 0
+        )
     }
 
     override suspend fun insertFood(food: AlimentEv) {

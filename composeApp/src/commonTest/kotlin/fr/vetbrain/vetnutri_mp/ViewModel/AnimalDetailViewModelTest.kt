@@ -168,8 +168,14 @@ private class MockAnimalRepository : AnimalRepository {
         animals[animal.uuid] = animal
     }
 
-    override suspend fun importAnimals(animalsJson: List<AnimalEvJson>): Int {
-        return 0 // Pas d'implémentation nécessaire pour les tests
+    override suspend fun importAnimals(animalsJson: List<AnimalEvJson>): AnimalImportResult {
+        return AnimalImportResult(
+                importedCount = 0,
+                updatedCount = 0,
+                errorCount = 0,
+                totalCount = 0,
+                foodsImportedCount = 0
+        ) // Pas d'implémentation nécessaire pour les tests
     }
 
     override fun getFoodRepository(): FoodRepository? {

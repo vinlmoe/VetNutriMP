@@ -13,6 +13,7 @@ object AppIcons {
     val ArrowDropUp: ImageVector = Icons.Default.KeyboardArrowUp
     val Check: ImageVector = Icons.Default.Check
     val Close: ImageVector = Icons.Default.Close
+    val ContentCopy: ImageVector = Icons.Default.Add // Utiliser Add comme fallback temporaire
     val DateRange: ImageVector = Icons.Default.DateRange
     val Delete: ImageVector = Icons.Default.Delete
     val Edit: ImageVector = Icons.Default.Edit

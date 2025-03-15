@@ -16,8 +16,8 @@ enum class NutrientMain(
     CENDRE("Cendres", 5, "g", UnitEnum.BUg, "CENDRE", "#820326"),
     SUCRE("Sucres", 6, "g", UnitEnum.BUg, "SUCRE", "#C3A900"),
     AMIDON("Amidon", 7, "g", UnitEnum.BUg, "AMIDON", "#820326"),
-    FIBRESOL("Fibre soluble", 8, "g", UnitEnum.BUg, "FIBRSOL", "#20C300"),
-    FIBRETOT("Fibre totale", 9, "g", UnitEnum.BUg, "FIBRTOT", "#1A7D07"),
+    FIBRESOL("Fibre soluble", 8, "g", UnitEnum.BUg, "FIBRESOL", "#20C300"),
+    FIBRETOT("Fibre totale", 9, "g", UnitEnum.BUg, "FIBRETOT", "#1A7D07"),
     NDF("NDF", 10, "g", UnitEnum.BUg, "NDF", "#20C300"),
     ADF("ADFe", 11, "g", UnitEnum.BUg, "ADF", "#1A7D07");
 

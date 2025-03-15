@@ -117,9 +117,9 @@ class DatabaseFoodRepository(
     /**
      * Importe une liste d'aliments dans la base de données.
      * @param foods La liste des aliments à importer
-     * @return Le nombre d'aliments importés avec succès
+     * @return Résultat détaillé de l'importation
      */
-    override suspend fun importFoods(foods: List<AlimentEvJson>): Int {
+    override suspend fun importFoods(foods: List<AlimentEvJson>): FoodImportResult {
         return withContext(AppDispatchers.IO) {
             var importCount = 0
             var updateCount = 0
@@ -487,21 +487,25 @@ class DatabaseFoodRepository(
                 }
             }
 
-            // Vérifier le résultat de l'importation
-            val updatedFoods = foodDao.getAllFoods()
+            // Après l'importation complète, ajouter un résumé détaillé
+            val totalFoods = foodDao.getAllFoods().size
             println("\n===== RÉSULTATS DE L'IMPORTATION =====")
-            println("Nombre d'aliments dans la base après importation: ${updatedFoods.size}")
+            println("Nombre d'aliments dans la base après importation: $totalFoods")
             println("$importCount aliments importés")
             println("$updateCount aliments mis à jour")
             println("$deleteCount aliments supprimés")
             println("$errorCount erreurs rencontrées")
-
-            if (nonResolvedNutrients.isNotEmpty()) {
-                println("${nonResolvedNutrients.size} nutriments non résolus")
-            }
-
+            println("${nonResolvedNutrients.size} nutriments non résolus")
             println("===== FIN IMPORTATION ALIMENTS =====")
-            return@withContext importCount
+
+            return@withContext FoodImportResult(
+                    importedCount = importCount,
+                    updatedCount = updateCount,
+                    deletedCount = deleteCount,
+                    errorCount = errorCount,
+                    totalCount = totalFoods,
+                    nonResolvedNutrientsCount = nonResolvedNutrients.size
+            )
         }
     }
 

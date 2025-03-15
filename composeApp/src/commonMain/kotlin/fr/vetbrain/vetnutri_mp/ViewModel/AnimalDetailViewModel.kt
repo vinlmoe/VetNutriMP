@@ -3,13 +3,16 @@ package fr.vetbrain.vetnutri_mp.ViewModel
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import fr.vetbrain.vetnutri_mp.Data.*
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
 import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
 import fr.vetbrain.vetnutri_mp.Data.Ration
+import fr.vetbrain.vetnutri_mp.Repository.AlimentRepository
 import fr.vetbrain.vetnutri_mp.Repository.AnimalRepository
 import fr.vetbrain.vetnutri_mp.Repository.ConsultationRepository
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -51,6 +54,61 @@ class AnimalDetailViewModel(
 
     var isEditingAnimal by mutableStateOf(false)
         private set
+
+    // Liste de tous les aliments disponibles
+    private val _availableFoods = mutableStateOf<List<AlimentEv>>(emptyList())
+    val availableFoods: List<AlimentEv>
+        get() = _availableFoods.value
+
+    // Requête de recherche d'aliment
+    private val _alimentSearchQuery = mutableStateOf("")
+    val alimentSearchQuery: String
+        get() = _alimentSearchQuery.value
+
+    /** Charge tous les aliments disponibles */
+    fun loadAvailableFoods() {
+        _availableFoods.value = AlimentRepository.getAllAliments()
+        println("Aliments chargés: ${_availableFoods.value.size}")
+    }
+
+    /** Définit la requête de recherche pour les aliments */
+    fun setAlimentSearchQuery(query: String) {
+        _alimentSearchQuery.value = query
+    }
+
+    /** Retourne la liste des aliments filtrée par la requête de recherche */
+    fun getFilteredFoods(query: String): List<AlimentEv> {
+        if (query.isBlank()) return availableFoods
+
+        return availableFoods.filter { aliment ->
+            aliment.nom?.contains(query, ignoreCase = true) == true ||
+                    aliment.brand?.contains(query, ignoreCase = true) == true ||
+                    aliment.group?.label?.contains(query, ignoreCase = true) == true ||
+                    aliment.typeAliment?.label?.contains(query, ignoreCase = true) == true
+        }
+    }
+
+    /** Ajoute un aliment à une ration */
+    @OptIn(ExperimentalUuidApi::class)
+    fun addAlimentToRation(ration: Ration, aliment: AlimentEv, quantite: Float) {
+        println("Ajout de l'aliment ${aliment.nom} (${quantite}g) à la ration ${ration.uuid}")
+
+        val alimentRation =
+                AlimentRation(
+                        uuid = Uuid.random().toString(),
+                        aliment = aliment,
+                        quantity = quantite,
+                        refRation = ration.uuid,
+                        refAlimUnif = aliment.uuid
+                )
+
+        // Créer une copie de la ration avec le nouvel aliment
+        val updatedRation = ration.copy()
+        updatedRation.alimentMutableList.add(alimentRation)
+
+        // Mettre à jour la ration dans la consultation
+        updateRationInConsultation(updatedRation)
+    }
 
     fun setAnimal(animal: AnimalEv) {
         viewModelScope.launch {
@@ -415,9 +473,17 @@ class AnimalDetailViewModel(
 
     fun updateAnimal(updatedAnimal: AnimalEv) {
         viewModelScope.launch {
+            println(
+                    "DEBUG_DETAIL_VM: Début updateAnimal avec updatedAnimal.specieId=${updatedAnimal.specieId}, espece=${updatedAnimal.getEspece().label}"
+            )
+
             // Conserver l'UUID et les consultations de l'animal original
             val animalToUpdate =
                     _animal.value?.let { originalAnimal ->
+                        println(
+                                "DEBUG_DETAIL_VM: Animal original avec specieId=${originalAnimal.specieId}, espece=${originalAnimal.getEspece().label}"
+                        )
+
                         updatedAnimal.copy(
                                 uuid = originalAnimal.uuid,
                                 consultations = originalAnimal.consultations
@@ -425,10 +491,17 @@ class AnimalDetailViewModel(
                     }
                             ?: return@launch
 
+            println(
+                    "DEBUG_DETAIL_VM: Avant mise à jour en DB: animalToUpdate.specieId=${animalToUpdate.specieId}, espece=${animalToUpdate.getEspece().label}"
+            )
+
             animalRepository.updateAnimal(animalToUpdate)
 
             // Mettre à jour l'animal dans le ViewModel
             _animal.value = animalToUpdate
+            println(
+                    "DEBUG_DETAIL_VM: Animal mis à jour dans le ViewModel: specieId=${animalToUpdate.specieId}, espece=${animalToUpdate.getEspece().label}"
+            )
 
             // Arrêter le mode édition
             isEditingAnimal = false
@@ -439,7 +512,7 @@ class AnimalDetailViewModel(
     fun prepareNewConsultation(date: LocalDate) {
         val newConsultation =
                 ConsultationEv(
-                        uuid = kotlin.uuid.Uuid.random().toString(),
+                        uuid = Uuid.random().toString(),
                         date = date,
                         idAnim = _animal.value?.uuid ?: ""
                 )
@@ -576,5 +649,75 @@ class AnimalDetailViewModel(
      */
     suspend fun getConsultationById(consultationId: String): ConsultationEv? {
         return consultationRepository.getConsultationById(consultationId)
+    }
+
+    /**
+     * Duplique une ration existante et tous ses aliments avec de nouveaux UUID
+     *
+     * @param ration Ration à dupliquer
+     */
+    @OptIn(ExperimentalUuidApi::class)
+    fun duplicateRation(ration: Ration) {
+        viewModelScope.launch {
+            // Obtenir la consultation courante
+            val currentConsultation = _selectedConsultation.value ?: return@launch
+
+            // Créer une copie de la ration avec un nouveau UUID et un nom indiquant qu'il s'agit
+            // d'une copie
+            val duplicatedRation =
+                    ration.copy(
+                            uuid = Uuid.random().toString(),
+                            name = "${ration.name} (copie)",
+                            alimentMutableList =
+                                    mutableListOf() // Liste vide temporaire, nous allons la remplir
+                            // juste après
+                            )
+
+            // Duplicater chaque aliment avec un nouveau UUID
+            val duplicatedAliments =
+                    ration.alimentMutableList.map { aliment ->
+                        aliment.copy(
+                                uuid = Uuid.random().toString(),
+                                refRation =
+                                        duplicatedRation
+                                                .uuid // Référence au nouveau UUID de la ration
+                        )
+                    }
+
+            // Ajouter les aliments dupliqués à la ration dupliquée
+            duplicatedRation.alimentMutableList.addAll(duplicatedAliments)
+
+            // Créer une copie de la liste des rations et y ajouter la ration dupliquée
+            val updatedRations = currentConsultation.rations.toMutableList()
+            updatedRations.add(duplicatedRation)
+
+            // Créer une copie de la consultation avec la liste mise à jour
+            val updatedConsultation = currentConsultation.copy(rations = updatedRations)
+
+            // Mettre à jour le StateFlow avec la nouvelle consultation
+            _selectedConsultation.value = updatedConsultation
+
+            // Sélectionner la ration dupliquée
+            _selectedRation.value = duplicatedRation
+
+            // Sauvegarder les modifications dans la base de données
+            consultationRepository.saveConsultation(updatedConsultation)
+
+            println("DEBUG: Ration dupliquée avec succès, UUID=${duplicatedRation.uuid}")
+        }
+    }
+
+    /**
+     * Met à jour la liste des aliments dans une ration
+     *
+     * @param ration Ration à mettre à jour
+     * @param aliments Nouvelle liste d'aliments
+     */
+    fun updateRationAliments(ration: Ration, aliments: List<AlimentRation>) {
+        // Créer une copie de la ration avec la liste d'aliments mise à jour
+        val updatedRation = ration.copy(alimentMutableList = aliments.toMutableList())
+
+        // Mettre à jour la ration dans la consultation
+        updateRationInConsultation(updatedRation)
     }
 }

@@ -16,6 +16,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
+import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.Sex
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Animal
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.General
@@ -36,12 +37,15 @@ fun AnimalEditView(
         var ownerName by remember { mutableStateOf(animal.ownerName) }
         var summary by remember { mutableStateOf(animal.summary) }
         var selectedSex by remember { mutableStateOf(animal.getSex()) }
+        var selectedEspece by remember { mutableStateOf(animal.getEspece()) }
         var birthDateText by remember { mutableStateOf(animal.birthdate?.toString() ?: "") }
         var isDateValid by remember { mutableStateOf(true) }
         var isDead by remember { mutableStateOf(animal.dead) }
 
         // État pour le dropdown du sexe
         var sexDropdownExpanded by remember { mutableStateOf(false) }
+        // État pour le dropdown de l'espèce
+        var especeDropdownExpanded by remember { mutableStateOf(false) }
 
         val scrollState = rememberScrollState()
 
@@ -184,6 +188,48 @@ fun AnimalEditView(
                                 }
                         }
 
+                        // Espèce avec DropdownMenu
+                        Box(modifier = Modifier.fillMaxWidth()) {
+                                OutlinedTextField(
+                                        value = selectedEspece.label,
+                                        onValueChange = {},
+                                        label = { Text(Animal.SPECIES.translate()) },
+                                        modifier =
+                                                Modifier.fillMaxWidth().onFocusChanged {
+                                                        if (it.isFocused)
+                                                                especeDropdownExpanded = true
+                                                },
+                                        readOnly = true,
+                                        trailingIcon = {
+                                                IconButton(
+                                                        onClick = { especeDropdownExpanded = true }
+                                                ) {
+                                                        Icon(
+                                                                imageVector =
+                                                                        Icons.Default.ArrowDropDown,
+                                                                contentDescription =
+                                                                        "Sélectionner l'espèce"
+                                                        )
+                                                }
+                                        }
+                                )
+
+                                DropdownMenu(
+                                        expanded = especeDropdownExpanded,
+                                        onDismissRequest = { especeDropdownExpanded = false },
+                                        modifier = Modifier.fillMaxWidth(0.9f)
+                                ) {
+                                        Espece.valuesExcept(Espece.CH).forEach { espece ->
+                                                DropdownMenuItem(
+                                                        onClick = {
+                                                                selectedEspece = espece
+                                                                especeDropdownExpanded = false
+                                                        }
+                                                ) { Text(text = espece.label) }
+                                        }
+                                }
+                        }
+
                         // Animal décédé
                         Row(
                                 verticalAlignment = Alignment.CenterVertically,
@@ -269,8 +315,15 @@ fun AnimalEditView(
                                                                 summary = summary,
                                                                 sexId = selectedSex.id,
                                                                 birthdate = birthdate,
-                                                                dead = isDead
+                                                                dead = isDead,
+                                                                specieId = selectedEspece.label
                                                         )
+
+                                                // Log de débogage pour vérifier les informations de
+                                                // l'animal
+                                                println(
+                                                        "DEBUG_EDIT_VIEW: Animal mis à jour avec nom=${updatedAnimal.nom}, specieId=${updatedAnimal.specieId}, espece=${selectedEspece.label}"
+                                                )
 
                                                 onSave(updatedAnimal)
                                         },

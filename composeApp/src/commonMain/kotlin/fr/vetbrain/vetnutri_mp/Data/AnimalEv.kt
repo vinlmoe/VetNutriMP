@@ -30,11 +30,30 @@ data class AnimalEv(
     }
 
     fun getEspece(): Espece {
-        return Espece.values().firstOrNull { it.name == specieId } ?: Espece.CHIEN
+        // Chercher d'abord par label (ce qui correspond à ce qui est stocké lors de l'import)
+        val especeByLabel = Espece.values().firstOrNull { it.label == specieId }
+        if (especeByLabel != null) {
+            return especeByLabel
+        }
+
+        // Si pas de correspondance par label, essayer par nom d'énumération (pour la compatibilité)
+        val especeByName = Espece.values().firstOrNull { it.name == specieId }
+        if (especeByName != null) {
+            return especeByName
+        }
+
+        // Si pas de correspondance, essayer par ID
+        val especeById = Espece.values().firstOrNull { it.id == specieId }
+        if (especeById != null) {
+            return especeById
+        }
+
+        // Valeur par défaut
+        return Espece.CHIEN
     }
 
     fun setEspece(espece: Espece) {
-        this.specieId = espece.name
+        this.specieId = espece.label
     }
 
     companion object {
@@ -44,7 +63,7 @@ data class AnimalEv(
                     dead = false,
                     id = "TEST001",
                     sexId = Sex.MALE_ENTIER.id,
-                    specieId = Espece.CHIEN.name,
+                    specieId = Espece.CHIEN.label,
                     ownerName = "Jean Dupont",
                     birthdate = LocalDate(2020, 1, 1),
                     race = "Labrador",

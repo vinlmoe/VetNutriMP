@@ -78,7 +78,41 @@ class DatabaseAnimalRepository(
 
         override suspend fun updateAnimal(animal: AnimalEv) {
                 withContext(AppDispatchers.Default) {
-                        animalDao.update(animal.toEntity(includeRelations = false))
+                        println(
+                                "DEBUG_UPDATE_ANIMAL: Mise à jour de l'animal ${animal.nom} avec specieId=${animal.specieId}, espece=${animal.getEspece().label}"
+                        )
+
+                        // Vérifier si l'animal existe avant la mise à jour
+                        val existingAnimal = animalDao.getAnimalById(animal.uuid)
+                        if (existingAnimal != null) {
+                                println(
+                                        "DEBUG_UPDATE_ANIMAL: Animal existant trouvé avec specieId=${existingAnimal.specieId}"
+                                )
+                        } else {
+                                println(
+                                        "DEBUG_UPDATE_ANIMAL: Animal non trouvé dans la base de données"
+                                )
+                        }
+
+                        // Convertir l'animal en entité et le mettre à jour
+                        val animalEntity = animal.toEntity(includeRelations = false)
+                        println(
+                                "DEBUG_UPDATE_ANIMAL: Entité créée avec specieId=${animalEntity.specieId}"
+                        )
+
+                        animalDao.update(animalEntity)
+
+                        // Vérifier que l'animal a été correctement mis à jour
+                        val updatedAnimal = animalDao.getAnimalById(animal.uuid)
+                        if (updatedAnimal != null) {
+                                println(
+                                        "DEBUG_UPDATE_ANIMAL: Animal mis à jour avec specieId=${updatedAnimal.specieId}"
+                                )
+                        } else {
+                                println(
+                                        "DEBUG_UPDATE_ANIMAL: Erreur: Animal non trouvé après mise à jour"
+                                )
+                        }
                 }
         }
 
@@ -165,83 +199,107 @@ class DatabaseAnimalRepository(
         }
 
         /**
-         * Convertit un identifiant d'espèce (numérique ou chaîne) en nom d'énumération Espece
-         * @param especeId L'identifiant d'espèce à convertir
+         * Convertit un identifiant d'espèce en nom d'énumération.
+         *
+         * @param especeId L'identifiant d'espèce à convertir (peut être une chaîne ou un nombre)
          * @return Le nom de l'énumération Espece correspondante ou l'identifiant original si non
          * reconnu
          */
         private fun convertSpecieId(especeId: String): String {
-                // Si l'entrée est vide ou null, utiliser CHIEN par défaut
+                // Journal détaillé pour l'import JSON
+                println("IMPORT_ESPECE: Valeur originale dans JSON pour 'espece': '$especeId'")
+
+                // Si l'entrée est vide ou null, conserver la valeur vide
                 if (especeId.isBlank()) {
-                        println("Identifiant d'espèce vide, utilisation de CHIEN par défaut")
-                        return Espece.CHIEN.label
+                        println("IMPORT_ESPECE: Identifiant d'espèce vide, conservé comme tel")
+                        return ""
+                }
+
+                // Vérifier directement si l'especeId correspond à l'id d'une des espèces de
+                // l'énumération
+                val especeDirectMatch = Espece.entries.find { it.id == especeId }
+                if (especeDirectMatch != null) {
+                        println(
+                                "IMPORT_ESPECE: Espèce reconnue directement par ID: $especeId -> enum: ${especeDirectMatch.name}, label: ${especeDirectMatch.label}, id: ${especeDirectMatch.id}, catégorie: ${especeDirectMatch.categorie}"
+                        )
+                        return especeDirectMatch.label
                 }
 
                 // Essayer de convertir en entier si c'est un nombre
                 val especeNumId = especeId.toIntOrNull()
 
                 return if (especeNumId != null) {
-                        // Si c'est un nombre, utiliser getEnumFromInt
-                        try {
-                                val espece = Espece.getEnumFromInt(especeNumId)
+                        // Vérifier si l'ID numérique correspond à l'ID d'une espèce
+                        val especeByNumId = Espece.entries.find { it.id == especeNumId.toString() }
+                        if (especeByNumId != null) {
                                 println(
-                                        "Espèce reconnue par ID numérique: $especeId -> ${espece.label}"
+                                        "IMPORT_ESPECE: Espèce reconnue par ID numérique: $especeId -> enum: ${especeByNumId.name}, label: ${especeByNumId.label}, id: ${especeByNumId.id}, catégorie: ${especeByNumId.categorie}"
                                 )
-                                espece.label
-                        } catch (e: Exception) {
-                                // Essayer les autres stratégies avant de tomber sur CHIEN par
-                                // défaut
+                                especeByNumId.label
+                        } else {
+                                // Si c'est un nombre, utiliser getEnumFromInt qui utilise le champ
+                                // catégorie
                                 try {
-                                        val especeByName = Espece.valueOf(especeId.uppercase())
+                                        val espece = Espece.getEnumFromInt(especeNumId)
                                         println(
-                                                "Espèce reconnue par nom enum: $especeId -> ${especeByName.label}"
+                                                "IMPORT_ESPECE: Espèce reconnue par catégorie: $especeId -> enum: ${espece.name}, label: ${espece.label}, id: ${espece.id}, catégorie: ${espece.categorie}"
                                         )
-                                        especeByName.label
-                                } catch (e2: Exception) {
-                                        // Essayer par label
-                                        val especeByLabel = Espece.getByLabel(especeId)
-                                        if (especeByLabel != null) {
+                                        espece.label
+                                } catch (e: Exception) {
+                                        // Essayer les autres stratégies
+                                        try {
+                                                val especeByName =
+                                                        Espece.valueOf(especeId.uppercase())
                                                 println(
-                                                        "Espèce reconnue par label: $especeId -> ${especeByLabel.label}"
+                                                        "IMPORT_ESPECE: Espèce reconnue par nom enum: $especeId -> enum: ${especeByName.name}, label: ${especeByName.label}, id: ${especeByName.id}, catégorie: ${especeByName.categorie}"
                                                 )
-                                                especeByLabel.label
-                                        } else {
-                                                // En cas d'échec de toutes les méthodes
-                                                println(
-                                                        "Espèce non reconnue: $especeId, utilisation de CHIEN par défaut"
-                                                )
-                                                Espece.CHIEN.label
+                                                especeByName.label
+                                        } catch (e2: Exception) {
+                                                // Essayer par label
+                                                val especeByLabel = Espece.getByLabel(especeId)
+                                                if (especeByLabel != null) {
+                                                        println(
+                                                                "IMPORT_ESPECE: Espèce reconnue par label: $especeId -> enum: ${especeByLabel.name}, label: ${especeByLabel.label}, id: ${especeByLabel.id}, catégorie: ${especeByLabel.categorie}"
+                                                        )
+                                                        especeByLabel.label
+                                                } else {
+                                                        // En cas d'échec, conserver l'ID original
+                                                        println(
+                                                                "IMPORT_ESPECE: Espèce non reconnue: $especeId, valeur conservée"
+                                                        )
+                                                        especeId
+                                                }
                                         }
                                 }
                         }
                 } else {
-                        // Si c'est une chaîne, essayer d'abord de trouver par nom d'énumération
+                        // Si c'est une chaîne, essayer d'abord par label
+                        val especeByLabel = Espece.getByLabel(especeId)
+                        if (especeByLabel != null) {
+                                println(
+                                        "IMPORT_ESPECE: Espèce reconnue par label: $especeId -> enum: ${especeByLabel.name}, label: ${especeByLabel.label}, id: ${especeByLabel.id}, catégorie: ${especeByLabel.categorie}"
+                                )
+                                return especeByLabel.label
+                        }
+
+                        // Essayer par nom d'énumération
                         try {
                                 val especeEnum = Espece.valueOf(especeId.uppercase())
                                 println(
-                                        "Espèce reconnue par nom enum: $especeId -> ${especeEnum.label}"
+                                        "IMPORT_ESPECE: Espèce reconnue par nom enum: $especeId -> enum: ${especeEnum.name}, label: ${especeEnum.label}, id: ${especeEnum.id}, catégorie: ${especeEnum.categorie}"
                                 )
                                 especeEnum.label
                         } catch (e: Exception) {
-                                // Essayer de trouver par label
-                                val espece = Espece.getByLabel(especeId)
-                                if (espece != null) {
-                                        println(
-                                                "Espèce reconnue par label: $especeId -> ${espece.label}"
-                                        )
-                                        espece.label
-                                } else {
-                                        // En cas d'échec de toutes les méthodes
-                                        println(
-                                                "Espèce non reconnue: $especeId, utilisation de CHIEN par défaut"
-                                        )
-                                        Espece.CHIEN.label
-                                }
+                                // En cas d'échec, conserver la valeur originale
+                                println(
+                                        "IMPORT_ESPECE: Espèce non reconnue: $especeId, valeur conservée"
+                                )
+                                especeId
                         }
                 }
         }
 
-        override suspend fun importAnimals(animalsJson: List<AnimalEvJson>): Int {
+        override suspend fun importAnimals(animalsJson: List<AnimalEvJson>): AnimalImportResult {
                 return withContext(AppDispatchers.Default) {
                         val availableFoodUUIDs = mutableSetOf<String>()
                         // Map pour stocker les noms des aliments par UUID
@@ -365,6 +423,8 @@ class DatabaseAnimalRepository(
                         )
 
                         var importedCount = 0
+                        var updatedCount = 0
+                        var errorCount = 0
                         var rationsWithAliments = 0
                         var totalAlimentsInRations = 0
 
@@ -919,7 +979,17 @@ class DatabaseAnimalRepository(
                         )
                         println("${rationsWithAliments} rations avec des aliments importés")
                         println("${totalAlimentsInRations} aliments importés dans les rations")
-                        return@withContext importedCount
+
+                        val totalCount = getAllAnimals().size
+
+                        return@withContext AnimalImportResult(
+                                importedCount = importedCount,
+                                updatedCount =
+                                        0, // Nous ne suivons pas actuellement les mises à jour
+                                errorCount = animalsJson.size - importedCount,
+                                totalCount = totalCount,
+                                foodsImportedCount = importedFoodsCount
+                        )
                 }
         }
 

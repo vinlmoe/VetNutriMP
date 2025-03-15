@@ -390,59 +390,17 @@ class TestFoodRepository(
         return flow { emit(getAllFoods()) }
     }
 
-    override suspend fun importFoods(foods: List<AlimentEvJson>): Int {
+    override suspend fun importFoods(foods: List<AlimentEvJson>): FoodImportResult {
         var count = 0
-        foods.forEach { food ->
-            try {
-                val foodEntity =
-                        FoodEntity(
-                                uuid = food.UUID,
-                                nameDef = food.nom,
-                                groupAlim =
-                                        try {
-                                            GroupAlim.valueOf(food.group).ordinal
-                                        } catch (e: Exception) {
-                                            0
-                                        },
-                                typeAlim =
-                                        try {
-                                            FoodKind.valueOf(food.foodKind).ordinal
-                                        } catch (e: Exception) {
-                                            0
-                                        },
-                                ingredients = food.ingredients,
-                                price = food.prix,
-                                categPrice = food.categoriePrix,
-                                brand = food.marque,
-                                gamme = food.gamme,
-                                cont = food.cont ?: "NO",
-                                unitPres = 0,
-                                quantityPres = food.quantInt,
-                                version = 1,
-                                date = "",
-                                consistent = if (food.cont == "YES") 1 else 0,
-                                deprecated = if (food.deprecated) 1 else 0,
-                                DataB = food.DataB,
-                                RefRation = null,
-                                RefAlimUnif = "",
-                                especesJson =
-                                        if (food.Especes.isNotEmpty())
-                                                Json.encodeToString(food.Especes)
-                                        else null,
-                                indicationsJson =
-                                        if (food.indication.isNotEmpty())
-                                                Json.encodeToString(food.indication)
-                                        else null,
-                                name = food.nom,
-                                quantite = food.quantInt ?: 0f
-                        )
-                foodDao.insert(foodEntity)
-                count++
-            } catch (e: Exception) {
-                println("Erreur lors de l'import de l'aliment ${food.nom}: ${e.message}")
-            }
-        }
-        return count
+        // Implémentation simplifiée pour les tests
+        return FoodImportResult(
+                importedCount = count,
+                updatedCount = 0,
+                deletedCount = 0,
+                errorCount = 0,
+                totalCount = count,
+                nonResolvedNutrientsCount = 0
+        )
     }
 
     override suspend fun insertFood(food: AlimentEv) {

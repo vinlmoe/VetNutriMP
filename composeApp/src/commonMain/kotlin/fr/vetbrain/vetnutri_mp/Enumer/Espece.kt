@@ -110,13 +110,15 @@ enum class Espece(override val label: String, val categorie: Int, val id: String
          * @return L'énumération correspondante
          */
         fun getEnumFromInt(id: Int): Espece {
-            var esp = CHIEN
-            for (espe in values()) {
-                if (id == espe.categorie) {
-                    esp = espe
-                }
+            // Chercher d'abord par id (s'il correspond à une chaîne numérique)
+            val idStr = id.toString()
+            val especeById = entries.find { it.id == idStr }
+            if (especeById != null) {
+                return especeById
             }
-            return esp
+
+            // Sinon chercher par catégorie
+            return entries.find { it.categorie == id } ?: CHIEN
         }
 
         /**

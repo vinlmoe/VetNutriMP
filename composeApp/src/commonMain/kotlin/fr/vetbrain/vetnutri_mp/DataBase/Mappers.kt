@@ -269,9 +269,17 @@ object Mappers {
                 nutrientValues: List<NutrientValueEntity> = emptyList()
         ): AlimentEv {
                 val especesList = mutableListOf<String>()
+
+                // Ajouter des logs de débogage pour comprendre le contenu de especesJson
+                println(
+                        "DEBUG Mappers: Extraction des espèces pour l'aliment ${this.uuid} (${this.nameDef})"
+                )
+                println("DEBUG Mappers: especesJson = ${this.especesJson}")
+
                 if (!this.especesJson.isNullOrEmpty()) {
                         // Extraire la liste des espèces du JSON
                         val especesStringList = this.especesJson.split(",")
+                        println("DEBUG Mappers: especesStringList = $especesStringList")
 
                         // Essayer de convertir chaque espèce en énumération
                         especesStringList.forEach { especeStr ->
@@ -281,29 +289,29 @@ object Mappers {
                                         val espece = Espece.getFromString(especeStr)
                                         if (espece != null) {
                                                 println(
-                                                        "Conversion réussie de l'espèce: $especeStr -> ${espece.name}"
+                                                        "DEBUG Mappers: Conversion réussie de l'espèce: $especeStr -> ${espece.name}"
                                                 )
                                                 especesList.add(
                                                         espece.name
                                                 ) // Utiliser le nom de l'énumération
                                         } else {
                                                 println(
-                                                        "Espèce non reconnue, conservation du texte original: $especeStr"
+                                                        "DEBUG Mappers: Espèce non reconnue, conservation du texte original: $especeStr"
                                                 )
-                                                // Nettoyer quand même avant d'ajouter
+                                                // Si l'espèce n'est pas vide, l'ajouter à la liste
                                                 val cleanedEspece =
                                                         especeStr
                                                                 .replace("[", "")
                                                                 .replace("]", "")
                                                                 .replace("\"", "")
                                                                 .trim()
-                                                especesList.add(
-                                                        cleanedEspece
-                                                ) // Conserver le texte original
+                                                if (cleanedEspece.isNotEmpty()) {
+                                                        especesList.add(cleanedEspece)
+                                                }
                                         }
                                 } catch (e: Exception) {
                                         println(
-                                                "Erreur lors de la conversion de l'espèce $especeStr: ${e.message}"
+                                                "DEBUG Mappers: Erreur lors de la conversion de l'espèce $especeStr: ${e.message}"
                                         )
                                         // Nettoyer quand même en cas d'erreur
                                         val cleanedEspece =
@@ -312,44 +320,77 @@ object Mappers {
                                                         .replace("]", "")
                                                         .replace("\"", "")
                                                         .trim()
-                                        especesList.add(
-                                                cleanedEspece
-                                        ) // Conserver le texte original en cas d'erreur
+                                        if (cleanedEspece.isNotEmpty()) {
+                                                especesList.add(cleanedEspece)
+                                        }
                                 }
                         }
                 } else {
                         // Si pas de JSON, utiliser les entités directement
+                        println(
+                                "DEBUG Mappers: Pas de especesJson, utilisation des entités directes: ${especes.size} espèces"
+                        )
                         especesList.addAll(
-                                especes.map {
-                                        try {
-                                                // Utiliser getFromString qui gère désormais le
-                                                // nettoyage et la conversion
-                                                val espece = Espece.getFromString(it.espece)
-                                                if (espece != null) {
-                                                        espece.name
-                                                } else {
-                                                        // Nettoyer quand même avant d'ajouter
-                                                        it.espece
-                                                                .replace("[", "")
-                                                                .replace("]", "")
-                                                                .replace("\"", "")
-                                                                .trim()
+                                especes
+                                        .map {
+                                                try {
+                                                        // Utiliser getFromString qui gère désormais
+                                                        // le
+                                                        // nettoyage et la conversion
+                                                        val espece = Espece.getFromString(it.espece)
+                                                        if (espece != null) {
+                                                                println(
+                                                                        "DEBUG Mappers: Espèce trouvée dans les entités: ${espece.name}"
+                                                                )
+                                                                espece.name
+                                                        } else {
+                                                                // Nettoyer quand même avant
+                                                                // d'ajouter
+                                                                val cleaned =
+                                                                        it.espece
+                                                                                .replace("[", "")
+                                                                                .replace("]", "")
+                                                                                .replace("\"", "")
+                                                                                .trim()
+                                                                println(
+                                                                        "DEBUG Mappers: Espèce non reconnue dans les entités: $cleaned"
+                                                                )
+                                                                if (cleaned.isNotEmpty()) cleaned
+                                                                else null
+                                                        }
+                                                } catch (e: Exception) {
+                                                        // Nettoyer quand même en cas d'erreur
+                                                        val cleaned =
+                                                                it.espece
+                                                                        .replace("[", "")
+                                                                        .replace("]", "")
+                                                                        .replace("\"", "")
+                                                                        .trim()
+                                                        println(
+                                                                "DEBUG Mappers: Erreur lors de la conversion de l'espèce ${it.espece}: ${e.message}"
+                                                        )
+                                                        if (cleaned.isNotEmpty()) cleaned else null
                                                 }
-                                        } catch (e: Exception) {
-                                                // Nettoyer quand même en cas d'erreur
-                                                it.espece
-                                                        .replace("[", "")
-                                                        .replace("]", "")
-                                                        .replace("\"", "")
-                                                        .trim()
                                         }
-                                }
+                                        .filterNotNull()
                         )
                 }
 
+                println(
+                        "DEBUG Mappers: Espèces extraites pour l'aliment ${this.uuid}: $especesList"
+                )
+
                 val indicatList = mutableListOf<AlimIndic>()
+
+                // Ajouter des logs de débogage pour comprendre le contenu de indicationsJson
+                println("DEBUG Mappers: Extraction des indications pour l'aliment ${this.uuid}")
+                println("DEBUG Mappers: indicationsJson = ${this.indicationsJson}")
+
                 if (!this.indicationsJson.isNullOrEmpty()) {
-                        this.indicationsJson.split(",").forEach { indic ->
+                        val indicationsStringList = this.indicationsJson.split(",")
+                        println("DEBUG Mappers: indicationsStringList = $indicationsStringList")
+
+                        indicationsStringList.forEach { indic ->
                                 try {
                                         // Utiliser getFromString qui gère désormais le nettoyage et
                                         // la conversion
@@ -359,26 +400,45 @@ object Mappers {
                                         ) {
                                                 indicatList.add(alimIndic)
                                                 println(
-                                                        "Indication reconnue: $indic -> ${alimIndic.name}"
+                                                        "DEBUG Mappers: Indication reconnue: $indic -> ${alimIndic.name}"
                                                 )
                                         }
                                 } catch (e: Exception) {
                                         println(
-                                                "Erreur lors du traitement de l'indication $indic: ${e.message}"
+                                                "DEBUG Mappers: Erreur lors du traitement de l'indication $indic: ${e.message}"
                                         )
                                 }
                         }
                 } else {
+                        println(
+                                "DEBUG Mappers: Pas de indicationsJson, utilisation des entités directes: ${indications.size} indications"
+                        )
                         indicatList.addAll(
                                 indications.mapNotNull { entity ->
                                         try {
-                                                AlimIndic.entries.getOrNull(entity.indication)
+                                                val indication =
+                                                        AlimIndic.entries.getOrNull(
+                                                                entity.indication
+                                                        )
+                                                if (indication != null) {
+                                                        println(
+                                                                "DEBUG Mappers: Indication trouvée dans les entités: ${indication.name}"
+                                                        )
+                                                }
+                                                indication
                                         } catch (e: Exception) {
+                                                println(
+                                                        "DEBUG Mappers: Erreur lors de la conversion de l'indication ${entity.indication}: ${e.message}"
+                                                )
                                                 null
                                         }
                                 }
                         )
                 }
+
+                println(
+                        "DEBUG Mappers: Indications extraites pour l'aliment ${this.uuid}: ${indicatList.map { it.name }}"
+                )
 
                 return AlimentEv(
                         uuid = this.uuid,

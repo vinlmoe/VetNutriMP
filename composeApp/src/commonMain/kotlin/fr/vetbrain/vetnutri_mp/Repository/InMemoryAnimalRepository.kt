@@ -2,7 +2,6 @@ package fr.vetbrain.vetnutri_mp.Repository
 
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
 import fr.vetbrain.vetnutri_mp.Data.AnimalEvJson
-import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
 import fr.vetbrain.vetnutri_mp.Data.WeightDate
 import kotlinx.coroutines.flow.MutableStateFlow
 
@@ -41,8 +40,10 @@ class InMemoryAnimalRepository : AnimalRepository {
         return animals.find { it.uuid == id }
     }
 
-    override suspend fun importAnimals(animalsJson: List<AnimalEvJson>): Int {
+    override suspend fun importAnimals(animalsJson: List<AnimalEvJson>): AnimalImportResult {
         var importedCount = 0
+        var updatedCount = 0
+        var errorCount = 0
 
         animalsJson.forEach { animalJson ->
             try {
@@ -75,46 +76,32 @@ class InMemoryAnimalRepository : AnimalRepository {
                                 }
                                 .toMutableList()
 
-                // Ajouter les consultations - gérer les deux formats possibles
-                val consultations =
-                        when {
-                            // Format 1: consultations directement dans l'objet animal
-                            animalJson.consultations != null -> animalJson.consultations
-
-                            // Format 2: consultations dans list.consultations
-                            animalJson.list != null -> animalJson.list.consultations
-
-                            // Aucune consultation
-                            else -> emptyList()
-                        }
-
-                animal.consultations =
-                        consultations
-                                .map { consultJson ->
-                                    ConsultationEv(
-                                            uuid = consultJson.UUID,
-                                            idAnim = animalJson.UUID,
-                                            date = consultJson.date,
-                                            objectConsult = consultJson.objet ?: "",
-                                            observation = consultJson.observation ?: "",
-                                            cRendu = consultJson.CRendu,
-                                            weight = consultJson.Poids,
-                                            idealWeight = consultJson.PoidsIdeal,
-                                            water = consultJson.Boisson,
-                                            bodyFat = consultJson.TauxMG
-                                    )
-                                }
-                                .toMutableList()
-
-                saveAnimal(animal)
-                importedCount++
+                // Vérifier si l'animal existe déjà
+                val existingIndex = animals.indexOfFirst { it.uuid == animal.uuid }
+                if (existingIndex >= 0) {
+                    // Mettre à jour l'animal existant
+                    animals[existingIndex] = animal
+                    updatedCount++
+                } else {
+                    // Ajouter le nouvel animal
+                    animals.add(animal)
+                    importedCount++
+                }
             } catch (e: Exception) {
-                // Ignorer les erreurs d'importation pour un animal spécifique
-                println("Erreur lors de l'importation de l'animal: ${e.message}")
+                println("Erreur lors de l'importation de l'animal ${animalJson.nom}: ${e.message}")
+                errorCount++
             }
         }
 
-        return importedCount
+        updateFlow()
+
+        return AnimalImportResult(
+                importedCount = importedCount,
+                updatedCount = updatedCount,
+                errorCount = errorCount,
+                totalCount = animals.size,
+                foodsImportedCount = 0
+        )
     }
 
     private fun updateFlow() {

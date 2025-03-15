@@ -6,6 +6,7 @@ import fr.vetbrain.vetnutri_mp.Data.AnimalEv
 import fr.vetbrain.vetnutri_mp.Data.AnimalEvJson
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Repository.AnimalRepository
+import fr.vetbrain.vetnutri_mp.Repository.FoodImportResult
 import kotlin.uuid.ExperimentalUuidApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -126,8 +127,9 @@ class AnimalListViewModel(private val animalRepository: AnimalRepository) : View
     fun importAnimals(animalsJson: List<AnimalEvJson>) {
         viewModelScope.launch {
             try {
-                val importedCount = animalRepository.importAnimals(animalsJson)
-                _importResult.value = ImportResult.Success(importedCount)
+                val importResult = animalRepository.importAnimals(animalsJson)
+                _importResult.value =
+                        ImportResult.Success(importResult.importedCount + importResult.updatedCount)
                 loadAnimals() // Refresh the list after import
             } catch (e: Exception) {
                 _importResult.value = ImportResult.Error(e.message ?: "Erreur inconnue")
@@ -169,6 +171,7 @@ class AnimalListViewModel(private val animalRepository: AnimalRepository) : View
 
                 if (importResult.animals.isNotEmpty()) {
                     var foodsImported = false
+                    var foodImportResult: FoodImportResult? = null
 
                     // Importer d'abord les aliments extraits des rations s'il y en a
                     if (importResult.foods.isNotEmpty()) {
@@ -180,10 +183,14 @@ class AnimalListViewModel(private val animalRepository: AnimalRepository) : View
                             val foodRepository = animalRepository.getFoodRepository()
                             if (foodRepository != null) {
                                 try {
-                                    val importedFoodsCount =
+                                    foodImportResult =
                                             foodRepository.importFoods(importResult.foods)
-                                    println("${importedFoodsCount} aliments importés avec succès")
-                                    foodsImported = importedFoodsCount > 0
+                                    println(
+                                            "${foodImportResult.importedCount} aliments importés, ${foodImportResult.updatedCount} mis à jour"
+                                    )
+                                    foodsImported =
+                                            foodImportResult.importedCount +
+                                                    foodImportResult.updatedCount > 0
                                 } catch (e: Exception) {
                                     println(
                                             "Erreur lors de l'importation des aliments: ${e.message}"
@@ -193,35 +200,35 @@ class AnimalListViewModel(private val animalRepository: AnimalRepository) : View
                                     // aliments échoue
                                 }
                             } else {
-                                println(
-                                        "Le repository des aliments n'est pas disponible. Les aliments ne seront pas importés."
-                                )
-                                // Continuer sans importer les aliments
+                                println("Impossible d'obtenir le repository des aliments")
                             }
                         } catch (e: Exception) {
-                            println(
-                                    "Erreur lors de l'accès au repository des aliments: ${e.message}"
-                            )
+                            println("Erreur lors de l'importation des aliments: ${e.message}")
                             e.printStackTrace()
-                            // Continuer l'importation des animaux même si l'accès au repository des
-                            // aliments échoue
                         }
                     }
 
-                    // Importer ensuite les animaux
                     try {
-                        val importedCount = animalRepository.importAnimals(importResult.animals)
+                        val importResult = animalRepository.importAnimals(importResult.animals)
 
-                        if (importedCount > 0) {
+                        if (importResult.importedCount + importResult.updatedCount > 0) {
                             if (foodsImported) {
-                                _importResult.value = ImportResult.Success(importedCount)
+                                _importResult.value =
+                                        ImportResult.Success(
+                                                importResult.importedCount +
+                                                        importResult.updatedCount
+                                        )
                                 println(
-                                        "${importedCount} animaux et leurs aliments importés avec succès"
+                                        "${importResult.importedCount} animaux importés, ${importResult.updatedCount} mis à jour, et leurs aliments importés avec succès"
                                 )
                             } else {
-                                _importResult.value = ImportResult.Success(importedCount)
+                                _importResult.value =
+                                        ImportResult.Success(
+                                                importResult.importedCount +
+                                                        importResult.updatedCount
+                                        )
                                 println(
-                                        "${importedCount} animaux importés avec succès (sans aliments)"
+                                        "${importResult.importedCount} animaux importés, ${importResult.updatedCount} mis à jour (sans aliments)"
                                 )
                             }
                             loadAnimals() // Actualiser la liste après l'importation

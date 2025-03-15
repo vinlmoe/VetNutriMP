@@ -699,8 +699,9 @@ object ImportUtils {
                             try {
                                 // Tenter de convertir l'ID numérique en énumération Espece
                                 val especeEnum = Espece.getEnumFromInt(especeValue)
-                                // Utiliser le label de l'énumération comme valeur pour espece
-                                result["espece"] = JsonPrimitive(especeEnum.id.toString())
+                                // Utiliser l'id de l'énumération comme valeur pour espece (au lieu
+                                // de categorie)
+                                result["espece"] = JsonPrimitive(especeEnum.id)
                                 println(
                                         "Prétraitement animal: Conversion de l'espèce $especeValue en ${especeEnum.label} (id: ${especeEnum.id})"
                                 )
@@ -709,9 +710,22 @@ object ImportUtils {
                                 println(
                                         "Prétraitement animal: Échec de conversion de l'espèce $especeValue: ${e.message}, utilisation de l'ID par défaut"
                                 )
-                                // En cas d'échec, définir une valeur par défaut pour éviter des
-                                // erreurs
-                                result["espece"] = JsonPrimitive("1") // Par défaut CHIEN (ID 1)
+                                // Essayer de trouver une correspondance directe par categorie
+                                val especeByCategorie =
+                                        Espece.entries.find { it.categorie == especeValue }
+                                if (especeByCategorie != null) {
+                                    result["espece"] = JsonPrimitive(especeByCategorie.id)
+                                    println(
+                                            "Prétraitement animal: Espèce trouvée par catégorie: $especeValue -> ${especeByCategorie.label} (id: ${especeByCategorie.id})"
+                                    )
+                                } else {
+                                    // En cas d'échec, définir une valeur par défaut pour éviter des
+                                    // erreurs
+                                    result["espece"] = JsonPrimitive("0") // Par défaut CHIEN (ID 0)
+                                    println(
+                                            "Prétraitement animal: Utilisation de l'ID par défaut CHIEN (0)"
+                                    )
+                                }
                             }
                         } else {
                             // Si ce n'est pas un nombre, essayer de trouver par le label

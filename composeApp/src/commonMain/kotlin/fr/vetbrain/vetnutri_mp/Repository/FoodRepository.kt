@@ -4,6 +4,16 @@ import fr.vetbrain.vetnutri_mp.Data.AlimentEv
 import fr.vetbrain.vetnutri_mp.Data.AlimentEvJson
 import kotlinx.coroutines.flow.Flow
 
+/** Résultat de l'importation d'aliments contenant des statistiques détaillées */
+data class FoodImportResult(
+        val importedCount: Int,
+        val updatedCount: Int,
+        val deletedCount: Int,
+        val errorCount: Int,
+        val totalCount: Int,
+        val nonResolvedNutrientsCount: Int
+)
+
 /** Interface définissant les opérations de base pour la gestion des aliments. */
 interface FoodRepository {
     suspend fun insert(food: AlimentEv)
@@ -16,9 +26,9 @@ interface FoodRepository {
     /**
      * Importe une liste d'aliments et les insère dans la base de données
      * @param foods Liste des aliments à importer
-     * @return Nombre d'aliments importés avec succès
+     * @return Résultat détaillé de l'importation
      */
-    suspend fun importFoods(foods: List<AlimentEvJson>): Int
+    suspend fun importFoods(foods: List<AlimentEvJson>): FoodImportResult
 
     /**
      * Insère un aliment avec ses propriétés associées (espèces, indications, valeurs de nutriments)

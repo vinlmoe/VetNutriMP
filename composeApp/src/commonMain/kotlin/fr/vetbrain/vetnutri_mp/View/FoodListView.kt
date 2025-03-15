@@ -12,7 +12,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Components.ConfirmDialog
 import fr.vetbrain.vetnutri_mp.Components.TopBar
 import fr.vetbrain.vetnutri_mp.Data.AlimentEv
@@ -22,11 +21,11 @@ import fr.vetbrain.vetnutri_mp.Enumer.FoodKind
 import fr.vetbrain.vetnutri_mp.Enumer.GroupAlim
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.General
 import fr.vetbrain.vetnutri_mp.Localization.translate
+import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.FoodListViewModel
 import kotlin.uuid.ExperimentalUuidApi
 import kotlinx.coroutines.launch
-import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 
 @OptIn(ExperimentalUuidApi::class, ExperimentalMaterialApi::class)
 @Composable
@@ -68,19 +67,20 @@ fun FoodListView(
                         ) {
                                 Text(
                                         "+",
-                                        style = MaterialTheme.typography.h5.copy(
-                                            fontSize = AppSizes.fontSizeH5
-                                        ),
+                                        style =
+                                                MaterialTheme.typography.h5.copy(
+                                                        fontSize = AppSizes.fontSizeH5
+                                                ),
                                         color = MaterialTheme.colors.onPrimary
                                 )
                         }
                 }
         ) { paddingValues ->
                 Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(paddingValues)
-                            .padding(AppSizes.paddingMedium),
+                        modifier =
+                                Modifier.fillMaxSize()
+                                        .padding(paddingValues)
+                                        .padding(AppSizes.paddingMedium),
                         horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                         // Filtres de recherche
@@ -96,33 +96,44 @@ fun FoodListView(
                                         placeholder = {
                                                 Text(
                                                         "${General.SEARCH.translate()} (nom, marque, ingrédients)",
-                                                        style = MaterialTheme.typography.body1.copy(
-                                                            fontSize = AppSizes.fontSizeBody1
-                                                        )
+                                                        style =
+                                                                MaterialTheme.typography.body1.copy(
+                                                                        fontSize =
+                                                                                AppSizes.fontSizeBody1
+                                                                )
                                                 )
                                         },
                                         leadingIcon = {
                                                 Icon(
                                                         Icons.Default.Search,
                                                         contentDescription = null,
-                                                        modifier = Modifier.size(AppSizes.iconSizeMedium)
+                                                        modifier =
+                                                                Modifier.size(
+                                                                        AppSizes.iconSizeMedium
+                                                                )
                                                 )
                                         },
                                         trailingIcon = {
                                                 if (searchQuery.isNotEmpty()) {
                                                         IconButton(
-                                                                onClick = { viewModel.setSearchQuery("") }
+                                                                onClick = {
+                                                                        viewModel.setSearchQuery("")
+                                                                }
                                                         ) {
                                                                 Icon(
                                                                         Icons.Default.Clear,
                                                                         contentDescription = null,
-                                                                        modifier = Modifier.size(AppSizes.iconSizeMedium)
+                                                                        modifier =
+                                                                                Modifier.size(
+                                                                                        AppSizes.iconSizeMedium
+                                                                                )
                                                                 )
                                                         }
                                                 }
                                         },
                                         singleLine = true,
-                                        colors = TextFieldDefaults.outlinedTextFieldColors(
+                                        colors =
+                                                TextFieldDefaults.outlinedTextFieldColors(
                                                         focusedBorderColor = VetNutriColors.Primary,
                                                         unfocusedBorderColor = Color.Gray
                                                 )
@@ -145,7 +156,9 @@ fun FoodListView(
 
                                 FoodGroupDropdown(
                                         selectedFoodGroup = selectedFoodGroup,
-                                        onFoodGroupSelected = { viewModel.setSelectedFoodGroup(it) },
+                                        onFoodGroupSelected = {
+                                                viewModel.setSelectedFoodGroup(it)
+                                        },
                                         availableFoodGroups = availableFoodGroups,
                                         modifier = Modifier.weight(1f)
                                 )
@@ -167,7 +180,9 @@ fun FoodListView(
                         ) {
                                 IndicationDropdown(
                                         selectedIndication = selectedIndication,
-                                        onIndicationSelected = { viewModel.setSelectedIndication(it) },
+                                        onIndicationSelected = {
+                                                viewModel.setSelectedIndication(it)
+                                        },
                                         availableIndications = availableIndications,
                                         modifier = Modifier.fillMaxWidth()
                                 )
@@ -181,22 +196,27 @@ fun FoodListView(
                                         contentAlignment = Alignment.Center
                                 ) {
                                         Text(
-                                                text = if (searchQuery.isEmpty() &&
+                                                text =
+                                                        if (searchQuery.isEmpty() &&
                                                                         selectedFoodType == null &&
                                                                         selectedFoodGroup == null &&
                                                                         selectedEspece == null &&
                                                                         selectedIndication == null
-                                                ) "Aucun aliment trouvé"
-                                                else "Aucun résultat pour les filtres sélectionnés",
-                                                style = MaterialTheme.typography.body1.copy(
-                                                    fontSize = AppSizes.fontSizeBody1
+                                                        )
+                                                                "Aucun aliment trouvé"
+                                                        else
+                                                                "Aucun résultat pour les filtres sélectionnés",
+                                                style =
+                                                        MaterialTheme.typography.body1.copy(
+                                                                fontSize = AppSizes.fontSizeBody1
                                                         )
                                         )
                                 }
                         } else {
                                 LazyColumn(
                                         modifier = Modifier.fillMaxWidth(),
-                                        verticalArrangement = Arrangement.spacedBy(AppSizes.cardSpacing)
+                                        verticalArrangement =
+                                                Arrangement.spacedBy(AppSizes.cardSpacing)
                                 ) {
                                         items(foods) { food ->
                                                 FoodCard(
@@ -300,8 +320,8 @@ private fun FoodCard(
         }
 
         Card(
-            modifier = modifier.fillMaxWidth().clickable { onEdit() },
-            elevation = AppSizes.cardElevationNormal
+                modifier = modifier.fillMaxWidth().clickable { onEdit() },
+                elevation = AppSizes.cardElevationNormal
         ) {
                 Column(
                         modifier = Modifier.padding(AppSizes.paddingMedium),
@@ -315,135 +335,188 @@ private fun FoodCard(
                                 Column(modifier = Modifier.weight(1f)) {
                                         Text(
                                                 text = food.nom ?: "Sans nom",
-                                                style = MaterialTheme.typography.h6.copy(
-                                                    fontSize = AppSizes.fontSizeH6
-                                                )
+                                                style =
+                                                        MaterialTheme.typography.h6.copy(
+                                                                fontSize = AppSizes.fontSizeH6
+                                                        )
                                         )
                                         if (food.brand?.isNotEmpty() == true) {
                                                 Text(
                                                         text = "Marque: ${food.brand}",
-                                                        style = MaterialTheme.typography.body1.copy(
-                                                            fontSize = AppSizes.fontSizeBody1
-                                                        )
+                                                        style =
+                                                                MaterialTheme.typography.body1.copy(
+                                                                        fontSize =
+                                                                                AppSizes.fontSizeBody1
+                                                                )
                                                 )
                                         }
                                         if (food.group != null) {
                                                 Text(
                                                         text = "Groupe: ${food.group.name}",
-                                                        style = MaterialTheme.typography.body2.copy(
-                                                            fontSize = AppSizes.fontSizeBody2
-                                                        )
+                                                        style =
+                                                                MaterialTheme.typography.body2.copy(
+                                                                        fontSize =
+                                                                                AppSizes.fontSizeBody2
+                                                                )
                                                 )
                                         }
                                         if (food.typeAliment != null) {
                                                 Text(
                                                         text = "Type: ${food.typeAliment.name}",
-                                                        style = MaterialTheme.typography.body2.copy(
-                                                            fontSize = AppSizes.fontSizeBody2
-                                                        )
+                                                        style =
+                                                                MaterialTheme.typography.body2.copy(
+                                                                        fontSize =
+                                                                                AppSizes.fontSizeBody2
+                                                                )
                                                 )
                                         }
                                 }
                                 Row {
                                         IconButton(
-                                            onClick = { showDeleteConfirmation = true },
-                                            modifier = Modifier.size(AppSizes.iconSizeMedium)
-                                        ) {
-                                                Text("🗑")
-                                        }
+                                                onClick = { showDeleteConfirmation = true },
+                                                modifier = Modifier.size(AppSizes.iconSizeMedium)
+                                        ) { Text("🗑") }
                                 }
                         }
 
                         // Section dédiée pour les espèces et indications
                         Divider(
-                            modifier = Modifier.padding(vertical = AppSizes.paddingXSmall),
-                            thickness = AppSizes.dividerHeight
+                                modifier = Modifier.padding(vertical = AppSizes.paddingXSmall),
+                                thickness = AppSizes.dividerHeight
                         )
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Column(modifier = Modifier.weight(1f)) {
+                                Column(modifier = Modifier.weight(1f)) {
                                         Text(
                                                 text = "Espèces",
-                                    style = MaterialTheme.typography.subtitle1.copy(
-                                        fontSize = AppSizes.fontSizeSubtitle1
-                                    ),
+                                                style =
+                                                        MaterialTheme.typography.subtitle1.copy(
+                                                                fontSize =
+                                                                        AppSizes.fontSizeSubtitle1
+                                                        ),
                                                 color = VetNutriColors.Primary
                                         )
-                                if (food.especes.isNotEmpty()) {
-                                        Row(
-                                                modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingXSmall),
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                content = {
-                                                        food.especes.forEach { especeLabel ->
-                                                val espece = getEspeceFromString(especeLabel)
+                                        if (food.especes.isNotEmpty()) {
+                                                Row(
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        horizontalArrangement =
+                                                                Arrangement.spacedBy(
+                                                                        AppSizes.paddingXSmall
+                                                                ),
+                                                        verticalAlignment =
+                                                                Alignment.CenterVertically,
+                                                        content = {
+                                                                food.especes.forEach { especeLabel
+                                                                        ->
+                                                                        val espece =
+                                                                                getEspeceFromString(
+                                                                                        especeLabel
+                                                                                )
                                                                         if (espece != null) {
-                                                    Badge(
-                                                        text = espece.label,
-                                                        subText = espece.name,
-                                                        id = if (espece.id != especeLabel) espece.id else null,
-                                                        backgroundColor = VetNutriColors.Secondary
-                                                    )
+                                                                                Badge(
+                                                                                        text =
+                                                                                                espece.label,
+                                                                                        subText =
+                                                                                                espece.name,
+                                                                                        id =
+                                                                                                if (espece.id !=
+                                                                                                                especeLabel
+                                                                                                )
+                                                                                                        espece.id
+                                                                                                else
+                                                                                                        null,
+                                                                                        backgroundColor =
+                                                                                                VetNutriColors
+                                                                                                        .Secondary
+                                                                                )
                                                                         } else {
-                                                    Badge(
-                                                        text = especeLabel,
-                                                        backgroundColor = Color.Gray
-                                                    )
-                                                }
-                                            }
+                                                                                Badge(
+                                                                                        text =
+                                                                                                especeLabel,
+                                                                                        backgroundColor =
+                                                                                                Color.Gray
+                                                                                )
+                                                                        }
+                                                                }
+                                                        }
+                                                )
+                                        } else {
+                                                Text(
+                                                        text = "Aucune espèce spécifiée",
+                                                        style =
+                                                                MaterialTheme.typography.body2.copy(
+                                                                        fontSize =
+                                                                                AppSizes.fontSizeBody2
+                                                                ),
+                                                        color = Color.Gray,
+                                                        modifier =
+                                                                Modifier.padding(
+                                                                        vertical =
+                                                                                AppSizes.paddingXXSmall
+                                                                )
+                                                )
                                         }
-                                    )
-                        } else {
-                                Text(
-                                        text = "Aucune espèce spécifiée",
-                                        style = MaterialTheme.typography.body2.copy(
-                                            fontSize = AppSizes.fontSizeBody2
-                                        ),
-                                        color = Color.Gray,
-                                        modifier = Modifier.padding(vertical = AppSizes.paddingXXSmall)
-                                )
-                        }
-                            }
+                                }
 
-                            Spacer(modifier = Modifier.width(AppSizes.paddingMedium))
+                                Spacer(modifier = Modifier.width(AppSizes.paddingMedium))
 
-                            Column(modifier = Modifier.weight(1f)) {
+                                Column(modifier = Modifier.weight(1f)) {
                                         Text(
                                                 text = "Indications",
-                                    style = MaterialTheme.typography.subtitle1.copy(
-                                        fontSize = AppSizes.fontSizeSubtitle1
-                                    ),
+                                                style =
+                                                        MaterialTheme.typography.subtitle1.copy(
+                                                                fontSize =
+                                                                        AppSizes.fontSizeSubtitle1
+                                                        ),
                                                 color = VetNutriColors.Primary
                                         )
-                                if (food.indicat.isNotEmpty()) {
-                                        Row(
-                                                modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingXSmall),
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                content = {
-                                                        food.indicat.forEach { indication ->
-                                                Badge(
-                                                    text = indication.label,
-                                                    subText = indication.name,
-                                                    id = indication.coef,
-                                                    backgroundColor = VetNutriColors.Primary
+                                        if (food.indicat.isNotEmpty()) {
+                                                Row(
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        horizontalArrangement =
+                                                                Arrangement.spacedBy(
+                                                                        AppSizes.paddingXSmall
+                                                                ),
+                                                        verticalAlignment =
+                                                                Alignment.CenterVertically,
+                                                        content = {
+                                                                food.indicat.forEach { indication ->
+                                                                        Badge(
+                                                                                text =
+                                                                                        indication
+                                                                                                .label,
+                                                                                subText =
+                                                                                        indication
+                                                                                                .name,
+                                                                                id =
+                                                                                        indication
+                                                                                                .coef,
+                                                                                backgroundColor =
+                                                                                        VetNutriColors
+                                                                                                .Primary
+                                                                        )
+                                                                }
+                                                        }
                                                 )
-                                            }
+                                        } else {
+                                                Text(
+                                                        text = "Aucune indication spécifiée",
+                                                        style =
+                                                                MaterialTheme.typography.body2.copy(
+                                                                        fontSize =
+                                                                                AppSizes.fontSizeBody2
+                                                                ),
+                                                        color = Color.Gray,
+                                                        modifier =
+                                                                Modifier.padding(
+                                                                        vertical =
+                                                                                AppSizes.paddingXXSmall
+                                                                )
+                                                )
                                         }
-                                    )
-                        } else {
-                                Text(
-                                        text = "Aucune indication spécifiée",
-                                        style = MaterialTheme.typography.body2.copy(
-                                            fontSize = AppSizes.fontSizeBody2
-                                        ),
-                                        color = Color.Gray,
-                                        modifier = Modifier.padding(vertical = AppSizes.paddingXXSmall)
-                                )
                                 }
-                            }
                         }
                 }
         }

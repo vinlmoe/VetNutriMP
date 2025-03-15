@@ -59,10 +59,13 @@ class LocalAlimentDataSource(
         return _foodsFlow.asStateFlow()
     }
 
-    override suspend fun importFoods(foods: List<AlimentEvJson>): Int {
+    override suspend fun importFoods(
+            foods: List<AlimentEvJson>
+    ): fr.vetbrain.vetnutri_mp.Repository.FoodImportResult {
         var count = 0
         var updated = 0
         var imported = 0
+        var errors = 0
 
         println("===== DÉBUT IMPORTATION ALIMENTS =====")
         println("Nombre d'aliments à importer: ${foods.size}")
@@ -98,45 +101,40 @@ class LocalAlimentDataSource(
                 // Vérifier si l'aliment existe déjà
                 val existingFood = getFood(alimentEv.uuid)
                 if (existingFood != null) {
-                    println("L'aliment existe déjà - Mise à jour")
-                    // Si l'aliment existe, mettre à jour les valeurs de nutriments si présentes
-                    if (alimentEv.valMap.isNotEmpty()) {
-                        // Conserver les valeurs de nutriments existantes si pas dans l'import
-                        val updatedValMap = existingFood.valMap.toMutableMap()
-                        updatedValMap.putAll(alimentEv.valMap)
-                        alimentEv.valMap = updatedValMap
-                    }
+                    // Mettre à jour l'aliment existant
+                    println("Mise à jour de l'aliment existant: ${alimentEv.nom}")
                     updateFood(alimentEv)
                     updated++
                 } else {
-                    println("Nouvel aliment - Insertion")
-                    // Si l'aliment n'existe pas, l'insérer
+                    // Insérer un nouvel aliment
+                    println("Insertion d'un nouvel aliment: ${alimentEv.nom}")
                     insertFood(alimentEv)
                     imported++
                 }
                 count++
-
-                // Vérifier après insertion/mise à jour
-                val verifiedFood = getFood(alimentEv.uuid)
-                println("Vérification après insertion/mise à jour:")
-                println("  • Nom: ${verifiedFood?.nom}")
-                println("  • Nutriments: ${verifiedFood?.valMap?.size ?: 0}")
-                if (verifiedFood != null && verifiedFood.valMap.isNotEmpty()) {
-                    println("  • Premiers 3 nutriments stockés:")
-                    verifiedFood.valMap.entries.take(3).forEach { (nutrient, value) ->
-                        println("    - ${nutrient.label}: $value")
-                    }
-                }
             } catch (e: Exception) {
-                println("ERREUR lors de l'importation de l'aliment: ${foodJson.nom} - ${e.message}")
+                println("Erreur lors de l'importation de l'aliment ${foodJson.nom}: ${e.message}")
                 e.printStackTrace()
+                errors++
             }
         }
-        println("\n===== FIN IMPORTATION ALIMENTS =====")
+
+        refreshFoodsFlow()
+        println("===== FIN IMPORTATION ALIMENTS =====")
         println(
-                "Importation terminée. $imported aliments importés, $updated aliments mis à jour, 0 aliments supprimés."
+                "$count aliments traités ($imported importés, $updated mis à jour, $errors erreurs)"
         )
-        return count
+
+        val totalFoods = getAllFoods().size
+
+        return fr.vetbrain.vetnutri_mp.Repository.FoodImportResult(
+                importedCount = imported,
+                updatedCount = updated,
+                deletedCount = 0,
+                errorCount = errors,
+                totalCount = totalFoods,
+                nonResolvedNutrientsCount = 0
+        )
     }
 
     override suspend fun insertFood(food: AlimentEv) {
