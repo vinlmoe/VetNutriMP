@@ -2,9 +2,11 @@ package fr.vetbrain.vetnutri_mp.Repository
 
 import fr.vetbrain.vetnutri_mp.Data.AlimentEv
 import fr.vetbrain.vetnutri_mp.Data.AlimentEvJson
+import fr.vetbrain.vetnutri_mp.Data.AlimentEvLight
 import fr.vetbrain.vetnutri_mp.DataBase.FoodDao
 import fr.vetbrain.vetnutri_mp.DataBase.FoodEntity
 import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toAlimentEv
+import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toAlimentEvLight
 import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toFoodEntity
 import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toNutrientValueEntities
 import fr.vetbrain.vetnutri_mp.DataBase.NutrientValueDao
@@ -84,6 +86,35 @@ class DatabaseFoodRepository(
                     }
 
             println("DEBUG DatabaseFoodRepository: ${result.size} aliments transformés avec succès")
+            return@withContext result
+        }
+    }
+
+    /**
+     * Récupère une liste légère de tous les aliments sans les valeurs nutritionnelles. Cette
+     * méthode est optimisée pour les performances lorsque seules les informations de base des
+     * aliments sont nécessaires.
+     *
+     * @return Une liste d'objets AlimentEvLight contenant les informations de base des aliments
+     */
+    override suspend fun getAllFoodsLight(): List<AlimentEvLight> {
+        return withContext(AppDispatchers.IO) {
+            println(
+                    "DEBUG DatabaseFoodRepository: Récupération de tous les aliments en version légère"
+            )
+
+            // Récupérer tous les aliments de la base de données
+            val foodEntities = foodDao.getAllFoods()
+            println(
+                    "DEBUG DatabaseFoodRepository: ${foodEntities.size} entités d'aliments récupérées pour la version légère"
+            )
+
+            // Transformer chaque entité en modèle de domaine léger sans les valeurs nutritionnelles
+            val result = foodEntities.map { foodEntity -> foodEntity.toAlimentEvLight() }
+
+            println(
+                    "DEBUG DatabaseFoodRepository: ${result.size} aliments légers transformés avec succès"
+            )
             return@withContext result
         }
     }

@@ -2,6 +2,7 @@ package fr.vetbrain.vetnutri_mp.Repository
 
 import fr.vetbrain.vetnutri_mp.Data.AlimentEv
 import fr.vetbrain.vetnutri_mp.Data.AlimentEvJson
+import fr.vetbrain.vetnutri_mp.Data.AlimentEvLight
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.runBlocking
 
@@ -21,6 +22,17 @@ class AlimentRepository(private val dataSource: FoodRepository) {
 
     suspend fun getAllAliments(): List<AlimentEv> {
         return dataSource.getAllFoods()
+    }
+
+    /**
+     * Récupère une liste légère de tous les aliments sans les valeurs nutritionnelles. Cette
+     * méthode est optimisée pour les performances lorsque seules les informations de base des
+     * aliments sont nécessaires.
+     *
+     * @return Une liste d'objets AlimentEvLight contenant les informations de base des aliments
+     */
+    suspend fun getAllAlimentsLight(): List<AlimentEvLight> {
+        return dataSource.getAllFoodsLight()
     }
 
     fun observeAllAliments(): Flow<List<AlimentEv>> {
@@ -97,6 +109,41 @@ class AlimentRepository(private val dataSource: FoodRepository) {
             } else {
                 // Retourner une liste vide si le repository n'est pas initialisé
                 emptyList()
+            }
+        }
+
+        /**
+         * Récupère une liste légère de tous les aliments sans les valeurs nutritionnelles. Cette
+         * méthode est optimisée pour les performances lorsque seules les informations de base des
+         * aliments sont nécessaires.
+         *
+         * @return Une liste d'objets AlimentEvLight contenant les informations de base des aliments
+         */
+        fun getAllAlimentsLight(): List<AlimentEvLight> {
+            // Utiliser le repository réel si disponible
+            return if (_databaseFoodRepository != null) {
+                runBlocking { _databaseFoodRepository!!.getAllFoodsLight() }
+            } else {
+                // Retourner une liste vide si le repository n'est pas initialisé
+                emptyList()
+            }
+        }
+
+        /**
+         * Récupère un aliment par son UUID. Cette méthode est une version statique simplifiée pour
+         * les besoins du ViewModel.
+         *
+         * @param uuid UUID de l'aliment à récupérer
+         * @return L'aliment correspondant ou null si non trouvé ou si le repository n'est pas
+         * initialisé
+         */
+        fun getAlimentByUUID(uuid: String): AlimentEv? {
+            // Utiliser le repository réel si disponible
+            return if (_databaseFoodRepository != null) {
+                runBlocking { _databaseFoodRepository!!.getFood(uuid) }
+            } else {
+                // Retourner null si le repository n'est pas initialisé
+                null
             }
         }
     }

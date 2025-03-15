@@ -60,15 +60,55 @@ class AnimalDetailViewModel(
     val availableFoods: List<AlimentEv>
         get() = _availableFoods.value
 
+    // État de chargement des aliments
+    private val _isLoadingFoods = mutableStateOf(false)
+    val isLoadingFoods: Boolean
+        get() = _isLoadingFoods.value
+
     // Requête de recherche d'aliment
     private val _alimentSearchQuery = mutableStateOf("")
     val alimentSearchQuery: String
         get() = _alimentSearchQuery.value
 
-    /** Charge tous les aliments disponibles */
+    /**
+     * Charge tous les aliments disponibles en utilisant la version légère pour de meilleures
+     * performances
+     */
     fun loadAvailableFoods() {
-        _availableFoods.value = AlimentRepository.getAllAliments()
-        println("Aliments chargés: ${_availableFoods.value.size}")
+        viewModelScope.launch {
+            try {
+                _isLoadingFoods.value = true
+
+                // Utiliser la version légère des aliments pour de meilleures performances
+                val alimentsLight = AlimentRepository.getAllAlimentsLight()
+
+                // Convertir les AlimentEvLight en AlimentEv avec une valMap vide
+                _availableFoods.value =
+                        alimentsLight.map { alimentLight ->
+                            AlimentEv(
+                                    uuid = alimentLight.uuid,
+                                    nom = alimentLight.nom,
+                                    typeAliment = alimentLight.typeAliment,
+                                    group = alimentLight.group,
+                                    brand = alimentLight.brand,
+                                    gamme = alimentLight.gamme,
+                                    especes = alimentLight.especes.toMutableList(),
+                                    indicat = alimentLight.indicat.toMutableList(),
+                                    deprecated = alimentLight.deprecated,
+                                    valMap = mutableMapOf(),
+                                    rationUUID = ""
+                            )
+                        }
+
+                println("Aliments légers chargés: ${_availableFoods.value.size}")
+            } catch (e: Exception) {
+                println("Erreur lors du chargement des aliments: ${e.message}")
+                e.printStackTrace()
+                _availableFoods.value = emptyList()
+            } finally {
+                _isLoadingFoods.value = false
+            }
+        }
     }
 
     /** Définit la requête de recherche pour les aliments */
@@ -93,21 +133,41 @@ class AnimalDetailViewModel(
     fun addAlimentToRation(ration: Ration, aliment: AlimentEv, quantite: Float) {
         println("Ajout de l'aliment ${aliment.nom} (${quantite}g) à la ration ${ration.uuid}")
 
-        val alimentRation =
-                AlimentRation(
-                        uuid = Uuid.random().toString(),
-                        aliment = aliment,
-                        quantity = quantite,
-                        refRation = ration.uuid,
-                        refAlimUnif = aliment.uuid
-                )
+        viewModelScope.launch {
+            try {
+                // Si l'aliment n'a pas de valeurs nutritionnelles (car c'est une version légère),
+                // récupérer l'aliment complet depuis le repository
+                val alimentComplet =
+                        if (aliment.valMap.isEmpty()) {
+                            // Utiliser la méthode statique du companion object pour éviter le
+                            // problème de null
+                            val alimentCompletFromRepo =
+                                    AlimentRepository.getAlimentByUUID(aliment.uuid)
+                            alimentCompletFromRepo ?: aliment
+                        } else {
+                            aliment
+                        }
 
-        // Créer une copie de la ration avec le nouvel aliment
-        val updatedRation = ration.copy()
-        updatedRation.alimentMutableList.add(alimentRation)
+                val alimentRation =
+                        AlimentRation(
+                                uuid = Uuid.random().toString(),
+                                aliment = alimentComplet,
+                                quantity = quantite,
+                                refRation = ration.uuid,
+                                refAlimUnif = alimentComplet.uuid
+                        )
 
-        // Mettre à jour la ration dans la consultation
-        updateRationInConsultation(updatedRation)
+                // Créer une copie de la ration avec le nouvel aliment
+                val updatedRation = ration.copy()
+                updatedRation.alimentMutableList.add(alimentRation)
+
+                // Mettre à jour la ration dans la consultation
+                updateRationInConsultation(updatedRation)
+            } catch (e: Exception) {
+                println("Erreur lors de l'ajout de l'aliment à la ration: ${e.message}")
+                e.printStackTrace()
+            }
+        }
     }
 
     fun setAnimal(animal: AnimalEv) {

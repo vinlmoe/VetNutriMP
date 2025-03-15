@@ -2,6 +2,7 @@ package fr.vetbrain.vetnutri_mp.Repository
 
 import fr.vetbrain.vetnutri_mp.Data.AlimentEv
 import fr.vetbrain.vetnutri_mp.Data.AlimentEvJson
+import fr.vetbrain.vetnutri_mp.Data.AlimentEvLight
 import kotlinx.coroutines.flow.Flow
 
 /** Résultat de l'importation d'aliments contenant des statistiques détaillées */
@@ -22,6 +23,15 @@ interface FoodRepository {
     suspend fun getAllFoods(): List<AlimentEv>
     suspend fun getFoodById(id: String): AlimentEv?
     fun observeAllFoods(): Flow<List<AlimentEv>>
+
+    /**
+     * Récupère une liste légère de tous les aliments sans les valeurs nutritionnelles. Cette
+     * méthode est optimisée pour les performances lorsque seules les informations de base des
+     * aliments sont nécessaires.
+     *
+     * @return Une liste d'objets AlimentEvLight contenant les informations de base des aliments
+     */
+    suspend fun getAllFoodsLight(): List<AlimentEvLight>
 
     /**
      * Importe une liste d'aliments et les insère dans la base de données

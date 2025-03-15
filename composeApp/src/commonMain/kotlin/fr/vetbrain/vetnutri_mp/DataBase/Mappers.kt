@@ -472,6 +472,88 @@ object Mappers {
                 )
         }
 
+        // Fonction pour convertir les entités en AlimentEvLight (version légère sans valeurs
+        // nutritionnelles)
+        fun FoodEntity.toAlimentEvLight(): AlimentEvLight {
+                val especesList = mutableListOf<String>()
+
+                // Extraire les espèces du JSON
+                if (!this.especesJson.isNullOrEmpty()) {
+                        val especesStringList = this.especesJson.split(",")
+
+                        especesStringList.forEach { especeStr ->
+                                try {
+                                        val espece = Espece.getFromString(especeStr)
+                                        if (espece != null) {
+                                                especesList.add(espece.name)
+                                        } else {
+                                                val cleanedEspece =
+                                                        especeStr
+                                                                .replace("[", "")
+                                                                .replace("]", "")
+                                                                .replace("\"", "")
+                                                                .trim()
+                                                if (cleanedEspece.isNotEmpty()) {
+                                                        especesList.add(cleanedEspece)
+                                                }
+                                        }
+                                } catch (e: Exception) {
+                                        val cleanedEspece =
+                                                especeStr
+                                                        .replace("[", "")
+                                                        .replace("]", "")
+                                                        .replace("\"", "")
+                                                        .trim()
+                                        if (cleanedEspece.isNotEmpty()) {
+                                                especesList.add(cleanedEspece)
+                                        }
+                                }
+                        }
+                }
+
+                val indicatList = mutableListOf<AlimIndic>()
+
+                // Extraire les indications du JSON
+                if (!this.indicationsJson.isNullOrEmpty()) {
+                        val indicationsStringList = this.indicationsJson.split(",")
+
+                        indicationsStringList.forEach { indic ->
+                                try {
+                                        val alimIndic = AlimIndic.getFromString(indic)
+                                        if (alimIndic != AlimIndic.AUTRE ||
+                                                        indic.trim().uppercase() == "AUTRE"
+                                        ) {
+                                                indicatList.add(alimIndic)
+                                        }
+                                } catch (e: Exception) {
+                                        // Ignorer les indications non reconnues
+                                }
+                        }
+                }
+
+                return AlimentEvLight(
+                        uuid = this.uuid,
+                        nom = this.nameDef ?: "",
+                        typeAliment =
+                                try {
+                                        this.typeAlim.let { FoodKind.entries.getOrNull(it) }
+                                } catch (e: Exception) {
+                                        null
+                                },
+                        group =
+                                try {
+                                        this.groupAlim.let { GroupAlim.entries.getOrNull(it) }
+                                } catch (e: Exception) {
+                                        null
+                                },
+                        brand = this.brand ?: "",
+                        gamme = this.gamme ?: "",
+                        especes = especesList,
+                        indicat = indicatList,
+                        deprecated = this.deprecated == 1
+                )
+        }
+
         // Weight Mappers
         fun WeightDate.toEntity(): WeightEntity {
                 return WeightEntity(

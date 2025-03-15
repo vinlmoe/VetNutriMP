@@ -1602,6 +1602,7 @@ private fun AddAlimentDialog(
         var selectedAliment by remember { mutableStateOf<AlimentEv?>(null) }
         var quantityText by remember { mutableStateOf("") }
         var errorMessage by remember { mutableStateOf<String?>(null) }
+        val isLoadingFoods = viewModel.isLoadingFoods
 
         // États pour les filtres (désactivés pour le moment)
         var selectedFoodType by remember { mutableStateOf<FoodKind?>(null) }
@@ -1683,15 +1684,53 @@ private fun AddAlimentDialog(
 
                                 // Résultats de recherche ou formulaire de quantité
                                 if (selectedAliment == null) {
-                                        // Liste des aliments correspondant aux critères
-                                        LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                                                items(filteredFoods) { aliment ->
-                                                        EnhancedFoodSearchItem(
-                                                                aliment = aliment,
-                                                                onClick = {
-                                                                        selectedAliment = aliment
-                                                                }
-                                                        )
+                                        // Afficher un indicateur de chargement ou la liste des
+                                        // aliments
+                                        if (isLoadingFoods) {
+                                                Box(
+                                                        modifier =
+                                                                Modifier.weight(1f).fillMaxWidth(),
+                                                        contentAlignment = Alignment.Center
+                                                ) {
+                                                        Column(
+                                                                horizontalAlignment =
+                                                                        Alignment.CenterHorizontally
+                                                        ) {
+                                                                CircularProgressIndicator(
+                                                                        color =
+                                                                                VetNutriColors
+                                                                                        .Primary
+                                                                )
+                                                                Spacer(
+                                                                        modifier =
+                                                                                Modifier.height(
+                                                                                        AppSizes.paddingMedium
+                                                                                )
+                                                                )
+                                                                Text(
+                                                                        "Chargement des aliments...",
+                                                                        style =
+                                                                                MaterialTheme
+                                                                                        .typography
+                                                                                        .body2
+                                                                )
+                                                        }
+                                                }
+                                        } else {
+                                                // Liste des aliments correspondant aux critères
+                                                LazyColumn(
+                                                        modifier =
+                                                                Modifier.weight(1f).fillMaxWidth()
+                                                ) {
+                                                        items(filteredFoods) { aliment ->
+                                                                EnhancedFoodSearchItem(
+                                                                        aliment = aliment,
+                                                                        onClick = {
+                                                                                selectedAliment =
+                                                                                        aliment
+                                                                        }
+                                                                )
+                                                        }
                                                 }
                                         }
                                 } else {

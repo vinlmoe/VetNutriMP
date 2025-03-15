@@ -2,8 +2,10 @@ package fr.vetbrain.vetnutri_mp.DataBase
 
 import fr.vetbrain.vetnutri_mp.Data.AlimentEv
 import fr.vetbrain.vetnutri_mp.Data.AlimentEvJson
+import fr.vetbrain.vetnutri_mp.Data.AlimentEvLight
 import fr.vetbrain.vetnutri_mp.Data.toData
 import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toAlimentEv
+import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toAlimentEvLight
 import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toFoodEntity
 import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
 import fr.vetbrain.vetnutri_mp.Repository.FoodRepository
@@ -47,6 +49,17 @@ class LocalAlimentDataSource(
 
     override suspend fun getAllFoods(): List<AlimentEv> {
         return foodDao.findAll().map { it.toAlimentEv() }
+    }
+
+    /**
+     * Récupère une liste légère de tous les aliments sans les valeurs nutritionnelles. Cette
+     * méthode est optimisée pour les performances lorsque seules les informations de base des
+     * aliments sont nécessaires.
+     *
+     * @return Une liste d'objets AlimentEvLight contenant les informations de base des aliments
+     */
+    override suspend fun getAllFoodsLight(): List<AlimentEvLight> {
+        return foodDao.findAll().map { it.toAlimentEvLight() }
     }
 
     override suspend fun getFoodById(id: String): AlimentEv? {
