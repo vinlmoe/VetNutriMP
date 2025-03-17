@@ -36,6 +36,21 @@ object ImportUtils {
                 return ImportResult(emptyList(), emptyList())
             }
 
+            // Vérifier si le contenu est un JSON valide
+            if (!isValidJson(content)) {
+                println("Erreur: Le contenu n'est pas un JSON valide")
+                return ImportResult(emptyList(), emptyList())
+            }
+
+            // Vérifier si le contenu correspond à un fichier d'animaux
+            if (!isAnimalJsonContent(content)) {
+                println("Erreur: Le contenu JSON ne semble pas être un fichier d'animaux")
+                println(
+                        "Le fichier semble être un fichier d'aliments. Utilisez la commande import-food pour ce type de fichier."
+                )
+                return ImportResult(emptyList(), emptyList())
+            }
+
             // Prétraiter le JSON pour convertir les valeurs de nutriments complexes en valeurs
             // simples
             val jsonParser = Json {
@@ -145,8 +160,26 @@ object ImportUtils {
                 "Début de l'importation JSON des aliments. Taille du contenu: ${jsonContent.length} caractères"
         )
 
+        // Vérifier si le contenu est un JSON valide
+        if (!isValidJson(jsonContent)) {
+            println("Erreur: Le contenu n'est pas un JSON valide")
+            return emptyList()
+        }
+
+        // Vérifier si le contenu correspond à un fichier d'aliments
+        if (isAnimalJsonContent(jsonContent)) {
+            println("Erreur: Le contenu JSON ne semble pas être un fichier d'aliments")
+            println(
+                    "Le fichier semble être un fichier d'animaux. Utilisez la commande import-ani pour ce type de fichier."
+            )
+            return emptyList()
+        }
+
+        // Structure pour collecter des informations détaillées sur les erreurs
+        val importErrors = mutableListOf<String>()
+
         // Collecter les nutriments non résolus
-        val nonResolvedNutrients = mutableSetOf<String>()
+        val nonResolvedNutrients = mutableMapOf<String, Int>()
 
         try {
             // Diagnostic : Examiner les données d'espèces dans le JSON brut
@@ -184,7 +217,11 @@ object ImportUtils {
                                             fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver
                                                     .AllNutrientResolver(key)
                                     if (nutrient == null) {
-                                        nonResolvedNutrients.add(key)
+                                        nonResolvedNutrients[key] =
+                                                (nonResolvedNutrients[key] ?: 0) + 1
+                                        importErrors.add(
+                                                "Nutriment non résolu dans l'aliment '$nom': $key"
+                                        )
                                     }
                                 }
                             }
@@ -218,7 +255,11 @@ object ImportUtils {
                                         nutrientKey
                                 )
                         if (nutrient == null) {
-                            nonResolvedNutrients.add(nutrientKey)
+                            nonResolvedNutrients[nutrientKey] =
+                                    (nonResolvedNutrients[nutrientKey] ?: 0) + 1
+                            importErrors.add(
+                                    "Nutriment non résolu dans l'aliment '${food.nom}': $nutrientKey"
+                            )
                         }
                     }
                 }
@@ -229,14 +270,11 @@ object ImportUtils {
                     println("${nonResolvedNutrients.size} nutriments n'ont pas pu être résolus:")
 
                     // Trier et compter par occurrence
-                    val countByNutrient = mutableMapOf<String, Int>()
-                    nonResolvedNutrients.forEach { nutrient ->
-                        countByNutrient[nutrient] = (countByNutrient[nutrient] ?: 0) + 1
-                    }
+                    val countByNutrient =
+                            nonResolvedNutrients.toList().sortedByDescending { it.second }
 
                     // Afficher par ordre de fréquence
-                    countByNutrient.entries.sortedByDescending { it.value }.forEach {
-                            (nutrient, count) ->
+                    countByNutrient.forEach { (nutrient, count) ->
                         println("  - $nutrient (présent dans $count aliments)")
                     }
 
@@ -250,14 +288,23 @@ object ImportUtils {
                     println(
                             "3. Les labels de nutriments doivent correspondre aux valeurs de la propriété 'label' dans les énumérations."
                     )
+                    println(
+                            "4. Ajoutez des cas spéciaux dans NutrientResolver.AllNutrientResolver pour ces nutriments."
+                    )
                     println("========================================================")
                 } else {
                     println("\nTous les nutriments ont été résolus avec succès!")
                 }
 
+                // Stocker les erreurs pour consultation ultérieure
+                if (importErrors.isNotEmpty()) {
+                    saveImportErrors(importErrors, nonResolvedNutrients)
+                }
+
                 return foods
             } catch (e: Exception) {
                 println("Erreur lors de l'importation comme liste: ${e.message}")
+                importErrors.add("Erreur générale lors de l'importation: ${e.message}")
 
                 try {
                     println("Tentative d'importation comme un seul aliment...")
@@ -272,7 +319,11 @@ object ImportUtils {
                                         nutrientKey
                                 )
                         if (nutrient == null) {
-                            nonResolvedNutrients.add(nutrientKey)
+                            nonResolvedNutrients[nutrientKey] =
+                                    (nonResolvedNutrients[nutrientKey] ?: 0) + 1
+                            importErrors.add(
+                                    "Nutriment non résolu dans l'aliment '${food.nom}': $nutrientKey"
+                            )
                         }
                     }
 
@@ -281,18 +332,28 @@ object ImportUtils {
                         println(
                                 "\nNutriments non résolus dans le JSON (${nonResolvedNutrients.size}):"
                         )
-                        nonResolvedNutrients.sorted().forEach { nutrientKey ->
-                            println("  - $nutrientKey")
+                        nonResolvedNutrients.entries.sortedByDescending { it.value }.forEach {
+                                (nutrientKey, count) ->
+                            println("  - $nutrientKey (${count} occurrences)")
                         }
+                    }
+
+                    // Stocker les erreurs pour consultation ultérieure
+                    if (importErrors.isNotEmpty()) {
+                        saveImportErrors(importErrors, nonResolvedNutrients)
                     }
 
                     return listOf(food)
                 } catch (e: Exception) {
                     println("Erreur lors de l'importation comme un seul aliment: ${e.message}")
+                    importErrors.add(
+                            "Erreur lors de l'importation comme aliment unique: ${e.message}"
+                    )
                 }
             }
         } catch (e: Exception) {
             println("Erreur lors du prétraitement du JSON: ${e.message}")
+            importErrors.add("Erreur lors du prétraitement du JSON: ${e.message}")
 
             // Fallback à la méthode standard
             try {
@@ -309,7 +370,11 @@ object ImportUtils {
                                         nutrientKey
                                 )
                         if (nutrient == null) {
-                            nonResolvedNutrients.add(nutrientKey)
+                            nonResolvedNutrients[nutrientKey] =
+                                    (nonResolvedNutrients[nutrientKey] ?: 0) + 1
+                            importErrors.add(
+                                    "Nutriment non résolu dans l'aliment '${food.nom}': $nutrientKey"
+                            )
                         }
                     }
                 }
@@ -317,14 +382,21 @@ object ImportUtils {
                 // Afficher les nutriments non résolus
                 if (nonResolvedNutrients.isNotEmpty()) {
                     println("\nNutriments non résolus dans le JSON (${nonResolvedNutrients.size}):")
-                    nonResolvedNutrients.sorted().forEach { nutrientKey ->
-                        println("  - $nutrientKey")
+                    nonResolvedNutrients.entries.sortedByDescending { it.value }.forEach {
+                            (nutrientKey, count) ->
+                        println("  - $nutrientKey (${count} occurrences)")
                     }
+                }
+
+                // Stocker les erreurs pour consultation ultérieure
+                if (importErrors.isNotEmpty()) {
+                    saveImportErrors(importErrors, nonResolvedNutrients)
                 }
 
                 return foods
             } catch (e: Exception) {
                 println("Erreur lors de l'importation standard comme liste: ${e.message}")
+                importErrors.add("Erreur lors de l'importation standard comme liste: ${e.message}")
 
                 try {
                     println("Tentative d'importation standard comme un seul aliment...")
@@ -339,7 +411,11 @@ object ImportUtils {
                                         nutrientKey
                                 )
                         if (nutrient == null) {
-                            nonResolvedNutrients.add(nutrientKey)
+                            nonResolvedNutrients[nutrientKey] =
+                                    (nonResolvedNutrients[nutrientKey] ?: 0) + 1
+                            importErrors.add(
+                                    "Nutriment non résolu dans l'aliment '${food.nom}': $nutrientKey"
+                            )
                         }
                     }
 
@@ -348,14 +424,23 @@ object ImportUtils {
                         println(
                                 "\nNutriments non résolus dans le JSON (${nonResolvedNutrients.size}):"
                         )
-                        nonResolvedNutrients.sorted().forEach { nutrientKey ->
-                            println("  - $nutrientKey")
+                        nonResolvedNutrients.entries.sortedByDescending { it.value }.forEach {
+                                (nutrientKey, count) ->
+                            println("  - $nutrientKey (${count} occurrences)")
                         }
+                    }
+
+                    // Stocker les erreurs pour consultation ultérieure
+                    if (importErrors.isNotEmpty()) {
+                        saveImportErrors(importErrors, nonResolvedNutrients)
                     }
 
                     return listOf(food)
                 } catch (e: Exception) {
                     println(
+                            "Erreur lors de l'importation standard comme un seul aliment: ${e.message}"
+                    )
+                    importErrors.add(
                             "Erreur lors de l'importation standard comme un seul aliment: ${e.message}"
                     )
                 }
@@ -367,10 +452,94 @@ object ImportUtils {
         // Même en cas d'échec, afficher les nutriments non résolus collectés lors de l'analyse
         if (nonResolvedNutrients.isNotEmpty()) {
             println("\nNutriments non résolus dans le JSON (${nonResolvedNutrients.size}):")
-            nonResolvedNutrients.sorted().forEach { nutrientKey -> println("  - $nutrientKey") }
+            nonResolvedNutrients.entries.sortedByDescending { it.value }.forEach {
+                    (nutrientKey, count) ->
+                println("  - $nutrientKey (${count} occurrences)")
+            }
+        }
+
+        // Stocker les erreurs pour consultation ultérieure
+        if (importErrors.isNotEmpty()) {
+            saveImportErrors(importErrors, nonResolvedNutrients)
         }
 
         return emptyList()
+    }
+
+    /** Sauvegarde les erreurs d'importation dans un rapport. */
+    private fun saveImportErrors(
+            importErrors: List<String>,
+            unresolvedNutrients: Map<String, Int>
+    ) {
+        if (importErrors.isEmpty() && unresolvedNutrients.isEmpty()) {
+            return
+        }
+
+        try {
+            val errorReport = StringBuilder("=== RAPPORT D'ERREURS D'IMPORTATION ===\n")
+
+            // Ajouter les erreurs d'importation
+            if (importErrors.isNotEmpty()) {
+                errorReport.append("ERREURS D'IMPORTATION (${importErrors.size}):\n")
+
+                // Regrouper les erreurs similaires
+                val groupedErrors = importErrors.groupBy { it }.mapValues { it.value.size }
+
+                // Trier par fréquence d'occurrence
+                val sortedErrors = groupedErrors.entries.sortedByDescending { it.value }
+
+                sortedErrors.forEach { (error, count) ->
+                    if (count > 1) {
+                        errorReport.append("[$count occurrences] $error\n")
+                    } else {
+                        errorReport.append("$error\n")
+                    }
+                }
+                errorReport.append("\n")
+            }
+
+            // Ajouter les nutriments non résolus
+            if (unresolvedNutrients.isNotEmpty()) {
+                errorReport.append(
+                        "NUTRIMENTS NON RÉSOLUS (${unresolvedNutrients.values.sum()} occurrences):\n"
+                )
+
+                // Trier par fréquence d'occurrence
+                val sortedNutrients = unresolvedNutrients.entries.sortedByDescending { it.value }
+
+                sortedNutrients.forEach { (nutrient, count) ->
+                    errorReport.append("[$count occurrences] $nutrient\n")
+                }
+            }
+
+            // Au lieu d'écrire dans un fichier, afficher les détails dans la console
+            println("\n=== RAPPORT DÉTAILLÉ DES ERREURS D'IMPORTATION ===")
+            println(errorReport.toString())
+            println("=== FIN DU RAPPORT ===")
+
+            // Note: L'écriture dans un fichier a été supprimée car elle n'est pas compatible
+            // multiplateforme
+            // Pour implémenter cette fonctionnalité, il faudrait utiliser expect/actual ou une
+            // bibliothèque multiplateforme d'I/O
+        } catch (e: Exception) {
+            println("Erreur lors de la génération du rapport d'erreurs: ${e.message}")
+        }
+    }
+
+    /**
+     * Normalise les labels des nutriments pour l'importation
+     * @param label Le label à normaliser
+     * @return Le label normalisé
+     */
+    private fun normalizeNutrientLabel(label: String): String {
+        val trimmed = label.trim().replace("[", "").replace("]", "").replace("\"", "")
+
+        // Normalisation simple: majuscules et suppression des caractères spéciaux
+        return trimmed.uppercase()
+                .replace("_", "")
+                .replace("-", "")
+                .replace(" ", "")
+                .replace(".", "")
     }
 
     /** Prétraite les valeurs nutritionnelles et les espèces dans le JSON */
@@ -379,102 +548,286 @@ object ImportUtils {
             is JsonObject -> {
                 val result = jsonElement.toMutableMap()
 
+                // Traitement spécial pour les objets nommés "purison" ou contenant ce nom
+                val nom = result["nom"]
+                if (nom is JsonPrimitive && nom.content.contains("purison", ignoreCase = true)) {
+                    println("Traitement spécial pour l'aliment purison: ${nom.content}")
+                }
+
                 // Si on trouve un champ "valMap", traiter son contenu
                 if (result.containsKey("valMap")) {
                     val valMap = result["valMap"]
-                    if (valMap is JsonObject) {
+
+                    // Détecter si valMap est null ou vide
+                    if (valMap == null || (valMap is JsonObject && valMap.isEmpty())) {
+                        println("ALERTE: valMap est null ou vide pour l'aliment: ${result["nom"]}")
+
+                        // Créer un valMap par défaut avec des nutriments essentiels
+                        val defaultValMap = mutableMapOf<String, JsonElement>()
+                        ensureEssentialNutrients(defaultValMap)
+                        result["valMap"] = JsonObject(defaultValMap)
+                    } else if (valMap is JsonObject) {
                         val newValMap = mutableMapOf<String, JsonElement>()
 
                         // Parcourir les entrées de valMap
                         for ((key, value) in valMap.entries) {
-                            // Vérifier les différents formats possibles
-                            when {
-                                // Format 1: Déjà un objet NutrientQuantity
-                                value is JsonObject &&
-                                        value.contains("value") &&
-                                        value.contains("nut") -> {
-                                    // Déjà dans le bon format, conserver tel quel
-                                    newValMap[key] = value
-                                }
+                            // Tentative de normalisation du label du nutriment
+                            val normalizedKey = normalizeNutrientLabel(key)
+                            println("Traitement du nutriment: $key -> $normalizedKey")
 
-                                // Format 2: Objet avec seulement "value"
-                                value is JsonObject && value.contains("value") -> {
-                                    // Créer un nouvel objet avec "nut" qui reprend la clé
-                                    val nutritionValue =
-                                            JsonObject(
-                                                    mapOf(
-                                                            "value" to value["value"]!!,
-                                                            "nut" to JsonPrimitive(key)
-                                                    )
-                                            )
-                                    newValMap[key] = nutritionValue
-                                }
-
-                                // Format 3: Valeur numérique directe
-                                value is JsonPrimitive &&
-                                        value.isString &&
-                                        value.content.toFloatOrNull() != null -> {
-                                    // Convertir en objet NutrientQuantity
-                                    val nutritionValue =
-                                            JsonObject(
-                                                    mapOf(
-                                                            "value" to
-                                                                    JsonPrimitive(
-                                                                            value.content.toFloat()
-                                                                    ),
-                                                            "nut" to JsonPrimitive(key)
-                                                    )
-                                            )
-                                    newValMap[key] = nutritionValue
-                                }
-                                value is JsonPrimitive &&
-                                        (value.isString ||
-                                                value.content.toFloatOrNull() != null) -> {
-                                    // Convertir en objet NutrientQuantity
-                                    val floatValue =
-                                            if (value.isString) {
-                                                value.content.toFloatOrNull() ?: 0f
+                            try {
+                                // Vérifier les différents formats possibles
+                                when {
+                                    // Format 1: Déjà un objet NutrientQuantity avec valeur et nut
+                                    value is JsonObject &&
+                                            value.contains("value") &&
+                                            value.contains("nut") -> {
+                                        // On vérifie si on peut résoudre ce nutriment
+                                        val nutrientKey =
+                                                value["nut"]?.let {
+                                                    if (it is JsonPrimitive) it.content else null
+                                                }
+                                        if (nutrientKey != null) {
+                                            val normalizedNutrientKey =
+                                                    normalizeNutrientLabel(nutrientKey)
+                                            if (normalizedNutrientKey != nutrientKey) {
+                                                // Si la clé a été normalisée, créer un nouvel objet
+                                                // avec la clé normalisée
+                                                val nutritionValue =
+                                                        JsonObject(
+                                                                mapOf(
+                                                                        "value" to value["value"]!!,
+                                                                        "nut" to
+                                                                                JsonPrimitive(
+                                                                                        normalizedNutrientKey
+                                                                                )
+                                                                )
+                                                        )
+                                                newValMap[normalizedKey] = nutritionValue
+                                                println(
+                                                        "Nutriment normalisé: $key ($nutrientKey) -> $normalizedKey ($normalizedNutrientKey)"
+                                                )
                                             } else {
-                                                value.content.toFloatOrNull() ?: 0f
+                                                // Sinon, conserver l'objet tel quel avec la clé
+                                                // normalisée
+                                                newValMap[normalizedKey] = value
                                             }
-
-                                    val nutritionValue =
-                                            JsonObject(
-                                                    mapOf(
-                                                            "value" to JsonPrimitive(floatValue),
-                                                            "nut" to JsonPrimitive(key)
+                                        } else {
+                                            // Si pas de clé de nutriment, utiliser la clé
+                                            // normalisée
+                                            val nutritionValue =
+                                                    JsonObject(
+                                                            mapOf(
+                                                                    "value" to value["value"]!!,
+                                                                    "nut" to
+                                                                            JsonPrimitive(
+                                                                                    normalizedKey
+                                                                            )
+                                                            )
                                                     )
-                                            )
-                                    newValMap[key] = nutritionValue
-                                }
+                                            newValMap[normalizedKey] = nutritionValue
+                                        }
+                                    }
 
-                                // Autres cas
-                                else -> {
-                                    println(
-                                            "Format non reconnu pour la valeur nutritionnelle $key: $value"
-                                    )
-                                    // Essayer de convertir en flottant si possible
-                                    val floatValue = value.toString().toFloatOrNull()
-                                    if (floatValue != null) {
+                                    // Format 2: Objet avec seulement "value"
+                                    value is JsonObject && value.contains("value") -> {
+                                        // Créer un nouvel objet avec "nut" qui reprend la clé
+                                        // normalisée
+                                        val nutritionValue =
+                                                JsonObject(
+                                                        mapOf(
+                                                                "value" to value["value"]!!,
+                                                                "nut" to
+                                                                        JsonPrimitive(normalizedKey)
+                                                        )
+                                                )
+                                        newValMap[normalizedKey] = nutritionValue
+                                        println(
+                                                "Nutriment avec value uniquement: $key -> $normalizedKey"
+                                        )
+                                    }
+
+                                    // Format 3: Valeur numérique directe (chaîne qui peut être
+                                    // convertie en nombre)
+                                    value is JsonPrimitive &&
+                                            value.isString &&
+                                            value.content.toFloatOrNull() != null -> {
+                                        // Convertir en objet NutrientQuantity
+                                        val nutritionValue =
+                                                JsonObject(
+                                                        mapOf(
+                                                                "value" to
+                                                                        JsonPrimitive(
+                                                                                value.content
+                                                                                        .toFloat()
+                                                                        ),
+                                                                "nut" to
+                                                                        JsonPrimitive(normalizedKey)
+                                                        )
+                                                )
+                                        newValMap[normalizedKey] = nutritionValue
+                                        println(
+                                                "Nutriment avec valeur numérique en chaîne: $key -> $normalizedKey (${value.content})"
+                                        )
+                                    }
+
+                                    // Format 4: Valeur numérique directe
+                                    value is JsonPrimitive &&
+                                            value.content.toFloatOrNull() != null -> {
+                                        // Convertir en objet NutrientQuantity
+                                        val floatValue = value.content.toFloatOrNull() ?: 0f
+
                                         val nutritionValue =
                                                 JsonObject(
                                                         mapOf(
                                                                 "value" to
                                                                         JsonPrimitive(floatValue),
-                                                                "nut" to JsonPrimitive(key)
+                                                                "nut" to
+                                                                        JsonPrimitive(normalizedKey)
                                                         )
                                                 )
-                                        newValMap[key] = nutritionValue
-                                    } else {
-                                        // Conserver tel quel si la conversion échoue
-                                        newValMap[key] = value
+                                        newValMap[normalizedKey] = nutritionValue
+                                        println(
+                                                "Nutriment avec valeur primitive: $key -> $normalizedKey ($floatValue)"
+                                        )
+                                    }
+
+                                    // Format 5: Valeur null mais clé importante
+                                    value == null && isEssentialNutrient(normalizedKey) -> {
+                                        // Pour les nutriments essentiels, mettre une valeur par
+                                        // défaut
+                                        // de 0
+                                        val nutritionValue =
+                                                JsonObject(
+                                                        mapOf(
+                                                                "value" to JsonPrimitive(0f),
+                                                                "nut" to
+                                                                        JsonPrimitive(normalizedKey)
+                                                        )
+                                                )
+                                        newValMap[normalizedKey] = nutritionValue
+                                        println(
+                                                "Nutriment essentiel avec valeur null: $key -> $normalizedKey (défaut: 0)"
+                                        )
+                                    }
+
+                                    // Autres cas - format spécial pouvant inclure des structures
+                                    // JSON imbriquées
+                                    else -> {
+                                        println(
+                                                "Format non standard pour la valeur nutritionnelle $key: $value"
+                                        )
+
+                                        // Analyse plus poussée pour extraire des données imbriquées
+                                        if (value is JsonObject) {
+                                            // Essayer plusieurs chemins possibles pour trouver la
+                                            // valeur
+                                            val possibleValuePaths =
+                                                    listOf("value", "val", "v", "valeur")
+                                            for (path in possibleValuePaths) {
+                                                if (value.containsKey(path) &&
+                                                                value[path] is JsonPrimitive
+                                                ) {
+                                                    val extractedValue =
+                                                            (value[path] as JsonPrimitive).content
+                                                                    .toFloatOrNull()
+                                                    if (extractedValue != null) {
+                                                        val nutritionValue =
+                                                                JsonObject(
+                                                                        mapOf(
+                                                                                "value" to
+                                                                                        JsonPrimitive(
+                                                                                                extractedValue
+                                                                                        ),
+                                                                                "nut" to
+                                                                                        JsonPrimitive(
+                                                                                                normalizedKey
+                                                                                        )
+                                                                        )
+                                                                )
+                                                        newValMap[normalizedKey] = nutritionValue
+                                                        println(
+                                                                "Valeur extraite du chemin '$path': $key -> $normalizedKey ($extractedValue)"
+                                                        )
+                                                        break
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        // Si aucune extraction n'a réussi, essayer une approche
+                                        // plus agressive
+                                        if (!newValMap.containsKey(normalizedKey)) {
+                                            try {
+                                                // Tenter d'extraire une valeur numérique de la
+                                                // représentation JSON
+                                                val jsonString = value.toString()
+                                                val numberPattern =
+                                                        Regex(
+                                                                """[-+]?[0-9]*\.?[0-9]+(?:[eE][-+]?[0-9]+)?"""
+                                                        )
+                                                val match = numberPattern.find(jsonString)
+                                                if (match != null) {
+                                                    val extractedNumber =
+                                                            match.value.toFloatOrNull()
+                                                    if (extractedNumber != null) {
+                                                        val nutritionValue =
+                                                                JsonObject(
+                                                                        mapOf(
+                                                                                "value" to
+                                                                                        JsonPrimitive(
+                                                                                                extractedNumber
+                                                                                        ),
+                                                                                "nut" to
+                                                                                        JsonPrimitive(
+                                                                                                normalizedKey
+                                                                                        )
+                                                                        )
+                                                                )
+                                                        newValMap[normalizedKey] = nutritionValue
+                                                        println(
+                                                                "Nutriment avec valeur extraite: $key -> $normalizedKey ($extractedNumber)"
+                                                        )
+                                                    } else {
+                                                        // Si la conversion échoue, enregistrer la
+                                                        // valeur originale
+                                                        newValMap[normalizedKey] = value
+                                                        println(
+                                                                "Conservation de la valeur originale pour $normalizedKey après échec d'extraction"
+                                                        )
+                                                    }
+                                                } else {
+                                                    // Conserver tel quel si aucun nombre n'est
+                                                    // trouvé
+                                                    newValMap[normalizedKey] = value
+                                                    println(
+                                                            "Conservation de la valeur originale pour $normalizedKey (aucun nombre trouvé)"
+                                                    )
+                                                }
+                                            } catch (e: Exception) {
+                                                // Conserver tel quel en cas d'erreur
+                                                newValMap[normalizedKey] = value
+                                                println(
+                                                        "Erreur lors du traitement du nutriment $key: ${e.message}"
+                                                )
+                                            }
+                                        }
                                     }
                                 }
+                            } catch (e: Exception) {
+                                println(
+                                        "Exception lors du traitement du nutriment $key: ${e.message}"
+                                )
+                                e.printStackTrace()
                             }
                         }
 
                         // Remplacer valMap par sa version prétraitée
                         result["valMap"] = JsonObject(newValMap)
+
+                        // Vérifier si les nutriments essentiels sont présents, sinon les ajouter
+                        // avec des valeurs par défaut
+                        ensureEssentialNutrients(newValMap)
                     }
                 }
 
@@ -565,45 +918,121 @@ object ImportUtils {
     }
 
     /**
-     * Prétraite les valeurs nutritionnelles dans le JSON pour convertir les objets complexes en
-     * valeurs simples
-     *
-     * @param jsonElement L'élément JSON à prétraiter
-     * @return L'élément JSON prétraité
+     * Vérifie si un nutriment est essentiel et devrait être présent dans tous les aliments
+     * @param nutrientKey La clé du nutriment à vérifier
+     * @return true si le nutriment est essentiel, false sinon
      */
-    private fun preprocessNutrientValues(jsonElement: JsonElement): JsonElement {
-        // Renvoyer au prétraitement complet qui gère aussi les espèces
-        return preprocessEspecesAndNutrientValues(jsonElement)
+    private fun isEssentialNutrient(nutrientKey: String): Boolean {
+        val essentialNutrients =
+                setOf(
+                        "PROTEINE",
+                        "LIPIDE",
+                        "HUMIDITE",
+                        "CENDRE",
+                        "ENA",
+                        "CELLULOSE",
+                        "FIBRE",
+                        "AMIDON",
+                        "SUCRE"
+                )
+        return essentialNutrients.contains(nutrientKey)
     }
 
     /**
-     * Détermine si un aliment doit être remplacé par une version plus complète.
-     * @param existingFood L'aliment existant
-     * @param newFood Le nouvel aliment
-     * @return true si le nouvel aliment est plus complet et doit remplacer l'existant
+     * S'assure que les nutriments essentiels sont présents dans la valMap
+     * @param valMap La map des valeurs nutritionnelles à compléter
      */
-    private fun shouldReplaceFood(existingFood: AlimentEvJson, newFood: AlimentEvJson): Boolean {
-        var existingScore = 0
-        var newScore = 0
+    private fun ensureEssentialNutrients(valMap: MutableMap<String, JsonElement>) {
+        val essentialNutrients =
+                mapOf(
+                        "PROTEINE" to 0f,
+                        "LIPIDE" to 0f,
+                        "HUMIDITE" to 0f,
+                        "CENDRE" to 0f,
+                        "ENA" to 0f,
+                        "CELLULOSE" to 0f
+                )
 
-        // Attribuer des points pour chaque attribut non vide
-        if (existingFood.nom.isNotBlank()) existingScore += 1
-        if (newFood.nom.isNotBlank()) newScore += 1
+        // Pour chaque nutriment essentiel
+        for ((nutrient, defaultValue) in essentialNutrients) {
+            // Si le nutriment n'est pas présent, l'ajouter avec sa valeur par défaut
+            if (!valMap.containsKey(nutrient)) {
+                val nutritionValue =
+                        JsonObject(
+                                mapOf(
+                                        "value" to JsonPrimitive(defaultValue),
+                                        "nut" to JsonPrimitive(nutrient)
+                                )
+                        )
+                valMap[nutrient] = nutritionValue
+                println("Ajout du nutriment essentiel manquant: $nutrient = $defaultValue")
+            }
+        }
 
-        if (existingFood.ingredients.isNotBlank()) existingScore += 1
-        if (newFood.ingredients.isNotBlank()) newScore += 1
+        // Calcul de l'ENA si manquant mais qu'on a les autres valeurs
+        if (valMap.containsKey("ENA")) {
+            val enaValue =
+                    try {
+                        val enaObj = valMap["ENA"] as? JsonObject
+                        (enaObj?.get("value") as? JsonPrimitive)?.content?.toFloatOrNull() ?: 0f
+                    } catch (e: Exception) {
+                        0f
+                    }
 
-        if (existingFood.marque.isNotBlank()) existingScore += 1
-        if (newFood.marque.isNotBlank()) newScore += 1
+            // Si ENA est 0, essayer de le calculer
+            if (enaValue == 0f) {
+                try {
+                    val proteine =
+                            (valMap["PROTEINE"] as? JsonObject)?.let {
+                                (it["value"] as? JsonPrimitive)?.content?.toFloatOrNull()
+                            }
+                                    ?: 0f
+                    val lipide =
+                            (valMap["LIPIDE"] as? JsonObject)?.let {
+                                (it["value"] as? JsonPrimitive)?.content?.toFloatOrNull()
+                            }
+                                    ?: 0f
+                    val humidite =
+                            (valMap["HUMIDITE"] as? JsonObject)?.let {
+                                (it["value"] as? JsonPrimitive)?.content?.toFloatOrNull()
+                            }
+                                    ?: 0f
+                    val cendre =
+                            (valMap["CENDRE"] as? JsonObject)?.let {
+                                (it["value"] as? JsonPrimitive)?.content?.toFloatOrNull()
+                            }
+                                    ?: 0f
+                    val cellulose =
+                            (valMap["CELLULOSE"] as? JsonObject)?.let {
+                                (it["value"] as? JsonPrimitive)?.content?.toFloatOrNull()
+                            }
+                                    ?: 0f
 
-        if (existingFood.gamme.isNotBlank()) existingScore += 1
-        if (newFood.gamme.isNotBlank()) newScore += 1
+                    // Formule pour calculer l'ENA
+                    val calculatedEna = 100f - proteine - lipide - humidite - cendre - cellulose
 
-        if (existingFood.valMap.isNotEmpty()) existingScore += existingFood.valMap.size
-        if (newFood.valMap.isNotEmpty()) newScore += newFood.valMap.size
-
-        // Si le nouveau score est meilleur, remplacer
-        return newScore > existingScore
+                    // Ne mettre à jour que si le résultat est positif et que les valeurs semblent
+                    // cohérentes
+                    if (calculatedEna > 0 &&
+                                    (proteine + lipide + humidite + cendre + cellulose) <= 100f
+                    ) {
+                        val nutritionValue =
+                                JsonObject(
+                                        mapOf(
+                                                "value" to JsonPrimitive(calculatedEna),
+                                                "nut" to JsonPrimitive("ENA")
+                                        )
+                                )
+                        valMap["ENA"] = nutritionValue
+                        println(
+                                "ENA calculé: $calculatedEna à partir de PROTEINE=$proteine, LIPIDE=$lipide, HUMIDITE=$humidite, CENDRE=$cendre, CELLULOSE=$cellulose"
+                        )
+                    }
+                } catch (e: Exception) {
+                    println("Erreur lors du calcul de l'ENA: ${e.message}")
+                }
+            }
+        }
     }
 
     /**
@@ -1052,6 +1481,156 @@ object ImportUtils {
         }
 
         return diagnosticBuilder.toString()
+    }
+
+    /**
+     * Vérifie si le contenu JSON correspond à un fichier d'animaux ou d'aliments
+     *
+     * @param content Le contenu JSON à analyser
+     * @return true si le contenu semble être un fichier d'animaux, false s'il semble être un
+     * fichier d'aliments
+     */
+    fun isAnimalJsonContent(content: String): Boolean {
+        try {
+            if (content.isBlank()) {
+                return false
+            }
+
+            val jsonParser = Json {
+                ignoreUnknownKeys = true
+                isLenient = true
+                coerceInputValues = true
+                explicitNulls = false
+            }
+
+            val jsonElement = jsonParser.parseToJsonElement(content)
+
+            // Vérifier si c'est un tableau ou un objet unique
+            if (jsonElement is kotlinx.serialization.json.JsonArray) {
+                // Examiner le premier élément du tableau
+                if (jsonElement.isEmpty()) {
+                    return false
+                }
+
+                val firstItem = jsonElement[0]
+                return isAnimalJsonObject(firstItem)
+            } else if (jsonElement is JsonObject) {
+                // C'est un objet unique
+                return isAnimalJsonObject(jsonElement)
+            }
+
+            return false
+        } catch (e: Exception) {
+            println("Erreur lors de l'analyse du contenu JSON: ${e.message}")
+            return false
+        }
+    }
+
+    /**
+     * Vérifie si un objet JSON correspond à un animal ou un aliment
+     *
+     * @param jsonObject L'objet JSON à analyser
+     * @return true si l'objet semble être un animal, false s'il semble être un aliment
+     */
+    private fun isAnimalJsonObject(jsonObject: JsonElement): Boolean {
+        if (jsonObject !is JsonObject) {
+            return false
+        }
+
+        // Caractéristiques spécifiques aux animaux
+        val animalSpecificKeys =
+                listOf(
+                        "listWeight",
+                        "sex",
+                        "race",
+                        "dateNaiss",
+                        "nomProprio",
+                        "consultations",
+                        "list"
+                )
+
+        // Caractéristiques spécifiques aux aliments
+        val foodSpecificKeys =
+                listOf("ingredients", "prix", "marque", "categoriePrix", "quantInt", "presentation")
+
+        // Compter combien de caractéristiques d'animal sont présentes
+        val animalKeysCount = animalSpecificKeys.count { key -> jsonObject.containsKey(key) }
+
+        // Compter combien de caractéristiques d'aliment sont présentes
+        val foodKeysCount = foodSpecificKeys.count { key -> jsonObject.containsKey(key) }
+
+        // Si plus de caractéristiques d'animal sont présentes, c'est probablement un animal
+        return animalKeysCount > foodKeysCount
+    }
+
+    /**
+     * Vérifie si le contenu est un JSON valide
+     *
+     * @param content Le contenu à vérifier
+     * @return true si le contenu est un JSON valide, false sinon
+     */
+    fun isValidJson(content: String): Boolean {
+        return try {
+            if (content.isBlank()) {
+                return false
+            }
+
+            val jsonParser = Json {
+                ignoreUnknownKeys = true
+                isLenient = true
+                coerceInputValues = true
+                explicitNulls = false
+            }
+
+            // Tente simplement de parser le JSON sans traiter son contenu
+            jsonParser.parseToJsonElement(content)
+            true
+        } catch (e: Exception) {
+            println("Le contenu n'est pas un JSON valide: ${e.message}")
+            false
+        }
+    }
+
+    /**
+     * Prétraite les valeurs nutritionnelles dans le JSON pour convertir les objets complexes en
+     * valeurs simples
+     *
+     * @param jsonElement L'élément JSON à prétraiter
+     * @return L'élément JSON prétraité
+     */
+    private fun preprocessNutrientValues(jsonElement: JsonElement): JsonElement {
+        // Renvoyer au prétraitement complet qui gère aussi les espèces
+        return preprocessEspecesAndNutrientValues(jsonElement)
+    }
+
+    /**
+     * Détermine si un aliment doit être remplacé par une version plus complète.
+     * @param existingFood L'aliment existant
+     * @param newFood Le nouvel aliment
+     * @return true si le nouvel aliment est plus complet et doit remplacer l'existant
+     */
+    private fun shouldReplaceFood(existingFood: AlimentEvJson, newFood: AlimentEvJson): Boolean {
+        var existingScore = 0
+        var newScore = 0
+
+        // Attribuer des points pour chaque attribut non vide
+        if (existingFood.nom.isNotBlank()) existingScore += 1
+        if (newFood.nom.isNotBlank()) newScore += 1
+
+        if (existingFood.ingredients.isNotBlank()) existingScore += 1
+        if (newFood.ingredients.isNotBlank()) newScore += 1
+
+        if (existingFood.marque.isNotBlank()) existingScore += 1
+        if (newFood.marque.isNotBlank()) newScore += 1
+
+        if (existingFood.gamme.isNotBlank()) existingScore += 1
+        if (newFood.gamme.isNotBlank()) newScore += 1
+
+        if (existingFood.valMap.isNotEmpty()) existingScore += existingFood.valMap.size
+        if (newFood.valMap.isNotEmpty()) newScore += newFood.valMap.size
+
+        // Si le nouveau score est meilleur, remplacer
+        return newScore > existingScore
     }
 }
 

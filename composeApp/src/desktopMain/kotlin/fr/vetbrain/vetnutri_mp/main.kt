@@ -72,6 +72,11 @@ fun main(args: Array<String> = emptyArray()) {
                             println("${importedCount} animaux importés avec succès.")
                         } else {
                             println("Aucun animal trouvé dans le fichier.")
+                            println(
+                                    "Vérifiez que vous utilisez le bon format de fichier et la commande appropriée."
+                            )
+                            println("- Pour importer des animaux : import-ani <fichier>")
+                            println("- Pour importer des aliments : import-food <fichier>")
                         }
                         return@runBlocking
                     } else {
@@ -104,6 +109,11 @@ fun main(args: Array<String> = emptyArray()) {
                             println("${importedCount} aliments importés avec succès.")
                         } else {
                             println("Aucun aliment trouvé dans le fichier.")
+                            println(
+                                    "Vérifiez que vous utilisez le bon format de fichier et la commande appropriée."
+                            )
+                            println("- Pour importer des aliments : import-food <fichier>")
+                            println("- Pour importer des animaux : import-ani <fichier>")
                         }
                         return@runBlocking
                     } else {

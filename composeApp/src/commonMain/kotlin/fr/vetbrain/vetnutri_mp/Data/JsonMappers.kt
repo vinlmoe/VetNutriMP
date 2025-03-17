@@ -448,13 +448,13 @@ fun AlimentRation.toJson(): AlimentRationJson {
     return AlimentRationJson(
             UUID = this.uuid,
             UUIDunif = this.uuidUnif,
-            quantite = this.quantity,
+            quantite = this.quantite,
             prop = this.proportion,
             alime = this.aliment?.toJson()
                             ?: AlimentEvJson(UUID = "", group = "", foodKind = "", espece = 0),
             weight = this.weight,
             categ = this.category,
-            density = this.density
+            density = this.densiteEnergetique
     )
 }
 
@@ -462,12 +462,15 @@ fun AlimentRationJson.toData(): AlimentRation {
     return AlimentRation(
             uuid = this.UUID,
             uuidUnif = this.UUIDunif,
-            quantity = this.quantite,
+            quantite = this.quantite,
             proportion = this.prop,
             aliment = this.alime.toData(this.UUID),
             weight = this.weight,
             category = this.categ,
-            density = this.density
+            densiteEnergetique = this.density,
+            refAlimUnif = this.UUIDunif,
+            refRation = null,
+            refTarget = null
     )
 }
 

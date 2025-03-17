@@ -12,7 +12,8 @@ data class FoodImportResult(
         val deletedCount: Int,
         val errorCount: Int,
         val totalCount: Int,
-        val nonResolvedNutrientsCount: Int
+        val nonResolvedNutrientsCount: Int,
+        val nonResolvedNutrients: List<String> = emptyList()
 )
 
 /** Interface définissant les opérations de base pour la gestion des aliments. */

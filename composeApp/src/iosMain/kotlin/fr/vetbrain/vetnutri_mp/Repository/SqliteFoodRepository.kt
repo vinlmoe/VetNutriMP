@@ -36,6 +36,19 @@ class SqliteFoodRepository : FoodRepository {
         return _foods.toList()
     }
 
+    override suspend fun getAllFoodsLight(): List<AlimentEv> {
+        return _foods.map { food ->
+            AlimentEv(
+                    uuid = food.uuid,
+                    name = food.name,
+                    latinName = food.latinName,
+                    nutrimentValues = emptyList(),
+                    species = food.species,
+                    indications = food.indications
+            )
+        }
+    }
+
     override suspend fun getFoodById(id: String): AlimentEv? {
         return _foods.find { it.uuid == id }
     }

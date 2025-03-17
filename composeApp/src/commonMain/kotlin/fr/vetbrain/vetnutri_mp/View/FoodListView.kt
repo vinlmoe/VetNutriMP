@@ -12,7 +12,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import fr.vetbrain.vetnutri_mp.Components.Badge
 import fr.vetbrain.vetnutri_mp.Components.ConfirmDialog
+import fr.vetbrain.vetnutri_mp.Components.GenericDropdown
 import fr.vetbrain.vetnutri_mp.Components.TopBar
 import fr.vetbrain.vetnutri_mp.Data.AlimentEv
 import fr.vetbrain.vetnutri_mp.Enumer.AlimIndic

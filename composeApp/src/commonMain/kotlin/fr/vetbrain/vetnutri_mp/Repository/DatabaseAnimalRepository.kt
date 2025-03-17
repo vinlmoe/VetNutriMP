@@ -584,7 +584,7 @@ class DatabaseAnimalRepository(
                                                                                                                         refRation =
                                                                                                                                 rationJson
                                                                                                                                         .UUID,
-                                                                                                                        quantity =
+                                                                                                                        quantite =
                                                                                                                                 alimentJson
                                                                                                                                         .quantite,
                                                                                                                         proportion =
@@ -596,7 +596,7 @@ class DatabaseAnimalRepository(
                                                                                                                         category =
                                                                                                                                 alimentJson
                                                                                                                                         .categ,
-                                                                                                                        density =
+                                                                                                                        densiteEnergetique =
                                                                                                                                 alimentJson
                                                                                                                                         .density,
                                                                                                                         refAlimUnif =

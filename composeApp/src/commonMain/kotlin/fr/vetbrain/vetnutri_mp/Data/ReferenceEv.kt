@@ -1,39 +1,56 @@
-import fr.vetbrain.vetnutri_mp.Data.CoefP
-import fr.vetbrain.vetnutri_mp.Data.Equation
+package fr.vetbrain.vetnutri_mp.Data
+
+import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
+import kotlinx.serialization.Serializable
 
+/**
+ * Classe représentant une référence évaluée Basée sur la classe ReferenceEv du projet Java original
+ */
 @OptIn(ExperimentalUuidApi::class)
+@Serializable
 data class ReferenceEv(
         val uuid: String = Uuid.random().toString(),
-        var name: String?,
-        var description: String?,
-        var disease: Boolean?,
-        var BWeqRef: String?,
-        var SERName: String?,
-        var SERRef: String?,
-        var DEcomRef: String?,
-        var DErawRef: String?,
-        var k1Name: String?,
-        var k1Ref: String?,
-        var k2Name: String?,
-        var k2Ref: String?,
-        var k3Name: String?,
-        var k3Ref: String?,
-        var k4Name: String?,
-        var k4Ref: String?,
-        var k5Name: String?,
-        var k5Ref: String?,
-        var specie: String?,
-        var consistent: Int?,
-        var BWEqu: Equation? = null,
-        var BEEqu: Equation? = null,
-        var DEcomEqu: Equation? = null,
-        var DErawEqu: Equation? = null,
-        var modk1: MutableList<CoefP>,
-        var modk2: MutableList<CoefP>,
-        var modk3: MutableList<CoefP>,
-        var modk4: MutableList<CoefP>,
-        var modk5: MutableList<CoefP>,
-        var nutEqu: MutableList<Equation>
-)
+        val nutrient: Nutrient,
+        val references: MutableList<NutrientRef> = mutableListOf()
+) {
+        /**
+         * Ajoute une référence à cette référence évaluée
+         *
+         * @param reference La référence à ajouter
+         */
+        fun ajouterReference(reference: NutrientRef) {
+                references.add(reference)
+        }
+
+        /**
+         * Calcule la valeur de cette référence pour un animal donné
+         *
+         * @param bee Le besoin énergétique de base
+         * @param bw Le poids de l'animal
+         * @param mw Le poids métabolique
+         * @param svp Liste des variables supplémentaires
+         * @param ration La ration à évaluer
+         * @return La valeur calculée
+         */
+        fun calculerValeur(
+                bee: Float,
+                bw: Float,
+                mw: Float,
+                svp: List<SupplementalvariableP>,
+                ration: Ration
+        ): Float {
+                // Implémentation simplifiée pour l'instant
+                return 0.0f
+        }
+
+        /**
+         * Vérifie si cette référence contient des références
+         *
+         * @return true si la référence contient des références, false sinon
+         */
+        fun hasReferences(): Boolean {
+                return references.isNotEmpty()
+        }
+}

@@ -7,6 +7,7 @@ import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import fr.vetbrain.vetnutri_mp.Components.ComboBox
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.Sex
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Animal as AnimalKeys
@@ -210,7 +211,7 @@ fun CreateAnimalView(
                                                 "DEBUG_CREATE_VIEW: Tentative de sauvegarde d'animal - nom=${animal.nom}, specieId=${animal.specieId}, espece=${animal.getEspece().label}"
                                         )
                                         viewModel.saveAnimal()
-                                        
+
                                         onNavigateBack()
                                 },
                                 modifier = Modifier.weight(1f),

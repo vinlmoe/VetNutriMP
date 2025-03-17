@@ -19,6 +19,7 @@ enum class UnitEnum(
     DUmu("µg", 7, 3, 6, 40f, "DUmu"),
     EUui("UI", 8, 4, 6, 1f, "EUui"),
     EUmg("mg", 9, 4, 8, 1f, "EUmg"),
+    KCAL("kcal", 10, 6, 10, 1f, "KCAL"),
     NO("", 0, 5, 10, 0f, "NO");
 
     val displayName: String

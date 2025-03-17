@@ -46,14 +46,16 @@ kotlin {
         }
 
         commonMain.dependencies {
+            implementation(libs.androidx.material.icons.extended)
             implementation(libs.androidx.sqlite.bundled)
             implementation(compose.runtime)
             implementation(compose.foundation)
             implementation(compose.material)
+            implementation(compose.ui)
+            implementation("org.jetbrains.compose.ui:ui-util:1.7.0")
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.coroutines.test)
             implementation(libs.kotlin.test)
-            implementation(compose.ui)
             implementation(compose.components.resources)
             implementation(compose.components.uiToolingPreview)
             implementation(libs.androidx.lifecycle.viewmodel)

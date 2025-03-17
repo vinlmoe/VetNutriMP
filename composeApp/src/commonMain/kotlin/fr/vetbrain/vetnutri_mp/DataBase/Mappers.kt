@@ -200,7 +200,7 @@ object Mappers {
                 // Fournir des valeurs par défaut pour gérer les nullables
                 val safeRefAlimUnif = this.refAlimUnif ?: ""
                 val safeRefRation = this.refRation ?: ""
-                val safeQuantity = this.quantity ?: 0f
+                val safeQuantity = this.quantite ?: 0f
                 val safeRefTarget = this.refTarget ?: 0
 
                 return AlimentRationEntity(
@@ -216,7 +216,7 @@ object Mappers {
                 return AlimentRation(
                         uuid = this.uuid,
                         uuidUnif = this.refAlimUnif ?: "",
-                        quantity = this.quantity ?: 0f,
+                        quantite = this.quantity ?: 0f,
                         proportion = 0f,
                         aliment = null,
                         refAlimUnif = this.refAlimUnif ?: "",
@@ -225,7 +225,10 @@ object Mappers {
                 )
         }
 
-        // AlimentEv Mappers avec relations
+        // DÉBUT ZONE PROTÉGÉE - NE PAS MODIFIER SANS AUTORISATION EXPRESSE
+        // Description: Méthode critique pour la conversion d'AlimentEv en FoodEntity.
+        // Cette méthode est utilisée dans le processus d'import pour convertir les données en
+        // entités de base de données.
         fun AlimentEv.toFoodEntity(): FoodEntity {
                 // Assurer que les valeurs ne sont pas nulles
                 val safeRationUUID = this.rationUUID ?: ""
@@ -261,7 +264,12 @@ object Mappers {
                                 else null
                 )
         }
+        // FIN ZONE PROTÉGÉE
 
+        // DÉBUT ZONE PROTÉGÉE - NE PAS MODIFIER SANS AUTORISATION EXPRESSE
+        // Description: Méthode critique pour la conversion de FoodEntity en AlimentEv.
+        // Cette méthode est utilisée pour convertir les entités de base de données en objets
+        // métier.
         // Fonction pour convertir les entités en AlimentEv
         fun FoodEntity.toAlimentEv(
                 especes: List<EspeceAlimentEntity> = emptyList(),
@@ -471,6 +479,7 @@ object Mappers {
                         rationUUID = this.RefRation ?: ""
                 )
         }
+        // FIN ZONE PROTÉGÉE
 
         // Fonction pour convertir les entités en AlimentEvLight (version légère sans valeurs
         // nutritionnelles)
@@ -577,6 +586,11 @@ object Mappers {
          * Convertit une map de nutriments et valeurs en liste d'entités de valeurs de nutriments.
          * Ne crée des entités que pour les nutriments avec des valeurs > 0.
          */
+        // DÉBUT ZONE PROTÉGÉE - NE PAS MODIFIER SANS AUTORISATION EXPRESSE
+        // Description: Méthode critique pour la conversion de Map<Nutrient, NutrientQuantity> en
+        // List<NutrientValueEntity>.
+        // Cette méthode est utilisée dans le processus d'import pour convertir les valeurs
+        // nutritionnelles en entités de base de données.
         fun Map<Nutrient, fr.vetbrain.vetnutri_mp.Data.NutrientQuantity>.toNutrientValueEntities(
                 alimentUuid: String
         ): List<NutrientValueEntity> {
@@ -593,10 +607,16 @@ object Mappers {
                         }
                 }
         }
+        // FIN ZONE PROTÉGÉE
 
         /**
          * Convertit une liste d'entités de valeurs de nutriments en map de nutriments et valeurs.
          */
+        // DÉBUT ZONE PROTÉGÉE - NE PAS MODIFIER SANS AUTORISATION EXPRESSE
+        // Description: Méthode critique pour la conversion de List<NutrientValueEntity> en
+        // Map<Nutrient, NutrientQuantity>.
+        // Cette méthode est utilisée pour convertir les entités de base de données en objets
+        // métier.
         fun List<NutrientValueEntity>.toNutrientValueMap():
                 MutableMap<Nutrient, fr.vetbrain.vetnutri_mp.Data.NutrientQuantity> {
                 val result = mutableMapOf<Nutrient, fr.vetbrain.vetnutri_mp.Data.NutrientQuantity>()
@@ -612,4 +632,5 @@ object Mappers {
                 }
                 return result
         }
+        // FIN ZONE PROTÉGÉE
 }

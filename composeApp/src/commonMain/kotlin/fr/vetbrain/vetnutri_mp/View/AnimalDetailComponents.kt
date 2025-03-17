@@ -286,6 +286,7 @@ fun ConsultationCard(
  * @param onDelete Action à exécuter lors du clic sur le bouton de suppression
  * @param isDeleteEnabled Indique si le bouton de suppression est activé
  * @param onEdit Action à exécuter lors du clic sur le bouton d'édition
+ * @param onDuplicate Action à exécuter lors du clic sur le bouton de duplication
  * @param modifier Modificateur optionnel pour personnaliser l'apparence
  */
 @Composable
@@ -296,6 +297,7 @@ fun RationItem(
         onDelete: () -> Unit = {},
         isDeleteEnabled: Boolean = true,
         onEdit: () -> Unit = {},
+        onDuplicate: () -> Unit = {},
         modifier: Modifier = Modifier
 ) {
         Row(
@@ -357,6 +359,17 @@ fun RationItem(
                                 Icon(
                                         Icons.Default.Edit,
                                         contentDescription = "Modifier",
+                                        tint = VetNutriColors.Primary.copy(alpha = 0.8f)
+                                )
+                        }
+
+                        IconButton(
+                                onClick = { onDuplicate() },
+                                modifier = Modifier.size(AppSizes.iconSizeLarge)
+                        ) {
+                                Icon(
+                                        AppIcons.ContentCopy,
+                                        contentDescription = "Dupliquer",
                                         tint = VetNutriColors.Primary.copy(alpha = 0.8f)
                                 )
                         }

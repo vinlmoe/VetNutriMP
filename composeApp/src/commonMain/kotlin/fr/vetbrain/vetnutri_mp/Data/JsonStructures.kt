@@ -151,4 +151,40 @@ data class TargetDefinitionEvJson(
 
 @Serializable data class SupplementalvariablePJson(val variable: String, val value: Float)
 
-@Serializable data class NutrientQuantity(val value: Float, val nut: String)
+@Serializable
+data class NutrientQuantity(val value: Float, val nut: String) {
+        /**
+         * Obtient l'unité du nutriment
+         *
+         * @return L'unité sous forme de String
+         */
+        val unit: String
+                get() = nut
+
+        /** Propriété pour rendre compatible avec les références à quantity */
+        val quantity: Float
+                get() = value
+
+        /**
+         * Multiplie cette quantité par un facteur
+         *
+         * @param factor Le facteur de multiplication
+         * @return La nouvelle quantité résultante
+         */
+        fun times(factor: Float): NutrientQuantity {
+                return NutrientQuantity(value * factor, nut)
+        }
+
+        /**
+         * Additionne cette quantité avec une autre
+         *
+         * @param other L'autre quantité à additionner
+         * @return La somme des deux quantités
+         */
+        fun plus(other: NutrientQuantity): NutrientQuantity? {
+                if (this.nut != other.nut) {
+                        return null
+                }
+                return NutrientQuantity(value + other.value, nut)
+        }
+}

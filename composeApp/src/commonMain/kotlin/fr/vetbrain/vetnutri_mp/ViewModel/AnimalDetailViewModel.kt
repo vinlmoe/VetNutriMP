@@ -4,9 +4,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import fr.vetbrain.vetnutri_mp.Data.*
+import fr.vetbrain.vetnutri_mp.Data.AnalyseResultat
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
+import fr.vetbrain.vetnutri_mp.Data.ComparaisonNutriment
 import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
 import fr.vetbrain.vetnutri_mp.Data.Ration
+import fr.vetbrain.vetnutri_mp.Data.RationAnalyzer
 import fr.vetbrain.vetnutri_mp.Repository.AlimentRepository
 import fr.vetbrain.vetnutri_mp.Repository.AnimalRepository
 import fr.vetbrain.vetnutri_mp.Repository.ConsultationRepository
@@ -69,6 +72,23 @@ class AnimalDetailViewModel(
     private val _alimentSearchQuery = mutableStateOf("")
     val alimentSearchQuery: String
         get() = _alimentSearchQuery.value
+
+    // Nouvelle instance de l'analyseur de rations
+    private val rationAnalyzer = RationAnalyzer()
+
+    // StateFlow pour stocker les résultats d'analyse de la ration sélectionnée
+    private val _rationAnalyseResultat = MutableStateFlow<AnalyseResultat?>(null)
+    val rationAnalyseResultat: StateFlow<AnalyseResultat?> = _rationAnalyseResultat.asStateFlow()
+
+    // StateFlow pour stocker la comparaison entre deux rations
+    private val _rationsComparaison =
+            MutableStateFlow<Map<String, ComparaisonNutriment>>(emptyMap())
+    val rationsComparaison: StateFlow<Map<String, ComparaisonNutriment>> =
+            _rationsComparaison.asStateFlow()
+
+    // StateFlow pour indiquer si une analyse est en cours
+    private val _isAnalyzing = MutableStateFlow(false)
+    val isAnalyzing: StateFlow<Boolean> = _isAnalyzing.asStateFlow()
 
     /**
      * Charge tous les aliments disponibles en utilisant la version légère pour de meilleures
@@ -152,7 +172,7 @@ class AnimalDetailViewModel(
                         AlimentRation(
                                 uuid = Uuid.random().toString(),
                                 aliment = alimentComplet,
-                                quantity = quantite,
+                                quantite = quantite,
                                 refRation = ration.uuid,
                                 refAlimUnif = alimentComplet.uuid
                         )
@@ -276,6 +296,11 @@ class AnimalDetailViewModel(
         }
     }
 
+    /**
+     * Sélectionne une ration et lance automatiquement son analyse
+     *
+     * @param ration La ration à sélectionner et analyser
+     */
     fun selectRation(ration: Ration) {
         println("DEBUG_ALIMENTS: Début selectRation pour ration ${ration.uuid} (${ration.name})")
         println("DEBUG_ALIMENTS: Ration a ${ration.alimentMutableList.size} aliments avant copie")
@@ -303,7 +328,166 @@ class AnimalDetailViewModel(
         _selectedRation.value = rationCopy
         println("DEBUG_ALIMENTS: Ration sélectionnée mise à jour")
 
+        // Lancer l'analyse de la ration automatiquement
+        analyserRationSelectionnee()
+
         println("DEBUG_ALIMENTS: Fin selectRation")
+    }
+
+    /**
+     * Analyse la ration actuellement sélectionnée L'analyse est lancée automatiquement lors de la
+     * sélection d'une ration, mais cette méthode peut être appelée explicitement après des
+     * modifications.
+     */
+    fun analyserRationSelectionnee() {
+        val rationActuelle = _selectedRation.value ?: return
+
+        viewModelScope.launch {
+            try {
+                _isAnalyzing.value = true
+
+                // Vérifier que la ration contient des aliments
+                if (rationActuelle.alimentMutableList.isEmpty()) {
+                    _rationAnalyseResultat.value =
+                            AnalyseResultat(
+                                    rationId = rationActuelle.uuid,
+                                    rationName = rationActuelle.name,
+                                    alertes = listOf("Cette ration ne contient aucun aliment")
+                            )
+                    return@launch
+                }
+
+                // Effectuer l'analyse
+                val resultat = rationAnalyzer.analyserRation(rationActuelle)
+                _rationAnalyseResultat.value = resultat
+
+                println(
+                        "Analyse de la ration terminée: ${resultat.ratios.size} ratios calculés, ${resultat.alertes.size} alertes générées"
+                )
+            } catch (e: Exception) {
+                println("Erreur lors de l'analyse de la ration: ${e.message}")
+                e.printStackTrace()
+
+                // Créer un résultat avec une erreur
+                _rationAnalyseResultat.value =
+                        AnalyseResultat(
+                                rationId = rationActuelle.uuid,
+                                rationName = rationActuelle.name,
+                                alertes = listOf("Erreur lors de l'analyse: ${e.message}")
+                        )
+            } finally {
+                _isAnalyzing.value = false
+            }
+        }
+    }
+
+    /**
+     * Compare la ration sélectionnée avec une autre ration
+     *
+     * @param autreRation La ration à comparer avec la ration sélectionnée
+     */
+    fun comparerAvecAutreRation(autreRation: Ration) {
+        val rationActuelle = _selectedRation.value ?: return
+
+        viewModelScope.launch {
+            try {
+                _isAnalyzing.value = true
+
+                // Effectuer la comparaison
+                val resultat = rationAnalyzer.comparerRations(rationActuelle, autreRation)
+                _rationsComparaison.value = resultat
+
+                println("Comparaison des rations terminée: ${resultat.size} nutriments comparés")
+            } catch (e: Exception) {
+                println("Erreur lors de la comparaison des rations: ${e.message}")
+                e.printStackTrace()
+
+                // Réinitialiser la comparaison en cas d'erreur
+                _rationsComparaison.value = emptyMap()
+            } finally {
+                _isAnalyzing.value = false
+            }
+        }
+    }
+
+    /**
+     * Génère un rapport d'analyse nutritionnelle détaillé de la ration sélectionnée
+     *
+     * @return Une chaîne formatée contenant le rapport d'analyse
+     */
+    fun genererRapportAnalyse(): String {
+        val analyse = _rationAnalyseResultat.value ?: return "Aucune analyse disponible"
+        val ration = _selectedRation.value ?: return "Aucune ration sélectionnée"
+
+        val rapport = StringBuilder()
+
+        // En-tête
+        rapport.append("RAPPORT D'ANALYSE NUTRITIONNELLE\n")
+        rapport.append("===============================\n\n")
+
+        // Informations générales
+        rapport.append("Ration: ${analyse.rationName}\n")
+        rapport.append("Quantité totale: ${analyse.quantiteTotale}g\n")
+        rapport.append("Densité énergétique: ${analyse.densiteEnergetique} kcal/g\n\n")
+
+        // Scores
+        rapport.append("Score de complétude: ${analyse.completude.toInt()}%\n")
+        rapport.append("Score d'équilibre: ${analyse.equilibre.toInt()}%\n\n")
+
+        // Macronutriments
+        rapport.append("MACRONUTRIMENTS\n")
+        rapport.append("--------------\n")
+        analyse.macronutriments.forEach { (nutriment, valeur) ->
+            rapport.append("$nutriment: $valeur g\n")
+        }
+        rapport.append("\n")
+
+        // Minéraux
+        rapport.append("MINÉRAUX\n")
+        rapport.append("--------\n")
+        analyse.mineraux.forEach { (nutriment, valeur) ->
+            rapport.append("$nutriment: $valeur g\n")
+        }
+        rapport.append("\n")
+
+        // Vitamines
+        rapport.append("VITAMINES\n")
+        rapport.append("---------\n")
+        analyse.vitamines.forEach { (nutriment, valeur) ->
+            rapport.append("$nutriment: $valeur UI/mg\n")
+        }
+        rapport.append("\n")
+
+        // Lipides
+        rapport.append("LIPIDES\n")
+        rapport.append("-------\n")
+        analyse.lipides.forEach { (nutriment, valeur) -> rapport.append("$nutriment: $valeur g\n") }
+        rapport.append("\n")
+
+        // Ratios
+        rapport.append("RATIOS NUTRITIONNELS\n")
+        rapport.append("-------------------\n")
+        analyse.ratios.forEach { (ratio, valeur) -> rapport.append("$ratio: $valeur\n") }
+        rapport.append("\n")
+
+        // Alertes
+        if (analyse.alertes.isNotEmpty()) {
+            rapport.append("ALERTES\n")
+            rapport.append("-------\n")
+            analyse.alertes.forEach { alerte -> rapport.append("- $alerte\n") }
+            rapport.append("\n")
+        }
+
+        // Aliments de la ration
+        rapport.append("COMPOSITION DE LA RATION\n")
+        rapport.append("----------------------\n")
+        ration.alimentMutableList.forEach { aliment ->
+            rapport.append(
+                    "- ${aliment.aliment?.nom ?: "Aliment sans nom"}: ${aliment.quantite}g\n"
+            )
+        }
+
+        return rapport.toString()
     }
 
     /** Réinitialise la ration sélectionnée en mettant selectedRation à null */
@@ -625,7 +809,7 @@ class AnimalDetailViewModel(
                         .map { aliment ->
                             if (aliment.uuid == alimentUuid) {
                                 // Créer une copie de l'aliment avec la nouvelle quantité
-                                aliment.copy(quantity = newQuantity)
+                                aliment.copy(quantite = newQuantity)
                             } else {
                                 aliment
                             }
@@ -640,6 +824,9 @@ class AnimalDetailViewModel(
 
         // Mettre à jour la ration dans la consultation
         updateRationInConsultation(updatedRation)
+
+        // Relancer l'analyse pour tenir compte des modifications
+        analyserRationSelectionnee()
     }
 
     /**
@@ -699,6 +886,9 @@ class AnimalDetailViewModel(
 
         // Mettre à jour la ration dans la consultation
         updateRationInConsultation(updatedRation)
+
+        // Relancer l'analyse pour tenir compte des modifications
+        analyserRationSelectionnee()
     }
 
     /**
@@ -779,5 +969,14 @@ class AnimalDetailViewModel(
 
         // Mettre à jour la ration dans la consultation
         updateRationInConsultation(updatedRation)
+    }
+
+    /**
+     * Renvoie la liste des aliments disponibles
+     *
+     * @return Liste des aliments disponibles
+     */
+    fun getAliments(): List<AlimentEv> {
+        return _availableFoods.value
     }
 }
