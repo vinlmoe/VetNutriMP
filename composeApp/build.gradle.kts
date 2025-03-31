@@ -41,12 +41,12 @@ kotlin {
                 implementation(libs.androidx.activity.compose)
                 implementation(libs.androidx.room.runtime)
                 implementation(libs.androidx.room.paging)
-                implementation(libs.androidx.material.icons.extended)
                // implementation(libs.androidx.sqlite.sqlite.ktx)
 
         }
 
         commonMain.dependencies {
+            implementation(libs.androidx.material.icons.extended)
             implementation(libs.androidx.sqlite.bundled)
             implementation(compose.runtime)
             implementation(compose.foundation)
@@ -163,6 +163,8 @@ compose.desktop {
 }
 
 dependencies {
+
+    implementation(libs.jansi)
     implementation(libs.androidx.material.icons.extended)
     implementation(libs.skiko.awt)
     implementation(libs.androidx.sqlite.bundled)
