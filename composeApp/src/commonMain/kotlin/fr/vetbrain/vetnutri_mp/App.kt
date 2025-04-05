@@ -193,6 +193,7 @@ fun App(appDatabase: AppDatabase) {
                                     onImportAnimals = handleImportAnimals,
                                     onImportFoods = handleImportFoods,
                                     onShowFoodList = { currentScreen = Screen.FoodList },
+                                    onShowBiblioRefs = { currentScreen = Screen.BiblioRefList },
                                     modifier = Modifier.fillMaxWidth().weight(1f)
                             )
                         }
@@ -255,29 +256,17 @@ fun App(appDatabase: AppDatabase) {
                                 modifier = Modifier.fillMaxSize()
                         )
                     }
-                /* Screen.IMPORT_EXPORT n'est pas correctement implémenté - à revoir plus tard
-                Screen.IMPORT_EXPORT -> {
-                    TopBar(
-                            title = "Importation / Exportation",
-                            onBackClick = { navigateTo(NavigationItem.HOME) },
-                            onSettingsClick = { showSettings = true }
-                    )
-                    Button(
-                            onClick = {
-                                // Utiliser la méthode du ViewModel pour éviter l'ambiguïté
-                                animalListViewModel.importAnimalsFromFileUI()
-                            },
-                            modifier = Modifier.padding(16.dp).align(Alignment.Center)
-                    ) { Text("Importer des animaux") }
-                    Button(
-                            onClick = {
-                                // Utiliser la méthode du ViewModel pour éviter l'ambiguïté
-                                settingsViewModel.importFoodsFromFileUI()
-                            },
-                            modifier = Modifier.padding(16.dp).align(Alignment.Center)
-                    ) { Text("Importer des aliments") }
-                }
-                */
+                    Screen.BiblioRefList -> {
+                        Column(modifier = Modifier.fillMaxSize()) {
+                            TopBar(
+                                    title = "Gestion des références bibliographiques",
+                                    onBackClick = { currentScreen = Screen.List },
+                                    onSettingsClick = { showSettings = true }
+                            )
+
+                            BiblioRefView()
+                        }
+                    }
                 }
             }
 
@@ -424,4 +413,5 @@ private sealed class Screen {
     object Detail : Screen()
     object FoodList : Screen()
     object FoodEdit : Screen()
+    object BiblioRefList : Screen()
 }

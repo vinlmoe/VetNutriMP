@@ -34,6 +34,7 @@ fun AnimalListView(
         onImportAnimals: () -> Unit,
         onImportFoods: () -> Unit,
         onShowFoodList: () -> Unit,
+        onShowBiblioRefs: () -> Unit = {},
         modifier: Modifier = Modifier
 ) {
         val animals: List<AnimalEv> = viewModel.animals.collectAsState().value
@@ -82,16 +83,33 @@ fun AnimalListView(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Bouton pour accéder à la liste des aliments
-                Button(
-                        onClick = onShowFoodList,
+                // Rangée de boutons pour les listes spéciales
+                Row(
                         modifier = Modifier.fillMaxWidth(),
-                        colors =
-                                ButtonDefaults.buttonColors(
-                                        backgroundColor = VetNutriColors.Primary,
-                                        contentColor = VetNutriColors.OnPrimary
-                                )
-                ) { Text("Liste des aliments") }
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                        // Bouton pour accéder à la liste des aliments
+                        Button(
+                                onClick = onShowFoodList,
+                                modifier = Modifier.weight(1f),
+                                colors =
+                                        ButtonDefaults.buttonColors(
+                                                backgroundColor = VetNutriColors.Primary,
+                                                contentColor = VetNutriColors.OnPrimary
+                                        )
+                        ) { Text("Liste des aliments") }
+
+                        // Bouton pour accéder à la liste des références bibliographiques
+                        Button(
+                                onClick = onShowBiblioRefs,
+                                modifier = Modifier.weight(1f),
+                                colors =
+                                        ButtonDefaults.buttonColors(
+                                                backgroundColor = VetNutriColors.Primary,
+                                                contentColor = VetNutriColors.OnPrimary
+                                        )
+                        ) { Text("Références biblio") }
+                }
 
                 Spacer(modifier = Modifier.height(16.dp))
 

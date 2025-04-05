@@ -463,4 +463,73 @@ if (nullableValue != null) {
 4. **Tests unitaires**: Écrire des tests pour vérifier le comportement attendu
 5. **Refactoring progressif**: Effectuer des changements incrémentaux et vérifier la compilation à chaque étape
 
-Référez-vous toujours aux fichiers existants et fonctionnels comme modèles lorsque vous développez de nouvelles fonctionnalités. 
+Référez-vous toujours aux fichiers existants et fonctionnels comme modèles lorsque vous développez de nouvelles fonctionnalités.
+
+## Gestion des Coroutines et Dispatchers
+
+### Problèmes connus avec Dispatchers.Main
+
+Dans un environnement multiplateforme, l'utilisation directe de `Dispatchers.Main` peut provoquer des erreurs lors de l'exécution sur certaines plateformes, notamment Desktop. L'erreur typique est :
+
+```
+java.lang.IllegalStateException: Dispatchers.Main was accessed when the platform dispatcher was absent and the test dispatcher was unset.
+```
+
+Ou parfois :
+
+```
+java.lang.NoClassDefFoundError: android/os/Looper
+```
+
+### Recommandations
+
+1. **Toujours utiliser PlatformDispatcher** : Utilisez la classe `PlatformDispatcher` fournie dans le projet pour obtenir un dispatcher approprié pour chaque plateforme.
+
+   ```kotlin
+   // À faire
+   private val dispatcher = PlatformDispatcher().provideMainDispatcher()
+   private val viewModelScope = CoroutineScope(dispatcher)
+   
+   // À éviter
+   private val viewModelScope = CoroutineScope(Dispatchers.Main)
+   ```
+
+2. **Injecter les dispatchers** : Pour les tests unitaires, pensez à injecter les dispatchers dans les constructeurs des classes.
+
+   ```kotlin
+   class MonViewModel(
+       private val repository: MonRepository,
+       private val dispatcher: CoroutineDispatcher = PlatformDispatcher().provideMainDispatcher()
+   ) {
+       private val viewModelScope = CoroutineScope(dispatcher)
+       // ...
+   }
+   ```
+
+3. **Structure du PlatformDispatcher** : Assurez-vous que l'implémentation de `PlatformDispatcher` est correcte pour chaque plateforme.
+
+   - Pour Desktop : Utilisez `Dispatchers.Default` ou `Dispatchers.IO`
+   - Pour Android : Utilisez `Dispatchers.Main.immediate` lorsque disponible
+
+### Implémentation recommandée
+
+```kotlin
+// common/Utils/MainDispatcher.kt
+expect class PlatformDispatcher() {
+    fun provideMainDispatcher(): CoroutineDispatcher
+}
+
+// androidMain/Utils/MainDispatcher.kt
+actual class PlatformDispatcher {
+    actual fun provideMainDispatcher(): CoroutineDispatcher = Dispatchers.Main
+}
+
+// desktopMain/Utils/MainDispatcher.kt
+actual class PlatformDispatcher {
+    actual fun provideMainDispatcher(): CoroutineDispatcher = Dispatchers.Default
+}
+```
+
+Cette approche assure que vos ViewModels et autres composants utilisant des coroutines fonctionneront correctement sur toutes les plateformes supportées.
+
+**Important** : Ne jamais utiliser directement `Dispatchers.Main` dans le code commun sans passer par un wrapper multiplateforme. 

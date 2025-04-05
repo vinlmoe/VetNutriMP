@@ -1,19 +1,17 @@
 package fr.vetbrain.vetnutri_mp.Data
 
+import java.util.UUID
 import kotlinx.serialization.Serializable
 
-/**
- * Classe représentant une référence bibliographique Basée sur la classe BiblioRef du projet Java
- * original
- */
+/** Classe représentant une référence bibliographique */
 @Serializable
 data class BiblioRef(
-        val uuid: String = java.util.UUID.randomUUID().toString(),
+        val uuid: String = UUID.randomUUID().toString(),
         val firstAuthor: String = "",
         val year: Int = 1800,
         val completeRef: String = "",
         val comments: String = "",
-        val consistent: Int = 0
+        val consistent: Int = 1 // 1 = cohérent, 0 = incohérent
 ) {
     /** Constructeur secondaire qui prend un UUID spécifique */
     constructor(
