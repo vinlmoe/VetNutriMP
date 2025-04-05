@@ -495,11 +495,11 @@ fun SupplementalvariablePJson.toData(): SupplementalvariableP {
 fun BiblioRef.toJson(): BiblioRefJson {
     return BiblioRefJson(
             UUID = this.uuid,
-            firstAuthor = this.firstAuthor ?: "",
-            year = this.year?.toIntOrNull() ?: 1800,
-            completeRef = this.completeRef ?: "",
-            comment = this.comments ?: "",
-            consistent = this.consistent ?: 0
+            firstAuthor = this.firstAuthor,
+            year = this.year,
+            completeRef = this.completeRef,
+            comment = this.comments,
+            consistent = this.consistent
     )
 }
 
@@ -507,7 +507,7 @@ fun BiblioRefJson.toData(): BiblioRef {
     return BiblioRef(
             uuid = this.UUID,
             firstAuthor = this.firstAuthor,
-            year = this.year.toString(),
+            year = this.year,
             completeRef = this.completeRef,
             comments = this.comment,
             consistent = this.consistent
