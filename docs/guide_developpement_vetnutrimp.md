@@ -533,3 +533,93 @@ actual class PlatformDispatcher {
 Cette approche assure que vos ViewModels et autres composants utilisant des coroutines fonctionneront correctement sur toutes les plateformes supportées.
 
 **Important** : Ne jamais utiliser directement `Dispatchers.Main` dans le code commun sans passer par un wrapper multiplateforme. 
+
+## Manipulation des collections dans les StateFlow
+
+### Problème avec les collections immuables dans MutableStateFlow
+
+Lorsque vous utilisez `MutableStateFlow` pour stocker une collection (comme une liste), il est important de savoir que les modifications sur la collection ne déclenchent pas automatiquement une émission si la référence à la collection ne change pas.
+
+```kotlin
+// ❌ Problème : Cela ne déclenche pas de mise à jour des collecteurs
+val items = _stateFlow.value
+items.add(newItem) // Modifie la collection mais pas la référence
+
+// ❌ Problème potentiel : update peut ne pas fonctionner correctement dans certains cas
+_stateFlow.update { currentList ->
+    // Si cette opération ne crée pas une nouvelle liste, les collecteurs ne seront pas notifiés
+    currentList.filter { /* condition */ }
+}
+```
+
+### Solution recommandée
+
+Toujours créer une nouvelle référence de collection et l'assigner directement à la propriété `value` du `MutableStateFlow` :
+
+```kotlin
+// ✅ Bonne pratique : créer une nouvelle liste et l'assigner
+val newList = _stateFlow.value.toMutableList()
+newList.add(newItem)
+_stateFlow.value = newList
+
+// ✅ Alternative avec update (garantit une nouvelle référence)
+_stateFlow.update { currentList -> 
+    // Création explicite d'une nouvelle liste
+    currentList + newItem 
+}
+```
+
+### Exemple avec un repository de données
+
+Voici un exemple d'implémentation correcte pour un repository qui gère une liste d'objets :
+
+```kotlin
+class InMemoryRepository<T> {
+    private val _items = MutableStateFlow<List<T>>(emptyList())
+    val items: StateFlow<List<T>> = _items.asStateFlow()
+
+    fun addItem(item: T) {
+        // Création explicite d'une nouvelle liste
+        val newList = _items.value.toMutableList()
+        newList.add(item)
+        _items.value = newList
+    }
+
+    fun updateItem(predicate: (T) -> Boolean, update: (T) -> T) {
+        val newList = _items.value.map { item ->
+            if (predicate(item)) update(item) else item
+        }
+        _items.value = newList
+    }
+
+    fun removeItem(predicate: (T) -> Boolean) {
+        _items.value = _items.value.filter { !predicate(it) }
+    }
+}
+```
+
+Cette approche garantit que les changements dans la collection sont correctement propagés à tous les collecteurs du flux.
+
+## Éviter les redéclarations de classes
+
+Une erreur courante dans le projet est la redéclaration de classes, particulièrement avec les implémentations de repositories. Pour éviter cette erreur:
+
+1. **Vérifiez si une classe existe déjà** avant de créer un nouveau fichier. Par exemple, vérifiez si une implémentation comme `InMemoryBiblioRefRepository` existe déjà dans un autre fichier, comme `BiblioRefRepository.kt`.
+
+2. **Préférez définir l'interface et l'implémentation dans le même fichier** pour les repositories lorsque l'implémentation est simple. Par exemple:
+
+```kotlin
+// Dans BiblioRefRepository.kt
+interface BiblioRefRepository {
+    // Méthodes
+}
+
+// Implémentation dans le même fichier
+class InMemoryBiblioRefRepository : BiblioRefRepository {
+    // Implémentation
+}
+```
+
+3. **Utilisez des noms clairs et distincts** pour éviter les confusions.
+
+4. Si vous rencontrez des erreurs de compilation du type `Redeclaration: class InMemoryBiblioRefRepository`, recherchez dans le projet où cette classe est déjà définie et supprimez la redéclaration. 

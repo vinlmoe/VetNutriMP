@@ -45,6 +45,41 @@ class BiblioRefViewModel(private val repository: BiblioRefRepository) {
     private val _operationMessage = MutableStateFlow<String?>(null)
     val operationMessage: StateFlow<String?> = _operationMessage
 
+    /** Charge une référence bibliographique par son ID */
+    suspend fun loadBiblioRefById(biblioRefId: String) {
+        _actionInProgress.value = true
+
+        try {
+            val biblioRef = repository.getBiblioRefById(biblioRefId)
+
+            if (biblioRef != null) {
+                _currentBiblioRef.value = biblioRef
+
+                // Initialiser les champs d'édition
+                firstAuthor.value = biblioRef.firstAuthor
+                year.value = if (biblioRef.year > 1800) biblioRef.year.toString() else ""
+                completeRef.value = biblioRef.completeRef
+                comments.value = biblioRef.comments
+
+                // Vérifier la validité
+                validateForm()
+
+                println(
+                        "DEBUG BiblioRefViewModel: Référence chargée avec succès: ${biblioRef.firstAuthor}, ${biblioRef.year}"
+                )
+            } else {
+                _operationMessage.value = "Référence non trouvée (ID: $biblioRefId)"
+                println("DEBUG BiblioRefViewModel: Référence non trouvée (ID: $biblioRefId)")
+            }
+        } catch (e: Exception) {
+            _operationMessage.value = "Erreur lors du chargement: ${e.message}"
+            println("DEBUG BiblioRefViewModel: Erreur lors du chargement: ${e.message}")
+            e.printStackTrace()
+        } finally {
+            _actionInProgress.value = false
+        }
+    }
+
     /** Initialise le ViewModel avec une nouvelle référence ou une référence existante */
     fun initForEdit(biblioRef: BiblioRef? = null) {
         val refToEdit = biblioRef ?: BiblioRef()
@@ -139,7 +174,9 @@ class BiblioRefViewModel(private val repository: BiblioRefRepository) {
                 val isNewReference = _currentBiblioRef.value.uuid.isBlank()
 
                 if (isNewReference) {
+                    println("DEBUG ViewModel: Insertion d'une nouvelle référence")
                     repository.insertBiblioRef(biblioRefToSave)
+
                     _operationMessage.value = "Référence ajoutée avec succès"
                     println("DEBUG: Référence ajoutée: ${biblioRefToSave.firstAuthor}")
                 } else {

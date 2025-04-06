@@ -100,3 +100,46 @@ fun TopBar(
                 }
         }
 }
+
+/** TopBar avec seulement un titre et un bouton de retour, sans bouton de paramètres */
+@Composable
+fun TopBarSimple(
+        title: String,
+        onNavigateBack: () -> Unit,
+        modifier: Modifier = Modifier,
+        actions: @Composable RowScope.() -> Unit = {}
+) {
+        Row(
+                modifier = modifier.fillMaxWidth().padding(AppSizes.paddingMedium),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+        ) {
+                Row(
+                        horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall),
+                        verticalAlignment = Alignment.CenterVertically
+                ) {
+                        IconButton(
+                                onClick = onNavigateBack,
+                                modifier = Modifier.size(AppSizes.iconSizeLarge)
+                        ) {
+                                Icon(
+                                        Icons.Default.ArrowBack,
+                                        contentDescription = "Retour",
+                                        modifier = Modifier.size(AppSizes.iconSizeMedium)
+                                )
+                        }
+                        Text(
+                                text = title,
+                                style =
+                                        MaterialTheme.typography.h5.copy(
+                                                fontSize = AppSizes.fontSizeH5
+                                        )
+                        )
+                }
+
+                Row(
+                        horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall),
+                        verticalAlignment = Alignment.CenterVertically
+                ) { actions() }
+        }
+}

@@ -10,18 +10,10 @@ import fr.vetbrain.vetnutri_mp.Data.AnimalEv
 import fr.vetbrain.vetnutri_mp.DataBase.AppDatabase
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationManager
-import fr.vetbrain.vetnutri_mp.Repository.AlimentRepository
-import fr.vetbrain.vetnutri_mp.Repository.DatabaseAnimalRepository
-import fr.vetbrain.vetnutri_mp.Repository.DatabaseConsultationRepository
-import fr.vetbrain.vetnutri_mp.Repository.DatabaseFoodRepository
+import fr.vetbrain.vetnutri_mp.Repository.*
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriTheme
 import fr.vetbrain.vetnutri_mp.View.*
-import fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailViewModel
-import fr.vetbrain.vetnutri_mp.ViewModel.AnimalListViewModel
-import fr.vetbrain.vetnutri_mp.ViewModel.CreateAnimalViewModel
-import fr.vetbrain.vetnutri_mp.ViewModel.FoodEditViewModel
-import fr.vetbrain.vetnutri_mp.ViewModel.FoodListViewModel
-import fr.vetbrain.vetnutri_mp.ViewModel.SettingsViewModel
+import fr.vetbrain.vetnutri_mp.ViewModel.*
 import kotlinx.coroutines.runBlocking
 
 // Fonctions d'importation de fichiers - implémentées par plateforme spécifique
@@ -70,6 +62,11 @@ fun App(appDatabase: AppDatabase) {
         DatabaseConsultationRepository(appDatabase.consultationDao(), foodRepository)
     }
 
+    // Création du repository pour les références bibliographiques
+    val biblioRefRepository = remember {
+        fr.vetbrain.vetnutri_mp.Repository.InMemoryBiblioRefRepository()
+    }
+
     // Création des ViewModels
     val animalListViewModel = remember { AnimalListViewModel(animalRepository) }
     val animalDetailViewModel = remember {
@@ -79,6 +76,10 @@ fun App(appDatabase: AppDatabase) {
     val settingsViewModel = remember { SettingsViewModel(animalRepository, foodRepository) }
     val foodListViewModel = remember { FoodListViewModel(foodRepository) }
     var selectedFoodUuid by remember { mutableStateOf<String?>(null) }
+
+    // ViewModel et état pour les références bibliographiques
+    val biblioRefViewModel = remember { BiblioRefViewModel(biblioRefRepository) }
+    var selectedBiblioRefId by remember { mutableStateOf<String?>(null) }
 
     // Création des view models en fonction des besoins de la navigation
     val foodEditViewModel by
@@ -257,15 +258,30 @@ fun App(appDatabase: AppDatabase) {
                         )
                     }
                     Screen.BiblioRefList -> {
-                        Column(modifier = Modifier.fillMaxSize()) {
-                            TopBar(
-                                    title = "Gestion des références bibliographiques",
-                                    onBackClick = { currentScreen = Screen.List },
-                                    onSettingsClick = { showSettings = true }
-                            )
-
-                            BiblioRefView()
-                        }
+                        BiblioRefListView(
+                                viewModel = biblioRefViewModel,
+                                onNavigateBack = { currentScreen = Screen.List },
+                                onEditBiblioRef = { biblioRefId ->
+                                    selectedBiblioRefId = biblioRefId
+                                    currentScreen = Screen.BiblioRefEdit
+                                },
+                                onCreateBiblioRef = {
+                                    selectedBiblioRefId = null
+                                    currentScreen = Screen.BiblioRefEdit
+                                },
+                                modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                    Screen.BiblioRefEdit -> {
+                        BiblioRefEditView(
+                                viewModel = biblioRefViewModel,
+                                biblioRefId = selectedBiblioRefId,
+                                onNavigateBack = {
+                                    selectedBiblioRefId = null
+                                    currentScreen = Screen.BiblioRefList
+                                },
+                                modifier = Modifier.fillMaxSize()
+                        )
                     }
                 }
             }
@@ -414,4 +430,5 @@ private sealed class Screen {
     object FoodList : Screen()
     object FoodEdit : Screen()
     object BiblioRefList : Screen()
+    object BiblioRefEdit : Screen()
 }
