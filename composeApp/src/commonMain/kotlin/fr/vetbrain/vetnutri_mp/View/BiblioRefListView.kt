@@ -36,6 +36,10 @@ fun BiblioRefListView(
     // État pour la référence à supprimer
     var refToDelete by remember { mutableStateOf<BiblioRef?>(null) }
 
+    // Ajout d'un LaunchedEffect pour forcer le rechargement des données à chaque fois que la vue
+    // est affichée
+    LaunchedEffect(Unit) { viewModel.refreshBiblioRefs() }
+
     LaunchedEffect(biblioRefs) {
         println("DEBUG BiblioRefListView: Liste mise à jour - ${biblioRefs.size} références")
     }

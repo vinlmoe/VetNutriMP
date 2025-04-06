@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 /** ViewModel pour la gestion des références bibliographiques */
 class BiblioRefViewModel(private val repository: BiblioRefRepository) {
@@ -45,6 +46,25 @@ class BiblioRefViewModel(private val repository: BiblioRefRepository) {
     // Message d'erreur ou de succès
     private val _operationMessage = MutableStateFlow<String?>(null)
     val operationMessage: StateFlow<String?> = _operationMessage
+
+    /** Force le rechargement des références depuis le repository */
+    fun refreshBiblioRefs() {
+        viewModelScope.launch {
+            try {
+                println("DEBUG BiblioRefViewModel: Rafraîchissement forcé des références")
+                // Utilisation d'une collecte avec timeout pour éviter de bloquer indéfiniment
+                kotlinx.coroutines.withTimeoutOrNull(2000) {
+                    repository.getAllBiblioRefs().collect { refs ->
+                        println(
+                                "DEBUG BiblioRefViewModel: ${refs.size} références récupérées lors du rafraîchissement"
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                println("DEBUG BiblioRefViewModel: Erreur lors du rafraîchissement: ${e.message}")
+            }
+        }
+    }
 
     /** Charge une référence bibliographique par son ID */
     suspend fun loadBiblioRefById(biblioRefId: String) {
@@ -183,17 +203,20 @@ class BiblioRefViewModel(private val repository: BiblioRefRepository) {
                 // Déterminer s'il s'agit d'une création ou d'une mise à jour
                 val isNewReference = _currentBiblioRef.value.uuid.isBlank()
 
-                if (isNewReference) {
-                    println("DEBUG ViewModel: Insertion d'une nouvelle référence")
-                    repository.insertBiblioRef(biblioRefToSave)
+                // Toujours utiliser insertBiblioRef qui gère correctement la création et la mise à
+                // jour avec onConflictStrategy.REPLACE
+                repository.insertBiblioRef(biblioRefToSave)
 
+                if (isNewReference) {
                     _operationMessage.value = "Référence ajoutée avec succès"
                     println("DEBUG: Référence ajoutée: ${biblioRefToSave.firstAuthor}")
                 } else {
-                    repository.updateBiblioRef(biblioRefToSave)
                     _operationMessage.value = "Référence mise à jour avec succès"
                     println("DEBUG: Référence mise à jour: ${biblioRefToSave.firstAuthor}")
                 }
+
+                // Forcer le rafraîchissement des références pour mettre à jour la liste
+                refreshBiblioRefs()
 
                 // Réinitialiser le formulaire après sauvegarde
                 initForEdit()

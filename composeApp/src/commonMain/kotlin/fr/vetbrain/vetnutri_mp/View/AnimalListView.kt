@@ -35,6 +35,7 @@ fun AnimalListView(
         onImportFoods: () -> Unit,
         onShowFoodList: () -> Unit,
         onShowBiblioRefs: () -> Unit = {},
+        onShowEquations: () -> Unit = {},
         modifier: Modifier = Modifier
 ) {
         val animals: List<AnimalEv> = viewModel.animals.collectAsState().value
@@ -88,16 +89,16 @@ fun AnimalListView(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                // Bouton pour accéder à la liste des aliments
-                Button(
-                        onClick = onShowFoodList,
+                        // Bouton pour accéder à la liste des aliments
+                        Button(
+                                onClick = onShowFoodList,
                                 modifier = Modifier.weight(1f),
-                        colors =
-                                ButtonDefaults.buttonColors(
-                                        backgroundColor = VetNutriColors.Primary,
-                                        contentColor = VetNutriColors.OnPrimary
-                                )
-                ) { Text("Liste des aliments") }
+                                colors =
+                                        ButtonDefaults.buttonColors(
+                                                backgroundColor = VetNutriColors.Primary,
+                                                contentColor = VetNutriColors.OnPrimary
+                                        )
+                        ) { Text("Liste des aliments") }
 
                         // Bouton pour accéder à la liste des références bibliographiques
                         Button(
@@ -110,6 +111,19 @@ fun AnimalListView(
                                         )
                         ) { Text("Références biblio") }
                 }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Bouton pour accéder à la liste des équations
+                Button(
+                        onClick = onShowEquations,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors =
+                                ButtonDefaults.buttonColors(
+                                        backgroundColor = VetNutriColors.Primary,
+                                        contentColor = VetNutriColors.OnPrimary
+                                )
+                ) { Text("Équations") }
 
                 Spacer(modifier = Modifier.height(16.dp))
 

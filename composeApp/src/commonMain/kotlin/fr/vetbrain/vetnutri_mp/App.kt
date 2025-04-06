@@ -7,6 +7,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Components.TopBar
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
+import fr.vetbrain.vetnutri_mp.Data.BiblioRef
 import fr.vetbrain.vetnutri_mp.DataBase.AppDatabase
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationManager
@@ -14,12 +15,105 @@ import fr.vetbrain.vetnutri_mp.Repository.*
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriTheme
 import fr.vetbrain.vetnutri_mp.View.*
 import fr.vetbrain.vetnutri_mp.ViewModel.*
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.runBlocking
 
 // Fonctions d'importation de fichiers - implémentées par plateforme spécifique
 expect fun importAnimalsFromFile(viewModel: AnimalListViewModel)
 
 expect fun importFoodsFromFile(viewModel: SettingsViewModel)
+
+/**
+ * Version hybride du repository pour les références bibliographiques qui combine la persistance en
+ * base de données et des références de test préremplies pour débogage
+ */
+class HybridBiblioRefRepository(private val databaseRepo: DatabaseBiblioRefRepository) :
+        BiblioRefRepository {
+    // Initialiser avec quelques références de test
+    private val testRefs =
+            listOf(
+                    BiblioRef(
+                            uuid = "test-1",
+                            firstAuthor = "Dupont",
+                            year = 2020,
+                            completeRef = "Dupont et al., Etude sur les nutriments, 2020",
+                            comments = "Étude importante",
+                            consistent = 1
+                    ),
+                    BiblioRef(
+                            uuid = "test-2",
+                            firstAuthor = "Martin",
+                            year = 2021,
+                            completeRef = "Martin J., Nutrition canine, 2021",
+                            comments = "À vérifier",
+                            consistent = 1
+                    )
+            )
+
+    private val _biblioRefs = MutableStateFlow<List<BiblioRef>>(testRefs)
+
+    init {
+        // Ajouter les références de test à la base de données
+        runBlocking {
+            for (ref in testRefs) {
+                databaseRepo.insertBiblioRef(ref)
+            }
+        }
+    }
+
+    override suspend fun getBiblioRefById(uuid: String): BiblioRef? {
+        // D'abord chercher dans la base de données
+        val dbRef = databaseRepo.getBiblioRefById(uuid)
+        if (dbRef != null) return dbRef
+
+        // Sinon chercher dans les références de test
+        return _biblioRefs.value.find { it.uuid == uuid }
+    }
+
+    override fun getAllBiblioRefs(): Flow<List<BiblioRef>> {
+        // Combiner les données de la base et les références de test
+        return databaseRepo.getAllBiblioRefs()
+    }
+
+    override suspend fun insertBiblioRef(biblioRef: BiblioRef) {
+        // Insérer dans la base de données
+        databaseRepo.insertBiblioRef(biblioRef)
+
+        // Aussi mettre à jour notre cache local pour être sûr
+        val newList = _biblioRefs.value.toMutableList()
+        val existingIndex = newList.indexOfFirst { it.uuid == biblioRef.uuid }
+
+        if (existingIndex >= 0) {
+            newList[existingIndex] = biblioRef
+        } else {
+            newList.add(biblioRef)
+        }
+
+        _biblioRefs.value = newList
+    }
+
+    override suspend fun updateBiblioRef(biblioRef: BiblioRef) {
+        databaseRepo.updateBiblioRef(biblioRef)
+
+        // Aussi mettre à jour notre cache local
+        val newList = _biblioRefs.value.toMutableList()
+        val existingIndex = newList.indexOfFirst { it.uuid == biblioRef.uuid }
+
+        if (existingIndex >= 0) {
+            newList[existingIndex] = biblioRef
+        }
+
+        _biblioRefs.value = newList
+    }
+
+    override suspend fun deleteBiblioRef(biblioRef: BiblioRef) {
+        databaseRepo.deleteBiblioRef(biblioRef)
+
+        // Aussi mettre à jour notre cache local
+        _biblioRefs.value = _biblioRefs.value.filter { it.uuid != biblioRef.uuid }
+    }
+}
 
 @Composable
 fun App(appDatabase: AppDatabase) {
@@ -62,8 +156,12 @@ fun App(appDatabase: AppDatabase) {
         DatabaseConsultationRepository(appDatabase.consultationDao(), foodRepository)
     }
 
-    // Création du repository pour les références bibliographiques
-    val biblioRefRepository = remember { DatabaseBiblioRefRepository(appDatabase.biblioRefDao()) }
+    // Création du repository pour les références bibliographiques - version hybride
+    val databaseBiblioRefRepo = remember { DatabaseBiblioRefRepository(appDatabase.biblioRefDao()) }
+    val biblioRefRepository = remember { HybridBiblioRefRepository(databaseBiblioRefRepo) }
+
+    // Création du repository pour les équations (en mémoire pour l'instant)
+    val equationRepository = remember { InMemoryEquationRepository() }
 
     // Création des ViewModels
     val animalListViewModel = remember { AnimalListViewModel(animalRepository) }
@@ -78,6 +176,10 @@ fun App(appDatabase: AppDatabase) {
     // ViewModel et état pour les références bibliographiques
     val biblioRefViewModel = remember { BiblioRefViewModel(biblioRefRepository) }
     var selectedBiblioRefId by remember { mutableStateOf<String?>(null) }
+
+    // ViewModel et état pour les équations
+    val equationViewModel = remember { EquationViewModel(equationRepository, biblioRefRepository) }
+    var selectedEquationId by remember { mutableStateOf<String?>(null) }
 
     // Création des view models en fonction des besoins de la navigation
     val foodEditViewModel by
@@ -123,6 +225,9 @@ fun App(appDatabase: AppDatabase) {
             // Toujours recharger explicitement la liste des aliments quand on affiche la liste
             println("DEBUG App: Rechargement des aliments lors du changement d'écran vers FoodList")
             foodListViewModel.loadFoods()
+        } else if (currentScreen == Screen.EquationList) {
+            // Recharger la liste des équations
+            equationViewModel.loadEquations()
         }
     }
 
@@ -193,6 +298,7 @@ fun App(appDatabase: AppDatabase) {
                                     onImportFoods = handleImportFoods,
                                     onShowFoodList = { currentScreen = Screen.FoodList },
                                     onShowBiblioRefs = { currentScreen = Screen.BiblioRefList },
+                                    onShowEquations = { currentScreen = Screen.EquationList },
                                     modifier = Modifier.fillMaxWidth().weight(1f)
                             )
                         }
@@ -277,6 +383,32 @@ fun App(appDatabase: AppDatabase) {
                                 onNavigateBack = {
                                     selectedBiblioRefId = null
                                     currentScreen = Screen.BiblioRefList
+                                },
+                                modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                    Screen.EquationList -> {
+                        EquationListView(
+                                viewModel = equationViewModel,
+                                onNavigateBack = { currentScreen = Screen.List },
+                                onEditEquation = { equationId ->
+                                    selectedEquationId = equationId
+                                    currentScreen = Screen.EquationEdit
+                                },
+                                onCreateEquation = {
+                                    selectedEquationId = null
+                                    currentScreen = Screen.EquationEdit
+                                },
+                                modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                    Screen.EquationEdit -> {
+                        EquationEditView(
+                                viewModel = equationViewModel,
+                                equationId = selectedEquationId,
+                                onNavigateBack = {
+                                    selectedEquationId = null
+                                    currentScreen = Screen.EquationList
                                 },
                                 modifier = Modifier.fillMaxSize()
                         )
@@ -429,4 +561,6 @@ private sealed class Screen {
     object FoodEdit : Screen()
     object BiblioRefList : Screen()
     object BiblioRefEdit : Screen()
+    object EquationList : Screen()
+    object EquationEdit : Screen()
 }

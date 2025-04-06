@@ -8,6 +8,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 
 /** Interface définissant les opérations possibles sur les références bibliographiques. */
@@ -156,11 +157,29 @@ class DatabaseBiblioRefRepository(private val biblioRefDao: BiblioRefDao) : Bibl
     }
 
     private suspend fun refreshFromDatabase() {
-        val dbRefs = biblioRefDao.getAllBiblioRefs().map { it.toDomain() }
-        _biblioRefs.value = dbRefs
-        println(
-                "DEBUG DatabaseBiblioRefRepo: ${dbRefs.size} références chargées depuis la base de données"
-        )
+        try {
+            // Récupérer toutes les références de la base de données
+            val allRefs = biblioRefDao.getAllBiblioRefs()
+            println(
+                    "DEBUG DatabaseBiblioRefRepo: SQL exécuté, ${allRefs.size} références trouvées en base"
+            )
+
+            // Convertir en objets du domaine
+            val dbRefs = allRefs.map { it.toDomain() }
+            _biblioRefs.value = dbRefs
+
+            println(
+                    "DEBUG DatabaseBiblioRefRepo: ${dbRefs.size} références chargées depuis la base de données"
+            )
+            if (dbRefs.isNotEmpty()) {
+                println(
+                        "DEBUG DatabaseBiblioRefRepo: Première référence: ${dbRefs[0].firstAuthor}, ${dbRefs[0].year}"
+                )
+            }
+        } catch (e: Exception) {
+            println("DEBUG DatabaseBiblioRefRepo: ERREUR lors du rafraîchissement: ${e.message}")
+            e.printStackTrace()
+        }
     }
 
     override suspend fun getBiblioRefById(uuid: String): BiblioRef? {
@@ -174,11 +193,43 @@ class DatabaseBiblioRefRepository(private val biblioRefDao: BiblioRefDao) : Bibl
     }
 
     override fun getAllBiblioRefs(): Flow<List<BiblioRef>> {
-        return _biblioRefs.asStateFlow()
+        return flow {
+            try {
+                // Émettre d'abord les données en cache
+                emit(_biblioRefs.value)
+
+                // Puis charger depuis la base de données et émettre à nouveau si différent
+                val allRefs = biblioRefDao.getAllBiblioRefs()
+                println(
+                        "DEBUG DatabaseBiblioRefRepo (flow): SQL exécuté, ${allRefs.size} références trouvées en base"
+                )
+
+                val dbRefs = allRefs.map { it.toDomain() }
+                if (dbRefs != _biblioRefs.value) {
+                    _biblioRefs.value = dbRefs
+                    emit(dbRefs)
+                }
+
+                println("DEBUG DatabaseBiblioRefRepo: Flow émis avec ${dbRefs.size} références")
+                if (dbRefs.isNotEmpty()) {
+                    println(
+                            "DEBUG DatabaseBiblioRefRepo: Flow contient: ${dbRefs.joinToString { "${it.firstAuthor}(${it.year})" }}"
+                    )
+                }
+            } catch (e: Exception) {
+                println(
+                        "DEBUG DatabaseBiblioRefRepo: Erreur lors du chargement du flow de références: ${e.message}"
+                )
+                e.printStackTrace()
+
+                // En cas d'erreur, émettre au moins les données en cache
+                emit(_biblioRefs.value)
+            }
+        }
     }
 
     override suspend fun insertBiblioRef(biblioRef: BiblioRef) {
-        println("DEBUG DatabaseBiblioRefRepo: Début insertion référence: ${biblioRef.firstAuthor}")
+        println("DEBUG DatabaseBiblioRefRepo: Mise à jour de référence: ${biblioRef.firstAuthor}")
         println("DEBUG DatabaseBiblioRefRepo: UUID: ${biblioRef.uuid}")
         println("DEBUG DatabaseBiblioRefRepo: Année: ${biblioRef.year}")
         println("DEBUG DatabaseBiblioRefRepo: Référence complète: ${biblioRef.completeRef}")
@@ -186,24 +237,59 @@ class DatabaseBiblioRefRepository(private val biblioRefDao: BiblioRefDao) : Bibl
         println("DEBUG DatabaseBiblioRefRepo: BibTeX: ${biblioRef.bibtex}")
         println("DEBUG DatabaseBiblioRefRepo: Cohérence originale: ${biblioRef.consistent}")
 
-        // S'assurer que le champ consistent a une valeur valide (au moins 1)
-        val safeRef =
-                if (biblioRef.consistent <= 0) {
-                    println("DEBUG DatabaseBiblioRefRepo: Correction du champ consistent (0 -> 1)")
-                    biblioRef.copy(consistent = 1)
-                } else {
-                    biblioRef
-                }
-
         try {
+            // S'assurer que le champ consistent a une valeur valide (au moins 1)
+            val safeRef =
+                    if (biblioRef.consistent <= 0) {
+                        println(
+                                "DEBUG DatabaseBiblioRefRepo: Correction du champ consistent (0 -> 1)"
+                        )
+                        biblioRef.copy(consistent = 1)
+                    } else {
+                        biblioRef
+                    }
+
             // Conversion en entité avec la référence sécurisée
             val entity = safeRef.toEntity()
             println("DEBUG DatabaseBiblioRefRepo: Entité créée avec succès: ${entity.firstAuthor}")
             println("DEBUG DatabaseBiblioRefRepo: Entité consistent: ${entity.consistent}")
 
+            // Vérifier si la référence existe déjà
+            val existingRef = biblioRefDao.getBiblioRefById(safeRef.uuid)
+            println(
+                    "DEBUG DatabaseBiblioRefRepo: Vérification si la référence existe déjà: ${existingRef != null}"
+            )
+
             // Insérer dans la base de données
-            biblioRefDao.insertBiblioRef(entity)
-            println("DEBUG DatabaseBiblioRefRepo: Insertion réussie dans la base de données")
+            if (existingRef != null) {
+                // Si elle existe déjà, mettre à jour
+                println("DEBUG DatabaseBiblioRefRepo: Référence existante, mise à jour")
+                biblioRefDao.updateBiblioRef(entity)
+                println("DEBUG DatabaseBiblioRefRepo: Mise à jour réussie dans la base de données")
+            } else {
+                // Sinon, insérer une nouvelle référence
+                println("DEBUG DatabaseBiblioRefRepo: Nouvelle référence, insertion")
+                biblioRefDao.insertBiblioRef(entity)
+                println("DEBUG DatabaseBiblioRefRepo: Insertion réussie dans la base de données")
+            }
+
+            // Vérifier si l'insertion a fonctionné
+            val verifyRef = biblioRefDao.getBiblioRefById(safeRef.uuid)
+            println(
+                    "DEBUG DatabaseBiblioRefRepo: Vérification post-insertion: ${verifyRef != null}"
+            )
+            if (verifyRef != null) {
+                println(
+                        "DEBUG DatabaseBiblioRefRepo: Référence vérifiée en base: ${verifyRef.firstAuthor}, ${verifyRef.year}"
+                )
+            }
+            
+            // Lister toutes les références après l'insertion
+            val allRefs = biblioRefDao.getAllBiblioRefs()
+            println("DEBUG DatabaseBiblioRefRepo: Après insertion, base contient ${allRefs.size} références:")
+            allRefs.forEach { 
+                println("DEBUG DatabaseBiblioRefRepo: - Référence: ${it.firstAuthor} (${it.year}), UUID: ${it.uuid}")
+            }
 
             // Rafraîchir la liste en mémoire
             refreshFromDatabase()
@@ -217,21 +303,35 @@ class DatabaseBiblioRefRepository(private val biblioRefDao: BiblioRefDao) : Bibl
     override suspend fun updateBiblioRef(biblioRef: BiblioRef) {
         println("DEBUG DatabaseBiblioRefRepo: Mise à jour de référence: ${biblioRef.firstAuthor}")
 
-        // Mettre à jour dans la base de données
-        biblioRefDao.updateBiblioRef(biblioRef.toEntity())
+        try {
+            // Mettre à jour dans la base de données
+            biblioRefDao.updateBiblioRef(biblioRef.toEntity())
+            println("DEBUG DatabaseBiblioRefRepo: Mise à jour réussie dans la base de données")
 
-        // Rafraîchir la liste en mémoire
-        refreshFromDatabase()
+            // Rafraîchir la liste en mémoire
+            refreshFromDatabase()
+        } catch (e: Exception) {
+            println("DEBUG DatabaseBiblioRefRepo: ERREUR lors de la mise à jour: ${e.message}")
+            e.printStackTrace()
+            throw e
+        }
     }
 
     override suspend fun deleteBiblioRef(biblioRef: BiblioRef) {
         println("DEBUG DatabaseBiblioRefRepo: Suppression de référence: ${biblioRef.firstAuthor}")
 
-        // Supprimer de la base de données
-        biblioRefDao.deleteBiblioRef(biblioRef.toEntity())
+        try {
+            // Supprimer de la base de données
+            biblioRefDao.deleteBiblioRef(biblioRef.toEntity())
+            println("DEBUG DatabaseBiblioRefRepo: Suppression réussie dans la base de données")
 
-        // Rafraîchir la liste en mémoire
-        refreshFromDatabase()
+            // Rafraîchir la liste en mémoire
+            refreshFromDatabase()
+        } catch (e: Exception) {
+            println("DEBUG DatabaseBiblioRefRepo: ERREUR lors de la suppression: ${e.message}")
+            e.printStackTrace()
+            throw e
+        }
     }
 
     /** Conversion d'une entité de base de données en objet du domaine */
@@ -266,8 +366,8 @@ class DatabaseBiblioRefRepository(private val biblioRefDao: BiblioRefDao) : Bibl
         val validYear = if (year <= 0) 2000 else year
         val validCompleteRef =
                 if (completeRef.isBlank()) "Référence complète non disponible" else completeRef
-        val validComments = comments // Peut être vide
-        val validBibtex = bibtex // Peut être vide
+        val validComments = comments ?: "" // Convertir null en chaîne vide
+        val validBibtex = bibtex ?: "" // Convertir null en chaîne vide
         val validConsistent = if (consistent <= 0) 1 else consistent
 
         return BiblioRefEntity(

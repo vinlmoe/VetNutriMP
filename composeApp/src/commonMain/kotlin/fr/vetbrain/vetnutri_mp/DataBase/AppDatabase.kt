@@ -53,10 +53,7 @@ expect object AppDatabaseConstructor : RoomDatabaseConstructor<AppDatabase> {
 }
 
 fun getRoomDatabase(builder: RoomDatabase.Builder<AppDatabase>): AppDatabase {
-    return builder
-            // .addMigrations(MIGRATIONS)
-            .fallbackToDestructiveMigration(dropAllTables = true)
-            .setDriver(BundledSQLiteDriver())
+    return builder.setDriver(BundledSQLiteDriver())
             .setQueryCoroutineContext(AppDispatchers.IO)
             .build()
 }
