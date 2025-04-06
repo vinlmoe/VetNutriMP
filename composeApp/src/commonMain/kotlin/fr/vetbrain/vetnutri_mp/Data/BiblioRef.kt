@@ -11,6 +11,7 @@ data class BiblioRef(
         val year: Int = 1800,
         val completeRef: String = "",
         val comments: String = "",
+        val bibtex: String = "",
         val consistent: Int = 1 // 1 = cohérent, 0 = incohérent
 ) {
     /** Constructeur secondaire qui prend un UUID spécifique */
@@ -22,6 +23,7 @@ data class BiblioRef(
             year = 1800,
             completeRef = "",
             comments = "",
+            bibtex = "",
             consistent = 0
     )
 

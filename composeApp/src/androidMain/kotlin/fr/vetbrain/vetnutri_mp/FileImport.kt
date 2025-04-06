@@ -2,9 +2,9 @@ package fr.vetbrain.vetnutri_mp
 
 import android.net.Uri
 import fr.vetbrain.vetnutri_mp.Localization.AndroidContext
+import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalListViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.SettingsViewModel
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
@@ -39,7 +39,7 @@ actual fun importFoodsFromFile(viewModel: SettingsViewModel) {
 
 /** Fonction utilitaire pour lire le contenu d'un fichier à partir d'un URI. */
 suspend fun readFileContent(uri: Uri): String =
-        withContext(Dispatchers.IO) {
+        withContext(AppDispatchers.IO) {
             val inputStream = AndroidContext.appContext.contentResolver.openInputStream(uri)
             inputStream?.bufferedReader()?.use { it.readText() } ?: ""
         }

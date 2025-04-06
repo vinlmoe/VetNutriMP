@@ -5,9 +5,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -109,15 +106,12 @@ fun BiblioRefListView(
                     onValueChange = { searchQuery.value = it },
                     label = { Text("Rechercher une référence") },
                     leadingIcon = {
-                        Icon(imageVector = Icons.Default.Search, contentDescription = "Rechercher")
+                        Icon(imageVector = AppIcons.Search, contentDescription = "Rechercher")
                     },
                     trailingIcon = {
                         if (searchQuery.value.isNotEmpty()) {
                             IconButton(onClick = { searchQuery.value = "" }) {
-                                Icon(
-                                        imageVector = Icons.Default.Clear,
-                                        contentDescription = "Effacer"
-                                )
+                                Icon(imageVector = AppIcons.Close, contentDescription = "Effacer")
                             }
                         }
                     },

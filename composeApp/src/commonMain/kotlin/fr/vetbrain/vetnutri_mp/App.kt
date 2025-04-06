@@ -63,9 +63,7 @@ fun App(appDatabase: AppDatabase) {
     }
 
     // Création du repository pour les références bibliographiques
-    val biblioRefRepository = remember {
-        fr.vetbrain.vetnutri_mp.Repository.InMemoryBiblioRefRepository()
-    }
+    val biblioRefRepository = remember { DatabaseBiblioRefRepository(appDatabase.biblioRefDao()) }
 
     // Création des ViewModels
     val animalListViewModel = remember { AnimalListViewModel(animalRepository) }

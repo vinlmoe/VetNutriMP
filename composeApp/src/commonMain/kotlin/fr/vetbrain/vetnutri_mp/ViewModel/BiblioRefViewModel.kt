@@ -33,6 +33,7 @@ class BiblioRefViewModel(private val repository: BiblioRefRepository) {
     val year = mutableStateOf("")
     val completeRef = mutableStateOf("")
     val comments = mutableStateOf("")
+    val bibtex = mutableStateOf("")
 
     // État de validation du formulaire
     val isValid = mutableStateOf(false)
@@ -60,6 +61,7 @@ class BiblioRefViewModel(private val repository: BiblioRefRepository) {
                 year.value = if (biblioRef.year > 1800) biblioRef.year.toString() else ""
                 completeRef.value = biblioRef.completeRef
                 comments.value = biblioRef.comments
+                bibtex.value = biblioRef.bibtex
 
                 // Vérifier la validité
                 validateForm()
@@ -90,6 +92,7 @@ class BiblioRefViewModel(private val repository: BiblioRefRepository) {
         year.value = if (refToEdit.year > 1800) refToEdit.year.toString() else ""
         completeRef.value = refToEdit.completeRef
         comments.value = refToEdit.comments
+        bibtex.value = refToEdit.bibtex
 
         // Vérifier la validité initiale
         validateForm()
@@ -129,6 +132,11 @@ class BiblioRefViewModel(private val repository: BiblioRefRepository) {
         comments.value = value
     }
 
+    /** Met à jour la valeur du champ bibtex */
+    fun updateBibtex(value: String) {
+        bibtex.value = value
+    }
+
     /** Sauvegarde la référence bibliographique actuelle */
     fun saveBiblioRef() {
         if (!isValid.value) {
@@ -148,6 +156,7 @@ class BiblioRefViewModel(private val repository: BiblioRefRepository) {
                             year = year.value.toIntOrNull() ?: 1800,
                             completeRef = completeRef.value,
                             comments = comments.value,
+                            bibtex = bibtex.value,
                             consistent = 1 // Supposé cohérent lors de la création par l'utilisateur
                     )
                 } else {
@@ -158,6 +167,7 @@ class BiblioRefViewModel(private val repository: BiblioRefRepository) {
                             year = year.value.toIntOrNull() ?: 1800,
                             completeRef = completeRef.value,
                             comments = comments.value,
+                            bibtex = bibtex.value,
                             consistent =
                                     1 // Supposé cohérent lors de la mise à jour par l'utilisateur
                     )

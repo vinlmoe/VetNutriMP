@@ -118,6 +118,15 @@ interface FoodDao {
 
     @Query("SELECT * FROM INDICATIONS_ALIMENTS WHERE refAliment = :alimentUuid")
     suspend fun getIndicationsForAliment(alimentUuid: String): List<IndicationAlimentEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertEspeces(especes: List<EspeceAlimentEntity>)
+
+    @Query("SELECT * FROM ESPECES_ALIMENTS WHERE refAliment = :alimentUuid")
+    suspend fun getEspecesForAliment(alimentUuid: String): List<EspeceAlimentEntity>
+
+    @Query("DELETE FROM ESPECES_ALIMENTS WHERE refAliment = :alimentUuid")
+    suspend fun deleteEspecesForAliment(alimentUuid: String)
 }
 
 @Dao
@@ -132,4 +141,27 @@ interface NutrientValueDao {
 
     @Query("DELETE FROM NUTRIENT_VALUES WHERE refAliment = :alimentUuid")
     suspend fun deleteAllNutrientValuesForAliment(alimentUuid: String)
+}
+
+/** DAO pour accéder aux références bibliographiques dans la base de données */
+@Dao
+interface BiblioRefDao {
+    @Query("SELECT * FROM BIBLIO_REFS") suspend fun getAllBiblioRefs(): List<BiblioRefEntity>
+
+    @Query("SELECT * FROM BIBLIO_REFS WHERE uuid = :uuid")
+    suspend fun getBiblioRefById(uuid: String): BiblioRefEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertBiblioRef(biblioRef: BiblioRefEntity)
+
+    @Update suspend fun updateBiblioRef(biblioRef: BiblioRefEntity)
+
+    @Delete suspend fun deleteBiblioRef(biblioRef: BiblioRefEntity)
+
+    @Query("DELETE FROM BIBLIO_REFS") suspend fun deleteAllBiblioRefs()
+
+    @Query(
+            "SELECT * FROM BIBLIO_REFS WHERE firstAuthor LIKE '%' || :query || '%' OR completeRef LIKE '%' || :query || '%' OR comments LIKE '%' || :query || '%'"
+    )
+    suspend fun searchBiblioRefs(query: String): List<BiblioRefEntity>
 }

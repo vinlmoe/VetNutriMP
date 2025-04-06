@@ -818,13 +818,54 @@ class DatabaseFoodRepository(
      */
     override suspend fun insertFood(food: AlimentEv) {
         withContext(AppDispatchers.IO) {
-            // Convertir en FoodEntity et insérer
-            foodDao.insert(food.toFoodEntity())
+            try {
+                // Convertir en FoodEntity et insérer
+                val foodEntity = food.toFoodEntity().copy(RefRation = null)
+                foodDao.insert(foodEntity)
+                println(
+                        "DEBUG DatabaseFoodRepository: Aliment inséré avec succès: ${foodEntity.nameDef}"
+                )
 
-            // Traiter les valeurs nutritionnelles
-            val nutrientValues = food.valMap.toNutrientValueEntities(food.uuid)
-            if (nutrientValueDao != null && nutrientValues.isNotEmpty()) {
-                nutrientValueDao.insertNutrientValues(nutrientValues)
+                // Ajout d'un espèce par défaut "AUTRE" si la liste est vide pour éviter l'erreur de
+                // clé étrangère
+                if (food.especes.isEmpty()) {
+                    println(
+                            "DEBUG DatabaseFoodRepository: Aucune espèce spécifiée, l'insertion d'espèce sera ignorée"
+                    )
+                    // Pas d'insertion d'espèce, on évite l'erreur de clé étrangère
+                } else {
+                    // Insérer les espèces associées si disponibles
+                    val especeEntities =
+                            food.especes.map { espece ->
+                                fr.vetbrain.vetnutri_mp.DataBase.EspeceAlimentEntity(
+                                        refAliment = food.uuid,
+                                        espece = espece
+                                )
+                            }
+                    if (especeEntities.isNotEmpty()) {
+                        foodDao.insertEspeces(especeEntities)
+                        println(
+                                "DEBUG DatabaseFoodRepository: ${especeEntities.size} espèces insérées"
+                        )
+                    }
+                }
+
+                // Traiter les valeurs nutritionnelles
+                val nutrientValues = food.valMap.toNutrientValueEntities(food.uuid)
+                if (nutrientValueDao != null && nutrientValues.isNotEmpty()) {
+                    nutrientValueDao.insertNutrientValues(nutrientValues)
+                    println(
+                            "DEBUG DatabaseFoodRepository: ${nutrientValues.size} valeurs nutritionnelles insérées"
+                    )
+                }
+
+                println("DEBUG DatabaseFoodRepository: Insertion de l'aliment terminée avec succès")
+            } catch (e: Exception) {
+                println(
+                        "DEBUG DatabaseFoodRepository: ERREUR lors de l'insertion de l'aliment: ${e.message}"
+                )
+                e.printStackTrace()
+                throw e
             }
         }
     }
@@ -837,13 +878,30 @@ class DatabaseFoodRepository(
     override suspend fun getFood(uuid: String): AlimentEv? {
         return withContext(AppDispatchers.IO) {
             val foodEntity = foodDao.getFoodById(uuid) ?: return@withContext null
+
+            // Récupérer les espèces
+            val especeEntities =
+                    try {
+                        foodDao.getEspecesForAliment(uuid)
+                    } catch (e: Exception) {
+                        println(
+                                "DEBUG DatabaseFoodRepository: Erreur lors de la récupération des espèces: ${e.message}"
+                        )
+                        emptyList()
+                    }
+
+            // Récupérer les valeurs nutritionnelles
             val nutrientValues =
                     if (nutrientValueDao != null) {
                         nutrientValueDao.getNutrientValues(uuid)
                     } else {
                         emptyList()
                     }
-            return@withContext foodEntity.toAlimentEv(nutrientValues = nutrientValues)
+
+            return@withContext foodEntity.toAlimentEv(
+                    especes = especeEntities,
+                    nutrientValues = nutrientValues
+            )
         }
     }
 
@@ -914,6 +972,34 @@ class DatabaseFoodRepository(
                     println(
                             "DEBUG DatabaseFoodRepository: Entité principale mise à jour sans référence à la ration"
                     )
+                }
+
+                // Supprimer les anciennes espèces
+                try {
+                    foodDao.deleteEspecesForAliment(food.uuid)
+                    println("DEBUG DatabaseFoodRepository: Anciennes espèces supprimées")
+
+                    // Ajouter les nouvelles espèces si disponibles
+                    if (food.especes.isNotEmpty()) {
+                        val especeEntities =
+                                food.especes.map { espece ->
+                                    fr.vetbrain.vetnutri_mp.DataBase.EspeceAlimentEntity(
+                                            refAliment = food.uuid,
+                                            espece = espece
+                                    )
+                                }
+                        foodDao.insertEspeces(especeEntities)
+                        println(
+                                "DEBUG DatabaseFoodRepository: ${especeEntities.size} nouvelles espèces ajoutées"
+                        )
+                    } else {
+                        println("DEBUG DatabaseFoodRepository: Aucune espèce à ajouter")
+                    }
+                } catch (e: Exception) {
+                    println(
+                            "DEBUG DatabaseFoodRepository: Erreur lors de la mise à jour des espèces: ${e.message}"
+                    )
+                    e.printStackTrace()
                 }
 
                 // Supprimer toutes les anciennes valeurs nutritionnelles quelle que soit la

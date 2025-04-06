@@ -15,7 +15,7 @@ import kotlinx.serialization.Serializable
                                 childColumns = ["RefRation"],
                                 onDelete = ForeignKey.SET_NULL
                         )],
-        indices = [Index("RefRation"), Index(value = ["uuid", "RefRation"], unique = true)]
+        indices = [Index("RefRation"), Index(value = ["uuid"], unique = true)]
 )
 data class FoodEntity(
         @PrimaryKey val uuid: String,
@@ -415,3 +415,16 @@ data class AlimentReferenceEntity(
         primaryKeys = ["refAliment", "nutrientLabel"]
 )
 data class NutrientValueEntity(val refAliment: String, val nutrientLabel: String, val value: Float)
+
+/** Entité pour la table des références bibliographiques */
+@Serializable
+@Entity(tableName = "BIBLIO_REFS")
+data class BiblioRefEntity(
+        @PrimaryKey val uuid: String,
+        val firstAuthor: String,
+        val year: Int,
+        val completeRef: String,
+        val comments: String,
+        val bibtex: String,
+        val consistent: Int
+)

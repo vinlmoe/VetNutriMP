@@ -511,6 +511,32 @@ java.lang.NoClassDefFoundError: android/os/Looper
    - Pour Desktop : Utilisez `Dispatchers.Default` ou `Dispatchers.IO`
    - Pour Android : Utilisez `Dispatchers.Main.immediate` lorsque disponible
 
+4. **Repositories et dispatchers** : Dans les repositories, utilisez également le `PlatformDispatcher` pour les coroutines, plutôt que d'utiliser directement `Dispatchers.IO`.
+
+   ```kotlin
+   // À faire
+   class MonRepository(private val dao: MonDao) {
+       private val dispatcher = PlatformDispatcher().provideMainDispatcher()
+       
+       init {
+           CoroutineScope(dispatcher).launch {
+               // Initialisation, chargement de données, etc.
+           }
+       }
+       
+       // ...
+   }
+   
+   // À éviter
+   class MonRepository(private val dao: MonDao) {
+       init {
+           CoroutineScope(Dispatchers.IO).launch {
+               // Risque d'erreurs sur certaines plateformes
+           }
+       }
+   }
+   ```
+
 ### Implémentation recommandée
 
 ```kotlin
@@ -530,7 +556,7 @@ actual class PlatformDispatcher {
 }
 ```
 
-Cette approche assure que vos ViewModels et autres composants utilisant des coroutines fonctionneront correctement sur toutes les plateformes supportées.
+Cette approche assure que vos ViewModels et repositories fonctionneront correctement sur toutes les plateformes ciblées par l'application.
 
 **Important** : Ne jamais utiliser directement `Dispatchers.Main` dans le code commun sans passer par un wrapper multiplateforme. 
 

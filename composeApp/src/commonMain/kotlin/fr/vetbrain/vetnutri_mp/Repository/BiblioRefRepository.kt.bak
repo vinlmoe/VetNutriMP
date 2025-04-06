@@ -178,40 +178,13 @@ class DatabaseBiblioRefRepository(private val biblioRefDao: BiblioRefDao) : Bibl
     }
 
     override suspend fun insertBiblioRef(biblioRef: BiblioRef) {
-        println("DEBUG DatabaseBiblioRefRepo: Début insertion référence: ${biblioRef.firstAuthor}")
-        println("DEBUG DatabaseBiblioRefRepo: UUID: ${biblioRef.uuid}")
-        println("DEBUG DatabaseBiblioRefRepo: Année: ${biblioRef.year}")
-        println("DEBUG DatabaseBiblioRefRepo: Référence complète: ${biblioRef.completeRef}")
-        println("DEBUG DatabaseBiblioRefRepo: Commentaires: ${biblioRef.comments}")
-        println("DEBUG DatabaseBiblioRefRepo: BibTeX: ${biblioRef.bibtex}")
-        println("DEBUG DatabaseBiblioRefRepo: Cohérence originale: ${biblioRef.consistent}")
+        println("DEBUG DatabaseBiblioRefRepo: Insertion de référence: ${biblioRef.firstAuthor}")
 
-        // S'assurer que le champ consistent a une valeur valide (au moins 1)
-        val safeRef =
-                if (biblioRef.consistent <= 0) {
-                    println("DEBUG DatabaseBiblioRefRepo: Correction du champ consistent (0 -> 1)")
-                    biblioRef.copy(consistent = 1)
-                } else {
-                    biblioRef
-                }
+        // Insérer dans la base de données
+        biblioRefDao.insertBiblioRef(biblioRef.toEntity())
 
-        try {
-            // Conversion en entité avec la référence sécurisée
-            val entity = safeRef.toEntity()
-            println("DEBUG DatabaseBiblioRefRepo: Entité créée avec succès: ${entity.firstAuthor}")
-            println("DEBUG DatabaseBiblioRefRepo: Entité consistent: ${entity.consistent}")
-
-            // Insérer dans la base de données
-            biblioRefDao.insertBiblioRef(entity)
-            println("DEBUG DatabaseBiblioRefRepo: Insertion réussie dans la base de données")
-
-            // Rafraîchir la liste en mémoire
-            refreshFromDatabase()
-        } catch (e: Exception) {
-            println("DEBUG DatabaseBiblioRefRepo: ERREUR lors de l'insertion: ${e.message}")
-            e.printStackTrace()
-            throw e
-        }
+        // Rafraîchir la liste en mémoire
+        refreshFromDatabase()
     }
 
     override suspend fun updateBiblioRef(biblioRef: BiblioRef) {
@@ -249,35 +222,14 @@ class DatabaseBiblioRefRepository(private val biblioRefDao: BiblioRefDao) : Bibl
 
     /** Conversion d'un objet du domaine en entité de base de données */
     private fun BiblioRef.toEntity(): BiblioRefEntity {
-        println("DEBUG DatabaseBiblioRefRepo: toEntity - UUID: $uuid")
-        println("DEBUG DatabaseBiblioRefRepo: toEntity - Premier auteur: $firstAuthor")
-        println("DEBUG DatabaseBiblioRefRepo: toEntity - Année: $year")
-        println(
-                "DEBUG DatabaseBiblioRefRepo: toEntity - Longueur référence complète: ${completeRef.length}"
-        )
-        println(
-                "DEBUG DatabaseBiblioRefRepo: toEntity - Longueur commentaires: ${comments?.length ?: 0}"
-        )
-        println("DEBUG DatabaseBiblioRefRepo: toEntity - Longueur bibtex: ${bibtex?.length ?: 0}")
-        println("DEBUG DatabaseBiblioRefRepo: toEntity - Valeur consistent: $consistent")
-
-        val validUuid = if (uuid.isBlank()) java.util.UUID.randomUUID().toString() else uuid
-        val validFirstAuthor = if (firstAuthor.isBlank()) "Auteur inconnu" else firstAuthor
-        val validYear = if (year <= 0) 2000 else year
-        val validCompleteRef =
-                if (completeRef.isBlank()) "Référence complète non disponible" else completeRef
-        val validComments = comments // Peut être vide
-        val validBibtex = bibtex // Peut être vide
-        val validConsistent = if (consistent <= 0) 1 else consistent
-
         return BiblioRefEntity(
-                uuid = validUuid,
-                firstAuthor = validFirstAuthor,
-                year = validYear,
-                completeRef = validCompleteRef,
-                comments = validComments,
-                bibtex = validBibtex,
-                consistent = validConsistent
+                uuid = uuid,
+                firstAuthor = firstAuthor,
+                year = year,
+                completeRef = completeRef,
+                comments = comments,
+                bibtex = bibtex,
+                consistent = consistent
         )
     }
 }

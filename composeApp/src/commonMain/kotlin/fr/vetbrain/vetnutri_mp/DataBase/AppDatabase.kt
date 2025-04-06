@@ -6,8 +6,7 @@ import androidx.room.RoomDatabase
 import androidx.room.RoomDatabaseConstructor
 import androidx.room.TypeConverters
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.IO
+import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 
 /**
  * Base de données Room pour KMP. Cette classe définit la structure de la base de données et ses
@@ -25,8 +24,9 @@ import kotlinx.coroutines.IO
                         IndicationAlimentEntity::class,
                         SupplementalVariableEntity::class,
                         FoodEntity::class,
-                        NutrientValueEntity::class],
-        version = 9,
+                        NutrientValueEntity::class,
+                        BiblioRefEntity::class],
+        version = 11,
         exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -36,6 +36,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun animalDao(): AnimalDao
     abstract fun consultationDao(): ConsultationDao
     abstract fun nutrientValueDao(): NutrientValueDao
+    abstract fun biblioRefDao(): BiblioRefDao
 
     companion object {
         const val DATABASE_NAME = "vetnutri.db"
@@ -56,6 +57,6 @@ fun getRoomDatabase(builder: RoomDatabase.Builder<AppDatabase>): AppDatabase {
             // .addMigrations(MIGRATIONS)
             .fallbackToDestructiveMigration(dropAllTables = true)
             .setDriver(BundledSQLiteDriver())
-            .setQueryCoroutineContext(Dispatchers.IO)
+            .setQueryCoroutineContext(AppDispatchers.IO)
             .build()
 }

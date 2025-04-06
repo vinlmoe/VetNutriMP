@@ -88,16 +88,16 @@ fun AnimalListView(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                        // Bouton pour accéder à la liste des aliments
-                        Button(
-                                onClick = onShowFoodList,
+                // Bouton pour accéder à la liste des aliments
+                Button(
+                        onClick = onShowFoodList,
                                 modifier = Modifier.weight(1f),
-                                colors =
-                                        ButtonDefaults.buttonColors(
-                                                backgroundColor = VetNutriColors.Primary,
-                                                contentColor = VetNutriColors.OnPrimary
-                                        )
-                        ) { Text("Liste des aliments") }
+                        colors =
+                                ButtonDefaults.buttonColors(
+                                        backgroundColor = VetNutriColors.Primary,
+                                        contentColor = VetNutriColors.OnPrimary
+                                )
+                ) { Text("Liste des aliments") }
 
                         // Bouton pour accéder à la liste des références bibliographiques
                         Button(
