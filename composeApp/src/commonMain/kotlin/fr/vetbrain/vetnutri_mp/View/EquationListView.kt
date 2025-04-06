@@ -46,31 +46,50 @@ fun EquationListView(
     // Effet pour charger les équations au lancement
     LaunchedEffect(Unit) { viewModel.loadEquations() }
 
-    Column(modifier = modifier.fillMaxSize()) {
-        TopBarSimple(
-                title = "Liste des équations",
-                onNavigateBack = onNavigateBack,
-                actions = {
-                    IconButton(onClick = onCreateEquation) {
-                        Icon(
-                                imageVector = AppIcons.Add,
-                                contentDescription = "Ajouter une équation",
-                                tint = VetNutriColors.OnPrimary
-                        )
-                    }
+    Scaffold(
+            topBar = {
+                TopBarSimple(
+                        title = "Liste des équations",
+                        onNavigateBack = onNavigateBack,
+                        actions = {
+                            IconButton(onClick = onCreateEquation) {
+                                Icon(
+                                        imageVector = AppIcons.Add,
+                                        contentDescription = "Ajouter une équation",
+                                        tint = VetNutriColors.OnPrimary
+                                )
+                            }
+                        }
+                )
+            },
+            floatingActionButton = {
+                FloatingActionButton(
+                        onClick = onCreateEquation,
+                        backgroundColor = VetNutriColors.Primary
+                ) {
+                    Icon(
+                            imageVector = AppIcons.Add,
+                            contentDescription = "Ajouter une équation",
+                            tint = VetNutriColors.OnPrimary
+                    )
                 }
-        )
-
+            }
+    ) { paddingValues ->
         if (isLoading) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = VetNutriColors.Primary)
-            }
+            Box(
+                    modifier = Modifier.fillMaxSize().padding(paddingValues),
+                    contentAlignment = Alignment.Center
+            ) { CircularProgressIndicator(color = VetNutriColors.Primary) }
         } else if (equations.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(text = "Aucune équation disponible", style = MaterialTheme.typography.h6)
-            }
+            Box(
+                    modifier = Modifier.fillMaxSize().padding(paddingValues),
+                    contentAlignment = Alignment.Center
+            ) { Text(text = "Aucune équation disponible", style = MaterialTheme.typography.h6) }
         } else {
-            LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp)) {
+            LazyColumn(
+                    modifier = Modifier.fillMaxSize().padding(paddingValues),
+                    contentPadding = PaddingValues(16.dp)
+            ) {
                 items(equations) { equation ->
                     EquationItem(
                             equation = equation,

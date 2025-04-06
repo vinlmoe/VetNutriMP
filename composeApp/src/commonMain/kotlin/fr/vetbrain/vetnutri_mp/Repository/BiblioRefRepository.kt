@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /** Interface définissant les opérations possibles sur les références bibliographiques. */
 interface BiblioRefRepository {
@@ -192,38 +193,40 @@ class DatabaseBiblioRefRepository(private val biblioRefDao: BiblioRefDao) : Bibl
         return dbRef?.toDomain()
     }
 
+    /**
+     * Récupère toutes les références bibliographiques.
+     * @return Un flux contenant la liste des références.
+     */
     override fun getAllBiblioRefs(): Flow<List<BiblioRef>> {
-        return flow {
-            try {
-                // Émettre d'abord les données en cache
-                emit(_biblioRefs.value)
+        println(
+                "DEBUG DatabaseBiblioRefRepo: Récupération de toutes les références bibliographiques"
+        )
 
-                // Puis charger depuis la base de données et émettre à nouveau si différent
-                val allRefs = biblioRefDao.getAllBiblioRefs()
+        return flow {
+            // Émettre d'abord les données en cache
+            emit(_biblioRefs.value)
+
+            try {
+                // Charger les données de la base de données
+                val dbRefs =
+                        withContext(AppDispatchers.IO) {
+                            val entities = biblioRefDao.getAllBiblioRefs()
+                            entities.map { it.toDomain() }
+                        }
+
                 println(
-                        "DEBUG DatabaseBiblioRefRepo (flow): SQL exécuté, ${allRefs.size} références trouvées en base"
+                        "DEBUG DatabaseBiblioRefRepo: ${dbRefs.size} références chargées depuis la base de données"
                 )
 
-                val dbRefs = allRefs.map { it.toDomain() }
-                if (dbRefs != _biblioRefs.value) {
-                    _biblioRefs.value = dbRefs
-                    emit(dbRefs)
-                }
-
-                println("DEBUG DatabaseBiblioRefRepo: Flow émis avec ${dbRefs.size} références")
-                if (dbRefs.isNotEmpty()) {
-                    println(
-                            "DEBUG DatabaseBiblioRefRepo: Flow contient: ${dbRefs.joinToString { "${it.firstAuthor}(${it.year})" }}"
-                    )
-                }
+                // Mettre à jour le cache et émettre les nouvelles données
+                _biblioRefs.value = dbRefs
+                emit(dbRefs)
             } catch (e: Exception) {
                 println(
-                        "DEBUG DatabaseBiblioRefRepo: Erreur lors du chargement du flow de références: ${e.message}"
+                        "DEBUG DatabaseBiblioRefRepo: Erreur lors du chargement des références: ${e.message}"
                 )
-                e.printStackTrace()
-
-                // En cas d'erreur, émettre au moins les données en cache
-                emit(_biblioRefs.value)
+                // En cas d'erreur, on n'émet rien de plus (les données du cache ont déjà été
+                // émises)
             }
         }
     }
@@ -283,12 +286,16 @@ class DatabaseBiblioRefRepository(private val biblioRefDao: BiblioRefDao) : Bibl
                         "DEBUG DatabaseBiblioRefRepo: Référence vérifiée en base: ${verifyRef.firstAuthor}, ${verifyRef.year}"
                 )
             }
-            
+
             // Lister toutes les références après l'insertion
             val allRefs = biblioRefDao.getAllBiblioRefs()
-            println("DEBUG DatabaseBiblioRefRepo: Après insertion, base contient ${allRefs.size} références:")
-            allRefs.forEach { 
-                println("DEBUG DatabaseBiblioRefRepo: - Référence: ${it.firstAuthor} (${it.year}), UUID: ${it.uuid}")
+            println(
+                    "DEBUG DatabaseBiblioRefRepo: Après insertion, base contient ${allRefs.size} références:"
+            )
+            allRefs.forEach {
+                println(
+                        "DEBUG DatabaseBiblioRefRepo: - Référence: ${it.firstAuthor} (${it.year}), UUID: ${it.uuid}"
+                )
             }
 
             // Rafraîchir la liste en mémoire

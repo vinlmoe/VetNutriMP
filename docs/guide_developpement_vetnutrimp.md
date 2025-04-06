@@ -181,6 +181,121 @@ Le projet est en cours de migration de `java.util.UUID` vers `kotlin.uuid.Uuid`.
 2. Vérifiez quelle implémentation est utilisée dans le fichier actuel avant de faire des modifications
 3. Suivez les directives du guide concernant la gestion des UUIDs
 
+## Gestion des Kotlin Flow et optimisation des performances
+
+La gestion des flux de données asynchrones est une partie critique de l'application. Certains problèmes ont été identifiés et résolus concernant l'utilisation des Kotlin Flow.
+
+### Problèmes potentiels avec Kotlin Flow
+
+1. **Blocages dans la collecte** : La collecte sans limite de temps d'un Flow peut bloquer indéfiniment le thread appelant.
+2. **Erreurs non gérées** : Les exceptions non capturées dans les Flow peuvent causer des crashs de l'application.
+3. **Émissions multiples inutiles** : Des émissions excessives peuvent surcharger les collecteurs et dégrader les performances.
+4. **Fuites mémoire** : Des collectes continues sans annulation appropriée peuvent causer des fuites mémoire.
+
+### Bonnes pratiques pour l'utilisation des Flow
+
+#### Dans les repositories
+
+```kotlin
+// Bien - Structure recommandée pour les méthodes retournant un Flow
+override fun getAllItems(): Flow<List<Item>> {
+    return flow {
+        // Émettre d'abord les données en cache 
+        emit(_items.value)
+        
+        try {
+            // Charger les données de la base de données sur le thread IO
+            val dbItems = withContext(AppDispatchers.IO) {
+                val entities = itemDao.getAllItems()
+                entities.map { it.toDomain() }
+            }
+            
+            // Mettre à jour le cache et émettre les nouvelles données
+            _items.value = dbItems
+            emit(dbItems)
+        } catch (e: Exception) {
+            // Logger l'erreur mais ne pas bloquer
+            println("ERROR: ${e.message}")
+        }
+    }
+}
+```
+
+#### Dans les ViewModels
+
+```kotlin
+// ❌ À ÉVITER - Collecte sans limite qui peut bloquer
+fun refreshItems() {
+    viewModelScope.launch {
+        repository.getAllItems().collect { items ->
+            // Traitement des items
+        }
+    }
+}
+
+// ✅ RECOMMANDÉ - Collecte avec timeout ou utilisation de firstOrNull()
+fun refreshItems() {
+    viewModelScope.launch {
+        try {
+            withTimeoutOrNull(2000) {
+                val items = repository.getAllItems().firstOrNull() ?: emptyList()
+                // Traiter les items
+            }
+        } catch (e: Exception) {
+            // Gérer l'erreur
+        }
+    }
+}
+```
+
+### Pattern recommandé pour l'exposition des données
+
+Dans les ViewModels, suivez ce pattern pour exposer les données :
+
+```kotlin
+// État interne mutable
+private val _items = MutableStateFlow<List<Item>>(emptyList())
+
+// API publique immuable
+val items: StateFlow<List<Item>> = _items.asStateFlow()
+
+// Pour les données qui doivent être partagées entre plusieurs collecteurs
+val sharedItems: StateFlow<List<Item>> = repository
+    .observeAllItems()
+    .stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5000), // Timeout de 5 secondes
+        emptyList()
+    )
+```
+
+### Optimisations spécifiques implémentées
+
+1. **BiblioRefRepository.getAllBiblioRefs()** : Corrigé pour émettre correctement les données en cache puis les données fraîches
+2. **BiblioRefViewModel.refreshBiblioRefs()** : Optimisé pour utiliser `firstOrNull()` avec timeout
+3. **EquationViewModel.loadBiblioRefs()** : Amélioré pour gérer les erreurs avec `.catch { }`
+4. **EquationViewModel.loadEquations()** : Migré vers `observeAllEquations()` avec gestion d'erreurs adéquate
+
+### Points d'attention pour le développement futur
+
+1. Pour toute méthode retournant un `Flow`, assurez-vous de :
+   - Gérer les erreurs avec `catch`
+   - Effectuer les opérations lourdes sur un dispatcher dédié (IO)
+   - Fournir une valeur initiale pour éviter les états vides
+
+2. Dans les ViewModels, préférez :
+   - `.firstOrNull()` pour les opérations ponctuelles
+   - `.stateIn()` pour les données observées en continu
+   - `withTimeoutOrNull()` pour limiter le temps d'attente
+
+3. Pour le debugging, utilisez :
+   - `.onStart { }`, `.onEach { }` et `.onCompletion { }` pour tracer le flux
+   - Enregistrez les erreurs avant de les propager
+
+4. Dans l'UI, utilisez :
+   - `collectAsStateWithLifecycle()` pour observer les StateFlow dans Compose
+   - Gérez toujours l'état de chargement et les erreurs
+
 ## Naviguer dans le code existant
 
 Pour travailler efficacement avec la base de code actuelle :

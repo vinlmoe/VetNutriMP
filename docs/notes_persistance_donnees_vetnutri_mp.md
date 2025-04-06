@@ -127,4 +127,91 @@ Les vues (écrans Compose) observent les données:
 
 - Import/export JSON pour le partage de données
 - L'état actuel du stockage est local (pas de synchronisation cloud)
-- Possibilité d'ajouter des backups automatiques à l'avenir 
+- Possibilité d'ajouter des backups automatiques à l'avenir
+
+## Gestion des flux Kotlin Flow et optimisations
+
+### Problèmes identifiés et solutions
+
+#### Gestion des émissions dans les Flows
+
+**Problème**: Des blocages et des problèmes d'émission ont été constatés dans l'utilisation des `Flow`, notamment lors de la collecte des références bibliographiques et des équations.
+
+**Solution**:
+- Utilisation de `firstOrNull()` pour collecter un flow sans rester en attente d'émissions continues
+- Structuration claire des flows avec gestion des erreurs via `catch`
+- Éviter les émissions multiples et excessives qui peuvent surcharger le collecteur
+
+Exemple de code optimisé:
+```kotlin
+override fun getAllBiblioRefs(): Flow<List<BiblioRef>> {
+    return flow {
+        // Émettre d'abord les données en cache
+        emit(_biblioRefs.value)
+        
+        try {
+            // Charger les données de la base de données
+            val dbRefs = withContext(AppDispatchers.IO) {
+                val entities = biblioRefDao.getAllBiblioRefs()
+                entities.map { it.toDomain() }
+            }
+            
+            // Mettre à jour le cache et émettre les nouvelles données
+            _biblioRefs.value = dbRefs
+            emit(dbRefs)
+            
+        } catch (e: Exception) {
+            println("DEBUG: Erreur lors du chargement des références: ${e.message}")
+            // En cas d'erreur, on n'émet rien de plus (les données du cache ont déjà été émises)
+        }
+    }
+}
+```
+
+#### Optimisation de la collecte dans les ViewModels
+
+**Problème**: Les ViewModels qui tentaient de collecter indéfiniment pouvaient bloquer ou causer des fuites de mémoire.
+
+**Solution**:
+- Utilisation de `withTimeoutOrNull` pour limiter le temps d'attente
+- Implémentation de `firstOrNull()` pour collecter uniquement la première valeur
+- Gestion explicite des erreurs pour éviter les crashs
+
+Exemple dans BiblioRefViewModel:
+```kotlin
+fun refreshBiblioRefs() {
+    viewModelScope.launch {
+        try {
+            // Utiliser firstOrNull plutôt qu'une collecte directe
+            withTimeoutOrNull(2000) {
+                val refs = repository.getAllBiblioRefs().firstOrNull() ?: emptyList()
+                println("DEBUG: ${refs.size} références récupérées lors du rafraîchissement")
+            }
+        } catch (e: Exception) {
+            println("DEBUG: Erreur lors du rafraîchissement: ${e.message}")
+        }
+    }
+}
+```
+
+### Améliorations de l'interface utilisateur
+
+- Ajout d'un FloatingActionButton dans l'écran de liste des équations pour améliorer l'UX
+- Utilisation du composant `Scaffold` pour structurer correctement l'interface
+- Feedback visuel sur les états de chargement
+
+### Bonnes pratiques pour les flows dans une architecture MVVM
+
+1. **Exposition de StateFlow**: Les ViewModels exposent des `StateFlow` immuables avec `asStateFlow()`
+2. **Collecte unique**: Utiliser `first()` ou `firstOrNull()` pour les opérations ponctuelles
+3. **Gestion des timeouts**: Implémenter des timeouts pour éviter les blocages indéfinis
+4. **Gestion d'erreurs**: Capturer les exceptions avec `.catch { }` avant la collecte
+5. **Utilisation de withContext**: Exécuter les opérations de BD sur un dispatcher approprié
+6. **Cache en mémoire**: Maintenir un cache en mémoire pour les données fréquemment utilisées
+
+### Points d'attention pour le futur
+
+- Considérer l'utilisation de `stateIn` avec le mode `SharingStarted.WhileSubscribed()` pour les flows partagés
+- Implémenter des tests de flux pour vérifier le comportement correct des émissions
+- Optimiser la gestion des références bibliographiques avec pagination si le volume augmente
+- Analyser les performances des collecteurs de flux avec des outils de profilage 

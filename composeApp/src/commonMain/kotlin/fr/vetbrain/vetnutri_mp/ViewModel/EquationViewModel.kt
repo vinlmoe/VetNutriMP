@@ -14,6 +14,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -51,30 +53,56 @@ class EquationViewModel(
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
-    // Charge toutes les équations
+    /** Charge la liste des équations */
     fun loadEquations() {
         viewModelScope.launch {
-            _isLoading.value = true
             try {
-                val allEquations = equationRepository.getAllEquations()
-                _equations.value = allEquations
+                _isLoading.value = true
+                equationRepository
+                        .observeAllEquations()
+                        .catch { e ->
+                            _errorMessage.value =
+                                    "Erreur lors du chargement des équations: ${e.message}"
+                            println(
+                                    "DEBUG EquationViewModel: Erreur lors du chargement des équations: ${e.message}"
+                            )
+                        }
+                        .collect { equations ->
+                            _equations.value = equations
+                            _isLoading.value = false
+                            println("DEBUG EquationViewModel: ${equations.size} équations chargées")
+                        }
             } catch (e: Exception) {
                 _errorMessage.value = "Erreur lors du chargement des équations: ${e.message}"
-            } finally {
                 _isLoading.value = false
+                println(
+                        "DEBUG EquationViewModel: Exception lors du chargement des équations: ${e.message}"
+                )
             }
         }
     }
 
-    // Charge toutes les références bibliographiques
+    /** Charge la liste des références bibliographiques */
     fun loadBiblioRefs() {
         viewModelScope.launch {
             try {
-                // Utiliser firstOrNull pour collecter le Flow en une liste
-                val allRefs = biblioRefRepository.getAllBiblioRefs().firstOrNull() ?: emptyList()
-                _biblioRefs.value = allRefs
+                // Utiliser firstOrNull pour éviter de bloquer
+                biblioRefRepository
+                        .getAllBiblioRefs()
+                        .catch { e ->
+                            println(
+                                    "DEBUG EquationViewModel: Erreur lors du chargement des références: ${e.message}"
+                            )
+                        }
+                        .firstOrNull()
+                        ?.let { refs ->
+                            _biblioRefs.value = refs
+                            println("DEBUG EquationViewModel: ${refs.size} références chargées")
+                        }
             } catch (e: Exception) {
-                _errorMessage.value = "Erreur lors du chargement des références: ${e.message}"
+                println(
+                        "DEBUG EquationViewModel: Exception lors du chargement des références: ${e.message}"
+                )
             }
         }
     }
