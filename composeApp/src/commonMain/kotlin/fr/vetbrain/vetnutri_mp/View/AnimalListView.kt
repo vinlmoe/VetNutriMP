@@ -100,7 +100,8 @@ fun AnimalListView(
                                         )
                         ) { Text("Liste des aliments") }
 
-                        // Bouton pour accéder à la liste des références bibliographiques
+                        // Bouton pour accéder aux données de calcul (remplace les deux boutons
+                        // précédents)
                         Button(
                                 onClick = onShowBiblioRefs,
                                 modifier = Modifier.weight(1f),
@@ -109,21 +110,8 @@ fun AnimalListView(
                                                 backgroundColor = VetNutriColors.Primary,
                                                 contentColor = VetNutriColors.OnPrimary
                                         )
-                        ) { Text("Références biblio") }
+                        ) { Text("Données de calcul") }
                 }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Bouton pour accéder à la liste des équations
-                Button(
-                        onClick = onShowEquations,
-                        modifier = Modifier.fillMaxWidth(),
-                        colors =
-                                ButtonDefaults.buttonColors(
-                                        backgroundColor = VetNutriColors.Primary,
-                                        contentColor = VetNutriColors.OnPrimary
-                                )
-                ) { Text("Équations") }
 
                 Spacer(modifier = Modifier.height(16.dp))
 

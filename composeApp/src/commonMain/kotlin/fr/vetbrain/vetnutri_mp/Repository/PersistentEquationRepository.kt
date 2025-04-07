@@ -1,6 +1,9 @@
 package fr.vetbrain.vetnutri_mp.Repository
 
+import fr.vetbrain.vetnutri_mp.Data.BiblioRef
 import fr.vetbrain.vetnutri_mp.Data.Equation
+import fr.vetbrain.vetnutri_mp.Enumer.EquationKind
+import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Localization.ResourceReader
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import kotlinx.coroutines.flow.Flow
@@ -27,13 +30,42 @@ class PersistentEquationRepository : EquationRepository {
         try {
             val jsonString = resourceReader.readUserFile(filename)
             if (jsonString != null && jsonString.isNotEmpty()) {
-                // Pour la simplicité, on ne parsera pas le JSON pour l'instant
-                // Dans une implémentation réelle, il faudrait utiliser kotlinx.serialization ou
-                // autre
                 println(
                         "DEBUG PersistentEquationRepo: Fichier d'équations chargé, contenu: $jsonString"
                 )
-                // Pour l'instant, on garde une liste vide, à compléter avec un parseur JSON
+
+                // Extraction simple des noms d'équations du JSON
+                if (jsonString.contains("equations")) {
+                    // Extrait les équations entre [ et ]
+                    val equationsArrayMatch = Regex("\\[([^\\]]*)\\]").find(jsonString)
+                    equationsArrayMatch?.let { match ->
+                        val equationsArray = match.groupValues[1]
+                        // Sépare les éléments de l'array
+                        val equationNames =
+                                equationsArray
+                                        .split(",")
+                                        .map { it.trim().replace("\"", "") }
+                                        .filter { it.isNotEmpty() }
+
+                        // Crée une équation pour chaque nom
+                        val equations = equationNames.map { name -> createEquationFromName(name) }
+
+                        // Met à jour l'état
+                        _equations.value = equations
+                        println(
+                                "DEBUG PersistentEquationRepo: ${equations.size} équations chargées depuis le fichier"
+                        )
+                    }
+                            ?: run {
+                                println(
+                                        "DEBUG PersistentEquationRepo: Format JSON invalide, aucun tableau d'équations trouvé"
+                                )
+                            }
+                } else {
+                    println(
+                            "DEBUG PersistentEquationRepo: Format JSON invalide, clé 'equations' introuvable"
+                    )
+                }
             } else {
                 println(
                         "DEBUG PersistentEquationRepo: Aucune équation trouvée dans le fichier (fichier vide ou inexistant)"
@@ -45,6 +77,25 @@ class PersistentEquationRepository : EquationRepository {
             )
             // Si une erreur se produit, on continue avec la liste vide
         }
+    }
+
+    // Méthode utilitaire pour créer une équation à partir d'un nom
+    private fun createEquationFromName(name: String): Equation {
+        // Générer un UUID stable basé sur le nom pour éviter de générer un nouveau UUID à chaque
+        // démarrage
+        val uuid = name.hashCode().toString() + System.currentTimeMillis()
+
+        return Equation(
+                uuid = uuid,
+                name = name,
+                description = "Équation importée depuis le fichier",
+                equationScript = name,
+                specie = Espece.CHIEN,
+                kind = EquationKind.ENERGYNEED,
+                consistent = true,
+                bib = BiblioRef(),
+                variables = mutableListOf()
+        )
     }
 
     private suspend fun saveToDisk() =
