@@ -24,6 +24,13 @@
 - Maintenir la cohérence entre JSON (BiblioRefJson) et modèles (BiblioRef)
 - S'assurer que les conversions Java → Kotlin respectent les conventions en français
 
+## Gestion des flux asynchrones
+- Des problèmes de performances ont été identifiés dans la collecte des Flow
+- Plusieurs optimisations ont été implémentées dans BiblioRefRepository et EquationViewModel
+- Pattern recommandé: émission initiale du cache puis des données fraîches
+- Utiliser firstOrNull() avec timeout plutôt que collect() pour les opérations ponctuelles
+- Gérer systématiquement les erreurs avec catch pour éviter les crashs
+
 ## Prochaines étapes possibles
 - Corriger les erreurs de compilation (BiblioRef et dépendances)
 - Poursuivre la conversion des classes Java restantes

@@ -297,8 +297,8 @@ fun App(appDatabase: AppDatabase) {
                                     onImportAnimals = handleImportAnimals,
                                     onImportFoods = handleImportFoods,
                                     onShowFoodList = { currentScreen = Screen.FoodList },
-                                    onShowBiblioRefs = { currentScreen = Screen.BiblioRefList },
-                                    onShowEquations = { currentScreen = Screen.EquationList },
+                                    onShowBiblioRefs = { currentScreen = Screen.CalculationTabs },
+                                    onShowEquations = { currentScreen = Screen.CalculationTabs },
                                     modifier = Modifier.fillMaxWidth().weight(1f)
                             )
                         }
@@ -410,6 +410,14 @@ fun App(appDatabase: AppDatabase) {
                                     selectedEquationId = null
                                     currentScreen = Screen.EquationList
                                 },
+                                modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                    Screen.CalculationTabs -> {
+                        CalculationTabsView(
+                                equationViewModel = equationViewModel,
+                                biblioRefViewModel = biblioRefViewModel,
+                                onNavigateBack = { currentScreen = Screen.List },
                                 modifier = Modifier.fillMaxSize()
                         )
                     }
@@ -563,4 +571,5 @@ private sealed class Screen {
     object BiblioRefEdit : Screen()
     object EquationList : Screen()
     object EquationEdit : Screen()
+    object CalculationTabs : Screen()
 }

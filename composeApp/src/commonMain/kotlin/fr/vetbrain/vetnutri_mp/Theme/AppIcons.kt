@@ -35,4 +35,5 @@ object AppIcons {
     val Calculate: ImageVector = Icons.Default.Check
     val Save: ImageVector = Icons.Default.Done
     val Cancel: ImageVector = Icons.Default.Close
+    val Library: ImageVector = Icons.Default.Info
 }
