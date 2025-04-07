@@ -5,4 +5,6 @@ import kotlinx.coroutines.Dispatchers
 
 actual class PlatformDispatcher {
     actual fun provideMainDispatcher(): CoroutineDispatcher = Dispatchers.Main
+
+    actual fun provideIODispatcher(): CoroutineDispatcher = Dispatchers.IO
 }

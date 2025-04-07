@@ -160,8 +160,8 @@ fun App(appDatabase: AppDatabase) {
     val databaseBiblioRefRepo = remember { DatabaseBiblioRefRepository(appDatabase.biblioRefDao()) }
     val biblioRefRepository = remember { HybridBiblioRefRepository(databaseBiblioRefRepo) }
 
-    // Création du repository pour les équations (en mémoire pour l'instant)
-    val equationRepository = remember { InMemoryEquationRepository() }
+    // Création du repository pour les équations avec persistance via fichiers JSON
+    val equationRepository = remember { PersistentEquationRepository() }
 
     // Création des ViewModels
     val animalListViewModel = remember { AnimalListViewModel(animalRepository) }
