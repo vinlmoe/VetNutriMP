@@ -130,9 +130,12 @@ fun CalculationTabsView(
                             onCreateBiblioRef = { isCreatingBiblioRef = true }
                     )
             2 ->
-                    NutrientRequirementView(
-                            onNavigateBack = {}
-                    ) // Ne rien faire car on reste dans cette vue
+                    ReferenceEvListView(
+                            viewModel = referenceEvViewModel,
+                            onNavigateBack = {}, // Ne rien faire car on reste dans cette vue
+                            onEditReferenceEv = onEditReferenceEv,
+                            onCreateReferenceEv = onCreateReferenceEv
+                    )
         }
     }
 }

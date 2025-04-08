@@ -307,8 +307,9 @@ fun App(appDatabase: AppDatabase) {
                                     onImportAnimals = handleImportAnimals,
                                     onImportFoods = handleImportFoods,
                                     onShowFoodList = { currentScreen = Screen.FoodList },
-                                    onShowBiblioRefs = { currentScreen = Screen.BiblioRefList },
-                                    onShowEquations = { currentScreen = Screen.EquationList },
+                                    onShowCalculationTabs = {
+                                        currentScreen = Screen.CalculationTabs
+                                    },
                                     modifier = Modifier.fillMaxWidth().weight(1f)
                             )
                         }
@@ -371,6 +372,23 @@ fun App(appDatabase: AppDatabase) {
                                 modifier = Modifier.fillMaxSize()
                         )
                     }
+                    Screen.CalculationTabs -> {
+                        CalculationTabsView(
+                                equationViewModel = equationViewModel,
+                                biblioRefViewModel = biblioRefViewModel,
+                                referenceEvViewModel = referenceEvViewModel,
+                                onNavigateBack = { currentScreen = Screen.List },
+                                onEditReferenceEv = { referenceEvId ->
+                                    selectedReferenceEvId = referenceEvId
+                                    currentScreen = Screen.ReferenceEvEdit
+                                },
+                                onCreateReferenceEv = {
+                                    selectedReferenceEvId = null
+                                    currentScreen = Screen.ReferenceEvEdit
+                                },
+                                modifier = Modifier.fillMaxSize()
+                        )
+                    }
                     Screen.BiblioRefList -> {
                         BiblioRefListView(
                                 viewModel = biblioRefViewModel,
@@ -419,6 +437,32 @@ fun App(appDatabase: AppDatabase) {
                                 onNavigateBack = {
                                     selectedEquationId = null
                                     currentScreen = Screen.EquationList
+                                },
+                                modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                    Screen.ReferenceEvList -> {
+                        ReferenceEvListView(
+                                viewModel = referenceEvViewModel,
+                                onNavigateBack = { currentScreen = Screen.List },
+                                onEditReferenceEv = { referenceEvId ->
+                                    selectedReferenceEvId = referenceEvId
+                                    currentScreen = Screen.ReferenceEvEdit
+                                },
+                                onCreateReferenceEv = {
+                                    selectedReferenceEvId = null
+                                    currentScreen = Screen.ReferenceEvEdit
+                                },
+                                modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                    Screen.ReferenceEvEdit -> {
+                        ReferenceEvEditView(
+                                viewModel = referenceEvViewModel,
+                                referenceEvId = selectedReferenceEvId,
+                                onNavigateBack = {
+                                    selectedReferenceEvId = null
+                                    currentScreen = Screen.ReferenceEvList
                                 },
                                 modifier = Modifier.fillMaxSize()
                         )
@@ -573,4 +617,7 @@ private sealed class Screen {
     object BiblioRefEdit : Screen()
     object EquationList : Screen()
     object EquationEdit : Screen()
+    object CalculationTabs : Screen()
+    object ReferenceEvList : Screen()
+    object ReferenceEvEdit : Screen()
 }

@@ -34,8 +34,7 @@ fun AnimalListView(
         onImportAnimals: () -> Unit,
         onImportFoods: () -> Unit,
         onShowFoodList: () -> Unit,
-        onShowBiblioRefs: () -> Unit = {},
-        onShowEquations: () -> Unit = {},
+        onShowCalculationTabs: () -> Unit,
         modifier: Modifier = Modifier
 ) {
         val animals: List<AnimalEv> = viewModel.animals.collectAsState().value
@@ -103,7 +102,7 @@ fun AnimalListView(
                         // Bouton pour accéder aux données de calcul (remplace les deux boutons
                         // précédents)
                         Button(
-                                onClick = onShowBiblioRefs,
+                                onClick = onShowCalculationTabs,
                                 modifier = Modifier.weight(1f),
                                 colors =
                                         ButtonDefaults.buttonColors(
