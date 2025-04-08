@@ -12,7 +12,9 @@ import fr.vetbrain.vetnutri_mp.DataBase.AppDatabase
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationManager
 import fr.vetbrain.vetnutri_mp.Repository.*
+import fr.vetbrain.vetnutri_mp.Repository.ReferenceEvRepository
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriTheme
+import fr.vetbrain.vetnutri_mp.Utils.PlatformDispatcher
 import fr.vetbrain.vetnutri_mp.View.*
 import fr.vetbrain.vetnutri_mp.ViewModel.*
 import kotlinx.coroutines.flow.Flow
@@ -160,8 +162,8 @@ fun App(appDatabase: AppDatabase) {
     val databaseBiblioRefRepo = remember { DatabaseBiblioRefRepository(appDatabase.biblioRefDao()) }
     val biblioRefRepository = remember { HybridBiblioRefRepository(databaseBiblioRefRepo) }
 
-    // Création du repository pour les équations avec persistance via fichiers JSON
-    val equationRepository = remember { PersistentEquationRepository() }
+    // Création du repository pour les équations (en mémoire pour l'instant)
+    val equationRepository = remember { InMemoryEquationRepository() }
 
     // Création des ViewModels
     val animalListViewModel = remember { AnimalListViewModel(animalRepository) }
@@ -180,6 +182,14 @@ fun App(appDatabase: AppDatabase) {
     // ViewModel et état pour les équations
     val equationViewModel = remember { EquationViewModel(equationRepository, biblioRefRepository) }
     var selectedEquationId by remember { mutableStateOf<String?>(null) }
+
+    // ViewModel et état pour les références évaluées
+    val referenceEvRepository = remember { ReferenceEvRepository() }
+    val platformDispatcher = remember { PlatformDispatcher() }
+    val referenceEvViewModel = remember {
+        ReferenceEvViewModel(referenceEvRepository, platformDispatcher)
+    }
+    var selectedReferenceEvId by remember { mutableStateOf<String?>(null) }
 
     // Création des view models en fonction des besoins de la navigation
     val foodEditViewModel by
@@ -297,8 +307,8 @@ fun App(appDatabase: AppDatabase) {
                                     onImportAnimals = handleImportAnimals,
                                     onImportFoods = handleImportFoods,
                                     onShowFoodList = { currentScreen = Screen.FoodList },
-                                    onShowBiblioRefs = { currentScreen = Screen.CalculationTabs },
-                                    onShowEquations = { currentScreen = Screen.CalculationTabs },
+                                    onShowBiblioRefs = { currentScreen = Screen.BiblioRefList },
+                                    onShowEquations = { currentScreen = Screen.EquationList },
                                     modifier = Modifier.fillMaxWidth().weight(1f)
                             )
                         }
@@ -410,14 +420,6 @@ fun App(appDatabase: AppDatabase) {
                                     selectedEquationId = null
                                     currentScreen = Screen.EquationList
                                 },
-                                modifier = Modifier.fillMaxSize()
-                        )
-                    }
-                    Screen.CalculationTabs -> {
-                        CalculationTabsView(
-                                equationViewModel = equationViewModel,
-                                biblioRefViewModel = biblioRefViewModel,
-                                onNavigateBack = { currentScreen = Screen.List },
                                 modifier = Modifier.fillMaxSize()
                         )
                     }
@@ -571,5 +573,4 @@ private sealed class Screen {
     object BiblioRefEdit : Screen()
     object EquationList : Screen()
     object EquationEdit : Screen()
-    object CalculationTabs : Screen()
 }

@@ -14,14 +14,33 @@
 - `View/`: Interface utilisateur avec Compose
 - `Enumer/`, `Theme/`, `Components/`, `Utils/`: Support et éléments communs
 
+## Nouveaux composants
+### Modèles de nutrition et références
+- `NutrientRefP`: Référence nutritionnelle avec propriétés spécifiques (valeur, unité, bibliographie)
+- `ReferenceEv`: Gestionnaire de références nutritionnelles avec mappages entre nutriments et valeurs
+- `Reflevel`: Énumération des niveaux de référence (MIN, MAX, OPTIMIN, OPTIMAX)
+- `UnitP`: Classe encapsulant les unités de mesure avec fonctions de conversion
+- `UnitEnum`: Énumération des unités possibles (g, mg, UI, etc.) avec facteurs de conversion
+
+### Interface utilisateur améliorée
+- `CalculationTabsView`: Vue à onglets intégrant les équations, références bibliographiques et besoins nutritionnels
+- `NutrientRequirementView`: Affichage des besoins nutritionnels pour différentes espèces
+- `EquationListView` et `BiblioRefListView`: Vues réutilisables pour les listes d'équations et références
+
+### Structure de navigation
+- Menu à onglets permettant de naviguer entre les différentes sections de données nutritionnelles
+- Écrans imbriqués avec gestion d'état pour l'édition des éléments
+
 ## État actuel du projet
 - Projet en cours de migration Java → Kotlin Multiplatform
-- Problème identifié avec la classe BiblioRef, nouvellement convertie
-- Erreurs du compilateur signalant des problèmes avec kotlinx.serialization.Serializable
+- Problèmes avec kotlinx.serialization.Serializable résolus en supprimant les annotations redondantes
+- Navigation améliorée pour les données nutritionnelles avec une interface à onglets
+- Ajout de la gestion des besoins nutritionnels de base pour chiens et chats
 
 ## Points d'attention
-- Résoudre l'erreur d'importation Serializable (vérifier les dépendances)
-- Maintenir la cohérence entre JSON (BiblioRefJson) et modèles (BiblioRef)
+- Maintenir la cohérence entre les différentes représentations des nutriments et unités
+- S'assurer que les relations entre ReferenceEv, NutrientRefP et autres classes sont clairement définies
+- Veiller à la cohérence des énumérations entre les différents packages
 - S'assurer que les conversions Java → Kotlin respectent les conventions en français
 
 ## Gestion des flux asynchrones
@@ -32,6 +51,8 @@
 - Gérer systématiquement les erreurs avec catch pour éviter les crashs
 
 ## Prochaines étapes possibles
-- Corriger les erreurs de compilation (BiblioRef et dépendances)
-- Poursuivre la conversion des classes Java restantes
-- Vérifier l'architecture multiplateforme (Android, Desktop, iOS) 
+- Poursuivre l'intégration des fonctionnalités nutritionnelles avec données réelles
+- Compléter la vue des besoins nutritionnels avec des données scientifiques précises
+- Implémenter un système de validation des entrées pour les références nutritionnelles
+- Améliorer l'ergonomie de la navigation entre les différentes sections de l'application
+- Poursuivre la conversion des classes Java restantes 

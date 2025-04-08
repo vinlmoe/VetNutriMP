@@ -9,15 +9,13 @@ import fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientMain
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientMin
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientVitam
-import kotlinx.serialization.Serializable
 
 /**
  * Classe pour analyser les besoins nutritionnels Basée sur la classe RequirementAnalyzer du projet
  * Java original
  */
-@Serializable
 class RequirementAnalyzer {
-    private val mapRef = mutableMapOf<String, ReferenceEv>()
+    private val mapRef = mutableMapOf<String, ListNutrientRef>()
     private var bee: Float = 0.0f
     private var bw: Float = 0.0f
     private var mw: Float = 0.0f
@@ -40,11 +38,6 @@ class RequirementAnalyzer {
             svp: List<SupplementalvariableP>,
             ration: Ration
     ) {
-        // Initialiser la map de références
-        for (ref in references) {
-            mapRef[ref.nutrient.toString()] = ref
-        }
-
         this.bee = bee
         this.bw = bw
         this.mw = mw
@@ -119,10 +112,18 @@ class RequirementAnalyzer {
             ration: Ration
     ) {
         // Trouver la référence correspondant au nutriment
-        val refEv = references.find { it.nutrient == nutrient }
+        val refEv =
+                references.find { ref ->
+                    // Vérification simplifiée, adapter selon la structure réelle
+                    ref.toString().contains(nutrient.toString())
+                }
 
-        if (refEv != null && refEv.hasReferences()) {
-            mapRef[nutrient.toString()] = refEv
+        if (refEv != null) {
+            // Créer une liste de références pour ce nutriment
+            val listRef = ListNutrientRef()
+            // Ajouter les références spécifiques si disponibles
+            // Cette partie doit être adaptée en fonction de la structure réelle
+            mapRef[nutrient.toString()] = listRef
         }
     }
 
@@ -138,7 +139,7 @@ class RequirementAnalyzer {
         val nutrient = mainNutrient?.getNutrient(kind)
 
         return if (nutrient != null && mapRef.containsKey(nutrient.toString())) {
-            mapRef[nutrient.toString()]?.references?.toList() ?: emptyList()
+            mapRef[nutrient.toString()]?.getReferences() ?: emptyList()
         } else {
             emptyList()
         }
@@ -152,7 +153,7 @@ class RequirementAnalyzer {
      */
     fun obtenirReferences(nutrient: Nutrient): List<NutrientRef> {
         return if (mapRef.containsKey(nutrient.toString())) {
-            mapRef[nutrient.toString()]?.references?.toList() ?: emptyList()
+            mapRef[nutrient.toString()]?.getReferences() ?: emptyList()
         } else {
             emptyList()
         }
@@ -190,7 +191,7 @@ class RequirementAnalyzer {
      *
      * @return La map des références
      */
-    fun getMapRef(): Map<String, ReferenceEv> {
+    fun getMapRef(): Map<String, ListNutrientRef> {
         return mapRef
     }
 }

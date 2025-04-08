@@ -33,8 +33,10 @@ object AppSizes {
         get() = (4 * sizeMultiplier).dp
     val elevationLarge
         get() = (8 * sizeMultiplier).dp
+    val cardElevationSmall
+        get() = (2 * sizeMultiplier).dp
     val cardElevationNormal
-        get() = (1 * sizeMultiplier).dp
+        get() = (4 * sizeMultiplier).dp
     val cardElevationSelected
         get() = (4 * sizeMultiplier).dp
 

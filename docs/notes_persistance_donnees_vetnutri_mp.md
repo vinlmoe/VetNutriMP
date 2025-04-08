@@ -75,6 +75,68 @@ Les mappers (`DataBase/Mappers.kt`) assurent la conversion entre:
 - Entités de base de données et modèles métier
 - Modèles métier et JSON pour l'import/export
 
+## Modèles nutritionnels et stockage des références
+
+### Modèles de données nutritionnelles
+
+La persistance des données nutritionnelles repose sur plusieurs classes clés:
+
+1. **BiblioRef et BiblioRefEntity**:
+   - Stocke les références bibliographiques utilisées dans les équations et valeurs nutritionnelles
+   - Attributs: `uuid`, `firstAuthor`, `year`, `completeRef`, `comments`, `bibtex`, `consistent`
+   - Géré par `BiblioRefDao` et `DatabaseBiblioRefRepository`
+
+2. **ReferenceEv**:
+   - Agrège plusieurs références nutritionnelles pour différents nutriments
+   - Utilise des `Map<Nutrient, Nut4Ref>` organisées par niveau de référence (MIN, MAX, OPTIMIN, OPTIMAX)
+   - Inclut des équations pour le calcul des besoins
+   - N'est pas directement persisté, mais ses composants le sont
+
+3. **NutrientRefP**:
+   - Représente une référence nutritionnelle spécifique
+   - Attributs: nutriment (`mne`), valeur (`quantity`), unité (`unit`), référence bibliographique (`biblio`), etc.
+   - Utilisé comme élément constitutif dans `ReferenceEv`
+
+4. **UnitP et UnitEnum**:
+   - `UnitEnum`: énumération persistante des unités de mesure avec facteurs de conversion
+   - `UnitP`: wrapper autour de `UnitEnum` avec logique métier additionnelle
+   - Utilisées pour la conversion entre différentes unités nutritionnelles
+
+### Stratégie de persistance des données nutritionnelles
+
+Les données nutritionnelles sont persistées selon deux stratégies:
+
+1. **Persistance en base de données**:
+   - `BiblioRefEntity`: stockage direct en base de données via Room
+   - `EquationEntity`: stockage direct des équations, liées aux références bibliographiques
+
+2. **Persistance basée sur JSON**:
+   - `NutrientRefP`, `ReferenceEv`: sérialisés en JSON pour stockage
+   - `ListNutrientRef`: collection persistée en tant que JSON dans la base
+
+3. **Stockage statique de référence**:
+   - Certaines énumérations comme `UnitEnum`, `Reflevel`, `Nutrient` sont codées statiquement
+   - Les valeurs nutritionnelles de référence peuvent être chargées depuis des fichiers JSON ou ressources
+
+### Gestion des valeurs nutritionnelles
+
+La gestion des valeurs nutritionnelles implique:
+
+1. **Conversion d'unités**:
+   - `UnitEnum` définit des facteurs de conversion via la propriété `conv`
+   - `UnitP` et `NutrientRefP` utilisent ces facteurs pour convertir entre unités
+   - `getConverter()` et `getQuantityConverted()` gèrent les conversions
+
+2. **Organisation par niveaux**:
+   - `Reflevel` définit les niveaux MIN, MAX, OPTIMIN, OPTIMAX
+   - `ReferenceEv` maintient des Maps séparées pour chaque niveau
+   - Les méthodes comme `obtenirNutriment()` et `definirNutriment()` acceptent un `Reflevel`
+
+3. **Hiérarchie des nutriments**:
+   - `MainNutrientEnum` définit les catégories principales (MIN, VITAM, MACRO, etc.)
+   - `Nutrient` est l'interface de base implémentée par des énumérations spécifiques
+   - Ces relations sont utilisées dans `getSousNutrients()` pour organiser les nutriments
+
 ## Utilisation dans l'architecture MVVM
 
 ### Repositories
@@ -83,6 +145,8 @@ Les repositories encapsulent la logique d'accès aux données:
 
 - `DatabaseAnimalRepository`: Gère les opérations CRUD pour les animaux
 - `DatabaseFoodRepository`: Gère les opérations CRUD pour les aliments
+- `DatabaseBiblioRefRepository`: Gère les références bibliographiques
+- `PersistentEquationRepository`: Gère les équations avec stockage JSON
 - Utilisent les DAOs pour interagir avec la base de données
 - Convertissent les entités en modèles métier via les mappers
 
@@ -94,6 +158,11 @@ Les ViewModels consomment les repositories:
 - Effectuent les opérations métier en s'appuyant sur les repositories
 - Gèrent le cycle de vie des données
 
+#### Nouveaux ViewModels nutritionnels
+
+- `BiblioRefViewModel`: Gère les références bibliographiques
+- `EquationViewModel`: Gère les équations et leur édition
+
 ### Vues
 
 Les vues (écrans Compose) observent les données:
@@ -101,6 +170,13 @@ Les vues (écrans Compose) observent les données:
 - Observent les StateFlow exposés par les ViewModels
 - Affichent les données aux utilisateurs
 - Déclenchent les actions utilisateur vers les ViewModels
+
+#### Nouvelles vues nutritionnelles
+
+- `CalculationTabsView`: Interface à onglets pour naviguer entre les différentes données nutritionnelles
+- `BiblioRefListView` et `BiblioRefEditView`: Gestion des références bibliographiques
+- `EquationListView` et `EquationEditView`: Gestion des équations
+- `NutrientRequirementView`: Affichage des besoins nutritionnels de base
 
 ## Bonnes pratiques implémentées
 
@@ -116,6 +192,7 @@ Les vues (écrans Compose) observent les données:
 - Mettre en place des tests unitaires pour les DAOs et repositories
 - Optimiser les requêtes pour les grandes quantités de données
 - Synchroniser les schémas entre les plateformes lors des changements
+- Gérer correctement les annotations kotlinx.serialization pour éviter les conflits
 
 ## Sécurité et intégrité des données
 

@@ -1,15 +1,13 @@
 package fr.vetbrain.vetnutri_mp.Data
 
-import kotlinx.serialization.Serializable
-
 /**
  * Classe pour gérer une liste de références de nutriments Basée sur la classe listNutrientRef du
  * projet Java original
  */
-@Serializable
 class ListNutrientRef {
 
     private val references: MutableList<NutrientRef> = mutableListOf()
+    private val mapNutrientRef = mutableMapOf<String, NutrientRefP>()
 
     /** Constructeur par défaut */
     constructor()

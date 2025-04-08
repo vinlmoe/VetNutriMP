@@ -16,4 +16,11 @@ enum class UnitReqEnum(val id: Int, override val label: String, val conv: Float 
     }
 
     override fun toString() = label
+
+    /**
+     * Obtient l'ID de l'unité
+     *
+     * @return L'ID de l'unité
+     */
+    fun getID(): Int = id
 }

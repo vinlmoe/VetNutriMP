@@ -2,13 +2,11 @@ package fr.vetbrain.vetnutri_mp.Data
 
 import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientEnergy
-import kotlinx.serialization.Serializable
 
 /**
  * Classe représentant une référence de nutriment Basée sur la classe NutrientRef du projet Java
  * original
  */
-@Serializable
 data class NutrientRef(
         val nutrient: Nutrient,
         val value: Float,

@@ -43,4 +43,24 @@ enum class MainNutrientEnum(override val label: String, val coef: Int) : Labelab
                             }
                         }
             }
+
+    /**
+     * Obtient tous les nutriments associés à ce type principal
+     *
+     * @return Liste des nutriments associés à ce type
+     */
+    fun getSousNutrients(): List<Nutrient> {
+        return when (this) {
+            AMA -> AAEnum.entries.toList()
+            ANA -> NutrientAnalysis.entries.toList()
+            BASE -> NutrientMain.entries.toList()
+            ENERGIE -> NutrientEnergy.entries.toList()
+            LIPID -> NutrientLipid.entries.toList()
+            MACRO -> NutrientMacro.entries.toList()
+            MIN -> NutrientMin.entries.toList()
+            OTHER -> NutrientOther.entries.toList()
+            VITAM -> NutrientVitam.entries.toList()
+            else -> emptyList()
+        }
+    }
 }

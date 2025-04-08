@@ -181,6 +181,475 @@ Le projet est en cours de migration de `java.util.UUID` vers `kotlin.uuid.Uuid`.
 2. Vérifiez quelle implémentation est utilisée dans le fichier actuel avant de faire des modifications
 3. Suivez les directives du guide concernant la gestion des UUIDs
 
+## Gestion des modèles nutritionnels
+
+Le système de gestion des données nutritionnelles utilise plusieurs modèles et énumérations imbriqués pour représenter de manière complète les besoins, les références et les conversions d'unités.
+
+### Hiérarchie des modèles nutritionnels
+
+```
+Nutrient (interface)
+   |
+   ├── NutrientEnergy
+   ├── NutrientMin
+   ├── NutrientVitam
+   ├── NutrientMacro
+   ├── NutrientLipid
+   ├── AAEnum (acides aminés)
+   └── ...
+
+MainNutrientEnum
+   |
+   └── getSousNutrients() → List<Nutrient>
+
+UnitEnum
+   |
+   ├── conv: Float (facteur de conversion)
+   └── ...
+
+UnitP
+   |
+   └── unitEnum: UnitEnum
+
+Reflevel
+   |
+   ├── MIN
+   ├── MAX
+   ├── OPTIMIN
+   └── OPTIMAX
+
+NutrientRefP
+   |
+   ├── mne: MainNutrientEnum
+   ├── unit: UnitP
+   ├── unitReq: UnitReqEnum
+   ├── quantity: String
+   ├── biblio: BiblioRef
+   └── ...
+
+ReferenceEv
+   |
+   ├── refMapMin: Map<Nutrient, Nut4Ref>
+   ├── refMapMax: Map<Nutrient, Nut4Ref>
+   ├── refMapOMin: Map<Nutrient, Nut4Ref>
+   ├── refMapOMax: Map<Nutrient, Nut4Ref>
+   └── ...
+```
+
+### Classes principales et leurs responsabilités
+
+#### Nutrient et énumérations dérivées
+
+L'interface `Nutrient` est la base du système nutritionnel et définit les propriétés communes à tous les nutriments :
+
+```kotlin
+interface Nutrient : Labelable {
+    val ue: UnitEnum  // Unité par défaut du nutriment
+    val coef: Int     // Code numérique du nutriment
+    val unite: String // Chaîne représentant l'unité
+
+    fun getMNE(): MainNutrientEnum // Catégorie principale du nutriment
+}
+```
+
+Cette interface est implémentée par plusieurs énumérations spécifiques, chacune représentant une catégorie de nutriments :
+
+```kotlin
+enum class NutrientMin(
+    private val displayName: String,
+    override val coef: Int,
+    override val unite: String,
+    override val ue: UnitEnum,
+    override val label: String,
+    val abr: String
+) : Nutrient {
+    FE("Fer", 0, "mg", UnitEnum.BUmg, "FE", "Fe"),
+    CU("Cuivre", 1, "mg", UnitEnum.BUmg, "CU", "Cu"),
+    // ...
+}
+```
+
+#### MainNutrientEnum
+
+`MainNutrientEnum` organise les nutriments en catégories principales :
+
+```kotlin
+enum class MainNutrientEnum(override val label: String, val coef: Int) : Labelable {
+    MIN("Mineraux", 0),
+    ANA("Analysis", 1),
+    MACRO("Macro", 2),
+    VITAM("Vit", 3),
+    // ...
+
+    fun getSousNutrients(): List<Nutrient> {
+        return when (this) {
+            MIN -> NutrientMin.entries.toList()
+            VITAM -> NutrientVitam.entries.toList()
+            // ...
+        }
+    }
+}
+```
+
+#### Unités et conversions
+
+Les unités sont gérées par deux classes complémentaires :
+
+1. `UnitEnum` - Énumération des unités de base avec facteurs de conversion :
+
+```kotlin
+enum class UnitEnum(
+    private val unitName: String,
+    private val id: Int,
+    private val idFamily: Int,
+    private val refId: Int,
+    val conv: Float,  // Facteur de conversion
+    override val label: String
+) : Labelable {
+    BUg("g", 1, 1, 1, 1f, "BUg"),
+    BUmg("mg", 2, 1, 1, 0.001f, "BUmg"),
+    BUmu("µg", 3, 1, 1, 0.000001f, "BUmu"),
+    // ...
+}
+```
+
+2. `UnitP` - Classe wrapper qui encapsule `UnitEnum` avec des fonctionnalités supplémentaires :
+
+```kotlin
+class UnitP(private val unitEnum: UnitEnum) {
+    private val nom: String = unitEnum.displayName
+    
+    fun getUnit(): UnitEnum = unitEnum
+    fun getNom(): String = nom
+    fun getNomS(): String = nom
+}
+```
+
+#### NutrientRefP
+
+`NutrientRefP` représente une référence nutritionnelle spécifique avec sa valeur, son unité et sa source bibliographique :
+
+```kotlin
+class NutrientRefP(
+    val mne: MainNutrientEnum,
+    var nom: String,
+    var kind: Int,
+    var relativekind: Int,
+    var quantity: String,
+    var present: Boolean,
+    var unit: UnitP,
+    var unitReq: UnitReqEnum,
+    var biblio: BiblioRef
+) {
+    private val unitMain: UnitP = unit
+    
+    // Calcul de la conversion entre l'unité courante et l'unité principale
+    fun getConverter(): Float {
+        return unit.getUnit().conv / unitMain.getUnit().conv
+    }
+    
+    // Obtient la valeur convertie
+    fun getQuantityConverted(): Float {
+        if (quantity.isBlank()) return 0f
+        val value = quantity.replace(",", ".").toFloat()
+        return value * getConverter()
+    }
+}
+```
+
+#### ReferenceEv
+
+`ReferenceEv` est un conteneur qui agrège plusieurs références nutritionnelles organisées par niveau (MIN, MAX, OPTIMIN, OPTIMAX) :
+
+```kotlin
+class ReferenceEv(uuid: String? = null) {
+    val uuid: String = uuid ?: generateRandomUUID()
+    var nom: String = ""
+    var description: String = ""
+    var espece: Espece = Espece.CHIEN
+    var stadePhysio: StadePhysio = StadePhysio.ADULTE
+
+    private val refMapMin: MutableMap<Nutrient, Nut4Ref> = HashMap()
+    private val refMapMax: MutableMap<Nutrient, Nut4Ref> = HashMap()
+    private val refMapOMin: MutableMap<Nutrient, Nut4Ref> = HashMap()
+    private val refMapOMax: MutableMap<Nutrient, Nut4Ref> = HashMap()
+    
+    // Définit une valeur pour un nutriment à un niveau de référence spécifique
+    fun definirNutriment(
+        valeur: Float,
+        nutrient: Nutrient,
+        niveauRef: Reflevel,
+        uniteReq: UnitReqEnum,
+        biblio: BiblioRef
+    ) {
+        obtenirMap(niveauRef)[nutrient] = Nut4Ref(
+            nutrient = nutrient,
+            niveauRelatif = niveauRef,
+            quantite = valeur,
+            unite = nutrient.ue,
+            uniteReq = uniteReq,
+            biblio = biblio
+        )
+    }
+    
+    // Obtient la Map correspondant au niveau de référence
+    private fun obtenirMap(niveauRef: Reflevel): MutableMap<Nutrient, Nut4Ref> {
+        return when (niveauRef) {
+            Reflevel.OPTIMIN -> refMapOMin
+            Reflevel.OPTIMAX -> refMapOMax
+            Reflevel.MIN -> refMapMin
+            Reflevel.MAX -> refMapMax
+        }
+    }
+    
+    // Classe interne pour stocker les références avec leurs détails
+    inner class Nut4Ref(
+        val nutrient: Nutrient,
+        val niveauRelatif: Reflevel,
+        val quantite: Float,
+        val unite: UnitEnum,
+        val uniteReq: UnitReqEnum,
+        val biblio: BiblioRef
+    )
+}
+```
+
+### Bonnes pratiques pour travailler avec les modèles nutritionnels
+
+1. **Utilisation des énumérations** : Utilisez toujours les énumérations existantes comme `UnitEnum`, `Reflevel` et `MainNutrientEnum` plutôt que de recréer des constantes.
+
+   ```kotlin
+   // Bien
+   val niveau = Reflevel.MIN
+   
+   // À éviter
+   val niveau = "minimum"
+   ```
+
+2. **Conversion d'unités** : Laissez les méthodes `getConverter()` et `getQuantityConverted()` gérer les conversions plutôt que de les recalculer.
+
+   ```kotlin
+   // Bien
+   val valeurConvertie = nutrientRef.getQuantityConverted()
+   
+   // À éviter
+   val valeurConvertie = nutrientRef.quantity.toFloat() * (nutrientRef.unit.getUnit().conv / unitBase.conv)
+   ```
+
+3. **Organisation des références** : Utilisez les méthodes de `ReferenceEv` pour manipuler les références plutôt que d'accéder directement aux maps.
+
+   ```kotlin
+   // Bien
+   referenceEv.definirNutriment(valeur, nutrient, Reflevel.MIN, UnitReqEnum.KGBW, biblio)
+   
+   // À éviter
+   referenceEv.refMapMin[nutrient] = Nut4Ref(...)
+   ```
+
+4. **Cohérence des unités** : Assurez-vous que les unités utilisées sont appropriées pour le type de nutriment.
+
+   ```kotlin
+   // Bien - Utiliser l'unité par défaut du nutriment
+   val unite = nutrient.ue
+   
+   // Ou spécifier une unité compatible
+   val unite = UnitEnum.BUmg // Pour les minéraux
+   ```
+
+## Interface utilisateur pour les données nutritionnelles
+
+L'interface utilisateur pour la gestion des données nutritionnelles est centrée autour du composant `CalculationTabsView`, qui organise les différentes fonctionnalités sous forme d'onglets.
+
+### Structure de la CalculationTabsView
+
+```
+CalculationTabsView
+   |
+   ├── TabRow
+   |    ├── Tab "Équations"
+   |    ├── Tab "Références"
+   |    └── Tab "Besoins"
+   |
+   └── Content area
+        ├── EquationListView (Tab 0)
+        ├── BiblioRefListView (Tab 1)
+        └── NutrientRequirementView (Tab 2)
+```
+
+### Implémentation de CalculationTabsView
+
+Le composant `CalculationTabsView` est implémenté comme suit :
+
+```kotlin
+@Composable
+fun CalculationTabsView(
+    equationViewModel: EquationViewModel,
+    biblioRefViewModel: BiblioRefViewModel,
+    onNavigateBack: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var selectedTab by remember { mutableStateOf(0) }
+    var selectedEquationId by remember { mutableStateOf<String?>(null) }
+    var selectedBiblioRefId by remember { mutableStateOf<String?>(null) }
+    
+    Column(modifier = modifier.fillMaxSize()) {
+        TopAppBar(
+            title = { Text("Données de calcul") },
+            navigationIcon = {
+                IconButton(onClick = onNavigateBack) {
+                    Icon(imageVector = AppIcons.ArrowBack, contentDescription = "Retour")
+                }
+            }
+        )
+
+        TabRow(selectedTabIndex = selectedTab) {
+            Tab(
+                selected = selectedTab == 0,
+                onClick = { selectedTab = 0 },
+                text = { Text("Équations") }
+            )
+            Tab(
+                selected = selectedTab == 1,
+                onClick = { selectedTab = 1 },
+                text = { Text("Références") }
+            )
+            Tab(
+                selected = selectedTab == 2,
+                onClick = { selectedTab = 2 },
+                text = { Text("Besoins") }
+            )
+        }
+
+        when (selectedTab) {
+            0 -> EquationListView(/* ... */)
+            1 -> BiblioRefListView(/* ... */)
+            2 -> NutrientRequirementView(/* ... */)
+        }
+    }
+}
+```
+
+### NutrientRequirementView
+
+`NutrientRequirementView` affiche les besoins nutritionnels de base pour différentes espèces :
+
+```kotlin
+@Composable
+fun NutrientRequirementView(
+    onNavigateBack: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var selectedSpecies by remember { mutableStateOf("Chien") }
+    
+    val nutritionRequirements = remember {
+        mapOf(
+            "Chien" to listOf(
+                NutrientRequirement("Énergie", "Besoins énergétiques", "95-130 kcal/kg^0.75"),
+                NutrientRequirement("Protéines", "Matière azotée totale", "18-25% MS"),
+                // ...
+            ),
+            "Chat" to listOf(
+                NutrientRequirement("Énergie", "Besoins énergétiques", "100-140 kcal/kg^0.67"),
+                NutrientRequirement("Protéines", "Matière azotée totale", "25-35% MS"),
+                // ...
+            )
+        )
+    }
+    
+    Scaffold(
+        topBar = { /* ... */ }
+    ) { paddingValues ->
+        Column(modifier = modifier.padding(paddingValues)) {
+            // Sélection de l'espèce
+            Card {
+                Row {
+                    Button(
+                        onClick = { selectedSpecies = "Chien" },
+                        colors = ButtonDefaults.buttonColors(
+                            backgroundColor = if (selectedSpecies == "Chien") 
+                                VetNutriColors.Primary else VetNutriColors.Surface
+                        )
+                    ) { Text("Chien") }
+                    
+                    Button(
+                        onClick = { selectedSpecies = "Chat" },
+                        colors = ButtonDefaults.buttonColors(
+                            backgroundColor = if (selectedSpecies == "Chat") 
+                                VetNutriColors.Primary else VetNutriColors.Surface
+                        )
+                    ) { Text("Chat") }
+                }
+            }
+            
+            // Liste des besoins nutritionnels
+            LazyColumn {
+                items(nutritionRequirements[selectedSpecies] ?: emptyList()) { requirement ->
+                    NutrientRequirementCard(requirement = requirement)
+                }
+            }
+        }
+    }
+}
+```
+
+### Intégration avec le reste de l'application
+
+Les vues nutritionnelles sont intégrées dans le flux de navigation principal via une entrée dans l'enum `Screen` :
+
+```kotlin
+private sealed class Screen {
+    object List : Screen()
+    object Create : Screen()
+    object Detail : Screen()
+    // ...
+    object CalculationTabs : Screen() // Nouvel écran pour les données nutritionnelles
+}
+```
+
+Et dans le `when` principal de la fonction `App` :
+
+```kotlin
+when (currentScreen) {
+    // ...
+    Screen.CalculationTabs -> {
+        CalculationTabsView(
+            equationViewModel = equationViewModel,
+            biblioRefViewModel = biblioRefViewModel,
+            onNavigateBack = { currentScreen = Screen.List },
+            modifier = Modifier.fillMaxSize()
+        )
+    }
+}
+```
+
+### Bonnes pratiques pour l'UI des données nutritionnelles
+
+1. **Séparation des onglets** : Maintenir une séparation claire entre les différentes catégories de données (équations, références, besoins).
+
+2. **État local vs. ViewModel** : Utiliser l'état local pour les interactions UI (onglet sélectionné) et les ViewModels pour les données métier.
+
+3. **Gestion des navigations imbriquées** : 
+   ```kotlin
+   // Gestion correcte de la navigation imbriquée
+   if (selectedEquationId != null) {
+       EquationEditView(
+           viewModel = equationViewModel,
+           equationId = selectedEquationId,
+           onNavigateBack = { selectedEquationId = null }
+       )
+       return
+   }
+   ```
+
+4. **Réutilisation des composants** : Les vues de liste et d'édition sont réutilisées entre les différents contextes :
+   ```kotlin
+   // Dans CalculationTabsView
+   EquationListView(/* ... */)
+   
+   // Utilisé aussi indépendamment dans l'application
+   currentScreen = Screen.EquationList
+   ```
+
 ## Gestion des Kotlin Flow et optimisation des performances
 
 La gestion des flux de données asynchrones est une partie critique de l'application. Certains problèmes ont été identifiés et résolus concernant l'utilisation des Kotlin Flow.

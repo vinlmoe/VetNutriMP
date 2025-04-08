@@ -1,56 +1,59 @@
 package fr.vetbrain.vetnutri_mp.Data
 
+import fr.vetbrain.vetnutri_mp.Enumer.MainNutrientEnum
 import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
-import kotlinx.serialization.Serializable
 
 /**
- * Version simplifiée de l'analyseur de besoins Basée sur la classe MiniReqAnalyszer du projet Java
- * original
+ * Version simplifiée de RequirementAnalyzer qui ne conserve que les références pour faciliter la
+ * sérialisation et l'accès aux références de nutriments
  */
-@Serializable
 class MiniReqAnalyzer {
-
-    private val mapRef: MutableMap<String, ListNutrientRef> = mutableMapOf()
-    private var bee: Float = 0f
-    private var bw: Float = 0f
-    private var mw: Float = 0f
+    private val mapRef = mutableMapOf<String, List<NutrientRef>>()
 
     /**
-     * Constructeur qui initialise l'analyseur à partir d'un RequirementAnalyzer complet
+     * Constructeur qui initialise la map à partir d'un RequirementAnalyzer
      *
-     * @param analyzer L'analyseur complet à partir duquel initialiser
+     * @param value RequirementAnalyzer à partir duquel initialiser
      */
-    constructor(analyzer: RequirementAnalyzer) {
-        // Initialisation du mapRef à partir de l'analyzer
-        analyzer.getMapRef().forEach { (key, value) ->
-            mapRef[key] = ListNutrientRef(value.references)
+    constructor(value: RequirementAnalyzer) {
+        // Parcourir tous les types de nutriments
+        for (mainNutrient in MainNutrientEnum.entries) {
+            when (mainNutrient) {
+                MainNutrientEnum.AMA -> {
+                    for (nutrient in mainNutrient.getSousNutrients()) {
+                        val listRef = value.obtenirReferences(nutrient)
+                        if (listRef.isNotEmpty()) {
+                            mapRef[nutrient.toString()] = listRef
+                        }
+                    }
+                }
+                MainNutrientEnum.BASE,
+                MainNutrientEnum.LIPID,
+                MainNutrientEnum.MACRO,
+                MainNutrientEnum.MIN,
+                MainNutrientEnum.VITAM,
+                MainNutrientEnum.ANA -> {
+                    for (nutrient in mainNutrient.getSousNutrients()) {
+                        val listRef = value.obtenirReferences(nutrient)
+                        if (listRef.isNotEmpty()) {
+                            mapRef[nutrient.toString()] = listRef
+                        }
+                    }
+                }
+                else -> {
+                    // Ne rien faire pour les autres types
+                }
+            }
         }
-
-        // Copier les valeurs de base
-        this.bee = analyzer.getBEE()
-        this.bw = analyzer.getBW()
-        this.mw = analyzer.getMW()
     }
 
     /**
      * Obtient les références pour un nutriment donné
      *
      * @param nutrient Le nutriment pour lequel obtenir les références
-     * @return La liste des références pour ce nutriment
+     * @return La liste des références pour ce nutriment ou une liste vide si aucune référence
      */
-    fun obtenirReferences(nutrient: Nutrient?): List<NutrientRef> {
-        // Obtenir les références pour un nutriment spécifique
-        return if (nutrient != null && mapRef.containsKey(nutrient.toString())) {
-            mapRef[nutrient.toString()]?.getReferences() ?: emptyList()
-        } else {
-            emptyList()
-        }
+    fun obtenirReferences(nutrient: Nutrient): List<NutrientRef> {
+        return mapRef[nutrient.toString()] ?: emptyList()
     }
-
-    /**
-     * Récupère la map des références
-     *
-     * @return La map des références
-     */
-    fun getMapRef(): Map<String, ListNutrientRef> = mapRef
 }

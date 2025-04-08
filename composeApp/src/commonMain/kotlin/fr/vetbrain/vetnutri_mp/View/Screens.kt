@@ -1,13 +1,13 @@
 package fr.vetbrain.vetnutri_mp.View
 
-sealed class Screen {
-    object List : Screen()
-    object Detail : Screen()
-    object Create : Screen()
-    object FoodList : Screen()
-    object FoodEdit : Screen()
-    object BiblioRefList : Screen()
-    object BiblioRefEdit : Screen()
-    object EquationList : Screen()
-    object EquationEdit : Screen()
+public sealed class NavigationScreen {
+    public object List : NavigationScreen()
+    public object Detail : NavigationScreen()
+    public object Create : NavigationScreen()
+    public object FoodList : NavigationScreen()
+    public object FoodEdit : NavigationScreen()
+    public object BiblioRefList : NavigationScreen()
+    public object BiblioRefEdit : NavigationScreen()
+    public object EquationList : NavigationScreen()
+    public object EquationEdit : NavigationScreen()
 }

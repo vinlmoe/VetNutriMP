@@ -7,7 +7,7 @@ enum class UnitEnum(
         private val id: Int,
         private val idFamily: Int,
         private val refId: Int,
-        private val conv: Float,
+        val conv: Float,
         override val label: String
 ) : Labelable {
     BUg("g", 1, 1, 1, 1f, "BUg"),
@@ -27,10 +27,6 @@ enum class UnitEnum(
 
     fun nameToString(): String {
         return unitName
-    }
-
-    fun getConv(): Float {
-        return conv
     }
 
     fun getID(): Int {

@@ -1,13 +1,11 @@
 package fr.vetbrain.vetnutri_mp.Enumer
 
 import fr.vetbrain.vetnutri_mp.Data.Labelable
-import kotlinx.serialization.Serializable
 
 /**
  * Énumération représentant les niveaux relatifs des références de nutriments Basée sur
  * l'énumération Reflevel du projet Java original
  */
-@Serializable
 enum class Reflevel(val uuid: Int, override val label: String) : Labelable {
     MIN(0, "minimum"),
     MAX(1, "maximum"),
