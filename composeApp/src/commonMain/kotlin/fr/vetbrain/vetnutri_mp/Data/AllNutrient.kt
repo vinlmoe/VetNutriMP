@@ -12,17 +12,17 @@ import fr.vetbrain.vetnutri_mp.Enumer.NutrientVitam
 import kotlinx.serialization.Serializable
 
 /**
- * Classe représentant tous les types de nutriments Basée sur la classe AllNutrient du projet Java
- * original
+ * Classe représentant un nutriment générique permettant d'accéder de manière unifiée à différents
+ * types de nutriments
  */
 @Serializable
-class AllNutrient {
+class AllNutrient private constructor() {
 
     var label: String = ""
         private set
     var unit: String = ""
         private set
-    var mne: Int = 0
+    var mne: Float = 0f
         private set
     var kindnut: Int = 0
         private set
@@ -34,7 +34,7 @@ class AllNutrient {
      * @param mne Le code du type principal de nutriment
      * @param kind Le code du type spécifique de nutriment
      */
-    private constructor(label: String, mne: Int, kind: Int) {
+    private constructor(label: String, mne: Float, kind: Int) : this() {
         this.label = label
         this.mne = mne
         this.kindnut = kind
@@ -45,7 +45,7 @@ class AllNutrient {
      *
      * @param nutrient Le nutriment à partir duquel initialiser
      */
-    constructor(nutrient: Nutrient) {
+    constructor(nutrient: Nutrient) : this() {
         this.label = nutrient.label
         this.unit = nutrient.unite
         this.mne = nutrient.getMNE().coef
@@ -59,8 +59,8 @@ class AllNutrient {
      */
     val id: Int
         get() {
-            println("ALLnut ID $label ${mne * 1000 + kindnut}")
-            return mne * 1000 + kindnut
+            println("ALLnut ID $label ${(mne.toInt() * 1000) + kindnut}")
+            return (mne.toInt() * 1000) + kindnut
         }
 
     companion object {
@@ -133,8 +133,8 @@ class AllNutrient {
          * @param kind Le code du type spécifique de nutriment
          * @return Le nutriment correspondant ou null si non trouvé
          */
-        fun getByMneAndKind(mne: Int, kind: Int): AllNutrient? {
-            return getById(mne * 1000 + kind)
+        fun getByMneAndKind(mne: Float, kind: Int): AllNutrient? {
+            return getById((mne.toInt() * 1000) + kind)
         }
     }
 }

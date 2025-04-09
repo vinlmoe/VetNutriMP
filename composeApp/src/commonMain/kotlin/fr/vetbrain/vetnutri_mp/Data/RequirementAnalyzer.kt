@@ -152,8 +152,18 @@ class RequirementAnalyzer {
      * @return La liste des références pour ce nutriment
      */
     fun obtenirReferences(nutrient: Nutrient): List<NutrientRef> {
-        return if (mapRef.containsKey(nutrient.toString())) {
-            mapRef[nutrient.toString()]?.getReferences() ?: emptyList()
+        return obtenirReferences(nutrient.toString())
+    }
+
+    /**
+     * Obtient les références pour un nutriment donné par son nom
+     *
+     * @param nutrientName Le nom du nutriment pour lequel obtenir les références
+     * @return La liste des références pour ce nutriment
+     */
+    fun obtenirReferences(nutrientName: String): List<NutrientRef> {
+        return if (mapRef.containsKey(nutrientName)) {
+            mapRef[nutrientName]?.getReferences() ?: emptyList()
         } else {
             emptyList()
         }

@@ -2,25 +2,34 @@ package fr.vetbrain.vetnutri_mp.Enumer
 
 import fr.vetbrain.vetnutri_mp.Data.Labelable
 
-enum class UnitReqEnum(val id: Int, override val label: String, val conv: Float = 1f) : Labelable {
-    MCAL(0, "mcal"),
-    KGBW(1, "kgBw"),
-    KGMW(2, "kgMw"),
-    NO(3, ""),
-    PERC(4, "percentage");
+/** Énumération des unités pour les besoins nutritionnels */
+enum class UnitReqEnum(val id: Int, override val label: String) : Labelable {
+    PERKG(0, "par kg"),
+    PERKCAL(1, "par 1000 kcal"),
+    PERMS(2, "par % MS"),
+    PERG(3, "par g"),
+    PERKJ(4, "par 1000 kJ"),
+    RATIO(5, "ratio"),
+    ABSOLUTE(6, "valeur absolue");
 
-    companion object {
-        fun getById(id: Int): UnitReqEnum = entries.find { it.id == id } ?: NO
-
-        private val idMap = entries.associateBy { it.id }
+    override fun toString(): String {
+        return label
     }
 
-    override fun toString() = label
+    /** Retourne l'identifiant de l'unité */
+    fun getID(): Int {
+        return id
+    }
 
-    /**
-     * Obtient l'ID de l'unité
-     *
-     * @return L'ID de l'unité
-     */
-    fun getID(): Int = id
+    companion object {
+        /**
+         * Obtient l'unité correspondant à l'identifiant
+         *
+         * @param id Identifiant de l'unité
+         * @return L'unité correspondante ou PERKG par défaut
+         */
+        fun getById(id: Int): UnitReqEnum {
+            return values().find { it.id == id } ?: PERKG
+        }
+    }
 }

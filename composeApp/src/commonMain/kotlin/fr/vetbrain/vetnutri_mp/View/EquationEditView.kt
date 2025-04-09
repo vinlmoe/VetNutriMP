@@ -2,27 +2,27 @@ package fr.vetbrain.vetnutri_mp.View
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import fr.vetbrain.vetnutri_mp.Components.AppTextField
+import fr.vetbrain.vetnutri_mp.Components.DropdownField
 import fr.vetbrain.vetnutri_mp.Components.TopBarSimple
-import fr.vetbrain.vetnutri_mp.Enumer.EquationKind
-import fr.vetbrain.vetnutri_mp.Enumer.Espece
-import fr.vetbrain.vetnutri_mp.Theme.AppIcons
+import fr.vetbrain.vetnutri_mp.Data.Equation
+import fr.vetbrain.vetnutri_mp.Enumer.EquationType
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.EquationViewModel
 
 /**
- * Vue pour l'édition d'une équation
+ * Vue pour éditer une équation
  *
- * @param viewModel Le ViewModel pour la gestion des équations
- * @param equationId L'identifiant de l'équation à éditer (null pour une nouvelle équation)
- * @param onNavigateBack Callback pour revenir à la vue précédente
+ * @param viewModel ViewModel pour gérer les équations
+ * @param equationId Identifiant de l'équation (null pour une nouvelle équation)
+ * @param onNavigateBack Callback pour revenir à l'écran précédent
  * @param modifier Modifier à appliquer à la vue
  */
 @Composable
@@ -32,243 +32,165 @@ fun EquationEditView(
         onNavigateBack: () -> Unit,
         modifier: Modifier = Modifier
 ) {
-    val equation by viewModel.currentEquation.collectAsState()
-    val biblioRefs by viewModel.biblioRefs.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
-    val errorMessage by viewModel.errorMessage.collectAsState()
+    // État du chargement
+    val isLoading by viewModel.isLoading.collectAsState(initial = false)
 
-    // Variable pour savoir si c'est une nouvelle équation
-    val isNewEquation = equationId == null
+    // Équation en cours
+    val currentEquation by viewModel.currentEquation.collectAsState(initial = Equation())
 
-    // Effet pour charger l'équation ou initialiser une nouvelle équation
-    LaunchedEffect(equationId) { viewModel.loadEquation(equationId) }
+    // Message d'opération (succès/erreur)
+    val operationMessage by viewModel.operationMessage.collectAsState()
 
-    // Effet pour charger les références bibliographiques
-    LaunchedEffect(Unit) { viewModel.loadBiblioRefs() }
+    // État pour afficher l'alerte de succès
+    var showSuccessAlert by remember { mutableStateOf(false) }
 
-    Column(modifier = modifier.fillMaxSize()) {
-        TopBarSimple(
-                title = if (isNewEquation) "Nouvelle équation" else "Éditer l'équation",
-                onNavigateBack = onNavigateBack,
-                actions = {
-                    // Bouton pour sauvegarder l'équation
-                    IconButton(
-                            onClick = {
-                                viewModel.saveEquation()
-                                onNavigateBack()
-                            }
-                    ) {
-                        Icon(
-                                imageVector = AppIcons.Save,
-                                contentDescription = "Sauvegarder",
-                                tint = VetNutriColors.OnPrimary
-                        )
-                    }
-                }
-        )
-
-        // Afficher le chargement
-        if (isLoading) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = VetNutriColors.Primary)
-            }
-        } else if (equation == null) {
-            // Si aucune équation n'est chargée
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(text = "Aucune équation trouvée", style = MaterialTheme.typography.h6)
-            }
+    // Effet pour charger l'équation à l'initialisation si un ID est fourni
+    LaunchedEffect(equationId) {
+        if (equationId != null) {
+            viewModel.loadEquationById(equationId)
         } else {
-            // Formulaire d'édition
-            val scrollState = rememberScrollState()
+            viewModel.clearCurrentEquation()
+        }
+    }
 
-            Column(modifier = Modifier.fillMaxSize().padding(16.dp).verticalScroll(scrollState)) {
+    // Effet pour afficher l'alerte de succès lorsqu'une opération réussit
+    LaunchedEffect(operationMessage) {
+        if (operationMessage.isNotEmpty() && !operationMessage.startsWith("Erreur")) {
+            showSuccessAlert = true
+        }
+    }
+
+    // Titre dynamique basé sur l'opération (création ou édition)
+    val title = if (equationId == null) "Nouvelle équation" else "Modifier l'équation"
+
+    Scaffold(topBar = { TopBarSimple(title = title, onNavigateBack = onNavigateBack) }) {
+            paddingValues ->
+        Box(modifier = modifier.fillMaxSize().padding(paddingValues).padding(16.dp)) {
+            // Formulaire d'édition d'équation
+            Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
                 // Nom de l'équation
-                AppTextField(
-                        value = equation?.name ?: "",
-                        onValueChange = { viewModel.updateEquationField("name", it) },
-                        label = "Nom de l'équation",
+                OutlinedTextField(
+                        value = currentEquation?.name ?: "",
+                        onValueChange = { viewModel.updateName(it) },
+                        label = { Text("Nom de l'équation") },
                         modifier = Modifier.fillMaxWidth()
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // Description
-                AppTextField(
-                        value = equation?.description ?: "",
-                        onValueChange = { viewModel.updateEquationField("description", it) },
-                        label = "Description",
+                OutlinedTextField(
+                        value = currentEquation?.description ?: "",
+                        onValueChange = { viewModel.updateDescription(it) },
+                        label = { Text("Description") },
                         modifier = Modifier.fillMaxWidth(),
-                        singleLine = false,
-                        maxLines = 5
+                        minLines = 3
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Script de l'équation
-                AppTextField(
-                        value = equation?.equationScript ?: "",
-                        onValueChange = { viewModel.updateEquationField("equationScript", it) },
-                        label = "Formule mathématique",
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = false,
-                        maxLines = 3
+                // Type d'équation (dropdown)
+                DropdownField(
+                        label = "Type d'équation",
+                        selectedValue = currentEquation?.kind?.let { kind ->
+                            when (kind) {
+                                fr.vetbrain.vetnutri_mp.Enumer.EquationKind.ENERGYNEED -> EquationType.ENERGYNEED
+                                fr.vetbrain.vetnutri_mp.Enumer.EquationKind.ENERGYDENSITY -> EquationType.ENERGYDENSITY
+                                fr.vetbrain.vetnutri_mp.Enumer.EquationKind.MW -> EquationType.MW
+                                fr.vetbrain.vetnutri_mp.Enumer.EquationKind.INDICATOR -> EquationType.INDICATOR
+                                fr.vetbrain.vetnutri_mp.Enumer.EquationKind.NEED -> EquationType.NEED
+                            }
+                        },
+                        options = EquationType.values().toList(),
+                        onValueChange = { viewModel.updateKind(it.toEquationKind()) },
+                        valueToString = { it.toString() }
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Type d'équation (EquationKind)
-                Column {
-                    Text(
-                            "Type d'équation",
-                            style = MaterialTheme.typography.subtitle1,
-                            fontWeight = FontWeight.Bold
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    // Liste déroulante pour le type d'équation
-                    var equationTypeExpanded by remember { mutableStateOf(false) }
-
-                    OutlinedButton(
-                            onClick = { equationTypeExpanded = true },
-                            modifier = Modifier.fillMaxWidth()
-                    ) { Text(equation?.kind?.getNom() ?: "Sélectionner un type") }
-
-                    DropdownMenu(
-                            expanded = equationTypeExpanded,
-                            onDismissRequest = { equationTypeExpanded = false },
-                            modifier = Modifier.fillMaxWidth(0.9f)
-                    ) {
-                        EquationKind.values().forEach { kind ->
-                            DropdownMenuItem(
-                                    onClick = {
-                                        viewModel.updateEquationField("kind", kind)
-                                        equationTypeExpanded = false
-                                    }
-                            ) { Text(kind.getNom()) }
-                        }
-                    }
-                }
+                // Facteur de correction (si besoin)
+                OutlinedTextField(
+                        value = currentEquation?.correctionFactor?.toString() ?: "1.0",
+                        onValueChange = {
+                            viewModel.updateCorrectionFactor(it.toDoubleOrNull() ?: 1.0)
+                        },
+                        label = { Text("Facteur de correction") },
+                        modifier = Modifier.fillMaxWidth(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+                )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Espèce (Espece)
-                Column {
-                    Text(
-                            "Espèce",
-                            style = MaterialTheme.typography.subtitle1,
-                            fontWeight = FontWeight.Bold
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    // Liste déroulante pour l'espèce
-                    var especeExpanded by remember { mutableStateOf(false) }
-
-                    OutlinedButton(
-                            onClick = { especeExpanded = true },
-                            modifier = Modifier.fillMaxWidth()
-                    ) { Text(equation?.specie?.name ?: "Sélectionner une espèce") }
-
-                    DropdownMenu(
-                            expanded = especeExpanded,
-                            onDismissRequest = { especeExpanded = false },
-                            modifier = Modifier.fillMaxWidth(0.9f)
-                    ) {
-                        Espece.values().forEach { espece ->
-                            DropdownMenuItem(
-                                    onClick = {
-                                        viewModel.updateEquationField("specie", espece)
-                                        especeExpanded = false
-                                    }
-                            ) { Text(espece.name) }
-                        }
-                    }
-                }
+                // Note bibliographique
+                OutlinedTextField(
+                        value = currentEquation?.bibNote ?: "",
+                        onValueChange = { viewModel.updateBibNote(it) },
+                        label = { Text("Note bibliographique") },
+                        modifier = Modifier.fillMaxWidth(),
+                        minLines = 2
+                )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Référence bibliographique (version simplifiée avec combobox)
-                Column {
-                    Text(
-                            "Référence bibliographique",
-                            style = MaterialTheme.typography.subtitle1,
-                            fontWeight = FontWeight.Bold
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    // Liste déroulante simplifiée pour les références
-                    var biblioRefExpanded by remember { mutableStateOf(false) }
-
-                    OutlinedButton(
-                            onClick = { biblioRefExpanded = true },
-                            modifier = Modifier.fillMaxWidth()
-                    ) {
-                        val currentRef = equation?.bib
-                        val displayText =
-                                if (currentRef != null && currentRef.firstAuthor.isNotBlank()) {
-                                    "${currentRef.firstAuthor}, ${currentRef.year}"
-                                } else {
-                                    "Sélectionner une référence"
-                                }
-                        Text(displayText)
-                    }
-
-                    DropdownMenu(
-                            expanded = biblioRefExpanded,
-                            onDismissRequest = { biblioRefExpanded = false },
-                            modifier = Modifier.fillMaxWidth(0.9f)
-                    ) {
-                        biblioRefs.forEach { ref ->
-                            DropdownMenuItem(
-                                    onClick = {
-                                        viewModel.updateEquationField("biblioRef", ref)
-                                        biblioRefExpanded = false
-                                    }
-                            ) { Text("${ref.firstAuthor}, ${ref.year} - ${ref.completeRef}") }
-                        }
-                    }
-                }
+                // Référence bibliographique
+                OutlinedTextField(
+                        value = currentEquation?.bibRef ?: "",
+                        onValueChange = { viewModel.updateBibRef(it) },
+                        label = { Text("Référence bibliographique") },
+                        modifier = Modifier.fillMaxWidth()
+                )
 
                 Spacer(modifier = Modifier.height(32.dp))
 
-                // Boutons d'action en bas
-                Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    // Bouton Annuler
-                    OutlinedButton(onClick = onNavigateBack, modifier = Modifier.weight(1f)) {
-                        Text("Annuler")
-                    }
+                // Bouton d'enregistrement
+                Button(
+                        onClick = { viewModel.saveEquation() },
+                        modifier = Modifier.align(Alignment.End),
+                        enabled = !isLoading
+                ) { Text("Enregistrer") }
+            }
 
-                    Spacer(modifier = Modifier.width(16.dp))
+            // Indicateur de chargement
+            if (isLoading) {
+                CircularProgressIndicator(
+                        modifier = Modifier.align(Alignment.Center),
+                        color = VetNutriColors.Primary
+                )
+            }
 
-                    // Bouton Sauvegarder
-                    Button(
-                            onClick = {
-                                viewModel.saveEquation()
-                                onNavigateBack()
-                            },
-                            modifier = Modifier.weight(1f),
-                            colors =
-                                    ButtonDefaults.buttonColors(
-                                            backgroundColor = VetNutriColors.Primary
-                                    )
-                    ) { Text("Sauvegarder", color = VetNutriColors.OnPrimary) }
-                }
+            // Alerte de succès
+            if (showSuccessAlert) {
+                AlertDialog(
+                        onDismissRequest = {
+                            showSuccessAlert = false
+                            viewModel.clearOperationMessage()
+                            onNavigateBack()
+                        },
+                        title = { Text("Succès") },
+                        text = { Text(operationMessage) },
+                        confirmButton = {
+                            Button(
+                                    onClick = {
+                                        showSuccessAlert = false
+                                        viewModel.clearOperationMessage()
+                                        onNavigateBack()
+                                    }
+                            ) { Text("OK") }
+                        }
+                )
+            }
+
+            // Afficher l'erreur s'il y en a une
+            if (operationMessage.isNotEmpty() && operationMessage.startsWith("Erreur")) {
+                Snackbar(
+                        modifier = Modifier.align(Alignment.BottomCenter),
+                        action = {
+                            TextButton(onClick = { viewModel.clearOperationMessage() }) {
+                                Text("Fermer")
+                            }
+                        }
+                ) { Text(operationMessage) }
             }
         }
-    }
-
-    // Dialogue d'erreur
-    if (errorMessage != null) {
-        AlertDialog(
-                onDismissRequest = { viewModel.clearError() },
-                title = { Text("Erreur") },
-                text = { Text(errorMessage ?: "") },
-                confirmButton = { Button(onClick = { viewModel.clearError() }) { Text("OK") } }
-        )
     }
 }

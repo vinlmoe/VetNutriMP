@@ -27,6 +27,7 @@ fun ReferenceEvEditView(
         viewModel: ReferenceEvViewModel,
         referenceEvId: String?,
         onNavigateBack: () -> Unit,
+        onEditNutrients: () -> Unit = {},
         modifier: Modifier = Modifier
 ) {
     val currentReferenceEv by viewModel.currentReferenceEv.collectAsState(initial = ReferenceEv())
@@ -245,6 +246,14 @@ fun ReferenceEvEditView(
                             },
                             enabled = isValid && !actionInProgress
                     ) { Text(if (isEditMode) "Mettre à jour" else "Ajouter") }
+
+                    // Bouton pour accéder aux besoins nutritionnels (uniquement en mode édition)
+                    if (isEditMode) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        OutlinedButton(onClick = { onEditNutrients() }) {
+                            Text("Éditer les besoins nutritionnels")
+                        }
+                    }
                 }
             }
 

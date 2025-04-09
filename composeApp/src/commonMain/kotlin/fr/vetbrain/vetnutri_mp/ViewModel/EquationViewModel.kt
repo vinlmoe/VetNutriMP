@@ -8,239 +8,195 @@ import fr.vetbrain.vetnutri_mp.Enumer.VariableKind
 import fr.vetbrain.vetnutri_mp.Repository.BiblioRefRepository
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Utils.PlatformDispatcher
-import kotlin.uuid.ExperimentalUuidApi
-import kotlin.uuid.Uuid
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.firstOrNull
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
- * ViewModel pour la gestion des équations
+ * ViewModel pour gérer les équations et les bibliographies associées
  *
- * @param equationRepository Le repository pour accéder aux équations
- * @param biblioRefRepository Le repository pour accéder aux références bibliographiques
+ * @param equationRepository Repository pour accéder aux équations
+ * @param biblioRefRepository Repository pour accéder aux références bibliographiques
+ * @param platformDispatcher Dispatcher pour exécuter les coroutines sur la plateforme appropriée
  */
 class EquationViewModel(
         private val equationRepository: EquationRepository,
-        private val biblioRefRepository: BiblioRefRepository
+        private val biblioRefRepository: BiblioRefRepository,
+        platformDispatcher: PlatformDispatcher
 ) {
-    private val dispatcher = PlatformDispatcher().provideMainDispatcher()
+    private val dispatcher = platformDispatcher.provideMainDispatcher()
     private val viewModelScope = CoroutineScope(dispatcher)
 
-    // État pour la liste des équations
+    // État de l'équation en cours d'édition
+    private val _currentEquation = MutableStateFlow(Equation())
+    val currentEquation: StateFlow<Equation> = _currentEquation.asStateFlow()
+
+    // Liste des équations disponibles
     private val _equations = MutableStateFlow<List<Equation>>(emptyList())
-    val equations: StateFlow<List<Equation>> = _equations.asStateFlow()
+    val equations = _equations.asStateFlow()
 
-    // État pour l'équation en cours d'édition
-    private val _currentEquation = MutableStateFlow<Equation?>(null)
-    val currentEquation: StateFlow<Equation?> = _currentEquation.asStateFlow()
-
-    // État pour les références bibliographiques disponibles
-    private val _biblioRefs = MutableStateFlow<List<BiblioRef>>(emptyList())
-    val biblioRefs: StateFlow<List<BiblioRef>> = _biblioRefs.asStateFlow()
-
-    // État pour les messages d'erreur
-    private val _errorMessage = MutableStateFlow<String?>(null)
-    val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
-
-    // État indiquant si une opération est en cours
+    // État de chargement (pour afficher un indicateur de progression)
     private val _isLoading = MutableStateFlow(false)
-    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+    val isLoading = _isLoading.asStateFlow()
 
-    /** Charge la liste des équations */
-    fun loadEquations() {
-        viewModelScope.launch {
-            try {
-                _isLoading.value = true
-                equationRepository
-                        .observeAllEquations()
-                        .catch { e ->
-                            _errorMessage.value =
-                                    "Erreur lors du chargement des équations: ${e.message}"
-                            println(
-                                    "DEBUG EquationViewModel: Erreur lors du chargement des équations: ${e.message}"
-                            )
-                        }
-                        .collect { equations ->
-                            _equations.value = equations
-                            _isLoading.value = false
-                            println("DEBUG EquationViewModel: ${equations.size} équations chargées")
-                        }
-            } catch (e: Exception) {
-                _errorMessage.value = "Erreur lors du chargement des équations: ${e.message}"
-                _isLoading.value = false
-                println(
-                        "DEBUG EquationViewModel: Exception lors du chargement des équations: ${e.message}"
-                )
-            }
-        }
-    }
+    // Message d'opération (succès/erreur)
+    private val _operationMessage = MutableStateFlow("")
+    val operationMessage = _operationMessage.asStateFlow()
 
-    /** Charge la liste des références bibliographiques */
-    fun loadBiblioRefs() {
-        viewModelScope.launch {
-            try {
-                // Utiliser firstOrNull pour éviter de bloquer
-                biblioRefRepository
-                        .getAllBiblioRefs()
-                        .catch { e ->
-                            println(
-                                    "DEBUG EquationViewModel: Erreur lors du chargement des références: ${e.message}"
-                            )
-                        }
-                        .firstOrNull()
-                        ?.let { refs ->
-                            _biblioRefs.value = refs
-                            println("DEBUG EquationViewModel: ${refs.size} références chargées")
-                        }
-            } catch (e: Exception) {
-                println(
-                        "DEBUG EquationViewModel: Exception lors du chargement des références: ${e.message}"
-                )
-            }
-        }
-    }
-
-    // Charge une équation spécifique par son UUID
-    fun loadEquation(uuid: String?) {
+    /**
+     * Charge une équation à partir de son ID
+     *
+     * @param id L'identifiant de l'équation à charger
+     */
+    fun loadEquation(id: String) {
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                if (uuid != null) {
-                    val equation = equationRepository.getEquationById(uuid)
+                val equation = equationRepository.getEquationById(id)
+                if (equation != null) {
                     _currentEquation.value = equation
                 } else {
-                    // Créer une nouvelle équation vide
-                    resetCurrentEquation()
+                    _operationMessage.value = "Erreur: Équation non trouvée"
                 }
             } catch (e: Exception) {
-                _errorMessage.value = "Erreur lors du chargement de l'équation: ${e.message}"
+                _operationMessage.value = "Erreur lors du chargement de l'équation: ${e.message}"
             } finally {
                 _isLoading.value = false
             }
         }
     }
 
-    // Réinitialise l'équation courante avec une nouvelle équation vide
-    @OptIn(ExperimentalUuidApi::class)
-    fun resetCurrentEquation() {
-        _currentEquation.value =
-                Equation(
-                        uuid = Uuid.random().toString(),
-                        description = "",
-                        equationScript = "",
-                        bib = BiblioRef(),
-                        specie = Espece.CHIEN,
-                        name = "",
-                        kind = EquationKind.ENERGYNEED,
-                        consistent = true,
-                        variables = mutableListOf()
-                )
+    /**
+     * Charge une équation à partir de son ID et l'assigne à l'équation courante
+     *
+     * @param id L'identifiant de l'équation à charger
+     */
+    fun loadEquationById(id: String) {
+        loadEquation(id)
     }
 
-    // Met à jour un champ de l'équation courante
-    fun updateEquationField(field: String, value: Any) {
-        _currentEquation.update { current ->
-            current?.let {
-                when (field) {
-                    "name" -> it.copy(name = value as String)
-                    "description" -> it.copy(description = value as String)
-                    "equationScript" -> it.copy(equationScript = value as String)
-                    "specie" -> it.copy(specie = value as Espece)
-                    "kind" -> it.copy(kind = value as EquationKind)
-                    "biblioRef" -> it.copy(bib = value as BiblioRef)
-                    else -> it
-                }
+    /** Charge toutes les équations disponibles */
+    fun loadEquations() {
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                _equations.value = equationRepository.getAllEquations()
+            } catch (e: Exception) {
+                _operationMessage.value = "Erreur lors du chargement des équations: ${e.message}"
+            } finally {
+                _isLoading.value = false
             }
         }
     }
 
-    // Ajoute une variable à l'équation courante
-    fun addVariable(variable: VariableKind) {
-        _currentEquation.update { current ->
-            current?.let {
-                val updatedVariables = it.variables.toMutableList()
-                if (!updatedVariables.contains(variable)) {
-                    updatedVariables.add(variable)
-                }
-                it.copy(variables = updatedVariables)
-            }
-        }
-    }
-
-    // Supprime une variable de l'équation courante
-    fun removeVariable(variable: VariableKind) {
-        _currentEquation.update { current ->
-            current?.let {
-                val updatedVariables = it.variables.toMutableList()
-                updatedVariables.remove(variable)
-                it.copy(variables = updatedVariables)
-            }
-        }
-    }
-
-    // Sauvegarde l'équation courante
+    /** Sauvegarde l'équation en cours d'édition */
     fun saveEquation() {
-        val currentEq = _currentEquation.value ?: return
-
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                val existingEquation =
-                        if (currentEq.uuid.isNotBlank())
-                                equationRepository.getEquationById(currentEq.uuid)
-                        else null
-
-                if (existingEquation != null) {
-                    equationRepository.updateEquation(currentEq)
-                } else {
-                    equationRepository.saveEquation(currentEq)
-                }
-
-                // Recharger la liste des équations
-                loadEquations()
+                equationRepository.saveEquation(_currentEquation.value)
+                _operationMessage.value = "Équation enregistrée avec succès."
+                loadEquations() // Recharger la liste
             } catch (e: Exception) {
-                _errorMessage.value = "Erreur lors de la sauvegarde de l'équation: ${e.message}"
+                _operationMessage.value = "Erreur lors de l'enregistrement: ${e.message}"
             } finally {
                 _isLoading.value = false
             }
         }
     }
 
-    // Supprime l'équation courante
+    /** Supprime l'équation en cours d'édition */
     fun deleteEquation() {
-        val currentEq = _currentEquation.value ?: return
-
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                equationRepository.deleteEquation(currentEq.uuid)
-
-                // Réinitialiser et recharger
-                resetCurrentEquation()
-                loadEquations()
+                equationRepository.deleteEquation(_currentEquation.value.uuid)
+                _operationMessage.value = "Équation supprimée avec succès."
+                _currentEquation.value = Equation() // Réinitialiser
+                loadEquations() // Recharger la liste
             } catch (e: Exception) {
-                _errorMessage.value = "Erreur lors de la suppression de l'équation: ${e.message}"
+                _operationMessage.value = "Erreur lors de la suppression: ${e.message}"
             } finally {
                 _isLoading.value = false
             }
         }
     }
 
-    // Efface le message d'erreur
-    fun clearError() {
-        _errorMessage.value = null
+    /** Réinitialise l'équation en cours d'édition */
+    fun clearCurrentEquation() {
+        _currentEquation.value = Equation()
     }
 
-    // Initialisation du ViewModel
-    init {
-        loadEquations()
-        loadBiblioRefs()
+    /** Efface le message d'opération */
+    fun clearOperationMessage() {
+        _operationMessage.value = ""
+    }
+
+    /** Met à jour le nom de l'équation */
+    fun updateName(name: String) {
+        _currentEquation.value = _currentEquation.value.copy(name = name)
+    }
+
+    /** Met à jour la description de l'équation */
+    fun updateDescription(description: String) {
+        _currentEquation.value = _currentEquation.value.copy(description = description)
+    }
+
+    /** Met à jour le type d'équation */
+    fun updateKind(kind: EquationKind) {
+        _currentEquation.value = _currentEquation.value.copy(kind = kind)
+    }
+
+    /** Met à jour l'espèce de l'équation */
+    fun updateSpecie(specie: Espece?) {
+        _currentEquation.value = _currentEquation.value.copy(specie = specie)
+    }
+
+    /** Met à jour le script de l'équation */
+    fun updateScript(script: String) {
+        _currentEquation.value = _currentEquation.value.copy(equationScript = script)
+    }
+
+    /** Met à jour le facteur de correction */
+    fun updateCorrectionFactor(factor: Double) {
+        _currentEquation.value = _currentEquation.value.copy(correctionFactor = factor)
+    }
+
+    /** Met à jour la note bibliographique */
+    fun updateBibNote(note: String) {
+        _currentEquation.value = _currentEquation.value.copy(bibNote = note)
+    }
+
+    /** Met à jour la référence bibliographique */
+    fun updateBibRef(ref: String) {
+        _currentEquation.value = _currentEquation.value.copy(bibRef = ref)
+    }
+
+    /** Ajoute une variable à l'équation */
+    fun addVariable(variable: VariableKind) {
+        val updatedVariables = _currentEquation.value.variables.toMutableList()
+        if (!updatedVariables.contains(variable)) {
+            updatedVariables.add(variable)
+        }
+        _currentEquation.value = _currentEquation.value.copy(variables = updatedVariables)
+    }
+
+    /** Supprime une variable de l'équation */
+    fun removeVariable(variable: VariableKind) {
+        val updatedVariables = _currentEquation.value.variables.toMutableList()
+        updatedVariables.remove(variable)
+        _currentEquation.value = _currentEquation.value.copy(variables = updatedVariables)
+    }
+
+    /** Met à jour les informations bibliographiques */
+    fun updateBibRef(biblioRef: BiblioRef) {
+        _currentEquation.value = _currentEquation.value.copy(bib = biblioRef)
+    }
+
+    /** Fixe si l'équation est cohérente ou non */
+    fun setConsistent(consistent: Boolean) {
+        _currentEquation.value = _currentEquation.value.copy(consistent = consistent)
     }
 }

@@ -1,29 +1,27 @@
 package fr.vetbrain.vetnutri_mp.Data
 
-import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
-import fr.vetbrain.vetnutri_mp.Enumer.NutrientEnergy
+import fr.vetbrain.vetnutri_mp.Enumer.MainNutrientEnum
+import fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum
 
 /**
- * Classe représentant une référence de nutriment Basée sur la classe NutrientRef du projet Java
- * original
+ * Représente un besoin nutritionnel pour une référence
+ *
+ * @property id Identifiant unique du besoin nutritionnel
+ * @property referenceEvId Identifiant de la référence associée
+ * @property name Nom du nutriment
+ * @property value Valeur du besoin nutritionnel
+ * @property nutrientType Type principal du nutriment (BASE, MACRO, MIN, etc.)
+ * @property nutrientCode Code spécifique du nutriment dans son type
+ * @property unitReq Unité de mesure pour la valeur du besoin
+ * @property biblioRef Référence bibliographique associée (facultatif)
  */
 data class NutrientRef(
-        val nutrient: Nutrient,
-        val value: Float,
-        val biblioRef: BiblioRef = BiblioRef(),
-        val consistent: Boolean = true
-) {
-    /**
-     * Vérifie si cette référence est cohérente
-     *
-     * @return true si la référence est cohérente, false sinon
-     */
-    fun isConsistent(): Boolean {
-        return consistent
-    }
-
-    companion object {
-        val EMPTY =
-                NutrientRef(nutrient = NutrientEnergy.TOT, value = 0.0f, biblioRef = BiblioRef())
-    }
-}
+        val id: String = "",
+        val referenceEvId: String = "",
+        val name: String = "",
+        val value: String = "",
+        val nutrientType: MainNutrientEnum,
+        val nutrientCode: Int = 0,
+        val unitReq: UnitReqEnum = UnitReqEnum.PERKG,
+        val biblioRef: BiblioRef? = null
+)

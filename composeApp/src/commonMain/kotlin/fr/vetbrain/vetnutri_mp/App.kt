@@ -180,12 +180,14 @@ fun App(appDatabase: AppDatabase) {
     var selectedBiblioRefId by remember { mutableStateOf<String?>(null) }
 
     // ViewModel et état pour les équations
-    val equationViewModel = remember { EquationViewModel(equationRepository, biblioRefRepository) }
+    val platformDispatcher = remember { PlatformDispatcher() }
+    val equationViewModel = remember {
+        EquationViewModel(equationRepository, biblioRefRepository, platformDispatcher)
+    }
     var selectedEquationId by remember { mutableStateOf<String?>(null) }
 
     // ViewModel et état pour les références évaluées
     val referenceEvRepository = remember { ReferenceEvRepository() }
-    val platformDispatcher = remember { PlatformDispatcher() }
     val referenceEvViewModel = remember {
         ReferenceEvViewModel(referenceEvRepository, platformDispatcher)
     }
@@ -464,6 +466,25 @@ fun App(appDatabase: AppDatabase) {
                                     selectedReferenceEvId = null
                                     currentScreen = Screen.ReferenceEvList
                                 },
+                                onEditNutrients = {
+                                    // Vérifier que l'ID de référence existe avant de naviguer
+                                    if (selectedReferenceEvId != null &&
+                                                    selectedReferenceEvId!!.isNotBlank()
+                                    ) {
+                                        currentScreen = Screen.ReferenceEvNutrient
+                                    }
+                                },
+                                modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                    Screen.ReferenceEvNutrient -> {
+                        ReferenceEvNutrientView(
+                                referenceEvViewModel = referenceEvViewModel,
+                                biblioRefRepository = biblioRefRepository,
+                                referenceEvRepository = referenceEvRepository,
+                                platformDispatcher = platformDispatcher,
+                                referenceEvId = selectedReferenceEvId ?: "",
+                                onNavigateBack = { currentScreen = Screen.ReferenceEvEdit },
                                 modifier = Modifier.fillMaxSize()
                         )
                     }
@@ -620,4 +641,5 @@ private sealed class Screen {
     object CalculationTabs : Screen()
     object ReferenceEvList : Screen()
     object ReferenceEvEdit : Screen()
+    object ReferenceEvNutrient : Screen()
 }

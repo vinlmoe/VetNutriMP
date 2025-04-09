@@ -20,10 +20,10 @@ class MiniReqAnalyzer {
         for (mainNutrient in MainNutrientEnum.entries) {
             when (mainNutrient) {
                 MainNutrientEnum.AMA -> {
-                    for (nutrient in mainNutrient.getSousNutrients()) {
-                        val listRef = value.obtenirReferences(nutrient)
+                    for (nutrientName in mainNutrient.getSousNutrients()) {
+                        val listRef = value.obtenirReferences(nutrientName)
                         if (listRef.isNotEmpty()) {
-                            mapRef[nutrient.toString()] = listRef
+                            mapRef[nutrientName] = listRef
                         }
                     }
                 }
@@ -33,10 +33,10 @@ class MiniReqAnalyzer {
                 MainNutrientEnum.MIN,
                 MainNutrientEnum.VITAM,
                 MainNutrientEnum.ANA -> {
-                    for (nutrient in mainNutrient.getSousNutrients()) {
-                        val listRef = value.obtenirReferences(nutrient)
+                    for (nutrientName in mainNutrient.getSousNutrients()) {
+                        val listRef = value.obtenirReferences(nutrientName)
                         if (listRef.isNotEmpty()) {
-                            mapRef[nutrient.toString()] = listRef
+                            mapRef[nutrientName] = listRef
                         }
                     }
                 }
@@ -54,6 +54,16 @@ class MiniReqAnalyzer {
      * @return La liste des références pour ce nutriment ou une liste vide si aucune référence
      */
     fun obtenirReferences(nutrient: Nutrient): List<NutrientRef> {
-        return mapRef[nutrient.toString()] ?: emptyList()
+        return obtenirReferences(nutrient.toString())
+    }
+
+    /**
+     * Obtient les références pour un nutriment donné par son nom
+     *
+     * @param nutrientName Le nom du nutriment pour lequel obtenir les références
+     * @return La liste des références pour ce nutriment ou une liste vide si aucune référence
+     */
+    fun obtenirReferences(nutrientName: String): List<NutrientRef> {
+        return mapRef[nutrientName] ?: emptyList()
     }
 }

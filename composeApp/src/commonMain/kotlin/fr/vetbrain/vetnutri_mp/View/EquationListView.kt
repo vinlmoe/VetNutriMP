@@ -1,7 +1,5 @@
 package fr.vetbrain.vetnutri_mp.View
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -18,13 +16,12 @@ import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.EquationViewModel
 
 /**
- * Vue pour afficher la liste des équations
+ * Vue affichant la liste des équations disponibles
  *
- * @param viewModel Le ViewModel gérant les données des équations
- * @param onNavigateBack Callback appelé pour retourner à la vue précédente
- * @param onEditEquation Callback appelé lorsqu'une équation est sélectionnée pour édition
- * @param onCreateEquation Callback appelé lorsque l'utilisateur souhaite créer une nouvelle
- * équation
+ * @param viewModel ViewModel pour gérer les équations
+ * @param onNavigateBack Callback pour revenir à l'écran précédent
+ * @param onEditEquation Callback pour éditer une équation existante
+ * @param onCreateEquation Callback pour créer une nouvelle équation
  * @param modifier Modifier à appliquer à la vue
  */
 @Composable
@@ -37,7 +34,7 @@ fun EquationListView(
 ) {
     val equations by viewModel.equations.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
-    val errorMessage by viewModel.errorMessage.collectAsState()
+    val operationMessage by viewModel.operationMessage.collectAsState()
 
     // Dialogue de confirmation pour la suppression
     var showDeleteConfirmation by remember { mutableStateOf(false) }
@@ -91,14 +88,47 @@ fun EquationListView(
                     contentPadding = PaddingValues(16.dp)
             ) {
                 items(equations) { equation ->
-                    EquationItem(
-                            equation = equation,
-                            onEditClick = { onEditEquation(equation.uuid) },
-                            onDeleteClick = {
-                                equationToDelete = equation
-                                showDeleteConfirmation = true
+                    Card(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                            elevation = 4.dp
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                        text = equation.name,
+                                        style = MaterialTheme.typography.h6,
+                                        fontWeight = FontWeight.Bold
+                                )
+
+                                Row {
+                                    IconButton(onClick = { onEditEquation(equation.uuid) }) {
+                                        Icon(
+                                                imageVector = AppIcons.Edit,
+                                                contentDescription = "Modifier",
+                                                tint = VetNutriColors.Primary
+                                        )
+                                    }
+
+                                    IconButton(
+                                            onClick = {
+                                                equationToDelete = equation
+                                                showDeleteConfirmation = true
+                                            }
+                                    ) {
+                                        Icon(
+                                                imageVector = AppIcons.Delete,
+                                                contentDescription = "Supprimer",
+                                                tint = VetNutriColors.Error
+                                        )
+                                    }
+                                }
                             }
-                    )
+                        }
+                    }
                     Spacer(modifier = Modifier.height(8.dp))
                 }
             }
@@ -106,12 +136,14 @@ fun EquationListView(
     }
 
     // Afficher les erreurs éventuelles
-    if (errorMessage != null) {
+    if (operationMessage.isNotEmpty() && operationMessage.startsWith("Erreur")) {
         AlertDialog(
-                onDismissRequest = { viewModel.clearError() },
+                onDismissRequest = { viewModel.clearOperationMessage() },
                 title = { Text("Erreur") },
-                text = { Text(errorMessage ?: "") },
-                confirmButton = { Button(onClick = { viewModel.clearError() }) { Text("OK") } }
+                text = { Text(operationMessage) },
+                confirmButton = {
+                    Button(onClick = { viewModel.clearOperationMessage() }) { Text("OK") }
+                }
         )
     }
 
@@ -132,7 +164,7 @@ fun EquationListView(
                     Button(
                             onClick = {
                                 equationToDelete?.let {
-                                    viewModel.loadEquation(it.uuid)
+                                    viewModel.loadEquationById(it.uuid)
                                     viewModel.deleteEquation()
                                 }
                                 showDeleteConfirmation = false
@@ -153,79 +185,5 @@ fun EquationListView(
                     ) { Text("Annuler") }
                 }
         )
-    }
-}
-
-/**
- * Composant affichant une équation dans la liste
- *
- * @param equation L'équation à afficher
- * @param onEditClick Callback appelé lorsque l'utilisateur souhaite éditer l'équation
- * @param onDeleteClick Callback appelé lorsque l'utilisateur souhaite supprimer l'équation
- */
-@Composable
-private fun EquationItem(equation: Equation, onEditClick: () -> Unit, onDeleteClick: () -> Unit) {
-    Card(modifier = Modifier.fillMaxWidth().clickable(onClick = onEditClick), elevation = 4.dp) {
-        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-            Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                        text = equation.name,
-                        style = MaterialTheme.typography.h6,
-                        fontWeight = FontWeight.Bold
-                )
-
-                Row {
-                    IconButton(onClick = onEditClick) {
-                        Icon(
-                                imageVector = AppIcons.Edit,
-                                contentDescription = "Modifier",
-                                tint = VetNutriColors.Primary
-                        )
-                    }
-
-                    IconButton(onClick = onDeleteClick) {
-                        Icon(
-                                imageVector = AppIcons.Delete,
-                                contentDescription = "Supprimer",
-                                tint = VetNutriColors.Error
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(text = "Type: ${equation.kind.getNom()}", style = MaterialTheme.typography.body1)
-
-            Text(
-                    text = "Espèce: ${equation.specie?.name ?: "Non spécifié"}",
-                    style = MaterialTheme.typography.body1
-            )
-
-            if (equation.description.isNotBlank()) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(text = equation.description, style = MaterialTheme.typography.body2)
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Row(
-                    modifier =
-                            Modifier.fillMaxWidth()
-                                    .background(VetNutriColors.Surface.copy(alpha = 0.5f))
-                                    .padding(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                        text = "Formule: ${equation.equationScript}",
-                        style = MaterialTheme.typography.body2,
-                        modifier = Modifier.weight(1f)
-                )
-            }
-        }
     }
 }

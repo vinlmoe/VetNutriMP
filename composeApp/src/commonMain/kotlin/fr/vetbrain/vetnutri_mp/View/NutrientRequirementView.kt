@@ -7,63 +7,36 @@ import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Components.TopBarSimple
-import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
+import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
+import fr.vetbrain.vetnutri_mp.ViewModel.ReferenceEvViewModel
 
 /**
- * Vue des besoins nutritionnels Cette vue affiche une liste des besoins nutritionnels de base pour
- * différentes espèces
+ * Vue des besoins nutritionnels. Cette vue affiche la liste des références évaluées permettant
+ * d'accéder à l'édition des besoins nutritionnels.
  *
+ * @param viewModel ViewModel des références évaluées
  * @param onNavigateBack Callback pour revenir à la vue précédente
+ * @param onEditReference Callback pour éditer une référence
+ * @param onCreateReference Callback pour créer une nouvelle référence
+ * @param onEditNutrients Callback pour éditer les besoins nutritionnels d'une référence
  * @param modifier Modifier à appliquer à la vue
  */
 @Composable
-fun NutrientRequirementView(onNavigateBack: () -> Unit, modifier: Modifier = Modifier) {
-    var selectedSpecies by remember { mutableStateOf("Chien") }
+fun NutrientRequirementView(
+        viewModel: ReferenceEvViewModel,
+        onNavigateBack: () -> Unit,
+        onEditReference: (String) -> Unit,
+        onCreateReference: () -> Unit,
+        onEditNutrients: (String) -> Unit,
+        modifier: Modifier = Modifier
+) {
+    val allReferences by viewModel.allReferences.collectAsState(initial = emptyList())
+    val loading by viewModel.loading.collectAsState(initial = false)
 
-    // Besoins nutritionnels de base pour un chien
-    val nutritionRequirements = remember {
-        mapOf(
-                "Chien" to
-                        listOf(
-                                NutrientRequirement(
-                                        "Énergie",
-                                        "Besoins énergétiques",
-                                        "95-130 kcal/kg^0.75"
-                                ),
-                                NutrientRequirement(
-                                        "Protéines",
-                                        "Matière azotée totale",
-                                        "18-25% MS"
-                                ),
-                                NutrientRequirement("Lipides", "Matière grasse", "5-15% MS"),
-                                NutrientRequirement("Calcium", "Minéral essentiel", "0.5-1.8% MS"),
-                                NutrientRequirement("Phosphore", "Minéral essentiel", "0.4-1.6% MS")
-                        ),
-                "Chat" to
-                        listOf(
-                                NutrientRequirement(
-                                        "Énergie",
-                                        "Besoins énergétiques",
-                                        "100-140 kcal/kg^0.67"
-                                ),
-                                NutrientRequirement(
-                                        "Protéines",
-                                        "Matière azotée totale",
-                                        "25-35% MS"
-                                ),
-                                NutrientRequirement("Lipides", "Matière grasse", "10-30% MS"),
-                                NutrientRequirement("Calcium", "Minéral essentiel", "0.6-1.5% MS"),
-                                NutrientRequirement(
-                                        "Taurine",
-                                        "Acide aminé essentiel",
-                                        "0.1-0.2% MS"
-                                )
-                        )
-        )
-    }
+    // Charger les références au démarrage
+    LaunchedEffect(Unit) { viewModel.loadAllReferences() }
 
     Scaffold(
             topBar = {
@@ -71,109 +44,98 @@ fun NutrientRequirementView(onNavigateBack: () -> Unit, modifier: Modifier = Mod
             }
     ) { paddingValues ->
         Column(modifier = modifier.fillMaxSize().padding(paddingValues).padding(16.dp)) {
-            // Sélection de l'espèce
+            // Section d'introduction
             Card(modifier = Modifier.fillMaxWidth(), elevation = 4.dp) {
-                Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-                    Text(
-                            "Espèce",
-                            style = MaterialTheme.typography.h6,
-                            fontWeight = FontWeight.Bold
-                    )
-
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text("Gestion des besoins nutritionnels", style = MaterialTheme.typography.h6)
                     Spacer(modifier = Modifier.height(8.dp))
-
-                    Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Button(
-                                onClick = { selectedSpecies = "Chien" },
-                                colors =
-                                        ButtonDefaults.buttonColors(
-                                                backgroundColor =
-                                                        if (selectedSpecies == "Chien")
-                                                                VetNutriColors.Primary
-                                                        else VetNutriColors.Surface,
-                                                contentColor =
-                                                        if (selectedSpecies == "Chien")
-                                                                VetNutriColors.OnPrimary
-                                                        else VetNutriColors.OnSurface
-                                        ),
-                                modifier = Modifier.weight(1f)
-                        ) { Text("Chien") }
-
-                        Button(
-                                onClick = { selectedSpecies = "Chat" },
-                                colors =
-                                        ButtonDefaults.buttonColors(
-                                                backgroundColor =
-                                                        if (selectedSpecies == "Chat")
-                                                                VetNutriColors.Primary
-                                                        else VetNutriColors.Surface,
-                                                contentColor =
-                                                        if (selectedSpecies == "Chat")
-                                                                VetNutriColors.OnPrimary
-                                                        else VetNutriColors.OnSurface
-                                        ),
-                                modifier = Modifier.weight(1f)
-                        ) { Text("Chat") }
-                    }
+                    Text(
+                            "Les besoins nutritionnels sont définis pour chaque référence évaluée. " +
+                                    "Sélectionnez une référence ci-dessous pour éditer ses besoins nutritionnels.",
+                            style = MaterialTheme.typography.body1
+                    )
                 }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Liste des besoins nutritionnels
-            Text(
-                    "Besoins Nutritionnels - $selectedSpecies",
-                    style = MaterialTheme.typography.h6,
-                    fontWeight = FontWeight.Bold
-            )
+            // Bouton pour créer une nouvelle référence
+            Button(onClick = onCreateReference, modifier = Modifier.align(Alignment.End)) {
+                Text("Ajouter une référence")
+            }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-            LazyColumn(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(nutritionRequirements[selectedSpecies] ?: emptyList()) { requirement ->
-                    NutrientRequirementCard(requirement = requirement)
+            // Liste des références
+            if (loading) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            } else if (allReferences.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(
+                            "Aucune référence disponible. Ajoutez une référence pour définir des besoins nutritionnels.",
+                            style = MaterialTheme.typography.body1
+                    )
+                }
+            } else {
+                LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(allReferences) { reference ->
+                        ReferenceNutrientCard(
+                                reference = reference,
+                                onEdit = { onEditReference(reference.uuid) },
+                                onEditNutrients = { onEditNutrients(reference.uuid) }
+                        )
+                    }
                 }
             }
         }
     }
 }
 
-/** Modèle de données pour un besoin nutritionnel */
-data class NutrientRequirement(val name: String, val description: String, val value: String)
-
-/** Carte affichant un besoin nutritionnel */
 @Composable
-fun NutrientRequirementCard(requirement: NutrientRequirement, modifier: Modifier = Modifier) {
+private fun ReferenceNutrientCard(
+        reference: ReferenceEv,
+        onEdit: () -> Unit,
+        onEditNutrients: () -> Unit,
+        modifier: Modifier = Modifier
+) {
     Card(modifier = modifier.fillMaxWidth(), elevation = 4.dp) {
-        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(text = reference.nom, style = MaterialTheme.typography.h6)
+
             Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(modifier = Modifier.weight(2f)) {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
-                            text = requirement.name,
-                            style = MaterialTheme.typography.h6,
-                            fontWeight = FontWeight.Bold
+                            text = "Espèce: ${reference.espece}",
+                            style = MaterialTheme.typography.body1
                     )
-
-                    Text(text = requirement.description, style = MaterialTheme.typography.body2)
+                    Text(
+                            text = "Stade physiologique: ${reference.stadePhysio}",
+                            style = MaterialTheme.typography.body1
+                    )
+                    if (reference.maladie) {
+                        Text(
+                                text = "Maladie: ${reference.nomMaladie}",
+                                style = MaterialTheme.typography.body1
+                        )
+                    }
                 }
 
-                Text(
-                        text = requirement.value,
-                        style = MaterialTheme.typography.body1,
-                        fontWeight = FontWeight.Medium,
-                        color = VetNutriColors.Primary,
-                        modifier = Modifier.weight(1f)
-                )
+                // Boutons d'action
+                Row {
+                    OutlinedButton(onClick = onEdit, modifier = Modifier.padding(end = 8.dp)) {
+                        Text("Éditer")
+                    }
+
+                    Button(onClick = onEditNutrients) { Text("Besoins nutritionnels") }
+                }
             }
         }
     }
