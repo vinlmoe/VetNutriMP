@@ -45,6 +45,11 @@ class EquationViewModel(
     private val _operationMessage = MutableStateFlow("")
     val operationMessage = _operationMessage.asStateFlow()
 
+    /** Retourne le Repository de références bibliographiques */
+    fun getBiblioRefRepository(): BiblioRefRepository {
+        return biblioRefRepository
+    }
+
     /**
      * Charge une équation à partir de son ID
      *
@@ -160,19 +165,25 @@ class EquationViewModel(
     }
 
     /** Met à jour le facteur de correction */
+    /* Cette méthode ne peut pas être utilisée car la propriété n'existe pas dans la classe Equation
     fun updateCorrectionFactor(factor: Double) {
         _currentEquation.value = _currentEquation.value.copy(correctionFactor = factor)
     }
+    */
 
     /** Met à jour la note bibliographique */
+    /* Cette méthode ne peut pas être utilisée car la propriété n'existe pas dans la classe Equation
     fun updateBibNote(note: String) {
         _currentEquation.value = _currentEquation.value.copy(bibNote = note)
     }
+    */
 
     /** Met à jour la référence bibliographique */
+    /* Cette méthode ne peut pas être utilisée car la propriété n'existe pas dans la classe Equation
     fun updateBibRef(ref: String) {
         _currentEquation.value = _currentEquation.value.copy(bibRef = ref)
     }
+    */
 
     /** Ajoute une variable à l'équation */
     fun addVariable(variable: VariableKind) {

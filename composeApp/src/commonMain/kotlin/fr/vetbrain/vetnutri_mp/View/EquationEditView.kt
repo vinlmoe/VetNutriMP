@@ -1,19 +1,21 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Components.DropdownField
 import fr.vetbrain.vetnutri_mp.Components.TopBarSimple
-import fr.vetbrain.vetnutri_mp.Data.Equation
 import fr.vetbrain.vetnutri_mp.Enumer.EquationType
+import fr.vetbrain.vetnutri_mp.Theme.AppIcons
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.EquationViewModel
 
@@ -32,45 +34,72 @@ fun EquationEditView(
         onNavigateBack: () -> Unit,
         modifier: Modifier = Modifier
 ) {
-    // État du chargement
-    val isLoading by viewModel.isLoading.collectAsState(initial = false)
-
-    // Équation en cours
-    val currentEquation by viewModel.currentEquation.collectAsState(initial = Equation())
-
-    // Message d'opération (succès/erreur)
-    val operationMessage by viewModel.operationMessage.collectAsState()
-
-    // État pour afficher l'alerte de succès
-    var showSuccessAlert by remember { mutableStateOf(false) }
-
-    // Effet pour charger l'équation à l'initialisation si un ID est fourni
+    // Charger l'équation si un ID est fourni, sinon créer une nouvelle équation
     LaunchedEffect(equationId) {
         if (equationId != null) {
-            viewModel.loadEquationById(equationId)
+            viewModel.loadEquation(equationId)
         } else {
             viewModel.clearCurrentEquation()
         }
     }
 
-    // Effet pour afficher l'alerte de succès lorsqu'une opération réussit
+    val currentEquation by viewModel.currentEquation.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+    val operationMessage by viewModel.operationMessage.collectAsState()
+
+    // État pour le dialogue de sélection de référence bibliographique
+    var showBiblioRefDialog by remember { mutableStateOf(false) }
+    var biblioRefSearchQuery by remember { mutableStateOf("") }
+
+    // Charger les références bibliographiques
+    val biblioRefRepository = remember { viewModel.getBiblioRefRepository() }
+    val allBiblioRefs =
+            remember { biblioRefRepository.getAllBiblioRefs() }
+                    .collectAsState(initial = emptyList())
+
+    // Filtrer les références selon la recherche
+    val filteredBiblioRefs =
+            remember(allBiblioRefs.value, biblioRefSearchQuery) {
+                if (biblioRefSearchQuery.isBlank()) {
+                    allBiblioRefs.value
+                } else {
+                    val query = biblioRefSearchQuery.lowercase()
+                    allBiblioRefs.value.filter { biblioRef ->
+                        biblioRef.firstAuthor.lowercase().contains(query) ||
+                                biblioRef.year.toString().contains(query) ||
+                                biblioRef.completeRef.lowercase().contains(query) ||
+                                biblioRef.comments.lowercase().contains(query)
+                    }
+                }
+            }
+
+    // Afficher un message de succès ou d'erreur
     LaunchedEffect(operationMessage) {
-        if (operationMessage.isNotEmpty() && !operationMessage.startsWith("Erreur")) {
-            showSuccessAlert = true
+        if (operationMessage.isNotEmpty()) {
+            // Ici, on pourrait afficher un message toast ou snackbar
+            // Pour l'instant, on l'affiche juste dans la console
+            println("Message: $operationMessage")
+            viewModel.clearOperationMessage()
         }
     }
 
-    // Titre dynamique basé sur l'opération (création ou édition)
-    val title = if (equationId == null) "Nouvelle équation" else "Modifier l'équation"
-
-    Scaffold(topBar = { TopBarSimple(title = title, onNavigateBack = onNavigateBack) }) {
-            paddingValues ->
+    // UI principale
+    Scaffold(
+            topBar = {
+                TopBarSimple(
+                        title =
+                                if (equationId != null) "Modifier l'équation"
+                                else "Nouvelle équation",
+                        onNavigateBack = onNavigateBack
+                )
+            }
+    ) { paddingValues ->
         Box(modifier = modifier.fillMaxSize().padding(paddingValues).padding(16.dp)) {
             // Formulaire d'édition d'équation
             Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
                 // Nom de l'équation
                 OutlinedTextField(
-                        value = currentEquation?.name ?: "",
+                        value = currentEquation.name,
                         onValueChange = { viewModel.updateName(it) },
                         label = { Text("Nom de l'équation") },
                         modifier = Modifier.fillMaxWidth()
@@ -80,7 +109,7 @@ fun EquationEditView(
 
                 // Description
                 OutlinedTextField(
-                        value = currentEquation?.description ?: "",
+                        value = currentEquation.description,
                         onValueChange = { viewModel.updateDescription(it) },
                         label = { Text("Description") },
                         modifier = Modifier.fillMaxWidth(),
@@ -92,15 +121,21 @@ fun EquationEditView(
                 // Type d'équation (dropdown)
                 DropdownField(
                         label = "Type d'équation",
-                        selectedValue = currentEquation?.kind?.let { kind ->
-                            when (kind) {
-                                fr.vetbrain.vetnutri_mp.Enumer.EquationKind.ENERGYNEED -> EquationType.ENERGYNEED
-                                fr.vetbrain.vetnutri_mp.Enumer.EquationKind.ENERGYDENSITY -> EquationType.ENERGYDENSITY
-                                fr.vetbrain.vetnutri_mp.Enumer.EquationKind.MW -> EquationType.MW
-                                fr.vetbrain.vetnutri_mp.Enumer.EquationKind.INDICATOR -> EquationType.INDICATOR
-                                fr.vetbrain.vetnutri_mp.Enumer.EquationKind.NEED -> EquationType.NEED
-                            }
-                        },
+                        selectedValue =
+                                currentEquation.kind.let { kind ->
+                                    when (kind) {
+                                        fr.vetbrain.vetnutri_mp.Enumer.EquationKind.ENERGYNEED ->
+                                                EquationType.ENERGYNEED
+                                        fr.vetbrain.vetnutri_mp.Enumer.EquationKind.ENERGYDENSITY ->
+                                                EquationType.ENERGYDENSITY
+                                        fr.vetbrain.vetnutri_mp.Enumer.EquationKind.MW ->
+                                                EquationType.MW
+                                        fr.vetbrain.vetnutri_mp.Enumer.EquationKind.INDICATOR ->
+                                                EquationType.INDICATOR
+                                        fr.vetbrain.vetnutri_mp.Enumer.EquationKind.NEED ->
+                                                EquationType.NEED
+                                    }
+                                },
                         options = EquationType.values().toList(),
                         onValueChange = { viewModel.updateKind(it.toEquationKind()) },
                         valueToString = { it.toString() }
@@ -108,37 +143,51 @@ fun EquationEditView(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Facteur de correction (si besoin)
+                // Script de l'équation
                 OutlinedTextField(
-                        value = currentEquation?.correctionFactor?.toString() ?: "1.0",
-                        onValueChange = {
-                            viewModel.updateCorrectionFactor(it.toDoubleOrNull() ?: 1.0)
-                        },
-                        label = { Text("Facteur de correction") },
+                        value = currentEquation.equationScript,
+                        onValueChange = { viewModel.updateScript(it) },
+                        label = { Text("Formule") },
                         modifier = Modifier.fillMaxWidth(),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+                        minLines = 5
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Note bibliographique
-                OutlinedTextField(
-                        value = currentEquation?.bibNote ?: "",
-                        onValueChange = { viewModel.updateBibNote(it) },
-                        label = { Text("Note bibliographique") },
+                // Affichage et sélection de la référence bibliographique
+                Row(
                         modifier = Modifier.fillMaxWidth(),
-                        minLines = 2
-                )
+                        verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                                text = "Référence bibliographique",
+                                style = MaterialTheme.typography.subtitle1
+                        )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(4.dp))
 
-                // Référence bibliographique
-                OutlinedTextField(
-                        value = currentEquation?.bibRef ?: "",
-                        onValueChange = { viewModel.updateBibRef(it) },
-                        label = { Text("Référence bibliographique") },
-                        modifier = Modifier.fillMaxWidth()
-                )
+                        Text(
+                                text =
+                                        if (currentEquation.bib != null)
+                                                "${currentEquation.bib.firstAuthor}, ${currentEquation.bib.year}"
+                                        else "Aucune référence sélectionnée",
+                                style = MaterialTheme.typography.body1
+                        )
+
+                        if (currentEquation.bib != null) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                    text = currentEquation.bib.completeRef,
+                                    style = MaterialTheme.typography.caption
+                            )
+                        }
+                    }
+
+                    Button(onClick = { showBiblioRefDialog = true }, modifier = Modifier) {
+                        Text(if (currentEquation.bib != null) "Changer" else "Sélectionner")
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(32.dp))
 
@@ -157,40 +206,92 @@ fun EquationEditView(
                         color = VetNutriColors.Primary
                 )
             }
+        }
+    }
 
-            // Alerte de succès
-            if (showSuccessAlert) {
-                AlertDialog(
-                        onDismissRequest = {
-                            showSuccessAlert = false
-                            viewModel.clearOperationMessage()
-                            onNavigateBack()
-                        },
-                        title = { Text("Succès") },
-                        text = { Text(operationMessage) },
-                        confirmButton = {
-                            Button(
-                                    onClick = {
-                                        showSuccessAlert = false
-                                        viewModel.clearOperationMessage()
-                                        onNavigateBack()
+    // Dialogue de sélection de référence bibliographique
+    if (showBiblioRefDialog) {
+        AlertDialog(
+                onDismissRequest = { showBiblioRefDialog = false },
+                title = { Text("Sélectionner une référence bibliographique") },
+                text = {
+                    Column {
+                        // Barre de recherche
+                        OutlinedTextField(
+                                value = biblioRefSearchQuery,
+                                onValueChange = { biblioRefSearchQuery = it },
+                                label = { Text("Rechercher") },
+                                leadingIcon = {
+                                    Icon(
+                                            imageVector = AppIcons.Search,
+                                            contentDescription = "Rechercher"
+                                    )
+                                },
+                                trailingIcon = {
+                                    if (biblioRefSearchQuery.isNotEmpty()) {
+                                        IconButton(onClick = { biblioRefSearchQuery = "" }) {
+                                            Icon(
+                                                    imageVector = AppIcons.Close,
+                                                    contentDescription = "Effacer"
+                                            )
+                                        }
                                     }
-                            ) { Text("OK") }
-                        }
-                )
-            }
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                colors =
+                                        TextFieldDefaults.outlinedTextFieldColors(
+                                                focusedBorderColor = VetNutriColors.Primary,
+                                                unfocusedBorderColor = Color.Gray
+                                        )
+                        )
 
-            // Afficher l'erreur s'il y en a une
-            if (operationMessage.isNotEmpty() && operationMessage.startsWith("Erreur")) {
-                Snackbar(
-                        modifier = Modifier.align(Alignment.BottomCenter),
-                        action = {
-                            TextButton(onClick = { viewModel.clearOperationMessage() }) {
-                                Text("Fermer")
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // Liste des références filtrées
+                        if (filteredBiblioRefs.isEmpty()) {
+                            Text(
+                                    text = "Aucune référence bibliographique trouvée",
+                                    style = MaterialTheme.typography.body1
+                            )
+                        } else {
+                            LazyColumn(
+                                    modifier = Modifier.height(300.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                items(filteredBiblioRefs) { biblioRef ->
+                                    Card(
+                                            modifier =
+                                                    Modifier.fillMaxWidth().clickable {
+                                                        viewModel.updateBibRef(biblioRef)
+                                                        showBiblioRefDialog = false
+                                                        biblioRefSearchQuery = ""
+                                                    },
+                                            elevation = 2.dp
+                                    ) {
+                                        Column(modifier = Modifier.padding(12.dp)) {
+                                            Text(
+                                                    text =
+                                                            "${biblioRef.firstAuthor}, ${biblioRef.year}",
+                                                    style = MaterialTheme.typography.subtitle1
+                                            )
+
+                                            Spacer(modifier = Modifier.height(4.dp))
+
+                                            Text(
+                                                    text = biblioRef.completeRef,
+                                                    style = MaterialTheme.typography.body2
+                                            )
+                                        }
+                                    }
+                                }
                             }
                         }
-                ) { Text(operationMessage) }
-            }
-        }
+                    }
+                },
+                confirmButton = {
+                    Button(onClick = { showBiblioRefDialog = false }) { Text("Fermer") }
+                },
+                dismissButton = {}
+        )
     }
 }

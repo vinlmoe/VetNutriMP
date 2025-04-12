@@ -26,10 +26,7 @@ data class Equation(
         var kind: EquationKind = EquationKind.ENERGYNEED,
         var allNutrient: AllNutrient? = null,
         var consistent: Boolean = true,
-        var variables: MutableList<VariableKind> = mutableListOf(),
-        var correctionFactor: Double = 1.0,
-        var bibNote: String = "",
-        var bibRef: String = ""
+        var variables: MutableList<VariableKind> = mutableListOf()
 ) {
 
         /**
@@ -189,8 +186,5 @@ data class Equation(
                 this.consistent = equation.consistent
                 this.variables.clear()
                 this.variables.addAll(equation.variables)
-                this.correctionFactor = equation.correctionFactor
-                this.bibNote = equation.bibNote
-                this.bibRef = equation.bibRef
         }
 }
