@@ -1049,100 +1049,50 @@ if (nullableValue != null) {
 
 Référez-vous toujours aux fichiers existants et fonctionnels comme modèles lorsque vous développez de nouvelles fonctionnalités.
 
-## Gestion des Coroutines et Dispatchers
+## Gestion des coroutines et des dispatchers
 
-### Problèmes connus avec Dispatchers.Main
+### Utilisation des dispatchers
 
-Dans un environnement multiplateforme, l'utilisation directe de `Dispatchers.Main` peut provoquer des erreurs lors de l'exécution sur certaines plateformes, notamment Desktop. L'erreur typique est :
+Les ViewModels utilisent `AppDispatchers` pour gérer les opérations asynchrones. Les dispatchers disponibles sont :
 
-```
-java.lang.IllegalStateException: Dispatchers.Main was accessed when the platform dispatcher was absent and the test dispatcher was unset.
-```
+- `AppDispatchers.Main` : Pour les opérations UI et les mises à jour d'état
+- `AppDispatchers.IO` : Pour les opérations de base de données et les E/S
+- `AppDispatchers.Default` : Pour les calculs intensifs
 
-Ou parfois :
-
-```
-java.lang.NoClassDefFoundError: android/os/Looper
-```
-
-### Recommandations
-
-1. **Toujours utiliser PlatformDispatcher** : Utilisez la classe `PlatformDispatcher` fournie dans le projet pour obtenir un dispatcher approprié pour chaque plateforme.
-
-   ```kotlin
-   // À faire
-   private val dispatcher = PlatformDispatcher().provideMainDispatcher()
-   private val viewModelScope = CoroutineScope(dispatcher)
-   
-   // À éviter
-   private val viewModelScope = CoroutineScope(Dispatchers.Main)
-   ```
-
-2. **Injecter les dispatchers** : Pour les tests unitaires, pensez à injecter les dispatchers dans les constructeurs des classes.
-
-   ```kotlin
-   class MonViewModel(
-       private val repository: MonRepository,
-       private val dispatcher: CoroutineDispatcher = PlatformDispatcher().provideMainDispatcher()
-   ) {
-       private val viewModelScope = CoroutineScope(dispatcher)
-       // ...
-   }
-   ```
-
-3. **Structure du PlatformDispatcher** : Assurez-vous que l'implémentation de `PlatformDispatcher` est correcte pour chaque plateforme.
-
-   - Pour Desktop : Utilisez `Dispatchers.Default` ou `Dispatchers.IO`
-   - Pour Android : Utilisez `Dispatchers.Main.immediate` lorsque disponible
-
-4. **Repositories et dispatchers** : Dans les repositories, utilisez également le `PlatformDispatcher` pour les coroutines, plutôt que d'utiliser directement `Dispatchers.IO`.
-
-   ```kotlin
-   // À faire
-   class MonRepository(private val dao: MonDao) {
-       private val dispatcher = PlatformDispatcher().provideMainDispatcher()
-       
-       init {
-           CoroutineScope(dispatcher).launch {
-               // Initialisation, chargement de données, etc.
-           }
-       }
-       
-       // ...
-   }
-   
-   // À éviter
-   class MonRepository(private val dao: MonDao) {
-       init {
-           CoroutineScope(Dispatchers.IO).launch {
-               // Risque d'erreurs sur certaines plateformes
-           }
-       }
-   }
-   ```
-
-### Implémentation recommandée
-
+Exemple d'utilisation dans un ViewModel :
 ```kotlin
-// common/Utils/MainDispatcher.kt
-expect class PlatformDispatcher() {
-    fun provideMainDispatcher(): CoroutineDispatcher
-}
+class MonViewModel(private val monDao: MonDao) {
+    private val coroutineScope = CoroutineScope(AppDispatchers.Main)
 
-// androidMain/Utils/MainDispatcher.kt
-actual class PlatformDispatcher {
-    actual fun provideMainDispatcher(): CoroutineDispatcher = Dispatchers.Main
-}
-
-// desktopMain/Utils/MainDispatcher.kt
-actual class PlatformDispatcher {
-    actual fun provideMainDispatcher(): CoroutineDispatcher = Dispatchers.Default
+    fun chargerDonnees() {
+        coroutineScope.launch {
+            // Utiliser IO pour les opérations de base de données
+            withContext(AppDispatchers.IO) {
+                val donnees = monDao.getDonnees()
+                // Retour sur Main pour mettre à jour l'UI
+                _state.value = donnees
+            }
+        }
+    }
 }
 ```
 
-Cette approche assure que vos ViewModels et repositories fonctionneront correctement sur toutes les plateformes ciblées par l'application.
+### Bonnes pratiques pour les coroutines
 
-**Important** : Ne jamais utiliser directement `Dispatchers.Main` dans le code commun sans passer par un wrapper multiplateforme. 
+1. **Scope des coroutines** :
+   - Utiliser `AppDispatchers.Main` pour le scope principal des ViewModels
+   - Utiliser `viewModelScope` si disponible dans le contexte Android
+   - Annuler les coroutines dans `onCleared()` pour éviter les fuites de mémoire
+
+2. **Gestion des états** :
+   - Utiliser `StateFlow` pour les états observables
+   - Préférer `MutableStateFlow` à `MutableState` pour la compatibilité multiplateforme
+   - Exposer les états en tant que `StateFlow` immutable
+
+3. **Opérations de base de données** :
+   - Toujours utiliser `AppDispatchers.IO` pour les opérations de base de données
+   - Gérer les exceptions avec try/catch
+   - Utiliser `withContext` pour changer de contexte
 
 ## Manipulation des collections dans les StateFlow
 
@@ -1233,3 +1183,55 @@ class InMemoryBiblioRefRepository : BiblioRefRepository {
 3. **Utilisez des noms clairs et distincts** pour éviter les confusions.
 
 4. Si vous rencontrez des erreurs de compilation du type `Redeclaration: class InMemoryBiblioRefRepository`, recherchez dans le projet où cette classe est déjà définie et supprimez la redéclaration. 
+
+## Gestion des erreurs avec les coroutines
+
+### Structure recommandée pour les opérations asynchrones
+
+```kotlin
+fun maFonction() {
+    coroutineScope.launch {
+        _isLoading.value = true
+        try {
+            // Opération asynchrone
+            withContext(AppDispatchers.IO) {
+                // Appel à la base de données ou au réseau
+            }
+            _operationMessage.value = "Opération réussie"
+        } catch (e: Exception) {
+            _operationMessage.value = "Erreur : ${e.message}"
+        } finally {
+            _isLoading.value = false
+        }
+    }
+}
+```
+
+### États d'erreur
+
+Les ViewModels doivent gérer trois types d'états :
+1. État de chargement (`isLoading: StateFlow<Boolean>`)
+2. Messages d'erreur (`errorMessage: StateFlow<String>`)
+3. État de succès (`successMessage: StateFlow<String>`)
+
+### Bonnes pratiques pour la gestion des erreurs
+
+1. **Isolation des erreurs** :
+   - Capturer les exceptions au niveau approprié
+   - Ne pas laisser les exceptions se propager hors des coroutines
+   - Utiliser des types d'erreur spécifiques plutôt que `Exception`
+
+2. **Messages d'erreur** :
+   - Fournir des messages d'erreur explicites et compréhensibles
+   - Traduire les messages techniques en messages utilisateur
+   - Logger les erreurs techniques pour le débogage
+
+3. **Gestion des annulations** :
+   - Gérer correctement `CancellationException`
+   - Nettoyer les ressources dans le bloc `finally`
+   - Annuler les coroutines enfants si nécessaire
+
+4. **Tests** :
+   - Tester les cas d'erreur avec des tests unitaires
+   - Simuler différents types d'erreurs
+   - Vérifier que les états sont correctement mis à jour

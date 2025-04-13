@@ -6,6 +6,7 @@ import androidx.room.RoomDatabase
 import androidx.room.RoomDatabaseConstructor
 import androidx.room.TypeConverters
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import fr.vetbrain.vetnutri_mp.DataBase.*
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 
 /**
@@ -25,8 +26,9 @@ import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
                         SupplementalVariableEntity::class,
                         FoodEntity::class,
                         NutrientValueEntity::class,
-                        BiblioRefEntity::class],
-        version = 11,
+                        BiblioRefEntity::class,
+                        EquationEntity::class],
+        version = 13,
         exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -37,6 +39,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun consultationDao(): ConsultationDao
     abstract fun nutrientValueDao(): NutrientValueDao
     abstract fun biblioRefDao(): BiblioRefDao
+    abstract fun equationDao(): EquationDao
 
     companion object {
         const val DATABASE_NAME = "vetnutri.db"
@@ -53,7 +56,8 @@ expect object AppDatabaseConstructor : RoomDatabaseConstructor<AppDatabase> {
 }
 
 fun getRoomDatabase(builder: RoomDatabase.Builder<AppDatabase>): AppDatabase {
-    return builder.setDriver(BundledSQLiteDriver())
+    return builder.fallbackToDestructiveMigration(true)
+            .setDriver(BundledSQLiteDriver())
             .setQueryCoroutineContext(AppDispatchers.IO)
             .build()
 }

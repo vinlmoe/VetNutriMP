@@ -165,3 +165,26 @@ interface BiblioRefDao {
     )
     suspend fun searchBiblioRefs(query: String): List<BiblioRefEntity>
 }
+
+/** DAO pour accéder aux équations dans la base de données */
+@Dao
+interface EquationDao {
+    @Query("SELECT * FROM EQUATIONS") suspend fun getAllEquations(): List<EquationEntity>
+
+    @Query("SELECT * FROM EQUATIONS WHERE uuid = :uuid")
+    suspend fun getEquationById(uuid: String): EquationEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertEquation(equation: EquationEntity)
+
+    @Update suspend fun updateEquation(equation: EquationEntity)
+
+    @Delete suspend fun deleteEquation(equation: EquationEntity)
+
+    @Query("DELETE FROM EQUATIONS") suspend fun deleteAllEquations()
+
+    @Query(
+            "SELECT * FROM EQUATIONS WHERE name LIKE '%' || :query || '%' OR description LIKE '%' || :query || '%'"
+    )
+    suspend fun searchEquations(query: String): List<EquationEntity>
+}

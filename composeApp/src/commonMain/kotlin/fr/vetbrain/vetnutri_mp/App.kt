@@ -182,7 +182,10 @@ fun App(appDatabase: AppDatabase) {
     // ViewModel et état pour les équations
     val platformDispatcher = remember { PlatformDispatcher() }
     val equationViewModel = remember {
-        EquationViewModel(equationRepository, biblioRefRepository, platformDispatcher)
+        EquationViewModel(
+                equationDao = appDatabase.equationDao(),
+                biblioRefDao = appDatabase.biblioRefDao()
+        )
     }
     var selectedEquationId by remember { mutableStateOf<String?>(null) }
 

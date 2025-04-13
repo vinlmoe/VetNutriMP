@@ -633,4 +633,58 @@ object Mappers {
                 return result
         }
         // FIN ZONE PROTÉGÉE
+
+        /** Extensions pour la conversion entre Equation et EquationEntity */
+        fun Equation.toEntity(): EquationEntity {
+                return EquationEntity(
+                        uuid = this.uuid,
+                        name = this.name,
+                        description = this.description,
+                        equationScript = this.equationScript,
+                        kind = this.kind.name,
+                        specie = this.specie?.name,
+                        bibRef = this.bib.uuid,
+                        variables = "",
+                        consistent = this.consistent
+                )
+        }
+
+        fun EquationEntity.toDomain(biblioRef: BiblioRef? = null): Equation {
+                return Equation(
+                        uuid = this.uuid,
+                        name = this.name ?: "",
+                        description = this.description ?: "",
+                        equationScript = this.equationScript ?: "",
+                        kind = EquationKind.valueOf(this.kind ?: EquationKind.ENERGYNEED.name),
+                        specie = this.specie?.let { Espece.valueOf(it) },
+                        bib = biblioRef ?: BiblioRef(),
+                        consistent = this.consistent,
+                        variables = mutableListOf()
+                )
+        }
+
+        // BiblioRef Mappers
+        fun BiblioRef.toEntity(): BiblioRefEntity {
+                return BiblioRefEntity(
+                        uuid = this.uuid,
+                        firstAuthor = this.firstAuthor,
+                        year = this.year,
+                        completeRef = this.completeRef,
+                        comments = this.comments,
+                        bibtex = this.bibtex,
+                        consistent = this.consistent
+                )
+        }
+
+        fun BiblioRefEntity.toDomain(): BiblioRef {
+                return BiblioRef(
+                        uuid = this.uuid,
+                        firstAuthor = this.firstAuthor ?: "",
+                        year = this.year ?: 0,
+                        completeRef = this.completeRef ?: "",
+                        comments = this.comments ?: "",
+                        bibtex = this.bibtex ?: "",
+                        consistent = this.consistent
+                )
+        }
 }

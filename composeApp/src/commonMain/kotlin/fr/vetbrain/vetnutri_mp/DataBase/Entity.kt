@@ -428,3 +428,28 @@ data class BiblioRefEntity(
         val bibtex: String,
         val consistent: Int
 )
+
+@Serializable
+@Entity(
+        tableName = "EQUATIONS",
+        foreignKeys =
+                [
+                        ForeignKey(
+                                entity = BiblioRefEntity::class,
+                                parentColumns = ["uuid"],
+                                childColumns = ["bibRef"],
+                                onDelete = ForeignKey.SET_NULL
+                        )],
+        indices = [Index("bibRef"), Index(value = ["uuid"], unique = true)]
+)
+data class EquationEntity(
+        @PrimaryKey val uuid: String,
+        val name: String,
+        val description: String,
+        val equationScript: String,
+        val specie: String?,
+        val kind: String,
+        val consistent: Boolean,
+        val bibRef: String?,
+        val variables: String // Stocké en JSON
+)
