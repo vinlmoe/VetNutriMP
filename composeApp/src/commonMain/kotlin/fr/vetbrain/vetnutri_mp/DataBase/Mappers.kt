@@ -636,6 +636,20 @@ object Mappers {
 
         /** Extensions pour la conversion entre Equation et EquationEntity */
         fun Equation.toEntity(): EquationEntity {
+                println(
+                        "DEBUG Mappers: Conversion de Equation en EquationEntity - UUID: ${this.uuid}"
+                )
+                println("DEBUG Mappers: Nom: ${this.name}")
+                println("DEBUG Mappers: Description: ${this.description}")
+                println("DEBUG Mappers: Script: ${this.equationScript}")
+                println("DEBUG Mappers: Type: ${this.kind.name}")
+                println("DEBUG Mappers: Espèce: ${this.specie?.name}")
+                println("DEBUG Mappers: Bib UUID: ${this.bib.uuid}")
+                println("DEBUG Mappers: Bib firstAuthor: ${this.bib.firstAuthor}")
+
+                val bibRef = if (this.bib.uuid.isNotEmpty()) this.bib.uuid else null
+                println("DEBUG Mappers: bibRef final: $bibRef")
+
                 return EquationEntity(
                         uuid = this.uuid,
                         name = this.name,
@@ -643,13 +657,24 @@ object Mappers {
                         equationScript = this.equationScript,
                         kind = this.kind.name,
                         specie = this.specie?.name,
-                        bibRef = this.bib.uuid,
+                        bibRef = bibRef,
                         variables = "",
                         consistent = this.consistent
                 )
         }
 
         fun EquationEntity.toDomain(biblioRef: BiblioRef? = null): Equation {
+                println(
+                        "DEBUG Mappers: Conversion de EquationEntity en Equation - UUID: ${this.uuid}"
+                )
+                println("DEBUG Mappers: Nom: ${this.name}")
+                println("DEBUG Mappers: Description: ${this.description}")
+                println("DEBUG Mappers: Script: ${this.equationScript}")
+                println("DEBUG Mappers: Kind: ${this.kind}")
+                println("DEBUG Mappers: Specie: ${this.specie}")
+                println("DEBUG Mappers: BibRef ID: ${this.bibRef}")
+                println("DEBUG Mappers: BiblioRef fourni: ${biblioRef?.uuid}")
+
                 return Equation(
                         uuid = this.uuid,
                         name = this.name ?: "",

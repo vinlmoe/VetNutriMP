@@ -163,7 +163,9 @@ fun App(appDatabase: AppDatabase) {
     val biblioRefRepository = remember { HybridBiblioRefRepository(databaseBiblioRefRepo) }
 
     // Création du repository pour les équations (en mémoire pour l'instant)
-    val equationRepository = remember { InMemoryEquationRepository() }
+    val equationRepository = remember {
+        DatabaseEquationRepository(appDatabase.equationDao(), appDatabase.biblioRefDao())
+    }
 
     // Création des ViewModels
     val animalListViewModel = remember { AnimalListViewModel(animalRepository) }
@@ -183,7 +185,7 @@ fun App(appDatabase: AppDatabase) {
     val platformDispatcher = remember { PlatformDispatcher() }
     val equationViewModel = remember {
         EquationViewModel(
-                equationDao = appDatabase.equationDao(),
+                equationRepository = equationRepository,
                 biblioRefDao = appDatabase.biblioRefDao()
         )
     }
@@ -426,10 +428,12 @@ fun App(appDatabase: AppDatabase) {
                                 onNavigateBack = { currentScreen = Screen.List },
                                 onEditEquation = { equationId ->
                                     selectedEquationId = equationId
+                                    equationViewModel.clearOperationMessage()
                                     currentScreen = Screen.EquationEdit
                                 },
                                 onCreateEquation = {
                                     selectedEquationId = null
+                                    equationViewModel.clearOperationMessage()
                                     currentScreen = Screen.EquationEdit
                                 },
                                 modifier = Modifier.fillMaxSize()

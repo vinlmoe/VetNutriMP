@@ -38,7 +38,6 @@ fun EquationEditView(
     val currentEquation by viewModel.currentEquation.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val operationMessage by viewModel.operationMessage.collectAsState()
-    var showSuccessAlert by remember { mutableStateOf(false) }
     var showErrorAlert by remember { mutableStateOf(false) }
     var showBiblioRefDialog by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
@@ -58,26 +57,45 @@ fun EquationEditView(
     var expandedKind by remember { mutableStateOf(false) }
     var expandedSpecie by remember { mutableStateOf(false) }
 
+    // Initialisation : charger l'équation existante ou en créer une nouvelle
     LaunchedEffect(equationId) {
+        println("DEBUG EquationEditView: Initialisation avec equationId = $equationId")
+        // Effacer le message d'opération précédent pour éviter une navigation automatique
+        viewModel.clearOperationMessage()
+
         if (equationId != null) {
+            // Chargement d'une équation existante
             viewModel.loadEquationById(equationId)
+        } else {
+            // Création d'une nouvelle équation
+            viewModel.createNewEquation()
         }
     }
 
     // Gestion des messages
     LaunchedEffect(operationMessage) {
+        println("DEBUG EquationEditView: Message d'opération reçu: '$operationMessage'")
         when {
             operationMessage.isEmpty() -> {
-                showSuccessAlert = false
                 showErrorAlert = false
+                // Ne pas naviguer en arrière sur un message vide
             }
             operationMessage.startsWith("Erreur") -> {
+                println("DEBUG EquationEditView: Affichage de l'erreur")
                 showErrorAlert = true
-                showSuccessAlert = false
+                // Ne pas naviguer en arrière sur une erreur
             }
             else -> {
-                showSuccessAlert = true
-                showErrorAlert = false
+                // Message de succès uniquement si l'opération vient d'être effectuée
+                // et pas lors du chargement initial
+                if (operationMessage.startsWith("Équation sauvegardée")) {
+                    println("DEBUG EquationEditView: Sauvegarde réussie, navigation en arrière")
+                    // Navigation directe en cas de succès, sans afficher de message
+                    onNavigateBack()
+                    viewModel.clearOperationMessage()
+                } else {
+                    println("DEBUG EquationEditView: Message non géré: $operationMessage")
+                }
             }
         }
     }
@@ -234,8 +252,15 @@ fun EquationEditView(
                     Button(
                             onClick = {
                                 scope.launch {
-                                    viewModel.saveCurrentEquation()
-                                    showSuccessAlert = true
+                                    println(
+                                            "DEBUG EquationEditView: Tentative de sauvegarde de l'équation"
+                                    )
+                                    val result = viewModel.saveCurrentEquation()
+                                    println(
+                                            "DEBUG EquationEditView: Résultat de la sauvegarde: $result, Message: ${viewModel.operationMessage.value}"
+                                    )
+                                    // Ne pas naviguer en arrière en cas d'erreur
+                                    // L'erreur sera affichée dans l'AlertDialog
                                 }
                             },
                             modifier = Modifier.align(Alignment.End)
@@ -309,24 +334,23 @@ fun EquationEditView(
         )
     }
 
-    // Alertes de succès et d'erreur
-    if (showSuccessAlert) {
-        AlertDialog(
-                onDismissRequest = { showSuccessAlert = false },
-                title = { Text("Succès") },
-                text = { Text(operationMessage) },
-                confirmButton = {
-                    TextButton(onClick = { showSuccessAlert = false }) { Text("OK") }
-                }
-        )
-    }
-
+    // Alertes d'erreur uniquement (suppression de l'alerte de succès)
     if (showErrorAlert) {
         AlertDialog(
-                onDismissRequest = { showErrorAlert = false },
+                onDismissRequest = {
+                    showErrorAlert = false
+                    viewModel.clearOperationMessage()
+                },
                 title = { Text("Erreur") },
                 text = { Text(operationMessage) },
-                confirmButton = { TextButton(onClick = { showErrorAlert = false }) { Text("OK") } }
+                confirmButton = {
+                    TextButton(
+                            onClick = {
+                                showErrorAlert = false
+                                viewModel.clearOperationMessage()
+                            }
+                    ) { Text("OK") }
+                }
         )
     }
 }
