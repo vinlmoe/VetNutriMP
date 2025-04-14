@@ -107,9 +107,7 @@ fun EquationListView(
                                 Row {
                                     IconButton(
                                             onClick = {
-                                                equation.uuid?.let { id -> 
-                                                    onEditEquation(id)
-                                                }
+                                                equation.uuid?.let { id -> onEditEquation(id) }
                                             }
                                     ) {
                                         Icon(

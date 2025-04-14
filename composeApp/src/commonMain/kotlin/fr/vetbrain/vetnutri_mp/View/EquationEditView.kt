@@ -11,9 +11,9 @@ import androidx.compose.material.icons.filled.Code
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import fr.vetbrain.vetnutri_mp.Components.DismissableBadge
 import fr.vetbrain.vetnutri_mp.Components.DropdownField
 import fr.vetbrain.vetnutri_mp.Components.TopBarSimple
 import fr.vetbrain.vetnutri_mp.Enumer.EquationKind
@@ -21,7 +21,6 @@ import fr.vetbrain.vetnutri_mp.Enumer.EquationType
 import fr.vetbrain.vetnutri_mp.Enumer.VariableKind
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.EquationViewModel
-import kotlinx.coroutines.delay
 
 /**
  * Vue pour éditer une équation
@@ -50,9 +49,6 @@ fun EquationEditView(
     // État de succès de sauvegarde
     val saveSuccessful by viewModel.saveSuccessful.collectAsState()
 
-    // État pour afficher l'alerte de succès
-    var showSuccessAlert by remember { mutableStateOf(false) }
-
     // État pour afficher l'alerte d'erreur
     var showErrorAlert by remember { mutableStateOf(false) }
 
@@ -77,9 +73,7 @@ fun EquationEditView(
 
         if (message != null) {
             if (saveSuccessful) {
-                showSuccessAlert = true
-                // Attendre que l'alerte soit affichée avant de naviguer
-                delay(1500)
+                // Naviguer directement sans afficher de dialogue
                 onNavigateBack()
             } else if (message.isNotEmpty()) {
                 showErrorAlert = true
@@ -163,6 +157,48 @@ fun EquationEditView(
                         leadingIcon = { Icon(Icons.Default.Code, contentDescription = null) }
                 )
 
+                // Légende des codes couleur
+                Row(
+                        modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Surface(
+                            shape = MaterialTheme.shapes.small,
+                            color = VetNutriColors.Primary,
+                            contentColor = VetNutriColors.OnPrimary,
+                            modifier = Modifier.padding(4.dp)
+                    ) {
+                        Text(
+                                "Variables reconnues : ${currentEquation.variables.joinToString(", ") { "${it.variable} (${it.label})" }}",
+                                modifier = Modifier.padding(4.dp),
+                                style = MaterialTheme.typography.caption
+                        )
+                    }
+                }
+
+                // Variables non reconnues
+                val unrecognizedVars by
+                        viewModel.unrecognizedVariables.collectAsState(initial = emptyList())
+                if (unrecognizedVars.isNotEmpty()) {
+                    Row(
+                            modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Surface(
+                                shape = MaterialTheme.shapes.small,
+                                color = Color.Red,
+                                contentColor = Color.White,
+                                modifier = Modifier.padding(4.dp)
+                        ) {
+                            Text(
+                                    "Variables non reconnues : ${unrecognizedVars.joinToString(", ")}",
+                                    modifier = Modifier.padding(4.dp),
+                                    style = MaterialTheme.typography.caption
+                            )
+                        }
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // Sélecteur de variables supplémentaires
@@ -177,7 +213,7 @@ fun EquationEditView(
                                 verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(Icons.Default.AddCircle, contentDescription = null)
-                            Text("Insérer une variable")
+                            Text("Ajouter une variable au script")
                         }
                     }
                     DropdownMenu(
@@ -187,63 +223,14 @@ fun EquationEditView(
                         VariableKind.values().forEach { variableKind ->
                             DropdownMenuItem(
                                     onClick = {
-                                        // Ajouter à la liste de variables de l'équation
-                                        viewModel.addVariable(variableKind)
+                                        // Ajouter la variable directement dans le script
+                                        val currentScript = currentEquation.equationScript
+                                        viewModel.updateEquationScript(
+                                                "$currentScript ${variableKind.variable}"
+                                        )
                                         expandedVariables = false
                                     }
                             ) { Text("${variableKind.variable} - ${variableKind.label}") }
-                        }
-                    }
-                }
-
-                // Affichage des variables sélectionnées
-                if (currentEquation.variables.isNotEmpty()) {
-                    Card(
-                            elevation = 4.dp,
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
-                    ) {
-                        Column(
-                                modifier = Modifier.padding(16.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Text(
-                                    "Variables disponibles",
-                                    style = MaterialTheme.typography.subtitle1,
-                                    color = VetNutriColors.Primary
-                            )
-
-                            // Utilisation de Row au lieu de LazyRow
-                            Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                currentEquation.variables.forEach { variable ->
-                                    DismissableBadge(
-                                            text = variable.variable,
-                                            subText = variable.label,
-                                            id = variable.uuid.toString(),
-                                            backgroundColor = VetNutriColors.Secondary,
-                                            onDismiss = { viewModel.removeVariable(variable) }
-                                    )
-                                }
-                            }
-
-                            Button(
-                                    onClick = {
-                                        // Insérer toutes les variables sélectionnées dans le script
-                                        val currentScript = currentEquation.equationScript
-                                        val variablesText =
-                                                currentEquation.variables.joinToString(" ") {
-                                                    it.variable
-                                                }
-                                        viewModel.updateEquationScript(
-                                                "$currentScript $variablesText"
-                                        )
-                                        // Effacer la liste après insertion
-                                        viewModel.clearSelectedVariables()
-                                    },
-                                    modifier = Modifier.align(Alignment.End)
-                            ) { Text("Insérer dans l'équation") }
                         }
                     }
                 }
@@ -311,15 +298,17 @@ fun EquationEditView(
                 Spacer(modifier = Modifier.height(32.dp))
 
                 // Bouton d'enregistrement
-                Button(
-                        onClick = {
-                            println("DEBUG EquationEditView: Bouton de sauvegarde cliqué")
-                            viewModel.saveCurrentEquation()
-                            // Ne pas naviguer ici - la navigation se fera via LaunchedEffect si
-                            // succès
-                        },
-                        modifier = Modifier.padding(8.dp)
-                ) { Text("Enregistrer") }
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    Button(
+                            onClick = {
+                                println("DEBUG EquationEditView: Bouton de sauvegarde cliqué")
+                                viewModel.saveCurrentEquation()
+                                // Ne pas naviguer ici - la navigation se fera via LaunchedEffect si
+                                // succès
+                            },
+                            modifier = Modifier.padding(8.dp)
+                    ) { Text("Enregistrer") }
+                }
             }
 
             // Indicateur de chargement
@@ -327,29 +316,6 @@ fun EquationEditView(
                 CircularProgressIndicator(
                         modifier = Modifier.align(Alignment.Center),
                         color = VetNutriColors.Primary
-                )
-            }
-
-            // Alerte de succès
-            if (showSuccessAlert) {
-                AlertDialog(
-                        onDismissRequest = {
-                            showSuccessAlert = false
-                            viewModel.clearOperationMessage()
-                        },
-                        title = { Text("Succès") },
-                        text = {
-                            val message = operationMessage
-                            Text(message ?: "")
-                        },
-                        confirmButton = {
-                            Button(
-                                    onClick = {
-                                        showSuccessAlert = false
-                                        viewModel.clearOperationMessage()
-                                    }
-                            ) { Text("OK") }
-                        }
                 )
             }
 

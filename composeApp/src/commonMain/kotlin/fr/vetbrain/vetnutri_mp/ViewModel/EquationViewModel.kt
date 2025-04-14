@@ -59,6 +59,14 @@ class EquationViewModel(
     private val _equations = MutableStateFlow<List<Equation>>(emptyList())
     val equations: StateFlow<List<Equation>> = _equations.asStateFlow()
 
+    // Script coloré
+    private val _coloredScript = MutableStateFlow<String>("")
+    val coloredScript: StateFlow<String> = _coloredScript.asStateFlow()
+
+    // Variables d'état privées
+    private val _unrecognizedVariables = MutableStateFlow<List<String>>(emptyList())
+    val unrecognizedVariables: StateFlow<List<String>> = _unrecognizedVariables.asStateFlow()
+
     init {
         loadEquations()
         loadBiblioRefs()
@@ -138,6 +146,58 @@ class EquationViewModel(
     fun updateEquationScript(script: String) {
         val currentValue = _currentEquation.value
         _currentEquation.value = currentValue.copy(equationScript = script)
+
+        // Analyser le script pour détecter automatiquement les variables utilisées
+        analyzeScriptForVariables(script)
+    }
+
+    /** Analyse le script pour détecter et gérer automatiquement les variables */
+    private fun analyzeScriptForVariables(script: String) {
+        // Récupérer toutes les variables possibles
+        val allVariables = VariableKind.values()
+
+        // Créer une liste de toutes les variables détectées dans le script
+        val detectedVariables = mutableListOf<VariableKind>()
+
+        // Liste pour stocker les variables non reconnues
+        val unrecognizedVars = mutableListOf<String>()
+
+        // Découper le script en mots
+        val words =
+                script.split(Regex("\\s+|(?=[+\\-*/^()])|(?<=[+\\-*/^()])")).filter {
+                    it.isNotBlank()
+                }
+
+        // Pour chaque mot, vérifier s'il ressemble à une variable (commençant par une lettre)
+        val potentialVariables = words.filter { it.matches(Regex("^[A-Za-z][A-Za-z0-9]*$")) }
+
+        // Pour chaque variable possible, vérifier si elle est présente dans les mots
+        // (correspondance exacte)
+        allVariables.forEach { variableKind ->
+            if (words.contains(variableKind.variable)) {
+                detectedVariables.add(variableKind)
+            }
+        }
+
+        // Identifier les variables non reconnues
+        potentialVariables.forEach { word ->
+            if (!allVariables.any { it.variable == word }) {
+                unrecognizedVars.add(word)
+            }
+        }
+
+        println(
+                "DEBUG: Variables détectées dans le script: ${detectedVariables.map { it.variable }}"
+        )
+
+        println("DEBUG: Variables non reconnues dans le script: $unrecognizedVars")
+
+        // Mettre à jour la liste des variables de l'équation
+        val currentValue = _currentEquation.value
+        _currentEquation.value = currentValue.copy(variables = detectedVariables.toMutableList())
+
+        // Mettre à jour la liste des variables non reconnues
+        _unrecognizedVariables.value = unrecognizedVars
     }
 
     /** Met à jour la note bibliographique */
