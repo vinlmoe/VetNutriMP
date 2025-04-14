@@ -1,23 +1,27 @@
 package fr.vetbrain.vetnutri_mp.View
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.AddCircle
+import androidx.compose.material.icons.filled.Code
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import fr.vetbrain.vetnutri_mp.Components.DismissableBadge
+import fr.vetbrain.vetnutri_mp.Components.DropdownField
 import fr.vetbrain.vetnutri_mp.Components.TopBarSimple
 import fr.vetbrain.vetnutri_mp.Enumer.EquationKind
-import fr.vetbrain.vetnutri_mp.Enumer.Espece
+import fr.vetbrain.vetnutri_mp.Enumer.EquationType
+import fr.vetbrain.vetnutri_mp.Enumer.VariableKind
+import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.EquationViewModel
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 
 /**
  * Vue pour éditer une équation
@@ -34,323 +38,317 @@ fun EquationEditView(
         onNavigateBack: () -> Unit,
         modifier: Modifier = Modifier
 ) {
-    val scope = rememberCoroutineScope()
-    val currentEquation by viewModel.currentEquation.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
-    val operationMessage by viewModel.operationMessage.collectAsState()
-    var showErrorAlert by remember { mutableStateOf(false) }
-    var showBiblioRefDialog by remember { mutableStateOf(false) }
-    var searchQuery by remember { mutableStateOf("") }
-    val biblioRefs by viewModel.biblioRefs.collectAsState()
-    val filteredBiblioRefs =
-            remember(biblioRefs, searchQuery) {
-                if (searchQuery.isBlank()) {
-                    biblioRefs
-                } else {
-                    biblioRefs.filter { ref ->
-                        ref.firstAuthor.contains(searchQuery, ignoreCase = true) ||
-                                ref.completeRef.contains(searchQuery, ignoreCase = true) ||
-                                ref.year.toString().contains(searchQuery)
-                    }
-                }
-            }
-    var expandedKind by remember { mutableStateOf(false) }
-    var expandedSpecie by remember { mutableStateOf(false) }
+    // État du chargement
+    val isLoading by viewModel.isLoading.collectAsState(initial = false)
 
-    // Initialisation : charger l'équation existante ou en créer une nouvelle
+    // Équation en cours
+    val currentEquation by viewModel.currentEquation.collectAsState()
+
+    // Message d'opération (succès/erreur)
+    val operationMessage by viewModel.operationMessage.collectAsState()
+
+    // État de succès de sauvegarde
+    val saveSuccessful by viewModel.saveSuccessful.collectAsState()
+
+    // État pour afficher l'alerte de succès
+    var showSuccessAlert by remember { mutableStateOf(false) }
+
+    // État pour afficher l'alerte d'erreur
+    var showErrorAlert by remember { mutableStateOf(false) }
+
+    // Effet pour charger l'équation à l'initialisation si un ID est fourni
     LaunchedEffect(equationId) {
-        println("DEBUG EquationEditView: Initialisation avec equationId = $equationId")
-        // Effacer le message d'opération précédent pour éviter une navigation automatique
+        println("DEBUG EquationEditView: Initialisation avec equationId=$equationId")
         viewModel.clearOperationMessage()
 
-        if (equationId != null) {
-            // Chargement d'une équation existante
-            viewModel.loadEquationById(equationId)
-        } else {
-            // Création d'une nouvelle équation
+        if (equationId?.isEmpty() == true || equationId == null) {
             viewModel.createNewEquation()
+        } else {
+            viewModel.loadEquation(equationId)
         }
     }
 
-    // Gestion des messages
-    LaunchedEffect(operationMessage) {
-        println("DEBUG EquationEditView: Message d'opération reçu: '$operationMessage'")
-        when {
-            operationMessage.isEmpty() -> {
-                showErrorAlert = false
-                // Ne pas naviguer en arrière sur un message vide
-            }
-            operationMessage.startsWith("Erreur") -> {
-                println("DEBUG EquationEditView: Affichage de l'erreur")
+    // Effet pour surveiller les messages d'opération
+    LaunchedEffect(operationMessage, saveSuccessful) {
+        val message = operationMessage
+        println(
+                "DEBUG EquationEditView: Nouveau message: $message, saveSuccessful: $saveSuccessful"
+        )
+
+        if (message != null) {
+            if (saveSuccessful) {
+                showSuccessAlert = true
+                // Attendre que l'alerte soit affichée avant de naviguer
+                delay(1500)
+                onNavigateBack()
+            } else if (message.isNotEmpty()) {
                 showErrorAlert = true
-                // Ne pas naviguer en arrière sur une erreur
-            }
-            else -> {
-                // Message de succès uniquement si l'opération vient d'être effectuée
-                // et pas lors du chargement initial
-                if (operationMessage.startsWith("Équation sauvegardée")) {
-                    println("DEBUG EquationEditView: Sauvegarde réussie, navigation en arrière")
-                    // Navigation directe en cas de succès, sans afficher de message
-                    onNavigateBack()
-                    viewModel.clearOperationMessage()
-                } else {
-                    println("DEBUG EquationEditView: Message non géré: $operationMessage")
-                }
             }
         }
     }
 
-    Scaffold(
-            topBar = {
-                TopBarSimple(
-                        title =
-                                if (equationId == null) "Nouvelle équation"
-                                else "Modifier l'équation",
-                        onNavigateBack = onNavigateBack
+    // Titre dynamique basé sur l'opération (création ou édition)
+    val title = if (equationId == null) "Nouvelle équation" else "Modifier l'équation"
+
+    Scaffold(topBar = { TopBarSimple(title = title, onNavigateBack = onNavigateBack) }) {
+            paddingValues ->
+        Box(modifier = modifier.fillMaxSize().padding(paddingValues).padding(16.dp)) {
+            // Formulaire d'édition d'équation
+            Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+                // Nom de l'équation
+                OutlinedTextField(
+                        value = currentEquation.name,
+                        onValueChange = { viewModel.updateName(it) },
+                        label = { Text("Nom de l'équation") },
+                        modifier = Modifier.fillMaxWidth()
                 )
-            }
-    ) { padding: PaddingValues ->
-        Box(modifier = modifier.fillMaxSize().padding(padding)) {
-            if (isLoading) {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-            } else {
-                Column(
-                        modifier =
-                                Modifier.fillMaxSize()
-                                        .padding(16.dp)
-                                        .verticalScroll(rememberScrollState()),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    // Nom de l'équation
-                    OutlinedTextField(
-                            value = currentEquation.name,
-                            onValueChange = { newValue -> viewModel.updateName(newValue) },
-                            label = { Text("Nom") },
-                            modifier = Modifier.fillMaxWidth(),
-                            leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) }
-                    )
 
-                    // Description
-                    OutlinedTextField(
-                            value = currentEquation.description,
-                            onValueChange = { newValue -> viewModel.updateDescription(newValue) },
-                            label = { Text("Description") },
-                            modifier = Modifier.fillMaxWidth(),
-                            leadingIcon = { Icon(Icons.Default.Info, contentDescription = null) }
-                    )
+                Spacer(modifier = Modifier.height(16.dp))
 
-                    // Type d'équation
-                    Box {
-                        OutlinedButton(
-                                onClick = { expandedKind = true },
-                                modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(Icons.Default.Calculate, contentDescription = null)
-                                Text(currentEquation.kind.name)
-                            }
-                        }
-                        DropdownMenu(
-                                expanded = expandedKind,
-                                onDismissRequest = { expandedKind = false }
-                        ) {
-                            EquationKind.values().forEach { kind ->
-                                DropdownMenuItem(
-                                        onClick = {
-                                            viewModel.updateKind(kind)
-                                            expandedKind = false
-                                        }
-                                ) { Text(kind.name) }
-                            }
-                        }
-                    }
+                // Description
+                OutlinedTextField(
+                        value = currentEquation.description,
+                        onValueChange = { viewModel.updateDescription(it) },
+                        label = { Text("Description") },
+                        modifier = Modifier.fillMaxWidth(),
+                        minLines = 3
+                )
 
-                    // Espèce
-                    Box {
-                        OutlinedButton(
-                                onClick = { expandedSpecie = true },
-                                modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(Icons.Default.Pets, contentDescription = null)
-                                Text(currentEquation.specie?.name ?: "Sélectionner une espèce")
-                            }
-                        }
-                        DropdownMenu(
-                                expanded = expandedSpecie,
-                                onDismissRequest = { expandedSpecie = false }
-                        ) {
-                            Espece.values().forEach { specie ->
-                                DropdownMenuItem(
-                                        onClick = {
-                                            viewModel.updateSpecie(specie)
-                                            expandedSpecie = false
-                                        }
-                                ) { Text(specie.name) }
-                            }
-                        }
-                    }
+                Spacer(modifier = Modifier.height(16.dp))
 
-                    // Script de l'équation
-                    OutlinedTextField(
-                            value = currentEquation.equationScript,
-                            onValueChange = { newValue ->
-                                viewModel.updateEquationScript(newValue)
-                            },
-                            label = { Text("Script de l'équation") },
-                            modifier = Modifier.fillMaxWidth(),
-                            leadingIcon = { Icon(Icons.Default.Code, contentDescription = null) }
-                    )
-
-                    // Note bibliographique
-                    OutlinedTextField(
-                            value = currentEquation.bib.comments,
-                            onValueChange = { newValue -> viewModel.updateBibNote(newValue) },
-                            label = { Text("Note bibliographique") },
-                            modifier = Modifier.fillMaxWidth(),
-                            leadingIcon = {
-                                Icon(Icons.Default.LibraryBooks, contentDescription = null)
-                            }
-                    )
-
-                    // Référence bibliographique
-                    Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        OutlinedTextField(
-                                value = currentEquation.bib.completeRef,
-                                onValueChange = {},
-                                label = { Text("Référence bibliographique") },
-                                modifier = Modifier.weight(1f),
-                                leadingIcon = {
-                                    Icon(Icons.Default.LibraryBooks, contentDescription = null)
+                // Type d'équation (dropdown)
+                DropdownField(
+                        label = "Type d'équation",
+                        selectedValue =
+                                currentEquation.kind.let { kind ->
+                                    when (kind) {
+                                        fr.vetbrain.vetnutri_mp.Enumer.EquationKind.ENERGYNEED ->
+                                                EquationType.ENERGYNEED
+                                        fr.vetbrain.vetnutri_mp.Enumer.EquationKind.ENERGYDENSITY ->
+                                                EquationType.ENERGYDENSITY
+                                        fr.vetbrain.vetnutri_mp.Enumer.EquationKind.MW ->
+                                                EquationType.MW
+                                        fr.vetbrain.vetnutri_mp.Enumer.EquationKind.INDICATOR ->
+                                                EquationType.INDICATOR
+                                        fr.vetbrain.vetnutri_mp.Enumer.EquationKind.NEED ->
+                                                EquationType.NEED
+                                    }
                                 },
-                                readOnly = true
-                        )
-                        Button(
-                                onClick = { showBiblioRefDialog = true },
-                                modifier = Modifier.padding(start = 8.dp)
-                        ) {
-                            Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                Icon(Icons.Default.Search, contentDescription = null)
-                                Text("Sélectionner")
-                            }
-                        }
-                    }
+                        options = EquationType.values().toList(),
+                        onValueChange = { viewModel.updateKind(it.toEquationKind()) },
+                        valueToString = { it.toString() }
+                )
 
-                    // Bouton de sauvegarde
-                    Button(
-                            onClick = {
-                                scope.launch {
-                                    println(
-                                            "DEBUG EquationEditView: Tentative de sauvegarde de l'équation"
-                                    )
-                                    val result = viewModel.saveCurrentEquation()
-                                    println(
-                                            "DEBUG EquationEditView: Résultat de la sauvegarde: $result, Message: ${viewModel.operationMessage.value}"
-                                    )
-                                    // Ne pas naviguer en arrière en cas d'erreur
-                                    // L'erreur sera affichée dans l'AlertDialog
-                                }
-                            },
-                            modifier = Modifier.align(Alignment.End)
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Facteur de correction (si besoin)
+                OutlinedTextField(
+                        value = currentEquation.correctionFactor.toString(),
+                        onValueChange = {
+                            viewModel.updateCorrectionFactor(it.toDoubleOrNull() ?: 1.0)
+                        },
+                        label = { Text("Facteur de correction") },
+                        modifier = Modifier.fillMaxWidth(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Script de l'équation
+                OutlinedTextField(
+                        value = currentEquation.equationScript,
+                        onValueChange = { newValue -> viewModel.updateEquationScript(newValue) },
+                        label = { Text("Script de l'équation") },
+                        modifier = Modifier.fillMaxWidth(),
+                        leadingIcon = { Icon(Icons.Default.Code, contentDescription = null) }
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Sélecteur de variables supplémentaires
+                var expandedVariables by remember { mutableStateOf(false) }
+                Box {
+                    OutlinedButton(
+                            onClick = { expandedVariables = true },
+                            modifier = Modifier.fillMaxWidth()
                     ) {
                         Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(Icons.Default.Save, contentDescription = null)
-                            Text("Sauvegarder")
+                            Icon(Icons.Default.AddCircle, contentDescription = null)
+                            Text("Insérer une variable")
+                        }
+                    }
+                    DropdownMenu(
+                            expanded = expandedVariables,
+                            onDismissRequest = { expandedVariables = false }
+                    ) {
+                        VariableKind.values().forEach { variableKind ->
+                            DropdownMenuItem(
+                                    onClick = {
+                                        // Ajouter à la liste de variables de l'équation
+                                        viewModel.addVariable(variableKind)
+                                        expandedVariables = false
+                                    }
+                            ) { Text("${variableKind.variable} - ${variableKind.label}") }
                         }
                     }
                 }
+
+                // Affichage des variables sélectionnées
+                if (currentEquation.variables.isNotEmpty()) {
+                    Card(
+                            elevation = 4.dp,
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+                    ) {
+                        Column(
+                                modifier = Modifier.padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                    "Variables disponibles",
+                                    style = MaterialTheme.typography.subtitle1,
+                                    color = VetNutriColors.Primary
+                            )
+
+                            // Utilisation de Row au lieu de LazyRow
+                            Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                currentEquation.variables.forEach { variable ->
+                                    DismissableBadge(
+                                            text = variable.variable,
+                                            subText = variable.label,
+                                            id = variable.uuid.toString(),
+                                            backgroundColor = VetNutriColors.Secondary,
+                                            onDismiss = { viewModel.removeVariable(variable) }
+                                    )
+                                }
+                            }
+
+                            Button(
+                                    onClick = {
+                                        // Insérer toutes les variables sélectionnées dans le script
+                                        val currentScript = currentEquation.equationScript
+                                        val variablesText =
+                                                currentEquation.variables.joinToString(" ") {
+                                                    it.variable
+                                                }
+                                        viewModel.updateEquationScript(
+                                                "$currentScript $variablesText"
+                                        )
+                                        // Effacer la liste après insertion
+                                        viewModel.clearSelectedVariables()
+                                    },
+                                    modifier = Modifier.align(Alignment.End)
+                            ) { Text("Insérer dans l'équation") }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Note bibliographique
+                OutlinedTextField(
+                        value = currentEquation.bib.comments,
+                        onValueChange = { viewModel.updateBibNote(it) },
+                        label = { Text("Note bibliographique") },
+                        modifier = Modifier.fillMaxWidth(),
+                        minLines = 2
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Référence bibliographique
+                OutlinedTextField(
+                        value = currentEquation.bib.completeRef,
+                        onValueChange = { viewModel.updateBibRef(it) },
+                        label = { Text("Référence bibliographique") },
+                        modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(32.dp))
+
+                // Bouton d'enregistrement
+                Button(
+                        onClick = {
+                            println("DEBUG EquationEditView: Bouton de sauvegarde cliqué")
+                            viewModel.saveCurrentEquation()
+                            // Ne pas naviguer ici - la navigation se fera via LaunchedEffect si
+                            // succès
+                        },
+                        modifier = Modifier.padding(8.dp)
+                ) { Text("Enregistrer") }
+            }
+
+            // Indicateur de chargement
+            if (isLoading) {
+                CircularProgressIndicator(
+                        modifier = Modifier.align(Alignment.Center),
+                        color = VetNutriColors.Primary
+                )
+            }
+
+            // Alerte de succès
+            if (showSuccessAlert) {
+                AlertDialog(
+                        onDismissRequest = {
+                            showSuccessAlert = false
+                            viewModel.clearOperationMessage()
+                        },
+                        title = { Text("Succès") },
+                        text = {
+                            val message = operationMessage
+                            Text(message ?: "")
+                        },
+                        confirmButton = {
+                            Button(
+                                    onClick = {
+                                        showSuccessAlert = false
+                                        viewModel.clearOperationMessage()
+                                    }
+                            ) { Text("OK") }
+                        }
+                )
+            }
+
+            // Alerte d'erreur
+            if (showErrorAlert) {
+                AlertDialog(
+                        onDismissRequest = {
+                            showErrorAlert = false
+                            viewModel.clearOperationMessage()
+                        },
+                        title = { Text("Erreur") },
+                        text = {
+                            val message = operationMessage
+                            Text(message ?: "")
+                        },
+                        confirmButton = {
+                            Button(
+                                    onClick = {
+                                        showErrorAlert = false
+                                        viewModel.clearOperationMessage()
+                                    }
+                            ) { Text("OK") }
+                        }
+                )
+            }
+
+            // Afficher l'erreur s'il y en a une
+            val message = operationMessage
+            if (message != null && message.isNotEmpty() && message.startsWith("Erreur")) {
+                Snackbar(
+                        modifier = Modifier.align(Alignment.BottomCenter),
+                        action = {
+                            TextButton(onClick = { viewModel.clearOperationMessage() }) {
+                                Text("Fermer")
+                            }
+                        }
+                ) { Text(message) }
             }
         }
-    }
-
-    // Dialog pour sélectionner une référence bibliographique
-    if (showBiblioRefDialog) {
-        AlertDialog(
-                onDismissRequest = { showBiblioRefDialog = false },
-                title = { Text("Sélectionner une référence") },
-                text = {
-                    Column {
-                        OutlinedTextField(
-                                value = searchQuery,
-                                onValueChange = { searchQuery = it },
-                                label = { Text("Rechercher") },
-                                modifier = Modifier.fillMaxWidth(),
-                                leadingIcon = {
-                                    Icon(Icons.Default.Search, contentDescription = null)
-                                }
-                        )
-                        LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 300.dp)) {
-                            items(filteredBiblioRefs) { ref ->
-                                Row(
-                                        modifier =
-                                                Modifier.fillMaxWidth()
-                                                        .clickable {
-                                                            viewModel.selectBiblioRef(ref)
-                                                            showBiblioRefDialog = false
-                                                        }
-                                                        .padding(
-                                                                vertical = 8.dp,
-                                                                horizontal = 16.dp
-                                                        ),
-                                        verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Column(modifier = Modifier.fillMaxWidth()) {
-                                        Text(
-                                                text = ref.completeRef,
-                                                style = MaterialTheme.typography.body1
-                                        )
-                                        Text(
-                                                text = ref.firstAuthor,
-                                                style = MaterialTheme.typography.body2,
-                                                color =
-                                                        MaterialTheme.colors.onSurface.copy(
-                                                                alpha = 0.6f
-                                                        )
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
-                confirmButton = {
-                    TextButton(onClick = { showBiblioRefDialog = false }) { Text("Annuler") }
-                }
-        )
-    }
-
-    // Alertes d'erreur uniquement (suppression de l'alerte de succès)
-    if (showErrorAlert) {
-        AlertDialog(
-                onDismissRequest = {
-                    showErrorAlert = false
-                    viewModel.clearOperationMessage()
-                },
-                title = { Text("Erreur") },
-                text = { Text(operationMessage) },
-                confirmButton = {
-                    TextButton(
-                            onClick = {
-                                showErrorAlert = false
-                                viewModel.clearOperationMessage()
-                            }
-                    ) { Text("OK") }
-                }
-        )
     }
 }

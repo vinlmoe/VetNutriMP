@@ -26,7 +26,8 @@ data class Equation(
         var kind: EquationKind = EquationKind.ENERGYNEED,
         var allNutrient: AllNutrient? = null,
         var consistent: Boolean = true,
-        var variables: MutableList<VariableKind> = mutableListOf()
+        var variables: MutableList<VariableKind> = mutableListOf(),
+        var correctionFactor: Double = 1.0
 ) {
 
         /**

@@ -1,12 +1,15 @@
 package fr.vetbrain.vetnutri_mp.ViewModel
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.lifecycle.ViewModel
 import fr.vetbrain.vetnutri_mp.Data.BiblioRef
 import fr.vetbrain.vetnutri_mp.Data.Equation
 import fr.vetbrain.vetnutri_mp.DataBase.BiblioRefDao
 import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toDomain
 import fr.vetbrain.vetnutri_mp.Enumer.EquationKind
-import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.VariableKind
+import fr.vetbrain.vetnutri_mp.Repository.BiblioRefRepository
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import kotlinx.coroutines.CoroutineScope
@@ -23,26 +26,38 @@ import kotlinx.coroutines.launch
  */
 class EquationViewModel(
         private val equationRepository: EquationRepository,
-        private val biblioRefDao: BiblioRefDao
-) {
+        private val biblioRefDao: BiblioRefDao,
+        private val biblioRepository: BiblioRefRepository
+) : ViewModel() {
     private val coroutineScope = CoroutineScope(AppDispatchers.Main)
 
+    // État d'édition
     private val _currentEquation = MutableStateFlow(Equation())
     val currentEquation: StateFlow<Equation> = _currentEquation.asStateFlow()
 
-    private val _equations = MutableStateFlow<List<Equation>>(emptyList())
-    val equations: StateFlow<List<Equation>> = _equations.asStateFlow()
-
+    // Liste des références bibliographiques
     private val _biblioRefs = MutableStateFlow<List<BiblioRef>>(emptyList())
     val biblioRefs: StateFlow<List<BiblioRef>> = _biblioRefs.asStateFlow()
 
-    // État de chargement (pour afficher un indicateur de progression)
+    // État de sélection d'une référence bibliographique
+    private val _selectedBiblioRef = MutableStateFlow<BiblioRef?>(null)
+    val selectedBiblioRef: StateFlow<BiblioRef?> = _selectedBiblioRef.asStateFlow()
+
+    // Messages d'opération
+    private val _operationMessage = MutableStateFlow<String?>(null)
+    val operationMessage: StateFlow<String?> = _operationMessage.asStateFlow()
+
+    // État indiquant si une sauvegarde a été effectuée avec succès
+    private val _saveSuccessful = MutableStateFlow(false)
+    val saveSuccessful: StateFlow<Boolean> = _saveSuccessful.asStateFlow()
+
+    // État de chargement
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
-    // Message d'opération (succès/erreur)
-    private val _operationMessage = MutableStateFlow("")
-    val operationMessage: StateFlow<String> = _operationMessage.asStateFlow()
+    // Liste des équations disponibles
+    private val _equations = MutableStateFlow<List<Equation>>(emptyList())
+    val equations: StateFlow<List<Equation>> = _equations.asStateFlow()
 
     init {
         loadEquations()
@@ -51,164 +66,195 @@ class EquationViewModel(
 
     /** Charge toutes les équations disponibles */
     fun loadEquations() {
+        _isLoading.value = true
         coroutineScope.launch {
-            _isLoading.value = true
             try {
-                val equations = equationRepository.getAllEquations()
-                _equations.value = equations
+                val result = equationRepository.getAllEquations()
+                _equations.value = result
+                _isLoading.value = false
             } catch (e: Exception) {
-                _operationMessage.value = "Erreur lors du chargement des équations: ${e.message}"
-            } finally {
+                println("Erreur lors du chargement des équations: ${e.message}")
                 _isLoading.value = false
             }
         }
     }
 
-    /**
-     * Charge une équation à partir de son ID
-     *
-     * @param uuid L'identifiant de l'équation à charger
-     */
-    fun loadEquationById(uuid: String) {
-        coroutineScope.launch {
-            _isLoading.value = true
-            try {
-                val equation = equationRepository.getEquationById(uuid) ?: Equation()
-                _currentEquation.value = equation
-            } catch (e: Exception) {
-                _operationMessage.value = "Erreur lors du chargement de l'équation: ${e.message}"
-            } finally {
-                _isLoading.value = false
-            }
-        }
-    }
-
-    /** Charge toutes les références bibliographiques disponibles */
+    /** Charge les références bibliographiques */
     fun loadBiblioRefs() {
         coroutineScope.launch {
-            _isLoading.value = true
             try {
-                val refs = biblioRefDao.getAllBiblioRefs().map { it.toDomain() }
-                _biblioRefs.value = refs
+                val refs = biblioRefDao.getAllBiblioRefs()
+                val mappedRefs = refs.map { ref -> ref.toDomain() }
+                _biblioRefs.value = mappedRefs
             } catch (e: Exception) {
-                _operationMessage.value = "Erreur lors du chargement des références: ${e.message}"
-            } finally {
-                _isLoading.value = false
+                println("Erreur lors du chargement des références biblio: ${e.message}")
             }
         }
     }
 
     /** Crée une nouvelle équation */
     fun createNewEquation() {
+        _currentEquation.value = Equation()
+    }
+
+    /** Charge une équation par son ID */
+    fun loadEquation(equationId: String) {
+        _isLoading.value = true
         coroutineScope.launch {
-            _isLoading.value = true
             try {
-                // Utiliser une référence bibliographique existante
-                println("DEBUG EquationViewModel: Création d'une nouvelle équation - début")
-                val refs = biblioRefDao.getAllBiblioRefs().map { it.toDomain() }
-                println(
-                        "DEBUG EquationViewModel: ${refs.size} références bibliographiques chargées"
-                )
-                val defaultBibRef = refs.firstOrNull() ?: BiblioRef()
-                println(
-                        "DEBUG EquationViewModel: Référence bibliographique par défaut: ${defaultBibRef.uuid} - ${defaultBibRef.firstAuthor}"
-                )
-
-                // Créer une équation avec un UUID vide pour indiquer qu'il s'agit d'une nouvelle
-                // équation
-                _currentEquation.value =
-                        Equation(
-                                uuid = "", // UUID vide pour forcer l'insertion plutôt que la mise
-                                // à jour
-                                bib = defaultBibRef
-                        )
-                println(
-                        "DEBUG EquationViewModel: Nouvelle équation créée avec bib: ${_currentEquation.value.bib.uuid} et UUID vide"
-                )
-
-                // Charger les références bibliographiques disponibles
-                _biblioRefs.value = refs
+                val equation = equationRepository.getEquationById(equationId)
+                if (equation != null) {
+                    _currentEquation.value = equation
+                } else {
+                    _operationMessage.value = "Erreur: Équation non trouvée"
+                }
             } catch (e: Exception) {
-                println(
-                        "DEBUG EquationViewModel: Erreur lors de la création d'une équation: ${e.message}"
-                )
-                e.printStackTrace()
-                _operationMessage.value = "Erreur lors de l'initialisation: ${e.message}"
+                _operationMessage.value = "Erreur: ${e.message}"
             } finally {
                 _isLoading.value = false
             }
         }
     }
 
-    /** Sauvegarde l'équation en cours d'édition */
-    fun saveCurrentEquation(): Boolean {
-        val equation = _currentEquation.value
-        println("DEBUG EquationViewModel: Tentative de sauvegarde de l'équation: ${equation.uuid}")
-        println("DEBUG EquationViewModel: Nom: ${equation.name}")
-        println("DEBUG EquationViewModel: Script: ${equation.equationScript}")
-        println("DEBUG EquationViewModel: Bib UUID: ${equation.bib.uuid}")
-        println("DEBUG EquationViewModel: Bib firstAuthor: ${equation.bib.firstAuthor}")
+    /** Met à jour le nom de l'équation */
+    fun updateName(name: String) {
+        val currentValue = _currentEquation.value
+        _currentEquation.value = currentValue.copy(name = name)
+    }
 
-        // Validation des données
+    /** Met à jour la description de l'équation */
+    fun updateDescription(description: String) {
+        val currentValue = _currentEquation.value
+        _currentEquation.value = currentValue.copy(description = description)
+    }
+
+    /** Met à jour le type de l'équation */
+    fun updateKind(kind: EquationKind) {
+        val currentValue = _currentEquation.value
+        _currentEquation.value = currentValue.copy(kind = kind)
+    }
+
+    /** Met à jour le script de l'équation */
+    fun updateEquationScript(script: String) {
+        val currentValue = _currentEquation.value
+        _currentEquation.value = currentValue.copy(equationScript = script)
+    }
+
+    /** Met à jour la note bibliographique */
+    fun updateBibNote(note: String) {
+        val currentValue = _currentEquation.value
+        val updatedBib = currentValue.bib.copy(comments = note)
+        _currentEquation.value = currentValue.copy(bib = updatedBib)
+    }
+
+    /** Met à jour la référence bibliographique */
+    fun updateBibRef(ref: String) {
+        val currentValue = _currentEquation.value
+        val updatedBib = currentValue.bib.copy(completeRef = ref)
+        _currentEquation.value = currentValue.copy(bib = updatedBib)
+    }
+
+    /** Met à jour le facteur de correction */
+    fun updateCorrectionFactor(factor: Double) {
+        val currentValue = _currentEquation.value
+        _currentEquation.value = currentValue.copy(correctionFactor = factor)
+    }
+
+    /** Ajoute une variable à l'équation */
+    fun addVariable(variableKind: VariableKind) {
+        val currentValue = _currentEquation.value
+        // Vérifier si la variable existe déjà
+        if (!currentValue.variables.contains(variableKind)) {
+            val updatedVariables = currentValue.variables.toMutableList()
+            updatedVariables.add(variableKind)
+            _currentEquation.value = currentValue.copy(variables = updatedVariables)
+        }
+    }
+
+    /** Supprime une variable de l'équation */
+    fun removeVariable(variableKind: VariableKind) {
+        val currentValue = _currentEquation.value
+        val updatedVariables = currentValue.variables.toMutableList()
+        updatedVariables.remove(variableKind)
+        _currentEquation.value = currentValue.copy(variables = updatedVariables)
+    }
+
+    /** Efface toutes les variables sélectionnées */
+    fun clearSelectedVariables() {
+        val currentValue = _currentEquation.value
+        _currentEquation.value = currentValue.copy(variables = mutableListOf())
+    }
+
+    /** Efface le message d'opération */
+    fun clearOperationMessage() {
+        _operationMessage.value = null
+        _saveSuccessful.value = false
+    }
+
+    /** Sauvegarde l'équation courante, retourne true si succès, false sinon */
+    fun saveCurrentEquation(): Boolean {
+        println("DEBUG: Tentative de sauvegarde de l'équation")
+
+        val equation = _currentEquation.value
+
+        // Valider les données
         if (equation.name.isBlank()) {
-            println("DEBUG EquationViewModel: Validation échouée - nom vide")
-            _operationMessage.value = "Erreur: Le nom de l'équation est obligatoire"
+            _operationMessage.value = "Erreur: nom vide"
+            return false
+        }
+
+        if (equation.description.isBlank()) {
+            _operationMessage.value = "Erreur: description vide"
             return false
         }
 
         if (equation.equationScript.isBlank()) {
-            println("DEBUG EquationViewModel: Validation échouée - script vide")
-            _operationMessage.value = "Erreur: Le script de l'équation est obligatoire"
+            _operationMessage.value = "Erreur: script vide"
             return false
         }
 
-        if (equation.bib.uuid.isBlank()) {
-            println(
-                    "DEBUG EquationViewModel: Validation échouée - référence bibliographique manquante"
-            )
-            _operationMessage.value = "Erreur: Une référence bibliographique est requise"
+        // Vérifier si la bibliographie est renseignée
+        if (equation.bib.completeRef.isBlank()) {
+            _operationMessage.value = "Erreur: référence bibliographique manquante"
             return false
         }
 
-        var success = false
         coroutineScope.launch {
             _isLoading.value = true
             try {
-                if (equation.uuid.isEmpty()) {
-                    println("DEBUG EquationViewModel: Création d'une nouvelle équation")
-                    equationRepository.saveEquation(equation)
-                } else {
-                    println("DEBUG EquationViewModel: Mise à jour d'une équation existante")
-                    equationRepository.updateEquation(equation)
-                }
+                equationRepository.saveEquation(equation)
+                _saveSuccessful.value = true
                 _operationMessage.value = "Équation sauvegardée avec succès"
-                println("DEBUG EquationViewModel: Sauvegarde réussie")
-                success = true
-                loadEquations()
+                println("DEBUG: Équation sauvegardée avec succès")
             } catch (e: Exception) {
-                println("DEBUG EquationViewModel: Erreur lors de la sauvegarde: ${e.message}")
-                e.printStackTrace()
-                _operationMessage.value = "Erreur lors de l'enregistrement: ${e.message}"
-                success = false
+                _operationMessage.value = "Erreur lors de la sauvegarde: ${e.message}"
+                println("DEBUG: Erreur lors de la sauvegarde - ${e.message}")
+                _saveSuccessful.value = false
             } finally {
                 _isLoading.value = false
             }
         }
-        return success
+
+        return true
     }
 
     /** Supprime l'équation en cours d'édition */
     fun deleteEquation() {
-        val equation = _currentEquation.value
+        if (_currentEquation.value.uuid.isEmpty()) {
+            return
+        }
+
         coroutineScope.launch {
             _isLoading.value = true
             try {
-                equationRepository.deleteEquation(equation.uuid)
+                equationRepository.deleteEquation(_currentEquation.value.uuid)
                 _operationMessage.value = "Équation supprimée avec succès"
+                _saveSuccessful.value = true
                 _currentEquation.value = Equation()
                 loadEquations()
             } catch (e: Exception) {
                 _operationMessage.value = "Erreur lors de la suppression: ${e.message}"
+                _saveSuccessful.value = false
             } finally {
                 _isLoading.value = false
             }
@@ -218,75 +264,12 @@ class EquationViewModel(
     /** Réinitialise l'équation en cours d'édition */
     fun clearCurrentEquation() {
         _currentEquation.value = Equation()
-    }
-
-    /** Efface le message d'opération */
-    fun clearOperationMessage() {
-        _operationMessage.value = ""
-    }
-
-    /** Met à jour le nom de l'équation */
-    fun updateName(name: String) {
-        _currentEquation.value = _currentEquation.value.copy(name = name)
-    }
-
-    /** Met à jour la description de l'équation */
-    fun updateDescription(description: String) {
-        _currentEquation.value = _currentEquation.value.copy(description = description)
-    }
-
-    /** Met à jour le type d'équation */
-    fun updateKind(kind: EquationKind) {
-        _currentEquation.value = _currentEquation.value.copy(kind = kind)
-    }
-
-    /** Met à jour l'espèce de l'équation */
-    fun updateSpecie(specie: Espece?) {
-        _currentEquation.value = _currentEquation.value.copy(specie = specie)
-    }
-
-    /** Met à jour le script de l'équation */
-    fun updateEquationScript(script: String) {
-        _currentEquation.value = _currentEquation.value.copy(equationScript = script)
-    }
-
-    /** Ajoute une variable à l'équation */
-    fun addVariable(variable: VariableKind) {
-        val updatedVariables = _currentEquation.value.variables.toMutableList()
-        if (!updatedVariables.contains(variable)) {
-            updatedVariables.add(variable)
-        }
-        _currentEquation.value = _currentEquation.value.copy(variables = updatedVariables)
-    }
-
-    /** Supprime une variable de l'équation */
-    fun removeVariable(variable: VariableKind) {
-        val updatedVariables = _currentEquation.value.variables.toMutableList()
-        updatedVariables.remove(variable)
-        _currentEquation.value = _currentEquation.value.copy(variables = updatedVariables)
-    }
-
-    /** Fixe si l'équation est cohérente ou non */
-    fun setConsistent(consistent: Boolean) {
-        _currentEquation.value = _currentEquation.value.copy(consistent = consistent)
-    }
-
-    /** Met à jour la note bibliographique */
-    fun updateBibNote(note: String) {
-        _currentEquation.value =
-                _currentEquation.value.copy(bib = _currentEquation.value.bib.copy(comments = note))
-    }
-
-    /** Met à jour la référence bibliographique */
-    fun updateBibRef(ref: String) {
-        _currentEquation.value =
-                _currentEquation.value.copy(
-                        bib = _currentEquation.value.bib.copy(completeRef = ref)
-                )
+        _saveSuccessful.value = false
     }
 
     /** Sélectionne une référence bibliographique existante */
-    fun selectBiblioRef(biblioRef: BiblioRef) {
-        _currentEquation.value = _currentEquation.value.copy(bib = biblioRef)
+    fun selectBiblioRef(biblioRef: BiblioRef?) {
+        _selectedBiblioRef.value = biblioRef
+        _currentEquation.value = _currentEquation.value.copy(bib = biblioRef ?: BiblioRef())
     }
 }

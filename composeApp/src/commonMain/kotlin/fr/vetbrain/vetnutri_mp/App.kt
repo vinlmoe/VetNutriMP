@@ -186,7 +186,8 @@ fun App(appDatabase: AppDatabase) {
     val equationViewModel = remember {
         EquationViewModel(
                 equationRepository = equationRepository,
-                biblioRefDao = appDatabase.biblioRefDao()
+                biblioRefDao = appDatabase.biblioRefDao(),
+                biblioRepository = biblioRefRepository
         )
     }
     var selectedEquationId by remember { mutableStateOf<String?>(null) }

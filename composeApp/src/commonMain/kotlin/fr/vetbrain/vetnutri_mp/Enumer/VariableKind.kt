@@ -11,7 +11,12 @@ enum class VariableKind(
     AdultWeight(0, "AdultWeight", "AW", "adultWeight"),
     LitterSize(1, "LitterSize", "L", "litterSize"),
     WeekGestation(2, "WeekGestation", "wG", "gestationWeek"),
-    WeekLactation(3, "WeekLactation", "wL", "lactationWeek");
+    WeekLactation(3, "WeekLactation", "wL", "lactationWeek"),
+    BEE(4, "SandarfEnergyNeed", "BEE", "sandarfEnergyNeed"),
+    BE(5, "EnergyNeed", "BE", "energyNeed"),
+    BW(6, "BodyWeight", "BW", "bodyWeight"),
+    iBW(7, "IdealBodyWeight", "iBW", "idealBodyWeight"),
+    MW(8, "MetabolicWeight", "MW", "metabolicWeight");
 
     companion object {
         fun getById(id: Int): VariableKind = entries.find { it.uuid == id } ?: AdultWeight

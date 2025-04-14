@@ -105,14 +105,19 @@ fun EquationListView(
                                 )
 
                                 Row {
-                                    IconButton(onClick = { onEditEquation(equation.uuid) }) {
+                                    IconButton(
+                                            onClick = {
+                                                equation.uuid?.let { id -> 
+                                                    onEditEquation(id)
+                                                }
+                                            }
+                                    ) {
                                         Icon(
                                                 imageVector = AppIcons.Edit,
-                                                contentDescription = "Modifier",
+                                                contentDescription = "Éditer",
                                                 tint = VetNutriColors.Primary
                                         )
                                     }
-
                                     IconButton(
                                             onClick = {
                                                 equationToDelete = equation
@@ -135,16 +140,15 @@ fun EquationListView(
         }
     }
 
-    // Afficher les erreurs éventuelles
-    if (operationMessage.isNotEmpty() && operationMessage.startsWith("Erreur")) {
-        AlertDialog(
-                onDismissRequest = { viewModel.clearOperationMessage() },
-                title = { Text("Erreur") },
-                text = { Text(operationMessage) },
-                confirmButton = {
-                    Button(onClick = { viewModel.clearOperationMessage() }) { Text("OK") }
+    // Afficher l'erreur s'il y en a une
+    val message = operationMessage
+    if (message != null && message.isNotEmpty() && message.startsWith("Erreur")) {
+        Snackbar(
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                action = {
+                    TextButton(onClick = { viewModel.clearOperationMessage() }) { Text("Fermer") }
                 }
-        )
+        ) { Text(message) }
     }
 
     // Dialogue de confirmation de suppression
@@ -164,8 +168,8 @@ fun EquationListView(
                     Button(
                             onClick = {
                                 equationToDelete?.let {
-                                    viewModel.loadEquationById(it.uuid)
-                                    viewModel.deleteEquation()
+                                    viewModel.loadEquation(it.uuid)
+                                    onEditEquation(it.uuid)
                                 }
                                 showDeleteConfirmation = false
                                 equationToDelete = null
