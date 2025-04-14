@@ -261,13 +261,52 @@ fun EquationEditView(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Référence bibliographique
-                OutlinedTextField(
-                        value = currentEquation.bib.completeRef,
-                        onValueChange = { viewModel.updateBibRef(it) },
-                        label = { Text("Référence bibliographique") },
-                        modifier = Modifier.fillMaxWidth()
-                )
+                // Référence bibliographique (sélecteur au lieu de champ libre)
+                val biblioRefs by viewModel.biblioRefs.collectAsState()
+                var expandedBiblioRefs by remember { mutableStateOf(false) }
+
+                Box {
+                    OutlinedTextField(
+                            value = currentEquation.bib.completeRef,
+                            onValueChange = { /* Lecture seule, modification via le sélecteur uniquement */
+                            },
+                            label = { Text("Référence bibliographique") },
+                            modifier = Modifier.fillMaxWidth(),
+                            readOnly = true,
+                            trailingIcon = {
+                                IconButton(onClick = { expandedBiblioRefs = true }) {
+                                    Icon(
+                                            imageVector = Icons.Default.AddCircle,
+                                            contentDescription = "Sélectionner une référence"
+                                    )
+                                }
+                            }
+                    )
+
+                    DropdownMenu(
+                            expanded = expandedBiblioRefs,
+                            onDismissRequest = { expandedBiblioRefs = false }
+                    ) {
+                        if (biblioRefs.isEmpty()) {
+                            DropdownMenuItem(onClick = { expandedBiblioRefs = false }) {
+                                Text("Aucune référence disponible")
+                            }
+                        } else {
+                            biblioRefs.forEach { biblioRef ->
+                                DropdownMenuItem(
+                                        onClick = {
+                                            viewModel.selectBiblioRef(biblioRef)
+                                            expandedBiblioRefs = false
+                                        }
+                                ) {
+                                    Text(
+                                            "${biblioRef.firstAuthor} (${biblioRef.year}) - ${biblioRef.completeRef.take(30)}${if (biblioRef.completeRef.length > 30) "..." else ""}"
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(32.dp))
 
