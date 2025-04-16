@@ -29,279 +29,384 @@ fun ReferenceEvListView(
         onNavigateBack: () -> Unit,
         onEditReferenceEv: (String) -> Unit = {}, // UUID de la référence à éditer
         onCreateReferenceEv: () -> Unit = {},
+        onViewReferenceEvTabs: (String) -> Unit =
+                {}, // Nouvelle fonction pour afficher la vue par onglets
+        onNewEditReferenceEv: (String) -> Unit =
+                {}, // Nouvelle fonction pour éditer avec la nouvelle interface
         modifier: Modifier = Modifier
 ) {
-    val references by viewModel.allReferences.collectAsState(initial = emptyList())
-    val searchText by viewModel.searchText.collectAsState(initial = "")
-    val selectedEspece by viewModel.selectedEspece.collectAsState(initial = null)
-    val filteredReferences by viewModel.filteredReferences.collectAsState(initial = emptyList())
-    val loading by viewModel.loading.collectAsState(initial = false)
-    val error by viewModel.error.collectAsState(initial = "")
-    val coroutineScope = rememberCoroutineScope()
+        val references by viewModel.allReferences.collectAsState(initial = emptyList())
+        val searchText by viewModel.searchText.collectAsState(initial = "")
+        val selectedEspece by viewModel.selectedEspece.collectAsState(initial = null)
+        val filteredReferences by viewModel.filteredReferences.collectAsState(initial = emptyList())
+        val loading by viewModel.loading.collectAsState(initial = false)
+        val error by viewModel.error.collectAsState(initial = "")
+        val coroutineScope = rememberCoroutineScope()
 
-    // État pour la boîte de dialogue de confirmation de suppression
-    var showDeleteConfirmation by remember { mutableStateOf(false) }
-    var referenceToDelete by remember { mutableStateOf<ReferenceEv?>(null) }
+        // État pour la boîte de dialogue de confirmation de suppression
+        var showDeleteConfirmation by remember { mutableStateOf(false) }
+        var referenceToDelete by remember { mutableStateOf<ReferenceEv?>(null) }
 
-    // Charger les références au démarrage
-    LaunchedEffect(key1 = Unit) { viewModel.loadAllReferences() }
+        // Charger les références au démarrage
+        LaunchedEffect(key1 = Unit) { viewModel.loadAllReferences() }
 
-    Scaffold(
-            topBar = {
-                TopBarSimple(
-                        title = "Références nutritionnelles",
-                        onNavigateBack = onNavigateBack,
-                        actions = {
-                            // Bouton pour ajouter une nouvelle référence
-                            IconButton(onClick = onCreateReferenceEv) {
-                                Icon(
-                                        imageVector = AppIcons.Add,
-                                        contentDescription = "Ajouter une référence",
-                                        tint = VetNutriColors.OnPrimary
-                                )
-                            }
-                        }
-                )
-            },
-            floatingActionButton = {
-                FloatingActionButton(
-                        onClick = onCreateReferenceEv,
-                        backgroundColor = VetNutriColors.Primary,
-                        contentColor = VetNutriColors.OnPrimary
-                ) { Icon(AppIcons.Add, contentDescription = "Ajouter une référence") }
-            }
-    ) { paddingValues ->
-        Box(modifier = modifier.fillMaxSize().padding(paddingValues)) {
-            Column(modifier = Modifier.fillMaxSize()) {
-                // Barre de recherche et filtres
-                Card(
-                        modifier = Modifier.fillMaxWidth().padding(AppSizes.paddingMedium),
-                        elevation = AppSizes.cardElevationSmall
-                ) {
-                    Column(modifier = Modifier.padding(AppSizes.paddingMedium)) {
-                        // Champ de recherche
-                        OutlinedTextField(
-                                value = searchText,
-                                onValueChange = { viewModel.updateSearchText(it) },
-                                modifier = Modifier.fillMaxWidth(),
-                                label = { Text("Rechercher par nom") },
-                                singleLine = true,
-                                colors =
-                                        TextFieldDefaults.outlinedTextFieldColors(
-                                                focusedBorderColor = VetNutriColors.Primary,
-                                                unfocusedBorderColor = Color.Gray
-                                        )
+        Scaffold(
+                topBar = {
+                        TopBarSimple(
+                                title = "Références nutritionnelles",
+                                onNavigateBack = onNavigateBack
                         )
-
-                        Spacer(modifier = Modifier.height(AppSizes.paddingMedium))
-
-                        // Filtre par espèce
-                        Text("Filtrer par espèce:", style = MaterialTheme.typography.subtitle1)
-                        Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
-                        ) {
-                            // Bouton "Toutes"
-                            OutlinedButton(
-                                    onClick = { viewModel.updateSelectedEspece(null) },
-                                    modifier = Modifier.weight(1f),
-                                    colors =
-                                            ButtonDefaults.outlinedButtonColors(
-                                                    backgroundColor =
-                                                            if (selectedEspece == null)
-                                                                    VetNutriColors.Primary.copy(
-                                                                            alpha = 0.1f
-                                                                    )
-                                                            else Color.Transparent,
-                                                    contentColor =
-                                                            if (selectedEspece == null)
-                                                                    VetNutriColors.Primary
-                                                            else Color.Gray
-                                            )
-                            ) { Text("Toutes") }
-
-                            // Boutons pour chaque espèce
-                            for (espece in Espece.values()) {
-                                OutlinedButton(
-                                        onClick = { viewModel.updateSelectedEspece(espece) },
-                                        modifier = Modifier.weight(1f),
-                                        colors =
-                                                ButtonDefaults.outlinedButtonColors(
-                                                        backgroundColor =
-                                                                if (selectedEspece == espece)
-                                                                        VetNutriColors.Primary.copy(
-                                                                                alpha = 0.1f
-                                                                        )
-                                                                else Color.Transparent,
-                                                        contentColor =
-                                                                if (selectedEspece == espece)
-                                                                        VetNutriColors.Primary
-                                                                else Color.Gray
-                                                )
-                                ) { Text(espece.toString()) }
-                            }
-                        }
-                    }
+                },
+                floatingActionButton = {
+                        FloatingActionButton(
+                                onClick = onCreateReferenceEv,
+                                backgroundColor = VetNutriColors.Primary,
+                                contentColor = VetNutriColors.OnPrimary
+                        ) { Icon(AppIcons.Add, contentDescription = "Ajouter une référence") }
                 }
+        ) { paddingValues ->
+                Box(modifier = modifier.fillMaxSize().padding(paddingValues)) {
+                        Column(modifier = Modifier.fillMaxSize()) {
+                                // Barre de recherche et filtres
+                                Card(
+                                        modifier =
+                                                Modifier.fillMaxWidth()
+                                                        .padding(AppSizes.paddingMedium),
+                                        elevation = AppSizes.cardElevationSmall
+                                ) {
+                                        Column(
+                                                modifier = Modifier.padding(AppSizes.paddingMedium)
+                                        ) {
+                                                // Champ de recherche
+                                                OutlinedTextField(
+                                                        value = searchText,
+                                                        onValueChange = {
+                                                                viewModel.updateSearchText(it)
+                                                        },
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        label = { Text("Rechercher par nom") },
+                                                        singleLine = true,
+                                                        colors =
+                                                                TextFieldDefaults
+                                                                        .outlinedTextFieldColors(
+                                                                                focusedBorderColor =
+                                                                                        VetNutriColors
+                                                                                                .Primary,
+                                                                                unfocusedBorderColor =
+                                                                                        Color.Gray
+                                                                        )
+                                                )
 
-                // Liste des références
-                Box(modifier = Modifier.fillMaxSize()) {
-                    if (loading) {
-                        CircularProgressIndicator(
-                                modifier = Modifier.size(50.dp).align(Alignment.Center),
-                                color = VetNutriColors.Primary
-                        )
-                    } else if (error.isNotBlank()) {
-                        Text(
-                                text = error,
-                                modifier = Modifier.align(Alignment.Center),
-                                style = MaterialTheme.typography.body1,
-                                color = Color.Red
-                        )
-                    } else if (filteredReferences.isEmpty()) {
-                        Text(
-                                text =
-                                        if (searchText.isBlank() && selectedEspece == null)
-                                                "Aucune référence disponible. Ajoutez-en une nouvelle."
-                                        else "Aucun résultat ne correspond à votre recherche.",
-                                modifier = Modifier.align(Alignment.Center),
-                                style = MaterialTheme.typography.body1
-                        )
-                    } else {
-                        LazyColumn(
-                                modifier = Modifier.fillMaxSize(),
-                                contentPadding = PaddingValues(AppSizes.paddingMedium)
-                        ) {
-                            items(filteredReferences) { reference ->
-                                ReferenceEvItem(
-                                        reference = reference,
-                                        onEdit = { onEditReferenceEv(reference.uuid) },
-                                        onDelete = {
-                                            referenceToDelete = reference
-                                            showDeleteConfirmation = true
+                                                Spacer(
+                                                        modifier =
+                                                                Modifier.height(
+                                                                        AppSizes.paddingMedium
+                                                                )
+                                                )
+
+                                                // Filtre par espèce
+                                                Text(
+                                                        "Filtrer par espèce:",
+                                                        style = MaterialTheme.typography.subtitle1
+                                                )
+                                                Row(
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        horizontalArrangement =
+                                                                Arrangement.spacedBy(
+                                                                        AppSizes.paddingSmall
+                                                                )
+                                                ) {
+                                                        // Bouton "Toutes"
+                                                        OutlinedButton(
+                                                                onClick = {
+                                                                        viewModel
+                                                                                .updateSelectedEspece(
+                                                                                        null
+                                                                                )
+                                                                },
+                                                                modifier = Modifier.weight(1f),
+                                                                colors =
+                                                                        ButtonDefaults
+                                                                                .outlinedButtonColors(
+                                                                                        backgroundColor =
+                                                                                                if (selectedEspece ==
+                                                                                                                null
+                                                                                                )
+                                                                                                        VetNutriColors
+                                                                                                                .Primary
+                                                                                                                .copy(
+                                                                                                                        alpha =
+                                                                                                                                0.1f
+                                                                                                                )
+                                                                                                else
+                                                                                                        Color.Transparent,
+                                                                                        contentColor =
+                                                                                                if (selectedEspece ==
+                                                                                                                null
+                                                                                                )
+                                                                                                        VetNutriColors
+                                                                                                                .Primary
+                                                                                                else
+                                                                                                        Color.Gray
+                                                                                )
+                                                        ) { Text("Toutes") }
+
+                                                        // Boutons pour chaque espèce
+                                                        for (espece in Espece.values()) {
+                                                                OutlinedButton(
+                                                                        onClick = {
+                                                                                viewModel
+                                                                                        .updateSelectedEspece(
+                                                                                                espece
+                                                                                        )
+                                                                        },
+                                                                        modifier =
+                                                                                Modifier.weight(1f),
+                                                                        colors =
+                                                                                ButtonDefaults
+                                                                                        .outlinedButtonColors(
+                                                                                                backgroundColor =
+                                                                                                        if (selectedEspece ==
+                                                                                                                        espece
+                                                                                                        )
+                                                                                                                VetNutriColors
+                                                                                                                        .Primary
+                                                                                                                        .copy(
+                                                                                                                                alpha =
+                                                                                                                                        0.1f
+                                                                                                                        )
+                                                                                                        else
+                                                                                                                Color.Transparent,
+                                                                                                contentColor =
+                                                                                                        if (selectedEspece ==
+                                                                                                                        espece
+                                                                                                        )
+                                                                                                                VetNutriColors
+                                                                                                                        .Primary
+                                                                                                        else
+                                                                                                                Color.Gray
+                                                                                        )
+                                                                ) { Text(espece.toString()) }
+                                                        }
+                                                }
+                                        }
+                                }
+
+                                // Liste des références
+                                Box(modifier = Modifier.fillMaxSize()) {
+                                        if (loading) {
+                                                CircularProgressIndicator(
+                                                        modifier =
+                                                                Modifier.size(50.dp)
+                                                                        .align(Alignment.Center),
+                                                        color = VetNutriColors.Primary
+                                                )
+                                        } else if (error.isNotBlank()) {
+                                                Text(
+                                                        text = error,
+                                                        modifier = Modifier.align(Alignment.Center),
+                                                        style = MaterialTheme.typography.body1,
+                                                        color = Color.Red
+                                                )
+                                        } else if (filteredReferences.isEmpty()) {
+                                                Text(
+                                                        text =
+                                                                if (searchText.isBlank() &&
+                                                                                selectedEspece ==
+                                                                                        null
+                                                                )
+                                                                        "Aucune référence disponible. Ajoutez-en une nouvelle."
+                                                                else
+                                                                        "Aucun résultat ne correspond à votre recherche.",
+                                                        modifier = Modifier.align(Alignment.Center),
+                                                        style = MaterialTheme.typography.body1
+                                                )
+                                        } else {
+                                                LazyColumn(
+                                                        modifier = Modifier.fillMaxSize(),
+                                                        contentPadding =
+                                                                PaddingValues(
+                                                                        horizontal =
+                                                                                AppSizes.paddingMedium,
+                                                                        vertical =
+                                                                                AppSizes.paddingMedium
+                                                                )
+                                                ) {
+                                                        items(filteredReferences) { reference ->
+                                                                ReferenceEvItem(
+                                                                        reference = reference,
+                                                                        onEdit = {
+                                                                                onEditReferenceEv(
+                                                                                        reference
+                                                                                                .uuid
+                                                                                )
+                                                                        },
+                                                                        onDelete = {
+                                                                                referenceToDelete =
+                                                                                        reference
+                                                                                showDeleteConfirmation =
+                                                                                        true
+                                                                        },
+                                                                        onViewTabs = {
+                                                                                onViewReferenceEvTabs(
+                                                                                        reference
+                                                                                                .uuid
+                                                                                )
+                                                                        },
+                                                                        onNewEdit = {
+                                                                                onNewEditReferenceEv(
+                                                                                        reference
+                                                                                                .uuid
+                                                                                )
+                                                                        }
+                                                                )
+                                                                Divider()
+                                                        }
+                                                }
+                                        }
+                                }
+                        }
+
+                        // Boîte de dialogue de confirmation de suppression
+                        if (showDeleteConfirmation) {
+                                ConfirmDialog(
+                                        title = "Confirmer la suppression",
+                                        message =
+                                                "Êtes-vous sûr de vouloir supprimer cette référence ? Cette action est irréversible.",
+                                        onConfirm = {
+                                                coroutineScope.launch {
+                                                        referenceToDelete?.let {
+                                                                viewModel.deleteReference(it.uuid)
+                                                        }
+                                                        showDeleteConfirmation = false
+                                                        referenceToDelete = null
+                                                }
+                                        },
+                                        onDismiss = {
+                                                showDeleteConfirmation = false
+                                                referenceToDelete = null
                                         }
                                 )
-                                Divider()
-                            }
                         }
-                    }
                 }
-            }
-
-            // Boîte de dialogue de confirmation de suppression
-            if (showDeleteConfirmation) {
-                ConfirmDialog(
-                        title = "Confirmer la suppression",
-                        message =
-                                "Êtes-vous sûr de vouloir supprimer cette référence ? Cette action est irréversible.",
-                        onConfirm = {
-                            coroutineScope.launch {
-                                referenceToDelete?.let { viewModel.deleteReference(it.uuid) }
-                                showDeleteConfirmation = false
-                                referenceToDelete = null
-                            }
-                        },
-                        onDismiss = {
-                            showDeleteConfirmation = false
-                            referenceToDelete = null
-                        }
-                )
-            }
         }
-    }
 }
 
 @Composable
-private fun ReferenceEvItem(reference: ReferenceEv, onEdit: () -> Unit, onDelete: () -> Unit) {
-    Card(
-            modifier =
-                    Modifier.fillMaxWidth()
-                            .padding(vertical = AppSizes.paddingSmall)
-                            .clickable(onClick = onEdit),
-            elevation = AppSizes.cardElevationSmall
-    ) {
-        Column(modifier = Modifier.padding(AppSizes.paddingMedium)) {
-            Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Titre et informations principales
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                            text = reference.nom,
-                            style = MaterialTheme.typography.h6,
-                            color = VetNutriColors.Primary
-                    )
-                    Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                                text = reference.espece.toString(),
-                                style = MaterialTheme.typography.caption,
-                                color = Color.Gray
-                        )
-                        Text(
-                                text = "|",
-                                style = MaterialTheme.typography.caption,
-                                color = Color.Gray
-                        )
-                        Text(
-                                text = reference.stadePhysio.toString(),
-                                style = MaterialTheme.typography.caption,
-                                color = Color.Gray
-                        )
-                    }
-                    if (reference.maladie && reference.nomMaladie.isNotBlank()) {
-                        Text(
-                                text = "Maladie: ${reference.nomMaladie}",
-                                style = MaterialTheme.typography.caption,
-                                color = Color.Red
-                        )
-                    }
+private fun ReferenceEvItem(
+        reference: ReferenceEv,
+        onEdit: () -> Unit,
+        onDelete: () -> Unit,
+        onViewTabs: () -> Unit,
+        onNewEdit: () -> Unit
+) {
+        Card(
+                modifier =
+                        Modifier.fillMaxWidth()
+                                .padding(vertical = AppSizes.paddingSmall)
+                                .clickable(onClick = onEdit),
+                elevation = AppSizes.cardElevationSmall
+        ) {
+                Column(modifier = Modifier.padding(AppSizes.paddingMedium)) {
+                        Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                        ) {
+                                // Titre et informations principales
+                                Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                                text = reference.nom,
+                                                style = MaterialTheme.typography.h6,
+                                                color = VetNutriColors.Primary
+                                        )
+                                        Row(
+                                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                                verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                                Text(
+                                                        text = reference.espece.toString(),
+                                                        style = MaterialTheme.typography.caption,
+                                                        color = Color.Gray
+                                                )
+                                                Text(
+                                                        text = "|",
+                                                        style = MaterialTheme.typography.caption,
+                                                        color = Color.Gray
+                                                )
+                                                Text(
+                                                        text = reference.stadePhysio.toString(),
+                                                        style = MaterialTheme.typography.caption,
+                                                        color = Color.Gray
+                                                )
+                                        }
+                                        if (reference.maladie && reference.nomMaladie.isNotBlank()
+                                        ) {
+                                                Text(
+                                                        text = "Maladie: ${reference.nomMaladie}",
+                                                        style = MaterialTheme.typography.caption,
+                                                        color = Color.Red
+                                                )
+                                        }
+                                }
+
+                                // Boutons d'action
+                                Row {
+                                        IconButton(onClick = onViewTabs) {
+                                                Icon(
+                                                        imageVector = AppIcons.ViewList,
+                                                        contentDescription =
+                                                                "Voir détails par onglets",
+                                                        tint = VetNutriColors.Primary
+                                                )
+                                        }
+                                        IconButton(onClick = onEdit) {
+                                                Icon(
+                                                        imageVector = AppIcons.Edit,
+                                                        contentDescription = "Modifier",
+                                                        tint = VetNutriColors.Primary
+                                                )
+                                        }
+                                        IconButton(onClick = onNewEdit) {
+                                                Icon(
+                                                        imageVector = AppIcons.Edit,
+                                                        contentDescription = "Nouvelle édition",
+                                                        tint = VetNutriColors.Secondary
+                                                )
+                                        }
+                                        IconButton(onClick = onDelete) {
+                                                Icon(
+                                                        imageVector = AppIcons.Delete,
+                                                        contentDescription = "Supprimer",
+                                                        tint = Color.Red
+                                                )
+                                        }
+                                }
+                        }
+
+                        // Afficher une description courte si elle existe
+                        if (reference.description.isNotBlank()) {
+                                Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
+                                Text(
+                                        text =
+                                                reference.description.take(100) +
+                                                        if (reference.description.length > 100)
+                                                                "..."
+                                                        else "",
+                                        style = MaterialTheme.typography.body2,
+                                        color = Color.DarkGray
+                                )
+                        }
+
+                        // Afficher les informations sur l'énergie si disponible
+                        if (reference.nomEnergie.isNotBlank()) {
+                                Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
+                                Text(
+                                        text = "Énergie: ${reference.nomEnergie}",
+                                        style = MaterialTheme.typography.body2,
+                                        color = Color.DarkGray
+                                )
+                        }
                 }
-
-                // Boutons d'action
-                Row {
-                    IconButton(onClick = onEdit) {
-                        Icon(
-                                imageVector = AppIcons.Edit,
-                                contentDescription = "Modifier",
-                                tint = VetNutriColors.Primary
-                        )
-                    }
-                    IconButton(onClick = onDelete) {
-                        Icon(
-                                imageVector = AppIcons.Delete,
-                                contentDescription = "Supprimer",
-                                tint = Color.Red
-                        )
-                    }
-                }
-            }
-
-            // Afficher une description courte si elle existe
-            if (reference.description.isNotBlank()) {
-                Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
-                Text(
-                        text =
-                                reference.description.take(100) +
-                                        if (reference.description.length > 100) "..." else "",
-                        style = MaterialTheme.typography.body2,
-                        color = Color.DarkGray
-                )
-            }
-
-            // Afficher les informations sur l'énergie si disponible
-            if (reference.nomEnergie.isNotBlank()) {
-                Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
-                Text(
-                        text = "Énergie: ${reference.nomEnergie}",
-                        style = MaterialTheme.typography.body2,
-                        color = Color.DarkGray
-                )
-            }
         }
-    }
 }

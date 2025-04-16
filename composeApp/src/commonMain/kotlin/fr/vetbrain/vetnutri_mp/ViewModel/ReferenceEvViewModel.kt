@@ -2,6 +2,7 @@ package fr.vetbrain.vetnutri_mp.ViewModel
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import fr.vetbrain.vetnutri_mp.Data.Equation
 import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.StadePhysio
@@ -78,6 +79,13 @@ class ReferenceEvViewModel(
 
     private val _error = MutableStateFlow("")
     val error: StateFlow<String> = _error.asStateFlow()
+
+    // États pour les équations disponibles
+    private val _loadingEquations = MutableStateFlow(false)
+    val loadingEquations: StateFlow<Boolean> = _loadingEquations.asStateFlow()
+
+    private val _availableEquations = MutableStateFlow<List<Equation>>(emptyList())
+    val availableEquations: StateFlow<List<Equation>> = _availableEquations.asStateFlow()
 
     // Références filtrées en fonction des critères de recherche
     val filteredReferences =
@@ -234,24 +242,70 @@ class ReferenceEvViewModel(
     }
 
     // Charger une référence existante par son ID
-    fun loadReferenceEvById(id: String) {
-        scope.launch {
-            _actionInProgress.value = true
-            try {
-                val referenceEv = repository.getById(id)
+    fun loadReferenceEvById(referenceEvId: String) {
+        println("DEBUG: ReferenceEvViewModel.loadReferenceEvById called with ID: $referenceEvId")
+        _actionInProgress.value = true
 
-                if (referenceEv != null) {
-                    _currentReferenceEv.value = referenceEv
-                    _nom.value = referenceEv.nom
-                    _description.value = referenceEv.description
-                    _nomEnergie.value = referenceEv.nomEnergie
-                    _espece.value = referenceEv.espece
-                    _stadePhysio.value = referenceEv.stadePhysio
-                    _isMaladie.value = referenceEv.maladie
-                    _nomMaladie.value = referenceEv.nomMaladie
+        scope.launch {
+            try {
+                val referenceEv = repository.getById(referenceEvId)
+                println(
+                        "DEBUG: Reference loaded - ID: ${referenceEv?.uuid}, Name: ${referenceEv?.nom}, Species: ${referenceEv?.espece}"
+                )
+
+                // Récupération des équations associées
+                // L'appel suivant semble ne pas exister, commentons-le pour l'instant
+                // val associatedEquations = repository.getEquationsForReference(referenceEvId)
+                // println("DEBUG: Associated equations count: ${associatedEquations.size}")
+                // associatedEquations.forEach { equation ->
+                //     println("DEBUG: Associated equation - ID: ${equation.uuid}, Name:
+                // ${equation.name}, Type: ${equation.kind}")
+                // }
+
+                // Mise à jour des états si la référence est trouvée
+                referenceEv?.let { ref ->
+                    // D'abord, copions les attributs de base de la référence
+                    _currentReferenceEv.value =
+                            _currentReferenceEv.value.copy(
+                                    uuid = ref.uuid,
+                                    nom = ref.nom,
+                                    description = ref.description,
+                                    espece = ref.espece,
+                                    stadePhysio = ref.stadePhysio,
+                                    maladie = ref.maladie,
+                                    nomMaladie = ref.nomMaladie,
+                                    nomEnergie = ref.nomEnergie,
+                                    consistent = ref.consistent
+                            )
+
+                    // Maintenant, assignons chaque équation séparément
+                    val updatedReference = _currentReferenceEv.value
+                    updatedReference.equationBW = ref.equationBW
+                    updatedReference.equationBEE = ref.equationBEE
+                    updatedReference.equationDEcom = ref.equationDEcom
+                    updatedReference.equationDEraw = ref.equationDEraw
+                    updatedReference.equationsNut = ref.equationsNut
+                    _currentReferenceEv.value = updatedReference
+
+                    // Mettons à jour les autres états
+                    _nom.value = ref.nom
+                    _description.value = ref.description
+                    _nomEnergie.value = ref.nomEnergie
+                    _espece.value = ref.espece
+                    _stadePhysio.value = ref.stadePhysio
+                    _isMaladie.value = ref.maladie
+                    _nomMaladie.value = ref.nomMaladie
+
+                    _operationMessage.value = "Référence chargée avec succès"
                 }
+                        ?: run {
+                            _operationMessage.value =
+                                    "Référence non trouvée avec l'ID: $referenceEvId"
+                        }
             } catch (e: Exception) {
-                _operationMessage.value = "Erreur lors du chargement: ${e.message}"
+                println("DEBUG: Error loading reference: ${e.message}")
+                _error.value = "Erreur lors du chargement de la référence: ${e.message}"
+                _operationMessage.value = "Erreur lors du chargement de la référence: ${e.message}"
             } finally {
                 _actionInProgress.value = false
             }
@@ -354,5 +408,217 @@ class ReferenceEvViewModel(
     // Effacer le message d'opération
     fun clearOperationMessage() {
         _operationMessage.value = ""
+    }
+
+    /** Met à jour une équation spécifique pour la référence en cours */
+    fun updateReferenceEquation(type: String, equationId: String?) {
+        println("DEBUG: updateReferenceEquation - Type: $type, EquationId: $equationId")
+        val currentRef = _currentReferenceEv.value
+        println(
+                "DEBUG: Current reference before update: ${currentRef.nom}, UUID: ${currentRef.uuid}"
+        )
+
+        scope.launch {
+            _actionInProgress.value = true
+            try {
+                // Clone de la référence actuelle pour modification
+                val updatedReference = currentRef.copy()
+
+                // Rechercher l'équation correspondante dans la liste disponible
+                val selectedEquation =
+                        if (equationId != null) {
+                            _availableEquations.value.find { it.uuid == equationId }
+                        } else {
+                            null
+                        }
+
+                println(
+                        "DEBUG: Selected equation: ${selectedEquation?.name}, UUID: ${selectedEquation?.uuid}"
+                )
+
+                // Mise à jour de l'équation selon son type
+                when (type) {
+                    "BW" -> updatedReference.equationBW = selectedEquation ?: Equation()
+                    "BEE" -> updatedReference.equationBEE = selectedEquation ?: Equation()
+                    "DEcom" -> updatedReference.equationDEcom = selectedEquation ?: Equation()
+                    "DEraw" -> updatedReference.equationDEraw = selectedEquation ?: Equation()
+                }
+
+                println(
+                        "DEBUG: Updated reference with equation - Type: $type, UUID: ${selectedEquation?.uuid}"
+                )
+
+                // Mise à jour dans la base de données
+                val result = repository.update(updatedReference)
+                if (result) {
+                    // Mise à jour réussie, mise à jour de l'état
+                    _currentReferenceEv.value = updatedReference
+                    _operationMessage.value = "Équation mise à jour avec succès"
+                    println("DEBUG: Reference updated successfully in DB")
+                } else {
+                    _operationMessage.value = "Erreur lors de la mise à jour de l'équation"
+                    println("DEBUG: Error updating reference in DB - result: $result")
+                }
+            } catch (e: Exception) {
+                _operationMessage.value = "Erreur: ${e.message}"
+                println("DEBUG: Exception in updateReferenceEquation: ${e.message}")
+                e.printStackTrace()
+            } finally {
+                _actionInProgress.value = false
+            }
+        }
+    }
+
+    /** Associe ou dissocie une équation nutritionnelle à la référence en cours */
+    fun toggleNutritionEquation(equation: Equation) {
+        println(
+                "DEBUG: toggleNutritionEquation - Equation: ${equation.name}, UUID: ${equation.uuid}"
+        )
+        val currentRef = _currentReferenceEv.value
+        println(
+                "DEBUG: Current reference equationsNut before toggle: ${currentRef.equationsNut.size}"
+        )
+
+        // Afficher les équations actuellement associées
+        currentRef.equationsNut.forEach { equationItem ->
+            println(
+                    "DEBUG: Current associated equation: ${equationItem.name}, UUID: ${equationItem.uuid}"
+            )
+        }
+
+        scope.launch {
+            _actionInProgress.value = true
+            try {
+                // Vérifier si l'équation est déjà associée
+                val isAlreadyAssociated = currentRef.equationsNut.any { it.uuid == equation.uuid }
+                println("DEBUG: Equation is already associated: $isAlreadyAssociated")
+
+                // Clone de la référence actuelle pour modification
+                val updatedReference = currentRef.copy()
+
+                // Mise à jour de la liste des équations nutritionnelles
+                if (isAlreadyAssociated) {
+                    // Dissocier l'équation
+                    updatedReference.equationsNut =
+                            ArrayList(
+                                    updatedReference.equationsNut.filter {
+                                        it.uuid != equation.uuid
+                                    }
+                            )
+                    println("DEBUG: Removed equation from list")
+                } else {
+                    // Associer l'équation (créer une nouvelle liste pour éviter des problèmes de
+                    // référence)
+                    val newList = ArrayList(updatedReference.equationsNut)
+                    newList.add(equation)
+                    updatedReference.equationsNut = newList
+                    println(
+                            "DEBUG: Added equation to list, new size: ${updatedReference.equationsNut.size}"
+                    )
+                }
+
+                println(
+                        "DEBUG: Updated reference equationsNut after toggle: ${updatedReference.equationsNut.size}"
+                )
+
+                // Mise à jour dans la base de données
+                val result = repository.update(updatedReference)
+                if (result) {
+                    // Mise à jour réussie, mise à jour de l'état
+                    _currentReferenceEv.value = updatedReference
+                    val action = if (isAlreadyAssociated) "dissociée" else "associée"
+                    _operationMessage.value = "Équation $action avec succès"
+                    println("DEBUG: Reference updated successfully in DB after toggle")
+                } else {
+                    _operationMessage.value =
+                            "Erreur lors de la modification des équations nutritionnelles"
+                    println("DEBUG: Error updating reference in DB after toggle - result: $result")
+                }
+            } catch (e: Exception) {
+                _operationMessage.value = "Erreur: ${e.message}"
+                println("DEBUG: Exception in toggleNutritionEquation: ${e.message}")
+                e.printStackTrace()
+            } finally {
+                _actionInProgress.value = false
+            }
+        }
+    }
+
+    fun loadEquations() {
+        println("DEBUG: ReferenceEvViewModel.loadEquations called")
+        _loadingEquations.value = true
+
+        scope.launch {
+            try {
+                // Création d'équations de démonstration pour le développement
+                val equations =
+                        listOf(
+                                Equation(
+                                        uuid = "equation-1",
+                                        name = "BEE Chien",
+                                        kind =
+                                                fr.vetbrain.vetnutri_mp.Enumer.EquationKind
+                                                        .ENERGYDENSITY
+                                ),
+                                Equation(
+                                        uuid = "equation-2",
+                                        name = "BEE Chat",
+                                        kind =
+                                                fr.vetbrain.vetnutri_mp.Enumer.EquationKind
+                                                        .ENERGYNEED
+                                ),
+                                Equation(
+                                        uuid = "equation-3",
+                                        name = "Poids métabolique",
+                                        kind = fr.vetbrain.vetnutri_mp.Enumer.EquationKind.MW
+                                ),
+                                Equation(
+                                        uuid = "equation-4",
+                                        name = "Densité énergétique",
+                                        kind =
+                                                fr.vetbrain.vetnutri_mp.Enumer.EquationKind
+                                                        .ENERGYDENSITY
+                                )
+                        )
+
+                println("DEBUG: Created ${equations.size} demonstration equations")
+                _availableEquations.value = equations
+
+                // Vérification des équations disponibles
+                println(
+                        "DEBUG: Available equations after update: ${_availableEquations.value.size}"
+                )
+                for (i in equations.indices) {
+                    val equation = equations[i]
+                    println(
+                            "DEBUG: Equation loaded - UUID: ${equation.uuid}, Name: ${equation.name}, Type: ${equation.kind}"
+                    )
+                }
+
+                // Vérification des équations associées à la référence courante
+                println(
+                        "DEBUG: Current reference equationsNut: ${_currentReferenceEv.value.equationsNut.size}"
+                )
+                _currentReferenceEv.value.equationsNut.forEach { equation ->
+                    println(
+                            "DEBUG: Associated equation - UUID: ${equation.uuid}, Name: ${equation.name}"
+                    )
+                }
+
+                // Vérification des équations principales
+                println(
+                        "DEBUG: Main equations - BW: ${_currentReferenceEv.value.equationBW?.name}, BEE: ${_currentReferenceEv.value.equationBEE?.name}"
+                )
+                println(
+                        "DEBUG: Main equations - DEcom: ${_currentReferenceEv.value.equationDEcom?.name}, DEraw: ${_currentReferenceEv.value.equationDEraw?.name}"
+                )
+            } catch (e: Exception) {
+                println("DEBUG: Error loading equations: ${e.message}")
+                e.printStackTrace()
+                _operationMessage.value = "Erreur lors du chargement des équations: ${e.message}"
+            } finally {
+                _loadingEquations.value = false
+            }
+        }
     }
 }

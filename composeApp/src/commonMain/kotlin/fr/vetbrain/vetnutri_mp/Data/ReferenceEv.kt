@@ -6,6 +6,7 @@ import fr.vetbrain.vetnutri_mp.Enumer.Reflevel
 import fr.vetbrain.vetnutri_mp.Enumer.StadePhysio
 import fr.vetbrain.vetnutri_mp.Enumer.UnitEnum
 import fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum
+import java.util.*
 import kotlin.collections.ArrayList
 import kotlin.collections.HashMap
 
@@ -14,13 +15,13 @@ import kotlin.collections.HashMap
  * Cette classe gère les références nutritionnelles pour les différents nutriments
  */
 data class ReferenceEv(
-        val uuid: String = generateUUID(),
+        val uuid: String = UUID.randomUUID().toString(),
         var nom: String = "",
         var description: String = "",
         var maladie: Boolean = false,
         var nomMaladie: String = "",
         var nomEnergie: String = "",
-        var consistent: Int = 1,
+        var consistent: Int = 0,
         var espece: Espece = Espece.CHIEN,
         var stadePhysio: StadePhysio = StadePhysio.ADULTE
 ) {
@@ -29,12 +30,13 @@ data class ReferenceEv(
         private val refMapOMin: MutableMap<Nutrient, Nut4Ref> = HashMap()
         private val refMapOMax: MutableMap<Nutrient, Nut4Ref> = HashMap()
 
-        // Équations
-        var equationBW: Equation = Equation()
-        var equationBEE: Equation = Equation()
-        var equationDEcom: Equation = Equation()
-        var equationDEraw: Equation = Equation()
-        var equationsNut: ArrayList<Equation> = ArrayList()
+        // Variable contenant les équations
+        var equationBW: Equation? = null
+        var equationBEE: Equation? = null
+        var equationDEcom: Equation? = null
+        var equationDEraw: Equation? = null
+        var equationME: Equation? = null
+        var equationsNut: MutableList<Equation> = ArrayList()
 
         // Coefficients modificateurs
         private val modk1: ArrayList<CoefP> = ArrayList()
@@ -173,21 +175,11 @@ data class ReferenceEv(
         fun obtenirToutesEquations(): ArrayList<Equation> {
                 val listeEquations = ArrayList<Equation>()
 
-                if (equationBEE.name.isNotBlank()) {
-                        listeEquations.add(equationBEE)
-                }
-
-                if (equationBW.name.isNotBlank()) {
-                        listeEquations.add(equationBW)
-                }
-
-                if (equationDEcom.name.isNotBlank()) {
-                        listeEquations.add(equationDEcom)
-                }
-
-                if (equationDEraw.name.isNotBlank()) {
-                        listeEquations.add(equationDEraw)
-                }
+                equationBEE?.let { if (it.name.isNotBlank()) listeEquations.add(it) }
+                equationBW?.let { if (it.name.isNotBlank()) listeEquations.add(it) }
+                equationDEcom?.let { if (it.name.isNotBlank()) listeEquations.add(it) }
+                equationDEraw?.let { if (it.name.isNotBlank()) listeEquations.add(it) }
+                equationME?.let { if (it.name.isNotBlank()) listeEquations.add(it) }
 
                 listeEquations.addAll(equationsNut)
 
@@ -220,10 +212,11 @@ data class ReferenceEv(
                 }
 
                 // Ajout des références des équations
-                ajouterBiblioAuTableau(resultat, equationBEE.bib)
-                ajouterBiblioAuTableau(resultat, equationBW.bib)
-                ajouterBiblioAuTableau(resultat, equationDEraw.bib)
-                ajouterBiblioAuTableau(resultat, equationDEcom.bib)
+                ajouterBiblioAuTableau(resultat, equationBEE?.bib)
+                ajouterBiblioAuTableau(resultat, equationBW?.bib)
+                ajouterBiblioAuTableau(resultat, equationDEraw?.bib)
+                ajouterBiblioAuTableau(resultat, equationDEcom?.bib)
+                ajouterBiblioAuTableau(resultat, equationME?.bib)
 
                 return resultat
         }
@@ -247,14 +240,17 @@ data class ReferenceEv(
          * Ajoute une référence bibliographique à un tableau si elle n'y est pas déjà
          *
          * @param resultat Le tableau de résultats
-         * @param biblio La référence bibliographique à ajouter
+         * @param biblio La référence bibliographique à ajouter, peut être null
          * @return Le tableau mis à jour
          */
         private fun ajouterBiblioAuTableau(
                 resultat: ArrayList<BiblioRef>,
-                biblio: BiblioRef
+                biblio: BiblioRef?
         ): ArrayList<BiblioRef> {
-                if (biblio.toString() != BiblioRef().toString() && !resultat.contains(biblio)) {
+                if (biblio != null &&
+                                biblio.toString() != BiblioRef().toString() &&
+                                !resultat.contains(biblio)
+                ) {
                         resultat.add(biblio)
                 }
                 return resultat

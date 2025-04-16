@@ -181,10 +181,13 @@ interface EquationDao {
 
     @Delete suspend fun deleteEquation(equation: EquationEntity)
 
+    @Query("DELETE FROM EQUATIONS WHERE uuid = :uuid") suspend fun deleteEquation(uuid: String)
+
     @Query("DELETE FROM EQUATIONS") suspend fun deleteAllEquations()
 
-    @Query(
-            "SELECT * FROM EQUATIONS WHERE name LIKE '%' || :query || '%' OR description LIKE '%' || :query || '%'"
-    )
-    suspend fun searchEquations(query: String): List<EquationEntity>
+    @Query("SELECT * FROM EQUATIONS WHERE kind = :kind")
+    suspend fun getEquationsByKind(kind: String): List<EquationEntity>
+
+    @Query("SELECT * FROM EQUATIONS WHERE specie = :specie")
+    suspend fun getEquationsBySpecie(specie: String): List<EquationEntity>
 }

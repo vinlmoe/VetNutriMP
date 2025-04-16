@@ -11,6 +11,8 @@ object AppSizes {
     var sizeMultiplier by mutableStateOf(1f)
 
     // Padding
+    val paddingTiny
+        get() = (2 * sizeMultiplier).dp
     val paddingXXSmall
         get() = (2 * sizeMultiplier).dp
     val paddingXSmall

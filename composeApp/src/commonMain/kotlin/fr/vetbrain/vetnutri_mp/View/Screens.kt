@@ -10,4 +10,5 @@ public sealed class NavigationScreen {
     public object BiblioRefEdit : NavigationScreen()
     public object EquationList : NavigationScreen()
     public object EquationEdit : NavigationScreen()
+    public object ReferenceEvTabs : NavigationScreen()
 }

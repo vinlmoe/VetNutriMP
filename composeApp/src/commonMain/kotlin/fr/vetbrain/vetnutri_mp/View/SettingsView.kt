@@ -957,18 +957,9 @@ fun <T : Nutrient> NutrientCheckboxList(
         }
 }
 
-/** Obtient le nom d'affichage d'un nutriment */
-@Composable
+/** Obtient le nom d'affichage d'un nutriment selon son type */
 fun getNutrientDisplayName(nutrient: Nutrient): String {
-        return when (nutrient) {
-                is NutrientMain -> nutrient.nameToString()
-                is NutrientMin -> nutrient.nameToString()
-                is NutrientVitam -> nutrient.displayName
-                is NutrientLipid -> nutrient.nameToString()
-                is NutrientOther -> nutrient.nameToString()
-                is AAEnum -> nutrient.nom
-                else -> nutrient.label
-        }
+        return nutrient.label
 }
 
 /** Sections disponibles dans les paramètres */

@@ -1,9 +1,13 @@
 package fr.vetbrain.vetnutri_mp
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Components.TopBar
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
@@ -163,9 +167,7 @@ fun App(appDatabase: AppDatabase) {
     val biblioRefRepository = remember { HybridBiblioRefRepository(databaseBiblioRefRepo) }
 
     // Création du repository pour les équations (en mémoire pour l'instant)
-    val equationRepository = remember {
-        DatabaseEquationRepository(appDatabase.equationDao(), appDatabase.biblioRefDao())
-    }
+    val equationRepository = remember { InMemoryEquationRepository() }
 
     // Création des ViewModels
     val animalListViewModel = remember { AnimalListViewModel(animalRepository) }
@@ -183,21 +185,21 @@ fun App(appDatabase: AppDatabase) {
 
     // ViewModel et état pour les équations
     val platformDispatcher = remember { PlatformDispatcher() }
-    val equationViewModel = remember {
-        EquationViewModel(
-                equationRepository = equationRepository,
-                biblioRefDao = appDatabase.biblioRefDao(),
-                biblioRepository = biblioRefRepository
-        )
-    }
-    var selectedEquationId by remember { mutableStateOf<String?>(null) }
-
-    // ViewModel et état pour les références évaluées
     val referenceEvRepository = remember { ReferenceEvRepository() }
     val referenceEvViewModel = remember {
         ReferenceEvViewModel(referenceEvRepository, platformDispatcher)
     }
     var selectedReferenceEvId by remember { mutableStateOf<String?>(null) }
+
+    val equationViewModel = remember {
+        EquationViewModel(
+                equationRepository = equationRepository,
+                biblioRefDao = null,
+                biblioRepository = biblioRefRepository,
+                referenceRepository = referenceEvRepository
+        )
+    }
+    var selectedEquationId by remember { mutableStateOf<String?>(null) }
 
     // Création des view models en fonction des besoins de la navigation
     val foodEditViewModel by
@@ -209,6 +211,14 @@ fun App(appDatabase: AppDatabase) {
                         )
                 )
             }
+
+    val newReferenceEvViewModel = remember {
+        NewReferenceEvViewModel(
+                repository = referenceEvRepository,
+                equationRepository = equationRepository,
+                biblioRefRepository = biblioRefRepository
+        )
+    }
 
     var currentScreen by remember { mutableStateOf<Screen>(Screen.List) }
     var selectedAnimal by remember { mutableStateOf<AnimalEv?>(null) }
@@ -283,7 +293,16 @@ fun App(appDatabase: AppDatabase) {
                             TopBar(
                                     title = "Liste des animaux",
                                     onSettingsClick = { showSettings = true }
-                            )
+                            ) {
+                                // Ajouter un bouton de test
+                                Button(
+                                        onClick = { currentScreen = Screen.TestYellowBox },
+                                        colors =
+                                                ButtonDefaults.buttonColors(
+                                                        backgroundColor = Color.Yellow
+                                                )
+                                ) { Text("Test", color = Color.Red) }
+                            }
 
                             // Ajout d'un LaunchedEffect pour recharger la liste lorsque l'écran
                             // devient visible
@@ -388,11 +407,11 @@ fun App(appDatabase: AppDatabase) {
                                 onNavigateBack = { currentScreen = Screen.List },
                                 onEditReferenceEv = { referenceEvId ->
                                     selectedReferenceEvId = referenceEvId
-                                    currentScreen = Screen.ReferenceEvEdit
+                                    currentScreen = Screen.NewReferenceEvEdit
                                 },
                                 onCreateReferenceEv = {
                                     selectedReferenceEvId = null
-                                    currentScreen = Screen.ReferenceEvEdit
+                                    currentScreen = Screen.NewReferenceEvEdit
                                 },
                                 modifier = Modifier.fillMaxSize()
                         )
@@ -457,30 +476,19 @@ fun App(appDatabase: AppDatabase) {
                                 onNavigateBack = { currentScreen = Screen.List },
                                 onEditReferenceEv = { referenceEvId ->
                                     selectedReferenceEvId = referenceEvId
-                                    currentScreen = Screen.ReferenceEvEdit
+                                    currentScreen = Screen.NewReferenceEvEdit
                                 },
                                 onCreateReferenceEv = {
                                     selectedReferenceEvId = null
-                                    currentScreen = Screen.ReferenceEvEdit
+                                    currentScreen = Screen.NewReferenceEvEdit
                                 },
-                                modifier = Modifier.fillMaxSize()
-                        )
-                    }
-                    Screen.ReferenceEvEdit -> {
-                        ReferenceEvEditView(
-                                viewModel = referenceEvViewModel,
-                                referenceEvId = selectedReferenceEvId,
-                                onNavigateBack = {
-                                    selectedReferenceEvId = null
-                                    currentScreen = Screen.ReferenceEvList
+                                onViewReferenceEvTabs = { uuid ->
+                                    currentScreen = Screen.ReferenceEvTabs
+                                    selectedReferenceEvId = uuid
                                 },
-                                onEditNutrients = {
-                                    // Vérifier que l'ID de référence existe avant de naviguer
-                                    if (selectedReferenceEvId != null &&
-                                                    selectedReferenceEvId!!.isNotBlank()
-                                    ) {
-                                        currentScreen = Screen.ReferenceEvNutrient
-                                    }
+                                onNewEditReferenceEv = { referenceEvId ->
+                                    selectedReferenceEvId = referenceEvId
+                                    currentScreen = Screen.NewReferenceEvEdit
                                 },
                                 modifier = Modifier.fillMaxSize()
                         )
@@ -492,7 +500,70 @@ fun App(appDatabase: AppDatabase) {
                                 referenceEvRepository = referenceEvRepository,
                                 platformDispatcher = platformDispatcher,
                                 referenceEvId = selectedReferenceEvId ?: "",
-                                onNavigateBack = { currentScreen = Screen.ReferenceEvEdit },
+                                onNavigateBack = { currentScreen = Screen.EquationList },
+                                modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                    Screen.ReferenceEvTabs -> {
+                        println(
+                                "DEBUG: App - Affichage de la vue ReferenceEvTabs avec menu latéral"
+                        )
+                        ReferenceEvSideMenuView(
+                                referenceEvViewModel = referenceEvViewModel,
+                                equationViewModel = equationViewModel,
+                                biblioRefRepository = biblioRefRepository,
+                                equationRepository = equationRepository,
+                                referenceEvRepository = referenceEvRepository,
+                                platformDispatcher = platformDispatcher,
+                                referenceEvId = selectedReferenceEvId ?: "",
+                                onNavigateBack = { currentScreen = Screen.ReferenceEvList },
+                                onEditEquation = { equationId ->
+                                    currentScreen = Screen.EquationEdit
+                                    selectedEquationId = equationId
+                                },
+                                onCreateEquation = {
+                                    currentScreen = Screen.EquationEdit
+                                    selectedEquationId = null
+                                },
+                                useSidebar = true // Forcer l'utilisation du menu latéral
+                        )
+                    }
+                    Screen.TestYellowBox -> {
+                        // Interface de test ultra-visible
+                        Box(modifier = Modifier.fillMaxSize().background(Color.Yellow)) {
+                            Column(
+                                    modifier = Modifier.fillMaxSize(),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Center
+                            ) {
+                                Text(
+                                        "TEST BOÎTE JAUNE\nCeci est un test de visibilité",
+                                        style = MaterialTheme.typography.h4,
+                                        color = Color.Red,
+                                        textAlign = TextAlign.Center,
+                                        modifier = Modifier.padding(24.dp)
+                                )
+
+                                Spacer(modifier = Modifier.height(24.dp))
+
+                                Button(
+                                        onClick = { currentScreen = Screen.List },
+                                        colors =
+                                                ButtonDefaults.buttonColors(
+                                                        backgroundColor = Color.Blue
+                                                )
+                                ) { Text("Retour à la liste", color = Color.White) }
+                            }
+                        }
+                    }
+                    Screen.NewReferenceEvEdit -> {
+                        NewReferenceEvEditView(
+                                viewModel = newReferenceEvViewModel,
+                                referenceId = selectedReferenceEvId,
+                                onNavigateBack = {
+                                    selectedReferenceEvId = null
+                                    currentScreen = Screen.ReferenceEvList
+                                },
                                 modifier = Modifier.fillMaxSize()
                         )
                     }
@@ -642,12 +713,14 @@ private sealed class Screen {
     object Detail : Screen()
     object FoodList : Screen()
     object FoodEdit : Screen()
+    object CalculationTabs : Screen()
     object BiblioRefList : Screen()
     object BiblioRefEdit : Screen()
     object EquationList : Screen()
     object EquationEdit : Screen()
-    object CalculationTabs : Screen()
     object ReferenceEvList : Screen()
-    object ReferenceEvEdit : Screen()
     object ReferenceEvNutrient : Screen()
+    object ReferenceEvTabs : Screen()
+    object TestYellowBox : Screen()
+    object NewReferenceEvEdit : Screen()
 }

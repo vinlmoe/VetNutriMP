@@ -27,7 +27,9 @@ data class Equation(
         var allNutrient: AllNutrient? = null,
         var consistent: Boolean = true,
         var variables: MutableList<VariableKind> = mutableListOf(),
-        var correctionFactor: Double = 1.0
+        var correctionFactor: Double = 1.0,
+        var creationDate: Long = System.currentTimeMillis(),
+        var lastUpdate: Long = System.currentTimeMillis()
 ) {
 
         /**
@@ -187,5 +189,7 @@ data class Equation(
                 this.consistent = equation.consistent
                 this.variables.clear()
                 this.variables.addAll(equation.variables)
+                this.creationDate = equation.creationDate
+                this.lastUpdate = equation.lastUpdate
         }
 }

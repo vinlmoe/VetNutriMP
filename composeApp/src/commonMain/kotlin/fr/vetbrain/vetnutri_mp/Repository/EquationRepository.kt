@@ -132,12 +132,12 @@ class DatabaseEquationRepository(
                                 consistent = true
                         )
 
-                // Équation 3 : Poids métabolique
+                // Équation 3 : Poids métabolique pour chien
                 val equation3 =
                         Equation(
                                 uuid = "equation-3",
-                                name = "Poids métabolique",
-                                description = "Calcul du poids métabolique",
+                                name = "Poids métabolique chien",
+                                description = "Calcul du poids métabolique pour chien",
                                 equationScript = "BW^0.75",
                                 bib = biblioRef,
                                 specie = Espece.CHIEN,
@@ -145,10 +145,54 @@ class DatabaseEquationRepository(
                                 consistent = true
                         )
 
+                // Équation 4 : Poids métabolique pour chat
+                val equation4 =
+                        Equation(
+                                uuid = "equation-4",
+                                name = "Poids métabolique chat",
+                                description = "Calcul du poids métabolique pour chat",
+                                equationScript = "BW^0.67",
+                                bib = biblioRef,
+                                specie = Espece.CHAT,
+                                kind = EquationKind.MW,
+                                consistent = true
+                        )
+
+                // Équation 5 : Énergie digestible pour aliments commerciaux (chien)
+                val equation5 =
+                        Equation(
+                                uuid = "equation-5",
+                                name = "Énergie digestible commerciale chien",
+                                description =
+                                        "Calcul de l'énergie digestible des aliments commerciaux pour chien",
+                                equationScript = "(PB * 3.5) + (MG * 8.5) + (ENA * 3.5)",
+                                bib = biblioRef,
+                                specie = Espece.CHIEN,
+                                kind = EquationKind.ENERGYDENSITY,
+                                consistent = true
+                        )
+
+                // Équation 6 : Énergie digestible pour aliments bruts (chien)
+                val equation6 =
+                        Equation(
+                                uuid = "equation-6",
+                                name = "Énergie digestible brute chien",
+                                description =
+                                        "Calcul de l'énergie digestible des aliments bruts pour chien",
+                                equationScript = "(PB * 3.0) + (MG * 8.0) + (ENA * 3.0)",
+                                bib = biblioRef,
+                                specie = Espece.CHIEN,
+                                kind = EquationKind.ENERGYDENSITY,
+                                consistent = true
+                        )
+
                 // Sauvegarder les équations
                 equationDao.insertEquation(equation1.toEntity())
                 equationDao.insertEquation(equation2.toEntity())
                 equationDao.insertEquation(equation3.toEntity())
+                equationDao.insertEquation(equation4.toEntity())
+                equationDao.insertEquation(equation5.toEntity())
+                equationDao.insertEquation(equation6.toEntity())
 
                 println("DEBUG: Équations d'exemple ajoutées à la base de données")
             }

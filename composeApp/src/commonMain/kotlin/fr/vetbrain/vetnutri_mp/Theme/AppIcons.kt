@@ -23,6 +23,7 @@ object AppIcons {
     val Search: ImageVector = Icons.Default.Search
     val Settings: ImageVector = Icons.Default.Settings
     val Share: ImageVector = Icons.Default.Share
+    val ViewList: ImageVector = Icons.Default.ViewList
     val Warning: ImageVector = Icons.Default.Warning
 
     // Icônes spécifiques à l'application

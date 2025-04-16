@@ -11,6 +11,7 @@ import fr.vetbrain.vetnutri_mp.Enumer.EquationKind
 import fr.vetbrain.vetnutri_mp.Enumer.VariableKind
 import fr.vetbrain.vetnutri_mp.Repository.BiblioRefRepository
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
+import fr.vetbrain.vetnutri_mp.Repository.ReferenceEvRepository
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,11 +24,14 @@ import kotlinx.coroutines.launch
  *
  * @param equationRepository Repository pour accéder aux équations
  * @param biblioRefDao DAO pour accéder aux références bibliographiques
+ * @param biblioRepository Repository pour accéder aux références bibliographiques
+ * @param referenceRepository Repository pour accéder aux références
  */
 class EquationViewModel(
         private val equationRepository: EquationRepository,
-        private val biblioRefDao: BiblioRefDao,
-        private val biblioRepository: BiblioRefRepository
+        private val biblioRefDao: BiblioRefDao?,
+        private val biblioRepository: BiblioRefRepository,
+        private val referenceRepository: ReferenceEvRepository
 ) : ViewModel() {
     private val coroutineScope = CoroutineScope(AppDispatchers.Main)
 
@@ -59,6 +63,22 @@ class EquationViewModel(
     private val _equations = MutableStateFlow<List<Equation>>(emptyList())
     val equations: StateFlow<List<Equation>> = _equations.asStateFlow()
 
+    // Équations spécifiques actuellement sélectionnées (pour les combobox)
+    private val _equationBW = MutableStateFlow<Equation?>(null)
+    val equationBW: StateFlow<Equation?> = _equationBW.asStateFlow()
+
+    private val _equationBEE = MutableStateFlow<Equation?>(null)
+    val equationBEE: StateFlow<Equation?> = _equationBEE.asStateFlow()
+
+    private val _equationME = MutableStateFlow<Equation?>(null)
+    val equationME: StateFlow<Equation?> = _equationME.asStateFlow()
+
+    private val _equationDEcom = MutableStateFlow<Equation?>(null)
+    val equationDEcom: StateFlow<Equation?> = _equationDEcom.asStateFlow()
+
+    private val _equationDEraw = MutableStateFlow<Equation?>(null)
+    val equationDEraw: StateFlow<Equation?> = _equationDEraw.asStateFlow()
+
     // Script coloré
     private val _coloredScript = MutableStateFlow<String>("")
     val coloredScript: StateFlow<String> = _coloredScript.asStateFlow()
@@ -67,21 +87,61 @@ class EquationViewModel(
     private val _unrecognizedVariables = MutableStateFlow<List<String>>(emptyList())
     val unrecognizedVariables: StateFlow<List<String>> = _unrecognizedVariables.asStateFlow()
 
+    // État pour la référence courante
+    private val _currentReferenceId = MutableStateFlow<String?>(null)
+    val currentReferenceId: StateFlow<String?> = _currentReferenceId.asStateFlow()
+
     init {
         loadEquations()
         loadBiblioRefs()
     }
 
-    /** Charge toutes les équations disponibles */
+    /** Charge la liste des équations disponibles */
     fun loadEquations() {
-        _isLoading.value = true
-        coroutineScope.launch {
+        coroutineScope.launch(AppDispatchers.IO) {
             try {
-                val result = equationRepository.getAllEquations()
-                _equations.value = result
-                _isLoading.value = false
+                _isLoading.value = true
+                _operationMessage.value = null
+
+                // Charger toutes les équations du repository
+                val equationsList = equationRepository.getAllEquations()
+                _equations.value = equationsList
+
+                // Si une référence est sélectionnée, charger ses équations spécifiques
+                val referenceId = _currentReferenceId.value
+                if (referenceId != null && referenceId.isNotEmpty()) {
+                    // Charger la référence pour obtenir ses équations actuelles
+                    referenceRepository.getById(referenceId)?.let { reference ->
+                        // Trouver les équations correspondantes dans la liste chargée
+                        _equationBW.value =
+                                equationsList.find { equation ->
+                                    equation.uuid == reference.equationBW?.uuid
+                                }
+                        _equationBEE.value =
+                                equationsList.find { equation ->
+                                    equation.uuid == reference.equationBEE?.uuid
+                                }
+                        _equationME.value =
+                                equationsList.find { equation ->
+                                    equation.uuid == reference.equationME?.uuid
+                                }
+                        _equationDEcom.value =
+                                equationsList.find { equation ->
+                                    equation.uuid == reference.equationDEcom?.uuid
+                                }
+                        _equationDEraw.value =
+                                equationsList.find { equation ->
+                                    equation.uuid == reference.equationDEraw?.uuid
+                                }
+                    }
+                }
+
+                println("Nombre d'équations chargées: ${equationsList.size}")
             } catch (e: Exception) {
+                _operationMessage.value = "Erreur lors du chargement des équations: ${e.message}"
                 println("Erreur lors du chargement des équations: ${e.message}")
+                e.printStackTrace()
+            } finally {
                 _isLoading.value = false
             }
         }
@@ -91,9 +151,14 @@ class EquationViewModel(
     fun loadBiblioRefs() {
         coroutineScope.launch {
             try {
-                val refs = biblioRefDao.getAllBiblioRefs()
-                val mappedRefs = refs.map { ref -> ref.toDomain() }
-                _biblioRefs.value = mappedRefs
+                if (biblioRefDao != null) {
+                    val refs = biblioRefDao.getAllBiblioRefs()
+                    val mappedRefs = refs.map { ref -> ref.toDomain() }
+                    _biblioRefs.value = mappedRefs
+                } else {
+                    // Utiliser le repository si le DAO n'est pas disponible
+                    biblioRepository.getAllBiblioRefs().collect { refs -> _biblioRefs.value = refs }
+                }
             } catch (e: Exception) {
                 println("Erreur lors du chargement des références biblio: ${e.message}")
             }
@@ -331,5 +396,343 @@ class EquationViewModel(
     fun selectBiblioRef(biblioRef: BiblioRef?) {
         _selectedBiblioRef.value = biblioRef
         _currentEquation.value = _currentEquation.value.copy(bib = biblioRef ?: BiblioRef())
+    }
+
+    /** Définit la référence actuellement sélectionnée */
+    fun setCurrentReferenceId(id: String?) {
+        _currentReferenceId.value = id
+    }
+
+    /** Met à jour l'équation de poids corporel pour la référence courante. */
+    fun setEquationBW(referenceId: String, equationId: String) {
+        coroutineScope.launch(AppDispatchers.IO) {
+            _isLoading.value = true
+            _operationMessage.value = null
+
+            try {
+                val reference = referenceRepository.getById(referenceId)
+                val equation = equationRepository.getEquationById(equationId)
+
+                if (reference != null && equation != null) {
+                    reference.equationBW = equation
+                    referenceRepository.update(reference)
+                    _currentReferenceId.value = referenceId
+                    _operationMessage.value = "Équation de poids corporel mise à jour avec succès"
+                } else {
+                    _operationMessage.value = "Référence ou équation non trouvée"
+                }
+            } catch (e: Exception) {
+                _operationMessage.value =
+                        "Erreur lors de la mise à jour de l'équation: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    /**
+     * Met à jour l'équation de poids corporel pour la référence courante avec l'équation fournie.
+     */
+    fun setEquationBW(equation: Equation?) {
+        coroutineScope.launch(AppDispatchers.IO) {
+            _isLoading.value = true
+            _operationMessage.value = null
+
+            try {
+                val referenceId = _currentReferenceId.value
+                if (referenceId.isNullOrEmpty()) {
+                    _operationMessage.value = "Aucune référence sélectionnée"
+                    return@launch
+                }
+
+                if (equation == null) {
+                    val reference = referenceRepository.getById(referenceId)
+                    if (reference != null) {
+                        reference.equationBW = Equation()
+                        referenceRepository.update(reference)
+                        _equationBW.value = null
+                        _operationMessage.value = "Équation de poids corporel supprimée"
+                    } else {
+                        _operationMessage.value = "Référence non trouvée"
+                    }
+                } else {
+                    val success = referenceRepository.updateEquationBW(referenceId, equation)
+                    if (success) {
+                        _equationBW.value = equation
+                        _operationMessage.value =
+                                "Équation de poids corporel mise à jour avec succès"
+                    } else {
+                        _operationMessage.value = "Échec de la mise à jour de l'équation"
+                    }
+                }
+            } catch (e: Exception) {
+                _operationMessage.value =
+                        "Erreur lors de la mise à jour de l'équation: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    /** Met à jour l'équation de besoin énergétique de base pour la référence courante. */
+    fun setEquationBEE(referenceId: String, equationId: String) {
+        coroutineScope.launch(AppDispatchers.IO) {
+            _isLoading.value = true
+            _operationMessage.value = null
+
+            try {
+                val reference = referenceRepository.getById(referenceId)
+                val equation = equationRepository.getEquationById(equationId)
+
+                if (reference != null && equation != null) {
+                    reference.equationBEE = equation
+                    referenceRepository.update(reference)
+                    _currentReferenceId.value = referenceId
+                    _operationMessage.value = "Équation d'énergie basale mise à jour avec succès"
+                } else {
+                    _operationMessage.value = "Référence ou équation non trouvée"
+                }
+            } catch (e: Exception) {
+                _operationMessage.value =
+                        "Erreur lors de la mise à jour de l'équation: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    /**
+     * Met à jour l'équation de besoin énergétique de base pour la référence courante avec
+     * l'équation fournie.
+     */
+    fun setEquationBEE(equation: Equation?) {
+        coroutineScope.launch(AppDispatchers.IO) {
+            _isLoading.value = true
+            _operationMessage.value = null
+
+            try {
+                val referenceId = _currentReferenceId.value
+                if (referenceId.isNullOrEmpty()) {
+                    _operationMessage.value = "Aucune référence sélectionnée"
+                    return@launch
+                }
+
+                if (equation == null) {
+                    val reference = referenceRepository.getById(referenceId)
+                    if (reference != null) {
+                        reference.equationBEE = Equation()
+                        referenceRepository.update(reference)
+                        _equationBEE.value = null
+                        _operationMessage.value = "Équation d'énergie basale supprimée"
+                    } else {
+                        _operationMessage.value = "Référence non trouvée"
+                    }
+                } else {
+                    val success = referenceRepository.updateEquationBEE(referenceId, equation)
+                    if (success) {
+                        _equationBEE.value = equation
+                        _operationMessage.value =
+                                "Équation d'énergie basale mise à jour avec succès"
+                    } else {
+                        _operationMessage.value = "Échec de la mise à jour de l'équation"
+                    }
+                }
+            } catch (e: Exception) {
+                _operationMessage.value =
+                        "Erreur lors de la mise à jour de l'équation: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    /** Met à jour l'équation d'énergie digestible commerciale pour la référence spécifiée. */
+    fun setEquationDEcom(referenceId: String, equationId: String) {
+        coroutineScope.launch(AppDispatchers.IO) {
+            _isLoading.value = true
+            _operationMessage.value = null
+
+            try {
+                val reference = referenceRepository.getById(referenceId)
+                val equation = equationRepository.getEquationById(equationId)
+
+                if (reference != null && equation != null) {
+                    reference.equationDEcom = equation
+                    referenceRepository.update(reference)
+                    _currentReferenceId.value = referenceId
+                    _operationMessage.value = "Équation DE commerciale mise à jour avec succès"
+                } else {
+                    _operationMessage.value = "Référence ou équation non trouvée"
+                }
+            } catch (e: Exception) {
+                _operationMessage.value =
+                        "Erreur lors de la mise à jour de l'équation: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    /**
+     * Met à jour l'équation d'énergie métabolisable pour la référence courante avec l'équation
+     * fournie.
+     */
+    fun setEquationME(equation: Equation?) {
+        coroutineScope.launch(AppDispatchers.IO) {
+            _isLoading.value = true
+            _operationMessage.value = null
+
+            try {
+                val referenceId = _currentReferenceId.value
+                if (referenceId.isNullOrEmpty()) {
+                    _operationMessage.value = "Aucune référence sélectionnée"
+                    return@launch
+                }
+
+                if (equation == null) {
+                    val reference = referenceRepository.getById(referenceId)
+                    if (reference != null) {
+                        reference.equationME = Equation()
+                        referenceRepository.update(reference)
+                        _equationME.value = null
+                        _operationMessage.value = "Équation d'énergie métabolisable supprimée"
+                    } else {
+                        _operationMessage.value = "Référence non trouvée"
+                    }
+                } else {
+                    val success = referenceRepository.updateEquationME(referenceId, equation)
+                    if (success) {
+                        _equationME.value = equation
+                        _operationMessage.value =
+                                "Équation d'énergie métabolisable mise à jour avec succès"
+                    } else {
+                        _operationMessage.value = "Échec de la mise à jour de l'équation"
+                    }
+                }
+            } catch (e: Exception) {
+                _operationMessage.value =
+                        "Erreur lors de la mise à jour de l'équation: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    /** Met à jour l'équation d'énergie digestible brute pour la référence spécifiée. */
+    fun setEquationDEraw(referenceId: String, equationId: String) {
+        coroutineScope.launch(AppDispatchers.IO) {
+            _isLoading.value = true
+            _operationMessage.value = null
+
+            try {
+                val reference = referenceRepository.getById(referenceId)
+                val equation = equationRepository.getEquationById(equationId)
+
+                if (reference != null && equation != null) {
+                    reference.equationDEraw = equation
+                    referenceRepository.update(reference)
+                    _currentReferenceId.value = referenceId
+                    _operationMessage.value = "Équation DE brute mise à jour avec succès"
+                } else {
+                    _operationMessage.value = "Référence ou équation non trouvée"
+                }
+            } catch (e: Exception) {
+                _operationMessage.value =
+                        "Erreur lors de la mise à jour de l'équation: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    /**
+     * Met à jour l'équation d'énergie digestible commerciale pour la référence courante avec
+     * l'équation fournie.
+     */
+    fun setEquationDEcom(equation: Equation?) {
+        coroutineScope.launch(AppDispatchers.IO) {
+            _isLoading.value = true
+            _operationMessage.value = null
+
+            try {
+                val referenceId = _currentReferenceId.value
+                if (referenceId.isNullOrEmpty()) {
+                    _operationMessage.value = "Aucune référence sélectionnée"
+                    return@launch
+                }
+
+                if (equation == null) {
+                    val reference = referenceRepository.getById(referenceId)
+                    if (reference != null) {
+                        reference.equationDEcom = Equation()
+                        referenceRepository.update(reference)
+                        _equationDEcom.value = null
+                        _operationMessage.value =
+                                "Équation d'énergie digestible commerciale supprimée"
+                    } else {
+                        _operationMessage.value = "Référence non trouvée"
+                    }
+                } else {
+                    val success = referenceRepository.updateEquationDEcom(referenceId, equation)
+                    if (success) {
+                        _equationDEcom.value = equation
+                        _operationMessage.value =
+                                "Équation d'énergie digestible commerciale mise à jour avec succès"
+                    } else {
+                        _operationMessage.value = "Échec de la mise à jour de l'équation"
+                    }
+                }
+            } catch (e: Exception) {
+                _operationMessage.value =
+                        "Erreur lors de la mise à jour de l'équation: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    /**
+     * Met à jour l'équation d'énergie digestible brute pour la référence courante avec l'équation
+     * fournie.
+     */
+    fun setEquationDEraw(equation: Equation?) {
+        coroutineScope.launch(AppDispatchers.IO) {
+            _isLoading.value = true
+            _operationMessage.value = null
+
+            try {
+                val referenceId = _currentReferenceId.value
+                if (referenceId.isNullOrEmpty()) {
+                    _operationMessage.value = "Aucune référence sélectionnée"
+                    return@launch
+                }
+
+                if (equation == null) {
+                    val reference = referenceRepository.getById(referenceId)
+                    if (reference != null) {
+                        reference.equationDEraw = Equation()
+                        referenceRepository.update(reference)
+                        _equationDEraw.value = null
+                        _operationMessage.value = "Équation d'énergie digestible brute supprimée"
+                    } else {
+                        _operationMessage.value = "Référence non trouvée"
+                    }
+                } else {
+                    val success = referenceRepository.updateEquationDEraw(referenceId, equation)
+                    if (success) {
+                        _equationDEraw.value = equation
+                        _operationMessage.value =
+                                "Équation d'énergie digestible brute mise à jour avec succès"
+                    } else {
+                        _operationMessage.value = "Échec de la mise à jour de l'équation"
+                    }
+                }
+            } catch (e: Exception) {
+                _operationMessage.value =
+                        "Erreur lors de la mise à jour de l'équation: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
     }
 }
