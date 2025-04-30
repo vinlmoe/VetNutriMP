@@ -408,4 +408,113 @@ class NewReferenceEvViewModel(
     fun resetOperationSuccess() {
         _operationSuccess.value = false
     }
+
+    /**
+     * Met à jour le nom d'un coefficient
+     *
+     * @param coefIndex L'index du coefficient (1 à 5)
+     * @param name Le nouveau nom du coefficient
+     */
+    fun updateCoefName(coefIndex: Int, name: String) {
+        val reference = _currentReference.value
+        when (coefIndex) {
+            1 -> reference.nomk1 = name
+            2 -> reference.nomk2 = name
+            3 -> reference.nomk3 = name
+            4 -> reference.nomk4 = name
+            5 -> reference.nomk5 = name
+        }
+        _currentReference.value = reference.copy()
+    }
+
+    /**
+     * Ajoute un nouveau coefficient à un groupe spécifique
+     *
+     * @param coefIndex L'index du groupe de coefficients (1 à 5)
+     * @param description La description du coefficient
+     * @param value La valeur du coefficient
+     */
+    fun addCoefficient(coefIndex: Int, description: String, value: Float) {
+        val reference = _currentReference.value
+        val newCoef = CoefP(description = description, coef = value, groupUUID = coefIndex - 1)
+
+        when (coefIndex) {
+            1 -> reference.modk1.add(newCoef)
+            2 -> reference.modk2.add(newCoef)
+            3 -> reference.modk3.add(newCoef)
+            4 -> reference.modk4.add(newCoef)
+            5 -> reference.modk5.add(newCoef)
+        }
+
+        _currentReference.value = reference.copy()
+    }
+
+    /**
+     * Met à jour un coefficient existant
+     *
+     * @param coefIndex L'index du groupe de coefficients (1 à 5)
+     * @param position La position du coefficient dans la liste
+     * @param description La nouvelle description du coefficient
+     * @param value La nouvelle valeur du coefficient
+     */
+    fun updateCoefficient(coefIndex: Int, position: Int, description: String, value: Float) {
+        val reference = _currentReference.value
+
+        val coefList =
+                when (coefIndex) {
+                    1 -> reference.modk1
+                    2 -> reference.modk2
+                    3 -> reference.modk3
+                    4 -> reference.modk4
+                    5 -> reference.modk5
+                    else -> return
+                }
+
+        if (position in 0 until coefList.size) {
+            val updatedCoef = coefList[position].copy(description = description, coef = value)
+            coefList[position] = updatedCoef
+        }
+
+        _currentReference.value = reference.copy()
+    }
+
+    /**
+     * Supprime un coefficient
+     *
+     * @param coefIndex L'index du groupe de coefficients (1 à 5)
+     * @param position La position du coefficient dans la liste
+     */
+    fun removeCoefficient(coefIndex: Int, position: Int) {
+        val reference = _currentReference.value
+
+        when (coefIndex) {
+            1 -> {
+                if (position in 0 until reference.modk1.size) {
+                    reference.modk1.removeAt(position)
+                }
+            }
+            2 -> {
+                if (position in 0 until reference.modk2.size) {
+                    reference.modk2.removeAt(position)
+                }
+            }
+            3 -> {
+                if (position in 0 until reference.modk3.size) {
+                    reference.modk3.removeAt(position)
+                }
+            }
+            4 -> {
+                if (position in 0 until reference.modk4.size) {
+                    reference.modk4.removeAt(position)
+                }
+            }
+            5 -> {
+                if (position in 0 until reference.modk5.size) {
+                    reference.modk5.removeAt(position)
+                }
+            }
+        }
+
+        _currentReference.value = reference.copy()
+    }
 }

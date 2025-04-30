@@ -6,8 +6,7 @@ import fr.vetbrain.vetnutri_mp.Enumer.Reflevel
 import fr.vetbrain.vetnutri_mp.Enumer.StadePhysio
 import fr.vetbrain.vetnutri_mp.Enumer.UnitEnum
 import fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum
-import java.util.*
-import kotlin.collections.ArrayList
+import fr.vetbrain.vetnutri_mp.Util.UuidUtil
 import kotlin.collections.HashMap
 
 /**
@@ -15,7 +14,7 @@ import kotlin.collections.HashMap
  * Cette classe gère les références nutritionnelles pour les différents nutriments
  */
 data class ReferenceEv(
-        val uuid: String = UUID.randomUUID().toString(),
+        val uuid: String = UuidUtil.generateUuid(),
         var nom: String = "",
         var description: String = "",
         var maladie: Boolean = false,
@@ -36,14 +35,14 @@ data class ReferenceEv(
         var equationDEcom: Equation? = null
         var equationDEraw: Equation? = null
         var equationME: Equation? = null
-        var equationsNut: MutableList<Equation> = ArrayList()
+        var equationsNut: MutableList<Equation> = mutableListOf()
 
         // Coefficients modificateurs
-        private val modk1: ArrayList<CoefP> = ArrayList()
-        private val modk2: ArrayList<CoefP> = ArrayList()
-        private val modk3: ArrayList<CoefP> = ArrayList()
-        private val modk4: ArrayList<CoefP> = ArrayList()
-        private val modk5: ArrayList<CoefP> = ArrayList()
+        val modk1: MutableList<CoefP> = mutableListOf()
+        val modk2: MutableList<CoefP> = mutableListOf()
+        val modk3: MutableList<CoefP> = mutableListOf()
+        val modk4: MutableList<CoefP> = mutableListOf()
+        val modk5: MutableList<CoefP> = mutableListOf()
 
         var nomk1: String = ""
         var nomk2: String = ""
@@ -56,10 +55,7 @@ data class ReferenceEv(
                  * Génère un UUID aléatoire
                  * @return Un nouvel UUID sous forme de chaîne
                  */
-                fun generateUUID(): String {
-                        return (System.currentTimeMillis() + (Math.random() * 10000).toInt())
-                                .toString()
-                }
+                fun generateUUID(): String = UuidUtil.generateUuid()
         }
 
         init {
@@ -172,8 +168,8 @@ data class ReferenceEv(
          *
          * @return La liste des équations
          */
-        fun obtenirToutesEquations(): ArrayList<Equation> {
-                val listeEquations = ArrayList<Equation>()
+        fun obtenirToutesEquations(): List<Equation> {
+                val listeEquations = mutableListOf<Equation>()
 
                 equationBEE?.let { if (it.name.isNotBlank()) listeEquations.add(it) }
                 equationBW?.let { if (it.name.isNotBlank()) listeEquations.add(it) }
@@ -191,8 +187,8 @@ data class ReferenceEv(
          *
          * @return La liste des références bibliographiques
          */
-        fun obtenirToutesBiblios(): ArrayList<BiblioRef> {
-                val resultat = ArrayList<BiblioRef>()
+        fun obtenirToutesBiblios(): List<BiblioRef> {
+                val resultat = mutableListOf<BiblioRef>()
 
                 // Collecte des références des différentes maps
                 for (ref in refMapMin.values) {
@@ -244,9 +240,9 @@ data class ReferenceEv(
          * @return Le tableau mis à jour
          */
         private fun ajouterBiblioAuTableau(
-                resultat: ArrayList<BiblioRef>,
+                resultat: MutableList<BiblioRef>,
                 biblio: BiblioRef?
-        ): ArrayList<BiblioRef> {
+        ): MutableList<BiblioRef> {
                 if (biblio != null &&
                                 biblio.toString() != BiblioRef().toString() &&
                                 !resultat.contains(biblio)

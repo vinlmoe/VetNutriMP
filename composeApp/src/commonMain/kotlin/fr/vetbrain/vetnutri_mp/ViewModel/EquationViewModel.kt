@@ -172,7 +172,7 @@ class EquationViewModel(
 
     /** Charge une équation par son ID */
     fun loadEquation(equationId: String) {
-        _isLoading.value = true
+            _isLoading.value = true
         coroutineScope.launch {
             try {
                 val equation = equationRepository.getEquationById(equationId)

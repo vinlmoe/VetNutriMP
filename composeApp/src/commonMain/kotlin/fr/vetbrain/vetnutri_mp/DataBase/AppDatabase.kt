@@ -39,7 +39,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun consultationDao(): ConsultationDao
     abstract fun nutrientValueDao(): NutrientValueDao
     abstract fun biblioRefDao(): BiblioRefDao
-  //  abstract fun equationDao(): EquationDao
+    //  abstract fun equationDao(): EquationDao
 
     companion object {
         const val DATABASE_NAME = "vetnutri.db"
