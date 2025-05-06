@@ -34,9 +34,9 @@ kotlin {
     jvm("desktop")
 
     sourceSets {
-        /*sourceSets.iosMain {
+        sourceSets.iosMain {
             kotlin.srcDir("build/generated/ksp/metadata")
-        }*/
+        }
            androidMain.dependencies {
                 implementation(libs.androidx.activity.compose)
                 implementation(libs.androidx.room.runtime)
@@ -46,7 +46,7 @@ kotlin {
         }
 
         commonMain.dependencies {
-            implementation(libs.androidx.material.icons.extended)
+            implementation("org.jetbrains.compose.material:material-icons-extended:1.7.3")
             implementation(libs.androidx.sqlite.bundled)
             implementation(compose.runtime)
             implementation(compose.foundation)
@@ -97,13 +97,22 @@ kotlin {
             implementation(kotlin("test-annotations-common"))
             implementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
         }
-       iosMain.dependencies {
+        val iosMain by getting {
+            kotlin.srcDir("build/generated/ksp/metadata")
+            dependencies {
                 implementation(libs.sqliter.driver)
+            }
+        }
 
+        val iosTest by creating {
+            dependencies {
+                implementation(kotlin("test"))
+            }
         }
-        iosTest.dependencies {
-            implementation(kotlin("test"))
-        }
+
+        val iosArm64Main by getting
+        val iosX64Main by getting
+        val iosSimulatorArm64Main by getting
     }
 }
 
@@ -116,7 +125,7 @@ android {
     sourceSets["main"].resources.srcDirs("src/commonMain/resources")
 
     defaultConfig {
-        applicationId = "fr.vetbrain.vetnutri_mp.androidApp"
+        applicationId = "fr.vetbrain.vetnutri_mp"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1
@@ -165,7 +174,7 @@ compose.desktop {
 dependencies {
 
     implementation(libs.jansi)
-    implementation(libs.androidx.material.icons.extended)
+    implementation("org.jetbrains.compose.material:material-icons-extended:1.7.3")
     implementation(libs.skiko.awt)
     implementation(libs.androidx.sqlite.bundled)
     implementation(kotlin("test"))

@@ -26,8 +26,3 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@Composable
-fun AppAndroidPreview() {
-    // Note: Cette preview ne peut pas utiliser la base de données
-    // App(appDatabase)
-}
