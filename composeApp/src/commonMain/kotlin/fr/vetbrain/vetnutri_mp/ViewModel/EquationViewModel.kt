@@ -102,9 +102,18 @@ class EquationViewModel(
             try {
                 _isLoading.value = true
                 _operationMessage.value = null
+                
+                println("DEBUG EquationViewModel: Début du chargement des équations")
 
                 // Charger toutes les équations du repository
                 val equationsList = equationRepository.getAllEquations()
+                println("DEBUG EquationViewModel: ${equationsList.size} équations chargées")
+                
+                // Afficher les identifiants des équations
+                equationsList.forEachIndexed { index, equation ->
+                    println("DEBUG EquationViewModel: Équation ${index+1}: UUID=${equation.uuid}, Nom=${equation.name}")
+                }
+                
                 _equations.value = equationsList
 
                 // Si une référence est sélectionnée, charger ses équations spécifiques
@@ -347,13 +356,23 @@ class EquationViewModel(
         coroutineScope.launch {
             _isLoading.value = true
             try {
+                println("DEBUG EquationViewModel: Début de saveEquation - UUID: ${equation.uuid}")
+                println("DEBUG EquationViewModel: Nom: ${equation.name}")
+                println("DEBUG EquationViewModel: Type: ${equation.kind.name}")
+                println("DEBUG EquationViewModel: Script: ${equation.equationScript}")
+                println("DEBUG EquationViewModel: Bib UUID: ${equation.bib.uuid}")
+
                 equationRepository.saveEquation(equation)
                 _saveSuccessful.value = true
                 _operationMessage.value = "Équation sauvegardée avec succès"
-                println("DEBUG: Équation sauvegardée avec succès")
+                println("DEBUG EquationViewModel: Équation sauvegardée avec succès")
+
+                // Recharger explicitement les équations pour vérifier la persistance
+                loadEquations()
             } catch (e: Exception) {
                 _operationMessage.value = "Erreur lors de la sauvegarde: ${e.message}"
-                println("DEBUG: Erreur lors de la sauvegarde - ${e.message}")
+                println("DEBUG EquationViewModel: Erreur lors de la sauvegarde - ${e.message}")
+                e.printStackTrace()
                 _saveSuccessful.value = false
             } finally {
                 _isLoading.value = false

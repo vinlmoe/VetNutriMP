@@ -166,8 +166,16 @@ fun App(appDatabase: AppDatabase) {
     val databaseBiblioRefRepo = remember { DatabaseBiblioRefRepository(appDatabase.biblioRefDao()) }
     val biblioRefRepository = remember { HybridBiblioRefRepository(databaseBiblioRefRepo) }
 
-    // Création du repository pour les équations (en mémoire pour l'instant)
-    val equationRepository = remember { InMemoryEquationRepository() }
+    // Création du repository pour les équations avec persistance en base de données
+    // IMPORTANT: Nous utilisons DatabaseEquationRepository au lieu de InMemoryEquationRepository
+    // pour assurer la persistance des équations entre les sessions. Les équations sont maintenant
+    // stockées dans la base de données SQLite via Room.
+    val equationRepository = remember {
+        DatabaseEquationRepository(
+                equationDao = appDatabase.equationDao(),
+                biblioRefDao = appDatabase.biblioRefDao()
+        )
+    }
 
     // Création des ViewModels
     val animalListViewModel = remember { AnimalListViewModel(animalRepository) }
@@ -221,6 +229,10 @@ fun App(appDatabase: AppDatabase) {
     }
 
     var currentScreen by remember { mutableStateOf<Screen>(Screen.List) }
+    // Variable pour garder une trace de la source de navigation vers ReferenceEvTabs
+    var referenceEvTabsSourceScreen by remember { mutableStateOf<Screen?>(null) }
+
+    var selectedAnimalId by remember { mutableStateOf<String?>(null) }
     var selectedAnimal by remember { mutableStateOf<AnimalEv?>(null) }
     var isEditing by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
@@ -413,6 +425,11 @@ fun App(appDatabase: AppDatabase) {
                                     selectedReferenceEvId = null
                                     currentScreen = Screen.NewReferenceEvEdit
                                 },
+                                onViewReferenceEvTabs = { referenceEvId ->
+                                    selectedReferenceEvId = referenceEvId
+                                    referenceEvTabsSourceScreen = Screen.CalculationTabs
+                                    currentScreen = Screen.ReferenceEvTabs
+                                },
                                 modifier = Modifier.fillMaxSize()
                         )
                     }
@@ -483,8 +500,9 @@ fun App(appDatabase: AppDatabase) {
                                     currentScreen = Screen.NewReferenceEvEdit
                                 },
                                 onViewReferenceEvTabs = { uuid ->
-                                    currentScreen = Screen.ReferenceEvTabs
                                     selectedReferenceEvId = uuid
+                                    referenceEvTabsSourceScreen = Screen.ReferenceEvList
+                                    currentScreen = Screen.ReferenceEvTabs
                                 },
                                 onNewEditReferenceEv = { referenceEvId ->
                                     selectedReferenceEvId = referenceEvId
@@ -508,6 +526,16 @@ fun App(appDatabase: AppDatabase) {
                         println(
                                 "DEBUG: App - Affichage de la vue ReferenceEvTabs avec menu latéral"
                         )
+                        // Vérifier d'où l'utilisateur provient pour déterminer où revenir
+                        val navigateBackDestination =
+                                if (referenceEvTabsSourceScreen == Screen.CalculationTabs) {
+                                    // Si on vient de CalculationTabsView, on y retourne
+                                    { currentScreen = Screen.CalculationTabs }
+                                } else {
+                                    // Sinon, on retourne à la liste des références
+                                    { currentScreen = Screen.ReferenceEvList }
+                                }
+
                         ReferenceEvSideMenuView(
                                 referenceEvViewModel = referenceEvViewModel,
                                 equationViewModel = equationViewModel,
@@ -516,7 +544,7 @@ fun App(appDatabase: AppDatabase) {
                                 referenceEvRepository = referenceEvRepository,
                                 platformDispatcher = platformDispatcher,
                                 referenceEvId = selectedReferenceEvId ?: "",
-                                onNavigateBack = { currentScreen = Screen.ReferenceEvList },
+                                onNavigateBack = navigateBackDestination,
                                 onEditEquation = { equationId ->
                                     currentScreen = Screen.EquationEdit
                                     selectedEquationId = equationId
