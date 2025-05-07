@@ -1,69 +1,77 @@
 package fr.vetbrain.vetnutri_mp.Data
 
 import fr.vetbrain.vetnutri_mp.Enumer.UnitEnum
-import kotlinx.serialization.Serializable
+import fr.vetbrain.vetnutri_mp.Utils.ensurePositiveValue
+import kotlin.math.round
 
 /**
- * Classe représentant une quantité de nutriment avec son unité Cette classe étend la classe
- * NutrientQuantity existante
+ * Classe représentant une quantité de nutriment avec sa valeur et son unité. Cette classe stocke
+ * l'information sur la quantité d'un nutriment dans un aliment.
+ *
+ * @property value La valeur numérique de la quantité du nutriment
+ * @property unite L'unité dans laquelle cette valeur est exprimée
  */
-@Serializable
-data class NutrientQuantityExt(val value: Float, val unit: UnitEnum) {
-    /**
-     * Convertit cette quantité vers une autre unité
-     *
-     * @param targetUnit L'unité cible
-     * @return La quantité convertie ou null si la conversion n'est pas possible
-     */
-    fun convertTo(targetUnit: UnitEnum): NutrientQuantityExt? {
-        // Si les unités sont identiques, pas besoin de conversion
-        if (unit == targetUnit) {
-            return this
-        }
-
-        // TODO: Implémenter les conversions entre unités
-        // Pour l'instant, nous retournons null pour indiquer que la conversion n'est pas supportée
-        return null
+data class NutrientQuantity(var value: Float, val unite: String) {
+    init {
+        // S'assurer que la valeur n'est jamais négative
+        value = ensurePositiveValue(value)
+        println(
+                "DEBUG NutrientQuantity: Création d'une nouvelle instance avec valeur=$value, unite=$unite"
+        )
     }
 
     /**
-     * Additionne cette quantité avec une autre
+     * Convertit la valeur actuelle en utilisant l'unité fournie
      *
-     * @param other L'autre quantité à additionner
-     * @return La somme des deux quantités ou null si les unités sont incompatibles
+     * @param targetUnit L'unité cible pour la conversion
+     * @return La valeur convertie dans la nouvelle unité
      */
-    fun plus(other: NutrientQuantityExt): NutrientQuantityExt? {
-        // Si les unités sont identiques, addition directe
-        if (unit == other.unit) {
-            return NutrientQuantityExt(value + other.value, unit)
-        }
-
-        // Sinon, essayer de convertir l'autre quantité dans notre unité
-        val converted = other.convertTo(unit)
-
-        return if (converted != null) {
-            NutrientQuantityExt(value + converted.value, unit)
-        } else {
-            null
+    fun convertTo(targetUnit: UnitEnum): Float {
+        println("DEBUG NutrientQuantity: Conversion de $value $unite vers ${targetUnit.name}")
+        return when (targetUnit) {
+            UnitEnum.BUmg -> value * 1000 // g -> mg
+            UnitEnum.BUug -> value * 1000000 // g -> μg
+            UnitEnum.BUg -> value // g -> g (pas de conversion)
+            UnitEnum.BUml -> value // ml -> ml (pas de conversion)
+            UnitEnum.IUml -> value // UI/ml -> UI/ml (pas de conversion)
+            UnitEnum.IUg -> value // UI/g -> UI/g (pas de conversion)
+            UnitEnum.KCAL -> value // kcal -> kcal (pas de conversion)
+            UnitEnum.KJ -> value * 4.184F // kcal -> kJ
+            UnitEnum.BUkg -> value / 1000 // g -> kg
+            UnitEnum.POURCENT -> value // % -> % (pas de conversion)
+            UnitEnum.NO -> value // pas de conversion
         }
     }
 
     /**
-     * Multiplie cette quantité par un facteur
+     * Formate la valeur selon les règles d'affichage standard
      *
-     * @param factor Le facteur de multiplication
-     * @return La quantité multipliée
+     * @return La valeur formatée sous forme de chaîne
      */
-    fun times(factor: Float): NutrientQuantityExt {
-        return NutrientQuantityExt(value * factor, unit)
+    fun formatValue(): String {
+        println("DEBUG NutrientQuantity: Formatage de la valeur $value")
+        // Règles de formatage :
+        // - Valeurs < 0.001 : arrondi à 5 décimales
+        // - Valeurs entre 0.001 et 0.01 : arrondi à 4 décimales
+        // - Valeurs entre 0.01 et 0.1 : arrondi à 3 décimales
+        // - Valeurs entre 0.1 et 1 : arrondi à 2 décimales
+        // - Valeurs entre 1 et 10 : arrondi à 1 décimale
+        // - Valeurs > 10 : arrondi à l'entier
+        return when {
+            value < 0.001F -> "%.5f".format(value)
+            value < 0.01F -> "%.4f".format(value)
+            value < 0.1F -> "%.3f".format(value)
+            value < 1F -> "%.2f".format(value)
+            value < 10F -> "%.1f".format(value)
+            else -> "${round(value).toInt()}"
+        }
     }
 
-    /**
-     * Représentation textuelle de cette quantité
-     *
-     * @return La représentation textuelle
-     */
-    override fun toString(): String {
-        return "$value ${unit.label}"
+    companion object {
+        /** Crée une instance de NutrientQuantity avec des valeurs par défaut sécurisées */
+        fun createDefault(): NutrientQuantity {
+            println("DEBUG NutrientQuantity: Création d'une instance par défaut")
+            return NutrientQuantity(0.0f, "g")
+        }
     }
 }

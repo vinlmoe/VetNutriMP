@@ -191,3 +191,77 @@ interface EquationDao {
     @Query("SELECT * FROM EQUATIONS WHERE specie = :specie")
     suspend fun getEquationsBySpecie(specie: String): List<EquationEntity>
 }
+
+/** DAO pour accéder aux références nutritionnelles dans la base de données */
+@Dao
+interface ReferenceEvDao {
+    @Query("SELECT * FROM REFERENCE_EV") suspend fun getAllReferences(): List<ReferenceEvEntity>
+
+    @Query("SELECT * FROM REFERENCE_EV WHERE uuid = :uuid")
+    suspend fun getReferenceById(uuid: String): ReferenceEvEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertReference(reference: ReferenceEvEntity)
+
+    @Update suspend fun updateReference(reference: ReferenceEvEntity)
+
+    @Delete suspend fun deleteReference(reference: ReferenceEvEntity)
+
+    @Query("DELETE FROM REFERENCE_EV WHERE uuid = :uuid")
+    suspend fun deleteReferenceById(uuid: String)
+}
+
+/** DAO pour accéder aux coefficients dans la base de données */
+@Dao
+interface CoefficientDao {
+    @Query("SELECT * FROM COEFFICIENTS WHERE referenceId = :referenceId")
+    suspend fun getCoefficientsByReferenceId(referenceId: String): List<CoefficientEntity>
+
+    @Query("SELECT * FROM COEFFICIENTS WHERE referenceId = :referenceId AND groupUUID = :groupId")
+    suspend fun getCoefficientsByGroup(referenceId: String, groupId: Int): List<CoefficientEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertCoefficient(coefficient: CoefficientEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertCoefficients(coefficients: List<CoefficientEntity>)
+
+    @Update suspend fun updateCoefficient(coefficient: CoefficientEntity)
+
+    @Delete suspend fun deleteCoefficient(coefficient: CoefficientEntity)
+
+    @Query("DELETE FROM COEFFICIENTS WHERE referenceId = :referenceId")
+    suspend fun deleteCoefficientsForReference(referenceId: String)
+
+    @Query("DELETE FROM COEFFICIENTS WHERE referenceId = :referenceId AND groupUUID = :groupId")
+    suspend fun deleteCoefficientsForGroup(referenceId: String, groupId: Int)
+}
+
+/** DAO pour accéder aux valeurs nutritionnelles de référence dans la base de données */
+@Dao
+interface NutrientReferenceDao {
+    @Query("SELECT * FROM NUTRIENT_REFERENCES WHERE referenceId = :referenceId")
+    suspend fun getNutrientsByReferenceId(referenceId: String): List<NutrientReferenceEntity>
+
+    @Query(
+            "SELECT * FROM NUTRIENT_REFERENCES WHERE referenceId = :referenceId AND nutrient = :nutrient AND niveauRef = :level"
+    )
+    suspend fun getNutrientByDetails(
+            referenceId: String,
+            nutrient: String,
+            level: String
+    ): NutrientReferenceEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertNutrientReference(nutrientReference: NutrientReferenceEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertNutrientReferences(nutrientReferences: List<NutrientReferenceEntity>)
+
+    @Update suspend fun updateNutrientReference(nutrientReference: NutrientReferenceEntity)
+
+    @Delete suspend fun deleteNutrientReference(nutrientReference: NutrientReferenceEntity)
+
+    @Query("DELETE FROM NUTRIENT_REFERENCES WHERE referenceId = :referenceId")
+    suspend fun deleteNutrientReferencesForReference(referenceId: String)
+}

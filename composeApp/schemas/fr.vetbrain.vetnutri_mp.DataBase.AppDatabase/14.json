@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 14,
-    "identityHash": "6f38a5acf19ba574570cb4953d857690",
+    "identityHash": "a0de4d0b9adb8e33a336dcc48a66d5c4",
     "entities": [
       {
         "tableName": "ANIMALS",
@@ -1041,11 +1041,304 @@
             ]
           }
         ]
+      },
+      {
+        "tableName": "REFERENCE_EV",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`uuid` TEXT NOT NULL, `nom` TEXT NOT NULL, `description` TEXT NOT NULL, `maladie` INTEGER NOT NULL, `nomMaladie` TEXT NOT NULL, `nomEnergie` TEXT NOT NULL, `consistent` INTEGER NOT NULL, `espece` TEXT NOT NULL, `stadePhysio` TEXT NOT NULL, `nomk1` TEXT NOT NULL, `nomk2` TEXT NOT NULL, `nomk3` TEXT NOT NULL, `nomk4` TEXT NOT NULL, `nomk5` TEXT NOT NULL, `equationBW` TEXT, `equationBEE` TEXT, `equationDEcom` TEXT, `equationDEraw` TEXT, `equationME` TEXT, PRIMARY KEY(`uuid`))",
+        "fields": [
+          {
+            "fieldPath": "uuid",
+            "columnName": "uuid",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nom",
+            "columnName": "nom",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "description",
+            "columnName": "description",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "maladie",
+            "columnName": "maladie",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nomMaladie",
+            "columnName": "nomMaladie",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nomEnergie",
+            "columnName": "nomEnergie",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "consistent",
+            "columnName": "consistent",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "espece",
+            "columnName": "espece",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "stadePhysio",
+            "columnName": "stadePhysio",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nomk1",
+            "columnName": "nomk1",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nomk2",
+            "columnName": "nomk2",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nomk3",
+            "columnName": "nomk3",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nomk4",
+            "columnName": "nomk4",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nomk5",
+            "columnName": "nomk5",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "equationBW",
+            "columnName": "equationBW",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "equationBEE",
+            "columnName": "equationBEE",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "equationDEcom",
+            "columnName": "equationDEcom",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "equationDEraw",
+            "columnName": "equationDEraw",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "equationME",
+            "columnName": "equationME",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "uuid"
+          ]
+        }
+      },
+      {
+        "tableName": "COEFFICIENTS",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`uuid` TEXT NOT NULL, `referenceId` TEXT NOT NULL, `groupUUID` INTEGER NOT NULL, `description` TEXT NOT NULL, `coef` REAL NOT NULL, PRIMARY KEY(`uuid`), FOREIGN KEY(`referenceId`) REFERENCES `REFERENCE_EV`(`uuid`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "uuid",
+            "columnName": "uuid",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "referenceId",
+            "columnName": "referenceId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "groupUUID",
+            "columnName": "groupUUID",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "description",
+            "columnName": "description",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "coef",
+            "columnName": "coef",
+            "affinity": "REAL",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "uuid"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_COEFFICIENTS_referenceId_groupUUID",
+            "unique": false,
+            "columnNames": [
+              "referenceId",
+              "groupUUID"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_COEFFICIENTS_referenceId_groupUUID` ON `${TABLE_NAME}` (`referenceId`, `groupUUID`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "REFERENCE_EV",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "referenceId"
+            ],
+            "referencedColumns": [
+              "uuid"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "NUTRIENT_REFERENCES",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`uuid` TEXT NOT NULL, `referenceId` TEXT NOT NULL, `nutrient` TEXT NOT NULL, `niveauRef` TEXT NOT NULL, `quantite` REAL NOT NULL, `unite` TEXT NOT NULL, `uniteReq` TEXT NOT NULL, `biblioRefId` TEXT, PRIMARY KEY(`uuid`), FOREIGN KEY(`referenceId`) REFERENCES `REFERENCE_EV`(`uuid`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`biblioRefId`) REFERENCES `BIBLIO_REFS`(`uuid`) ON UPDATE NO ACTION ON DELETE SET NULL )",
+        "fields": [
+          {
+            "fieldPath": "uuid",
+            "columnName": "uuid",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "referenceId",
+            "columnName": "referenceId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nutrient",
+            "columnName": "nutrient",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "niveauRef",
+            "columnName": "niveauRef",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "quantite",
+            "columnName": "quantite",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "unite",
+            "columnName": "unite",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "uniteReq",
+            "columnName": "uniteReq",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "biblioRefId",
+            "columnName": "biblioRefId",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "uuid"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_NUTRIENT_REFERENCES_referenceId_nutrient_niveauRef",
+            "unique": true,
+            "columnNames": [
+              "referenceId",
+              "nutrient",
+              "niveauRef"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_NUTRIENT_REFERENCES_referenceId_nutrient_niveauRef` ON `${TABLE_NAME}` (`referenceId`, `nutrient`, `niveauRef`)"
+          },
+          {
+            "name": "index_NUTRIENT_REFERENCES_biblioRefId",
+            "unique": false,
+            "columnNames": [
+              "biblioRefId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_NUTRIENT_REFERENCES_biblioRefId` ON `${TABLE_NAME}` (`biblioRefId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "REFERENCE_EV",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "referenceId"
+            ],
+            "referencedColumns": [
+              "uuid"
+            ]
+          },
+          {
+            "table": "BIBLIO_REFS",
+            "onDelete": "SET NULL",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "biblioRefId"
+            ],
+            "referencedColumns": [
+              "uuid"
+            ]
+          }
+        ]
       }
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '6f38a5acf19ba574570cb4953d857690')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'a0de4d0b9adb8e33a336dcc48a66d5c4')"
     ]
   }
 }

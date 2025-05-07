@@ -16,7 +16,6 @@ import fr.vetbrain.vetnutri_mp.DataBase.AppDatabase
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationManager
 import fr.vetbrain.vetnutri_mp.Repository.*
-import fr.vetbrain.vetnutri_mp.Repository.ReferenceEvRepository
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriTheme
 import fr.vetbrain.vetnutri_mp.Utils.PlatformDispatcher
 import fr.vetbrain.vetnutri_mp.View.*
@@ -177,6 +176,12 @@ fun App(appDatabase: AppDatabase) {
         )
     }
 
+    // TODO: Implémenter la persistence pour les références nutritionnelles
+    // Pour l'instant, nous continuons d'utiliser le repository en mémoire, mais
+    // il faudra implémenter un repository avec persistance en base de données
+    // similaire à celui des équations.
+    val referenceEvRepository = remember { ReferenceEvRepository() }
+
     // Création des ViewModels
     val animalListViewModel = remember { AnimalListViewModel(animalRepository) }
     val animalDetailViewModel = remember {
@@ -193,7 +198,6 @@ fun App(appDatabase: AppDatabase) {
 
     // ViewModel et état pour les équations
     val platformDispatcher = remember { PlatformDispatcher() }
-    val referenceEvRepository = remember { ReferenceEvRepository() }
     val referenceEvViewModel = remember {
         ReferenceEvViewModel(referenceEvRepository, platformDispatcher)
     }

@@ -594,18 +594,61 @@ object Mappers {
         fun Map<Nutrient, fr.vetbrain.vetnutri_mp.Data.NutrientQuantity>.toNutrientValueEntities(
                 alimentUuid: String
         ): List<NutrientValueEntity> {
-                return mapNotNull { (nutrient, nutrientQuantity) ->
-                        // Ne créer des entités que pour les valeurs strictement positives
-                        if (nutrientQuantity.value > 0) {
-                                NutrientValueEntity(
-                                        refAliment = alimentUuid,
-                                        nutrientLabel = nutrient.label,
-                                        value = nutrientQuantity.value
+                println(
+                        "DEBUG Mappers: Conversion de ${this.size} nutriments en entités pour l'aliment $alimentUuid"
+                )
+                val result = mutableListOf<NutrientValueEntity>()
+
+                if (this.isEmpty()) {
+                        println(
+                                "DEBUG Mappers: ATTENTION - Map de nutriments vide pour l'aliment $alimentUuid"
+                        )
+                        return emptyList()
+                }
+
+                this.forEach { (nutrient, nutrientQuantity) ->
+                        try {
+                                println(
+                                        "DEBUG Mappers: Traitement du nutriment ${nutrient.label} = ${nutrientQuantity.value}"
                                 )
-                        } else {
-                                null
+
+                                // Vérification du label du nutriment
+                                if (nutrient.label.isBlank()) {
+                                        println(
+                                                "DEBUG Mappers: ERREUR - Le label du nutriment est vide"
+                                        )
+                                        return@forEach
+                                }
+
+                                // Ne créer des entités que pour les valeurs strictement positives
+                                if (nutrientQuantity.value > 0) {
+                                        val entity =
+                                                NutrientValueEntity(
+                                                        refAliment = alimentUuid,
+                                                        nutrientLabel = nutrient.label,
+                                                        value = nutrientQuantity.value
+                                                )
+                                        result.add(entity)
+                                        println(
+                                                "DEBUG Mappers: Entité créée pour ${nutrient.label} = ${nutrientQuantity.value}"
+                                        )
+                                } else {
+                                        println(
+                                                "DEBUG Mappers: Valeur <= 0 pour ${nutrient.label} (${nutrientQuantity.value}), ignorée"
+                                        )
+                                }
+                        } catch (e: Exception) {
+                                println(
+                                        "DEBUG Mappers: ERREUR lors de la conversion du nutriment ${nutrient.label}: ${e.message}"
+                                )
+                                e.printStackTrace()
                         }
                 }
+
+                println(
+                        "DEBUG Mappers: ${result.size}/${this.size} nutriments convertis en entités"
+                )
+                return result
         }
         // FIN ZONE PROTÉGÉE
 
@@ -619,17 +662,64 @@ object Mappers {
         // métier.
         fun List<NutrientValueEntity>.toNutrientValueMap():
                 MutableMap<Nutrient, fr.vetbrain.vetnutri_mp.Data.NutrientQuantity> {
+                println(
+                        "DEBUG Mappers: Conversion de ${this.size} entités de nutriments en objets métier"
+                )
                 val result = mutableMapOf<Nutrient, fr.vetbrain.vetnutri_mp.Data.NutrientQuantity>()
-                forEach { entity ->
-                        val nutrient = NutrientResolver.AllNutrientResolver(entity.nutrientLabel)
-                        if (nutrient != null) {
-                                result[nutrient] =
-                                        fr.vetbrain.vetnutri_mp.Data.NutrientQuantity(
-                                                entity.value,
-                                                entity.nutrientLabel
+
+                if (this.isEmpty()) {
+                        println("DEBUG Mappers: ATTENTION - Liste d'entités de nutriments vide")
+                        return result
+                }
+
+                var successCount = 0
+                var errorCount = 0
+
+                this.forEach { entity ->
+                        try {
+                                println(
+                                        "DEBUG Mappers: Traitement de l'entité - label=${entity.nutrientLabel}, value=${entity.value}"
+                                )
+
+                                // Vérification du label du nutriment
+                                if (entity.nutrientLabel.isBlank()) {
+                                        println(
+                                                "DEBUG Mappers: ERREUR - Le label du nutriment est vide"
                                         )
+                                        errorCount++
+                                        return@forEach
+                                }
+
+                                val nutrient =
+                                        NutrientResolver.AllNutrientResolver(entity.nutrientLabel)
+                                if (nutrient != null) {
+                                        result[nutrient] =
+                                                fr.vetbrain.vetnutri_mp.Data.NutrientQuantity(
+                                                        entity.value,
+                                                        entity.nutrientLabel
+                                                )
+                                        println(
+                                                "DEBUG Mappers: Nutriment résolu: ${entity.nutrientLabel} -> ${nutrient.label}"
+                                        )
+                                        successCount++
+                                } else {
+                                        println(
+                                                "DEBUG Mappers: ERREUR - Impossible de résoudre le nutriment pour le label '${entity.nutrientLabel}'"
+                                        )
+                                        errorCount++
+                                }
+                        } catch (e: Exception) {
+                                println(
+                                        "DEBUG Mappers: ERREUR lors de la conversion de l'entité ${entity.nutrientLabel}: ${e.message}"
+                                )
+                                e.printStackTrace()
+                                errorCount++
                         }
                 }
+
+                println(
+                        "DEBUG Mappers: Résultat de la conversion: $successCount réussies, $errorCount échecs"
+                )
                 return result
         }
         // FIN ZONE PROTÉGÉE
@@ -711,5 +801,194 @@ object Mappers {
                         bibtex = this.bibtex ?: "",
                         consistent = this.consistent
                 )
+        }
+
+        /** Convertit un objet ReferenceEv en ReferenceEvEntity */
+        fun ReferenceEv.toEntity(): ReferenceEvEntity {
+                return ReferenceEvEntity(
+                        uuid = this.uuid,
+                        nom = this.nom,
+                        description = this.description,
+                        maladie = this.maladie,
+                        nomMaladie = this.nomMaladie,
+                        nomEnergie = this.nomEnergie,
+                        consistent = if (this.consistent) 1 else 0,
+                        espece = this.espece.name,
+                        stadePhysio = this.stadePhysio.name,
+                        nomk1 = this.nomk1,
+                        nomk2 = this.nomk2,
+                        nomk3 = this.nomk3,
+                        nomk4 = this.nomk4,
+                        nomk5 = this.nomk5,
+                        equationBW = this.equationBW?.uuid,
+                        equationBEE = this.equationBEE?.uuid,
+                        equationDEcom = this.equationDEcom?.uuid,
+                        equationDEraw = this.equationDEraw?.uuid,
+                        equationME = this.equationME?.uuid
+                )
+        }
+
+        /**
+         * Convertit un objet ReferenceEvEntity en ReferenceEv Nécessite des appels supplémentaires
+         * pour remplir les listes de coefficients et de valeurs nutritionnelles
+         */
+        suspend fun ReferenceEvEntity.toDomain(
+                equationRepository: EquationRepository? = null,
+                coefficientDao: CoefficientDao? = null,
+                nutrientReferenceDao: NutrientReferenceDao? = null
+        ): ReferenceEv {
+                // Conversion des équations référencées
+                val bwEquation =
+                        if (equationBW != null && equationRepository != null) {
+                                equationRepository.getEquationById(equationBW)
+                        } else null
+
+                val beeEquation =
+                        if (equationBEE != null && equationRepository != null) {
+                                equationRepository.getEquationById(equationBEE)
+                        } else null
+
+                val decomEquation =
+                        if (equationDEcom != null && equationRepository != null) {
+                                equationRepository.getEquationById(equationDEcom)
+                        } else null
+
+                val derawEquation =
+                        if (equationDEraw != null && equationRepository != null) {
+                                equationRepository.getEquationById(equationDEraw)
+                        } else null
+
+                val meEquation =
+                        if (equationME != null && equationRepository != null) {
+                                equationRepository.getEquationById(equationME)
+                        } else null
+
+                val referenceEv =
+                        ReferenceEv(
+                                uuid = uuid,
+                                nom = nom,
+                                description = description,
+                                maladie = maladie,
+                                nomMaladie = nomMaladie,
+                                nomEnergie = nomEnergie,
+                                consistent = consistent == 1,
+                                espece = Espece.valueOf(espece),
+                                stadePhysio = StadePhysio.valueOf(stadePhysio),
+                                nomk1 = nomk1,
+                                nomk2 = nomk2,
+                                nomk3 = nomk3,
+                                nomk4 = nomk4,
+                                nomk5 = nomk5,
+                                equationBW = bwEquation,
+                                equationBEE = beeEquation,
+                                equationDEcom = decomEquation,
+                                equationDEraw = derawEquation,
+                                equationME = meEquation
+                        )
+
+                // Charger les coefficients si le DAO est fourni
+                if (coefficientDao != null) {
+                        val allCoefficients = coefficientDao.getCoefficientsByReferenceId(uuid)
+
+                        // Grouper par groupe de coefficient
+                        val groupedCoefficients = allCoefficients.groupBy { it.groupUUID }
+
+                        // Mapper et ajouter les coefficients par groupe
+                        for (groupId in 0..4) {
+                                val groupCoefficients = groupedCoefficients[groupId] ?: emptyList()
+                                val coefPList = groupCoefficients.map { it.toDomain() }
+
+                                when (groupId) {
+                                        0 -> referenceEv.modk1.addAll(coefPList)
+                                        1 -> referenceEv.modk2.addAll(coefPList)
+                                        2 -> referenceEv.modk3.addAll(coefPList)
+                                        3 -> referenceEv.modk4.addAll(coefPList)
+                                        4 -> referenceEv.modk5.addAll(coefPList)
+                                }
+                        }
+                }
+
+                // Charger les valeurs nutritionnelles si le DAO est fourni
+                if (nutrientReferenceDao != null) {
+                        val nutritionValues = nutrientReferenceDao.getNutrientsByReferenceId(uuid)
+                        val mappedValues = nutritionValues.map { it.toDomain() }
+                        referenceEv.nut4RefList.addAll(mappedValues)
+                }
+
+                return referenceEv
+        }
+
+        /** Convertit un objet CoefP en CoefficientEntity */
+        fun CoefP.toEntity(referenceId: String, groupId: Int): CoefficientEntity {
+                return CoefficientEntity(
+                        uuid = this.uuid,
+                        referenceId = referenceId,
+                        groupUUID = groupId,
+                        description = this.description,
+                        coef = this.coef
+                )
+        }
+
+        /** Convertit un objet CoefficientEntity en CoefP */
+        fun CoefficientEntity.toDomain(): CoefP {
+                return CoefP(uuid = uuid, description = description, coef = coef)
+        }
+
+        /** Convertit un objet Nut4Ref en NutrientReferenceEntity */
+        fun Nut4Ref.toEntity(referenceId: String): NutrientReferenceEntity {
+                return NutrientReferenceEntity(
+                        uuid = this.uuid,
+                        referenceId = referenceId,
+                        nutrient = this.nutrient.name,
+                        niveauRef = this.niveauRef.name,
+                        quantite = this.quantite,
+                        unite = this.unite.name,
+                        uniteReq = this.uniteReq.name,
+                        biblioRefId = this.citation?.uuid
+                )
+        }
+
+        /** Convertit un objet NutrientReferenceEntity en Nut4Ref */
+        suspend fun NutrientReferenceEntity.toDomain(biblioRefDao: BiblioRefDao? = null): Nut4Ref {
+                // Récupérer la référence bibliographique si disponible
+                val biblioRef =
+                        if (biblioRefId != null && biblioRefDao != null) {
+                                biblioRefDao.getBiblioRefById(biblioRefId)?.toDomain()
+                        } else null
+
+                return Nut4Ref(
+                        uuid = uuid,
+                        nutrient = Nutrient.valueOf(nutrient),
+                        niveauRef = Reflevel.valueOf(niveauRef),
+                        quantite = quantite,
+                        unite = UnitEnum.valueOf(unite),
+                        uniteReq = UnitReqEnum.valueOf(uniteReq),
+                        citation = biblioRef
+                )
+        }
+
+        /** Récupère tous les coefficients pour un groupe spécifique d'une référence */
+        suspend fun getCoefficientsForGroup(
+                coefficientDao: CoefficientDao,
+                referenceId: String,
+                groupId: Int
+        ): List<CoefP> {
+                val coefficients = coefficientDao.getCoefficientsByGroup(referenceId, groupId)
+                return coefficients.map { it.toDomain() }
+        }
+
+        /** Met à jour les coefficients pour un groupe spécifique d'une référence */
+        suspend fun updateCoefficientsForGroup(
+                coefficientDao: CoefficientDao,
+                referenceId: String,
+                groupId: Int,
+                coefficients: List<CoefP>
+        ) {
+                // Supprimer les anciens coefficients
+                coefficientDao.deleteCoefficientsForGroup(referenceId, groupId)
+
+                // Convertir et insérer les nouveaux coefficients
+                val entities = coefficients.map { it.toEntity(referenceId, groupId) }
+                coefficientDao.insertCoefficients(entities)
         }
 }

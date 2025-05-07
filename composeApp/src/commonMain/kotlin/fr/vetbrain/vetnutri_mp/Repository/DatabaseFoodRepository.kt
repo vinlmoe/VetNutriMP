@@ -819,6 +819,24 @@ class DatabaseFoodRepository(
     override suspend fun insertFood(food: AlimentEv) {
         withContext(AppDispatchers.IO) {
             try {
+                // Vérifier que l'aliment est valide
+                if (food.uuid.isBlank()) {
+                    println("DEBUG DatabaseFoodRepository: ERREUR - L'UUID de l'aliment est vide")
+                    throw IllegalArgumentException("L'UUID de l'aliment est requis")
+                }
+
+                // Tracer les valeurs nutritionnelles
+                println(
+                        "DEBUG DatabaseFoodRepository: Aliment à insérer: ${food.nom ?: "Sans nom"} (${food.uuid})"
+                )
+                println("DEBUG DatabaseFoodRepository: Nombre de nutriments: ${food.valMap.size}")
+
+                food.valMap.entries.take(5).forEach { (nutrient, quantity) ->
+                    println(
+                            "DEBUG DatabaseFoodRepository: Exemple de nutriment: ${nutrient.label} = ${quantity.value} ${quantity.unite}"
+                    )
+                }
+
                 // Convertir en FoodEntity et insérer
                 val foodEntity = food.toFoodEntity().copy(RefRation = null)
                 foodDao.insert(foodEntity)
@@ -851,12 +869,74 @@ class DatabaseFoodRepository(
                 }
 
                 // Traiter les valeurs nutritionnelles
-                val nutrientValues = food.valMap.toNutrientValueEntities(food.uuid)
-                if (nutrientValueDao != null && nutrientValues.isNotEmpty()) {
-                    nutrientValueDao.insertNutrientValues(nutrientValues)
+                if (food.valMap.isEmpty()) {
+                    println("DEBUG DatabaseFoodRepository: Aucune valeur nutritionnelle à traiter")
+                } else {
+                    // Contrôle préalable des nutriments
+                    var validNutrientCount = 0
+                    food.valMap.forEach { (nutrient, quantity) ->
+                        if (nutrient.label.isBlank()) {
+                            println(
+                                    "DEBUG DatabaseFoodRepository: ATTENTION - Nutriment avec label vide détecté"
+                            )
+                        } else if (quantity.value <= 0) {
+                            println(
+                                    "DEBUG DatabaseFoodRepository: ATTENTION - Valeur <= 0 pour ${nutrient.label}: ${quantity.value}"
+                            )
+                        } else {
+                            validNutrientCount++
+                        }
+                    }
                     println(
-                            "DEBUG DatabaseFoodRepository: ${nutrientValues.size} valeurs nutritionnelles insérées"
+                            "DEBUG DatabaseFoodRepository: $validNutrientCount/${food.valMap.size} nutriments valides à convertir"
                     )
+
+                    val nutrientValues = food.valMap.toNutrientValueEntities(food.uuid)
+                    if (nutrientValueDao != null && nutrientValues.isNotEmpty()) {
+                        println(
+                                "DEBUG DatabaseFoodRepository: Tentative d'insertion de ${nutrientValues.size} valeurs nutritionnelles"
+                        )
+                        try {
+                            nutrientValueDao.insertNutrientValues(nutrientValues)
+                            println(
+                                    "DEBUG DatabaseFoodRepository: ${nutrientValues.size} valeurs nutritionnelles insérées avec succès"
+                            )
+                        } catch (e: Exception) {
+                            println(
+                                    "DEBUG DatabaseFoodRepository: ERREUR lors de l'insertion des valeurs nutritionnelles: ${e.message}"
+                            )
+                            e.printStackTrace()
+
+                            // Tentative d'insertion une par une
+                            println(
+                                    "DEBUG DatabaseFoodRepository: Tentative d'insertion une par une..."
+                            )
+                            var successCount = 0
+                            nutrientValues.forEach { entity ->
+                                try {
+                                    nutrientValueDao.insertNutrientValues(listOf(entity))
+                                    successCount++
+                                } catch (innerE: Exception) {
+                                    println(
+                                            "DEBUG DatabaseFoodRepository: Échec pour ${entity.nutrientLabel}: ${innerE.message}"
+                                    )
+                                }
+                            }
+                            println(
+                                    "DEBUG DatabaseFoodRepository: $successCount/${nutrientValues.size} valeurs nutritionnelles insérées individuellement"
+                            )
+                        }
+                    } else {
+                        if (nutrientValueDao == null) {
+                            println(
+                                    "DEBUG DatabaseFoodRepository: ERREUR - nutrientValueDao est null"
+                            )
+                        } else {
+                            println(
+                                    "DEBUG DatabaseFoodRepository: ATTENTION - Aucune valeur nutritionnelle à insérer après conversion"
+                            )
+                        }
+                    }
                 }
 
                 println("DEBUG DatabaseFoodRepository: Insertion de l'aliment terminée avec succès")
@@ -933,6 +1013,26 @@ class DatabaseFoodRepository(
     override suspend fun updateFood(food: AlimentEv) {
         return withContext(AppDispatchers.IO) {
             try {
+                // Vérification préliminaires
+                if (food.uuid.isBlank()) {
+                    println("DEBUG DatabaseFoodRepository: ERREUR - UUID vide pour la mise à jour")
+                    throw IllegalArgumentException(
+                            "L'UUID de l'aliment est requis pour la mise à jour"
+                    )
+                }
+
+                // Tracer les valeurs nutritionnelles
+                println(
+                        "DEBUG DatabaseFoodRepository: Aliment à mettre à jour: ${food.nom ?: "Sans nom"} (${food.uuid})"
+                )
+                println("DEBUG DatabaseFoodRepository: Nombre de nutriments: ${food.valMap.size}")
+
+                food.valMap.entries.take(5).forEach { (nutrient, quantity) ->
+                    println(
+                            "DEBUG DatabaseFoodRepository: Exemple de nutriment: ${nutrient.label} = ${quantity.value} ${quantity.unite}"
+                    )
+                }
+
                 // Vérifier que l'aliment existe
                 val existingFood = foodDao.getFoodById(food.uuid)
                 if (existingFood == null) {
@@ -1002,16 +1102,42 @@ class DatabaseFoodRepository(
                     e.printStackTrace()
                 }
 
+                // Récupérer les anciennes valeurs nutritionnelles pour comparaison
+                val oldNutrientValues =
+                        if (nutrientValueDao != null) {
+                            try {
+                                nutrientValueDao.getNutrientValues(food.uuid)
+                            } catch (e: Exception) {
+                                println(
+                                        "DEBUG DatabaseFoodRepository: Erreur lors de la récupération des anciennes valeurs nutritionnelles: ${e.message}"
+                                )
+                                emptyList()
+                            }
+                        } else {
+                            emptyList()
+                        }
+                println(
+                        "DEBUG DatabaseFoodRepository: ${oldNutrientValues.size} anciennes valeurs nutritionnelles trouvées"
+                )
+
                 // Supprimer toutes les anciennes valeurs nutritionnelles quelle que soit la
                 // situation
                 println(
                         "DEBUG DatabaseFoodRepository: Suppression des anciennes valeurs nutritionnelles"
                 )
                 if (nutrientValueDao != null) {
-                    nutrientValueDao.deleteAllNutrientValuesForAliment(food.uuid)
-                    println(
-                            "DEBUG DatabaseFoodRepository: Anciennes valeurs nutritionnelles supprimées avec succès"
-                    )
+                    try {
+                        nutrientValueDao.deleteAllNutrientValuesForAliment(food.uuid)
+                        println(
+                                "DEBUG DatabaseFoodRepository: Anciennes valeurs nutritionnelles supprimées avec succès"
+                        )
+                    } catch (e: Exception) {
+                        println(
+                                "DEBUG DatabaseFoodRepository: ERREUR lors de la suppression des anciennes valeurs nutritionnelles: ${e.message}"
+                        )
+                        e.printStackTrace()
+                        // On continue malgré l'erreur
+                    }
                 } else {
                     println(
                             "DEBUG DatabaseFoodRepository: AVERTISSEMENT - nutrientValueDao est null, impossible de supprimer les valeurs nutritionnelles"
@@ -1023,6 +1149,32 @@ class DatabaseFoodRepository(
                 println(
                         "DEBUG DatabaseFoodRepository: Conversion des valeurs nutritionnelles en entités"
                 )
+
+                // Contrôle préalable des nutriments
+                if (food.valMap.isEmpty()) {
+                    println(
+                            "DEBUG DatabaseFoodRepository: ATTENTION - Aucune valeur nutritionnelle à traiter"
+                    )
+                } else {
+                    var validNutrientCount = 0
+                    food.valMap.forEach { (nutrient, quantity) ->
+                        if (nutrient.label.isBlank()) {
+                            println(
+                                    "DEBUG DatabaseFoodRepository: ATTENTION - Nutriment avec label vide détecté"
+                            )
+                        } else if (quantity.value <= 0) {
+                            println(
+                                    "DEBUG DatabaseFoodRepository: ATTENTION - Valeur <= 0 pour ${nutrient.label}: ${quantity.value}"
+                            )
+                        } else {
+                            validNutrientCount++
+                        }
+                    }
+                    println(
+                            "DEBUG DatabaseFoodRepository: $validNutrientCount/${food.valMap.size} nutriments valides à convertir"
+                    )
+                }
+
                 val nutrientValues = food.valMap.toNutrientValueEntities(food.uuid)
 
                 // Insérer les nouvelles valeurs nutritionnelles
@@ -1040,12 +1192,43 @@ class DatabaseFoodRepository(
                                 "DEBUG DatabaseFoodRepository: ERREUR lors de l'insertion des valeurs nutritionnelles: ${e.message}"
                         )
                         e.printStackTrace()
-                        throw e
+
+                        // Tentative d'insertion une par une
+                        println(
+                                "DEBUG DatabaseFoodRepository: Tentative d'insertion une par une..."
+                        )
+                        var successCount = 0
+                        nutrientValues.forEach { entity ->
+                            try {
+                                nutrientValueDao.insertNutrientValues(listOf(entity))
+                                successCount++
+                            } catch (innerE: Exception) {
+                                println(
+                                        "DEBUG DatabaseFoodRepository: Échec pour ${entity.nutrientLabel}: ${innerE.message}"
+                                )
+                            }
+                        }
+                        println(
+                                "DEBUG DatabaseFoodRepository: $successCount/${nutrientValues.size} valeurs nutritionnelles insérées individuellement"
+                        )
+
+                        if (successCount == 0) {
+                            println(
+                                    "DEBUG DatabaseFoodRepository: ERREUR critique - Aucune valeur nutritionnelle n'a pu être insérée"
+                            )
+                            throw e // Propager l'erreur si aucune insertion n'a réussi
+                        }
                     }
                 } else {
-                    println(
-                            "DEBUG DatabaseFoodRepository: Aucune valeur nutritionnelle à insérer ou nutrientValueDao est null"
-                    )
+                    if (nutrientValueDao == null) {
+                        println(
+                                "DEBUG DatabaseFoodRepository: ERREUR - nutrientValueDao est null, impossible d'insérer les valeurs nutritionnelles"
+                        )
+                    } else {
+                        println(
+                                "DEBUG DatabaseFoodRepository: Aucune valeur nutritionnelle à insérer ou toutes les valeurs sont <= 0"
+                        )
+                    }
                 }
 
                 println(

@@ -27,7 +27,10 @@ import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
                         FoodEntity::class,
                         NutrientValueEntity::class,
                         BiblioRefEntity::class,
-                        EquationEntity::class],
+                        EquationEntity::class,
+                        ReferenceEvEntity::class,
+                        CoefficientEntity::class,
+                        NutrientReferenceEntity::class],
         version = 14,
         exportSchema = true
 )
@@ -40,6 +43,9 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun nutrientValueDao(): NutrientValueDao
     abstract fun biblioRefDao(): BiblioRefDao
     abstract fun equationDao(): EquationDao
+    abstract fun referenceEvDao(): ReferenceEvDao
+    abstract fun coefficientDao(): CoefficientDao
+    abstract fun nutrientReferenceDao(): NutrientReferenceDao
 
     companion object {
         const val DATABASE_NAME = "vetnutri.db"
