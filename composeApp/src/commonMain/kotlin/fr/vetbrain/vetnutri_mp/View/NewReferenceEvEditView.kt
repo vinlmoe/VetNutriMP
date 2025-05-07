@@ -28,6 +28,8 @@ import androidx.compose.material.MaterialTheme
 import androidx.compose.material.OutlinedTextField
 import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.runtime.*
 import androidx.compose.runtime.Composable
@@ -46,6 +48,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Components.TopBarSimple
 import fr.vetbrain.vetnutri_mp.Data.BiblioRef
+import fr.vetbrain.vetnutri_mp.Data.CoefP
 import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
@@ -60,13 +63,15 @@ import fr.vetbrain.vetnutri_mp.ViewModel.NewReferenceEvViewModel
  * @param referenceId Identifiant de la référence à éditer (null pour une nouvelle référence)
  * @param onNavigateBack Callback pour revenir à l'écran précédent
  * @param modifier Modifier à appliquer à la vue
+ * @param isInTabView Indique si la vue est intégrée dans un système d'onglets
  */
 @Composable
 fun NewReferenceEvEditView(
         viewModel: NewReferenceEvViewModel,
         referenceId: String?,
         onNavigateBack: () -> Unit,
-        modifier: Modifier = Modifier
+        modifier: Modifier = Modifier,
+        isInTabView: Boolean = false
 ) {
         // État local pour suivre l'onglet sélectionné
         var selectedTabIndex by remember { mutableStateOf(0) }
@@ -89,9 +94,23 @@ fun NewReferenceEvEditView(
         // Effet pour traiter le succès de l'opération
         LaunchedEffect(operationSuccess) {
                 if (operationSuccess) {
-                        // Revenir à l'écran précédent après une sauvegarde réussie
+                        // Si onNavigateBack est vide, cela signifie qu'on est dans une vue intégrée
+                        // comme ReferenceEvTabsView
+                        // Dans ce cas, on ne quitte pas mais on réinitialise juste l'état de succès
                         onNavigateBack()
                         viewModel.resetOperationSuccess()
+                }
+        }
+
+        // Effet pour sauvegarder automatiquement lors de la navigation vers l'arrière
+        // Ce code capture l'action de retour et s'assure que la référence est sauvegardée
+        val navigateWithSave = {
+                // Appliquer les coefficients à la référence et sauvegarder
+                viewModel.applyCoefficientsToReference()
+                viewModel.saveReference()
+                // Si on est dans une vue à onglets, ne pas quitter
+                if (!isInTabView) {
+                        onNavigateBack()
                 }
         }
 
@@ -104,7 +123,7 @@ fun NewReferenceEvEditView(
                                 title =
                                         if (isEditMode) "Modifier la référence"
                                         else "Nouvelle référence",
-                                onNavigateBack = onNavigateBack
+                                onNavigateBack = navigateWithSave
                         )
                 }
         ) { paddingValues ->
@@ -853,17 +872,110 @@ fun ReferenceEvEquationsTab(viewModel: NewReferenceEvViewModel) {
  */
 @Composable
 fun ReferenceEvCoefficientsTab(viewModel: NewReferenceEvViewModel, currentReference: ReferenceEv) {
-        // Cette partie sera implémentée ultérieurement
+        // Récupérer les listes de coefficients depuis le ViewModel
+        val coefList1 by viewModel.coefList1.collectAsState()
+        val coefList2 by viewModel.coefList2.collectAsState()
+        val coefList3 by viewModel.coefList3.collectAsState()
+        val coefList4 by viewModel.coefList4.collectAsState()
+        val coefList5 by viewModel.coefList5.collectAsState()
+
+        // Récupérer les noms des groupes de coefficients depuis le ViewModel
+        val coefName1 by viewModel.coefName1.collectAsState()
+        val coefName2 by viewModel.coefName2.collectAsState()
+        val coefName3 by viewModel.coefName3.collectAsState()
+        val coefName4 by viewModel.coefName4.collectAsState()
+        val coefName5 by viewModel.coefName5.collectAsState()
+
         Column(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally
+                modifier =
+                        Modifier.fillMaxSize().padding(16.dp).verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-                Text(text = "Gestion des coefficients", style = MaterialTheme.typography.h6)
                 Text(
-                        text = "Cette fonctionnalité sera implémentée prochainement",
-                        style = MaterialTheme.typography.body1,
-                        modifier = Modifier.padding(top = 8.dp)
+                        text = "Gestion des coefficients",
+                        style = MaterialTheme.typography.h6,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                )
+
+                // Premier groupe de coefficients
+                CoefficientTable(
+                        groupIndex = 1,
+                        coefficients = coefList1,
+                        groupName = coefName1,
+                        onNameChange = { viewModel.updateCoefGroupName(1, it) },
+                        onAddCoef = { viewModel.addCoef(1) },
+                        onRemoveCoef = { viewModel.removeCoef(1, it) },
+                        onUpdateDescription = { index, desc ->
+                                viewModel.updateCoefDescription(1, index, desc)
+                        },
+                        onUpdateValue = { index, value ->
+                                viewModel.updateCoefValue(1, index, value)
+                        }
+                )
+
+                // Deuxième groupe de coefficients
+                CoefficientTable(
+                        groupIndex = 2,
+                        coefficients = coefList2,
+                        groupName = coefName2,
+                        onNameChange = { viewModel.updateCoefGroupName(2, it) },
+                        onAddCoef = { viewModel.addCoef(2) },
+                        onRemoveCoef = { viewModel.removeCoef(2, it) },
+                        onUpdateDescription = { index, desc ->
+                                viewModel.updateCoefDescription(2, index, desc)
+                        },
+                        onUpdateValue = { index, value ->
+                                viewModel.updateCoefValue(2, index, value)
+                        }
+                )
+
+                // Troisième groupe de coefficients
+                CoefficientTable(
+                        groupIndex = 3,
+                        coefficients = coefList3,
+                        groupName = coefName3,
+                        onNameChange = { viewModel.updateCoefGroupName(3, it) },
+                        onAddCoef = { viewModel.addCoef(3) },
+                        onRemoveCoef = { viewModel.removeCoef(3, it) },
+                        onUpdateDescription = { index, desc ->
+                                viewModel.updateCoefDescription(3, index, desc)
+                        },
+                        onUpdateValue = { index, value ->
+                                viewModel.updateCoefValue(3, index, value)
+                        }
+                )
+
+                // Quatrième groupe de coefficients
+                CoefficientTable(
+                        groupIndex = 4,
+                        coefficients = coefList4,
+                        groupName = coefName4,
+                        onNameChange = { viewModel.updateCoefGroupName(4, it) },
+                        onAddCoef = { viewModel.addCoef(4) },
+                        onRemoveCoef = { viewModel.removeCoef(4, it) },
+                        onUpdateDescription = { index, desc ->
+                                viewModel.updateCoefDescription(4, index, desc)
+                        },
+                        onUpdateValue = { index, value ->
+                                viewModel.updateCoefValue(4, index, value)
+                        }
+                )
+
+                // Cinquième groupe de coefficients
+                CoefficientTable(
+                        groupIndex = 5,
+                        coefficients = coefList5,
+                        groupName = coefName5,
+                        onNameChange = { viewModel.updateCoefGroupName(5, it) },
+                        onAddCoef = { viewModel.addCoef(5) },
+                        onRemoveCoef = { viewModel.removeCoef(5, it) },
+                        onUpdateDescription = { index, desc ->
+                                viewModel.updateCoefDescription(5, index, desc)
+                        },
+                        onUpdateValue = { index, value ->
+                                viewModel.updateCoefValue(5, index, value)
+                        }
                 )
         }
 }
@@ -1866,4 +1978,175 @@ fun NutrientEditDialog(
                         ) { Text("Annuler") }
                 }
         )
+}
+
+/**
+ * Composant pour afficher un tableau de coefficients
+ *
+ * @param groupIndex L'index du groupe de coefficients (1-5)
+ * @param coefficients La liste des coefficients à afficher
+ * @param groupName Le nom du groupe de coefficients
+ * @param onNameChange Callback appelé lorsque le nom du groupe est modifié
+ * @param onAddCoef Callback appelé lorsqu'un coefficient est ajouté
+ * @param onRemoveCoef Callback appelé lorsqu'un coefficient est supprimé
+ * @param onUpdateDescription Callback appelé lorsque la description d'un coefficient est modifiée
+ * @param onUpdateValue Callback appelé lorsque la valeur d'un coefficient est modifiée
+ */
+@Composable
+fun CoefficientTable(
+        groupIndex: Int,
+        coefficients: List<CoefP>,
+        groupName: String,
+        onNameChange: (String) -> Unit,
+        onAddCoef: () -> Unit,
+        onRemoveCoef: (Int) -> Unit,
+        onUpdateDescription: (Int, String) -> Unit,
+        onUpdateValue: (Int, Float) -> Unit,
+        modifier: Modifier = Modifier
+) {
+        Card(modifier = modifier.fillMaxWidth(), elevation = 4.dp) {
+                Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                        // En-tête du tableau avec titre et nom du groupe
+                        Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                        ) {
+                                Text(
+                                        text = "Groupe de coefficients $groupIndex",
+                                        style = MaterialTheme.typography.subtitle1,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.weight(1f)
+                                )
+                                OutlinedTextField(
+                                        value = groupName,
+                                        onValueChange = onNameChange,
+                                        label = { Text("Nom du groupe") },
+                                        singleLine = true,
+                                        modifier = Modifier.weight(2f)
+                                )
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // En-tête des colonnes
+                        Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                        ) {
+                                Text(
+                                        text = "Description",
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.weight(2f).padding(horizontal = 8.dp)
+                                )
+                                Text(
+                                        text = "Valeur",
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.weight(1f).padding(horizontal = 8.dp)
+                                )
+                                // Espace pour les actions
+                                Spacer(modifier = Modifier.weight(0.5f))
+                        }
+
+                        Divider()
+
+                        // Liste des coefficients
+                        coefficients.forEachIndexed { index, coef ->
+                                Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                        // Description du coefficient
+                                        var description by remember {
+                                                mutableStateOf(coef.description ?: "")
+                                        }
+                                        OutlinedTextField(
+                                                value = description,
+                                                onValueChange = {
+                                                        description = it
+                                                        onUpdateDescription(index, it)
+                                                },
+                                                singleLine = true,
+                                                modifier =
+                                                        Modifier.weight(2f)
+                                                                .padding(horizontal = 4.dp)
+                                        )
+
+                                        // Valeur du coefficient
+                                        var value by remember {
+                                                mutableStateOf((coef.coef ?: 1.0f).toString())
+                                        }
+                                        OutlinedTextField(
+                                                value = value,
+                                                onValueChange = {
+                                                        // Filtrer pour n'accepter que des chiffres,
+                                                        // le point ou la virgule
+                                                        val filteredValue =
+                                                                it.replace(",", ".").filter { char
+                                                                        ->
+                                                                        char.isDigit() ||
+                                                                                char == '.' ||
+                                                                                char == '-'
+                                                                }
+
+                                                        // Vérifier si la valeur est un nombre
+                                                        // valide
+                                                        val isValidNumber =
+                                                                filteredValue.isEmpty() ||
+                                                                        filteredValue == "-" ||
+                                                                        filteredValue
+                                                                                .toFloatOrNull() !=
+                                                                                null
+
+                                                        if (isValidNumber) {
+                                                                value = filteredValue
+                                                                filteredValue.toFloatOrNull()
+                                                                        ?.let { floatValue ->
+                                                                                onUpdateValue(
+                                                                                        index,
+                                                                                        floatValue
+                                                                                )
+                                                                        }
+                                                        }
+                                                },
+                                                singleLine = true,
+                                                keyboardOptions =
+                                                        KeyboardOptions(
+                                                                keyboardType = KeyboardType.Decimal
+                                                        ),
+                                                modifier =
+                                                        Modifier.weight(1f)
+                                                                .padding(horizontal = 4.dp)
+                                        )
+
+                                        // Bouton de suppression
+                                        IconButton(
+                                                onClick = { onRemoveCoef(index) },
+                                                modifier = Modifier.weight(0.5f),
+                                                enabled = coefficients.size > 1
+                                        ) {
+                                                Icon(
+                                                        Icons.Default.Delete,
+                                                        contentDescription = "Supprimer",
+                                                        tint =
+                                                                if (coefficients.size > 1)
+                                                                        MaterialTheme.colors.error
+                                                                else Color.Gray
+                                                )
+                                        }
+                                }
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // Bouton pour ajouter un coefficient
+                        Button(onClick = onAddCoef, modifier = Modifier.align(Alignment.End)) {
+                                Icon(Icons.Default.Add, contentDescription = "Ajouter")
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Ajouter un coefficient")
+                        }
+                }
+        }
 }

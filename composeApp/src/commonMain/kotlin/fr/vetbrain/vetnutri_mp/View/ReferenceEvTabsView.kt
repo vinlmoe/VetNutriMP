@@ -101,11 +101,23 @@ fun ReferenceEvTabsView(
             when (selectedTabIndex) {
                 0 -> {
                     // Onglet Informations
+                    // Créer un onNavigateBack spécifique pour NewReferenceEvEditView qui ne quitte
+                    // pas la vue à onglets
+                    val onEditViewNavigateBack = {
+                        // Si les modifications sont effectuées depuis la vue intégrée, ne pas
+                        // quitter
+                        // mais juste sauvegarder les modifications
+                        newReferenceEvViewModel.applyCoefficientsToReference()
+                        newReferenceEvViewModel.saveReference()
+                        // Ne pas appeler onNavigateBack ici pour rester sur la vue à onglets
+                    }
+
                     NewReferenceEvEditView(
                             viewModel = newReferenceEvViewModel,
                             referenceId = referenceEvId,
-                            onNavigateBack = onNavigateBack,
-                            modifier = Modifier.fillMaxSize()
+                            onNavigateBack = onEditViewNavigateBack,
+                            modifier = Modifier.fillMaxSize(),
+                            isInTabView = true // Indiquer que la vue est dans un système d'onglets
                     )
                 }
                 1 -> {

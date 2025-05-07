@@ -1,6 +1,7 @@
 package fr.vetbrain.vetnutri_mp.ViewModel
 
 import fr.vetbrain.vetnutri_mp.Data.BiblioRef
+import fr.vetbrain.vetnutri_mp.Data.CoefP
 import fr.vetbrain.vetnutri_mp.Data.Equation
 import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
@@ -76,6 +77,38 @@ class NewReferenceEvViewModel(
     // Exposer la référence courante en tant qu'équations courantes pour l'onglet équations
     val currentEquations: StateFlow<ReferenceEv> = _currentReference.asStateFlow()
 
+    // États pour les listes de coefficients
+    private val _coefList1 = MutableStateFlow<List<CoefP>>(emptyList())
+    val coefList1: StateFlow<List<CoefP>> = _coefList1.asStateFlow()
+
+    private val _coefList2 = MutableStateFlow<List<CoefP>>(emptyList())
+    val coefList2: StateFlow<List<CoefP>> = _coefList2.asStateFlow()
+
+    private val _coefList3 = MutableStateFlow<List<CoefP>>(emptyList())
+    val coefList3: StateFlow<List<CoefP>> = _coefList3.asStateFlow()
+
+    private val _coefList4 = MutableStateFlow<List<CoefP>>(emptyList())
+    val coefList4: StateFlow<List<CoefP>> = _coefList4.asStateFlow()
+
+    private val _coefList5 = MutableStateFlow<List<CoefP>>(emptyList())
+    val coefList5: StateFlow<List<CoefP>> = _coefList5.asStateFlow()
+
+    // Noms des groupes de coefficients
+    private val _coefName1 = MutableStateFlow("")
+    val coefName1: StateFlow<String> = _coefName1.asStateFlow()
+
+    private val _coefName2 = MutableStateFlow("")
+    val coefName2: StateFlow<String> = _coefName2.asStateFlow()
+
+    private val _coefName3 = MutableStateFlow("")
+    val coefName3: StateFlow<String> = _coefName3.asStateFlow()
+
+    private val _coefName4 = MutableStateFlow("")
+    val coefName4: StateFlow<String> = _coefName4.asStateFlow()
+
+    private val _coefName5 = MutableStateFlow("")
+    val coefName5: StateFlow<String> = _coefName5.asStateFlow()
+
     // Scope pour les coroutines
     private val coroutineScope = CoroutineScope(AppDispatchers.Main)
 
@@ -87,6 +120,9 @@ class NewReferenceEvViewModel(
         _operationSuccess.value = false
         loadEquations()
         loadBiblioRefs()
+
+        // Initialisation des coefficients
+        initCoefficients()
     }
 
     /**
@@ -106,13 +142,348 @@ class NewReferenceEvViewModel(
                 _currentReference.value = reference
                 _isEditMode.value = true
                 updateDefinedNutrients(reference)
+
+                // Mise à jour des coefficients à partir de la référence
+                loadCoefficientsFromReference(reference)
             } else {
                 _errorMessage.value = "Référence non trouvée"
                 _currentReference.value = ReferenceEv()
                 _isEditMode.value = false
+
+                // Initialisation des coefficients par défaut
+                initCoefficients()
             }
             loadEquations()
             loadBiblioRefs()
+        }
+    }
+
+    /** Initialise les coefficients avec les valeurs par défaut */
+    private fun initCoefficients() {
+        // Initialiser avec un coefficient "Normal" pour chaque groupe
+        _coefList1.value = listOf(CoefP(description = "Normal", coef = 1.0f, groupUUID = 0))
+        _coefList2.value = listOf(CoefP(description = "Normal", coef = 1.0f, groupUUID = 1))
+        _coefList3.value = listOf(CoefP(description = "Normal", coef = 1.0f, groupUUID = 2))
+        _coefList4.value = listOf(CoefP(description = "Normal", coef = 1.0f, groupUUID = 3))
+        _coefList5.value = listOf(CoefP(description = "Normal", coef = 1.0f, groupUUID = 4))
+
+        // Initialiser les noms des groupes
+        _coefName1.value = ""
+        _coefName2.value = ""
+        _coefName3.value = ""
+        _coefName4.value = ""
+        _coefName5.value = ""
+    }
+
+    /**
+     * Charge les coefficients à partir d'une référence
+     *
+     * @param reference La référence contenant les coefficients
+     */
+    private fun loadCoefficientsFromReference(reference: ReferenceEv) {
+        _coefName1.value = reference.nomk1
+        _coefName2.value = reference.nomk2
+        _coefName3.value = reference.nomk3
+        _coefName4.value = reference.nomk4
+        _coefName5.value = reference.nomk5
+
+        // Accès aux propriétés privées via la réflexion
+        try {
+            val modk1Field = ReferenceEv::class.java.getDeclaredField("modk1")
+            modk1Field.isAccessible = true
+            val modk1 = modk1Field.get(reference) as? ArrayList<CoefP>
+            _coefList1.value =
+                    modk1?.toList()
+                            ?: listOf(CoefP(description = "Normal", coef = 1.0f, groupUUID = 0))
+
+            val modk2Field = ReferenceEv::class.java.getDeclaredField("modk2")
+            modk2Field.isAccessible = true
+            val modk2 = modk2Field.get(reference) as? ArrayList<CoefP>
+            _coefList2.value =
+                    modk2?.toList()
+                            ?: listOf(CoefP(description = "Normal", coef = 1.0f, groupUUID = 1))
+
+            val modk3Field = ReferenceEv::class.java.getDeclaredField("modk3")
+            modk3Field.isAccessible = true
+            val modk3 = modk3Field.get(reference) as? ArrayList<CoefP>
+            _coefList3.value =
+                    modk3?.toList()
+                            ?: listOf(CoefP(description = "Normal", coef = 1.0f, groupUUID = 2))
+
+            val modk4Field = ReferenceEv::class.java.getDeclaredField("modk4")
+            modk4Field.isAccessible = true
+            val modk4 = modk4Field.get(reference) as? ArrayList<CoefP>
+            _coefList4.value =
+                    modk4?.toList()
+                            ?: listOf(CoefP(description = "Normal", coef = 1.0f, groupUUID = 3))
+
+            val modk5Field = ReferenceEv::class.java.getDeclaredField("modk5")
+            modk5Field.isAccessible = true
+            val modk5 = modk5Field.get(reference) as? ArrayList<CoefP>
+            _coefList5.value =
+                    modk5?.toList()
+                            ?: listOf(CoefP(description = "Normal", coef = 1.0f, groupUUID = 4))
+        } catch (e: Exception) {
+            println("Erreur lors du chargement des coefficients: ${e.message}")
+            initCoefficients()
+        }
+    }
+
+    /**
+     * Met à jour le nom d'un groupe de coefficients
+     *
+     * @param groupIndex L'index du groupe (1-5)
+     * @param name Le nouveau nom du groupe
+     */
+    fun updateCoefGroupName(groupIndex: Int, name: String) {
+        val reference = _currentReference.value
+        when (groupIndex) {
+            1 -> {
+                _coefName1.value = name
+                reference.nomk1 = name
+            }
+            2 -> {
+                _coefName2.value = name
+                reference.nomk2 = name
+            }
+            3 -> {
+                _coefName3.value = name
+                reference.nomk3 = name
+            }
+            4 -> {
+                _coefName4.value = name
+                reference.nomk4 = name
+            }
+            5 -> {
+                _coefName5.value = name
+                reference.nomk5 = name
+            }
+        }
+        _currentReference.value = reference
+    }
+
+    /**
+     * Ajoute un nouveau coefficient à un groupe
+     *
+     * @param groupIndex L'index du groupe (1-5)
+     */
+    fun addCoef(groupIndex: Int) {
+        when (groupIndex) {
+            1 -> {
+                val currentList = _coefList1.value.toMutableList()
+                currentList.add(CoefP(description = "Nouveau", coef = 1.0f, groupUUID = 0))
+                _coefList1.value = currentList
+            }
+            2 -> {
+                val currentList = _coefList2.value.toMutableList()
+                currentList.add(CoefP(description = "Nouveau", coef = 1.0f, groupUUID = 1))
+                _coefList2.value = currentList
+            }
+            3 -> {
+                val currentList = _coefList3.value.toMutableList()
+                currentList.add(CoefP(description = "Nouveau", coef = 1.0f, groupUUID = 2))
+                _coefList3.value = currentList
+            }
+            4 -> {
+                val currentList = _coefList4.value.toMutableList()
+                currentList.add(CoefP(description = "Nouveau", coef = 1.0f, groupUUID = 3))
+                _coefList4.value = currentList
+            }
+            5 -> {
+                val currentList = _coefList5.value.toMutableList()
+                currentList.add(CoefP(description = "Nouveau", coef = 1.0f, groupUUID = 4))
+                _coefList5.value = currentList
+            }
+        }
+    }
+
+    /**
+     * Supprime un coefficient d'un groupe
+     *
+     * @param groupIndex L'index du groupe (1-5)
+     * @param coefIndex L'index du coefficient à supprimer
+     */
+    fun removeCoef(groupIndex: Int, coefIndex: Int) {
+        when (groupIndex) {
+            1 -> {
+                val currentList = _coefList1.value.toMutableList()
+                if (currentList.size > 1 && coefIndex >= 0 && coefIndex < currentList.size) {
+                    currentList.removeAt(coefIndex)
+                    _coefList1.value = currentList
+                }
+            }
+            2 -> {
+                val currentList = _coefList2.value.toMutableList()
+                if (currentList.size > 1 && coefIndex >= 0 && coefIndex < currentList.size) {
+                    currentList.removeAt(coefIndex)
+                    _coefList2.value = currentList
+                }
+            }
+            3 -> {
+                val currentList = _coefList3.value.toMutableList()
+                if (currentList.size > 1 && coefIndex >= 0 && coefIndex < currentList.size) {
+                    currentList.removeAt(coefIndex)
+                    _coefList3.value = currentList
+                }
+            }
+            4 -> {
+                val currentList = _coefList4.value.toMutableList()
+                if (currentList.size > 1 && coefIndex >= 0 && coefIndex < currentList.size) {
+                    currentList.removeAt(coefIndex)
+                    _coefList4.value = currentList
+                }
+            }
+            5 -> {
+                val currentList = _coefList5.value.toMutableList()
+                if (currentList.size > 1 && coefIndex >= 0 && coefIndex < currentList.size) {
+                    currentList.removeAt(coefIndex)
+                    _coefList5.value = currentList
+                }
+            }
+        }
+    }
+
+    /**
+     * Met à jour la description d'un coefficient
+     *
+     * @param groupIndex L'index du groupe (1-5)
+     * @param coefIndex L'index du coefficient à mettre à jour
+     * @param description La nouvelle description
+     */
+    fun updateCoefDescription(groupIndex: Int, coefIndex: Int, description: String) {
+        when (groupIndex) {
+            1 -> {
+                val currentList = _coefList1.value.toMutableList()
+                if (coefIndex >= 0 && coefIndex < currentList.size) {
+                    val coef = currentList[coefIndex]
+                    currentList[coefIndex] = coef.copy(description = description)
+                    _coefList1.value = currentList
+                }
+            }
+            2 -> {
+                val currentList = _coefList2.value.toMutableList()
+                if (coefIndex >= 0 && coefIndex < currentList.size) {
+                    val coef = currentList[coefIndex]
+                    currentList[coefIndex] = coef.copy(description = description)
+                    _coefList2.value = currentList
+                }
+            }
+            3 -> {
+                val currentList = _coefList3.value.toMutableList()
+                if (coefIndex >= 0 && coefIndex < currentList.size) {
+                    val coef = currentList[coefIndex]
+                    currentList[coefIndex] = coef.copy(description = description)
+                    _coefList3.value = currentList
+                }
+            }
+            4 -> {
+                val currentList = _coefList4.value.toMutableList()
+                if (coefIndex >= 0 && coefIndex < currentList.size) {
+                    val coef = currentList[coefIndex]
+                    currentList[coefIndex] = coef.copy(description = description)
+                    _coefList4.value = currentList
+                }
+            }
+            5 -> {
+                val currentList = _coefList5.value.toMutableList()
+                if (coefIndex >= 0 && coefIndex < currentList.size) {
+                    val coef = currentList[coefIndex]
+                    currentList[coefIndex] = coef.copy(description = description)
+                    _coefList5.value = currentList
+                }
+            }
+        }
+    }
+
+    /**
+     * Met à jour la valeur d'un coefficient
+     *
+     * @param groupIndex L'index du groupe (1-5)
+     * @param coefIndex L'index du coefficient à mettre à jour
+     * @param value La nouvelle valeur
+     */
+    fun updateCoefValue(groupIndex: Int, coefIndex: Int, value: Float) {
+        when (groupIndex) {
+            1 -> {
+                val currentList = _coefList1.value.toMutableList()
+                if (coefIndex >= 0 && coefIndex < currentList.size) {
+                    val coef = currentList[coefIndex]
+                    currentList[coefIndex] = coef.copy(coef = value)
+                    _coefList1.value = currentList
+                }
+            }
+            2 -> {
+                val currentList = _coefList2.value.toMutableList()
+                if (coefIndex >= 0 && coefIndex < currentList.size) {
+                    val coef = currentList[coefIndex]
+                    currentList[coefIndex] = coef.copy(coef = value)
+                    _coefList2.value = currentList
+                }
+            }
+            3 -> {
+                val currentList = _coefList3.value.toMutableList()
+                if (coefIndex >= 0 && coefIndex < currentList.size) {
+                    val coef = currentList[coefIndex]
+                    currentList[coefIndex] = coef.copy(coef = value)
+                    _coefList3.value = currentList
+                }
+            }
+            4 -> {
+                val currentList = _coefList4.value.toMutableList()
+                if (coefIndex >= 0 && coefIndex < currentList.size) {
+                    val coef = currentList[coefIndex]
+                    currentList[coefIndex] = coef.copy(coef = value)
+                    _coefList4.value = currentList
+                }
+            }
+            5 -> {
+                val currentList = _coefList5.value.toMutableList()
+                if (coefIndex >= 0 && coefIndex < currentList.size) {
+                    val coef = currentList[coefIndex]
+                    currentList[coefIndex] = coef.copy(coef = value)
+                    _coefList5.value = currentList
+                }
+            }
+        }
+    }
+
+    /** Applique les coefficients à la référence actuelle avant la sauvegarde */
+    fun applyCoefficientsToReference() {
+        val reference = _currentReference.value
+
+        // Accès aux propriétés privées via la réflexion
+        try {
+            val modk1Field = ReferenceEv::class.java.getDeclaredField("modk1")
+            modk1Field.isAccessible = true
+            val modk1 = modk1Field.get(reference) as ArrayList<CoefP>
+            modk1.clear()
+            modk1.addAll(_coefList1.value)
+
+            val modk2Field = ReferenceEv::class.java.getDeclaredField("modk2")
+            modk2Field.isAccessible = true
+            val modk2 = modk2Field.get(reference) as ArrayList<CoefP>
+            modk2.clear()
+            modk2.addAll(_coefList2.value)
+
+            val modk3Field = ReferenceEv::class.java.getDeclaredField("modk3")
+            modk3Field.isAccessible = true
+            val modk3 = modk3Field.get(reference) as ArrayList<CoefP>
+            modk3.clear()
+            modk3.addAll(_coefList3.value)
+
+            val modk4Field = ReferenceEv::class.java.getDeclaredField("modk4")
+            modk4Field.isAccessible = true
+            val modk4 = modk4Field.get(reference) as ArrayList<CoefP>
+            modk4.clear()
+            modk4.addAll(_coefList4.value)
+
+            val modk5Field = ReferenceEv::class.java.getDeclaredField("modk5")
+            modk5Field.isAccessible = true
+            val modk5 = modk5Field.get(reference) as ArrayList<CoefP>
+            modk5.clear()
+            modk5.addAll(_coefList5.value)
+        } catch (e: Exception) {
+            println("Erreur lors de l'application des coefficients: ${e.message}")
         }
     }
 
@@ -238,6 +609,9 @@ class NewReferenceEvViewModel(
             return
         }
 
+        // Appliquer les coefficients à la référence avant la sauvegarde
+        applyCoefficientsToReference()
+
         coroutineScope.launch {
             try {
                 val success =
@@ -293,16 +667,14 @@ class NewReferenceEvViewModel(
                 val success = repository.update(reference)
                 if (success) {
                     _currentReference.value = reference
-                    _operationSuccess.value = true
+                    // Ne pas définir _operationSuccess à true pour éviter de quitter la vue
                     _errorMessage.value = null
                 } else {
                     _errorMessage.value =
                             "Erreur lors de la mise à jour de l'équation de poids corporel"
-                    _operationSuccess.value = false
                 }
             } catch (e: Exception) {
                 _errorMessage.value = "Erreur: ${e.message}"
-                _operationSuccess.value = false
             } finally {
                 _isLoading.value = false
             }
@@ -323,16 +695,14 @@ class NewReferenceEvViewModel(
                 val success = repository.update(reference)
                 if (success) {
                     _currentReference.value = reference
-                    _operationSuccess.value = true
+                    // Ne pas définir _operationSuccess à true pour éviter de quitter la vue
                     _errorMessage.value = null
                 } else {
                     _errorMessage.value =
                             "Erreur lors de la mise à jour de l'équation de besoin énergétique basal"
-                    _operationSuccess.value = false
                 }
             } catch (e: Exception) {
                 _errorMessage.value = "Erreur: ${e.message}"
-                _operationSuccess.value = false
             } finally {
                 _isLoading.value = false
             }
@@ -353,16 +723,14 @@ class NewReferenceEvViewModel(
                 val success = repository.update(reference)
                 if (success) {
                     _currentReference.value = reference
-                    _operationSuccess.value = true
+                    // Ne pas définir _operationSuccess à true pour éviter de quitter la vue
                     _errorMessage.value = null
                 } else {
                     _errorMessage.value =
                             "Erreur lors de la mise à jour de l'équation d'énergie digestible pour aliments composés"
-                    _operationSuccess.value = false
                 }
             } catch (e: Exception) {
                 _errorMessage.value = "Erreur: ${e.message}"
-                _operationSuccess.value = false
             } finally {
                 _isLoading.value = false
             }
@@ -383,16 +751,14 @@ class NewReferenceEvViewModel(
                 val success = repository.update(reference)
                 if (success) {
                     _currentReference.value = reference
-                    _operationSuccess.value = true
+                    // Ne pas définir _operationSuccess à true pour éviter de quitter la vue
                     _errorMessage.value = null
                 } else {
                     _errorMessage.value =
                             "Erreur lors de la mise à jour de l'équation d'énergie digestible pour aliments bruts"
-                    _operationSuccess.value = false
                 }
             } catch (e: Exception) {
                 _errorMessage.value = "Erreur: ${e.message}"
-                _operationSuccess.value = false
             } finally {
                 _isLoading.value = false
             }
