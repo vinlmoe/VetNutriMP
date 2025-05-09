@@ -343,14 +343,27 @@ class DatabaseBiblioRefRepository(private val biblioRefDao: BiblioRefDao) : Bibl
 
     /** Conversion d'une entité de base de données en objet du domaine */
     private fun BiblioRefEntity.toDomain(): BiblioRef {
+        // Extraire les informations de completeRef pour reconstituer les propriétés de BiblioRef
+        val refParts = this.completeRef.split(". ", limit = 3)
+        val datePart = this.year.toString()
+        val journalPart = if (refParts.size > 2) refParts[2].substringBefore(", ") else ""
+        val doiPart =
+                if (refParts.size > 2 && refParts[2].contains("doi:"))
+                        refParts[2].substringAfter("doi:").trim()
+                else ""
+
         return BiblioRef(
-                uuid = uuid,
-                firstAuthor = firstAuthor,
-                year = year,
-                completeRef = completeRef,
-                comments = comments,
-                bibtex = bibtex,
-                consistent = consistent
+                uuid = this.uuid,
+                nom = "Ref-${this.firstAuthor}-${this.year}",
+                authors = this.firstAuthor,
+                title = if (refParts.size > 1) refParts[1] else "",
+                journal = journalPart,
+                date = datePart,
+                doi = doiPart,
+                url = "",
+                comments = this.comments,
+                bibtex = this.bibtex,
+                consistent = this.consistent
         )
     }
 

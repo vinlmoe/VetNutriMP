@@ -13,191 +13,166 @@ import fr.vetbrain.vetnutri_mp.Enumer.Reflevel
 import fr.vetbrain.vetnutri_mp.Enumer.StadePhysio
 import fr.vetbrain.vetnutri_mp.Enumer.UnitEnum
 import fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum
-import kotlin.reflect.jvm.isAccessible
-
-/** Convertit une entité ReferenceEvEntity en objet du domaine ReferenceEv */
-fun ReferenceEvEntity.toDomain(): ReferenceEv {
-    println("DEBUG ReferenceEvMappers: Conversion de ReferenceEvEntity en ReferenceEv")
-    println("DEBUG ReferenceEvMappers: UUID: $uuid, Nom: $nom")
-
-    val reference =
-            ReferenceEv(
-                    uuid = uuid,
-                    nom = nom,
-                    description = description,
-                    maladie = maladie,
-                    nomMaladie = nomMaladie,
-                    nomEnergie = nomEnergie,
-                    consistent = consistent,
-                    espece =
-                            try {
-                                Espece.valueOf(espece)
-                            } catch (e: Exception) {
-                                Espece.CHIEN
-                            },
-                    stadePhysio =
-                            try {
-                                StadePhysio.valueOf(stadePhysio)
-                            } catch (e: Exception) {
-                                StadePhysio.ADULTE
-                            }
-            )
-
-    // Ajouter les noms des coefficients
-    reference.nomk1 = nomk1
-    reference.nomk2 = nomk2
-    reference.nomk3 = nomk3
-    reference.nomk4 = nomk4
-    reference.nomk5 = nomk5
-
-    return reference
-}
-
-/** Convertit un objet du domaine ReferenceEv en entité ReferenceEvEntity */
-fun ReferenceEv.toEntity(): ReferenceEvEntity {
-    println("DEBUG ReferenceEvMappers: Conversion de ReferenceEv en ReferenceEvEntity")
-    println("DEBUG ReferenceEvMappers: UUID: $uuid, Nom: $nom")
-
-    return ReferenceEvEntity(
-            uuid = uuid,
-            nom = nom,
-            description = description,
-            maladie = maladie,
-            nomMaladie = nomMaladie,
-            nomEnergie = nomEnergie,
-            consistent = consistent,
-            espece = espece.name,
-            stadePhysio = stadePhysio.name,
-            nomk1 = nomk1,
-            nomk2 = nomk2,
-            nomk3 = nomk3,
-            nomk4 = nomk4,
-            nomk5 = nomk5,
-            equationBW = equationBW?.uuid,
-            equationBEE = equationBEE?.uuid,
-            equationDEcom = equationDEcom?.uuid,
-            equationDEraw = equationDEraw?.uuid,
-            equationME = equationME?.uuid
-    )
-}
-
-/** Convertit un CoefP en CoefficientEntity */
-fun CoefP.toEntity(referenceId: String): CoefficientEntity {
-    return CoefficientEntity(
-            uuid = uuid ?: java.util.UUID.randomUUID().toString(),
-            referenceId = referenceId,
-            groupUUID = groupUUID,
-            description = description,
-            coef = coef
-    )
-}
-
-/** Convertit un CoefficientEntity en CoefP */
-fun CoefficientEntity.toDomain(): CoefP {
-    return CoefP(uuid = uuid, description = description, coef = coef, groupUUID = groupUUID)
-}
-
-/** Convertit une entité NutrientReferenceEntity en Nut4Ref pour le domaine */
-fun NutrientReferenceEntity.toDomain(biblio: BiblioRef? = null): Nut4Ref {
-    return Nut4Ref(
-            nutrient =
-                    try {
-                        Nutrient.valueOf(nutrient)
-                    } catch (e: Exception) {
-                        Nutrient.ENERGIE
-                    },
-            niveauRelatif =
-                    try {
-                        Reflevel.valueOf(niveauRef)
-                    } catch (e: Exception) {
-                        Reflevel.MIN
-                    },
-            quantite = quantite,
-            unite =
-                    try {
-                        UnitEnum.valueOf(unite)
-                    } catch (e: Exception) {
-                        UnitEnum.KCAL
-                    },
-            uniteReq =
-                    try {
-                        UnitReqEnum.valueOf(uniteReq)
-                    } catch (e: Exception) {
-                        UnitReqEnum.KCAL
-                    },
-            biblio = biblio ?: BiblioRef()
-    )
-}
-
-/** Convertit un Nut4Ref en NutrientReferenceEntity */
-fun Nut4Ref.toEntity(referenceId: String): NutrientReferenceEntity {
-    return NutrientReferenceEntity(
-            uuid = java.util.UUID.randomUUID().toString(),
-            referenceId = referenceId,
-            nutrient = nutrient.name,
-            niveauRef = niveauRelatif.name,
-            quantite = quantite,
-            unite = unite.name,
-            uniteReq = uniteReq.name,
-            biblioRefId = biblio.uuid.takeIf { it.isNotBlank() }
-    )
-}
 
 /**
- * Récupère la liste des coefficients d'un groupe spécifique depuis une ReferenceEv en utilisant la
- * réflexion
+ * Méthodes d'extension pour la conversion entre les objets de domaine et les entités de base de
+ * données concernant les références nutritionnelles
  */
-fun ReferenceEv.getCoefficientsForGroup(groupId: Int): List<CoefP> {
-    val field =
-            when (groupId) {
-                0 -> "modk1"
-                1 -> "modk2"
-                2 -> "modk3"
-                3 -> "modk4"
-                4 -> "modk5"
-                else -> return emptyList()
-            }
+object ReferenceEvMappers {
 
-    try {
-        val property = ReferenceEv::class.java.getDeclaredField(field)
-        property.isAccessible = true
-        @Suppress("UNCHECKED_CAST") return (property.get(this) as? ArrayList<CoefP>) ?: emptyList()
-    } catch (e: Exception) {
-        println(
-                "DEBUG ReferenceEvMappers: Erreur lors de la récupération des coefficients: ${e.message}"
+    /**
+     * Convertit un objet ReferenceEv en ReferenceEvEntity pour la persistance
+     * @return L'entité correspondante
+     */
+    fun ReferenceEv.toEntity(): ReferenceEvEntity {
+        return ReferenceEvEntity(
+                uuid = this.uuid,
+                nom = this.nom,
+                description = this.description,
+                maladie = this.maladie,
+                nomMaladie = this.nomMaladie,
+                nomEnergie = this.nomEnergie,
+                // Convertir Boolean en Int pour la persistance
+                consistent = if (this.consistent) 1 else 0,
+                // Convertir les énumérations en String
+                espece = this.espece.name,
+                stadePhysio = this.stadePhysio.name,
+                // Noms des coefficients modificateurs
+                nomk1 = this.nomk1,
+                nomk2 = this.nomk2,
+                nomk3 = this.nomk3,
+                nomk4 = this.nomk4,
+                nomk5 = this.nomk5,
+                // Références aux équations (UUIDs)
+                equationBW = this.equationBW?.uuid,
+                equationBEE = this.equationBEE?.uuid,
+                equationDEcom = this.equationDEcom?.uuid,
+                equationDEraw = this.equationDEraw?.uuid,
+                equationME = this.equationME?.uuid
         )
-        return emptyList()
     }
-}
 
-/**
- * Met à jour les coefficients d'un groupe spécifique dans une ReferenceEv en utilisant la réflexion
- */
-fun ReferenceEv.updateCoefficientsForGroup(groupId: Int, coefficients: List<CoefP>): Boolean {
-    val field =
-            when (groupId) {
-                0 -> "modk1"
-                1 -> "modk2"
-                2 -> "modk3"
-                3 -> "modk4"
-                4 -> "modk5"
-                else -> return false
-            }
-
-    try {
-        val property = ReferenceEv::class.java.getDeclaredField(field)
-        property.isAccessible = true
-
-        // Créer une nouvelle ArrayList avec les coefficients
-        val newList = ArrayList<CoefP>(coefficients)
-
-        // Mettre à jour la propriété
-        property.set(this, newList)
-        return true
-    } catch (e: Exception) {
-        println(
-                "DEBUG ReferenceEvMappers: Erreur lors de la mise à jour des coefficients: ${e.message}"
+    /**
+     * Convertit un objet Nut4Ref en NutrientReferenceEntity pour la persistance
+     * @param referenceId L'identifiant de la référence parente
+     * @return L'entité correspondante
+     */
+    fun Nut4Ref.toEntity(referenceId: String): NutrientReferenceEntity {
+        return NutrientReferenceEntity(
+                uuid = this.uuid,
+                referenceId = referenceId,
+                nutrient = this.nutrient.name,
+                niveauRef = this.niveauRef.name,
+                quantite = this.quantite,
+                unite = this.unite.name,
+                uniteReq = this.uniteReq.name,
+                biblioRefId = this.citation?.uuid
         )
-        return false
+    }
+
+    /**
+     * Convertit un objet CoefP en CoefficientEntity pour la persistance
+     * @param referenceId L'identifiant de la référence parente
+     * @param groupId L'identifiant du groupe (0-4 pour les groupes modk1-modk5)
+     * @return L'entité correspondante
+     */
+    fun CoefP.toEntity(referenceId: String, groupId: Int): CoefficientEntity {
+        return CoefficientEntity(
+                uuid = this.uuid,
+                referenceId = referenceId,
+                groupUUID = groupId,
+                description = this.description,
+                coef = this.coef
+        )
+    }
+
+    /**
+     * Convertit une entité ReferenceEvEntity en objet ReferenceEv Note: Cette méthode ne récupère
+     * pas les relations (Nut4Ref, CoefP, Equation), elles doivent être chargées séparément.
+     * @return L'objet de domaine correspondant
+     */
+    fun ReferenceEvEntity.toDomain(): ReferenceEv {
+        return ReferenceEv(
+                        uuid = this.uuid,
+                        nom = this.nom,
+                        description = this.description,
+                        maladie = this.maladie,
+                        nomMaladie = this.nomMaladie,
+                        nomEnergie = this.nomEnergie,
+                        // Convertir Int en Boolean lors du chargement
+                        consistent = this.consistent == 1,
+                        // Convertir String en énumération
+                        espece =
+                                try {
+                                    Espece.valueOf(this.espece)
+                                } catch (e: Exception) {
+                                    Espece.CHIEN
+                                },
+                        stadePhysio =
+                                try {
+                                    StadePhysio.valueOf(this.stadePhysio)
+                                } catch (e: Exception) {
+                                    StadePhysio.ADULTE
+                                }
+                )
+                .apply {
+                    // Définir les noms des coefficients
+                    this.nomk1 = this@toDomain.nomk1
+                    this.nomk2 = this@toDomain.nomk2
+                    this.nomk3 = this@toDomain.nomk3
+                    this.nomk4 = this@toDomain.nomk4
+                    this.nomk5 = this@toDomain.nomk5
+                    // Les équations et autres relations doivent être chargées séparément
+                }
+    }
+
+    /**
+     * Convertit une entité NutrientReferenceEntity en objet Nut4Ref
+     * @param biblioRef La référence bibliographique associée (peut être null)
+     * @return L'objet de domaine correspondant
+     */
+    fun NutrientReferenceEntity.toDomain(biblioRef: BiblioRef? = null): Nut4Ref {
+        return Nut4Ref(
+                uuid = this.uuid,
+                nutrient =
+                        try {
+                            Nutrient.valueOf(this.nutrient)
+                        } catch (e: Exception) {
+                            throw IllegalArgumentException("Nutrient inconnu: ${this.nutrient}")
+                        },
+                niveauRef =
+                        try {
+                            Reflevel.valueOf(this.niveauRef)
+                        } catch (e: Exception) {
+                            Reflevel.MIN
+                        },
+                quantite = this.quantite,
+                unite =
+                        try {
+                            UnitEnum.valueOf(this.unite)
+                        } catch (e: Exception) {
+                            UnitEnum.NO
+                        },
+                uniteReq =
+                        try {
+                            UnitReqEnum.valueOf(this.uniteReq)
+                        } catch (e: Exception) {
+                            UnitReqEnum.MS
+                        },
+                citation = biblioRef
+        )
+    }
+
+    /**
+     * Convertit une entité CoefficientEntity en objet CoefP
+     * @return L'objet de domaine correspondant
+     */
+    fun CoefficientEntity.toDomain(): CoefP {
+        return CoefP(
+                uuid = this.uuid,
+                description = this.description,
+                coef = this.coef,
+                groupUUID = this.groupUUID
+        )
     }
 }

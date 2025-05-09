@@ -137,20 +137,27 @@ class NewReferenceEvViewModel(
         }
 
         coroutineScope.launch {
-            val reference = repository.getById(referenceId)
-            if (reference != null) {
-                _currentReference.value = reference
-                _isEditMode.value = true
-                updateDefinedNutrients(reference)
+            try {
+                val reference = repository.getReferenceById(referenceId)
+                if (reference != null) {
+                    _currentReference.value = reference
+                    _isEditMode.value = true
+                    updateDefinedNutrients(reference)
 
-                // Mise à jour des coefficients à partir de la référence
-                loadCoefficientsFromReference(reference)
-            } else {
-                _errorMessage.value = "Référence non trouvée"
+                    // Mise à jour des coefficients à partir de la référence
+                    loadCoefficientsFromReference(reference)
+                } else {
+                    _errorMessage.value = "Référence non trouvée"
+                    _currentReference.value = ReferenceEv()
+                    _isEditMode.value = false
+
+                    // Initialisation des coefficients par défaut
+                    initCoefficients()
+                }
+            } catch (e: Exception) {
+                _errorMessage.value = "Erreur lors du chargement de la référence: ${e.message}"
                 _currentReference.value = ReferenceEv()
                 _isEditMode.value = false
-
-                // Initialisation des coefficients par défaut
                 initCoefficients()
             }
             loadEquations()
@@ -601,36 +608,39 @@ class NewReferenceEvViewModel(
         _currentReference.value = reference.copy()
     }
 
-    /** Sauvegarde la référence dans le repository */
+    /** Sauvegarde la référence actuelle */
     fun saveReference() {
-        val reference = _currentReference.value
-        if (reference.nom.isBlank()) {
-            _errorMessage.value = "Le nom de la référence est requis"
+        val currentRef = _currentReference.value
+        if (currentRef.nom.isBlank()) {
+            _errorMessage.value = "Le nom de la référence est obligatoire"
             return
         }
 
-        // Appliquer les coefficients à la référence avant la sauvegarde
-        applyCoefficientsToReference()
+        // Mise à jour des coefficients dans la référence avant sauvegarde
+        updateReferenceCoefficients()
 
         coroutineScope.launch {
+            _isLoading.value = true
             try {
                 val success =
                         if (_isEditMode.value) {
-                            repository.update(reference)
+                            repository.updateReference(currentRef)
                         } else {
-                            repository.create(reference)
+                            repository.insertReference(currentRef)
                         }
 
                 if (success) {
                     _operationSuccess.value = true
                     _errorMessage.value = null
                 } else {
-                    _errorMessage.value = "Erreur lors de la sauvegarde"
+                    _errorMessage.value = "Erreur lors de la sauvegarde de la référence"
                     _operationSuccess.value = false
                 }
             } catch (e: Exception) {
-                _errorMessage.value = "Erreur lors de la sauvegarde: ${e.message}"
+                _errorMessage.value = "Exception: ${e.message}"
                 _operationSuccess.value = false
+            } finally {
+                _isLoading.value = false
             }
         }
     }

@@ -455,7 +455,6 @@ data class EquationEntity(
 )
 
 /** Entité pour stocker les références nutritionnelles en base de données */
-@Serializable
 @Entity(tableName = "REFERENCE_EV")
 data class ReferenceEvEntity(
         @PrimaryKey val uuid: String,
@@ -464,9 +463,9 @@ data class ReferenceEvEntity(
         val maladie: Boolean = false,
         val nomMaladie: String = "",
         val nomEnergie: String = "",
-        val consistent: Int = 0,
-        val espece: String,
-        val stadePhysio: String,
+        val consistent: Int = 0, // Stocké comme Int (0/1) pour compatibilité DB
+        val espece: String, // Nom de l'énumération Espece stocké comme String
+        val stadePhysio: String, // Nom de l'énumération StadePhysio stocké comme String
 
         // Noms des coefficients modificateurs
         val nomk1: String = "",
@@ -484,7 +483,6 @@ data class ReferenceEvEntity(
 )
 
 /** Entité pour stocker les coefficients modificateurs des références */
-@Serializable
 @Entity(
         tableName = "COEFFICIENTS",
         foreignKeys =
@@ -506,7 +504,6 @@ data class CoefficientEntity(
 )
 
 /** Entité pour stocker les valeurs nutritionnelles des références */
-@Serializable
 @Entity(
         tableName = "NUTRIENT_REFERENCES",
         foreignKeys =

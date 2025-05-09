@@ -30,15 +30,15 @@ data class NutrientQuantity(var value: Float, val unite: String) {
         println("DEBUG NutrientQuantity: Conversion de $value $unite vers ${targetUnit.name}")
         return when (targetUnit) {
             UnitEnum.BUmg -> value * 1000 // g -> mg
-            UnitEnum.BUug -> value * 1000000 // g -> μg
+            UnitEnum.BUmu -> value * 1000000 // g -> μg
             UnitEnum.BUg -> value // g -> g (pas de conversion)
-            UnitEnum.BUml -> value // ml -> ml (pas de conversion)
-            UnitEnum.IUml -> value // UI/ml -> UI/ml (pas de conversion)
-            UnitEnum.IUg -> value // UI/g -> UI/g (pas de conversion)
+            UnitEnum.AUui -> value // UI -> UI (pas de conversion)
+            UnitEnum.AUmu -> value // μg -> μg (pas de conversion)
+            UnitEnum.DUui -> value // UI -> UI (pas de conversion)
+            UnitEnum.DUmu -> value // μg -> μg (pas de conversion)
+            UnitEnum.EUui -> value // UI -> UI (pas de conversion)
+            UnitEnum.EUmg -> value // mg -> mg (pas de conversion)
             UnitEnum.KCAL -> value // kcal -> kcal (pas de conversion)
-            UnitEnum.KJ -> value * 4.184F // kcal -> kJ
-            UnitEnum.BUkg -> value / 1000 // g -> kg
-            UnitEnum.POURCENT -> value // % -> % (pas de conversion)
             UnitEnum.NO -> value // pas de conversion
         }
     }
@@ -66,12 +66,13 @@ data class NutrientQuantity(var value: Float, val unite: String) {
             else -> "${round(value).toInt()}"
         }
     }
+}
 
-    companion object {
-        /** Crée une instance de NutrientQuantity avec des valeurs par défaut sécurisées */
-        fun createDefault(): NutrientQuantity {
-            println("DEBUG NutrientQuantity: Création d'une instance par défaut")
-            return NutrientQuantity(0.0f, "g")
-        }
+/** Object utilitaire pour la création d'instances de NutrientQuantity */
+object NutrientQuantityFactory {
+    /** Crée une instance de NutrientQuantity avec des valeurs par défaut sécurisées */
+    fun createDefault(): NutrientQuantity {
+        println("DEBUG NutrientQuantity: Création d'une instance par défaut")
+        return NutrientQuantity(0.0f, "g")
     }
 }

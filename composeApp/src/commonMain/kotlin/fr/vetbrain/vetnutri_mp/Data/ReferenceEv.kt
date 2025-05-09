@@ -13,6 +13,16 @@ import kotlin.collections.HashMap
 /**
  * Classe représentant une référence évaluée basée sur la classe ReferenceEv du projet Java original
  * Cette classe gère les références nutritionnelles pour les différents nutriments
+ *
+ * @property uuid Identifiant unique de la référence
+ * @property nom Nom de la référence
+ * @property description Description de la référence
+ * @property maladie Indique si la référence concerne une maladie
+ * @property nomMaladie Nom de la maladie si applicable
+ * @property nomEnergie Nom de l'énergie
+ * @property consistent Indique si la référence est consistante (stocké comme Int en base, 1=true, 0=false)
+ * @property espece Espèce concernée par la référence
+ * @property stadePhysio Stade physiologique concerné par la référence
  */
 data class ReferenceEv(
         val uuid: String = UUID.randomUUID().toString(),
@@ -21,7 +31,7 @@ data class ReferenceEv(
         var maladie: Boolean = false,
         var nomMaladie: String = "",
         var nomEnergie: String = "",
-        var consistent: Int = 0,
+        var consistent: Boolean = false,
         var espece: Espece = Espece.CHIEN,
         var stadePhysio: StadePhysio = StadePhysio.ADULTE
 ) {
@@ -93,11 +103,11 @@ data class ReferenceEv(
                 obtenirMap(niveauRef)[nutrient] =
                         Nut4Ref(
                                 nutrient = nutrient,
-                                niveauRelatif = niveauRef,
+                                niveauRef = niveauRef,
                                 quantite = valeur,
                                 unite = nutrient.ue,
                                 uniteReq = uniteReq,
-                                biblio = biblio
+                                citation = biblio
                         )
         }
 
@@ -146,7 +156,7 @@ data class ReferenceEv(
          */
         fun obtenirBiblioNutriment(nutrient: Nutrient, niveauRef: Reflevel): BiblioRef {
                 return if (contientNutriment(nutrient, niveauRef)) {
-                        obtenirMap(niveauRef)[nutrient]?.biblio ?: BiblioRef()
+                        obtenirMap(niveauRef)[nutrient]?.citation ?: BiblioRef()
                 } else {
                         BiblioRef()
                 }
@@ -196,19 +206,19 @@ data class ReferenceEv(
 
                 // Collecte des références des différentes maps
                 for (ref in refMapMin.values) {
-                        ajouterBiblioAuTableau(resultat, ref.biblio)
+                        ajouterBiblioAuTableau(resultat, ref.citation)
                 }
 
                 for (ref in refMapOMin.values) {
-                        ajouterBiblioAuTableau(resultat, ref.biblio)
+                        ajouterBiblioAuTableau(resultat, ref.citation)
                 }
 
                 for (ref in refMapMax.values) {
-                        ajouterBiblioAuTableau(resultat, ref.biblio)
+                        ajouterBiblioAuTableau(resultat, ref.citation)
                 }
 
                 for (ref in refMapOMax.values) {
-                        ajouterBiblioAuTableau(resultat, ref.biblio)
+                        ajouterBiblioAuTableau(resultat, ref.citation)
                 }
 
                 // Ajout des références des équations
@@ -256,17 +266,69 @@ data class ReferenceEv(
                 return resultat
         }
 
+        /**
+         * Récupère tous les nutriments définis pour cette référence
+         * @return Une liste de Nut4Ref contenant tous les nutriments définis
+         */
+        fun obtenirTousLesNutriments(): List<Nut4Ref> {
+                val result = ArrayList<Nut4Ref>()
+                result.addAll(refMapMin.values)
+                result.addAll(refMapMax.values)
+                result.addAll(refMapOMin.values)
+                result.addAll(refMapOMax.values)
+                return result
+        }
+
+        /**
+         * Récupère tous les coefficients pour un groupe donné
+         * @param groupId L'identifiant du groupe (0-4)
+         * @return La liste des coefficients du groupe
+         */
+        fun getCoefficientsForGroup(groupId: Int): List<CoefP> {
+                return when (groupId) {
+                        0 -> modk1.toList()
+                        1 -> modk2.toList()
+                        2 -> modk3.toList()
+                        3 -> modk4.toList()
+                        4 -> modk5.toList()
+                        else -> emptyList()
+                }
+        }
+
+        /**
+         * Met à jour les coefficients pour un groupe donné
+         * @param groupId L'identifiant du groupe (0-4)
+         * @param coefficients La nouvelle liste de coefficients
+         * @return true si la mise à jour a réussi, false sinon
+         */
+        fun updateCoefficientsForGroup(groupId: Int, coefficients: List<CoefP>): Boolean {
+                when (groupId) {
+                        0 -> {
+                                modk1.clear()
+                                modk1.addAll(coefficients)
+                        }
+                        1 -> {
+                                modk2.clear()
+                                modk2.addAll(coefficients)
+                        }
+                        2 -> {
+                                modk3.clear()
+                                modk3.addAll(coefficients)
+                        }
+                        3 -> {
+                                modk4.clear()
+                                modk4.addAll(coefficients)
+                        }
+                        4 -> {
+                                modk5.clear()
+                                modk5.addAll(coefficients)
+                        }
+                        else -> return false
+                }
+                return true
+        }
+
         override fun toString(): String {
                 return nom
         }
-
-        /** Classe interne représentant une référence nutritionnelle */
-        inner class Nut4Ref(
-                val nutrient: Nutrient,
-                val niveauRelatif: Reflevel,
-                val quantite: Float,
-                val unite: UnitEnum,
-                val uniteReq: UnitReqEnum,
-                val biblio: BiblioRef
-        )
 }
