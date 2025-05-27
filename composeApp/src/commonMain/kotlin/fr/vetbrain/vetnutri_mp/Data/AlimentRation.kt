@@ -1,12 +1,13 @@
 package fr.vetbrain.vetnutri_mp.Data
 
 import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
+import fr.vetbrain.vetnutri_mp.Utils.genUUID
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
 @OptIn(ExperimentalUuidApi::class)
 data class AlimentRation(
-        val uuid: String = Uuid.random().toString(),
+        val uuid: String = genUUID(),
         val uuidUnif: String = "",
         val quantite: Float = 0f,
         val proportion: Float = 0f,

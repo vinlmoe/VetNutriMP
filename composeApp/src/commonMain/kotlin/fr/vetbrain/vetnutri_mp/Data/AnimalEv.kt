@@ -2,24 +2,24 @@ package fr.vetbrain.vetnutri_mp.Data
 
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.Sex
+import fr.vetbrain.vetnutri_mp.Utils.genUUID
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 import kotlinx.datetime.LocalDate
 
-@OptIn(ExperimentalUuidApi::class)
 data class AnimalEv(
-        var uuid: String = Uuid.random().toString(),
-        var nom: String = "",
-        var dead: Boolean = false,
-        var id: String? = null,
-        var sexId: Int = Sex.MALE_ENTIER.id,
-        var specieId: String = Espece.CHIEN.label,
-        var ownerName: String = "",
-        var birthdate: LocalDate? = null,
-        var race: String = "",
-        var summary: String = "",
-        var consultations: MutableList<ConsultationEv> = mutableListOf(),
-        var weightHistory: MutableList<WeightDate> = mutableListOf()
+    var uuid: String = genUUID(),
+    var nom: String = "",
+    var dead: Boolean = false,
+    var id: String? = null,
+    var sexId: Int = Sex.MALE_ENTIER.id,
+    var specieId: String = Espece.CHIEN.label,
+    var ownerName: String = "",
+    var birthdate: LocalDate? = null,
+    var race: String = "",
+    var summary: String = "",
+    var consultations: MutableList<ConsultationEv> = mutableListOf(),
+    var weightHistory: MutableList<WeightDate> = mutableListOf()
 ) {
     fun getSex(): Sex {
         return Sex.values().firstOrNull { it.id == sexId } ?: Sex.MALE_ENTIER

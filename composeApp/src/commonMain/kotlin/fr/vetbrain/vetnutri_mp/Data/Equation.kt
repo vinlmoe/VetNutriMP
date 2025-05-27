@@ -6,6 +6,8 @@ import fr.vetbrain.vetnutri_mp.Enumer.NutrientBaseExt
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientLipid
 import fr.vetbrain.vetnutri_mp.Enumer.VariableKind
 import fr.vetbrain.vetnutri_mp.Utils.ExpressionEvaluator
+import fr.vetbrain.vetnutri_mp.Utils.genUUID
+import fr.vetbrain.vetnutri_mp.Utils.instantNow
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 import kotlinx.serialization.Serializable
@@ -17,7 +19,7 @@ import kotlinx.serialization.Serializable
 @OptIn(ExperimentalUuidApi::class)
 @Serializable
 data class Equation(
-        val uuid: String = Uuid.random().toString(),
+        val uuid: String = genUUID(),
         var description: String = "",
         var equationScript: String = "",
         var bib: BiblioRef = BiblioRef(),
@@ -28,8 +30,8 @@ data class Equation(
         var consistent: Boolean = true,
         var variables: MutableList<VariableKind> = mutableListOf(),
         var correctionFactor: Double = 1.0,
-        var creationDate: Long = System.currentTimeMillis(),
-        var lastUpdate: Long = System.currentTimeMillis()
+        var creationDate: Long = instantNow().toEpochMilliseconds(),
+        var lastUpdate: Long =  instantNow().toEpochMilliseconds()
 ) {
 
         /**

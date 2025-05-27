@@ -6,7 +6,7 @@ import fr.vetbrain.vetnutri_mp.Enumer.Reflevel
 import fr.vetbrain.vetnutri_mp.Enumer.StadePhysio
 import fr.vetbrain.vetnutri_mp.Enumer.UnitEnum
 import fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum
-import java.util.*
+import fr.vetbrain.vetnutri_mp.Utils.genUUID
 import kotlin.collections.ArrayList
 import kotlin.collections.HashMap
 
@@ -15,7 +15,7 @@ import kotlin.collections.HashMap
  * Cette classe gère les références nutritionnelles pour les différents nutriments
  */
 data class ReferenceEv(
-        val uuid: String = UUID.randomUUID().toString(),
+        val uuid: String = genUUID(),
         var nom: String = "",
         var description: String = "",
         var maladie: Boolean = false,
@@ -51,16 +51,7 @@ data class ReferenceEv(
         var nomk4: String = ""
         var nomk5: String = ""
 
-        companion object {
-                /**
-                 * Génère un UUID aléatoire
-                 * @return Un nouvel UUID sous forme de chaîne
-                 */
-                fun generateUUID(): String {
-                        return (System.currentTimeMillis() + (Math.random() * 10000).toInt())
-                                .toString()
-                }
-        }
+
 
         init {
                 // Initialisation des coefficients par défaut
@@ -72,7 +63,7 @@ data class ReferenceEv(
         }
 
         // Constructeur secondaire pour compatibilité
-        constructor(uuid: String? = null) : this(uuid = uuid ?: generateUUID())
+        constructor(uuid: String? = null) : this(uuid = uuid ?: genUUID())
 
         /**
          * Définit la valeur d'un nutriment pour un niveau de référence donné

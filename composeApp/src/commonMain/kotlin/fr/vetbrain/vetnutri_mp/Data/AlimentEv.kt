@@ -4,13 +4,14 @@ import fr.vetbrain.vetnutri_mp.Enumer.*
 import fr.vetbrain.vetnutri_mp.Enumer.AlimIndic
 import fr.vetbrain.vetnutri_mp.Enumer.FoodKind
 import fr.vetbrain.vetnutri_mp.Enumer.GroupAlim
+import fr.vetbrain.vetnutri_mp.Utils.genUUID
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
 /** Classe représentant un aliment évalué Basée sur la classe AlimentEv du projet Java original */
-@OptIn(ExperimentalUuidApi::class)
+
 data class AlimentEv(
-        val uuid: String = Uuid.random().toString(),
+        val uuid: String = genUUID(),
         val group: GroupAlim? = null,
         val typeAliment: FoodKind? = null,
         val ingredients: String? = null,

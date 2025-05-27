@@ -902,6 +902,22 @@ class AnimalDetailViewModel(
     }
 
     /**
+     * Met à jour une ration existante
+     *
+     * @param ration Ration à mettre à jour
+     */
+    fun updateRation(ration: Ration) {
+        // Mettre à jour la ration sélectionnée
+        _selectedRation.value = ration
+        
+        // Mettre à jour la ration dans la consultation
+        updateRationInConsultation(ration)
+        
+        // Relancer l'analyse pour tenir compte des modifications
+        analyserRationSelectionnee()
+    }
+
+    /**
      * Duplique une ration existante et tous ses aliments avec de nouveaux UUID
      *
      * @param ration Ration à dupliquer

@@ -453,3 +453,18 @@ data class EquationEntity(
         val bibRef: String?,
         val variables: String // Stocké en JSON
 )
+
+@Serializable
+@Entity(tableName = "ReferenceEv")
+data class ReferenceEvEntity(
+        @PrimaryKey val uuid: String,
+        val nom: String,
+        val description: String,
+        val maladie: Boolean,
+        val nomMaladie: String,
+        val nomEnergie: String,
+        val consistent: Int,
+        val espece: String,
+        val stadePhysio: String
+
+)

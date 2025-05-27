@@ -2,12 +2,13 @@ package fr.vetbrain.vetnutri_mp.Data
 
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
+import fr.vetbrain.vetnutri_mp.Utils.genUUID
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
 @OptIn(ExperimentalUuidApi::class)
 data class Ration(
-        var uuid: String = Uuid.random().toString(),
+        var uuid: String = genUUID(),
         var idConsult: String = "",
         var name: String = "",
         var coef: Float = 1.0f,
