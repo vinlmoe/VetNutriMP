@@ -191,3 +191,125 @@ interface EquationDao {
     @Query("SELECT * FROM EQUATIONS WHERE specie = :specie")
     suspend fun getEquationsBySpecie(specie: String): List<EquationEntity>
 }
+
+/** DAO pour accéder aux références évaluées dans la base de données */
+@Dao
+interface ReferenceEvDao {
+    @Query("SELECT * FROM REFERENCE_EV") suspend fun getAllReferenceEv(): List<ReferenceEvEntity>
+
+    @Query("SELECT * FROM REFERENCE_EV WHERE uuid = :uuid")
+    suspend fun getReferenceEvById(uuid: String): ReferenceEvEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertReferenceEv(referenceEv: ReferenceEvEntity)
+
+    @Update suspend fun updateReferenceEv(referenceEv: ReferenceEvEntity)
+
+    @Delete suspend fun deleteReferenceEv(referenceEv: ReferenceEvEntity)
+
+    @Query("DELETE FROM REFERENCE_EV WHERE uuid = :uuid")
+    suspend fun deleteReferenceEvById(uuid: String)
+
+    @Query("DELETE FROM REFERENCE_EV") suspend fun deleteAllReferenceEv()
+
+    @Query("SELECT * FROM REFERENCE_EV WHERE espece = :espece")
+    suspend fun getReferenceEvByEspece(espece: String): List<ReferenceEvEntity>
+
+    // Relations avec les équations
+    @Query("SELECT * FROM REFERENCE_EV_EQUATIONS WHERE referenceEvId = :referenceEvId")
+    suspend fun getEquationsForReference(referenceEvId: String): List<ReferenceEvEquationEntity>
+
+    @Query(
+            "SELECT * FROM REFERENCE_EV_EQUATIONS WHERE referenceEvId = :referenceEvId AND equationType = :equationType"
+    )
+    suspend fun getEquationForReferenceByType(
+            referenceEvId: String,
+            equationType: String
+    ): ReferenceEvEquationEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertEquationRelation(relation: ReferenceEvEquationEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertEquationRelations(relations: List<ReferenceEvEquationEntity>)
+
+    @Query("DELETE FROM REFERENCE_EV_EQUATIONS WHERE referenceEvId = :referenceEvId")
+    suspend fun deleteEquationsForReference(referenceEvId: String)
+
+    @Query(
+            "DELETE FROM REFERENCE_EV_EQUATIONS WHERE referenceEvId = :referenceEvId AND equationType = :equationType"
+    )
+    suspend fun deleteEquationForReferenceByType(referenceEvId: String, equationType: String)
+
+    // Relations avec les coefficients
+    @Query("SELECT * FROM REFERENCE_EV_COEFFICIENTS WHERE referenceEvId = :referenceEvId")
+    suspend fun getCoefficientsForReference(
+            referenceEvId: String
+    ): List<ReferenceEvCoefficientEntity>
+
+    @Query(
+            "SELECT * FROM REFERENCE_EV_COEFFICIENTS WHERE referenceEvId = :referenceEvId AND groupType = :groupType"
+    )
+    suspend fun getCoefficientsForReferenceByGroup(
+            referenceEvId: String,
+            groupType: String
+    ): List<ReferenceEvCoefficientEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertCoefficient(coefficient: ReferenceEvCoefficientEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertCoefficients(coefficients: List<ReferenceEvCoefficientEntity>)
+
+    @Query("DELETE FROM REFERENCE_EV_COEFFICIENTS WHERE referenceEvId = :referenceEvId")
+    suspend fun deleteCoefficientsForReference(referenceEvId: String)
+
+    @Query(
+            "DELETE FROM REFERENCE_EV_COEFFICIENTS WHERE referenceEvId = :referenceEvId AND groupType = :groupType"
+    )
+    suspend fun deleteCoefficientsForReferenceByGroup(referenceEvId: String, groupType: String)
+
+    // Relations avec les nutriments
+    @Query("SELECT * FROM REFERENCE_EV_NUTRIENTS WHERE referenceEvId = :referenceEvId")
+    suspend fun getNutrientsForReference(referenceEvId: String): List<ReferenceEvNutrientEntity>
+
+    @Query(
+            "SELECT * FROM REFERENCE_EV_NUTRIENTS WHERE referenceEvId = :referenceEvId AND reflevel = :reflevel"
+    )
+    suspend fun getNutrientsForReferenceByLevel(
+            referenceEvId: String,
+            reflevel: String
+    ): List<ReferenceEvNutrientEntity>
+
+    @Query(
+            "SELECT * FROM REFERENCE_EV_NUTRIENTS WHERE referenceEvId = :referenceEvId AND nutrientCode = :nutrientCode AND reflevel = :reflevel"
+    )
+    suspend fun getNutrientForReference(
+            referenceEvId: String,
+            nutrientCode: String,
+            reflevel: String
+    ): ReferenceEvNutrientEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertNutrient(nutrient: ReferenceEvNutrientEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertNutrients(nutrients: List<ReferenceEvNutrientEntity>)
+
+    @Query("DELETE FROM REFERENCE_EV_NUTRIENTS WHERE referenceEvId = :referenceEvId")
+    suspend fun deleteNutrientsForReference(referenceEvId: String)
+
+    @Query(
+            "DELETE FROM REFERENCE_EV_NUTRIENTS WHERE referenceEvId = :referenceEvId AND reflevel = :reflevel"
+    )
+    suspend fun deleteNutrientsForReferenceByLevel(referenceEvId: String, reflevel: String)
+
+    @Query(
+            "DELETE FROM REFERENCE_EV_NUTRIENTS WHERE referenceEvId = :referenceEvId AND nutrientCode = :nutrientCode AND reflevel = :reflevel"
+    )
+    suspend fun deleteNutrientForReference(
+            referenceEvId: String,
+            nutrientCode: String,
+            reflevel: String
+    )
+}

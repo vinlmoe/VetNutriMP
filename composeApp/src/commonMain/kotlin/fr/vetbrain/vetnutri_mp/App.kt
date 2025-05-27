@@ -11,115 +11,20 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Components.TopBar
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
-import fr.vetbrain.vetnutri_mp.Data.BiblioRef
 import fr.vetbrain.vetnutri_mp.DataBase.AppDatabase
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationManager
 import fr.vetbrain.vetnutri_mp.Repository.*
-import fr.vetbrain.vetnutri_mp.Repository.ReferenceEvRepository
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriTheme
 import fr.vetbrain.vetnutri_mp.Utils.PlatformDispatcher
 import fr.vetbrain.vetnutri_mp.View.*
 import fr.vetbrain.vetnutri_mp.ViewModel.*
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.runBlocking
 
 // Fonctions d'importation de fichiers - implémentées par plateforme spécifique
 expect fun importAnimalsFromFile(viewModel: AnimalListViewModel)
 
 expect fun importFoodsFromFile(viewModel: SettingsViewModel)
-
-/**
- * Version hybride du repository pour les références bibliographiques qui combine la persistance en
- * base de données et des références de test préremplies pour débogage
- */
-class HybridBiblioRefRepository(private val databaseRepo: DatabaseBiblioRefRepository) :
-        BiblioRefRepository {
-    // Initialiser avec quelques références de test
-    private val testRefs =
-            listOf(
-                    BiblioRef(
-                            uuid = "test-1",
-                            firstAuthor = "Dupont",
-                            year = 2020,
-                            completeRef = "Dupont et al., Etude sur les nutriments, 2020",
-                            comments = "Étude importante",
-                            consistent = 1
-                    ),
-                    BiblioRef(
-                            uuid = "test-2",
-                            firstAuthor = "Martin",
-                            year = 2021,
-                            completeRef = "Martin J., Nutrition canine, 2021",
-                            comments = "À vérifier",
-                            consistent = 1
-                    )
-            )
-
-    private val _biblioRefs = MutableStateFlow<List<BiblioRef>>(testRefs)
-
-    init {
-        // Ajouter les références de test à la base de données
-        runBlocking {
-            for (ref in testRefs) {
-                databaseRepo.insertBiblioRef(ref)
-            }
-        }
-    }
-
-    override suspend fun getBiblioRefById(uuid: String): BiblioRef? {
-        // D'abord chercher dans la base de données
-        val dbRef = databaseRepo.getBiblioRefById(uuid)
-        if (dbRef != null) return dbRef
-
-        // Sinon chercher dans les références de test
-        return _biblioRefs.value.find { it.uuid == uuid }
-    }
-
-    override fun getAllBiblioRefs(): Flow<List<BiblioRef>> {
-        // Combiner les données de la base et les références de test
-        return databaseRepo.getAllBiblioRefs()
-    }
-
-    override suspend fun insertBiblioRef(biblioRef: BiblioRef) {
-        // Insérer dans la base de données
-        databaseRepo.insertBiblioRef(biblioRef)
-
-        // Aussi mettre à jour notre cache local pour être sûr
-        val newList = _biblioRefs.value.toMutableList()
-        val existingIndex = newList.indexOfFirst { it.uuid == biblioRef.uuid }
-
-        if (existingIndex >= 0) {
-            newList[existingIndex] = biblioRef
-        } else {
-            newList.add(biblioRef)
-        }
-
-        _biblioRefs.value = newList
-    }
-
-    override suspend fun updateBiblioRef(biblioRef: BiblioRef) {
-        databaseRepo.updateBiblioRef(biblioRef)
-
-        // Aussi mettre à jour notre cache local
-        val newList = _biblioRefs.value.toMutableList()
-        val existingIndex = newList.indexOfFirst { it.uuid == biblioRef.uuid }
-
-        if (existingIndex >= 0) {
-            newList[existingIndex] = biblioRef
-        }
-
-        _biblioRefs.value = newList
-    }
-
-    override suspend fun deleteBiblioRef(biblioRef: BiblioRef) {
-        databaseRepo.deleteBiblioRef(biblioRef)
-
-        // Aussi mettre à jour notre cache local
-        _biblioRefs.value = _biblioRefs.value.filter { it.uuid != biblioRef.uuid }
-    }
-}
 
 @Composable
 fun App(appDatabase: AppDatabase) {
@@ -162,9 +67,8 @@ fun App(appDatabase: AppDatabase) {
         DatabaseConsultationRepository(appDatabase.consultationDao(), foodRepository)
     }
 
-    // Création du repository pour les références bibliographiques - version hybride
-    val databaseBiblioRefRepo = remember { DatabaseBiblioRefRepository(appDatabase.biblioRefDao()) }
-    val biblioRefRepository = remember { HybridBiblioRefRepository(databaseBiblioRefRepo) }
+    // Création du repository pour les références bibliographiques - version database directe
+    val biblioRefRepository = remember { DatabaseBiblioRefRepository(appDatabase.biblioRefDao()) }
 
     // Création du repository pour les équations avec base de données
     val equationRepository = remember {
@@ -187,9 +91,15 @@ fun App(appDatabase: AppDatabase) {
 
     // ViewModel et état pour les équations
     val platformDispatcher = remember { PlatformDispatcher() }
-    val referenceEvRepository = remember { ReferenceEvRepository() }
+    val databaseReferenceEvRepository = remember {
+        DatabaseReferenceEvRepository(
+                appDatabase.referenceEvDao(),
+                appDatabase.equationDao(),
+                appDatabase.biblioRefDao()
+        )
+    }
     val referenceEvViewModel = remember {
-        ReferenceEvViewModel(referenceEvRepository, platformDispatcher)
+        ReferenceEvViewModel(ReferenceEvRepository(), platformDispatcher)
     }
     var selectedReferenceEvId by remember { mutableStateOf<String?>(null) }
 
@@ -198,7 +108,7 @@ fun App(appDatabase: AppDatabase) {
                 equationRepository = equationRepository,
                 biblioRefDao = appDatabase.biblioRefDao(),
                 biblioRepository = biblioRefRepository,
-                referenceRepository = referenceEvRepository
+                referenceRepository = ReferenceEvRepository()
         )
     }
     var selectedEquationId by remember { mutableStateOf<String?>(null) }
@@ -216,7 +126,7 @@ fun App(appDatabase: AppDatabase) {
 
     val newReferenceEvViewModel = remember {
         NewReferenceEvViewModel(
-                repository = referenceEvRepository,
+                repository = ReferenceEvRepository(),
                 equationRepository = equationRepository,
                 biblioRefRepository = biblioRefRepository
         )
@@ -499,7 +409,7 @@ fun App(appDatabase: AppDatabase) {
                         ReferenceEvNutrientView(
                                 referenceEvViewModel = referenceEvViewModel,
                                 biblioRefRepository = biblioRefRepository,
-                                referenceEvRepository = referenceEvRepository,
+                                referenceEvRepository = ReferenceEvRepository(),
                                 platformDispatcher = platformDispatcher,
                                 referenceEvId = selectedReferenceEvId ?: "",
                                 onNavigateBack = { currentScreen = Screen.EquationList },
@@ -515,7 +425,7 @@ fun App(appDatabase: AppDatabase) {
                                 equationViewModel = equationViewModel,
                                 biblioRefRepository = biblioRefRepository,
                                 equationRepository = equationRepository,
-                                referenceEvRepository = referenceEvRepository,
+                                referenceEvRepository = ReferenceEvRepository(),
                                 platformDispatcher = platformDispatcher,
                                 referenceEvId = selectedReferenceEvId ?: "",
                                 onNavigateBack = { currentScreen = Screen.ReferenceEvList },

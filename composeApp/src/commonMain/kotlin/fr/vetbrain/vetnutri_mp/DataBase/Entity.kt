@@ -455,7 +455,7 @@ data class EquationEntity(
 )
 
 @Serializable
-@Entity(tableName = "ReferenceEv")
+@Entity(tableName = "REFERENCE_EV", indices = [Index(value = ["uuid"], unique = true)])
 data class ReferenceEvEntity(
         @PrimaryKey val uuid: String,
         val nom: String,
@@ -465,6 +465,91 @@ data class ReferenceEvEntity(
         val nomEnergie: String,
         val consistent: Int,
         val espece: String,
-        val stadePhysio: String
+        val stadePhysio: String,
+        val nomk1: String,
+        val nomk2: String,
+        val nomk3: String,
+        val nomk4: String,
+        val nomk5: String
+)
 
+/** Entité pour les relations entre ReferenceEv et Equations */
+@Serializable
+@Entity(
+        tableName = "REFERENCE_EV_EQUATIONS",
+        foreignKeys =
+                [
+                        ForeignKey(
+                                entity = ReferenceEvEntity::class,
+                                parentColumns = ["uuid"],
+                                childColumns = ["referenceEvId"],
+                                onDelete = ForeignKey.CASCADE
+                        ),
+                        ForeignKey(
+                                entity = EquationEntity::class,
+                                parentColumns = ["uuid"],
+                                childColumns = ["equationId"],
+                                onDelete = ForeignKey.CASCADE
+                        )],
+        indices = [Index("referenceEvId"), Index("equationId")],
+        primaryKeys = ["referenceEvId", "equationType"]
+)
+data class ReferenceEvEquationEntity(
+        val referenceEvId: String,
+        val equationId: String,
+        val equationType: String // "BW", "BEE", "DEcom", "DEraw", "ME"
+)
+
+/** Entité pour les coefficients de ReferenceEv */
+@Serializable
+@Entity(
+        tableName = "REFERENCE_EV_COEFFICIENTS",
+        foreignKeys =
+                [
+                        ForeignKey(
+                                entity = ReferenceEvEntity::class,
+                                parentColumns = ["uuid"],
+                                childColumns = ["referenceEvId"],
+                                onDelete = ForeignKey.CASCADE
+                        )],
+        indices = [Index("referenceEvId")]
+)
+data class ReferenceEvCoefficientEntity(
+        @PrimaryKey val uuid: String,
+        val referenceEvId: String,
+        val groupType: String, // "k1", "k2", "k3", "k4", "k5"
+        val description: String,
+        val coef: Float,
+        val groupUUID: Int
+)
+
+/** Entité pour les nutriments de ReferenceEv avec références bibliographiques */
+@Serializable
+@Entity(
+        tableName = "REFERENCE_EV_NUTRIENTS",
+        foreignKeys =
+                [
+                        ForeignKey(
+                                entity = ReferenceEvEntity::class,
+                                parentColumns = ["uuid"],
+                                childColumns = ["referenceEvId"],
+                                onDelete = ForeignKey.CASCADE
+                        ),
+                        ForeignKey(
+                                entity = BiblioRefEntity::class,
+                                parentColumns = ["uuid"],
+                                childColumns = ["biblioRefId"],
+                                onDelete = ForeignKey.SET_NULL
+                        )],
+        indices = [Index("referenceEvId"), Index("biblioRefId")]
+)
+data class ReferenceEvNutrientEntity(
+        @PrimaryKey val uuid: String,
+        val referenceEvId: String,
+        val nutrientCode: String,
+        val reflevel: String, // "MIN", "MAX", "OPTIMIN", "OPTIMAX"
+        val quantite: Float,
+        val uniteId: Int,
+        val uniteReqId: Int,
+        val biblioRefId: String?
 )

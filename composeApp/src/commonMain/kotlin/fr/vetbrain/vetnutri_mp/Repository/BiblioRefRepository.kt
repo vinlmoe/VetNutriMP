@@ -154,7 +154,37 @@ class DatabaseBiblioRefRepository(private val biblioRefDao: BiblioRefDao) : Bibl
 
     init {
         // Chargement initial des données depuis la base
-        CoroutineScope(AppDispatchers.IO).launch { refreshFromDatabase() }
+        CoroutineScope(AppDispatchers.IO).launch {
+            refreshFromDatabase()
+
+            // Ajouter des références de test si la base est vide
+            if (_biblioRefs.value.isEmpty()) {
+                val testRefs =
+                        listOf(
+                                BiblioRef(
+                                        uuid = "test-1",
+                                        firstAuthor = "Dupont",
+                                        year = 2020,
+                                        completeRef =
+                                                "Dupont et al., Etude sur les nutriments, 2020",
+                                        comments = "Étude importante",
+                                        consistent = 1
+                                ),
+                                BiblioRef(
+                                        uuid = "test-2",
+                                        firstAuthor = "Martin",
+                                        year = 2021,
+                                        completeRef = "Martin J., Nutrition canine, 2021",
+                                        comments = "À vérifier",
+                                        consistent = 1
+                                )
+                        )
+
+                for (ref in testRefs) {
+                    insertBiblioRef(ref)
+                }
+            }
+        }
     }
 
     private suspend fun refreshFromDatabase() {
@@ -362,10 +392,8 @@ class DatabaseBiblioRefRepository(private val biblioRefDao: BiblioRefDao) : Bibl
         println(
                 "DEBUG DatabaseBiblioRefRepo: toEntity - Longueur référence complète: ${completeRef.length}"
         )
-        println(
-                "DEBUG DatabaseBiblioRefRepo: toEntity - Longueur commentaires: ${comments?.length ?: 0}"
-        )
-        println("DEBUG DatabaseBiblioRefRepo: toEntity - Longueur bibtex: ${bibtex?.length ?: 0}")
+        println("DEBUG DatabaseBiblioRefRepo: toEntity - Longueur commentaires: ${comments.length}")
+        println("DEBUG DatabaseBiblioRefRepo: toEntity - Longueur bibtex: ${bibtex.length}")
         println("DEBUG DatabaseBiblioRefRepo: toEntity - Valeur consistent: $consistent")
 
         val validUuid = if (uuid.isBlank()) java.util.UUID.randomUUID().toString() else uuid
@@ -373,8 +401,8 @@ class DatabaseBiblioRefRepository(private val biblioRefDao: BiblioRefDao) : Bibl
         val validYear = if (year <= 0) 2000 else year
         val validCompleteRef =
                 if (completeRef.isBlank()) "Référence complète non disponible" else completeRef
-        val validComments = comments ?: "" // Convertir null en chaîne vide
-        val validBibtex = bibtex ?: "" // Convertir null en chaîne vide
+        val validComments = comments // Déjà non-nullable
+        val validBibtex = bibtex // Déjà non-nullable
         val validConsistent = if (consistent <= 0) 1 else consistent
 
         return BiblioRefEntity(
