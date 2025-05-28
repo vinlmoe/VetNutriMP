@@ -20,22 +20,23 @@ object NutrientResolver {
 
         println("Résolution du nutriment: original='$label', normalisé='$cleanedLabel'")
 
-        // Traitement de cas spéciaux pour éviter les confusions connues
+        // Traitement de cas spéciaux pour éviter les confusions connues ou gérer des alias
         when (cleanedLabel) {
-            "CARNITINE" -> {
-                val nutrient = NutrientOther.getByLabel(cleanedLabel)
-                println("  → Résolu comme NutrientOther: ${nutrient?.label}")
-                return nutrient
-            }
-            "FE" -> {
-                val nutrient = NutrientMin.getByLabel(cleanedLabel)
-                println("  → Résolu comme NutrientMin: ${nutrient?.label}")
-                return nutrient
-            }
-            "VITB9" -> {
-                val nutrient = NutrientVitam.getByLabel(cleanedLabel)
-                println("  → Résolu comme NutrientVitam: ${nutrient?.label}")
-                return nutrient
+            "CHOL" -> {
+                // Essayer d'abord comme cholestérol
+                val nutrient =
+                        NutrientLipid.entries.find { it.label.equals("CHOLES", ignoreCase = true) }
+                if (nutrient != null) {
+                    println("  → Cas spécial: CHOL résolu comme NutrientLipid.${nutrient.label}")
+                    return nutrient
+                }
+                // Ensuite essayer comme chlore
+                val nutrientCHL =
+                        NutrientMin.entries.find { it.label.equals("CHL", ignoreCase = true) }
+                if (nutrientCHL != null) {
+                    println("  → Cas spécial: CHOL résolu comme NutrientMin.${nutrientCHL.label}")
+                    return nutrientCHL
+                }
             }
             "FIBRETOT" -> {
                 // Essayer d'abord avec le terme exact
@@ -75,95 +76,9 @@ object NutrientResolver {
                 )
                 return nutrient
             }
-            "HUMIDITE" -> {
-                val nutrient =
-                        NutrientMain.entries.find { it.label.equals("humidité", ignoreCase = true) }
-                println("  → Cas spécial: HUMIDITE résolu comme ${nutrient?.label}")
-                return nutrient
-            }
-            "PROTEINE" -> {
-                val nutrient =
-                        NutrientMain.entries.find { it.label.equals("protéine", ignoreCase = true) }
-                println("  → Cas spécial: PROTEINE résolu comme ${nutrient?.label}")
-                return nutrient
-            }
-            "CHOL" -> {
-                // Essayer d'abord comme cholestérol
-                val nutrient =
-                        NutrientLipid.entries.find { it.label.equals("CHOLES", ignoreCase = true) }
-                if (nutrient != null) {
-                    println("  → Cas spécial: CHOL résolu comme NutrientLipid.${nutrient.label}")
-                    return nutrient
-                }
-                // Ensuite essayer comme chlore
-                val nutrientCHL =
-                        NutrientMacro.entries.find { it.label.equals("CHL", ignoreCase = true) }
-                if (nutrientCHL != null) {
-                    println("  → Cas spécial: CHOL résolu comme NutrientMacro.${nutrientCHL.label}")
-                    return nutrientCHL
-                }
-            }
-            // Nouveaux cas spéciaux pour gérer des nutriments fréquemment mal résolus
-            "CHL" -> {
-                val nutrient =
-                        NutrientMin.entries.find { it.label.equals("CHL", ignoreCase = true) }
-                println("  → Cas spécial: CHL résolu comme ${nutrient?.label}")
-                return nutrient
-            }
-            "LIPIDE" -> {
-                val nutrient =
-                        NutrientMain.entries.find { it.label.equals("LIPIDE", ignoreCase = true) }
-                println("  → Cas spécial: LIPIDE résolu comme ${nutrient?.label}")
-                return nutrient
-            }
-            "ENA" -> {
-                val nutrient =
-                        NutrientMain.entries.find { it.label.equals("ENA", ignoreCase = true) }
-                println("  → Cas spécial: ENA résolu comme ${nutrient?.label}")
-                return nutrient
-            }
-            "EPADHA" -> {
-                val nutrient =
-                        NutrientLipid.entries.find { it.label.equals("EPADHA", ignoreCase = true) }
-                println("  → Cas spécial: EPADHA résolu comme ${nutrient?.label}")
-                return nutrient
-            }
-            "AG180", "AG182", "AG183", "AG204", "AG205", "AG226" -> {
-                // Acides gras comme nutriments lipidiques
-                val nutrient =
-                        NutrientLipid.entries.find {
-                            it.label.equals(cleanedLabel, ignoreCase = true)
-                        }
-                println("  → Cas spécial: $cleanedLabel résolu comme ${nutrient?.label}")
-                return nutrient
-            }
-            "TAURINE" -> {
-                val nutrient =
-                        NutrientOther.entries.find { it.label.equals("TAURINE", ignoreCase = true) }
-                println("  → Cas spécial: TAURINE résolu comme ${nutrient?.label}")
-                return nutrient
-            }
-            "CYSTEINE",
-            "METHIONINE",
-            "LYSINE",
-            "HISTIDINE",
-            "ARGININE",
-            "TYROSINE",
-            "VALINE",
-            "LEUCINE",
-            "ISOLEUCINE",
-            "TRYPTOPHANE" -> {
-                // Acides aminés
-                val nutrient =
-                        AAEnum.entries.find { it.label.equals(cleanedLabel, ignoreCase = true) }
-                println(
-                        "  → Cas spécial: $cleanedLabel résolu comme acide aminé: ${nutrient?.label}"
-                )
-                return nutrient
-            }
         }
 
-        // Approche plus robuste avec une recherche insensible à la casse
+        // Approche robuste avec recherche automatique dans toutes les énumérations
 
         // Vérifier dans NutrientMain (insensible à la casse)
         val nutrientMain =
@@ -685,5 +600,178 @@ object NutrientResolver {
                 } ||
                 NutrientAnalysis.entries.any { it.label.equals(normalizedLabel, ignoreCase = true) }
     }
+
+    /** Obtient tous les labels de nutriments disponibles de toutes les énumérations */
+    fun getAllNutrientLabels(): Set<String> {
+        val nutrientsMain = NutrientMain.entries.map { it.label }
+        val nutrientsLipides = NutrientLipid.entries.map { it.label }
+        val nutrientsVitamines = NutrientVitam.entries.map { it.label }
+        val nutrientsMacro = NutrientMacro.entries.map { it.label }
+        val nutrientsMin = NutrientMin.entries.map { it.label }
+        val nutrientsOther = NutrientOther.entries.map { it.label }
+        val acideAmines = AAEnum.entries.map { it.label }
+
+        return (nutrientsMain +
+                        nutrientsLipides +
+                        nutrientsVitamines +
+                        nutrientsMacro +
+                        nutrientsMin +
+                        nutrientsOther +
+                        acideAmines)
+                .toSet()
+    }
+
+    /** Obtient tous les labels de variables système (VariableKind.variable) */
+    fun getAllSystemVariableLabels(): Set<String> {
+        return VariableKind.entries.map { it.variable }.toSet()
+    }
+
+    /** Obtient tous les labels de VariableKind (VariableKind.label) */
+    fun getAllVariableKindLabels(): Set<String> {
+        return VariableKind.entries.map { it.label }.toSet()
+    }
+
+    /** Obtient tous les labels reconnus (nutriments + variables système + VariableKind labels) */
+    fun getAllRecognizedLabels(): Set<String> {
+        return getAllNutrientLabels() + getAllSystemVariableLabels() + getAllVariableKindLabels()
+    }
+
+    /** Vérifie si un label correspond à un nutriment */
+    fun isNutrientLabel(label: String): Boolean {
+        return label in getAllNutrientLabels()
+    }
+
+    /** Vérifie si un label correspond à une variable système (VariableKind.variable) */
+    fun isSystemVariableLabel(label: String): Boolean {
+        return label in getAllSystemVariableLabels()
+    }
+
+    /** Vérifie si un label correspond à un VariableKind.label */
+    fun isVariableKindLabel(label: String): Boolean {
+        return label in getAllVariableKindLabels()
+    }
+
+    /** Vérifie si un label est reconnu (nutriment, variable système ou VariableKind) */
+    fun isRecognizedLabel(label: String): Boolean {
+        return isNutrientLabel(label) || isSystemVariableLabel(label) || isVariableKindLabel(label)
+    }
+
+    /** Trouve l'énumération de nutriment correspondant à un label */
+    fun findNutrientByLabel(label: String): Nutrient? {
+        return when {
+            NutrientMain.entries.any { it.label == label } ->
+                    NutrientMain.entries.find { it.label == label }
+            NutrientLipid.entries.any { it.label == label } ->
+                    NutrientLipid.entries.find { it.label == label }
+            NutrientVitam.entries.any { it.label == label } ->
+                    NutrientVitam.entries.find { it.label == label }
+            NutrientMacro.entries.any { it.label == label } ->
+                    NutrientMacro.entries.find { it.label == label }
+            NutrientMin.entries.any { it.label == label } ->
+                    NutrientMin.entries.find { it.label == label }
+            NutrientOther.entries.any { it.label == label } ->
+                    NutrientOther.entries.find { it.label == label }
+            AAEnum.entries.any { it.label == label } -> AAEnum.entries.find { it.label == label }
+            else -> null
+        }
+    }
+
+    /** Trouve le VariableKind correspondant à un label (par variable ou label) */
+    fun findVariableKindByLabel(label: String): VariableKind? {
+        return VariableKind.entries.find { it.variable == label || it.label == label }
+    }
+
+    /**
+     * Obtient une valeur de test par défaut pour une variable donnée Utilisé pour valider les
+     * équations
+     */
+    fun getDefaultTestValue(variable: String): Double {
+        return when {
+            // Variables système avec valeurs spécifiques basées sur VariableKind
+            isSystemVariableLabel(variable) -> {
+                when (VariableKind.entries.find { it.variable == variable }) {
+                    VariableKind.BW -> 25.0
+                    VariableKind.BEE -> 400.0
+                    VariableKind.MW -> 15.0
+                    VariableKind.iBW -> 20.0
+                    VariableKind.AdultWeight -> 30.0
+                    VariableKind.LitterSize -> 6.0
+                    VariableKind.WeekGestation -> 8.0
+                    VariableKind.WeekLactation -> 4.0
+                    VariableKind.BE -> 350.0
+                    else -> 1.0
+                }
+            }
+            // Variables de nutriments
+            isNutrientLabel(variable) -> 10.0
+            // Variables VariableKind par label
+            isVariableKindLabel(variable) -> 1.0
+            // Valeur par défaut
+            else -> 1.0
+        }
+    }
+
+    /** Obtient des informations détaillées sur un label */
+    fun getLabelInfo(label: String): LabelInfo {
+        return when {
+            isNutrientLabel(label) -> {
+                val nutrient = findNutrientByLabel(label)
+                LabelInfo(
+                        label = label,
+                        type = LabelType.NUTRIENT,
+                        nutrient = nutrient,
+                        variableKind = null,
+                        defaultValue = getDefaultTestValue(label)
+                )
+            }
+            isSystemVariableLabel(label) -> {
+                val variableKind = findVariableKindByLabel(label)
+                LabelInfo(
+                        label = label,
+                        type = LabelType.SYSTEM_VARIABLE,
+                        nutrient = null,
+                        variableKind = variableKind,
+                        defaultValue = getDefaultTestValue(label)
+                )
+            }
+            isVariableKindLabel(label) -> {
+                val variableKind = findVariableKindByLabel(label)
+                LabelInfo(
+                        label = label,
+                        type = LabelType.VARIABLE_KIND_LABEL,
+                        nutrient = null,
+                        variableKind = variableKind,
+                        defaultValue = getDefaultTestValue(label)
+                )
+            }
+            else -> {
+                LabelInfo(
+                        label = label,
+                        type = LabelType.UNKNOWN,
+                        nutrient = null,
+                        variableKind = null,
+                        defaultValue = 1.0
+                )
+            }
+        }
+    }
 }
+
+/** Types de labels reconnus */
+enum class LabelType {
+    NUTRIENT,
+    SYSTEM_VARIABLE,
+    VARIABLE_KIND_LABEL,
+    UNKNOWN
+}
+
+/** Informations détaillées sur un label */
+data class LabelInfo(
+        val label: String,
+        val type: LabelType,
+        val nutrient: Nutrient?,
+        val variableKind: VariableKind?,
+        val defaultValue: Double
+)
+
 // FIN ZONE PROTÉGÉE

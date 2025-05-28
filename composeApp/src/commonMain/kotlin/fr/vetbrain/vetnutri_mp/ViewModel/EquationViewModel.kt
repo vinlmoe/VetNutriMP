@@ -3,20 +3,35 @@ package fr.vetbrain.vetnutri_mp.ViewModel
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import fr.vetbrain.vetnutri_mp.Data.BiblioRef
 import fr.vetbrain.vetnutri_mp.Data.Equation
 import fr.vetbrain.vetnutri_mp.DataBase.BiblioRefDao
 import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toDomain
+import fr.vetbrain.vetnutri_mp.Enumer.AAEnum
 import fr.vetbrain.vetnutri_mp.Enumer.EquationKind
+import fr.vetbrain.vetnutri_mp.Enumer.NutrientLipid
+import fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro
+import fr.vetbrain.vetnutri_mp.Enumer.NutrientMain
+import fr.vetbrain.vetnutri_mp.Enumer.NutrientMin
+import fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver
+import fr.vetbrain.vetnutri_mp.Enumer.NutrientVitam
 import fr.vetbrain.vetnutri_mp.Enumer.VariableKind
 import fr.vetbrain.vetnutri_mp.Repository.BiblioRefRepository
 import fr.vetbrain.vetnutri_mp.Repository.DatabaseReferenceEvRepository
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
+import fr.vetbrain.vetnutri_mp.Utils.EquationEvaluator
+import fr.vetbrain.vetnutri_mp.Utils.ExpressionEvaluator
+import fr.vetbrain.vetnutri_mp.Utils.ResultatValidation
+import fr.vetbrain.vetnutri_mp.Utils.TypeEquationValidation
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 /**
@@ -86,6 +101,73 @@ class EquationViewModel(
     // Variables d'état privées
     private val _unrecognizedVariables = MutableStateFlow<List<String>>(emptyList())
     val unrecognizedVariables: StateFlow<List<String>> = _unrecognizedVariables.asStateFlow()
+
+    // Variables reconnues (calculées dynamiquement à partir du script)
+    val recognizedVariables: StateFlow<List<String>> =
+            currentEquation
+                    .map { equation ->
+                        if (equation.equationScript.isBlank()) {
+                            emptyList()
+                        } else {
+                            val variablesUtilisees =
+                                    ExpressionEvaluator.extraireVariables(equation.equationScript)
+                            variablesUtilisees.mapNotNull { variable ->
+                                getVariableDisplayName(variable)
+                            }
+                        }
+                    }
+                    .stateIn(
+                            scope = viewModelScope,
+                            started = SharingStarted.WhileSubscribed(5000),
+                            initialValue = emptyList()
+                    )
+
+    /** Obtient le nom d'affichage d'une variable sous le format "label (displayName)" */
+    private fun getVariableDisplayName(variable: String): String? {
+        // Vérifier si c'est une variable VariableKind
+        val variableKind = VariableKind.entries.find { it.label == variable }
+        if (variableKind != null) {
+            return "${variableKind.label} (${variableKind.dup})"
+        }
+
+        // Vérifier si c'est un nutriment et obtenir son nom d'affichage
+        val nutrientMain =
+                fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.entries.find { it.label == variable }
+        if (nutrientMain != null) {
+            return "${nutrientMain.label} (${nutrientMain.nameToString()})"
+        }
+
+        // Pour les autres nutriments, utiliser le label comme nom d'affichage
+        if (fr.vetbrain.vetnutri_mp.Enumer.NutrientLipid.entries.any { it.label == variable } ||
+                        fr.vetbrain.vetnutri_mp.Enumer.NutrientVitam.entries.any {
+                            it.label == variable
+                        } ||
+                        fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro.entries.any {
+                            it.label == variable
+                        } ||
+                        fr.vetbrain.vetnutri_mp.Enumer.NutrientMin.entries.any {
+                            it.label == variable
+                        } ||
+                        fr.vetbrain.vetnutri_mp.Enumer.NutrientOther.entries.any {
+                            it.label == variable
+                        } ||
+                        fr.vetbrain.vetnutri_mp.Enumer.AAEnum.entries.any { it.label == variable }
+        ) {
+            return "${variable} (${variable})"
+        }
+
+        // Variables système avec leurs descriptions
+        return when (variable) {
+            else -> {
+                // Si c'est une variable reconnue par NutrientResolver mais pas trouvée ci-dessus
+                if (NutrientResolver.isRecognizedLabel(variable)) {
+                    "${variable} (Variable reconnue)"
+                } else {
+                    null
+                }
+            }
+        }
+    }
 
     // État pour la référence courante
     private val _currentReferenceId = MutableStateFlow<String?>(null)
@@ -218,43 +300,32 @@ class EquationViewModel(
 
     /** Analyse le script pour détecter et gérer automatiquement les variables */
     private fun analyzeScriptForVariables(script: String) {
-        // Récupérer toutes les variables possibles
-        val allVariables = VariableKind.values()
+        // Utiliser le nouveau parser pour extraire les variables
+        val variablesUtilisees = ExpressionEvaluator.extraireVariables(script)
 
-        // Créer une liste de toutes les variables détectées dans le script
+        // Récupérer toutes les variables VariableKind possibles
+        val allVariableKinds = VariableKind.entries
+
+        // Créer une liste des variables détectées qui correspondent à VariableKind
         val detectedVariables = mutableListOf<VariableKind>()
-
-        // Liste pour stocker les variables non reconnues
         val unrecognizedVars = mutableListOf<String>()
 
-        // Découper le script en mots
-        val words =
-                script.split(Regex("\\s+|(?=[+\\-*/^()])|(?<=[+\\-*/^()])")).filter {
-                    it.isNotBlank()
+        // Classer les variables trouvées
+        variablesUtilisees.forEach { variable ->
+            val correspondingVariableKind = allVariableKinds.find { it.label == variable }
+            if (correspondingVariableKind != null) {
+                detectedVariables.add(correspondingVariableKind)
+            } else {
+                // Vérifier si c'est une variable de nutriment
+                if (!isNutrientVariable(variable)) {
+                    unrecognizedVars.add(variable)
                 }
-
-        // Pour chaque mot, vérifier s'il ressemble à une variable (commençant par une lettre)
-        val potentialVariables = words.filter { it.matches(Regex("^[A-Za-z][A-Za-z0-9]*$")) }
-
-        // Pour chaque variable possible, vérifier si elle est présente dans les mots
-        // (correspondance exacte)
-        allVariables.forEach { variableKind ->
-            if (words.contains(variableKind.variable)) {
-                detectedVariables.add(variableKind)
-            }
-        }
-
-        // Identifier les variables non reconnues
-        potentialVariables.forEach { word ->
-            if (!allVariables.any { it.variable == word }) {
-                unrecognizedVars.add(word)
             }
         }
 
         println(
                 "DEBUG: Variables détectées dans le script: ${detectedVariables.map { it.variable }}"
         )
-
         println("DEBUG: Variables non reconnues dans le script: $unrecognizedVars")
 
         // Mettre à jour la liste des variables de l'équation
@@ -263,6 +334,82 @@ class EquationViewModel(
 
         // Mettre à jour la liste des variables non reconnues
         _unrecognizedVariables.value = unrecognizedVars
+    }
+
+    /** Vérifie si une variable est un nutriment connu */
+    private fun isNutrientVariable(variable: String): Boolean {
+        val nutrientsMain = NutrientMain.entries.map { it.label }
+        val nutrientsLipides = NutrientLipid.entries.map { it.label }
+        val nutrientsVitamines = NutrientVitam.entries.map { it.label }
+        val nutrientsMacro = NutrientMacro.entries.map { it.label }
+        val nutrientsMin = NutrientMin.entries.map { it.label }
+        val acideAmines = AAEnum.entries.map { it.label }
+
+        return variable in
+                (nutrientsMain +
+                        nutrientsLipides +
+                        nutrientsVitamines +
+                        nutrientsMacro +
+                        nutrientsMin +
+                        acideAmines)
+    }
+
+    /** Convertit un EquationKind en TypeEquationValidation */
+    private fun mapEquationKindToValidationType(kind: EquationKind): TypeEquationValidation {
+        return when (kind) {
+            EquationKind.ENERGYNEED -> TypeEquationValidation.BESOIN_ENERGETIQUE
+            EquationKind.MW -> TypeEquationValidation.BESOIN_ENERGETIQUE
+            EquationKind.NEED -> TypeEquationValidation.BESOIN_NUTRITIONNEL
+            EquationKind.ENERGYDENSITY -> TypeEquationValidation.DENSITE_ENERGETIQUE
+            else -> TypeEquationValidation.GENERALE
+        }
+    }
+
+    /** Valide l'expression mathématique de l'équation courante */
+    fun validerExpressionCourante(): ResultatValidation {
+        val equation = _currentEquation.value
+        val typeValidation = mapEquationKindToValidationType(equation.kind)
+        return EquationEvaluator.validerExpression(equation.equationScript, typeValidation)
+    }
+
+    /** Teste l'expression courante avec des valeurs d'exemple */
+    fun testerExpressionCourante(): Double? {
+        val equation = _currentEquation.value
+        val typeValidation = mapEquationKindToValidationType(equation.kind)
+        return EquationEvaluator.testerExpression(equation.equationScript, typeValidation)
+    }
+
+    /** Obtient la liste de toutes les variables disponibles selon le type d'équation */
+    fun getVariablesDisponibles(): Set<String> {
+        val equation = _currentEquation.value
+        val typeValidation = mapEquationKindToValidationType(equation.kind)
+
+        return when (typeValidation) {
+            TypeEquationValidation.BESOIN_ENERGETIQUE -> EquationEvaluator.toutesLesVariables
+            TypeEquationValidation.BESOIN_NUTRITIONNEL ->
+                    EquationEvaluator.toutesLesVariables + getNutrientsVariables()
+            TypeEquationValidation.DENSITE_ENERGETIQUE -> getNutrientsVariables()
+            TypeEquationValidation.GENERALE ->
+                    EquationEvaluator.toutesLesVariables + getNutrientsVariables()
+        }
+    }
+
+    /** Obtient la liste des variables de nutriments disponibles */
+    private fun getNutrientsVariables(): Set<String> {
+        val nutrientsMain = NutrientMain.entries.map { it.label }
+        val nutrientsLipides = NutrientLipid.entries.map { it.label }
+        val nutrientsVitamines = NutrientVitam.entries.map { it.label }
+        val nutrientsMacro = NutrientMacro.entries.map { it.label }
+        val nutrientsMin = NutrientMin.entries.map { it.label }
+        val acideAmines = AAEnum.entries.map { it.label }
+
+        return (nutrientsMain +
+                        nutrientsLipides +
+                        nutrientsVitamines +
+                        nutrientsMacro +
+                        nutrientsMin +
+                        acideAmines)
+                .toSet()
     }
 
     /** Met à jour la note bibliographique */
@@ -344,12 +491,25 @@ class EquationViewModel(
             return false
         }
 
+        // Valider la cohérence de l'équation
+        val isConsistent = validerCoherenceEquation(equation.equationScript)
+        println("DEBUG: Validation de l'équation - consistent: $isConsistent")
+
+        // Mettre à jour le champ consistent de l'équation
+        val equationToSave = equation.copy(consistent = isConsistent)
+        _currentEquation.value = equationToSave
+
         coroutineScope.launch {
             _isLoading.value = true
             try {
-                equationRepository.saveEquation(equation)
+                equationRepository.saveEquation(equationToSave)
                 _saveSuccessful.value = true
-                _operationMessage.value = "Équation sauvegardée avec succès"
+                _operationMessage.value =
+                        if (isConsistent) {
+                            "Équation sauvegardée avec succès"
+                        } else {
+                            "Équation sauvegardée avec des variables non reconnues"
+                        }
                 println("DEBUG: Équation sauvegardée avec succès")
             } catch (e: Exception) {
                 _operationMessage.value = "Erreur lors de la sauvegarde: ${e.message}"
@@ -361,6 +521,106 @@ class EquationViewModel(
         }
 
         return true
+    }
+
+    /**
+     * Valide la cohérence d'une équation en vérifiant que toutes les variables sont reconnues et
+     * que l'expression est évaluable
+     */
+    private fun validerCoherenceEquation(script: String): Boolean {
+        if (script.isBlank()) {
+            return false
+        }
+
+        try {
+            // Extraire les variables de l'expression
+            val variablesInExpression = ExpressionEvaluator.extraireVariables(script)
+
+            // Vérifier les références circulaires selon le type d'équation
+            val equation = _currentEquation.value
+            val hasCircularReference =
+                    when (equation.kind) {
+                        EquationKind.ENERGYNEED -> {
+                            // Interdire BE et BEE dans les équations de besoin énergétique
+                            val forbiddenVars =
+                                    variablesInExpression.filter { it in setOf("BE", "BEE") }
+                            if (forbiddenVars.isNotEmpty()) {
+                                println(
+                                        "DEBUG: Référence circulaire détectée - Variables interdites dans une équation ENERGYNEED: $forbiddenVars"
+                                )
+                                _operationMessage.value =
+                                        "Erreur: Une équation de besoin énergétique ne peut pas utiliser les variables BE ou BEE (référence circulaire)"
+                                true
+                            } else false
+                        }
+                        EquationKind.MW -> {
+                            // Interdire MW dans les équations de poids métabolique
+                            val forbiddenVars = variablesInExpression.filter { it == "MW" }
+                            if (forbiddenVars.isNotEmpty()) {
+                                println(
+                                        "DEBUG: Référence circulaire détectée - Variable MW interdite dans une équation MW"
+                                )
+                                _operationMessage.value =
+                                        "Erreur: Une équation de poids métabolique ne peut pas utiliser la variable MW (référence circulaire)"
+                                true
+                            } else false
+                        }
+                        else -> false
+                    }
+
+            if (hasCircularReference) {
+                return false
+            }
+
+            // Vérifier que toutes les variables sont reconnues
+            val unrecognizedVariables =
+                    variablesInExpression.filter { variable ->
+                        // Vérifier si la variable est reconnue dans VariableKind
+                        VariableKind.values().none { it.label == variable } &&
+                                // Vérifier si c'est une variable de nutriment
+                                !isNutrientVariable(variable)
+                    }
+
+            if (unrecognizedVariables.isNotEmpty()) {
+                println("DEBUG: Variables non reconnues trouvées: $unrecognizedVariables")
+                return false
+            }
+
+            // Tester l'évaluabilité de l'expression avec des valeurs par défaut
+            val testVariables = mutableMapOf<String, Double>()
+            variablesInExpression.forEach { variable ->
+                testVariables[variable] =
+                        when (variable) {
+                            "BW" -> 25.0
+                            "BEE" -> 400.0
+                            "MW" -> 15.0
+                            "iBW" -> 20.0
+                            "AW" -> 30.0
+                            "L" -> 6.0
+                            "wG" -> 8.0
+                            "wL" -> 4.0
+                            else -> {
+                                // Pour les variables de nutriments, utiliser une valeur par défaut
+                                if (isNutrientVariable(variable)) {
+                                    10.0
+                                } else {
+                                    // Pour les variables VariableKind
+                                    1.0
+                                }
+                            }
+                        }
+            }
+
+            // Tenter d'évaluer l'expression
+            val result = ExpressionEvaluator.evaluer(script, testVariables)
+            val isEvaluable = result != null && !result.isNaN() && result.isFinite()
+
+            println("DEBUG: Test d'évaluation - résultat: $result, évaluable: $isEvaluable")
+            return isEvaluable
+        } catch (e: Exception) {
+            println("DEBUG: Erreur lors de la validation de l'équation: ${e.message}")
+            return false
+        }
     }
 
     /** Supprime l'équation en cours d'édition */

@@ -13,6 +13,7 @@ import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.PlatformDispatcher
 import fr.vetbrain.vetnutri_mp.ViewModel.BiblioRefViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.EquationViewModel
+import fr.vetbrain.vetnutri_mp.ViewModel.NewReferenceEvViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.ReferenceEvViewModel
 
 /**
@@ -104,21 +105,19 @@ fun CalculationTabsView(
                         referenceEvRepository != null &&
                         platformDispatcher != null
         ) {
-                ReferenceEvSideMenuView(
-                        referenceEvViewModel = referenceEvViewModel,
-                        equationViewModel = equationViewModel,
-                        biblioRefRepository = biblioRefRepository,
-                        equationRepository = equationRepository,
-                        referenceEvRepository = referenceEvRepository,
-                        platformDispatcher = platformDispatcher,
-                        referenceEvId = selectedReferenceEvId!!,
+                NewReferenceEvEditView(
+                        viewModel =
+                                NewReferenceEvViewModel(
+                                        repository = referenceEvRepository,
+                                        equationRepository = equationRepository,
+                                        biblioRefRepository = biblioRefRepository
+                                ),
+                        referenceId = selectedReferenceEvId,
                         onNavigateBack = {
                                 isEditingReferenceEv = false
                                 selectedReferenceEvId = null
                         },
-                        onEditEquation = { equationId -> selectedEquationId = equationId },
-                        onCreateEquation = { isCreatingEquation = true },
-                        useSidebar = true
+                        modifier = Modifier.fillMaxSize()
                 )
                 return
         }

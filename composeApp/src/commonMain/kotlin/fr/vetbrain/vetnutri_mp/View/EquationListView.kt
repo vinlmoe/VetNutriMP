@@ -7,6 +7,7 @@ import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Components.TopBarSimple
@@ -90,7 +91,15 @@ fun EquationListView(
                 items(equations) { equation ->
                     Card(
                             modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                            elevation = 4.dp
+                            elevation = 4.dp,
+                            backgroundColor =
+                                    if (equation.consistent) {
+                                        MaterialTheme.colors.surface
+                                    } else {
+                                        Color(
+                                                0xFFFFEBEE
+                                        ) // Rouge très clair pour les équations non cohérentes
+                                    }
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Row(
@@ -98,11 +107,65 @@ fun EquationListView(
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text(
-                                        text = equation.name,
-                                        style = MaterialTheme.typography.h6,
-                                        fontWeight = FontWeight.Bold
-                                )
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Text(
+                                                text = equation.name,
+                                                style = MaterialTheme.typography.h6,
+                                                fontWeight = FontWeight.Bold,
+                                                color =
+                                                        if (equation.consistent) {
+                                                            MaterialTheme.colors.onSurface
+                                                        } else {
+                                                            Color(
+                                                                    0xFFD32F2F
+                                                            ) // Rouge pour le texte des équations
+                                                            // non cohérentes
+                                                        }
+                                        )
+
+                                        // Indicateur visuel pour les équations non cohérentes
+                                        if (!equation.consistent) {
+                                            Icon(
+                                                    imageVector = AppIcons.Warning,
+                                                    contentDescription = "Équation non cohérente",
+                                                    tint = Color(0xFFD32F2F),
+                                                    modifier = Modifier.size(16.dp)
+                                            )
+                                        }
+                                    }
+
+                                    // Description avec couleur adaptée
+                                    if (equation.description.isNotEmpty()) {
+                                        Text(
+                                                text = equation.description,
+                                                style = MaterialTheme.typography.body2,
+                                                color =
+                                                        if (equation.consistent) {
+                                                            MaterialTheme.colors.onSurface.copy(
+                                                                    alpha = 0.7f
+                                                            )
+                                                        } else {
+                                                            Color(0xFFD32F2F).copy(alpha = 0.7f)
+                                                        },
+                                                modifier = Modifier.padding(top = 4.dp)
+                                        )
+                                    }
+
+                                    // Message d'avertissement pour les équations non cohérentes
+                                    if (!equation.consistent) {
+                                        Text(
+                                                text =
+                                                        "⚠️ Cette équation contient des variables non reconnues",
+                                                style = MaterialTheme.typography.caption,
+                                                color = Color(0xFFD32F2F),
+                                                modifier = Modifier.padding(top = 4.dp)
+                                        )
+                                    }
+                                }
 
                                 Row {
                                     IconButton(

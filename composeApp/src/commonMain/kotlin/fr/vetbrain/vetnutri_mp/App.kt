@@ -425,24 +425,11 @@ fun App(appDatabase: AppDatabase) {
                         println(
                                 "DEBUG: App - Affichage de la vue ReferenceEvTabs avec menu latéral"
                         )
-                        ReferenceEvSideMenuView(
-                                referenceEvViewModel = referenceEvViewModel,
-                                equationViewModel = equationViewModel,
-                                biblioRefRepository = biblioRefRepository,
-                                equationRepository = equationRepository,
-                                referenceEvRepository = databaseReferenceEvRepository,
-                                platformDispatcher = platformDispatcher,
-                                referenceEvId = selectedReferenceEvId ?: "",
+                        NewReferenceEvEditView(
+                                viewModel = newReferenceEvViewModel,
+                                referenceId = selectedReferenceEvId,
                                 onNavigateBack = { currentScreen = Screen.ReferenceEvList },
-                                onEditEquation = { equationId ->
-                                    currentScreen = Screen.EquationEdit
-                                    selectedEquationId = equationId
-                                },
-                                onCreateEquation = {
-                                    currentScreen = Screen.EquationEdit
-                                    selectedEquationId = null
-                                },
-                                useSidebar = true // Forcer l'utilisation du menu latéral
+                                modifier = Modifier.fillMaxSize()
                         )
                     }
                     Screen.TestYellowBox -> {
