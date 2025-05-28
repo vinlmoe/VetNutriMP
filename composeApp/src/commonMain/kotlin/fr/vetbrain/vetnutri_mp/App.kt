@@ -103,6 +103,9 @@ fun App(appDatabase: AppDatabase) {
     }
     var selectedReferenceEvId by remember { mutableStateOf<String?>(null) }
 
+    // État pour gérer l'onglet sélectionné dans CalculationTabsView
+    var selectedCalculationTab by remember { mutableStateOf(0) }
+
     val equationViewModel = remember {
         EquationViewModel(
                 equationRepository = equationRepository,
@@ -325,6 +328,8 @@ fun App(appDatabase: AppDatabase) {
                                     selectedReferenceEvId = null
                                     currentScreen = Screen.NewReferenceEvEdit
                                 },
+                                selectedTab = selectedCalculationTab,
+                                onTabChanged = { selectedCalculationTab = it },
                                 modifier = Modifier.fillMaxSize()
                         )
                     }
@@ -383,24 +388,20 @@ fun App(appDatabase: AppDatabase) {
                         )
                     }
                     Screen.ReferenceEvList -> {
-                        ReferenceEvListView(
+                        NutrientRequirementView(
                                 viewModel = referenceEvViewModel,
                                 onNavigateBack = { currentScreen = Screen.List },
-                                onEditReferenceEv = { referenceEvId ->
+                                onEditReference = { referenceEvId ->
                                     selectedReferenceEvId = referenceEvId
                                     currentScreen = Screen.NewReferenceEvEdit
                                 },
-                                onCreateReferenceEv = {
+                                onCreateReference = {
                                     selectedReferenceEvId = null
                                     currentScreen = Screen.NewReferenceEvEdit
                                 },
-                                onViewReferenceEvTabs = { uuid ->
-                                    currentScreen = Screen.ReferenceEvTabs
-                                    selectedReferenceEvId = uuid
-                                },
-                                onNewEditReferenceEv = { referenceEvId ->
+                                onEditNutrients = { referenceEvId ->
                                     selectedReferenceEvId = referenceEvId
-                                    currentScreen = Screen.NewReferenceEvEdit
+                                    currentScreen = Screen.ReferenceEvNutrient
                                 },
                                 modifier = Modifier.fillMaxSize()
                         )
@@ -474,7 +475,8 @@ fun App(appDatabase: AppDatabase) {
                                 referenceId = selectedReferenceEvId,
                                 onNavigateBack = {
                                     selectedReferenceEvId = null
-                                    currentScreen = Screen.ReferenceEvList
+                                    selectedCalculationTab = 2 // Sélectionner l'onglet "Besoins"
+                                    currentScreen = Screen.CalculationTabs
                                 },
                                 modifier = Modifier.fillMaxSize()
                         )

@@ -40,7 +40,7 @@ fun NutrientRequirementView(
 
     Scaffold(
             topBar = {
-                TopBarSimple(title = "Besoins Nutritionnels", onNavigateBack = onNavigateBack)
+                TopBarSimple(title = "Besoins Nutritionnels bbb", onNavigateBack = onNavigateBack)
             }
     ) { paddingValues ->
         Column(modifier = modifier.fillMaxSize().padding(paddingValues).padding(16.dp)) {

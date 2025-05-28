@@ -53,7 +53,7 @@ fun ReferenceEvListView(
         Scaffold(
                 topBar = {
                         TopBarSimple(
-                                title = "Références nutritionnelles",
+                                title = "Références nutritionnelles cons",
                                 onNavigateBack = onNavigateBack
                         )
                 },
