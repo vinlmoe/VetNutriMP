@@ -36,6 +36,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -52,6 +53,8 @@ import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
 import fr.vetbrain.vetnutri_mp.Enumer.StadePhysio
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.NewReferenceEvViewModel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
  * Vue pour l'édition des références nutritionnelles avec système d'onglets.
@@ -76,6 +79,9 @@ fun NewReferenceEvEditView(
         val isEditMode by viewModel.isEditMode.collectAsState()
         val errorMessage by viewModel.errorMessage.collectAsState()
         val operationSuccess by viewModel.operationSuccess.collectAsState()
+
+        // Scope pour les coroutines
+        val coroutineScope = rememberCoroutineScope()
 
         // Effet pour initialiser le ViewModel
         LaunchedEffect(referenceId) {
@@ -104,7 +110,22 @@ fun NewReferenceEvEditView(
                                 title =
                                         if (isEditMode) "Modifier la référence"
                                         else "Nouvelle référence",
-                                onNavigateBack = onNavigateBack
+                                onNavigateBack = {
+                                        // Sauvegarde automatique avant navigation
+                                        if (viewModel.hasUnsavedChanges()) {
+                                                viewModel.saveReferenceSilently()
+                                                // Attendre un court délai pour la sauvegarde puis
+                                                // naviguer
+                                                coroutineScope.launch {
+                                                        delay(500) // Délai un peu plus long pour la
+                                                        // sauvegarde
+                                                        onNavigateBack()
+                                                }
+                                        } else {
+                                                // Si pas de modifications, naviguer directement
+                                                onNavigateBack()
+                                        }
+                                }
                         )
                 }
         ) { paddingValues ->

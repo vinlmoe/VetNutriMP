@@ -12,8 +12,8 @@ import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Components.TopBarSimple
 import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
 import fr.vetbrain.vetnutri_mp.Repository.BiblioRefRepository
+import fr.vetbrain.vetnutri_mp.Repository.DatabaseReferenceEvRepository
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
-import fr.vetbrain.vetnutri_mp.Repository.ReferenceEvRepository
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.PlatformDispatcher
 import fr.vetbrain.vetnutri_mp.ViewModel.EquationViewModel
@@ -51,7 +51,7 @@ fun ReferenceEvSideMenuView(
         equationViewModel: EquationViewModel,
         biblioRefRepository: BiblioRefRepository,
         equationRepository: EquationRepository,
-        referenceEvRepository: ReferenceEvRepository,
+        referenceEvRepository: DatabaseReferenceEvRepository,
         platformDispatcher: PlatformDispatcher,
         referenceEvId: String,
         onNavigateBack: () -> Unit,

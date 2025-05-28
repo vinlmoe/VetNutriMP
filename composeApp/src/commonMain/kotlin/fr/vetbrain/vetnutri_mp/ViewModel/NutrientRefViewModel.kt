@@ -6,7 +6,7 @@ import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
 import fr.vetbrain.vetnutri_mp.Enumer.MainNutrientEnum
 import fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum
 import fr.vetbrain.vetnutri_mp.Repository.BiblioRefRepository
-import fr.vetbrain.vetnutri_mp.Repository.ReferenceEvRepository
+import fr.vetbrain.vetnutri_mp.Repository.DatabaseReferenceEvRepository
 import fr.vetbrain.vetnutri_mp.Utils.PlatformDispatcher
 import kotlin.coroutines.CoroutineContext
 import kotlin.random.Random
@@ -18,7 +18,7 @@ import kotlinx.coroutines.launch
 
 /** ViewModel pour la gestion des besoins nutritionnels d'une référence */
 class NutrientRefViewModel(
-        private val referenceEvRepository: ReferenceEvRepository,
+        private val referenceEvRepository: DatabaseReferenceEvRepository,
         private val biblioRefRepository: BiblioRefRepository,
         private val platformDispatcher: PlatformDispatcher = PlatformDispatcher(),
         private val coroutineContext: CoroutineContext = platformDispatcher.provideMainDispatcher()

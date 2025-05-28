@@ -10,8 +10,8 @@ import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toDomain
 import fr.vetbrain.vetnutri_mp.Enumer.EquationKind
 import fr.vetbrain.vetnutri_mp.Enumer.VariableKind
 import fr.vetbrain.vetnutri_mp.Repository.BiblioRefRepository
+import fr.vetbrain.vetnutri_mp.Repository.DatabaseReferenceEvRepository
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
-import fr.vetbrain.vetnutri_mp.Repository.ReferenceEvRepository
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,7 +31,7 @@ class EquationViewModel(
         private val equationRepository: EquationRepository,
         private val biblioRefDao: BiblioRefDao?,
         private val biblioRepository: BiblioRefRepository,
-        private val referenceRepository: ReferenceEvRepository
+        private val referenceRepository: DatabaseReferenceEvRepository
 ) : ViewModel() {
     private val coroutineScope = CoroutineScope(AppDispatchers.Main)
 

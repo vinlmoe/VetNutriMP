@@ -99,7 +99,7 @@ fun App(appDatabase: AppDatabase) {
         )
     }
     val referenceEvViewModel = remember {
-        ReferenceEvViewModel(ReferenceEvRepository(), platformDispatcher)
+        ReferenceEvViewModel(databaseReferenceEvRepository, platformDispatcher)
     }
     var selectedReferenceEvId by remember { mutableStateOf<String?>(null) }
 
@@ -108,7 +108,7 @@ fun App(appDatabase: AppDatabase) {
                 equationRepository = equationRepository,
                 biblioRefDao = appDatabase.biblioRefDao(),
                 biblioRepository = biblioRefRepository,
-                referenceRepository = ReferenceEvRepository()
+                referenceRepository = databaseReferenceEvRepository
         )
     }
     var selectedEquationId by remember { mutableStateOf<String?>(null) }
@@ -126,7 +126,7 @@ fun App(appDatabase: AppDatabase) {
 
     val newReferenceEvViewModel = remember {
         NewReferenceEvViewModel(
-                repository = ReferenceEvRepository(),
+                repository = databaseReferenceEvRepository,
                 equationRepository = equationRepository,
                 biblioRefRepository = biblioRefRepository
         )
@@ -409,7 +409,7 @@ fun App(appDatabase: AppDatabase) {
                         ReferenceEvNutrientView(
                                 referenceEvViewModel = referenceEvViewModel,
                                 biblioRefRepository = biblioRefRepository,
-                                referenceEvRepository = ReferenceEvRepository(),
+                                referenceEvRepository = databaseReferenceEvRepository,
                                 platformDispatcher = platformDispatcher,
                                 referenceEvId = selectedReferenceEvId ?: "",
                                 onNavigateBack = { currentScreen = Screen.EquationList },
@@ -425,7 +425,7 @@ fun App(appDatabase: AppDatabase) {
                                 equationViewModel = equationViewModel,
                                 biblioRefRepository = biblioRefRepository,
                                 equationRepository = equationRepository,
-                                referenceEvRepository = ReferenceEvRepository(),
+                                referenceEvRepository = databaseReferenceEvRepository,
                                 platformDispatcher = platformDispatcher,
                                 referenceEvId = selectedReferenceEvId ?: "",
                                 onNavigateBack = { currentScreen = Screen.ReferenceEvList },

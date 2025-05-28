@@ -6,7 +6,7 @@ import fr.vetbrain.vetnutri_mp.Data.Equation
 import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.StadePhysio
-import fr.vetbrain.vetnutri_mp.Repository.ReferenceEvRepository
+import fr.vetbrain.vetnutri_mp.Repository.DatabaseReferenceEvRepository
 import fr.vetbrain.vetnutri_mp.Utils.PlatformDispatcher
 import kotlin.coroutines.CoroutineContext
 import kotlinx.coroutines.CoroutineScope
@@ -18,7 +18,7 @@ import kotlinx.coroutines.launch
 
 /** ViewModel pour la gestion des références évaluées (ReferenceEv). */
 class ReferenceEvViewModel(
-        private val repository: ReferenceEvRepository,
+        private val repository: DatabaseReferenceEvRepository,
         private val platformDispatcher: PlatformDispatcher = PlatformDispatcher(),
         private val coroutineContext: CoroutineContext = platformDispatcher.provideMainDispatcher()
 ) {

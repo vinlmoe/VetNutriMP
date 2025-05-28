@@ -9,8 +9,8 @@ import fr.vetbrain.vetnutri_mp.Enumer.Reflevel
 import fr.vetbrain.vetnutri_mp.Enumer.StadePhysio
 import fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum
 import fr.vetbrain.vetnutri_mp.Repository.BiblioRefRepository
+import fr.vetbrain.vetnutri_mp.Repository.DatabaseReferenceEvRepository
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
-import fr.vetbrain.vetnutri_mp.Repository.ReferenceEvRepository
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,7 +26,7 @@ import kotlinx.coroutines.launch
  * @param biblioRefRepository Le repository pour les opérations sur les références bibliographiques
  */
 class NewReferenceEvViewModel(
-        private val repository: ReferenceEvRepository,
+        private val repository: DatabaseReferenceEvRepository,
         private val equationRepository: EquationRepository? = null,
         private val biblioRefRepository: BiblioRefRepository? = null
 ) {
@@ -259,6 +259,37 @@ class NewReferenceEvViewModel(
                 _operationSuccess.value = false
             }
         }
+    }
+
+    /** Sauvegarde silencieuse sans déclencher la navigation automatique */
+    fun saveReferenceSilently() {
+        val reference = _currentReference.value
+        if (reference.nom.isBlank()) {
+            return // Ne pas sauvegarder si pas de nom
+        }
+
+        coroutineScope.launch {
+            try {
+                if (_isEditMode.value) {
+                    repository.update(reference)
+                } else {
+                    repository.create(reference)
+                }
+                // Pas de mise à jour de _operationSuccess pour éviter la navigation automatique
+            } catch (e: Exception) {
+                // Log silencieux de l'erreur
+                println("DEBUG: Erreur lors de la sauvegarde silencieuse: ${e.message}")
+            }
+        }
+    }
+
+    /** Vérifie s'il y a des modifications non sauvegardées */
+    fun hasUnsavedChanges(): Boolean {
+        val reference = _currentReference.value
+        return reference.nom.isNotBlank() ||
+                reference.description.isNotBlank() ||
+                reference.nomEnergie.isNotBlank() ||
+                reference.nomMaladie.isNotBlank()
     }
 
     /**

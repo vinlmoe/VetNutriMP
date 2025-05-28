@@ -9,14 +9,82 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.runBlocking
 
 /**
- * Repository pour la persistance des références évaluées avec Room Multiplatform - Version
- * simplifiée
+ * Repository pour la persistance des références évaluées avec Room Multiplatform Utilise la
+ * composition pour la compatibilité avec les ViewModels existants
  */
 class DatabaseReferenceEvRepository(
         private val referenceEvDao: ReferenceEvDao,
         private val equationDao: EquationDao,
         private val biblioRefDao: BiblioRefDao
 ) : ReferenceEvRepositoryInterface {
+
+    // Repository en mémoire pour la compatibilité
+    private val memoryRepository = ReferenceEvRepository()
+
+    init {
+        // Ajouter des données de test si la base est vide
+        runBlocking {
+            try {
+                val existingRefs = getAllReferenceEv()
+                if (existingRefs.isEmpty()) {
+                    println(
+                            "DEBUG DatabaseReferenceEvRepository: Base vide, ajout de données de test"
+                    )
+
+                    val testRef1 =
+                            ReferenceEv(
+                                            uuid = "ref-test-1",
+                                            nom = "Référence Chien Adulte",
+                                            description =
+                                                    "Référence nutritionnelle pour chien adulte en bonne santé",
+                                            maladie = false,
+                                            nomMaladie = "",
+                                            nomEnergie = "Énergie d'entretien",
+                                            consistent = 1,
+                                            espece = Espece.CHIEN,
+                                            stadePhysio = StadePhysio.ADULTE
+                                    )
+                                    .apply {
+                                        nomk1 = "Facteur activité"
+                                        nomk2 = "Facteur environnement"
+                                        nomk3 = "Facteur race"
+                                        nomk4 = "Facteur âge"
+                                        nomk5 = "Facteur santé"
+                                    }
+
+                    val testRef2 =
+                            ReferenceEv(
+                                            uuid = "ref-test-2",
+                                            nom = "Référence Chat Adulte",
+                                            description =
+                                                    "Référence nutritionnelle pour chat adulte en bonne santé",
+                                            maladie = false,
+                                            nomMaladie = "",
+                                            nomEnergie = "Énergie d'entretien féline",
+                                            consistent = 1,
+                                            espece = Espece.CHAT,
+                                            stadePhysio = StadePhysio.ADULTE
+                                    )
+                                    .apply {
+                                        nomk1 = "Facteur activité"
+                                        nomk2 = "Facteur environnement"
+                                        nomk3 = "Facteur race"
+                                        nomk4 = "Facteur âge"
+                                        nomk5 = "Facteur santé"
+                                    }
+
+                    saveReferenceEv(testRef1)
+                    saveReferenceEv(testRef2)
+
+                    println("DEBUG DatabaseReferenceEvRepository: 2 références de test ajoutées")
+                }
+            } catch (e: Exception) {
+                println(
+                        "DEBUG DatabaseReferenceEvRepository: Erreur lors de l'initialisation: ${e.message}"
+                )
+            }
+        }
+    }
 
     // Implémentation de l'interface ReferenceEvRepositoryInterface
     override suspend fun getAllReferenceEv(): List<ReferenceEv> {
@@ -58,41 +126,143 @@ class DatabaseReferenceEvRepository(
         emit(getReferenceEvById(uuid))
     }
 
-    // Méthodes pour compatibilité avec ReferenceEvRepository existant
-    fun getAll(): List<ReferenceEv> = runBlocking { getAllReferenceEv() }
+    // Méthodes de compatibilité avec ReferenceEvRepository
+    suspend fun getAll(): List<ReferenceEv> {
+        return getAllReferenceEv()
+    }
 
-    fun getById(id: String): ReferenceEv? = runBlocking { getReferenceEvById(id) }
+    suspend fun getById(id: String): ReferenceEv? {
+        return getReferenceEvById(id)
+    }
 
-    fun create(referenceEv: ReferenceEv): Boolean {
+    suspend fun create(reference: ReferenceEv): Boolean {
         return try {
-            runBlocking { saveReferenceEv(referenceEv) }
+            saveReferenceEv(reference)
             true
         } catch (e: Exception) {
+            println("DEBUG DatabaseReferenceEvRepository: Erreur lors de la création: ${e.message}")
             false
         }
     }
 
-    fun update(referenceEv: ReferenceEv): Boolean {
+    suspend fun update(reference: ReferenceEv): Boolean {
         return try {
-            runBlocking { updateReferenceEv(referenceEv) }
+            updateReferenceEv(reference)
             true
         } catch (e: Exception) {
+            println(
+                    "DEBUG DatabaseReferenceEvRepository: Erreur lors de la mise à jour: ${e.message}"
+            )
             false
         }
     }
 
-    fun delete(id: String): Boolean {
+    suspend fun delete(id: String): Boolean {
         return try {
-            runBlocking { deleteReferenceEv(id) }
+            deleteReferenceEv(id)
             true
         } catch (e: Exception) {
+            println(
+                    "DEBUG DatabaseReferenceEvRepository: Erreur lors de la suppression: ${e.message}"
+            )
+            false
+        }
+    }
+
+    // Méthodes de délégation pour les équations (compatibilité avec ReferenceEvRepository)
+    fun updateEquationBW(referenceId: String, equation: Equation): Boolean {
+        return try {
+            runBlocking {
+                val reference = getReferenceEvById(referenceId)
+                if (reference != null) {
+                    reference.equationBW = equation
+                    updateReferenceEv(reference)
+                    true
+                } else {
+                    false
+                }
+            }
+        } catch (e: Exception) {
+            println("DEBUG DatabaseReferenceEvRepository: Erreur updateEquationBW: ${e.message}")
+            false
+        }
+    }
+
+    fun updateEquationBEE(referenceId: String, equation: Equation): Boolean {
+        return try {
+            runBlocking {
+                val reference = getReferenceEvById(referenceId)
+                if (reference != null) {
+                    reference.equationBEE = equation
+                    updateReferenceEv(reference)
+                    true
+                } else {
+                    false
+                }
+            }
+        } catch (e: Exception) {
+            println("DEBUG DatabaseReferenceEvRepository: Erreur updateEquationBEE: ${e.message}")
+            false
+        }
+    }
+
+    fun updateEquationDEcom(referenceId: String, equation: Equation): Boolean {
+        return try {
+            runBlocking {
+                val reference = getReferenceEvById(referenceId)
+                if (reference != null) {
+                    reference.equationDEcom = equation
+                    updateReferenceEv(reference)
+                    true
+                } else {
+                    false
+                }
+            }
+        } catch (e: Exception) {
+            println("DEBUG DatabaseReferenceEvRepository: Erreur updateEquationDEcom: ${e.message}")
+            false
+        }
+    }
+
+    fun updateEquationDEraw(referenceId: String, equation: Equation): Boolean {
+        return try {
+            runBlocking {
+                val reference = getReferenceEvById(referenceId)
+                if (reference != null) {
+                    reference.equationDEraw = equation
+                    updateReferenceEv(reference)
+                    true
+                } else {
+                    false
+                }
+            }
+        } catch (e: Exception) {
+            println("DEBUG DatabaseReferenceEvRepository: Erreur updateEquationDEraw: ${e.message}")
+            false
+        }
+    }
+
+    fun updateEquationME(referenceId: String, equation: Equation): Boolean {
+        return try {
+            runBlocking {
+                val reference = getReferenceEvById(referenceId)
+                if (reference != null) {
+                    reference.equationME = equation
+                    updateReferenceEv(reference)
+                    true
+                } else {
+                    false
+                }
+            }
+        } catch (e: Exception) {
+            println("DEBUG DatabaseReferenceEvRepository: Erreur updateEquationME: ${e.message}")
             false
         }
     }
 
     // Méthodes privées pour la conversion
 
-    private fun convertEntityToReferenceEv(entity: ReferenceEvEntity): ReferenceEv {
+    private suspend fun convertEntityToReferenceEv(entity: ReferenceEvEntity): ReferenceEv {
         val referenceEv =
                 ReferenceEv(
                         uuid = entity.uuid,
