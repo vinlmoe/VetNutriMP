@@ -21,7 +21,6 @@ import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.EquationViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.ReferenceEvViewModel
-import java.util.*
 
 /**
  * Écran de gestion des équations pour une référence nutritionnelle

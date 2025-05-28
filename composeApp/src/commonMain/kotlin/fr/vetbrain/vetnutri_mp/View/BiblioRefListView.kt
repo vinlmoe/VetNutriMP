@@ -17,7 +17,6 @@ import fr.vetbrain.vetnutri_mp.Theme.AppIcons
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.BiblioRefViewModel
-import java.util.*
 import kotlinx.coroutines.launch
 
 /** Vue pour afficher et gérer la liste des références bibliographiques */

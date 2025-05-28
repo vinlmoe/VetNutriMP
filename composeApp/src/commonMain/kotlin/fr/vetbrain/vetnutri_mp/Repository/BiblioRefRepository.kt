@@ -4,6 +4,7 @@ import fr.vetbrain.vetnutri_mp.Data.BiblioRef
 import fr.vetbrain.vetnutri_mp.DataBase.BiblioRefDao
 import fr.vetbrain.vetnutri_mp.DataBase.BiblioRefEntity
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
+import fr.vetbrain.vetnutri_mp.Utils.genUUID
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -396,7 +397,7 @@ class DatabaseBiblioRefRepository(private val biblioRefDao: BiblioRefDao) : Bibl
         println("DEBUG DatabaseBiblioRefRepo: toEntity - Longueur bibtex: ${bibtex.length}")
         println("DEBUG DatabaseBiblioRefRepo: toEntity - Valeur consistent: $consistent")
 
-        val validUuid = if (uuid.isBlank()) java.util.UUID.randomUUID().toString() else uuid
+        val validUuid = if (uuid.isBlank()) genUUID() else uuid
         val validFirstAuthor = if (firstAuthor.isBlank()) "Auteur inconnu" else firstAuthor
         val validYear = if (year <= 0) 2000 else year
         val validCompleteRef =

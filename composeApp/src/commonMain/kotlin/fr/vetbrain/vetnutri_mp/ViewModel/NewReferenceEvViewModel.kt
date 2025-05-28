@@ -106,6 +106,9 @@ class NewReferenceEvViewModel(
                 _currentReference.value = reference
                 _isEditMode.value = true
                 updateDefinedNutrients(reference)
+
+                // Charger les équations associées depuis la base de données
+                loadEquationsForReference(reference)
             } else {
                 _errorMessage.value = "Référence non trouvée"
                 _currentReference.value = ReferenceEv()
@@ -430,6 +433,85 @@ class NewReferenceEvViewModel(
         }
     }
 
+    // Méthodes silencieuses pour la sélection d'équations (sans déclencher operationSuccess)
+
+    /**
+     * Définit l'équation de poids corporel pour la référence sans déclencher la navigation
+     *
+     * @param equation L'équation à définir ou null pour supprimer l'équation
+     */
+    fun setEquationBWSilently(equation: Equation?) {
+        coroutineScope.launch {
+            try {
+                val reference = _currentReference.value
+                reference.equationBW = equation
+                repository.update(reference)
+                _currentReference.value = reference
+                // Pas de mise à jour de _operationSuccess pour éviter la navigation
+            } catch (e: Exception) {
+                _errorMessage.value = "Erreur: ${e.message}"
+            }
+        }
+    }
+
+    /**
+     * Définit l'équation de besoin énergétique basal pour la référence sans déclencher la
+     * navigation
+     *
+     * @param equation L'équation à définir ou null pour supprimer l'équation
+     */
+    fun setEquationBEESilently(equation: Equation?) {
+        coroutineScope.launch {
+            try {
+                val reference = _currentReference.value
+                reference.equationBEE = equation
+                repository.update(reference)
+                _currentReference.value = reference
+                // Pas de mise à jour de _operationSuccess pour éviter la navigation
+            } catch (e: Exception) {
+                _errorMessage.value = "Erreur: ${e.message}"
+            }
+        }
+    }
+
+    /**
+     * Définit l'équation d'énergie digestible pour aliments composés sans déclencher la navigation
+     *
+     * @param equation L'équation à définir ou null pour supprimer l'équation
+     */
+    fun setEquationDEcomSilently(equation: Equation?) {
+        coroutineScope.launch {
+            try {
+                val reference = _currentReference.value
+                reference.equationDEcom = equation
+                repository.update(reference)
+                _currentReference.value = reference
+                // Pas de mise à jour de _operationSuccess pour éviter la navigation
+            } catch (e: Exception) {
+                _errorMessage.value = "Erreur: ${e.message}"
+            }
+        }
+    }
+
+    /**
+     * Définit l'équation d'énergie digestible pour aliments bruts sans déclencher la navigation
+     *
+     * @param equation L'équation à définir ou null pour supprimer l'équation
+     */
+    fun setEquationDErawSilently(equation: Equation?) {
+        coroutineScope.launch {
+            try {
+                val reference = _currentReference.value
+                reference.equationDEraw = equation
+                repository.update(reference)
+                _currentReference.value = reference
+                // Pas de mise à jour de _operationSuccess pour éviter la navigation
+            } catch (e: Exception) {
+                _errorMessage.value = "Erreur: ${e.message}"
+            }
+        }
+    }
+
     /** Efface les messages d'erreur */
     fun clearErrorMessage() {
         _errorMessage.value = null
@@ -438,5 +520,52 @@ class NewReferenceEvViewModel(
     /** Réinitialise l'état de succès de l'opération */
     fun resetOperationSuccess() {
         _operationSuccess.value = false
+    }
+
+    /** Charge les équations associées à une référence depuis la base de données */
+    private suspend fun loadEquationsForReference(reference: ReferenceEv) {
+        try {
+            val repo = equationRepository ?: return
+
+            // Charger les équations par UUID si elles existent
+            reference.equationBW?.let { equation ->
+                val loadedEquation = repo.getEquationById(equation.uuid)
+                if (loadedEquation != null) {
+                    reference.equationBW = loadedEquation
+                    println("DEBUG: Équation BW chargée: ${loadedEquation.name}")
+                }
+            }
+
+            reference.equationBEE?.let { equation ->
+                val loadedEquation = repo.getEquationById(equation.uuid)
+                if (loadedEquation != null) {
+                    reference.equationBEE = loadedEquation
+                    println("DEBUG: Équation BEE chargée: ${loadedEquation.name}")
+                }
+            }
+
+            reference.equationDEcom?.let { equation ->
+                val loadedEquation = repo.getEquationById(equation.uuid)
+                if (loadedEquation != null) {
+                    reference.equationDEcom = loadedEquation
+                    println("DEBUG: Équation DEcom chargée: ${loadedEquation.name}")
+                }
+            }
+
+            reference.equationDEraw?.let { equation ->
+                val loadedEquation = repo.getEquationById(equation.uuid)
+                if (loadedEquation != null) {
+                    reference.equationDEraw = loadedEquation
+                    println("DEBUG: Équation DEraw chargée: ${loadedEquation.name}")
+                }
+            }
+
+            // Mettre à jour la référence avec les équations chargées
+            _currentReference.value = reference
+        } catch (e: Exception) {
+            println(
+                    "DEBUG: Erreur lors du chargement des équations pour la référence: ${e.message}"
+            )
+        }
     }
 }

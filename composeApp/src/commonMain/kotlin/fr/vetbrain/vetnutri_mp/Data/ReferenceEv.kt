@@ -51,8 +51,6 @@ data class ReferenceEv(
         var nomk4: String = ""
         var nomk5: String = ""
 
-
-
         init {
                 // Initialisation des coefficients par défaut
                 modk1.add(CoefP(description = "Normal", coef = 1.0f, groupUUID = 0))
@@ -246,6 +244,35 @@ data class ReferenceEv(
                 }
                 return resultat
         }
+
+        // Getters publics pour l'accès aux propriétés privées
+
+        /** Récupère la liste des coefficients k1 */
+        fun getModk1(): ArrayList<CoefP> = modk1
+
+        /** Récupère la liste des coefficients k2 */
+        fun getModk2(): ArrayList<CoefP> = modk2
+
+        /** Récupère la liste des coefficients k3 */
+        fun getModk3(): ArrayList<CoefP> = modk3
+
+        /** Récupère la liste des coefficients k4 */
+        fun getModk4(): ArrayList<CoefP> = modk4
+
+        /** Récupère la liste des coefficients k5 */
+        fun getModk5(): ArrayList<CoefP> = modk5
+
+        /** Récupère la map des nutriments MIN */
+        fun getRefMapMin(): MutableMap<Nutrient, Nut4Ref> = refMapMin
+
+        /** Récupère la map des nutriments MAX */
+        fun getRefMapMax(): MutableMap<Nutrient, Nut4Ref> = refMapMax
+
+        /** Récupère la map des nutriments OPTIMIN */
+        fun getRefMapOMin(): MutableMap<Nutrient, Nut4Ref> = refMapOMin
+
+        /** Récupère la map des nutriments OPTIMAX */
+        fun getRefMapOMax(): MutableMap<Nutrient, Nut4Ref> = refMapOMax
 
         override fun toString(): String {
                 return nom

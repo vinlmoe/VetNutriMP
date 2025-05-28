@@ -330,7 +330,11 @@ fun App(appDatabase: AppDatabase) {
                                 },
                                 selectedTab = selectedCalculationTab,
                                 onTabChanged = { selectedCalculationTab = it },
-                                modifier = Modifier.fillMaxSize()
+                                modifier = Modifier.fillMaxSize(),
+                                biblioRefRepository = biblioRefRepository,
+                                equationRepository = equationRepository,
+                                referenceEvRepository = databaseReferenceEvRepository,
+                                platformDispatcher = platformDispatcher
                         )
                     }
                     Screen.BiblioRefList -> {

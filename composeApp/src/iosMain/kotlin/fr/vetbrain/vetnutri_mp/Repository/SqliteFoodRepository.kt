@@ -2,6 +2,7 @@ package fr.vetbrain.vetnutri_mp.Repository
 
 import fr.vetbrain.vetnutri_mp.Data.AlimentEv
 import fr.vetbrain.vetnutri_mp.Data.AlimentEvJson
+import fr.vetbrain.vetnutri_mp.Data.AlimentEvLight
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -28,7 +29,7 @@ class SqliteFoodRepository : FoodRepository {
     }
 
     override suspend fun delete(food: AlimentEv) {
-        _foods.removeAll { food -> food.uuid == food.uuid }
+        _foods.removeAll { it.uuid == food.uuid }
         refreshFoods()
     }
 
@@ -36,15 +37,18 @@ class SqliteFoodRepository : FoodRepository {
         return _foods.toList()
     }
 
-    override suspend fun getAllFoodsLight(): List<AlimentEv> {
+    override suspend fun getAllFoodsLight(): List<AlimentEvLight> {
         return _foods.map { food ->
-            AlimentEv(
+            AlimentEvLight(
                     uuid = food.uuid,
-                    name = food.name,
-                    latinName = food.latinName,
-                    nutrimentValues = emptyList(),
-                    species = food.species,
-                    indications = food.indications
+                    nom = food.nom,
+                    brand = food.brand,
+                    group = food.group,
+                    typeAliment = food.typeAliment,
+                    gamme = food.gamme,
+                    especes = food.especes,
+                    indicat = food.indicat,
+                    deprecated = food.deprecated
             )
         }
     }
@@ -55,6 +59,13 @@ class SqliteFoodRepository : FoodRepository {
 
     override fun observeAllFoods(): Flow<List<AlimentEv>> {
         return foodsFlow.asStateFlow()
+    }
+
+    override suspend fun clearAllFoods(): Int {
+        val count = _foods.size
+        _foods.clear()
+        refreshFoods()
+        return count
     }
 
     override suspend fun importFoods(foods: List<AlimentEvJson>): FoodImportResult {

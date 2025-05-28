@@ -31,7 +31,7 @@ data class Equation(
         var variables: MutableList<VariableKind> = mutableListOf(),
         var correctionFactor: Double = 1.0,
         var creationDate: Long = instantNow().toEpochMilliseconds(),
-        var lastUpdate: Long =  instantNow().toEpochMilliseconds()
+        var lastUpdate: Long = instantNow().toEpochMilliseconds()
 ) {
 
         /**

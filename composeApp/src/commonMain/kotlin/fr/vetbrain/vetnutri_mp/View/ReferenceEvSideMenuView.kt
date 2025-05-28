@@ -63,7 +63,8 @@ fun ReferenceEvSideMenuView(
         newReferenceEvViewModel: NewReferenceEvViewModel =
                 NewReferenceEvViewModel(
                         repository = referenceEvRepository,
-                        equationRepository = equationRepository
+                        equationRepository = equationRepository,
+                        biblioRefRepository = biblioRefRepository
                 )
 ) {
     val currentReferenceEv by

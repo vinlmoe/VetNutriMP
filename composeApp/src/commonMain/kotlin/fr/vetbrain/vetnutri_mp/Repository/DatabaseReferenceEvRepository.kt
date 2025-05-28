@@ -2,128 +2,162 @@ package fr.vetbrain.vetnutri_mp.Repository
 
 import fr.vetbrain.vetnutri_mp.Data.*
 import fr.vetbrain.vetnutri_mp.DataBase.*
+import fr.vetbrain.vetnutri_mp.Enumer.EquationKind
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
+import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
+import fr.vetbrain.vetnutri_mp.Enumer.Reflevel
 import fr.vetbrain.vetnutri_mp.Enumer.StadePhysio
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.runBlocking
+import fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum
 
-/**
- * Repository pour la persistance des références évaluées avec Room Multiplatform Utilise la
- * composition pour la compatibilité avec les ViewModels existants
- */
+/** Repository pour la persistance des références évaluées avec Room Multiplatform */
 class DatabaseReferenceEvRepository(
         private val referenceEvDao: ReferenceEvDao,
         private val equationDao: EquationDao,
         private val biblioRefDao: BiblioRefDao
-) : ReferenceEvRepositoryInterface {
+) {
 
-    // Repository en mémoire pour la compatibilité
-    private val memoryRepository = ReferenceEvRepository()
+    // Méthodes principales du repository
 
-    init {
-        // Ajouter des données de test si la base est vide
-        runBlocking {
-            try {
-                val existingRefs = getAllReferenceEv()
-                if (existingRefs.isEmpty()) {
-                    println(
-                            "DEBUG DatabaseReferenceEvRepository: Base vide, ajout de données de test"
-                    )
-
-                    val testRef1 =
-                            ReferenceEv(
-                                            uuid = "ref-test-1",
-                                            nom = "Référence Chien Adulte",
-                                            description =
-                                                    "Référence nutritionnelle pour chien adulte en bonne santé",
-                                            maladie = false,
-                                            nomMaladie = "",
-                                            nomEnergie = "Énergie d'entretien",
-                                            consistent = 1,
-                                            espece = Espece.CHIEN,
-                                            stadePhysio = StadePhysio.ADULTE
-                                    )
-                                    .apply {
-                                        nomk1 = "Facteur activité"
-                                        nomk2 = "Facteur environnement"
-                                        nomk3 = "Facteur race"
-                                        nomk4 = "Facteur âge"
-                                        nomk5 = "Facteur santé"
-                                    }
-
-                    val testRef2 =
-                            ReferenceEv(
-                                            uuid = "ref-test-2",
-                                            nom = "Référence Chat Adulte",
-                                            description =
-                                                    "Référence nutritionnelle pour chat adulte en bonne santé",
-                                            maladie = false,
-                                            nomMaladie = "",
-                                            nomEnergie = "Énergie d'entretien féline",
-                                            consistent = 1,
-                                            espece = Espece.CHAT,
-                                            stadePhysio = StadePhysio.ADULTE
-                                    )
-                                    .apply {
-                                        nomk1 = "Facteur activité"
-                                        nomk2 = "Facteur environnement"
-                                        nomk3 = "Facteur race"
-                                        nomk4 = "Facteur âge"
-                                        nomk5 = "Facteur santé"
-                                    }
-
-                    saveReferenceEv(testRef1)
-                    saveReferenceEv(testRef2)
-
-                    println("DEBUG DatabaseReferenceEvRepository: 2 références de test ajoutées")
-                }
-            } catch (e: Exception) {
-                println(
-                        "DEBUG DatabaseReferenceEvRepository: Erreur lors de l'initialisation: ${e.message}"
-                )
-            }
+    suspend fun getAllReferenceEv(): List<ReferenceEv> {
+        return try {
+            val entities = referenceEvDao.getAllReferenceEv()
+            entities.map { convertEntityToReferenceEv(it) }
+        } catch (e: Exception) {
+            println("DEBUG DatabaseReferenceEvRepository: Erreur lors du chargement: ${e.message}")
+            emptyList()
         }
     }
 
-    // Implémentation de l'interface ReferenceEvRepositoryInterface
-    override suspend fun getAllReferenceEv(): List<ReferenceEv> {
-        val entities = referenceEvDao.getAllReferenceEv()
-        return entities.map { entity -> convertEntityToReferenceEv(entity) }
+    suspend fun getReferenceEvById(id: String): ReferenceEv? {
+        return try {
+            val entity = referenceEvDao.getReferenceEvById(id)
+            entity?.let { convertEntityToReferenceEv(it) }
+        } catch (e: Exception) {
+            println(
+                    "DEBUG DatabaseReferenceEvRepository: Erreur lors du chargement par ID: ${e.message}"
+            )
+            null
+        }
     }
 
-    override suspend fun getReferenceEvById(uuid: String): ReferenceEv? {
-        val entity = referenceEvDao.getReferenceEvById(uuid) ?: return null
-        return convertEntityToReferenceEv(entity)
+    suspend fun saveReferenceEv(referenceEv: ReferenceEv): String {
+        try {
+            // 1. Sauvegarder l'entité principale
+            val entity = convertReferenceEvToEntity(referenceEv)
+            referenceEvDao.insertReferenceEv(entity)
+
+            // 2. Sauvegarder les relations avec les équations
+            saveEquationRelations(referenceEv)
+
+            // 3. Sauvegarder les coefficients
+            saveCoefficients(referenceEv)
+
+            // 4. Sauvegarder les nutriments
+            saveNutrients(referenceEv)
+
+            println(
+                    "DEBUG DatabaseReferenceEvRepository: ReferenceEv ${referenceEv.nom} sauvegardée avec succès"
+            )
+            return referenceEv.uuid
+        } catch (e: Exception) {
+            println(
+                    "DEBUG DatabaseReferenceEvRepository: Erreur lors de la sauvegarde: ${e.message}"
+            )
+            throw e
+        }
     }
 
-    override suspend fun saveReferenceEv(referenceEv: ReferenceEv): String {
-        // Sauvegarder l'entité principale seulement pour l'instant
-        val entity = convertReferenceEvToEntity(referenceEv)
-        referenceEvDao.insertReferenceEv(entity)
-        return referenceEv.uuid
+    suspend fun updateReferenceEv(referenceEv: ReferenceEv) {
+        try {
+            // 1. Mettre à jour l'entité principale
+            val entity = convertReferenceEvToEntity(referenceEv)
+            referenceEvDao.updateReferenceEv(entity)
+
+            // 2. Supprimer les anciennes relations
+            referenceEvDao.deleteEquationsForReference(referenceEv.uuid)
+            referenceEvDao.deleteCoefficientsForReference(referenceEv.uuid)
+            referenceEvDao.deleteNutrientsForReference(referenceEv.uuid)
+
+            // 3. Sauvegarder les nouvelles relations
+            saveEquationRelations(referenceEv)
+            saveCoefficients(referenceEv)
+            saveNutrients(referenceEv)
+
+            println(
+                    "DEBUG DatabaseReferenceEvRepository: ReferenceEv ${referenceEv.nom} mise à jour avec succès"
+            )
+        } catch (e: Exception) {
+            println(
+                    "DEBUG DatabaseReferenceEvRepository: Erreur lors de la mise à jour: ${e.message}"
+            )
+            throw e
+        }
     }
 
-    override suspend fun updateReferenceEv(referenceEv: ReferenceEv) {
-        val entity = convertReferenceEvToEntity(referenceEv)
-        referenceEvDao.updateReferenceEv(entity)
+    suspend fun deleteReferenceEv(id: String) {
+        try {
+            referenceEvDao.deleteReferenceEvById(id)
+            println("DEBUG DatabaseReferenceEvRepository: ReferenceEv supprimée avec succès")
+        } catch (e: Exception) {
+            println(
+                    "DEBUG DatabaseReferenceEvRepository: Erreur lors de la suppression: ${e.message}"
+            )
+            throw e
+        }
     }
 
-    override suspend fun deleteReferenceEv(uuid: String) {
-        referenceEvDao.deleteReferenceEvById(uuid)
+    // Méthodes de conversion
+
+    private fun convertReferenceEvToEntity(referenceEv: ReferenceEv): ReferenceEvEntity {
+        return ReferenceEvEntity(
+                uuid = referenceEv.uuid,
+                nom = referenceEv.nom,
+                description = referenceEv.description,
+                maladie = referenceEv.maladie,
+                nomMaladie = referenceEv.nomMaladie,
+                nomEnergie = referenceEv.nomEnergie,
+                consistent = referenceEv.consistent,
+                espece = referenceEv.espece.name,
+                stadePhysio = referenceEv.stadePhysio.name,
+                nomk1 = referenceEv.nomk1,
+                nomk2 = referenceEv.nomk2,
+                nomk3 = referenceEv.nomk3,
+                nomk4 = referenceEv.nomk4,
+                nomk5 = referenceEv.nomk5
+        )
     }
 
-    override suspend fun getReferenceEvByEspece(espece: String): List<ReferenceEv> {
-        val entities = referenceEvDao.getReferenceEvByEspece(espece)
-        return entities.map { entity -> convertEntityToReferenceEv(entity) }
-    }
+    private suspend fun convertEntityToReferenceEv(entity: ReferenceEvEntity): ReferenceEv {
+        val referenceEv =
+                ReferenceEv(
+                        uuid = entity.uuid,
+                        nom = entity.nom,
+                        description = entity.description,
+                        maladie = entity.maladie,
+                        nomMaladie = entity.nomMaladie,
+                        nomEnergie = entity.nomEnergie,
+                        consistent = entity.consistent,
+                        espece = Espece.valueOf(entity.espece),
+                        stadePhysio = StadePhysio.valueOf(entity.stadePhysio)
+                )
 
-    override fun observeAllReferenceEv(): Flow<List<ReferenceEv>> = flow {
-        emit(getAllReferenceEv())
-    }
+        // Assigner les noms des coefficients
+        referenceEv.nomk1 = entity.nomk1
+        referenceEv.nomk2 = entity.nomk2
+        referenceEv.nomk3 = entity.nomk3
+        referenceEv.nomk4 = entity.nomk4
+        referenceEv.nomk5 = entity.nomk5
 
-    override fun observeReferenceEvById(uuid: String): Flow<ReferenceEv?> = flow {
-        emit(getReferenceEvById(uuid))
+        // Charger les équations associées
+        loadEquationsForReference(referenceEv)
+
+        // Charger les coefficients
+        loadCoefficientsForReference(referenceEv)
+
+        // Charger les nutriments
+        loadNutrientsForReference(referenceEv)
+
+        return referenceEv
     }
 
     // Méthodes de compatibilité avec ReferenceEvRepository
@@ -169,18 +203,16 @@ class DatabaseReferenceEvRepository(
         }
     }
 
-    // Méthodes de délégation pour les équations (compatibilité avec ReferenceEvRepository)
-    fun updateEquationBW(referenceId: String, equation: Equation): Boolean {
+    // Méthodes de délégation pour les équations (compatibilité avec EquationViewModel)
+    suspend fun updateEquationBW(referenceId: String, equation: Equation): Boolean {
         return try {
-            runBlocking {
-                val reference = getReferenceEvById(referenceId)
-                if (reference != null) {
-                    reference.equationBW = equation
-                    updateReferenceEv(reference)
-                    true
-                } else {
-                    false
-                }
+            val reference = getReferenceEvById(referenceId)
+            if (reference != null) {
+                reference.equationBW = equation
+                updateReferenceEv(reference)
+                true
+            } else {
+                false
             }
         } catch (e: Exception) {
             println("DEBUG DatabaseReferenceEvRepository: Erreur updateEquationBW: ${e.message}")
@@ -188,17 +220,15 @@ class DatabaseReferenceEvRepository(
         }
     }
 
-    fun updateEquationBEE(referenceId: String, equation: Equation): Boolean {
+    suspend fun updateEquationBEE(referenceId: String, equation: Equation): Boolean {
         return try {
-            runBlocking {
-                val reference = getReferenceEvById(referenceId)
-                if (reference != null) {
-                    reference.equationBEE = equation
-                    updateReferenceEv(reference)
-                    true
-                } else {
-                    false
-                }
+            val reference = getReferenceEvById(referenceId)
+            if (reference != null) {
+                reference.equationBEE = equation
+                updateReferenceEv(reference)
+                true
+            } else {
+                false
             }
         } catch (e: Exception) {
             println("DEBUG DatabaseReferenceEvRepository: Erreur updateEquationBEE: ${e.message}")
@@ -206,17 +236,15 @@ class DatabaseReferenceEvRepository(
         }
     }
 
-    fun updateEquationDEcom(referenceId: String, equation: Equation): Boolean {
+    suspend fun updateEquationDEcom(referenceId: String, equation: Equation): Boolean {
         return try {
-            runBlocking {
-                val reference = getReferenceEvById(referenceId)
-                if (reference != null) {
-                    reference.equationDEcom = equation
-                    updateReferenceEv(reference)
-                    true
-                } else {
-                    false
-                }
+            val reference = getReferenceEvById(referenceId)
+            if (reference != null) {
+                reference.equationDEcom = equation
+                updateReferenceEv(reference)
+                true
+            } else {
+                false
             }
         } catch (e: Exception) {
             println("DEBUG DatabaseReferenceEvRepository: Erreur updateEquationDEcom: ${e.message}")
@@ -224,17 +252,15 @@ class DatabaseReferenceEvRepository(
         }
     }
 
-    fun updateEquationDEraw(referenceId: String, equation: Equation): Boolean {
+    suspend fun updateEquationDEraw(referenceId: String, equation: Equation): Boolean {
         return try {
-            runBlocking {
-                val reference = getReferenceEvById(referenceId)
-                if (reference != null) {
-                    reference.equationDEraw = equation
-                    updateReferenceEv(reference)
-                    true
-                } else {
-                    false
-                }
+            val reference = getReferenceEvById(referenceId)
+            if (reference != null) {
+                reference.equationDEraw = equation
+                updateReferenceEv(reference)
+                true
+            } else {
+                false
             }
         } catch (e: Exception) {
             println("DEBUG DatabaseReferenceEvRepository: Erreur updateEquationDEraw: ${e.message}")
@@ -242,17 +268,15 @@ class DatabaseReferenceEvRepository(
         }
     }
 
-    fun updateEquationME(referenceId: String, equation: Equation): Boolean {
+    suspend fun updateEquationME(referenceId: String, equation: Equation): Boolean {
         return try {
-            runBlocking {
-                val reference = getReferenceEvById(referenceId)
-                if (reference != null) {
-                    reference.equationME = equation
-                    updateReferenceEv(reference)
-                    true
-                } else {
-                    false
-                }
+            val reference = getReferenceEvById(referenceId)
+            if (reference != null) {
+                reference.equationME = equation
+                updateReferenceEv(reference)
+                true
+            } else {
+                false
             }
         } catch (e: Exception) {
             println("DEBUG DatabaseReferenceEvRepository: Erreur updateEquationME: ${e.message}")
@@ -260,48 +284,495 @@ class DatabaseReferenceEvRepository(
         }
     }
 
-    // Méthodes privées pour la conversion
+    // Méthodes privées pour sauvegarder les relations
 
-    private suspend fun convertEntityToReferenceEv(entity: ReferenceEvEntity): ReferenceEv {
-        val referenceEv =
-                ReferenceEv(
-                        uuid = entity.uuid,
-                        nom = entity.nom,
-                        description = entity.description,
-                        maladie = entity.maladie,
-                        nomMaladie = entity.nomMaladie,
-                        nomEnergie = entity.nomEnergie,
-                        consistent = entity.consistent,
-                        espece = Espece.valueOf(entity.espece),
-                        stadePhysio = StadePhysio.valueOf(entity.stadePhysio)
-                )
+    private suspend fun saveEquationRelations(referenceEv: ReferenceEv) {
+        val relations = mutableListOf<ReferenceEvEquationEntity>()
 
-        // Assigner les noms des coefficients
-        referenceEv.nomk1 = entity.nomk1
-        referenceEv.nomk2 = entity.nomk2
-        referenceEv.nomk3 = entity.nomk3
-        referenceEv.nomk4 = entity.nomk4
-        referenceEv.nomk5 = entity.nomk5
+        referenceEv.equationBW?.let { equation ->
+            relations.add(
+                    ReferenceEvEquationEntity(
+                            referenceEvId = referenceEv.uuid,
+                            equationId = equation.uuid,
+                            equationType = "BW"
+                    )
+            )
+        }
 
-        return referenceEv
+        referenceEv.equationBEE?.let { equation ->
+            relations.add(
+                    ReferenceEvEquationEntity(
+                            referenceEvId = referenceEv.uuid,
+                            equationId = equation.uuid,
+                            equationType = "BEE"
+                    )
+            )
+        }
+
+        referenceEv.equationDEcom?.let { equation ->
+            relations.add(
+                    ReferenceEvEquationEntity(
+                            referenceEvId = referenceEv.uuid,
+                            equationId = equation.uuid,
+                            equationType = "DEcom"
+                    )
+            )
+        }
+
+        referenceEv.equationDEraw?.let { equation ->
+            relations.add(
+                    ReferenceEvEquationEntity(
+                            referenceEvId = referenceEv.uuid,
+                            equationId = equation.uuid,
+                            equationType = "DEraw"
+                    )
+            )
+        }
+
+        referenceEv.equationME?.let { equation ->
+            relations.add(
+                    ReferenceEvEquationEntity(
+                            referenceEvId = referenceEv.uuid,
+                            equationId = equation.uuid,
+                            equationType = "ME"
+                    )
+            )
+        }
+
+        relations.forEach { relation -> referenceEvDao.insertEquationRelation(relation) }
+
+        println(
+                "DEBUG DatabaseReferenceEvRepository: ${relations.size} relations d'équations sauvegardées"
+        )
     }
 
-    private fun convertReferenceEvToEntity(referenceEv: ReferenceEv): ReferenceEvEntity {
-        return ReferenceEvEntity(
-                uuid = referenceEv.uuid,
-                nom = referenceEv.nom,
-                description = referenceEv.description,
-                maladie = referenceEv.maladie,
-                nomMaladie = referenceEv.nomMaladie,
-                nomEnergie = referenceEv.nomEnergie,
-                consistent = referenceEv.consistent,
-                espece = referenceEv.espece.name,
-                stadePhysio = referenceEv.stadePhysio.name,
-                nomk1 = referenceEv.nomk1,
-                nomk2 = referenceEv.nomk2,
-                nomk3 = referenceEv.nomk3,
-                nomk4 = referenceEv.nomk4,
-                nomk5 = referenceEv.nomk5
+    private suspend fun saveCoefficients(referenceEv: ReferenceEv) {
+        val coefficients = mutableListOf<ReferenceEvCoefficientEntity>()
+
+        // Sauvegarder les coefficients k1-k5
+        referenceEv.getModk1().forEachIndexed { index, coef ->
+            coefficients.add(
+                    ReferenceEvCoefficientEntity(
+                            uuid = "${referenceEv.uuid}_k1_$index",
+                            referenceEvId = referenceEv.uuid,
+                            groupType = "k1",
+                            description = coef.description ?: "Normal",
+                            coef = coef.coef ?: 1.0f,
+                            groupUUID = coef.groupUUID ?: 0
+                    )
+            )
+        }
+
+        referenceEv.getModk2().forEachIndexed { index, coef ->
+            coefficients.add(
+                    ReferenceEvCoefficientEntity(
+                            uuid = "${referenceEv.uuid}_k2_$index",
+                            referenceEvId = referenceEv.uuid,
+                            groupType = "k2",
+                            description = coef.description ?: "Normal",
+                            coef = coef.coef ?: 1.0f,
+                            groupUUID = coef.groupUUID ?: 1
+                    )
+            )
+        }
+
+        referenceEv.getModk3().forEachIndexed { index, coef ->
+            coefficients.add(
+                    ReferenceEvCoefficientEntity(
+                            uuid = "${referenceEv.uuid}_k3_$index",
+                            referenceEvId = referenceEv.uuid,
+                            groupType = "k3",
+                            description = coef.description ?: "Normal",
+                            coef = coef.coef ?: 1.0f,
+                            groupUUID = coef.groupUUID ?: 2
+                    )
+            )
+        }
+
+        referenceEv.getModk4().forEachIndexed { index, coef ->
+            coefficients.add(
+                    ReferenceEvCoefficientEntity(
+                            uuid = "${referenceEv.uuid}_k4_$index",
+                            referenceEvId = referenceEv.uuid,
+                            groupType = "k4",
+                            description = coef.description ?: "Normal",
+                            coef = coef.coef ?: 1.0f,
+                            groupUUID = coef.groupUUID ?: 3
+                    )
+            )
+        }
+
+        referenceEv.getModk5().forEachIndexed { index, coef ->
+            coefficients.add(
+                    ReferenceEvCoefficientEntity(
+                            uuid = "${referenceEv.uuid}_k5_$index",
+                            referenceEvId = referenceEv.uuid,
+                            groupType = "k5",
+                            description = coef.description ?: "Normal",
+                            coef = coef.coef ?: 1.0f,
+                            groupUUID = coef.groupUUID ?: 4
+                    )
+            )
+        }
+
+        coefficients.forEach { coefficient -> referenceEvDao.insertCoefficient(coefficient) }
+
+        println(
+                "DEBUG DatabaseReferenceEvRepository: ${coefficients.size} coefficients sauvegardés"
         )
+    }
+
+    private suspend fun saveNutrients(referenceEv: ReferenceEv) {
+        val nutrients = mutableListOf<ReferenceEvNutrientEntity>()
+
+        // Sauvegarder les nutriments MIN
+        for ((nutrient, nut4Ref) in referenceEv.getRefMapMin()) {
+            nutrients.add(
+                    ReferenceEvNutrientEntity(
+                            uuid = "${referenceEv.uuid}_${nutrient.label}_MIN",
+                            referenceEvId = referenceEv.uuid,
+                            nutrientCode = nutrient.label,
+                            reflevel = "MIN",
+                            quantite = nut4Ref.quantite,
+                            uniteId = nut4Ref.unite.getID(),
+                            uniteReqId = nut4Ref.uniteReq.getID(),
+                            biblioRefId = nut4Ref.biblio?.uuid
+                    )
+            )
+        }
+
+        // Sauvegarder les nutriments MAX
+        for ((nutrient, nut4Ref) in referenceEv.getRefMapMax()) {
+            nutrients.add(
+                    ReferenceEvNutrientEntity(
+                            uuid = "${referenceEv.uuid}_${nutrient.label}_MAX",
+                            referenceEvId = referenceEv.uuid,
+                            nutrientCode = nutrient.label,
+                            reflevel = "MAX",
+                            quantite = nut4Ref.quantite,
+                            uniteId = nut4Ref.unite.getID(),
+                            uniteReqId = nut4Ref.uniteReq.getID(),
+                            biblioRefId = nut4Ref.biblio?.uuid
+                    )
+            )
+        }
+
+        // Sauvegarder les nutriments OPTIMIN
+        for ((nutrient, nut4Ref) in referenceEv.getRefMapOMin()) {
+            nutrients.add(
+                    ReferenceEvNutrientEntity(
+                            uuid = "${referenceEv.uuid}_${nutrient.label}_OPTIMIN",
+                            referenceEvId = referenceEv.uuid,
+                            nutrientCode = nutrient.label,
+                            reflevel = "OPTIMIN",
+                            quantite = nut4Ref.quantite,
+                            uniteId = nut4Ref.unite.getID(),
+                            uniteReqId = nut4Ref.uniteReq.getID(),
+                            biblioRefId = nut4Ref.biblio?.uuid
+                    )
+            )
+        }
+
+        // Sauvegarder les nutriments OPTIMAX
+        for ((nutrient, nut4Ref) in referenceEv.getRefMapOMax()) {
+            nutrients.add(
+                    ReferenceEvNutrientEntity(
+                            uuid = "${referenceEv.uuid}_${nutrient.label}_OPTIMAX",
+                            referenceEvId = referenceEv.uuid,
+                            nutrientCode = nutrient.label,
+                            reflevel = "OPTIMAX",
+                            quantite = nut4Ref.quantite,
+                            uniteId = nut4Ref.unite.getID(),
+                            uniteReqId = nut4Ref.uniteReq.getID(),
+                            biblioRefId = nut4Ref.biblio?.uuid
+                    )
+            )
+        }
+
+        nutrients.forEach { nutrient -> referenceEvDao.insertNutrient(nutrient) }
+
+        println("DEBUG DatabaseReferenceEvRepository: ${nutrients.size} nutriments sauvegardés")
+    }
+
+    // Méthodes privées pour charger les relations
+
+    private suspend fun loadEquationsForReference(referenceEv: ReferenceEv) {
+        val equationRelations = referenceEvDao.getEquationsForReference(referenceEv.uuid)
+
+        for (relation in equationRelations) {
+            val equation = equationDao.getEquationById(relation.equationId)
+            if (equation != null) {
+                val equationObj = convertEquationEntityToEquation(equation)
+                when (relation.equationType) {
+                    "BW" -> referenceEv.equationBW = equationObj
+                    "BEE" -> referenceEv.equationBEE = equationObj
+                    "DEcom" -> referenceEv.equationDEcom = equationObj
+                    "DEraw" -> referenceEv.equationDEraw = equationObj
+                    "ME" -> referenceEv.equationME = equationObj
+                }
+            }
+        }
+
+        println(
+                "DEBUG DatabaseReferenceEvRepository: ${equationRelations.size} équations chargées pour ${referenceEv.uuid}"
+        )
+    }
+
+    private suspend fun loadCoefficientsForReference(referenceEv: ReferenceEv) {
+        val coefficients = referenceEvDao.getCoefficientsForReference(referenceEv.uuid)
+
+        // Grouper par type de coefficient
+        val coefficientsByGroup = coefficients.groupBy { it.groupType }
+
+        // Charger chaque groupe
+        coefficientsByGroup["k1"]?.let { coefList ->
+            referenceEv.getModk1().clear()
+            for (coefEntity in coefList) {
+                referenceEv
+                        .getModk1()
+                        .add(
+                                CoefP(
+                                        uuid = coefEntity.uuid,
+                                        description = coefEntity.description,
+                                        coef = coefEntity.coef,
+                                        groupUUID = coefEntity.groupUUID
+                                )
+                        )
+            }
+        }
+
+        coefficientsByGroup["k2"]?.let { coefList ->
+            referenceEv.getModk2().clear()
+            for (coefEntity in coefList) {
+                referenceEv
+                        .getModk2()
+                        .add(
+                                CoefP(
+                                        uuid = coefEntity.uuid,
+                                        description = coefEntity.description,
+                                        coef = coefEntity.coef,
+                                        groupUUID = coefEntity.groupUUID
+                                )
+                        )
+            }
+        }
+
+        coefficientsByGroup["k3"]?.let { coefList ->
+            referenceEv.getModk3().clear()
+            for (coefEntity in coefList) {
+                referenceEv
+                        .getModk3()
+                        .add(
+                                CoefP(
+                                        uuid = coefEntity.uuid,
+                                        description = coefEntity.description,
+                                        coef = coefEntity.coef,
+                                        groupUUID = coefEntity.groupUUID
+                                )
+                        )
+            }
+        }
+
+        coefficientsByGroup["k4"]?.let { coefList ->
+            referenceEv.getModk4().clear()
+            for (coefEntity in coefList) {
+                referenceEv
+                        .getModk4()
+                        .add(
+                                CoefP(
+                                        uuid = coefEntity.uuid,
+                                        description = coefEntity.description,
+                                        coef = coefEntity.coef,
+                                        groupUUID = coefEntity.groupUUID
+                                )
+                        )
+            }
+        }
+
+        coefficientsByGroup["k5"]?.let { coefList ->
+            referenceEv.getModk5().clear()
+            for (coefEntity in coefList) {
+                referenceEv
+                        .getModk5()
+                        .add(
+                                CoefP(
+                                        uuid = coefEntity.uuid,
+                                        description = coefEntity.description,
+                                        coef = coefEntity.coef,
+                                        groupUUID = coefEntity.groupUUID
+                                )
+                        )
+            }
+        }
+
+        println(
+                "DEBUG DatabaseReferenceEvRepository: ${coefficients.size} coefficients chargés pour ${referenceEv.uuid}"
+        )
+    }
+
+    private suspend fun loadNutrientsForReference(referenceEv: ReferenceEv) {
+        val nutrients = referenceEvDao.getNutrientsForReference(referenceEv.uuid)
+
+        // Grouper par niveau de référence
+        val nutrientsByLevel = nutrients.groupBy { it.reflevel }
+
+        // Charger chaque niveau
+        nutrientsByLevel["MIN"]?.let { nutList ->
+            for (nutEntity in nutList) {
+                val nutrient = findNutrientByLabel(nutEntity.nutrientCode)
+                if (nutrient != null) {
+                    val biblio =
+                            if (nutEntity.biblioRefId != null) {
+                                convertBiblioRefByIdToBiblioRef(nutEntity.biblioRefId)
+                            } else null
+
+                    referenceEv.definirNutriment(
+                            nutEntity.quantite,
+                            nutrient,
+                            Reflevel.MIN,
+                            UnitReqEnum.getById(nutEntity.uniteReqId),
+                            biblio ?: BiblioRef()
+                    )
+                }
+            }
+        }
+
+        nutrientsByLevel["MAX"]?.let { nutList ->
+            for (nutEntity in nutList) {
+                val nutrient = findNutrientByLabel(nutEntity.nutrientCode)
+                if (nutrient != null) {
+                    val biblio =
+                            if (nutEntity.biblioRefId != null) {
+                                convertBiblioRefByIdToBiblioRef(nutEntity.biblioRefId)
+                            } else null
+
+                    referenceEv.definirNutriment(
+                            nutEntity.quantite,
+                            nutrient,
+                            Reflevel.MAX,
+                            UnitReqEnum.getById(nutEntity.uniteReqId),
+                            biblio ?: BiblioRef()
+                    )
+                }
+            }
+        }
+
+        nutrientsByLevel["OPTIMIN"]?.let { nutList ->
+            for (nutEntity in nutList) {
+                val nutrient = findNutrientByLabel(nutEntity.nutrientCode)
+                if (nutrient != null) {
+                    val biblio =
+                            if (nutEntity.biblioRefId != null) {
+                                convertBiblioRefByIdToBiblioRef(nutEntity.biblioRefId)
+                            } else null
+
+                    referenceEv.definirNutriment(
+                            nutEntity.quantite,
+                            nutrient,
+                            Reflevel.OPTIMIN,
+                            UnitReqEnum.getById(nutEntity.uniteReqId),
+                            biblio ?: BiblioRef()
+                    )
+                }
+            }
+        }
+
+        nutrientsByLevel["OPTIMAX"]?.let { nutList ->
+            for (nutEntity in nutList) {
+                val nutrient = findNutrientByLabel(nutEntity.nutrientCode)
+                if (nutrient != null) {
+                    val biblio =
+                            if (nutEntity.biblioRefId != null) {
+                                convertBiblioRefByIdToBiblioRef(nutEntity.biblioRefId)
+                            } else null
+
+                    referenceEv.definirNutriment(
+                            nutEntity.quantite,
+                            nutrient,
+                            Reflevel.OPTIMAX,
+                            UnitReqEnum.getById(nutEntity.uniteReqId),
+                            biblio ?: BiblioRef()
+                    )
+                }
+            }
+        }
+
+        println(
+                "DEBUG DatabaseReferenceEvRepository: ${nutrients.size} nutriments chargés pour ${referenceEv.uuid}"
+        )
+    }
+
+    // Méthodes utilitaires pour les conversions
+
+    private fun convertEquationEntityToEquation(entity: EquationEntity): Equation {
+        return Equation(
+                uuid = entity.uuid,
+                name = entity.name,
+                description = entity.description,
+                equationScript = entity.equationScript,
+                specie = if (entity.specie != null) Espece.valueOf(entity.specie) else null,
+                kind = EquationKind.valueOf(entity.kind),
+                consistent = entity.consistent,
+                bib = BiblioRef() // Temporairement vide pour éviter l'erreur suspend
+        )
+    }
+
+    private suspend fun convertBiblioRefEntityToBiblioRef(entity: BiblioRefEntity?): BiblioRef {
+        return if (entity != null) {
+            BiblioRef(
+                    uuid = entity.uuid,
+                    firstAuthor = entity.firstAuthor,
+                    year = entity.year,
+                    completeRef = entity.completeRef,
+                    comments = entity.comments,
+                    bibtex = entity.bibtex,
+                    consistent = entity.consistent
+            )
+        } else {
+            BiblioRef()
+        }
+    }
+
+    private suspend fun convertBiblioRefByIdToBiblioRef(biblioRefId: String?): BiblioRef {
+        return if (biblioRefId != null) {
+            val entity = biblioRefDao.getBiblioRefById(biblioRefId)
+            convertBiblioRefEntityToBiblioRef(entity)
+        } else {
+            BiblioRef()
+        }
+    }
+
+    private fun findNutrientByLabel(label: String): Nutrient? {
+        // Chercher dans tous les types de nutriments
+        return try {
+            // Essayer les différents types de nutriments
+            fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.entries.find { it.label == label }
+                    ?: fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro.entries.find {
+                        it.label == label
+                    }
+                            ?: fr.vetbrain.vetnutri_mp.Enumer.NutrientMin.entries.find {
+                        it.label == label
+                    }
+                            ?: fr.vetbrain.vetnutri_mp.Enumer.NutrientVitam.entries.find {
+                        it.label == label
+                    }
+                            ?: fr.vetbrain.vetnutri_mp.Enumer.NutrientLipid.entries.find {
+                        it.label == label
+                    }
+                            ?: fr.vetbrain.vetnutri_mp.Enumer.AAEnum.entries.find {
+                        it.label == label
+                    }
+                            ?: fr.vetbrain.vetnutri_mp.Enumer.NutrientOther.entries.find {
+                        it.label == label
+                    }
+                            ?: fr.vetbrain.vetnutri_mp.Enumer.NutrientAnalysis.entries.find {
+                        it.label == label
+                    }
+        } catch (e: Exception) {
+            println(
+                    "DEBUG DatabaseReferenceEvRepository: Erreur lors de la recherche du nutriment $label: ${e.message}"
+            )
+            null
+        }
     }
 }

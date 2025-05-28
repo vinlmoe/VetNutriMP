@@ -2,6 +2,7 @@ package fr.vetbrain.vetnutri_mp.Repository
 
 import fr.vetbrain.vetnutri_mp.Data.Equation
 import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
+import fr.vetbrain.vetnutri_mp.Utils.genUUID
 
 /** Repository pour la gestion des références évaluées (ReferenceEv). */
 class ReferenceEvRepository {
@@ -121,6 +122,6 @@ class ReferenceEvRepository {
 
     /** Génère un identifiant unique. */
     private fun generateUuid(): String {
-        return (System.currentTimeMillis() + (Math.random() * 10000).toInt()).toString()
+        return genUUID()
     }
 }

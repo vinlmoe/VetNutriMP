@@ -5,8 +5,12 @@ import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import fr.vetbrain.vetnutri_mp.Repository.BiblioRefRepository
+import fr.vetbrain.vetnutri_mp.Repository.DatabaseReferenceEvRepository
+import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Theme.AppIcons
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
+import fr.vetbrain.vetnutri_mp.Utils.PlatformDispatcher
 import fr.vetbrain.vetnutri_mp.ViewModel.BiblioRefViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.EquationViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.ReferenceEvViewModel
@@ -24,6 +28,10 @@ import fr.vetbrain.vetnutri_mp.ViewModel.ReferenceEvViewModel
  * @param selectedTab Index de l'onglet sélectionné (par défaut 0)
  * @param onTabChanged Callback appelé quand l'onglet change
  * @param modifier Modifier à appliquer à la vue
+ * @param biblioRefRepository Repository pour les références bibliographiques
+ * @param equationRepository Repository pour les équations
+ * @param referenceEvRepository Repository pour les références évaluées
+ * @param platformDispatcher Dispatcher pour les opérations asynchrones
  */
 @Composable
 fun CalculationTabsView(
@@ -35,13 +43,18 @@ fun CalculationTabsView(
         onCreateReferenceEv: () -> Unit,
         selectedTab: Int = 0,
         onTabChanged: (Int) -> Unit = {},
-        modifier: Modifier = Modifier
+        modifier: Modifier = Modifier,
+        biblioRefRepository: BiblioRefRepository? = null,
+        equationRepository: EquationRepository? = null,
+        referenceEvRepository: DatabaseReferenceEvRepository? = null,
+        platformDispatcher: PlatformDispatcher? = null
 ) {
         var selectedEquationId by remember { mutableStateOf<String?>(null) }
         var selectedBiblioRefId by remember { mutableStateOf<String?>(null) }
         var isCreatingBiblioRef by remember { mutableStateOf(false) }
         var isCreatingEquation by remember { mutableStateOf(false) }
         var selectedReferenceEvId by remember { mutableStateOf<String?>(null) }
+        var isEditingReferenceEv by remember { mutableStateOf(false) }
 
         // Gérer l'édition d'une équation existante
         if (selectedEquationId != null) {
@@ -79,6 +92,33 @@ fun CalculationTabsView(
                         viewModel = biblioRefViewModel,
                         biblioRefId = null,
                         onNavigateBack = { isCreatingBiblioRef = false }
+                )
+                return
+        }
+
+        // Gérer l'édition d'une référence évaluée en interne
+        if (isEditingReferenceEv &&
+                        selectedReferenceEvId != null &&
+                        biblioRefRepository != null &&
+                        equationRepository != null &&
+                        referenceEvRepository != null &&
+                        platformDispatcher != null
+        ) {
+                ReferenceEvSideMenuView(
+                        referenceEvViewModel = referenceEvViewModel,
+                        equationViewModel = equationViewModel,
+                        biblioRefRepository = biblioRefRepository,
+                        equationRepository = equationRepository,
+                        referenceEvRepository = referenceEvRepository,
+                        platformDispatcher = platformDispatcher,
+                        referenceEvId = selectedReferenceEvId!!,
+                        onNavigateBack = {
+                                isEditingReferenceEv = false
+                                selectedReferenceEvId = null
+                        },
+                        onEditEquation = { equationId -> selectedEquationId = equationId },
+                        onCreateEquation = { isCreatingEquation = true },
+                        useSidebar = true
                 )
                 return
         }
@@ -142,13 +182,16 @@ fun CalculationTabsView(
                                         viewModel = referenceEvViewModel,
                                         onNavigateBack = {
                                         }, // Ne rien faire car on reste dans cette vue
-                                        onEditReference = onEditReferenceEv,
+                                        onEditReference = { referenceEvId ->
+                                                selectedReferenceEvId = referenceEvId
+                                                isEditingReferenceEv = true
+                                        },
                                         onCreateReference = onCreateReferenceEv,
-                                        onEditNutrients =
-                                                onEditReferenceEv // Pour l'instant, rediriger vers
-                                        // l'édition de
-                                        // la référence
-                                        )
+                                        onEditNutrients = { referenceEvId ->
+                                                selectedReferenceEvId = referenceEvId
+                                                isEditingReferenceEv = true
+                                        }
+                                )
                 }
         }
 }

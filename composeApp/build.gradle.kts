@@ -1,5 +1,4 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
-import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -13,17 +12,9 @@ plugins {
 }
 
 kotlin {
-    androidTarget {
-        compilerOptions {
-            jvmTarget.set(JvmTarget.JVM_11)
-        }
-    }
-    
-    listOf(
-        iosX64(),
-        iosArm64(),
-        iosSimulatorArm64()
-    ).forEach { iosTarget ->
+    androidTarget { compilerOptions { jvmTarget.set(JvmTarget.JVM_11) } }
+
+    listOf(iosX64(), iosArm64(), iosSimulatorArm64()).forEach { iosTarget ->
         iosTarget.binaries.framework {
             baseName = "ComposeApp"
             isStatic = true
@@ -34,14 +25,12 @@ kotlin {
     jvm("desktop")
 
     sourceSets {
-        sourceSets.iosMain {
-            kotlin.srcDir("build/generated/ksp/metadata")
-        }
-           androidMain.dependencies {
-                implementation(libs.androidx.activity.compose)
-                implementation(libs.androidx.room.runtime)
-                implementation(libs.androidx.room.paging)
-               // implementation(libs.androidx.sqlite.sqlite.ktx)
+        sourceSets.iosMain { kotlin.srcDir("build/generated/ksp/metadata") }
+        androidMain.dependencies {
+            implementation(libs.androidx.activity.compose)
+            implementation(libs.androidx.room.runtime)
+            implementation(libs.androidx.room.paging)
+            // implementation(libs.androidx.sqlite.sqlite.ktx)
 
         }
 
@@ -73,23 +62,22 @@ kotlin {
             implementation(libs.ktor.serialization.kotlinx.json)
             implementation(libs.androidx.paging.common)
         }
- 
-       val desktopMain by getting {
+
+        val desktopMain by getting {
             dependencies {
                 implementation(libs.kotlinx.coroutines.core)
                 implementation(libs.kotlinx.coroutines.test)
                 implementation(libs.kotlinx.coroutines.swing)
                 implementation(compose.desktop.macos_arm64)
                 implementation(libs.skiko.awt)
-              //  implementation(libs.junit.jupiter)
-               // implementation(libs.junit.junit)
+                //  implementation(libs.junit.jupiter)
+                // implementation(libs.junit.junit)
 
-            /*    implementation(libs.xerial.sqlite.jdbc)
+                /*    implementation(libs.xerial.sqlite.jdbc)
                 implementation(libs.androidx.sqlite.sqlite.framework3)
                 implementation(libs.androidx.sqlite.sqlite.ktx)*/
                 implementation(libs.compose.ui.test.manifest)
             }
-
         }
         commonTest.dependencies {
             implementation(kotlin("test"))
@@ -99,16 +87,10 @@ kotlin {
         }
         val iosMain by getting {
             kotlin.srcDir("build/generated/ksp/metadata")
-            dependencies {
-                implementation(libs.sqliter.driver)
-            }
+            dependencies { implementation(libs.sqliter.driver) }
         }
 
-        val iosTest by creating {
-            dependencies {
-                implementation(kotlin("test"))
-            }
-        }
+        val iosTest by creating { dependencies { implementation(kotlin("test")) } }
 
         val iosArm64Main by getting
         val iosX64Main by getting
@@ -130,27 +112,21 @@ android {
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1
         versionName = "1.0"
-        
+
         // Configuration de Room
 
     }
 
     packaging {
         resources {
-           // excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            // excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
-    buildTypes {
-        getByName("release") {
-            isMinifyEnabled = false
-        }
-    }
+    buildTypes { getByName("release") { isMinifyEnabled = false } }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
-
-
 }
 
 dependencies {
@@ -172,7 +148,6 @@ compose.desktop {
 }
 
 dependencies {
-
     implementation(libs.jansi)
     implementation("org.jetbrains.compose.material:material-icons-extended:1.7.3")
     implementation(libs.skiko.awt)
@@ -180,18 +155,16 @@ dependencies {
     implementation(kotlin("test"))
     implementation(kotlin("test-common"))
     implementation(kotlin("test-annotations-common"))
-  //  add("kspCommonMainMetadata", libs.androidx.room.compiler)
+    //  add("kspCommonMainMetadata", libs.androidx.room.compiler)
     add("kspAndroid", libs.androidx.room.compiler)
     add("kspIosSimulatorArm64", libs.androidx.room.compiler)
     add("kspIosX64", libs.androidx.room.compiler)
     add("kspIosArm64", libs.androidx.room.compiler)
     add("kspDesktop", libs.androidx.room.compiler)
     implementation("io.github.kevinnzou:compose-webview-multiplatform:1.9.40")
-    
+
     // Reorderable - Drag and Drop pour Compose
     implementation("org.burnoutcrew.composereorderable:reorderable:0.9.6")
 }
 
-room {
-    schemaDirectory("$projectDir/schemas")
-}
+room { schemaDirectory("$projectDir/schemas") }

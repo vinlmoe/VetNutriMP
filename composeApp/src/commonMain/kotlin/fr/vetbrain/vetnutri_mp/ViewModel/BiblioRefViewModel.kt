@@ -4,7 +4,7 @@ import androidx.compose.runtime.mutableStateOf
 import fr.vetbrain.vetnutri_mp.Data.BiblioRef
 import fr.vetbrain.vetnutri_mp.Repository.BiblioRefRepository
 import fr.vetbrain.vetnutri_mp.Utils.PlatformDispatcher
-import java.util.UUID
+import fr.vetbrain.vetnutri_mp.Utils.genUUID
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -171,7 +171,7 @@ class BiblioRefViewModel(private val repository: BiblioRefRepository) {
                 if (_currentBiblioRef.value.uuid.isBlank()) {
                     // Nouvelle référence avec un UUID généré
                     BiblioRef(
-                            uuid = UUID.randomUUID().toString(),
+                            uuid = genUUID(),
                             firstAuthor = firstAuthor.value,
                             year = year.value.toIntOrNull() ?: 1800,
                             completeRef = completeRef.value,

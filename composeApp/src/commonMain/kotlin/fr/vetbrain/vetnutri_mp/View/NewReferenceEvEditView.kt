@@ -656,7 +656,9 @@ fun ReferenceEvEquationsTab(viewModel: NewReferenceEvViewModel) {
                                                 DropdownMenuItem(
                                                         onClick = {
                                                                 selectedEquationBW = null
-                                                                viewModel.setEquationBW(null)
+                                                                viewModel.setEquationBWSilently(
+                                                                        null
+                                                                )
                                                                 expandedBW = false
                                                         }
                                                 ) { Text(text = "Aucune équation") }
@@ -667,9 +669,10 @@ fun ReferenceEvEquationsTab(viewModel: NewReferenceEvViewModel) {
                                                                 onClick = {
                                                                         selectedEquationBW =
                                                                                 equation
-                                                                        viewModel.setEquationBW(
-                                                                                equation
-                                                                        )
+                                                                        viewModel
+                                                                                .setEquationBWSilently(
+                                                                                        equation
+                                                                                )
                                                                         expandedBW = false
                                                                 }
                                                         ) { Text(text = equation.name) }
@@ -709,7 +712,9 @@ fun ReferenceEvEquationsTab(viewModel: NewReferenceEvViewModel) {
                                                 DropdownMenuItem(
                                                         onClick = {
                                                                 selectedEquationBEE = null
-                                                                viewModel.setEquationBEE(null)
+                                                                viewModel.setEquationBEESilently(
+                                                                        null
+                                                                )
                                                                 expandedBEE = false
                                                         }
                                                 ) { Text(text = "Aucune équation") }
@@ -720,9 +725,10 @@ fun ReferenceEvEquationsTab(viewModel: NewReferenceEvViewModel) {
                                                                 onClick = {
                                                                         selectedEquationBEE =
                                                                                 equation
-                                                                        viewModel.setEquationBEE(
-                                                                                equation
-                                                                        )
+                                                                        viewModel
+                                                                                .setEquationBEESilently(
+                                                                                        equation
+                                                                                )
                                                                         expandedBEE = false
                                                                 }
                                                         ) { Text(text = equation.name) }
@@ -763,7 +769,9 @@ fun ReferenceEvEquationsTab(viewModel: NewReferenceEvViewModel) {
                                                 DropdownMenuItem(
                                                         onClick = {
                                                                 selectedEquationDEcom = null
-                                                                viewModel.setEquationDEcom(null)
+                                                                viewModel.setEquationDEcomSilently(
+                                                                        null
+                                                                )
                                                                 expandedDEcom = false
                                                         }
                                                 ) { Text(text = "Aucune équation") }
@@ -774,9 +782,10 @@ fun ReferenceEvEquationsTab(viewModel: NewReferenceEvViewModel) {
                                                                 onClick = {
                                                                         selectedEquationDEcom =
                                                                                 equation
-                                                                        viewModel.setEquationDEcom(
-                                                                                equation
-                                                                        )
+                                                                        viewModel
+                                                                                .setEquationDEcomSilently(
+                                                                                        equation
+                                                                                )
                                                                         expandedDEcom = false
                                                                 }
                                                         ) { Text(text = equation.name) }
@@ -817,7 +826,9 @@ fun ReferenceEvEquationsTab(viewModel: NewReferenceEvViewModel) {
                                                 DropdownMenuItem(
                                                         onClick = {
                                                                 selectedEquationDEraw = null
-                                                                viewModel.setEquationDEraw(null)
+                                                                viewModel.setEquationDErawSilently(
+                                                                        null
+                                                                )
                                                                 expandedDEraw = false
                                                         }
                                                 ) { Text(text = "Aucune équation") }
@@ -828,9 +839,10 @@ fun ReferenceEvEquationsTab(viewModel: NewReferenceEvViewModel) {
                                                                 onClick = {
                                                                         selectedEquationDEraw =
                                                                                 equation
-                                                                        viewModel.setEquationDEraw(
-                                                                                equation
-                                                                        )
+                                                                        viewModel
+                                                                                .setEquationDErawSilently(
+                                                                                        equation
+                                                                                )
                                                                         expandedDEraw = false
                                                                 }
                                                         ) { Text(text = equation.name) }
@@ -846,10 +858,14 @@ fun ReferenceEvEquationsTab(viewModel: NewReferenceEvViewModel) {
                                 // Vérifier si les équations sélectionnées ne sont pas nulles avant
                                 // de les
                                 // sauvegarder
-                                selectedEquationBW?.let { viewModel.setEquationBW(it) }
-                                selectedEquationBEE?.let { viewModel.setEquationBEE(it) }
-                                selectedEquationDEcom?.let { viewModel.setEquationDEcom(it) }
-                                selectedEquationDEraw?.let { viewModel.setEquationDEraw(it) }
+                                selectedEquationBW?.let { viewModel.setEquationBWSilently(it) }
+                                selectedEquationBEE?.let { viewModel.setEquationBEESilently(it) }
+                                selectedEquationDEcom?.let {
+                                        viewModel.setEquationDEcomSilently(it)
+                                }
+                                selectedEquationDEraw?.let {
+                                        viewModel.setEquationDErawSilently(it)
+                                }
                         },
                         modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                         colors =

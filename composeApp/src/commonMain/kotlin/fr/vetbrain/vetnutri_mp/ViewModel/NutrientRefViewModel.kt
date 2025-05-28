@@ -59,13 +59,17 @@ class NutrientRefViewModel(
                 _error.value = ""
                 val reference = _currentReference.value ?: return@launch
 
-                // TODO: Implémenter le chargement réel des nutriments depuis le repository
-                // Pour l'instant, nous générons des données de test
-                val nutrients = generateTestNutrients(reference.uuid)
+                // Charger les vrais nutriments depuis la référence
+                val nutrients = loadNutrientsFromReference(reference)
                 _nutrientRefs.value = nutrients
+
+                println(
+                        "DEBUG NutrientRefViewModel: ${nutrients.size} nutriments chargés depuis la référence ${reference.uuid}"
+                )
             } catch (e: Exception) {
                 _error.value =
                         "Erreur lors du chargement des nutriments: ${e.message ?: "Erreur inconnue"}"
+                println("DEBUG NutrientRefViewModel: Erreur lors du chargement: ${e.message}")
             } finally {
                 _loading.value = false
             }
@@ -74,29 +78,32 @@ class NutrientRefViewModel(
 
     /** Charge les nutriments d'un type spécifique pour la référence courante */
     fun loadNutrientsForType(nutrientType: MainNutrientEnum) {
-        // Si nous avons déjà chargé tous les nutriments, nous filtrons simplement
-        // Sinon, nous chargeons juste ce type spécifique
-        if (_nutrientRefs.value.isEmpty()) {
-            scope.launch {
-                _loading.value = true
-                try {
-                    _error.value = ""
-                    val reference = _currentReference.value
-                    if (reference == null) {
-                        _nutrientRefs.value = emptyList()
-                        return@launch
-                    }
-
-                    // TODO: Implémenter le chargement réel depuis le repository
-                    // Pour l'instant, nous générons des données de test
-                    val nutrients = generateTestNutrientsForType(reference.uuid, nutrientType)
-                    _nutrientRefs.value = nutrients
-                } catch (e: Exception) {
-                    _error.value =
-                            "Erreur lors du chargement des nutriments: ${e.message ?: "Erreur inconnue"}"
-                } finally {
-                    _loading.value = false
+        scope.launch {
+            _loading.value = true
+            try {
+                _error.value = ""
+                val reference = _currentReference.value
+                if (reference == null) {
+                    _nutrientRefs.value = emptyList()
+                    return@launch
                 }
+
+                // Charger les vrais nutriments depuis la référence pour ce type
+                val nutrients = loadNutrientsFromReferenceForType(reference, nutrientType)
+
+                // Conserver les nutriments des autres types déjà chargés
+                val otherNutrients = _nutrientRefs.value.filter { it.nutrientType != nutrientType }
+                _nutrientRefs.value = otherNutrients + nutrients
+
+                println(
+                        "DEBUG NutrientRefViewModel: ${nutrients.size} nutriments de type $nutrientType chargés"
+                )
+            } catch (e: Exception) {
+                _error.value =
+                        "Erreur lors du chargement des nutriments: ${e.message ?: "Erreur inconnue"}"
+                println("DEBUG NutrientRefViewModel: Erreur lors du chargement: ${e.message}")
+            } finally {
+                _loading.value = false
             }
         }
     }
@@ -112,17 +119,24 @@ class NutrientRefViewModel(
                     return@launch
                 }
 
-                // Conserver les nutriments des autres types
-                val otherNutrients = _nutrientRefs.value.filter { it.nutrientType != nutrientType }
+                // Supprimer les nutriments de ce type de la référence
+                clearNutrientsInReferenceForType(reference, nutrientType)
 
-                // Générer de nouveaux nutriments pour le type spécifié
-                val newNutrients = generateTestNutrientsForType(reference.uuid, nutrientType)
+                // Sauvegarder la référence mise à jour
+                referenceEvRepository.updateReferenceEv(reference)
 
-                // Mettre à jour la liste complète
-                _nutrientRefs.value = otherNutrients + newNutrients
+                // Recharger les nutriments
+                loadNutrientsForType(nutrientType)
+
+                println(
+                        "DEBUG NutrientRefViewModel: Nutriments de type $nutrientType réinitialisés"
+                )
             } catch (e: Exception) {
                 _error.value =
                         "Erreur lors de la réinitialisation: ${e.message ?: "Erreur inconnue"}"
+                println(
+                        "DEBUG NutrientRefViewModel: Erreur lors de la réinitialisation: ${e.message}"
+                )
             } finally {
                 _loading.value = false
             }
@@ -140,16 +154,22 @@ class NutrientRefViewModel(
                     return@launch
                 }
 
-                // TODO: Implémenter la sauvegarde réelle dans le repository
-                // Pour l'instant, nous faisons juste semblant de sauvegarder
+                // Sauvegarder les nutriments dans la référence
+                val nutrientsToSave = _nutrientRefs.value.filter { it.nutrientType == nutrientType }
+                saveNutrientsToReference(reference, nutrientsToSave)
+
+                // Sauvegarder la référence mise à jour dans la base de données
+                referenceEvRepository.updateReferenceEv(reference)
+
                 println(
-                        "Sauvegarde des nutriments de type $nutrientType pour la référence ${reference.uuid}"
+                        "DEBUG NutrientRefViewModel: ${nutrientsToSave.size} nutriments de type $nutrientType sauvegardés"
                 )
-                _nutrientRefs.value.filter { it.nutrientType == nutrientType }.forEach {
-                    println("- ${it.name}: ${it.value} ${it.unitReq}")
+                nutrientsToSave.forEach {
+                    println("DEBUG NutrientRefViewModel: - ${it.name}: ${it.value} ${it.unitReq}")
                 }
             } catch (e: Exception) {
                 _error.value = "Erreur lors de la sauvegarde: ${e.message ?: "Erreur inconnue"}"
+                println("DEBUG NutrientRefViewModel: Erreur lors de la sauvegarde: ${e.message}")
             } finally {
                 _loading.value = false
             }
@@ -193,9 +213,29 @@ class NutrientRefViewModel(
     fun loadAvailableBiblioRefs() {
         scope.launch {
             try {
-                // TODO: Implémenter le chargement réel depuis le repository
-                // Pour l'instant, nous utilisons des données de test
-                val biblioRefs =
+                println("DEBUG NutrientRefViewModel: Chargement des références bibliographiques...")
+
+                // Charger les vraies données depuis le repository
+                biblioRefRepository.getAllBiblioRefs().collect { biblioRefs ->
+                    _availableBiblioRefs.value = biblioRefs
+                    println(
+                            "DEBUG NutrientRefViewModel: ${biblioRefs.size} références bibliographiques chargées"
+                    )
+                    biblioRefs.forEach { biblio ->
+                        println(
+                                "DEBUG NutrientRefViewModel: - ${biblio.firstAuthor} (${biblio.year})"
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                println(
+                        "DEBUG NutrientRefViewModel: Erreur lors du chargement des références bibliographiques: ${e.message}"
+                )
+                _error.value =
+                        "Erreur lors du chargement des références bibliographiques: ${e.message}"
+
+                // En cas d'erreur, utiliser des données de test comme fallback
+                val fallbackBiblioRefs =
                         listOf(
                                 BiblioRef(
                                         uuid = "biblio1",
@@ -213,11 +253,197 @@ class NutrientRefViewModel(
                                         comments = "À vérifier"
                                 )
                         )
-                _availableBiblioRefs.value = biblioRefs
-            } catch (e: Exception) {
-                _error.value =
-                        "Erreur lors du chargement des références biblio: ${e.message ?: "Erreur inconnue"}"
+                _availableBiblioRefs.value = fallbackBiblioRefs
+                println(
+                        "DEBUG NutrientRefViewModel: Utilisation des données de test (${fallbackBiblioRefs.size} références)"
+                )
             }
+        }
+    }
+
+    // Méthodes utilitaires pour charger et sauvegarder les nutriments depuis/vers ReferenceEv
+
+    /** Charge tous les nutriments depuis une référence */
+    private fun loadNutrientsFromReference(reference: ReferenceEv): List<NutrientRef> {
+        val result = mutableListOf<NutrientRef>()
+
+        MainNutrientEnum.values().forEach { type ->
+            result.addAll(loadNutrientsFromReferenceForType(reference, type))
+        }
+
+        return result
+    }
+
+    /** Charge les nutriments d'un type spécifique depuis une référence */
+    private fun loadNutrientsFromReferenceForType(
+            reference: ReferenceEv,
+            nutrientType: MainNutrientEnum
+    ): List<NutrientRef> {
+        val result = mutableListOf<NutrientRef>()
+
+        // Obtenir les nutriments selon le type
+        val nutrients =
+                when (nutrientType) {
+                    MainNutrientEnum.BASE -> fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.entries
+                    MainNutrientEnum.MACRO -> fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro.entries
+                    MainNutrientEnum.MIN -> fr.vetbrain.vetnutri_mp.Enumer.NutrientMin.entries
+                    MainNutrientEnum.VITAM -> fr.vetbrain.vetnutri_mp.Enumer.NutrientVitam.entries
+                    MainNutrientEnum.LIPID -> fr.vetbrain.vetnutri_mp.Enumer.NutrientLipid.entries
+                    MainNutrientEnum.AMA -> fr.vetbrain.vetnutri_mp.Enumer.AAEnum.entries
+                    MainNutrientEnum.OTHER -> fr.vetbrain.vetnutri_mp.Enumer.NutrientOther.entries
+                    MainNutrientEnum.ANA -> fr.vetbrain.vetnutri_mp.Enumer.NutrientAnalysis.entries
+                    MainNutrientEnum.ENERGIE ->
+                            fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.entries.filter {
+                                it.label.contains("Energie")
+                            }
+                    MainNutrientEnum.NO -> emptyList()
+                    MainNutrientEnum.INGREDIENT -> emptyList()
+                    MainNutrientEnum.INDICAT -> emptyList()
+                }
+
+        nutrients.forEachIndexed { index, nutrient ->
+            // Vérifier si le nutriment a des valeurs dans la référence
+            val levels =
+                    listOf(
+                            fr.vetbrain.vetnutri_mp.Enumer.Reflevel.MIN,
+                            fr.vetbrain.vetnutri_mp.Enumer.Reflevel.MAX,
+                            fr.vetbrain.vetnutri_mp.Enumer.Reflevel.OPTIMIN,
+                            fr.vetbrain.vetnutri_mp.Enumer.Reflevel.OPTIMAX
+                    )
+
+            levels.forEach { level ->
+                if (reference.contientNutriment(nutrient, level)) {
+                    val value = reference.obtenirNutriment(nutrient, level)
+                    val unitId = reference.obtenirUniteNutriment(nutrient, level)
+                    val unit = fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum.getById(unitId)
+                    val biblio = reference.obtenirBiblioNutriment(nutrient, level)
+
+                    result.add(
+                            NutrientRef(
+                                    id = "${reference.uuid}_${nutrient.label}_${level.name}",
+                                    referenceEvId = reference.uuid,
+                                    name = "${nutrient.label} (${level.name})",
+                                    value = value.toString(),
+                                    nutrientType = nutrientType,
+                                    nutrientCode = index,
+                                    unitReq = unit,
+                                    biblioRef = biblio
+                            )
+                    )
+                }
+            }
+        }
+
+        return result
+    }
+
+    /** Sauvegarde les nutriments dans une référence */
+    private fun saveNutrientsToReference(reference: ReferenceEv, nutrients: List<NutrientRef>) {
+        nutrients.forEach { nutrientRef ->
+            try {
+                // Extraire le niveau depuis le nom (ex: "Protéines (MIN)" -> MIN)
+                val levelName = nutrientRef.name.substringAfterLast("(").substringBeforeLast(")")
+                val level = fr.vetbrain.vetnutri_mp.Enumer.Reflevel.valueOf(levelName)
+
+                // Extraire le nom du nutriment (ex: "Protéines (MIN)" -> "Protéines")
+                val nutrientName = nutrientRef.name.substringBeforeLast(" (")
+
+                // Trouver le nutriment correspondant
+                val nutrient = findNutrientByName(nutrientName, nutrientRef.nutrientType)
+
+                if (nutrient != null) {
+                    // Convertir la valeur en float
+                    val floatValue = nutrientRef.value.toFloatOrNull() ?: 0f
+
+                    // Définir le nutriment dans la référence
+                    reference.definirNutriment(
+                            floatValue,
+                            nutrient,
+                            level,
+                            nutrientRef.unitReq,
+                            nutrientRef.biblioRef ?: BiblioRef()
+                    )
+
+                    println(
+                            "DEBUG NutrientRefViewModel: Nutriment sauvegardé - ${nutrientRef.name}: ${nutrientRef.value}"
+                    )
+                }
+            } catch (e: Exception) {
+                println(
+                        "DEBUG NutrientRefViewModel: Erreur lors de la sauvegarde du nutriment ${nutrientRef.name}: ${e.message}"
+                )
+            }
+        }
+    }
+
+    /** Supprime les nutriments d'un type spécifique de la référence */
+    private fun clearNutrientsInReferenceForType(
+            reference: ReferenceEv,
+            nutrientType: MainNutrientEnum
+    ) {
+        val nutrients =
+                when (nutrientType) {
+                    MainNutrientEnum.BASE -> fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.entries
+                    MainNutrientEnum.MACRO -> fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro.entries
+                    MainNutrientEnum.MIN -> fr.vetbrain.vetnutri_mp.Enumer.NutrientMin.entries
+                    MainNutrientEnum.VITAM -> fr.vetbrain.vetnutri_mp.Enumer.NutrientVitam.entries
+                    MainNutrientEnum.LIPID -> fr.vetbrain.vetnutri_mp.Enumer.NutrientLipid.entries
+                    MainNutrientEnum.AMA -> fr.vetbrain.vetnutri_mp.Enumer.AAEnum.entries
+                    MainNutrientEnum.OTHER -> fr.vetbrain.vetnutri_mp.Enumer.NutrientOther.entries
+                    MainNutrientEnum.ANA -> fr.vetbrain.vetnutri_mp.Enumer.NutrientAnalysis.entries
+                    MainNutrientEnum.ENERGIE ->
+                            fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.entries.filter {
+                                it.label.contains("Energie")
+                            }
+                    MainNutrientEnum.NO -> emptyList()
+                    MainNutrientEnum.INGREDIENT -> emptyList()
+                    MainNutrientEnum.INDICAT -> emptyList()
+                }
+
+        val levels =
+                listOf(
+                        fr.vetbrain.vetnutri_mp.Enumer.Reflevel.MIN,
+                        fr.vetbrain.vetnutri_mp.Enumer.Reflevel.MAX,
+                        fr.vetbrain.vetnutri_mp.Enumer.Reflevel.OPTIMIN,
+                        fr.vetbrain.vetnutri_mp.Enumer.Reflevel.OPTIMAX
+                )
+
+        nutrients.forEach { nutrient ->
+            levels.forEach { level ->
+                if (reference.contientNutriment(nutrient, level)) {
+                    reference.supprimerNutriment(nutrient, level)
+                }
+            }
+        }
+    }
+
+    /** Trouve un nutriment par son nom et son type */
+    private fun findNutrientByName(
+            name: String,
+            type: MainNutrientEnum
+    ): fr.vetbrain.vetnutri_mp.Enumer.Nutrient? {
+        return when (type) {
+            MainNutrientEnum.BASE ->
+                    fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.entries.find { it.label == name }
+            MainNutrientEnum.MACRO ->
+                    fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro.entries.find { it.label == name }
+            MainNutrientEnum.MIN ->
+                    fr.vetbrain.vetnutri_mp.Enumer.NutrientMin.entries.find { it.label == name }
+            MainNutrientEnum.VITAM ->
+                    fr.vetbrain.vetnutri_mp.Enumer.NutrientVitam.entries.find { it.label == name }
+            MainNutrientEnum.LIPID ->
+                    fr.vetbrain.vetnutri_mp.Enumer.NutrientLipid.entries.find { it.label == name }
+            MainNutrientEnum.AMA ->
+                    fr.vetbrain.vetnutri_mp.Enumer.AAEnum.entries.find { it.label == name }
+            MainNutrientEnum.OTHER ->
+                    fr.vetbrain.vetnutri_mp.Enumer.NutrientOther.entries.find { it.label == name }
+            MainNutrientEnum.ANA ->
+                    fr.vetbrain.vetnutri_mp.Enumer.NutrientAnalysis.entries.find {
+                        it.label == name
+                    }
+            MainNutrientEnum.ENERGIE ->
+                    fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.entries.find { it.label == name }
+            else -> null
         }
     }
 
