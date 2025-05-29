@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,7 +14,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
@@ -28,6 +31,8 @@ import androidx.compose.material.MaterialTheme
 import androidx.compose.material.OutlinedTextField
 import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.runtime.*
 import androidx.compose.runtime.Composable
@@ -42,6 +47,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -890,18 +896,129 @@ fun ReferenceEvEquationsTab(viewModel: NewReferenceEvViewModel) {
  */
 @Composable
 fun ReferenceEvCoefficientsTab(viewModel: NewReferenceEvViewModel, currentReference: ReferenceEv) {
-        // Cette partie sera implémentée ultérieurement
+        // État pour suivre le groupe de coefficients sélectionné
+        var selectedGroupIndex by remember { mutableStateOf(0) }
+
+        // États pour les boîtes de dialogue
+        var showAddCoefficientDialog by remember { mutableStateOf(false) }
+        var showEditCoefficientDialog by remember { mutableStateOf(false) }
+        var editingCoefficientIndex by remember { mutableStateOf(-1) }
+
+        // Définir les groupes de coefficients
+        val groupNames = listOf("Groupe K1", "Groupe K2", "Groupe K3", "Groupe K4", "Groupe K5")
+
         Column(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally
+                modifier = Modifier.fillMaxSize().padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-                Text(text = "Gestion des coefficients", style = MaterialTheme.typography.h6)
                 Text(
-                        text = "Cette fonctionnalité sera implémentée prochainement",
-                        style = MaterialTheme.typography.body1,
-                        modifier = Modifier.padding(top = 8.dp)
+                        text = "Gestion des coefficients modificateurs",
+                        style = MaterialTheme.typography.h6,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 8.dp)
                 )
+
+                // Sélection du groupe de coefficients
+                Card(modifier = Modifier.fillMaxWidth(), elevation = 4.dp) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                                Text(
+                                        text = "Sélection du groupe de coefficients",
+                                        style = MaterialTheme.typography.subtitle1,
+                                        fontWeight = FontWeight.Bold
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                TabRow(
+                                        selectedTabIndex = selectedGroupIndex,
+                                        backgroundColor = MaterialTheme.colors.surface,
+                                        contentColor = VetNutriColors.Primary
+                                ) {
+                                        groupNames.forEachIndexed { index, title ->
+                                                Tab(
+                                                        text = { Text(title) },
+                                                        selected = selectedGroupIndex == index,
+                                                        onClick = { selectedGroupIndex = index }
+                                                )
+                                        }
+                                }
+                        }
+                }
+
+                // Gestion du groupe sélectionné
+                CoefficientGroupView(
+                        viewModel = viewModel,
+                        groupIndex = selectedGroupIndex,
+                        onAddCoefficient = { showAddCoefficientDialog = true },
+                        onEditCoefficient = { index ->
+                                editingCoefficientIndex = index
+                                showEditCoefficientDialog = true
+                        }
+                )
+
+                // Bouton de sauvegarde global
+                Button(
+                        onClick = { viewModel.saveReference() },
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                        colors =
+                                ButtonDefaults.buttonColors(
+                                        backgroundColor = VetNutriColors.Primary
+                                )
+                ) {
+                        Text(
+                                "Enregistrer les coefficients",
+                                color = Color.White,
+                                modifier = Modifier.padding(8.dp)
+                        )
+                }
+
+                // Boîte de dialogue pour ajouter un coefficient
+                if (showAddCoefficientDialog) {
+                        AddCoefficientDialog(
+                                onDismiss = { showAddCoefficientDialog = false },
+                                onConfirm = { description, coef ->
+                                        viewModel.addCoefficient(
+                                                selectedGroupIndex,
+                                                description,
+                                                coef
+                                        )
+                                        showAddCoefficientDialog = false
+                                }
+                        )
+                }
+
+                // Boîte de dialogue pour éditer un coefficient
+                if (showEditCoefficientDialog && editingCoefficientIndex >= 0) {
+                        val coefficients = viewModel.getCoefficientGroup(selectedGroupIndex)
+                        if (editingCoefficientIndex < coefficients.size) {
+                                val coefficient = coefficients[editingCoefficientIndex]
+                                EditCoefficientDialog(
+                                        initialDescription = coefficient.description ?: "Normal",
+                                        initialCoef = coefficient.coef ?: 1.0f,
+                                        onDismiss = {
+                                                showEditCoefficientDialog = false
+                                                editingCoefficientIndex = -1
+                                        },
+                                        onConfirm = { description, coef ->
+                                                viewModel.updateCoefficient(
+                                                        selectedGroupIndex,
+                                                        editingCoefficientIndex,
+                                                        description,
+                                                        coef
+                                                )
+                                                showEditCoefficientDialog = false
+                                                editingCoefficientIndex = -1
+                                        },
+                                        onDelete = {
+                                                viewModel.removeCoefficient(
+                                                        selectedGroupIndex,
+                                                        editingCoefficientIndex
+                                                )
+                                                showEditCoefficientDialog = false
+                                                editingCoefficientIndex = -1
+                                        }
+                                )
+                        }
+                }
         }
 }
 
@@ -1903,4 +2020,391 @@ fun NutrientEditDialog(
                         ) { Text("Annuler") }
                 }
         )
+}
+
+/**
+ * Vue pour afficher et gérer un groupe de coefficients spécifique
+ *
+ * @param viewModel ViewModel pour les opérations sur les références
+ * @param groupIndex Index du groupe de coefficients (0-4)
+ * @param onAddCoefficient Callback pour ajouter un coefficient
+ * @param onEditCoefficient Callback pour éditer un coefficient
+ */
+@Composable
+fun CoefficientGroupView(
+        viewModel: NewReferenceEvViewModel,
+        groupIndex: Int,
+        onAddCoefficient: () -> Unit,
+        onEditCoefficient: (Int) -> Unit
+) {
+        // Observer directement les StateFlow des coefficients pour une réactivité immédiate
+        val coefficients by viewModel.getCoefficientGroupStateFlow(groupIndex).collectAsState()
+        val groupNames by viewModel.groupNames.collectAsState()
+
+        // État local pour l'édition du nom du groupe
+        var isEditingGroupName by remember { mutableStateOf(false) }
+        var editingGroupName by remember { mutableStateOf("") }
+
+        Column(
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+                // En-tête avec nom du groupe éditable
+                Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                ) {
+                        if (isEditingGroupName) {
+                                OutlinedTextField(
+                                        value = editingGroupName,
+                                        onValueChange = { editingGroupName = it },
+                                        label = { Text("Nom du groupe") },
+                                        modifier = Modifier.weight(1f),
+                                        keyboardOptions =
+                                                KeyboardOptions(imeAction = ImeAction.Done),
+                                        keyboardActions =
+                                                KeyboardActions(
+                                                        onDone = {
+                                                                viewModel
+                                                                        .updateCoefficientGroupName(
+                                                                                groupIndex,
+                                                                                editingGroupName
+                                                                        )
+                                                                isEditingGroupName = false
+                                                        }
+                                                )
+                                )
+                                TextButton(
+                                        onClick = {
+                                                viewModel.updateCoefficientGroupName(
+                                                        groupIndex,
+                                                        editingGroupName
+                                                )
+                                                isEditingGroupName = false
+                                        }
+                                ) { Text("Valider") }
+                        } else {
+                                val groupName =
+                                        groupNames.getOrElse(groupIndex) {
+                                                "Groupe ${groupIndex + 1}"
+                                        }
+                                Text(
+                                        text = groupName.ifEmpty { "Groupe ${groupIndex + 1}" },
+                                        style = MaterialTheme.typography.h6,
+                                        modifier =
+                                                Modifier.weight(1f).clickable {
+                                                        editingGroupName = groupName
+                                                        isEditingGroupName = true
+                                                }
+                                )
+                                IconButton(
+                                        onClick = {
+                                                editingGroupName = groupName
+                                                isEditingGroupName = true
+                                        }
+                                ) { Icon(Icons.Default.Edit, contentDescription = "Éditer le nom") }
+                        }
+                }
+
+                // Bouton ajouter coefficient
+                OutlinedButton(onClick = onAddCoefficient, modifier = Modifier.fillMaxWidth()) {
+                        Icon(Icons.Default.Add, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Ajouter un coefficient")
+                }
+
+                // Liste des coefficients
+                LazyColumn(modifier = Modifier.fillMaxWidth()) {
+                        itemsIndexed(coefficients) { index, coefficient ->
+                                CoefficientCard(
+                                        coefficient = coefficient,
+                                        onEdit = { onEditCoefficient(index) },
+                                        onDelete = {
+                                                viewModel.removeCoefficient(groupIndex, index)
+                                        }
+                                )
+                        }
+                }
+        }
+}
+
+/**
+ * Carte affichant un coefficient individuel
+ *
+ * @param coefficient Le coefficient à afficher
+ * @param onEdit Callback pour éditer le coefficient
+ */
+@Composable
+fun CoefficientCard(
+        coefficient: fr.vetbrain.vetnutri_mp.Data.CoefP,
+        onEdit: () -> Unit,
+        onDelete: () -> Unit
+) {
+        Card(
+                modifier = Modifier.fillMaxWidth(),
+                elevation = 2.dp,
+                backgroundColor = MaterialTheme.colors.surface
+        ) {
+                Row(
+                        modifier = Modifier.fillMaxWidth().padding(12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                ) {
+                        // Informations du coefficient
+                        Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                        text = coefficient.description ?: "Sans nom",
+                                        style = MaterialTheme.typography.subtitle2,
+                                        fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                        text = "Coefficient: ${coefficient.coef ?: 1.0f}",
+                                        style = MaterialTheme.typography.body2,
+                                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                                )
+                        }
+
+                        // Bouton d'édition
+                        IconButton(onClick = onEdit) {
+                                Icon(
+                                        Icons.Default.Edit,
+                                        contentDescription = "Éditer",
+                                        tint = VetNutriColors.Primary
+                                )
+                        }
+
+                        // Bouton de suppression
+                        IconButton(onClick = onDelete) {
+                                Icon(
+                                        Icons.Default.Delete,
+                                        contentDescription = "Supprimer",
+                                        tint = MaterialTheme.colors.error
+                                )
+                        }
+                }
+        }
+}
+
+/**
+ * Boîte de dialogue pour ajouter un nouveau coefficient
+ *
+ * @param onDismiss Callback pour fermer la boîte de dialogue
+ * @param onConfirm Callback pour confirmer l'ajout avec description et coefficient
+ */
+@Composable
+fun AddCoefficientDialog(onDismiss: () -> Unit, onConfirm: (String, Float) -> Unit) {
+        var description by remember { mutableStateOf("") }
+        var coefText by remember { mutableStateOf("1.0") }
+        var showError by remember { mutableStateOf(false) }
+        var errorMessage by remember { mutableStateOf("") }
+
+        // Fonction de validation
+        fun validateAndConfirm() {
+                if (description.isBlank()) {
+                        showError = true
+                        errorMessage = "La description ne peut pas être vide"
+                        return
+                }
+
+                val coef = coefText.toFloatOrNull()
+                if (coef == null) {
+                        showError = true
+                        errorMessage = "Le coefficient doit être un nombre valide"
+                        return
+                }
+
+                showError = false
+                onConfirm(description.trim(), coef)
+        }
+
+        AlertDialog(
+                onDismissRequest = onDismiss,
+                title = { Text(text = "Ajouter un coefficient") },
+                text = {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                OutlinedTextField(
+                                        value = description,
+                                        onValueChange = {
+                                                description = it
+                                                showError = false
+                                        },
+                                        label = { Text("Description") },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        isError = showError && description.isBlank()
+                                )
+
+                                OutlinedTextField(
+                                        value = coefText,
+                                        onValueChange = {
+                                                coefText = it
+                                                showError = false
+                                        },
+                                        label = { Text("Coefficient") },
+                                        keyboardOptions =
+                                                KeyboardOptions(
+                                                        keyboardType = KeyboardType.Decimal
+                                                ),
+                                        modifier = Modifier.fillMaxWidth(),
+                                        isError = showError && coefText.toFloatOrNull() == null
+                                )
+
+                                if (showError) {
+                                        Text(
+                                                text = errorMessage,
+                                                color = MaterialTheme.colors.error,
+                                                style = MaterialTheme.typography.caption
+                                        )
+                                }
+                        }
+                },
+                confirmButton = { Button(onClick = { validateAndConfirm() }) { Text("Ajouter") } },
+                dismissButton = {
+                        Button(
+                                onClick = onDismiss,
+                                colors =
+                                        ButtonDefaults.buttonColors(
+                                                backgroundColor = MaterialTheme.colors.surface
+                                        )
+                        ) { Text("Annuler") }
+                }
+        )
+}
+
+/**
+ * Boîte de dialogue pour éditer ou supprimer un coefficient existant
+ *
+ * @param initialDescription Description initiale du coefficient
+ * @param initialCoef Valeur initiale du coefficient
+ * @param onDismiss Callback pour fermer la boîte de dialogue
+ * @param onConfirm Callback pour confirmer les modifications
+ * @param onDelete Callback pour supprimer le coefficient
+ */
+@Composable
+fun EditCoefficientDialog(
+        initialDescription: String,
+        initialCoef: Float,
+        onDismiss: () -> Unit,
+        onConfirm: (String, Float) -> Unit,
+        onDelete: () -> Unit
+) {
+        var description by remember { mutableStateOf(initialDescription) }
+        var coefText by remember { mutableStateOf(initialCoef.toString()) }
+        var showError by remember { mutableStateOf(false) }
+        var errorMessage by remember { mutableStateOf("") }
+        var showDeleteConfirmation by remember { mutableStateOf(false) }
+
+        // Fonction de validation
+        fun validateAndConfirm() {
+                if (description.isBlank()) {
+                        showError = true
+                        errorMessage = "La description ne peut pas être vide"
+                        return
+                }
+
+                val coef = coefText.toFloatOrNull()
+                if (coef == null) {
+                        showError = true
+                        errorMessage = "Le coefficient doit être un nombre valide"
+                        return
+                }
+
+                showError = false
+                onConfirm(description.trim(), coef)
+        }
+
+        if (showDeleteConfirmation) {
+                AlertDialog(
+                        onDismissRequest = { showDeleteConfirmation = false },
+                        title = { Text("Confirmer la suppression") },
+                        text = { Text("Êtes-vous sûr de vouloir supprimer ce coefficient ?") },
+                        confirmButton = {
+                                Button(
+                                        onClick = {
+                                                showDeleteConfirmation = false
+                                                onDelete()
+                                        },
+                                        colors =
+                                                ButtonDefaults.buttonColors(
+                                                        backgroundColor = MaterialTheme.colors.error
+                                                )
+                                ) { Text("Supprimer", color = Color.White) }
+                        },
+                        dismissButton = {
+                                Button(onClick = { showDeleteConfirmation = false }) {
+                                        Text("Annuler")
+                                }
+                        }
+                )
+        } else {
+                AlertDialog(
+                        onDismissRequest = onDismiss,
+                        title = { Text(text = "Éditer le coefficient") },
+                        text = {
+                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        OutlinedTextField(
+                                                value = description,
+                                                onValueChange = {
+                                                        description = it
+                                                        showError = false
+                                                },
+                                                label = { Text("Description") },
+                                                modifier = Modifier.fillMaxWidth(),
+                                                isError = showError && description.isBlank()
+                                        )
+
+                                        OutlinedTextField(
+                                                value = coefText,
+                                                onValueChange = {
+                                                        coefText = it
+                                                        showError = false
+                                                },
+                                                label = { Text("Coefficient") },
+                                                keyboardOptions =
+                                                        KeyboardOptions(
+                                                                keyboardType = KeyboardType.Decimal
+                                                        ),
+                                                modifier = Modifier.fillMaxWidth(),
+                                                isError =
+                                                        showError &&
+                                                                coefText.toFloatOrNull() == null
+                                        )
+
+                                        if (showError) {
+                                                Text(
+                                                        text = errorMessage,
+                                                        color = MaterialTheme.colors.error,
+                                                        style = MaterialTheme.typography.caption
+                                                )
+                                        }
+
+                                        Spacer(modifier = Modifier.height(8.dp))
+
+                                        // Bouton de suppression
+                                        Button(
+                                                onClick = { showDeleteConfirmation = true },
+                                                colors =
+                                                        ButtonDefaults.buttonColors(
+                                                                backgroundColor =
+                                                                        MaterialTheme.colors.error
+                                                        ),
+                                                modifier = Modifier.fillMaxWidth()
+                                        ) { Text("Supprimer ce coefficient", color = Color.White) }
+                                }
+                        },
+                        confirmButton = {
+                                Button(onClick = { validateAndConfirm() }) { Text("Enregistrer") }
+                        },
+                        dismissButton = {
+                                Button(
+                                        onClick = onDismiss,
+                                        colors =
+                                                ButtonDefaults.buttonColors(
+                                                        backgroundColor =
+                                                                MaterialTheme.colors.surface
+                                                )
+                                ) { Text("Annuler") }
+                        }
+                )
+        }
 }

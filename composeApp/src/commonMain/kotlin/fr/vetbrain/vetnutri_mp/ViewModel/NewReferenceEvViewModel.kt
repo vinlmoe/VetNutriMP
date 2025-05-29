@@ -76,6 +76,36 @@ class NewReferenceEvViewModel(
     // Exposer la référence courante en tant qu'équations courantes pour l'onglet équations
     val currentEquations: StateFlow<ReferenceEv> = _currentReference.asStateFlow()
 
+    // États séparés pour les listes de coefficients pour une réactivité optimale
+    private val _coefficientsK1 =
+            MutableStateFlow<List<fr.vetbrain.vetnutri_mp.Data.CoefP>>(emptyList())
+    val coefficientsK1: StateFlow<List<fr.vetbrain.vetnutri_mp.Data.CoefP>> =
+            _coefficientsK1.asStateFlow()
+
+    private val _coefficientsK2 =
+            MutableStateFlow<List<fr.vetbrain.vetnutri_mp.Data.CoefP>>(emptyList())
+    val coefficientsK2: StateFlow<List<fr.vetbrain.vetnutri_mp.Data.CoefP>> =
+            _coefficientsK2.asStateFlow()
+
+    private val _coefficientsK3 =
+            MutableStateFlow<List<fr.vetbrain.vetnutri_mp.Data.CoefP>>(emptyList())
+    val coefficientsK3: StateFlow<List<fr.vetbrain.vetnutri_mp.Data.CoefP>> =
+            _coefficientsK3.asStateFlow()
+
+    private val _coefficientsK4 =
+            MutableStateFlow<List<fr.vetbrain.vetnutri_mp.Data.CoefP>>(emptyList())
+    val coefficientsK4: StateFlow<List<fr.vetbrain.vetnutri_mp.Data.CoefP>> =
+            _coefficientsK4.asStateFlow()
+
+    private val _coefficientsK5 =
+            MutableStateFlow<List<fr.vetbrain.vetnutri_mp.Data.CoefP>>(emptyList())
+    val coefficientsK5: StateFlow<List<fr.vetbrain.vetnutri_mp.Data.CoefP>> =
+            _coefficientsK5.asStateFlow()
+
+    // États pour les noms des groupes de coefficients
+    private val _groupNames = MutableStateFlow(listOf("", "", "", "", ""))
+    val groupNames: StateFlow<List<String>> = _groupNames.asStateFlow()
+
     // Scope pour les coroutines
     private val coroutineScope = CoroutineScope(AppDispatchers.Main)
 
@@ -85,6 +115,7 @@ class NewReferenceEvViewModel(
         _isEditMode.value = false
         _errorMessage.value = null
         _operationSuccess.value = false
+        syncCoefficientsFromReference()
         loadEquations()
         loadBiblioRefs()
     }
@@ -106,6 +137,7 @@ class NewReferenceEvViewModel(
                 _currentReference.value = reference
                 _isEditMode.value = true
                 updateDefinedNutrients(reference)
+                syncCoefficientsFromReference()
 
                 // Charger les équations associées depuis la base de données
                 loadEquationsForReference(reference)
@@ -113,10 +145,33 @@ class NewReferenceEvViewModel(
                 _errorMessage.value = "Référence non trouvée"
                 _currentReference.value = ReferenceEv()
                 _isEditMode.value = false
+                syncCoefficientsFromReference()
             }
             loadEquations()
             loadBiblioRefs()
         }
+    }
+
+    /** Synchronise les StateFlow des coefficients avec la référence actuelle */
+    private fun syncCoefficientsFromReference() {
+        val reference = _currentReference.value
+
+        // Synchroniser les listes de coefficients
+        _coefficientsK1.value = reference.getModk1().toList()
+        _coefficientsK2.value = reference.getModk2().toList()
+        _coefficientsK3.value = reference.getModk3().toList()
+        _coefficientsK4.value = reference.getModk4().toList()
+        _coefficientsK5.value = reference.getModk5().toList()
+
+        // Synchroniser les noms des groupes
+        _groupNames.value =
+                listOf(
+                        reference.nomk1,
+                        reference.nomk2,
+                        reference.nomk3,
+                        reference.nomk4,
+                        reference.nomk5
+                )
     }
 
     /** Charge les équations disponibles dans le repository. */
@@ -566,6 +621,193 @@ class NewReferenceEvViewModel(
             println(
                     "DEBUG: Erreur lors du chargement des équations pour la référence: ${e.message}"
             )
+        }
+    }
+
+    // ==================== MÉTHODES POUR LA GESTION DES COEFFICIENTS ====================
+
+    /**
+     * Met à jour le nom d'un groupe de coefficients
+     *
+     * @param groupIndex Index du groupe (0-4 pour k1-k5)
+     * @param name Nouveau nom du groupe
+     */
+    fun updateCoefficientGroupName(groupIndex: Int, name: String) {
+        val reference = _currentReference.value
+        when (groupIndex) {
+            0 -> reference.nomk1 = name
+            1 -> reference.nomk2 = name
+            2 -> reference.nomk3 = name
+            3 -> reference.nomk4 = name
+            4 -> reference.nomk5 = name
+        }
+
+        // Mettre à jour les StateFlow
+        val newGroupNames = _groupNames.value.toMutableList()
+        newGroupNames[groupIndex] = name
+        _groupNames.value = newGroupNames
+
+        // Pas besoin de .copy() car on modifie directement les StateFlow
+        _currentReference.value = reference
+    }
+
+    /**
+     * Récupère la liste des coefficients pour un groupe donné depuis le StateFlow
+     *
+     * @param groupIndex Index du groupe (0-4 pour k1-k5)
+     * @return Liste des coefficients
+     */
+    fun getCoefficientGroup(groupIndex: Int): List<fr.vetbrain.vetnutri_mp.Data.CoefP> {
+        return when (groupIndex) {
+            0 -> _coefficientsK1.value
+            1 -> _coefficientsK2.value
+            2 -> _coefficientsK3.value
+            3 -> _coefficientsK4.value
+            4 -> _coefficientsK5.value
+            else -> emptyList()
+        }
+    }
+
+    /**
+     * Récupère le StateFlow de la liste des coefficients pour un groupe donné
+     *
+     * @param groupIndex Index du groupe (0-4 pour k1-k5)
+     * @return StateFlow de la liste des coefficients
+     */
+    fun getCoefficientGroupStateFlow(
+            groupIndex: Int
+    ): StateFlow<List<fr.vetbrain.vetnutri_mp.Data.CoefP>> {
+        return when (groupIndex) {
+            0 -> coefficientsK1
+            1 -> coefficientsK2
+            2 -> coefficientsK3
+            3 -> coefficientsK4
+            4 -> coefficientsK5
+            else ->
+                    MutableStateFlow<List<fr.vetbrain.vetnutri_mp.Data.CoefP>>(emptyList())
+                            .asStateFlow()
+        }
+    }
+
+    /**
+     * Récupère le nom d'un groupe de coefficients
+     *
+     * @param groupIndex Index du groupe (0-4 pour k1-k5)
+     * @return Nom du groupe
+     */
+    fun getCoefficientGroupName(groupIndex: Int): String {
+        return _groupNames.value.getOrElse(groupIndex) { "" }
+    }
+
+    /**
+     * Ajoute un nouveau coefficient à un groupe
+     *
+     * @param groupIndex Index du groupe (0-4 pour k1-k5)
+     * @param description Description du coefficient
+     * @param coef Valeur du coefficient
+     */
+    fun addCoefficient(groupIndex: Int, description: String, coef: Float) {
+        val reference = _currentReference.value
+        val newCoef =
+                fr.vetbrain.vetnutri_mp.Data.CoefP(
+                        description = description,
+                        coef = coef,
+                        groupUUID = groupIndex
+                )
+
+        // Ajouter dans l'ArrayList de ReferenceEv
+        when (groupIndex) {
+            0 -> reference.getModk1().add(newCoef)
+            1 -> reference.getModk2().add(newCoef)
+            2 -> reference.getModk3().add(newCoef)
+            3 -> reference.getModk4().add(newCoef)
+            4 -> reference.getModk5().add(newCoef)
+        }
+
+        // Mettre à jour le StateFlow correspondant avec une nouvelle liste
+        updateCoefficientStateFlow(groupIndex, reference)
+
+        _currentReference.value = reference
+    }
+
+    /**
+     * Supprime un coefficient d'un groupe
+     *
+     * @param groupIndex Index du groupe (0-4 pour k1-k5)
+     * @param coefficientIndex Index du coefficient dans le groupe
+     */
+    fun removeCoefficient(groupIndex: Int, coefficientIndex: Int) {
+        val reference = _currentReference.value
+        val group =
+                when (groupIndex) {
+                    0 -> reference.getModk1()
+                    1 -> reference.getModk2()
+                    2 -> reference.getModk3()
+                    3 -> reference.getModk4()
+                    4 -> reference.getModk5()
+                    else -> return
+                }
+
+        if (coefficientIndex >= 0 && coefficientIndex < group.size) {
+            group.removeAt(coefficientIndex)
+
+            // Mettre à jour le StateFlow correspondant avec une nouvelle liste
+            updateCoefficientStateFlow(groupIndex, reference)
+
+            _currentReference.value = reference
+        }
+    }
+
+    /**
+     * Met à jour un coefficient existant
+     *
+     * @param groupIndex Index du groupe (0-4 pour k1-k5)
+     * @param coefficientIndex Index du coefficient dans le groupe
+     * @param description Nouvelle description
+     * @param coef Nouvelle valeur
+     */
+    fun updateCoefficient(
+            groupIndex: Int,
+            coefficientIndex: Int,
+            description: String,
+            coef: Float
+    ) {
+        val reference = _currentReference.value
+        val group =
+                when (groupIndex) {
+                    0 -> reference.getModk1()
+                    1 -> reference.getModk2()
+                    2 -> reference.getModk3()
+                    3 -> reference.getModk4()
+                    4 -> reference.getModk5()
+                    else -> return
+                }
+
+        if (coefficientIndex >= 0 && coefficientIndex < group.size) {
+            val coefficient = group[coefficientIndex]
+            coefficient.description = description
+            coefficient.coef = coef
+
+            // Mettre à jour le StateFlow correspondant avec une nouvelle liste
+            updateCoefficientStateFlow(groupIndex, reference)
+
+            _currentReference.value = reference
+        }
+    }
+
+    /**
+     * Met à jour le StateFlow d'un groupe de coefficients spécifique
+     *
+     * @param groupIndex Index du groupe (0-4 pour k1-k5)
+     * @param reference Référence actuelle
+     */
+    private fun updateCoefficientStateFlow(groupIndex: Int, reference: ReferenceEv) {
+        when (groupIndex) {
+            0 -> _coefficientsK1.value = reference.getModk1().toList()
+            1 -> _coefficientsK2.value = reference.getModk2().toList()
+            2 -> _coefficientsK3.value = reference.getModk3().toList()
+            3 -> _coefficientsK4.value = reference.getModk4().toList()
+            4 -> _coefficientsK5.value = reference.getModk5().toList()
         }
     }
 }
