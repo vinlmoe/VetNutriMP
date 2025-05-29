@@ -252,8 +252,21 @@ class DatabaseEquationRepository(
             val entity = equationToSave.toEntity()
             println("DEBUG DatabaseEquationRepository: Entité convertie avec succès")
             println("DEBUG DatabaseEquationRepository: Entity bibRef: ${entity.bibRef}")
-            equationDao.insertEquation(entity)
-            println("DEBUG DatabaseEquationRepository: Équation insérée avec succès")
+
+            // Vérifier si l'équation existe déjà
+            val existingEquation = equationDao.getEquationById(equationToSave.uuid)
+            if (existingEquation != null) {
+                // Équation existante : utiliser updateEquation
+                println("DEBUG DatabaseEquationRepository: Équation existante trouvée, mise à jour")
+                equationDao.updateEquation(entity)
+                println("DEBUG DatabaseEquationRepository: Équation mise à jour avec succès")
+            } else {
+                // Nouvelle équation : utiliser insertEquation
+                println("DEBUG DatabaseEquationRepository: Nouvelle équation, insertion")
+                equationDao.insertEquation(entity)
+                println("DEBUG DatabaseEquationRepository: Équation insérée avec succès")
+            }
+
             loadEquations()
         } catch (e: Exception) {
             println(
