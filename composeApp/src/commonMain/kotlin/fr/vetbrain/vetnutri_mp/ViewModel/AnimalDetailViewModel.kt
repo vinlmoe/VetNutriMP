@@ -10,6 +10,7 @@ import fr.vetbrain.vetnutri_mp.Data.ComparaisonNutriment
 import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
 import fr.vetbrain.vetnutri_mp.Data.Ration
 import fr.vetbrain.vetnutri_mp.Data.RationAnalyzer
+import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Repository.AlimentRepository
 import fr.vetbrain.vetnutri_mp.Repository.AnimalRepository
 import fr.vetbrain.vetnutri_mp.Repository.ConsultationRepository
@@ -89,6 +90,13 @@ class AnimalDetailViewModel(
     // StateFlow pour indiquer si une analyse est en cours
     private val _isAnalyzing = MutableStateFlow(false)
     val isAnalyzing: StateFlow<Boolean> = _isAnalyzing.asStateFlow()
+
+    // Nouveaux StateFlow pour les références nutritionnelles
+    private val _availableReferences = MutableStateFlow<List<ReferenceEv>>(emptyList())
+    val availableReferences: StateFlow<List<ReferenceEv>> = _availableReferences.asStateFlow()
+
+    private val _isLoadingReferences = MutableStateFlow(false)
+    val isLoadingReferences: StateFlow<Boolean> = _isLoadingReferences.asStateFlow()
 
     /**
      * Charge tous les aliments disponibles en utilisant la version légère pour de meilleures
@@ -909,10 +917,10 @@ class AnimalDetailViewModel(
     fun updateRation(ration: Ration) {
         // Mettre à jour la ration sélectionnée
         _selectedRation.value = ration
-        
+
         // Mettre à jour la ration dans la consultation
         updateRationInConsultation(ration)
-        
+
         // Relancer l'analyse pour tenir compte des modifications
         analyserRationSelectionnee()
     }
@@ -994,5 +1002,178 @@ class AnimalDetailViewModel(
      */
     fun getAliments(): List<AlimentEv> {
         return _availableFoods.value
+    }
+
+    /**
+     * Analyse une ration et met à jour le StateFlow des résultats
+     *
+     * @param ration La ration à analyser
+     */
+    fun analyserRation(ration: Ration) {
+        viewModelScope.launch {
+            try {
+                _isAnalyzing.value = true
+                val resultat = rationAnalyzer.analyserRation(ration)
+                _rationAnalyseResultat.value = resultat
+                println("Analyse de la ration ${ration.name} terminée")
+            } catch (e: Exception) {
+                println("Erreur lors de l'analyse de la ration: ${e.message}")
+                e.printStackTrace()
+            } finally {
+                _isAnalyzing.value = false
+            }
+        }
+    }
+
+    /**
+     * Compare deux rations et met à jour le StateFlow des comparaisons
+     *
+     * @param ration1 Première ration à comparer
+     * @param ration2 Seconde ration à comparer
+     */
+    fun comparerRations(ration1: Ration, ration2: Ration) {
+        viewModelScope.launch {
+            try {
+                _isAnalyzing.value = true
+                val comparaison = rationAnalyzer.comparerRations(ration1, ration2)
+                _rationsComparaison.value = comparaison
+                println("Comparaison entre ${ration1.name} et ${ration2.name} terminée")
+            } catch (e: Exception) {
+                println("Erreur lors de la comparaison des rations: ${e.message}")
+                e.printStackTrace()
+            } finally {
+                _isAnalyzing.value = false
+            }
+        }
+    }
+
+    // === MÉTHODES POUR LES RÉFÉRENCES NUTRITIONNELLES ===
+
+    /** Charge toutes les références nutritionnelles disponibles pour l'espèce de l'animal */
+    fun chargerReferencesDisponibles() {
+        viewModelScope.launch {
+            try {
+                _isLoadingReferences.value = true
+                val animalActuel = _animal.value
+                if (animalActuel != null) {
+                    val espece = Espece.getByLabel(animalActuel.specieId ?: "") ?: Espece.CHIEN
+                    // TODO: Implémenter le chargement des références depuis le repository
+                    // val references = referenceEvRepository.getReferenceEvByEspece(espece.name)
+                    // _availableReferences.value = references
+
+                    // Pour l'instant, on utilise une liste vide
+                    _availableReferences.value = emptyList()
+                    println("Références chargées pour l'espèce: ${espece.label}")
+                }
+            } catch (e: Exception) {
+                println("Erreur lors du chargement des références: ${e.message}")
+                _availableReferences.value = emptyList()
+            } finally {
+                _isLoadingReferences.value = false
+            }
+        }
+    }
+
+    /**
+     * Définit la référence générale pour une consultation
+     *
+     * @param consultationId L'ID de la consultation
+     * @param referenceId L'ID de la référence à définir
+     */
+    fun definirReferenceGenerale(consultationId: String, referenceId: String?) {
+        viewModelScope.launch {
+            try {
+                val animalActuel = _animal.value
+                if (animalActuel != null) {
+                    val consultation = animalActuel.consultations.find { it.uuid == consultationId }
+                    if (consultation != null) {
+                        consultation.referenceGeneraleId = referenceId
+                        updateConsultation(consultation)
+                        println(
+                                "Référence générale définie pour la consultation $consultationId: $referenceId"
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                println("Erreur lors de la définition de la référence générale: ${e.message}")
+            }
+        }
+    }
+
+    /**
+     * Ajoute une référence de maladie à une consultation
+     *
+     * @param consultationId L'ID de la consultation
+     * @param referenceId L'ID de la référence de maladie à ajouter
+     */
+    fun ajouterReferenceMaladie(consultationId: String, referenceId: String) {
+        viewModelScope.launch {
+            try {
+                val animalActuel = _animal.value
+                if (animalActuel != null) {
+                    val consultation = animalActuel.consultations.find { it.uuid == consultationId }
+                    if (consultation != null) {
+                        consultation.ajouterReferenceMaladie(referenceId)
+                        updateConsultation(consultation)
+                        println(
+                                "Référence de maladie ajoutée à la consultation $consultationId: $referenceId"
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                println("Erreur lors de l'ajout de la référence de maladie: ${e.message}")
+            }
+        }
+    }
+
+    /**
+     * Supprime une référence de maladie d'une consultation
+     *
+     * @param consultationId L'ID de la consultation
+     * @param referenceId L'ID de la référence de maladie à supprimer
+     */
+    fun supprimerReferenceMaladie(consultationId: String, referenceId: String) {
+        viewModelScope.launch {
+            try {
+                val animalActuel = _animal.value
+                if (animalActuel != null) {
+                    val consultation = animalActuel.consultations.find { it.uuid == consultationId }
+                    if (consultation != null) {
+                        consultation.supprimerReferenceMaladie(referenceId)
+                        updateConsultation(consultation)
+                        println(
+                                "Référence de maladie supprimée de la consultation $consultationId: $referenceId"
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                println("Erreur lors de la suppression de la référence de maladie: ${e.message}")
+            }
+        }
+    }
+
+    /**
+     * Obtient toutes les références (générale + maladies) pour une consultation
+     *
+     * @param consultationId L'ID de la consultation
+     * @return Liste des IDs des références associées
+     */
+    fun obtenirReferencesConsultation(consultationId: String): List<String> {
+        val animalActuel = _animal.value
+        if (animalActuel != null) {
+            val consultation = animalActuel.consultations.find { it.uuid == consultationId }
+            return consultation?.obtenirToutesReferences() ?: emptyList()
+        }
+        return emptyList()
+    }
+
+    /**
+     * Filtre les références disponibles selon des critères
+     *
+     * @param pourMaladie true pour les références de maladie, false pour les références générales
+     * @return Liste des références filtrées
+     */
+    fun filtrerReferences(pourMaladie: Boolean): List<ReferenceEv> {
+        return _availableReferences.value.filter { reference -> reference.maladie == pourMaladie }
     }
 }

@@ -222,6 +222,22 @@ private fun EquationEditTab(
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        // Espèce d'application (dropdown)
+        DropdownField(
+                label = "Espèce d'application",
+                selectedValue = currentEquation.specie ?: fr.vetbrain.vetnutri_mp.Enumer.Espece.CH,
+                options = fr.vetbrain.vetnutri_mp.Enumer.Espece.entries,
+                onValueChange = { viewModel.updateSpecie(it) },
+                valueToString = { espece ->
+                    when (espece) {
+                        fr.vetbrain.vetnutri_mp.Enumer.Espece.CH -> "ALL (Toutes espèces)"
+                        else -> "${espece.label} (${espece.name})"
+                    }
+                }
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
         // Facteur de correction (si besoin)
         OutlinedTextField(
                 value = currentEquation.correctionFactor.toString(),

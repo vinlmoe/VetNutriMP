@@ -360,11 +360,7 @@ fun ReferenceEvNutrientsTab(viewModel: NewReferenceEvViewModel, currentReference
                 // En-tête avec sélection du type de nutriment
                 Card(modifier = Modifier.fillMaxWidth(), elevation = 4.dp) {
                         Column(modifier = Modifier.padding(16.dp)) {
-                                Text(
-                                        "Gestion des besoins nutritionnels",
-                                        style = MaterialTheme.typography.h6,
-                                        fontWeight = FontWeight.Bold
-                                )
+                               
 
                                 Spacer(modifier = Modifier.height(8.dp))
 
@@ -625,12 +621,7 @@ fun ReferenceEvEquationsTab(viewModel: NewReferenceEvViewModel) {
                 modifier = Modifier.fillMaxSize().padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-                Text(
-                        text = "Sélection des équations",
-                        style = MaterialTheme.typography.h6,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                )
+               
 
                 // Équation Poids corporel (BW)
                 Card(modifier = Modifier.fillMaxWidth(), elevation = 4.dp) {
@@ -859,32 +850,7 @@ fun ReferenceEvEquationsTab(viewModel: NewReferenceEvViewModel) {
                 }
 
                 // Bouton de sauvegarde des équations
-                Button(
-                        onClick = {
-                                // Vérifier si les équations sélectionnées ne sont pas nulles avant
-                                // de les
-                                // sauvegarder
-                                selectedEquationBW?.let { viewModel.setEquationBWSilently(it) }
-                                selectedEquationBEE?.let { viewModel.setEquationBEESilently(it) }
-                                selectedEquationDEcom?.let {
-                                        viewModel.setEquationDEcomSilently(it)
-                                }
-                                selectedEquationDEraw?.let {
-                                        viewModel.setEquationDErawSilently(it)
-                                }
-                        },
-                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                        colors =
-                                ButtonDefaults.buttonColors(
-                                        backgroundColor = VetNutriColors.Primary
-                                )
-                ) {
-                        Text(
-                                "Enregistrer les équations",
-                                color = Color.White,
-                                modifier = Modifier.padding(8.dp)
-                        )
-                }
+              
         }
 }
 
@@ -911,21 +877,12 @@ fun ReferenceEvCoefficientsTab(viewModel: NewReferenceEvViewModel, currentRefere
                 modifier = Modifier.fillMaxSize().padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-                Text(
-                        text = "Gestion des coefficients modificateurs",
-                        style = MaterialTheme.typography.h6,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                )
+               
 
                 // Sélection du groupe de coefficients
                 Card(modifier = Modifier.fillMaxWidth(), elevation = 4.dp) {
                         Column(modifier = Modifier.padding(16.dp)) {
-                                Text(
-                                        text = "Sélection du groupe de coefficients",
-                                        style = MaterialTheme.typography.subtitle1,
-                                        fontWeight = FontWeight.Bold
-                                )
+                             
                                 Spacer(modifier = Modifier.height(8.dp))
 
                                 TabRow(
@@ -955,21 +912,7 @@ fun ReferenceEvCoefficientsTab(viewModel: NewReferenceEvViewModel, currentRefere
                         }
                 )
 
-                // Bouton de sauvegarde global
-                Button(
-                        onClick = { viewModel.saveReference() },
-                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                        colors =
-                                ButtonDefaults.buttonColors(
-                                        backgroundColor = VetNutriColors.Primary
-                                )
-                ) {
-                        Text(
-                                "Enregistrer les coefficients",
-                                color = Color.White,
-                                modifier = Modifier.padding(8.dp)
-                        )
-                }
+               
 
                 // Boîte de dialogue pour ajouter un coefficient
                 if (showAddCoefficientDialog) {

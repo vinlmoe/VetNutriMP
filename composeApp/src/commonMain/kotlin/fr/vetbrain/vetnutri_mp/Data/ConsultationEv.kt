@@ -1,41 +1,40 @@
 package fr.vetbrain.vetnutri_mp.Data
 
 import fr.vetbrain.vetnutri_mp.Utils.genUUID
-import kotlin.uuid.ExperimentalUuidApi
-import kotlin.uuid.Uuid
 import kotlinx.datetime.LocalDate
 
-
 data class ConsultationEv(
-    var uuid: String = genUUID(),
-    var idAnim: String = "",
-    var date: LocalDate? = null,
-    var objectConsult: String = "",
-    var observation: String = "",
-    var cRendu: String = "",
-    var weight: Float? = null,
-    var idealWeight: Float? = null,
-    var water: Float? = null,
-    var bodyFat: Float? = null,
-    var methodAnalysis: String = "",
-    var BCS: Int? = null,
-    var k1Id: String? = null,
-    var k1Value: Float? = null,
-    var k2Id: String? = null,
-    var k2Value: Float? = null,
-    var k3Id: String? = null,
-    var k3Value: Float? = null,
-    var k4Id: String? = null,
-    var k4Value: Float? = null,
-    var k5Id: String? = null,
-    var k5Value: Float? = null,
-    var nLittle: Int? = null,
-    var pAdult: Float? = null,
-    var coefGes: Int? = null,
-    var coefLact: Int? = null,
-    var MCS: Int? = null,
-    var suppVarp: MutableList<SupplementalvariableP> = mutableListOf(),
-    var rations: MutableList<Ration> = mutableListOf()
+        var uuid: String = genUUID(),
+        var idAnim: String = "",
+        var date: LocalDate? = null,
+        var objectConsult: String = "",
+        var observation: String = "",
+        var cRendu: String = "",
+        var weight: Float? = null,
+        var idealWeight: Float? = null,
+        var water: Float? = null,
+        var bodyFat: Float? = null,
+        var methodAnalysis: String = "",
+        var BCS: Int? = null,
+        var k1Id: String? = null,
+        var k1Value: Float? = null,
+        var k2Id: String? = null,
+        var k2Value: Float? = null,
+        var k3Id: String? = null,
+        var k3Value: Float? = null,
+        var k4Id: String? = null,
+        var k4Value: Float? = null,
+        var k5Id: String? = null,
+        var k5Value: Float? = null,
+        var nLittle: Int? = null,
+        var pAdult: Float? = null,
+        var coefGes: Int? = null,
+        var coefLact: Int? = null,
+        var MCS: Int? = null,
+        var suppVarp: MutableList<SupplementalvariableP> = mutableListOf(),
+        var rations: MutableList<Ration> = mutableListOf(),
+        var referenceGeneraleId: String? = null,
+        var referencesMaladies: MutableList<String> = mutableListOf()
 ) {
         constructor() :
                 this(
@@ -70,5 +69,26 @@ data class ConsultationEv(
 
         fun getRationByID(uuid: String): Ration {
                 return rations.last { ration: Ration -> ration.uuid == uuid }
+        }
+
+        fun ajouterReferenceMaladie(referenceId: String) {
+                if (!referencesMaladies.contains(referenceId)) {
+                        referencesMaladies.add(referenceId)
+                }
+        }
+
+        fun supprimerReferenceMaladie(referenceId: String) {
+                referencesMaladies.remove(referenceId)
+        }
+
+        fun contientReferenceMaladie(referenceId: String): Boolean {
+                return referencesMaladies.contains(referenceId)
+        }
+
+        fun obtenirToutesReferences(): List<String> {
+                val toutesReferences = mutableListOf<String>()
+                referenceGeneraleId?.let { toutesReferences.add(it) }
+                toutesReferences.addAll(referencesMaladies)
+                return toutesReferences
         }
 }

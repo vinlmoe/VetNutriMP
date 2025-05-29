@@ -124,7 +124,7 @@ fun CalculationTabsView(
 
         Column(modifier = modifier.fillMaxSize()) {
                 TopAppBar(
-                        title = { Text("Données de calcul") },
+                        title = { Text("Gestion des données de calcul") },
                         navigationIcon = {
                                 IconButton(onClick = onNavigateBack) {
                                         Icon(
@@ -150,12 +150,12 @@ fun CalculationTabsView(
                         Tab(
                                 selected = selectedTab == 1,
                                 onClick = { onTabChanged(1) },
-                                text = { Text("Références") }
+                                text = { Text("Références bibliographiques") }
                         )
                         Tab(
                                 selected = selectedTab == 2,
                                 onClick = { onTabChanged(2) },
-                                text = { Text("Besoins") }
+                                text = { Text("Systèmes de calcul") }
                         )
                 }
 
@@ -163,24 +163,18 @@ fun CalculationTabsView(
                         0 ->
                                 EquationListView(
                                         viewModel = equationViewModel,
-                                        onNavigateBack = {
-                                        }, // Ne rien faire car on reste dans cette vue
                                         onEditEquation = { selectedEquationId = it },
                                         onCreateEquation = { isCreatingEquation = true }
                                 )
                         1 ->
                                 BiblioRefListView(
                                         viewModel = biblioRefViewModel,
-                                        onNavigateBack = {
-                                        }, // Ne rien faire car on reste dans cette vue
                                         onEditBiblioRef = { selectedBiblioRefId = it },
                                         onCreateBiblioRef = { isCreatingBiblioRef = true }
                                 )
                         2 ->
                                 NutrientRequirementView(
                                         viewModel = referenceEvViewModel,
-                                        onNavigateBack = {
-                                        }, // Ne rien faire car on reste dans cette vue
                                         onEditReference = { referenceEvId ->
                                                 selectedReferenceEvId = referenceEvId
                                                 isEditingReferenceEv = true

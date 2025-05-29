@@ -10,6 +10,7 @@ import fr.vetbrain.vetnutri_mp.DataBase.BiblioRefDao
 import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toDomain
 import fr.vetbrain.vetnutri_mp.Enumer.AAEnum
 import fr.vetbrain.vetnutri_mp.Enumer.EquationKind
+import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientLipid
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientMain
@@ -430,6 +431,12 @@ class EquationViewModel(
     fun updateCorrectionFactor(factor: Double) {
         val currentValue = _currentEquation.value
         _currentEquation.value = currentValue.copy(correctionFactor = factor)
+    }
+
+    /** Met à jour l'espèce d'application de l'équation */
+    fun updateSpecie(specie: Espece?) {
+        val currentValue = _currentEquation.value
+        _currentEquation.value = currentValue.copy(specie = specie)
     }
 
     /** Ajoute une variable à l'équation */

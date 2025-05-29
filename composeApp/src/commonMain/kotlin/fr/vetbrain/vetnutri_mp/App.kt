@@ -340,7 +340,6 @@ fun App(appDatabase: AppDatabase) {
                     Screen.BiblioRefList -> {
                         BiblioRefListView(
                                 viewModel = biblioRefViewModel,
-                                onNavigateBack = { currentScreen = Screen.List },
                                 onEditBiblioRef = { biblioRefId ->
                                     selectedBiblioRefId = biblioRefId
                                     currentScreen = Screen.BiblioRefEdit
@@ -366,7 +365,6 @@ fun App(appDatabase: AppDatabase) {
                     Screen.EquationList -> {
                         EquationListView(
                                 viewModel = equationViewModel,
-                                onNavigateBack = { currentScreen = Screen.List },
                                 onEditEquation = { equationId ->
                                     selectedEquationId = equationId
                                     equationViewModel.clearOperationMessage()
@@ -394,7 +392,6 @@ fun App(appDatabase: AppDatabase) {
                     Screen.ReferenceEvList -> {
                         NutrientRequirementView(
                                 viewModel = referenceEvViewModel,
-                                onNavigateBack = { currentScreen = Screen.List },
                                 onEditReference = { referenceEvId ->
                                     selectedReferenceEvId = referenceEvId
                                     currentScreen = Screen.NewReferenceEvEdit

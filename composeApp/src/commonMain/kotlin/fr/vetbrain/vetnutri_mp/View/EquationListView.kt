@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -10,7 +11,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import fr.vetbrain.vetnutri_mp.Components.TopBarSimple
 import fr.vetbrain.vetnutri_mp.Data.Equation
 import fr.vetbrain.vetnutri_mp.Theme.AppIcons
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
@@ -20,7 +20,6 @@ import fr.vetbrain.vetnutri_mp.ViewModel.EquationViewModel
  * Vue affichant la liste des équations disponibles
  *
  * @param viewModel ViewModel pour gérer les équations
- * @param onNavigateBack Callback pour revenir à l'écran précédent
  * @param onEditEquation Callback pour éditer une équation existante
  * @param onCreateEquation Callback pour créer une nouvelle équation
  * @param modifier Modifier à appliquer à la vue
@@ -28,7 +27,6 @@ import fr.vetbrain.vetnutri_mp.ViewModel.EquationViewModel
 @Composable
 fun EquationListView(
         viewModel: EquationViewModel,
-        onNavigateBack: () -> Unit,
         onEditEquation: (String) -> Unit,
         onCreateEquation: () -> Unit,
         modifier: Modifier = Modifier
@@ -36,6 +34,7 @@ fun EquationListView(
     val equations by viewModel.equations.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val operationMessage by viewModel.operationMessage.collectAsState()
+    val searchQuery = remember { mutableStateOf("") }
 
     // Dialogue de confirmation pour la suppression
     var showDeleteConfirmation by remember { mutableStateOf(false) }
@@ -44,22 +43,24 @@ fun EquationListView(
     // Effet pour charger les équations au lancement
     LaunchedEffect(Unit) { viewModel.loadEquations() }
 
+    // Filtrage des équations en fonction de la recherche
+    val filteredEquations =
+            remember(equations, searchQuery.value) {
+                if (searchQuery.value.isBlank()) {
+                    equations
+                } else {
+                    val query = searchQuery.value.lowercase()
+                    equations.filter { equation ->
+                        equation.name.lowercase().contains(query) ||
+                                equation.description.lowercase().contains(query) ||
+                                equation.equationScript.lowercase().contains(query) ||
+                                equation.kind.toString().lowercase().contains(query) ||
+                                equation.specie.toString().lowercase().contains(query)
+                    }
+                }
+            }
+
     Scaffold(
-            topBar = {
-                TopBarSimple(
-                        title = "Liste des équations",
-                        onNavigateBack = onNavigateBack,
-                        actions = {
-                            IconButton(onClick = onCreateEquation) {
-                                Icon(
-                                        imageVector = AppIcons.Add,
-                                        contentDescription = "Ajouter une équation",
-                                        tint = VetNutriColors.OnPrimary
-                                )
-                            }
-                        }
-                )
-            },
             floatingActionButton = {
                 FloatingActionButton(
                         onClick = onCreateEquation,
@@ -73,129 +74,68 @@ fun EquationListView(
                 }
             }
     ) { paddingValues ->
-        if (isLoading) {
-            Box(
-                    modifier = Modifier.fillMaxSize().padding(paddingValues),
-                    contentAlignment = Alignment.Center
-            ) { CircularProgressIndicator(color = VetNutriColors.Primary) }
-        } else if (equations.isEmpty()) {
-            Box(
-                    modifier = Modifier.fillMaxSize().padding(paddingValues),
-                    contentAlignment = Alignment.Center
-            ) { Text(text = "Aucune équation disponible", style = MaterialTheme.typography.h6) }
-        } else {
-            LazyColumn(
-                    modifier = Modifier.fillMaxSize().padding(paddingValues),
-                    contentPadding = PaddingValues(16.dp)
-            ) {
-                items(equations) { equation ->
-                    Card(
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                            elevation = 4.dp,
-                            backgroundColor =
-                                    if (equation.consistent) {
-                                        MaterialTheme.colors.surface
-                                    } else {
-                                        Color(
-                                                0xFFFFEBEE
-                                        ) // Rouge très clair pour les équations non cohérentes
-                                    }
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                    ) {
-                                        Text(
-                                                text = equation.name,
-                                                style = MaterialTheme.typography.h6,
-                                                fontWeight = FontWeight.Bold,
-                                                color =
-                                                        if (equation.consistent) {
-                                                            MaterialTheme.colors.onSurface
-                                                        } else {
-                                                            Color(
-                                                                    0xFFD32F2F
-                                                            ) // Rouge pour le texte des équations
-                                                            // non cohérentes
-                                                        }
-                                        )
-
-                                        // Indicateur visuel pour les équations non cohérentes
-                                        if (!equation.consistent) {
-                                            Icon(
-                                                    imageVector = AppIcons.Warning,
-                                                    contentDescription = "Équation non cohérente",
-                                                    tint = Color(0xFFD32F2F),
-                                                    modifier = Modifier.size(16.dp)
-                                            )
-                                        }
-                                    }
-
-                                    // Description avec couleur adaptée
-                                    if (equation.description.isNotEmpty()) {
-                                        Text(
-                                                text = equation.description,
-                                                style = MaterialTheme.typography.body2,
-                                                color =
-                                                        if (equation.consistent) {
-                                                            MaterialTheme.colors.onSurface.copy(
-                                                                    alpha = 0.7f
-                                                            )
-                                                        } else {
-                                                            Color(0xFFD32F2F).copy(alpha = 0.7f)
-                                                        },
-                                                modifier = Modifier.padding(top = 4.dp)
-                                        )
-                                    }
-
-                                    // Message d'avertissement pour les équations non cohérentes
-                                    if (!equation.consistent) {
-                                        Text(
-                                                text =
-                                                        "⚠️ Cette équation contient des variables non reconnues",
-                                                style = MaterialTheme.typography.caption,
-                                                color = Color(0xFFD32F2F),
-                                                modifier = Modifier.padding(top = 4.dp)
-                                        )
-                                    }
-                                }
-
-                                Row {
-                                    IconButton(
-                                            onClick = {
-                                                equation.uuid?.let { id -> onEditEquation(id) }
-                                            }
-                                    ) {
-                                        Icon(
-                                                imageVector = AppIcons.Edit,
-                                                contentDescription = "Éditer",
-                                                tint = VetNutriColors.Primary
-                                        )
-                                    }
-                                    IconButton(
-                                            onClick = {
-                                                equationToDelete = equation
-                                                showDeleteConfirmation = true
-                                            }
-                                    ) {
-                                        Icon(
-                                                imageVector = AppIcons.Delete,
-                                                contentDescription = "Supprimer",
-                                                tint = VetNutriColors.Error
-                                        )
-                                    }
-                                }
+        Column(modifier = Modifier.fillMaxSize().padding(paddingValues).padding(16.dp)) {
+            // Barre de recherche
+            OutlinedTextField(
+                    value = searchQuery.value,
+                    onValueChange = { searchQuery.value = it },
+                    label = { Text("Rechercher une équation") },
+                    leadingIcon = {
+                        Icon(imageVector = AppIcons.Search, contentDescription = "Rechercher")
+                    },
+                    trailingIcon = {
+                        if (searchQuery.value.isNotEmpty()) {
+                            IconButton(onClick = { searchQuery.value = "" }) {
+                                Icon(imageVector = AppIcons.Close, contentDescription = "Effacer")
                             }
                         }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors =
+                            TextFieldDefaults.outlinedTextFieldColors(
+                                    focusedBorderColor = VetNutriColors.Primary,
+                                    unfocusedBorderColor = Color.Gray
+                            )
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Affichage des résultats
+            if (isLoading) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = VetNutriColors.Primary)
+                }
+            } else if (filteredEquations.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(
+                            text =
+                                    if (searchQuery.value.isBlank()) "Aucune équation disponible"
+                                    else "Aucune équation ne correspond à votre recherche",
+                            style = MaterialTheme.typography.h6
+                    )
+                }
+            } else {
+                Text(
+                        text = "Liste des équations (${filteredEquations.size})",
+                        style = MaterialTheme.typography.h6
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                LazyColumn(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(filteredEquations) { equation ->
+                        EquationCard(
+                                equation = equation,
+                                onEdit = { equation.uuid?.let { id -> onEditEquation(id) } },
+                                onDelete = {
+                                    equationToDelete = equation
+                                    showDeleteConfirmation = true
+                                }
+                        )
                     }
-                    Spacer(modifier = Modifier.height(8.dp))
                 }
             }
         }
@@ -250,5 +190,123 @@ fun EquationListView(
                     ) { Text("Annuler") }
                 }
         )
+    }
+}
+
+/** Carte affichant une équation dans la liste */
+@Composable
+private fun EquationCard(
+        equation: Equation,
+        onEdit: () -> Unit,
+        onDelete: () -> Unit,
+        modifier: Modifier = Modifier
+) {
+    Card(
+            modifier = modifier.fillMaxWidth().clickable { onEdit() },
+            elevation = 4.dp,
+            backgroundColor =
+                    if (equation.consistent) {
+                        MaterialTheme.colors.surface
+                    } else {
+                        Color(0xFFFFEBEE) // Rouge très clair pour les équations non cohérentes
+                    }
+    ) {
+        Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                                text = equation.name,
+                                style = MaterialTheme.typography.subtitle1,
+                                fontWeight = FontWeight.Bold,
+                                color =
+                                        if (equation.consistent) {
+                                            MaterialTheme.colors.onSurface
+                                        } else {
+                                            Color(
+                                                    0xFFD32F2F
+                                            ) // Rouge pour les équations non cohérentes
+                                        }
+                        )
+
+                        // Indicateur visuel pour les équations non cohérentes
+                        if (!equation.consistent) {
+                            Icon(
+                                    imageVector = AppIcons.Warning,
+                                    contentDescription = "Équation non cohérente",
+                                    tint = Color(0xFFD32F2F),
+                                    modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+
+                    // Description
+                    if (equation.description.isNotEmpty()) {
+                        Text(
+                                text = equation.description,
+                                style = MaterialTheme.typography.body2,
+                                color =
+                                        if (equation.consistent) {
+                                            MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                                        } else {
+                                            Color(0xFFD32F2F).copy(alpha = 0.7f)
+                                        }
+                        )
+                    }
+
+                    // Script de l'équation
+                    Text(
+                            text = "Script: ${equation.equationScript}",
+                            style = MaterialTheme.typography.caption,
+                            fontWeight = FontWeight.Medium
+                    )
+
+                    // Type et espèce
+                    Text(
+                            text = "Type: ${equation.kind} | Espèce: ${equation.specie}",
+                            style = MaterialTheme.typography.caption,
+                            color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                    )
+
+                    // Message d'avertissement pour les équations non cohérentes
+                    if (!equation.consistent) {
+                        Text(
+                                text = "⚠️ Cette équation contient des variables non reconnues",
+                                style = MaterialTheme.typography.caption,
+                                color = Color(0xFFD32F2F)
+                        )
+                    }
+                }
+
+                // Boutons d'action
+                Row {
+                    IconButton(onClick = onEdit) {
+                        Icon(
+                                imageVector = AppIcons.Edit,
+                                contentDescription = "Modifier",
+                                tint = VetNutriColors.Primary
+                        )
+                    }
+
+                    IconButton(onClick = onDelete) {
+                        Icon(
+                                imageVector = AppIcons.Delete,
+                                contentDescription = "Supprimer",
+                                tint = VetNutriColors.Error
+                        )
+                    }
+                }
+            }
+        }
     }
 }

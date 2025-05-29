@@ -11,7 +11,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Components.ConfirmDialog
-import fr.vetbrain.vetnutri_mp.Components.TopBarSimple
 import fr.vetbrain.vetnutri_mp.Data.BiblioRef
 import fr.vetbrain.vetnutri_mp.Theme.AppIcons
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
@@ -23,7 +22,6 @@ import kotlinx.coroutines.launch
 @Composable
 fun BiblioRefListView(
         viewModel: BiblioRefViewModel,
-        onNavigateBack: () -> Unit,
         onEditBiblioRef: (String) -> Unit = {}, // UUID de la référence à éditer
         onCreateBiblioRef: () -> Unit = {},
         modifier: Modifier = Modifier
@@ -69,21 +67,6 @@ fun BiblioRefListView(
             }
 
     Scaffold(
-            topBar = {
-                TopBarSimple(
-                        title = "Références bibliographiques",
-                        onNavigateBack = onNavigateBack,
-                        actions = {
-                            IconButton(onClick = onCreateBiblioRef) {
-                                Icon(
-                                        imageVector = AppIcons.Add,
-                                        contentDescription = "Ajouter une référence",
-                                        tint = VetNutriColors.OnPrimary
-                                )
-                            }
-                        }
-                )
-            },
             floatingActionButton = {
                 FloatingActionButton(
                         onClick = onCreateBiblioRef,
