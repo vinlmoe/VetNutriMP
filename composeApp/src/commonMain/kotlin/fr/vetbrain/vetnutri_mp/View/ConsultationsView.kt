@@ -17,10 +17,7 @@ import fr.vetbrain.vetnutri_mp.Theme.AppIcons
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailViewModel
-import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toLocalDateTime
 
 /**
  * Vue pour afficher la liste des consultations d'un animal
@@ -41,6 +38,7 @@ fun ConsultationsView(
     val animal by viewModel.animal.collectAsState()
     val selectedConsultation by viewModel.selectedConsultation.collectAsState()
     val isEditingConsultation by remember { derivedStateOf { viewModel.isEditingConsultation } }
+    val showFullScreenEdit by viewModel.showFullScreenEdit.collectAsState()
     var showDeleteConfirmation by remember { mutableStateOf(false) }
     var consultationToDelete by remember { mutableStateOf<ConsultationEv?>(null) }
 
@@ -52,10 +50,55 @@ fun ConsultationsView(
                 animal?.consultations?.sortedByDescending { it.date ?: defaultDate } ?: emptyList()
             }
 
+    // Affichage conditionnel : vue plein écran ou vue normale
+    if (showFullScreenEdit) {
+        val availableReferences by viewModel.availableReferences.collectAsState()
+
+        ConsultationFullScreenEditView(
+                consultation = selectedConsultation,
+                animalName = animal?.nom ?: "",
+                availableReferences = availableReferences,
+                onBackPressed = { consultation -> viewModel.saveFromFullScreen(consultation) },
+                onLoadReferences = { viewModel.chargerReferencesDisponibles() }
+        )
+    } else {
+        // Vue normale avec layout en colonnes
+        ConsultationsMainView(
+                viewModel = viewModel,
+                animal = animal,
+                sortedConsultations = sortedConsultations,
+                selectedConsultation = selectedConsultation,
+                isEditingConsultation = isEditingConsultation,
+                showConsultationDetail = showConsultationDetail,
+                onShowConsultationDetail = onShowConsultationDetail,
+                showDeleteConfirmation = showDeleteConfirmation,
+                onShowDeleteConfirmation = { showDeleteConfirmation = it },
+                consultationToDelete = consultationToDelete,
+                onConsultationToDelete = { consultationToDelete = it },
+                modifier = modifier
+        )
+    }
+}
+
+@Composable
+private fun ConsultationsMainView(
+        viewModel: AnimalDetailViewModel,
+        animal: fr.vetbrain.vetnutri_mp.Data.AnimalEv?,
+        sortedConsultations: List<ConsultationEv>,
+        selectedConsultation: ConsultationEv?,
+        isEditingConsultation: Boolean,
+        showConsultationDetail: Boolean,
+        onShowConsultationDetail: (Boolean) -> Unit,
+        showDeleteConfirmation: Boolean,
+        onShowDeleteConfirmation: (Boolean) -> Unit,
+        consultationToDelete: ConsultationEv?,
+        onConsultationToDelete: (ConsultationEv?) -> Unit,
+        modifier: Modifier = Modifier
+) {
     // Dialogue de confirmation de suppression
     if (showDeleteConfirmation) {
         AlertDialog(
-                onDismissRequest = { showDeleteConfirmation = false },
+                onDismissRequest = { onShowDeleteConfirmation(false) },
                 title = { Text(Consultation.DELETE_CONSULTATION.translate()) },
                 text = { Text(Consultation.DELETE_CONSULTATION_CONFIRM.translate()) },
                 confirmButton = {
@@ -64,7 +107,7 @@ fun ConsultationsView(
                                 consultationToDelete?.let { consultation ->
                                     viewModel.deleteConsultation(consultation)
                                 }
-                                showDeleteConfirmation = false
+                                onShowDeleteConfirmation(false)
                             },
                             colors =
                                     ButtonDefaults.buttonColors(
@@ -75,7 +118,7 @@ fun ConsultationsView(
                 },
                 dismissButton = {
                     Button(
-                            onClick = { showDeleteConfirmation = false },
+                            onClick = { onShowDeleteConfirmation(false) },
                             colors =
                                     ButtonDefaults.buttonColors(
                                             backgroundColor = VetNutriColors.Secondary,
@@ -93,15 +136,7 @@ fun ConsultationsView(
                 verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
         ) {
             Button(
-                    onClick = {
-                        val currentMoment = Clock.System.now()
-                        val localDateTime =
-                                currentMoment.toLocalDateTime(TimeZone.currentSystemDefault())
-                        val currentDate = localDateTime.date
-                        viewModel.prepareNewConsultation(currentDate)
-                        viewModel.startEditingConsultation()
-                        onShowConsultationDetail(true)
-                    },
+                    onClick = { viewModel.createNewConsultationFullScreen() },
                     colors =
                             ButtonDefaults.buttonColors(
                                     backgroundColor = VetNutriColors.Primary,
@@ -157,17 +192,16 @@ fun ConsultationsView(
                             ConsultationCard(
                                     consultation = consultation,
                                     isSelected = selectedConsultation?.uuid == consultation.uuid,
-                                    onEdit = {
-                                        viewModel.selectConsultation(consultation)
-                                        viewModel.startEditingConsultation()
-                                        onShowConsultationDetail(true)
-                                    },
+                                    onEdit = { viewModel.editConsultationFullScreen(consultation) },
                                     onDelete = {
-                                        consultationToDelete = consultation
-                                        showDeleteConfirmation = true
+                                        onConsultationToDelete(consultation)
+                                        onShowDeleteConfirmation(true)
                                     },
                                     isDeleteEnabled = canDeleteConsultation,
-                                    onClick = { viewModel.selectConsultation(consultation) }
+                                    onClick = {
+                                        viewModel.selectConsultation(consultation)
+                                        onShowConsultationDetail(true)
+                                    }
                             )
                         }
                     }

@@ -94,10 +94,8 @@ object Mappers {
                                 MCS = this.MCS ?: 0,
                                 // Nouveaux champs pour les références nutritionnelles
                                 referenceGeneraleId = this.referenceGeneraleId,
-                                referencesMaladiesJson =
-                                        if (this.referencesMaladies.isNotEmpty()) {
-                                                this.referencesMaladies.joinToString(",")
-                                        } else null
+                                referencesMaladiesJson = this.referencesMaladies.joinToString(","),
+                                coefficientAjustement = this.coefficientAjustement
                         )
                         .apply {
                                 if (includeRelations) {
@@ -122,53 +120,47 @@ object Mappers {
                 suppVars: List<SupplementalVariableEntity> = emptyList()
         ): ConsultationEv {
                 return ConsultationEv(
-                                uuid = this.uuid,
-                                idAnim = this.idAnim,
-                                date =
-                                        if (this.date?.isNotBlank() == true)
-                                                LocalDate.parse(this.date)
-                                        else null,
-                                objectConsult = this.objectConsult ?: "",
-                                observation = this.observation ?: "",
-                                cRendu = this.cRendu ?: "",
-                                weight = if (this.weight != 0f) this.weight else null,
-                                idealWeight =
-                                        if (this.idealWeight != 0f) this.idealWeight else null,
-                                water = if (this.water != 0f) this.water else null,
-                                bodyFat = if (this.bodyFat != 0f) this.bodyFat else null,
-                                methodAnalysis = this.methodAnalysis ?: "",
-                                BCS = if (this.BCS != 0) this.BCS else null,
-                                k1Id = if (this.k1Id?.isNotBlank() == true) this.k1Id else null,
-                                k1Value = if (this.k1Value != 0f) this.k1Value else null,
-                                k2Id = if (this.k2Id?.isNotBlank() == true) this.k2Id else null,
-                                k2Value = if (this.k2Value != 0f) this.k2Value else null,
-                                k3Id = if (this.k3Id?.isNotBlank() == true) this.k3Id else null,
-                                k3Value = if (this.k3Value != 0f) this.k3Value else null,
-                                k4Id = if (this.k4Id?.isNotBlank() == true) this.k4Id else null,
-                                k4Value = if (this.k4Value != 0f) this.k4Value else null,
-                                k5Id = if (this.k5Id?.isNotBlank() == true) this.k5Id else null,
-                                k5Value = if (this.k5Value != 0f) this.k5Value else null,
-                                nLittle = if (this.nLittle != 0) this.nLittle else null,
-                                pAdult = if (this.pAdult != 0f) this.pAdult else null,
-                                coefGes = if (this.coefGes != 0) this.coefGes else null,
-                                coefLact = if (this.coefLact != 0) this.coefLact else null,
-                                MCS = if (this.MCS != 0) this.MCS else null,
-                                // Nouveaux champs pour les références nutritionnelles
-                                referenceGeneraleId = this.referenceGeneraleId,
-                                referencesMaladies =
-                                        if (this.referencesMaladiesJson?.isNotBlank() == true) {
-                                                this.referencesMaladiesJson
-                                                        .split(",")
-                                                        .toMutableList()
-                                        } else mutableListOf()
-                        )
-                        .apply {
-                                // Ajouter les rations converties
-                                this.rations.addAll(rations.map { it.toData() })
-
-                                // Ajouter les variables supplémentaires converties
-                                this.suppVarp.addAll(suppVars.map { it.toData() })
-                        }
+                        uuid = this.uuid,
+                        idAnim = this.idAnim,
+                        date =
+                                if (this.date?.isNotBlank() == true) LocalDate.parse(this.date)
+                                else null,
+                        objectConsult = this.objectConsult ?: "",
+                        observation = this.observation ?: "",
+                        cRendu = this.cRendu ?: "",
+                        weight = if (this.weight != 0f) this.weight else null,
+                        idealWeight = if (this.idealWeight != 0f) this.idealWeight else null,
+                        water = if (this.water != 0f) this.water else null,
+                        bodyFat = if (this.bodyFat != 0f) this.bodyFat else null,
+                        methodAnalysis = this.methodAnalysis ?: "",
+                        BCS = if (this.BCS != 0) this.BCS else null,
+                        k1Id = if (this.k1Id?.isNotBlank() == true) this.k1Id else null,
+                        k1Value = if (this.k1Value != 0f) this.k1Value else null,
+                        k2Id = if (this.k2Id?.isNotBlank() == true) this.k2Id else null,
+                        k2Value = if (this.k2Value != 0f) this.k2Value else null,
+                        k3Id = if (this.k3Id?.isNotBlank() == true) this.k3Id else null,
+                        k3Value = if (this.k3Value != 0f) this.k3Value else null,
+                        k4Id = if (this.k4Id?.isNotBlank() == true) this.k4Id else null,
+                        k4Value = if (this.k4Value != 0f) this.k4Value else null,
+                        k5Id = if (this.k5Id?.isNotBlank() == true) this.k5Id else null,
+                        k5Value = if (this.k5Value != 0f) this.k5Value else null,
+                        nLittle = if (this.nLittle != 0) this.nLittle else null,
+                        pAdult = if (this.pAdult != 0f) this.pAdult else null,
+                        coefGes = if (this.coefGes != 0) this.coefGes else null,
+                        coefLact = if (this.coefLact != 0) this.coefLact else null,
+                        MCS = if (this.MCS != 0) this.MCS else null,
+                        suppVarp = suppVars.map { it.toData() }.toMutableList(),
+                        rations = rations.map { it.toData() }.toMutableList(),
+                        // Nouveaux champs pour les références nutritionnelles
+                        referenceGeneraleId = this.referenceGeneraleId,
+                        referencesMaladies =
+                                if (!this.referencesMaladiesJson.isNullOrBlank()) {
+                                        this.referencesMaladiesJson.split(",").toMutableList()
+                                } else {
+                                        mutableListOf()
+                                },
+                        coefficientAjustement = this.coefficientAjustement
+                )
         }
 
         // Ration Mappers avec relations

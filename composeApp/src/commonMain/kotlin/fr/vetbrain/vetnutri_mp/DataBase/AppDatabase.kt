@@ -32,7 +32,7 @@ import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
                         ReferenceEvEquationEntity::class,
                         ReferenceEvCoefficientEntity::class,
                         ReferenceEvNutrientEntity::class],
-        version = 16,
+        version = 17,
         exportSchema = true
 )
 @TypeConverters(Converters::class)

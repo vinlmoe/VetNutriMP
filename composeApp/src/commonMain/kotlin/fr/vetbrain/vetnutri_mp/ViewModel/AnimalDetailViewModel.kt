@@ -14,6 +14,7 @@ import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Repository.AlimentRepository
 import fr.vetbrain.vetnutri_mp.Repository.AnimalRepository
 import fr.vetbrain.vetnutri_mp.Repository.ConsultationRepository
+import fr.vetbrain.vetnutri_mp.Repository.DatabaseReferenceEvRepository
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
@@ -23,7 +24,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 
 /** Énumération des différentes sections de la vue détaillée d'un animal */
 enum class AnimalDetailSection {
@@ -34,7 +38,8 @@ enum class AnimalDetailSection {
 
 class AnimalDetailViewModel(
         private val consultationRepository: ConsultationRepository,
-        private val animalRepository: AnimalRepository
+        private val animalRepository: AnimalRepository,
+        private val databaseReferenceEvRepository: DatabaseReferenceEvRepository
 ) {
     private val viewModelScope = CoroutineScope(AppDispatchers.Main)
     private val _animal = MutableStateFlow<AnimalEv?>(null)
@@ -97,6 +102,10 @@ class AnimalDetailViewModel(
 
     private val _isLoadingReferences = MutableStateFlow(false)
     val isLoadingReferences: StateFlow<Boolean> = _isLoadingReferences.asStateFlow()
+
+    // StateFlow pour gérer l'affichage de la vue plein écran de consultation
+    private val _showFullScreenEdit = MutableStateFlow(false)
+    val showFullScreenEdit: StateFlow<Boolean> = _showFullScreenEdit.asStateFlow()
 
     /**
      * Charge tous les aliments disponibles en utilisant la version légère pour de meilleures
@@ -1057,13 +1066,18 @@ class AnimalDetailViewModel(
                 val animalActuel = _animal.value
                 if (animalActuel != null) {
                     val espece = Espece.getByLabel(animalActuel.specieId ?: "") ?: Espece.CHIEN
-                    // TODO: Implémenter le chargement des références depuis le repository
-                    // val references = referenceEvRepository.getReferenceEvByEspece(espece.name)
-                    // _availableReferences.value = references
 
-                    // Pour l'instant, on utilise une liste vide
-                    _availableReferences.value = emptyList()
-                    println("Références chargées pour l'espèce: ${espece.label}")
+                    // Charger toutes les références depuis la base de données
+                    val references = databaseReferenceEvRepository.getAllReferenceEv()
+
+                    // Pour l'instant on prend toutes les références, mais on pourrait filtrer par
+                    // espèce
+                    _availableReferences.value = references
+
+                    println(
+                            "Références chargées pour l'espèce: ${espece.label} - ${references.size} références trouvées"
+                    )
+                    references.forEach { ref -> println("- ${ref.nom} (maladie: ${ref.maladie})") }
                 }
             } catch (e: Exception) {
                 println("Erreur lors du chargement des références: ${e.message}")
@@ -1175,5 +1189,102 @@ class AnimalDetailViewModel(
      */
     fun filtrerReferences(pourMaladie: Boolean): List<ReferenceEv> {
         return _availableReferences.value.filter { reference -> reference.maladie == pourMaladie }
+    }
+
+    /** Met à jour la référence générale d'une consultation */
+    fun updateConsultationReferenceGenerale(consultationId: String, referenceId: String?) {
+        viewModelScope.launch {
+            try {
+                val consultation = _animal.value?.consultations?.find { it.uuid == consultationId }
+                consultation?.let {
+                    val updatedConsultation = it.copy(referenceGeneraleId = referenceId)
+                    updateConsultation(updatedConsultation)
+                }
+            } catch (e: Exception) {
+                println("Erreur lors de la mise à jour de la référence générale: ${e.message}")
+            }
+        }
+    }
+
+    /** Ajoute une référence de maladie à une consultation */
+    fun addConsultationReferenceMaladie(consultationId: String, referenceId: String) {
+        viewModelScope.launch {
+            try {
+                val consultation = _animal.value?.consultations?.find { it.uuid == consultationId }
+                consultation?.let {
+                    val newReferences = it.referencesMaladies.toMutableList()
+                    if (!newReferences.contains(referenceId)) {
+                        newReferences.add(referenceId)
+                        val updatedConsultation = it.copy(referencesMaladies = newReferences)
+                        updateConsultation(updatedConsultation)
+                    }
+                }
+            } catch (e: Exception) {
+                println("Erreur lors de l'ajout de la référence de maladie: ${e.message}")
+            }
+        }
+    }
+
+    /** Supprime une référence de maladie d'une consultation */
+    fun removeConsultationReferenceMaladie(consultationId: String, referenceId: String) {
+        viewModelScope.launch {
+            try {
+                val consultation = _animal.value?.consultations?.find { it.uuid == consultationId }
+                consultation?.let {
+                    val newReferences = it.referencesMaladies.toMutableList()
+                    newReferences.remove(referenceId)
+                    val updatedConsultation = it.copy(referencesMaladies = newReferences)
+                    updateConsultation(updatedConsultation)
+                }
+            } catch (e: Exception) {
+                println("Erreur lors de la suppression de la référence de maladie: ${e.message}")
+            }
+        }
+    }
+
+    /** Ouvre la vue plein écran d'édition de consultation */
+    fun openFullScreenEdit() {
+        _showFullScreenEdit.value = true
+    }
+
+    /** Ferme la vue plein écran d'édition de consultation */
+    fun closeFullScreenEdit() {
+        _showFullScreenEdit.value = false
+    }
+
+    /** Prépare l'édition d'une consultation en plein écran */
+    fun editConsultationFullScreen(consultation: ConsultationEv) {
+        selectConsultation(consultation)
+        startEditingConsultation()
+        openFullScreenEdit()
+    }
+
+    /** Prépare la création d'une nouvelle consultation en plein écran */
+    fun createNewConsultationFullScreen() {
+        val currentMoment = Clock.System.now()
+        val localDateTime = currentMoment.toLocalDateTime(TimeZone.currentSystemDefault())
+        val currentDate = localDateTime.date
+        prepareNewConsultation(currentDate)
+        startEditingConsultation()
+        openFullScreenEdit()
+    }
+
+    /** Sauvegarde depuis la vue plein écran et ferme */
+    fun saveFromFullScreen(consultation: ConsultationEv) {
+        viewModelScope.launch {
+            try {
+                if (_selectedConsultation.value?.uuid?.isEmpty() == true) {
+                    // Nouvelle consultation
+                    addConsultation(consultation)
+                } else {
+                    // Mise à jour d'une consultation existante
+                    updateConsultation(consultation)
+                }
+                stopEditingConsultation()
+                closeFullScreenEdit()
+            } catch (e: Exception) {
+                println("Erreur lors de la sauvegarde de la consultation: ${e.message}")
+            }
+        }
     }
 }

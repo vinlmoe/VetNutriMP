@@ -77,8 +77,23 @@ fun App(appDatabase: AppDatabase) {
 
     // Création des ViewModels
     val animalListViewModel = remember { AnimalListViewModel(animalRepository) }
+
+    // ViewModel et état pour les équations et références (déclarée avant AnimalDetailViewModel)
+    val platformDispatcher = remember { PlatformDispatcher() }
+    val databaseReferenceEvRepository = remember {
+        DatabaseReferenceEvRepository(
+                appDatabase.referenceEvDao(),
+                appDatabase.equationDao(),
+                appDatabase.biblioRefDao()
+        )
+    }
+
     val animalDetailViewModel = remember {
-        AnimalDetailViewModel(consultationRepository, animalRepository)
+        AnimalDetailViewModel(
+                consultationRepository,
+                animalRepository,
+                databaseReferenceEvRepository
+        )
     }
     val createAnimalViewModel = remember { CreateAnimalViewModel(animalRepository) }
     val settingsViewModel = remember { SettingsViewModel(animalRepository, foodRepository) }
@@ -89,15 +104,6 @@ fun App(appDatabase: AppDatabase) {
     val biblioRefViewModel = remember { BiblioRefViewModel(biblioRefRepository) }
     var selectedBiblioRefId by remember { mutableStateOf<String?>(null) }
 
-    // ViewModel et état pour les équations
-    val platformDispatcher = remember { PlatformDispatcher() }
-    val databaseReferenceEvRepository = remember {
-        DatabaseReferenceEvRepository(
-                appDatabase.referenceEvDao(),
-                appDatabase.equationDao(),
-                appDatabase.biblioRefDao()
-        )
-    }
     val referenceEvViewModel = remember {
         ReferenceEvViewModel(databaseReferenceEvRepository, platformDispatcher)
     }

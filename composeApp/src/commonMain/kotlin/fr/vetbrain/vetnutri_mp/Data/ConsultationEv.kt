@@ -34,7 +34,8 @@ data class ConsultationEv(
         var suppVarp: MutableList<SupplementalvariableP> = mutableListOf(),
         var rations: MutableList<Ration> = mutableListOf(),
         var referenceGeneraleId: String? = null,
-        var referencesMaladies: MutableList<String> = mutableListOf()
+        var referencesMaladies: MutableList<String> = mutableListOf(),
+        var coefficientAjustement: Double = 1.0
 ) {
         constructor() :
                 this(

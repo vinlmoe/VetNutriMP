@@ -117,7 +117,8 @@ data class ConsultationEntity(
         val coefLact: Int = 0,
         val MCS: Int = 0,
         val referenceGeneraleId: String? = null,
-        val referencesMaladiesJson: String? = null
+        val referencesMaladiesJson: String? = null,
+        val coefficientAjustement: Double = 1.0
 )
 
 @Serializable
