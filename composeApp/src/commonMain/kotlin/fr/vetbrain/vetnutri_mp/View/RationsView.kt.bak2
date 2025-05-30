@@ -31,22 +31,6 @@ import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailViewModel
 
-// Fonction locale InfoRow pour éviter les problèmes d'import
-@Composable
-private fun LocalInfoRow(label: String, value: String) {
-        Row(
-                modifier = Modifier.fillMaxWidth().padding(vertical = AppSizes.paddingXSmall),
-                horizontalArrangement = Arrangement.Start
-        ) {
-                Text(
-                        text = "$label :",
-                        style = MaterialTheme.typography.subtitle1,
-                        modifier = Modifier.width(120.dp)
-                )
-                Text(text = value, style = MaterialTheme.typography.body1)
-        }
-}
-
 /**
  * Vue pour afficher les rations d'un animal
  *
@@ -1681,5 +1665,21 @@ private fun DetailedLocalInfoRow(label: String, value: String, description: Stri
                                 color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                         )
                 }
+        }
+}
+
+// Fonction locale InfoRow pour éviter les problèmes d'import
+@Composable
+private fun LocalLocalInfoRow(label: String, value: String) {
+        Row(
+                modifier = Modifier.fillMaxWidth().padding(vertical = AppSizes.paddingXSmall),
+                horizontalArrangement = Arrangement.Start
+        ) {
+                Text(
+                        text = "$label :",
+                        style = MaterialTheme.typography.subtitle1,
+                        modifier = Modifier.width(120.dp)
+                )
+                Text(text = value, style = MaterialTheme.typography.body1)
         }
 }

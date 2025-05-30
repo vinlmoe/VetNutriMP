@@ -10,12 +10,14 @@ import fr.vetbrain.vetnutri_mp.Data.ComparaisonNutriment
 import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
 import fr.vetbrain.vetnutri_mp.Data.Ration
 import fr.vetbrain.vetnutri_mp.Data.RationAnalyzer
+import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Repository.AlimentRepository
 import fr.vetbrain.vetnutri_mp.Repository.AnimalRepository
 import fr.vetbrain.vetnutri_mp.Repository.ConsultationRepository
 import fr.vetbrain.vetnutri_mp.Repository.DatabaseReferenceEvRepository
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
+import fr.vetbrain.vetnutri_mp.Utils.ExpressionEvaluator
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 import kotlinx.coroutines.CoroutineScope
@@ -106,6 +108,20 @@ class AnimalDetailViewModel(
     // StateFlow pour gérer l'affichage de la vue plein écran de consultation
     private val _showFullScreenEdit = MutableStateFlow(false)
     val showFullScreenEdit: StateFlow<Boolean> = _showFullScreenEdit.asStateFlow()
+
+    // StateFlow pour les calculs métaboliques
+    private val _poidsMetabolique = MutableStateFlow<Double?>(null)
+    val poidsMetabolique: StateFlow<Double?> = _poidsMetabolique.asStateFlow()
+
+    private val _besoinEnergetiqueStandard = MutableStateFlow<Double?>(null)
+    val besoinEnergetiqueStandard: StateFlow<Double?> = _besoinEnergetiqueStandard.asStateFlow()
+
+    private val _besoinEnergetiqueTotal = MutableStateFlow<Double?>(null)
+    val besoinEnergetiqueTotal: StateFlow<Double?> = _besoinEnergetiqueTotal.asStateFlow()
+
+    // StateFlow pour la référence utilisée dans les calculs
+    private val _referenceUtilisee = MutableStateFlow<ReferenceEv?>(null)
+    val referenceUtilisee: StateFlow<ReferenceEv?> = _referenceUtilisee.asStateFlow()
 
     /**
      * Charge tous les aliments disponibles en utilisant la version légère pour de meilleures
@@ -310,6 +326,9 @@ class AnimalDetailViewModel(
             if (_selectedRation.value == null && !fullConsultation?.rations.isNullOrEmpty()) {
                 selectRation(fullConsultation!!.rations.first())
             }
+
+            // Calculer automatiquement les valeurs métaboliques pour la consultation sélectionnée
+            fullConsultation?.let { consultation -> calculerValeursMetaboliques(consultation) }
         }
     }
 
@@ -1282,8 +1301,227 @@ class AnimalDetailViewModel(
                 }
                 stopEditingConsultation()
                 closeFullScreenEdit()
+
+                // Recalculer les valeurs métaboliques après la sauvegarde
+                calculerValeursMetaboliques(consultation)
             } catch (e: Exception) {
                 println("Erreur lors de la sauvegarde de la consultation: ${e.message}")
+            }
+        }
+    }
+
+    // ===== MÉTHODES DE CALCUL MÉTABOLIQUE =====
+
+    /**
+     * Calcule toutes les valeurs métaboliques pour une consultation donnée dans l'ordre : Poids
+     * métabolique → BEE → Besoin énergétique total
+     */
+    fun calculerValeursMetaboliques(consultation: ConsultationEv) {
+        viewModelScope.launch {
+            try {
+                println(
+                        "DEBUG: Début calcul valeurs métaboliques pour consultation ${consultation.uuid}"
+                )
+
+                // 1. Charger la référence appropriée
+                val reference = obtenirReferenceActiveConsultation(consultation)
+                _referenceUtilisee.value = reference
+
+                if (reference == null) {
+                    println("DEBUG: Aucune référence trouvée pour la consultation")
+                    resetCalculsMetaboliques()
+                    return@launch
+                }
+
+                println("DEBUG: Référence utilisée: ${reference.nom} (UUID: ${reference.uuid})")
+
+                // 2. Calculer le poids métabolique
+                val poidsMetabolique = calculerPoidsMetabolique(consultation, reference)
+                _poidsMetabolique.value = poidsMetabolique
+
+                // 3. Calculer le BEE (Besoin Énergétique Standard)
+                val bee = calculerBesoinEnergetiqueStandard(consultation, reference)
+                _besoinEnergetiqueStandard.value = bee
+
+                // 4. Calculer le besoin énergétique total en multipliant le BEE avec tous les
+                // coefficients
+                val besoinTotal = calculerBesoinEnergetiqueTotal(consultation, reference, bee)
+                _besoinEnergetiqueTotal.value = besoinTotal
+
+                println(
+                        "DEBUG: Calculs terminés - PM: $poidsMetabolique, BEE: $bee, Total: $besoinTotal"
+                )
+            } catch (e: Exception) {
+                println("Erreur lors du calcul des valeurs métaboliques: ${e.message}")
+                resetCalculsMetaboliques()
+            }
+        }
+    }
+
+    /** Calcule le poids métabolique en utilisant l'équation BW de la référence */
+    private fun calculerPoidsMetabolique(
+            consultation: ConsultationEv,
+            reference: ReferenceEv
+    ): Double? {
+        try {
+            val poids = consultation.weight ?: return null
+            val equationBW = reference.equationBW
+
+            if (equationBW == null || equationBW.equationScript.isEmpty()) {
+                println("DEBUG: Aucune équation BW définie pour la référence ${reference.nom}")
+                return null
+            }
+
+            println(
+                    "DEBUG: Calcul poids métabolique avec équation: ${equationBW.name} - ${equationBW.equationScript}"
+            )
+
+            // Préparer les variables pour l'évaluateur d'équation
+            val variables = mapOf("BW" to poids.toDouble())
+
+            // Évaluer l'équation
+            val resultat = ExpressionEvaluator.evaluer(equationBW.equationScript, variables)
+
+            println("DEBUG: Poids métabolique calculé: $resultat kg^0.75 (poids: $poids kg)")
+            return resultat
+        } catch (e: Exception) {
+            println("Erreur lors du calcul du poids métabolique: ${e.message}")
+            return null
+        }
+    }
+
+    /** Calcule le Besoin Énergétique Standard (BEE) en utilisant l'équation BEE de la référence */
+    private fun calculerBesoinEnergetiqueStandard(
+            consultation: ConsultationEv,
+            reference: ReferenceEv
+    ): Double? {
+        try {
+            val poids = consultation.weight ?: return null
+            val equationBEE = reference.equationBEE
+
+            if (equationBEE == null || equationBEE.equationScript.isEmpty()) {
+                println("DEBUG: Aucune équation BEE définie pour la référence ${reference.nom}")
+                return null
+            }
+
+            println(
+                    "DEBUG: Calcul BEE avec équation: ${equationBEE.name} - ${equationBEE.equationScript}"
+            )
+
+            // Préparer les variables pour l'évaluateur d'équation
+            val variables = mapOf("BW" to poids.toDouble())
+
+            // Évaluer l'équation
+            val resultat = ExpressionEvaluator.evaluer(equationBEE.equationScript, variables)
+
+            println("DEBUG: BEE calculé: $resultat kcal/jour (poids: $poids kg)")
+            return resultat
+        } catch (e: Exception) {
+            println("Erreur lors du calcul du BEE: ${e.message}")
+            return null
+        }
+    }
+
+    /** Calcule le besoin énergétique total en multipliant le BEE avec tous les coefficients */
+    private fun calculerBesoinEnergetiqueTotal(
+            consultation: ConsultationEv,
+            reference: ReferenceEv,
+            bee: Double?
+    ): Double? {
+        try {
+            if (bee == null) return null
+
+            // Récupération des coefficients K de la consultation
+            val k1 = consultation.k1Value?.toDouble() ?: 1.0
+            val k2 = consultation.k2Value?.toDouble() ?: 1.0
+            val k3 = consultation.k3Value?.toDouble() ?: 1.0
+            val k4 = consultation.k4Value?.toDouble() ?: 1.0
+            val k5 = consultation.k5Value?.toDouble() ?: 1.0
+            val coefficientAjustement = consultation.coefficientAjustement
+
+            println(
+                    "DEBUG: Calcul besoin total - BEE: $bee, K1: $k1, K2: $k2, K3: $k3, K4: $k4, K5: $k5, Ajust: $coefficientAjustement"
+            )
+
+            // Calcul du besoin énergétique total
+            val besoinTotal = bee * k1 * k2 * k3 * k4 * k5 * coefficientAjustement
+
+            println("DEBUG: Besoin énergétique total calculé: $besoinTotal kcal/jour")
+            return besoinTotal
+        } catch (e: Exception) {
+            println("Erreur lors du calcul du besoin énergétique total: ${e.message}")
+            return null
+        }
+    }
+
+    /**
+     * Obtient la référence active pour une consultation (générale ou première référence de maladie)
+     */
+    private suspend fun obtenirReferenceActiveConsultation(
+            consultation: ConsultationEv
+    ): ReferenceEv? {
+        return try {
+            // Priorité 1: Référence générale
+            consultation.referenceGeneraleId?.let { referenceId ->
+                val reference = databaseReferenceEvRepository.getReferenceEvById(referenceId)
+                if (reference != null) {
+                    println("DEBUG: Référence générale trouvée: ${reference.nom}")
+                    return reference
+                }
+            }
+
+            // Priorité 2: Première référence de maladie
+            consultation.referencesMaladies.firstOrNull()?.let { referenceId ->
+                val reference = databaseReferenceEvRepository.getReferenceEvById(referenceId)
+                if (reference != null) {
+                    println("DEBUG: Référence de maladie trouvée: ${reference.nom}")
+                    return reference
+                }
+            }
+
+            println("DEBUG: Aucune référence trouvée pour la consultation")
+            null
+        } catch (e: Exception) {
+            println("Erreur lors de la récupération de la référence: ${e.message}")
+            null
+        }
+    }
+
+    /** Remet à zéro tous les calculs métaboliques */
+    private fun resetCalculsMetaboliques() {
+        _poidsMetabolique.value = null
+        _besoinEnergetiqueStandard.value = null
+        _besoinEnergetiqueTotal.value = null
+        _referenceUtilisee.value = null
+    }
+
+    /** Recalcule les valeurs métaboliques quand une consultation est sélectionnée */
+    private fun recalculerValeursMetaboliques() {
+        _selectedConsultation.value?.let { consultation ->
+            calculerValeursMetaboliques(consultation)
+        }
+    }
+
+    /** Met à jour le coefficient d'ajustement et recalcule les valeurs métaboliques */
+    fun updateCoefficientAjustement(consultationId: String, nouveauCoefficient: Double) {
+        viewModelScope.launch {
+            try {
+                val animalActuel = _animal.value
+                if (animalActuel != null) {
+                    val consultation = animalActuel.consultations.find { it.uuid == consultationId }
+                    if (consultation != null) {
+                        val consultationMiseAJour =
+                                consultation.copy(coefficientAjustement = nouveauCoefficient)
+                        updateConsultation(consultationMiseAJour)
+
+                        // Recalculer les valeurs métaboliques
+                        calculerValeursMetaboliques(consultationMiseAJour)
+
+                        println("Coefficient d'ajustement mis à jour: $nouveauCoefficient")
+                    }
+                }
+            } catch (e: Exception) {
+                println("Erreur lors de la mise à jour du coefficient d'ajustement: ${e.message}")
             }
         }
     }
