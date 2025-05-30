@@ -1345,7 +1345,7 @@ class AnimalDetailViewModel(
 
                 // 4. Calculer le besoin énergétique total en multipliant le BEE avec tous les
                 // coefficients
-                val besoinTotal = calculerBesoinEnergetiqueTotal(consultation, reference, bee)
+                val besoinTotal = bee?.let { calculerBesoinEnergetiqueTotal(consultation, it) }
                 _besoinEnergetiqueTotal.value = besoinTotal
 
                 println(
@@ -1376,21 +1376,18 @@ class AnimalDetailViewModel(
                     "DEBUG: Calcul poids métabolique avec équation: ${equationBW.name} - ${equationBW.equationScript}"
             )
 
-            // Préparer les variables pour l'évaluateur d'équation
             val variables = mapOf("BW" to poids.toDouble())
-
-            // Évaluer l'équation
             val resultat = ExpressionEvaluator.evaluer(equationBW.equationScript, variables)
 
-            println("DEBUG: Poids métabolique calculé: $resultat kg^0.75 (poids: $poids kg)")
+            println("DEBUG: Poids métabolique calculé: $resultat kg^0.75")
             return resultat
         } catch (e: Exception) {
-            println("Erreur lors du calcul du poids métabolique: ${e.message}")
+            println("ERROR: Erreur lors du calcul du poids métabolique: ${e.message}")
             return null
         }
     }
 
-    /** Calcule le Besoin Énergétique Standard (BEE) en utilisant l'équation BEE de la référence */
+    /** Calcule le besoin énergétique standard en utilisant l'équation BEE de la référence */
     private fun calculerBesoinEnergetiqueStandard(
             consultation: ConsultationEv,
             reference: ReferenceEv
@@ -1408,50 +1405,39 @@ class AnimalDetailViewModel(
                     "DEBUG: Calcul BEE avec équation: ${equationBEE.name} - ${equationBEE.equationScript}"
             )
 
-            // Préparer les variables pour l'évaluateur d'équation
             val variables = mapOf("BW" to poids.toDouble())
-
-            // Évaluer l'équation
             val resultat = ExpressionEvaluator.evaluer(equationBEE.equationScript, variables)
 
-            println("DEBUG: BEE calculé: $resultat kcal/jour (poids: $poids kg)")
+            println("DEBUG: BEE calculé: $resultat kcal/jour")
             return resultat
         } catch (e: Exception) {
-            println("Erreur lors du calcul du BEE: ${e.message}")
+            println("ERROR: Erreur lors du calcul du BEE: ${e.message}")
             return null
         }
     }
 
-    /** Calcule le besoin énergétique total en multipliant le BEE avec tous les coefficients */
-    private fun calculerBesoinEnergetiqueTotal(
-            consultation: ConsultationEv,
-            reference: ReferenceEv,
-            bee: Double?
-    ): Double? {
-        try {
-            if (bee == null) return null
+    /**
+     * Calcule le besoin énergétique total en multipliant le BEE par tous les coefficients K et le
+     * coefficient d'ajustement
+     */
+    private fun calculerBesoinEnergetiqueTotal(consultation: ConsultationEv, bee: Double): Double {
+        // Récupération des coefficients K de la consultation
+        val k1 = consultation.k1Value?.toDouble() ?: 1.0
+        val k2 = consultation.k2Value?.toDouble() ?: 1.0
+        val k3 = consultation.k3Value?.toDouble() ?: 1.0
+        val k4 = consultation.k4Value?.toDouble() ?: 1.0
+        val k5 = consultation.k5Value?.toDouble() ?: 1.0
+        val coefficientAjustement = consultation.coefficientAjustement?.toDouble() ?: 1.0
 
-            // Récupération des coefficients K de la consultation
-            val k1 = consultation.k1Value?.toDouble() ?: 1.0
-            val k2 = consultation.k2Value?.toDouble() ?: 1.0
-            val k3 = consultation.k3Value?.toDouble() ?: 1.0
-            val k4 = consultation.k4Value?.toDouble() ?: 1.0
-            val k5 = consultation.k5Value?.toDouble() ?: 1.0
-            val coefficientAjustement = consultation.coefficientAjustement
+        // Calcul du besoin total
+        val besoinTotal = bee * k1 * k2 * k3 * k4 * k5 * coefficientAjustement
 
-            println(
-                    "DEBUG: Calcul besoin total - BEE: $bee, K1: $k1, K2: $k2, K3: $k3, K4: $k4, K5: $k5, Ajust: $coefficientAjustement"
-            )
+        println(
+                "DEBUG: Calcul besoin total - BEE: $bee, K1: $k1, K2: $k2, K3: $k3, K4: $k4, K5: $k5, Coeff: $coefficientAjustement"
+        )
+        println("DEBUG: Besoin énergétique total calculé: $besoinTotal kcal/jour")
 
-            // Calcul du besoin énergétique total
-            val besoinTotal = bee * k1 * k2 * k3 * k4 * k5 * coefficientAjustement
-
-            println("DEBUG: Besoin énergétique total calculé: $besoinTotal kcal/jour")
-            return besoinTotal
-        } catch (e: Exception) {
-            println("Erreur lors du calcul du besoin énergétique total: ${e.message}")
-            return null
-        }
+        return besoinTotal
     }
 
     /**

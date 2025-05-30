@@ -134,12 +134,13 @@ private fun obtenirTousLesNutriments(): List<Nutrient> {
  */
 fun exempleUtilisationAnalyseRation(ration: Ration) {
     println("=== Analyse nutritionnelle de la ration: ${ration.name} ===")
-    
+
     val valeursNutritionnelles = analyserValeursNutritionnellesRation(ration)
-    
+
     // Afficher les résultats pour quelques nutriments clés
-    val nutrimentsImportants = listOf("PROTEINE", "LIPIDE", "GLUCIDE", "ENERGIE", "CAL", "PHOS", "FE", "VITA")
-    
+    val nutrimentsImportants =
+            listOf("PROTEINE", "LIPIDE", "GLUCIDE", "ENERGIE", "CAL", "PHOS", "FE", "VITA")
+
     nutrimentsImportants.forEach { labelNutriment ->
         val valeur = valeursNutritionnelles[labelNutriment]
         if (valeur != null) {
@@ -149,14 +150,16 @@ fun exempleUtilisationAnalyseRation(ration: Ration) {
             println("Répartition: ${valeur.description}")
         }
     }
-    
+
     // Statistiques générales
     val nutrimentsComplets = valeursNutritionnelles.values.count { it.complete }
     val nutrimentsAvecValeur = valeursNutritionnelles.values.count { it.valeur > 0 }
     val totalNutriments = valeursNutritionnelles.size
-    
+
     println("\n=== Statistiques générales ===")
     println("Nutriments avec données complètes: $nutrimentsComplets/$totalNutriments")
     println("Nutriments avec au moins une valeur: $nutrimentsAvecValeur/$totalNutriments")
-    println("Pourcentage de complétude: ${String.format("%.1f", (nutrimentsComplets.toDouble() / totalNutriments) * 100)}%")
+    println(
+            "Pourcentage de complétude: ${String.format("%.1f", (nutrimentsComplets.toDouble() / totalNutriments) * 100)}%"
+    )
 }

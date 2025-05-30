@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -22,10 +23,9 @@ import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Components.AlimentItem
 import fr.vetbrain.vetnutri_mp.Components.CenteredMessage
 import fr.vetbrain.vetnutri_mp.Components.RationItem
-import fr.vetbrain.vetnutri_mp.Data.AlimentEv
-import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
-import fr.vetbrain.vetnutri_mp.Data.Ration
-import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
+import fr.vetbrain.vetnutri_mp.Data.*
+import fr.vetbrain.vetnutri_mp.Data.ValeurNutritionnelle
+import fr.vetbrain.vetnutri_mp.Data.analyserValeursNutritionnellesRation
 import fr.vetbrain.vetnutri_mp.Enumer.*
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
@@ -79,6 +79,12 @@ fun RationsView(
         // États pour les dialogues de section agrandie
         var showMetabolicValuesDialog by remember { mutableStateOf(false) }
         var showCoefficientsDialog by remember { mutableStateOf(false) }
+
+        // États pour le dialog détaillé de nutriment
+        var showNutrimentDetailDialog by remember { mutableStateOf(false) }
+        var selectedNutrimentData by remember {
+                mutableStateOf<Triple<String, ValeurNutritionnelle, Ration>?>(null)
+        }
 
         Column(
                 modifier = modifier.fillMaxSize().padding(AppSizes.paddingMedium),
@@ -945,17 +951,41 @@ fun RationsView(
                                                 verticalArrangement =
                                                         Arrangement.spacedBy(AppSizes.paddingMedium)
                                         ) {
-                                                // TODO: Ajouter les composants d'analyse ici quand
-                                                // nécessaire
-                                                // Pour l'instant, ajoutons juste un placeholder
-                                                Card(
-                                                        modifier = Modifier.fillMaxSize(),
-                                                        elevation = AppSizes.elevationMedium
-                                                ) {
-                                                        Box(
+                                                // Analyse nutritionnelle de la ration sélectionnée
+                                                if (selectedRation != null) {
+                                                        AnalyseNutritionnelleCard(
+                                                                ration = selectedRation!!,
+                                                                poidsMetabolique = poidsMetabolique,
+                                                                modifier = Modifier.fillMaxWidth(),
+                                                                onNutrimentClick = {
+                                                                        nom,
+                                                                        valeurNutritionnelle ->
+                                                                        selectedNutrimentData =
+                                                                                Triple(
+                                                                                        nom,
+                                                                                        valeurNutritionnelle,
+                                                                                        selectedRation!!
+                                                                                )
+                                                                        showNutrimentDetailDialog =
+                                                                                true
+                                                                }
+                                                        )
+                                                } else {
+                                                        Card(
                                                                 modifier = Modifier.fillMaxSize(),
-                                                                contentAlignment = Alignment.Center
-                                                        ) { Text("Fonctionnalités d'analyse") }
+                                                                elevation = AppSizes.elevationMedium
+                                                        ) {
+                                                                Box(
+                                                                        modifier =
+                                                                                Modifier.fillMaxSize(),
+                                                                        contentAlignment =
+                                                                                Alignment.Center
+                                                                ) {
+                                                                        Text(
+                                                                                "Sélectionnez une ration pour voir l'analyse nutritionnelle"
+                                                                        )
+                                                                }
+                                                        }
                                                 }
                                         }
                                 }
@@ -1069,9 +1099,22 @@ fun RationsView(
                                         onDismiss = { showCoefficientsDialog = false }
                                 )
                         }
-
-                        // Ajouter ici d'autres dialogues si nécessaire
                 }
+        }
+
+        // Dialog détaillé de nutriment
+        if (showNutrimentDetailDialog && selectedNutrimentData != null) {
+                val (nom, valeurNutritionnelle, ration) = selectedNutrimentData!!
+                NutrimentDetailDialog(
+                        nom = nom,
+                        valeurNutritionnelle = valeurNutritionnelle,
+                        ration = ration,
+                        poidsMetabolique = poidsMetabolique,
+                        onDismiss = {
+                                showNutrimentDetailDialog = false
+                                selectedNutrimentData = null
+                        }
+                )
         }
 }
 
@@ -1678,8 +1721,545 @@ private fun DetailedLocalInfoRow(label: String, value: String, description: Stri
                         Text(
                                 text = it,
                                 style = MaterialTheme.typography.caption,
-                                color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                                color = VetNutriColors.Primary.copy(alpha = 0.7f)
                         )
                 }
         }
+}
+
+/** Composant pour afficher l'analyse nutritionnelle d'une ration */
+@Composable
+private fun AnalyseNutritionnelleCard(
+        ration: Ration,
+        poidsMetabolique: Double?,
+        modifier: Modifier = Modifier,
+        onNutrimentClick: (String, ValeurNutritionnelle) -> Unit
+) {
+        val valeursNutritionnelles = analyserValeursNutritionnellesRation(ration)
+
+        Card(modifier = modifier, elevation = AppSizes.elevationSmall) {
+                Column(
+                        modifier = Modifier.fillMaxSize().padding(AppSizes.paddingSmall),
+                        verticalArrangement = Arrangement.spacedBy(AppSizes.paddingXSmall)
+                ) {
+                        // En-tête compact
+                        Text(
+                                text = "Analyse nutritionnelle",
+                                style = MaterialTheme.typography.subtitle1,
+                                fontWeight = FontWeight.Bold,
+                                color = VetNutriColors.Primary
+                        )
+
+                        // Organisation des nutriments en 2 colonnes avec des cards
+                        val nutrimentsList = valeursNutritionnelles.toList()
+                        val chunkedNutriments = nutrimentsList.chunked(2)
+
+                        LazyColumn(
+                                verticalArrangement = Arrangement.spacedBy(AppSizes.paddingXSmall)
+                        ) {
+                                items(chunkedNutriments) { rowNutriments ->
+                                        Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement =
+                                                        Arrangement.spacedBy(AppSizes.paddingXSmall)
+                                        ) {
+                                                // Première card de la ligne
+                                                if (rowNutriments.isNotEmpty()) {
+                                                        val (nom1, valeur1) = rowNutriments[0]
+                                                        NutrimentCard(
+                                                                nom = nom1,
+                                                                valeurNutritionnelle = valeur1,
+                                                                poidsMetabolique = poidsMetabolique,
+                                                                modifier = Modifier.weight(1f),
+                                                                onClick = {
+                                                                        onNutrimentClick(
+                                                                                nom1,
+                                                                                valeur1
+                                                                        )
+                                                                }
+                                                        )
+                                                }
+
+                                                // Deuxième card de la ligne
+                                                if (rowNutriments.size > 1) {
+                                                        val (nom2, valeur2) = rowNutriments[1]
+                                                        NutrimentCard(
+                                                                nom = nom2,
+                                                                valeurNutritionnelle = valeur2,
+                                                                poidsMetabolique = poidsMetabolique,
+                                                                modifier = Modifier.weight(1f),
+                                                                onClick = {
+                                                                        onNutrimentClick(
+                                                                                nom2,
+                                                                                valeur2
+                                                                        )
+                                                                }
+                                                        )
+                                                } else {
+                                                        // Spacer pour équilibrer la ligne si nombre
+                                                        // impair
+                                                        Spacer(modifier = Modifier.weight(1f))
+                                                }
+                                        }
+                                }
+                        }
+                }
+        }
+}
+
+/** Composant card pour afficher un nutriment individuel */
+@Composable
+private fun NutrimentCard(
+        nom: String,
+        valeurNutritionnelle: ValeurNutritionnelle,
+        poidsMetabolique: Double?,
+        modifier: Modifier = Modifier,
+        onClick: () -> Unit
+) {
+        Card(
+                modifier = modifier.fillMaxWidth().clickable { onClick() },
+                elevation = AppSizes.elevationSmall,
+                backgroundColor = MaterialTheme.colors.surface
+        ) {
+                Column(
+                        modifier = Modifier.padding(AppSizes.paddingXSmall),
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                        // Nom du nutriment avec icône de statut
+                        Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                        ) {
+                                Text(
+                                        text = nom,
+                                        style = MaterialTheme.typography.caption,
+                                        fontWeight = FontWeight.Bold,
+                                        color = VetNutriColors.Primary,
+                                        maxLines = 1,
+                                        modifier = Modifier.weight(1f)
+                                )
+
+                                // Icône de statut (complet ou incomplet)
+                                if (valeurNutritionnelle.complete) {
+                                        Icon(
+                                                imageVector = Icons.Filled.Check,
+                                                contentDescription = "Informations complètes",
+                                                tint = Color.Green,
+                                                modifier = Modifier.size(12.dp)
+                                        )
+                                } else {
+                                        Icon(
+                                                imageVector = Icons.Filled.Warning,
+                                                contentDescription = "Informations incomplètes",
+                                                tint =
+                                                        VetNutriColors.Primary.copy(
+                                                                red = 1.0f,
+                                                                green = 0.0f,
+                                                                blue = 0.0f
+                                                        ),
+                                                modifier = Modifier.size(12.dp)
+                                        )
+                                }
+                        }
+
+                        // Valeur et unité
+                        val valeurAffichee =
+                                if (poidsMetabolique != null && poidsMetabolique > 0) {
+                                        val valeurParKgMetabolique =
+                                                valeurNutritionnelle.valeur / poidsMetabolique
+                                        "${String.format("%.2f", valeurParKgMetabolique)} ${valeurNutritionnelle.unite.displayName}/kg^0.75"
+                                } else {
+                                        "${String.format("%.2f", valeurNutritionnelle.valeur)} ${valeurNutritionnelle.unite.displayName}"
+                                }
+
+                        Text(
+                                text = valeurAffichee,
+                                style = MaterialTheme.typography.overline,
+                                color = MaterialTheme.colors.onSurface,
+                                maxLines = 2
+                        )
+                }
+        }
+}
+
+/**
+ * Dialog détaillé pour afficher les informations complètes d'un nutriment Affiche l'apport total et
+ * la contribution de chaque ingrédient
+ */
+@Composable
+private fun NutrimentDetailDialog(
+        nom: String,
+        valeurNutritionnelle: ValeurNutritionnelle,
+        ration: Ration,
+        poidsMetabolique: Double?,
+        onDismiss: () -> Unit
+) {
+        AlertDialog(
+                onDismissRequest = onDismiss,
+                title = {
+                        Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                        ) {
+                                Text(
+                                        text = "Détails : $nom",
+                                        style = MaterialTheme.typography.h6,
+                                        fontWeight = FontWeight.Bold,
+                                        color = VetNutriColors.Primary,
+                                        modifier = Modifier.weight(1f)
+                                )
+                                IconButton(onClick = onDismiss) {
+                                        Icon(
+                                                imageVector = Icons.Filled.Close,
+                                                contentDescription = "Fermer",
+                                                tint = VetNutriColors.Primary
+                                        )
+                                }
+                        }
+                },
+                text = {
+                        Column(
+                                modifier = Modifier.fillMaxWidth().height(600.dp),
+                                verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
+                        ) {
+                                // Section récapitulatif
+                                Card(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        elevation = AppSizes.elevationSmall,
+                                        backgroundColor = VetNutriColors.Primary.copy(alpha = 0.1f)
+                                ) {
+                                        Column(
+                                                modifier = Modifier.padding(AppSizes.paddingMedium),
+                                                verticalArrangement =
+                                                        Arrangement.spacedBy(AppSizes.paddingSmall)
+                                        ) {
+                                                Text(
+                                                        text = "Récapitulatif",
+                                                        style = MaterialTheme.typography.subtitle1,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = VetNutriColors.Primary
+                                                )
+
+                                                // Apport total
+                                                Text(
+                                                        text =
+                                                                if (poidsMetabolique != null) {
+                                                                        "Apport total: ${String.format("%.2f", valeurNutritionnelle.valeur / poidsMetabolique)} ${valeurNutritionnelle.unite.displayName}/kg^0.75"
+                                                                } else {
+                                                                        "Apport total: ${String.format("%.2f", valeurNutritionnelle.valeur)} ${valeurNutritionnelle.unite.displayName}"
+                                                                },
+                                                        style = MaterialTheme.typography.body1,
+                                                        fontWeight = FontWeight.Medium
+                                                )
+
+                                                // Statut de complétude
+                                                val isComplete = valeurNutritionnelle.complete
+                                                Row(
+                                                        verticalAlignment =
+                                                                Alignment.CenterVertically
+                                                ) {
+                                                        Icon(
+                                                                imageVector =
+                                                                        if (isComplete)
+                                                                                Icons.Filled.Check
+                                                                        else Icons.Filled.Warning,
+                                                                contentDescription =
+                                                                        if (isComplete)
+                                                                                "Données complètes"
+                                                                        else "Données incomplètes",
+                                                                tint =
+                                                                        if (isComplete) Color.Green
+                                                                        else Color.Red,
+                                                                modifier = Modifier.size(16.dp)
+                                                        )
+                                                        Spacer(modifier = Modifier.width(4.dp))
+                                                        Text(
+                                                                text =
+                                                                        if (isComplete)
+                                                                                "Données complètes"
+                                                                        else "Données incomplètes",
+                                                                style =
+                                                                        MaterialTheme.typography
+                                                                                .body2,
+                                                                color =
+                                                                        if (isComplete) Color.Green
+                                                                        else Color.Red
+                                                        )
+                                                }
+                                        }
+                                }
+
+                                // Section contribution des ingrédients
+                                Text(
+                                        text =
+                                                "Contribution par ingrédient (par ordre décroissant)",
+                                        style = MaterialTheme.typography.subtitle1,
+                                        fontWeight = FontWeight.Bold,
+                                        color = VetNutriColors.Primary
+                                )
+
+                                // Calculer et trier les contributions
+                                val contributionsTriees =
+                                        ration.alimentMutableList
+                                                .map { alimentRation ->
+                                                        val quantite = alimentRation.quantite
+                                                        val nutriment =
+                                                                valeurNutritionnelle.nutriment
+                                                        val valeurAliment =
+                                                                alimentRation
+                                                                        .aliment
+                                                                        ?.getNutrient(nutriment)
+                                                                        ?.toDouble()
+                                                        val contributionAbsolue =
+                                                                if (valeurAliment != null) {
+                                                                        (valeurAliment *
+                                                                                quantite.toDouble()) /
+                                                                                100.0
+                                                                } else {
+                                                                        0.0
+                                                                }
+                                                        val contributionPourcentage =
+                                                                if (valeurNutritionnelle.valeur > 0
+                                                                ) {
+                                                                        (contributionAbsolue /
+                                                                                valeurNutritionnelle
+                                                                                        .valeur
+                                                                                        .toDouble()) *
+                                                                                100.0
+                                                                } else {
+                                                                        0.0
+                                                                }
+                                                        Triple(
+                                                                alimentRation,
+                                                                contributionAbsolue,
+                                                                contributionPourcentage
+                                                        )
+                                                }
+                                                .sortedByDescending { it.second }
+
+                                // Liste scrollable des contributions
+                                LazyColumn(
+                                        modifier = Modifier.fillMaxWidth().weight(1f),
+                                        verticalArrangement =
+                                                Arrangement.spacedBy(AppSizes.paddingSmall)
+                                ) {
+                                        items(contributionsTriees) {
+                                                (
+                                                        alimentRation,
+                                                        contributionAbsolue,
+                                                        contributionPourcentage) ->
+                                                val quantite = alimentRation.quantite
+                                                val nutriment = valeurNutritionnelle.nutriment
+                                                val valeurAliment =
+                                                        alimentRation.aliment?.getNutrient(
+                                                                nutriment
+                                                        )
+
+                                                Card(
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        elevation = AppSizes.elevationSmall,
+                                                        backgroundColor =
+                                                                MaterialTheme.colors.surface
+                                                ) {
+                                                        Column(
+                                                                modifier =
+                                                                        Modifier.padding(
+                                                                                AppSizes.paddingMedium
+                                                                        )
+                                                        ) {
+                                                                // En-tête avec nom et icône d'état
+                                                                Row(
+                                                                        modifier =
+                                                                                Modifier.fillMaxWidth(),
+                                                                        horizontalArrangement =
+                                                                                Arrangement
+                                                                                        .SpaceBetween,
+                                                                        verticalAlignment =
+                                                                                Alignment
+                                                                                        .CenterVertically
+                                                                ) {
+                                                                        Text(
+                                                                                text =
+                                                                                        alimentRation
+                                                                                                .aliment
+                                                                                                ?.nom
+                                                                                                ?: "Aliment inconnu",
+                                                                                style =
+                                                                                        MaterialTheme
+                                                                                                .typography
+                                                                                                .subtitle2,
+                                                                                fontWeight =
+                                                                                        FontWeight
+                                                                                                .Bold,
+                                                                                modifier =
+                                                                                        Modifier.weight(
+                                                                                                1f
+                                                                                        )
+                                                                        )
+
+                                                                        // Icône d'état basée sur la
+                                                                        // disponibilité des données
+                                                                        if (valeurAliment == null) {
+                                                                                // Icône d'attention
+                                                                                // rouge pour
+                                                                                // données
+                                                                                // manquantes
+                                                                                Icon(
+                                                                                        imageVector =
+                                                                                                Icons.Filled
+                                                                                                        .Warning,
+                                                                                        contentDescription =
+                                                                                                "Information manquante",
+                                                                                        tint =
+                                                                                                Color.Red,
+                                                                                        modifier =
+                                                                                                Modifier.size(
+                                                                                                        16.dp
+                                                                                                )
+                                                                                )
+                                                                        }
+                                                                }
+
+                                                                Spacer(
+                                                                        modifier =
+                                                                                Modifier.height(
+                                                                                        AppSizes.paddingSmall
+                                                                                )
+                                                                )
+
+                                                                // Informations sur 2 colonnes
+                                                                Row(
+                                                                        modifier =
+                                                                                Modifier.fillMaxWidth(),
+                                                                        horizontalArrangement =
+                                                                                Arrangement
+                                                                                        .spacedBy(
+                                                                                                AppSizes.paddingMedium
+                                                                                        )
+                                                                ) {
+                                                                        // Colonne gauche
+                                                                        Column(
+                                                                                modifier =
+                                                                                        Modifier.weight(
+                                                                                                1f
+                                                                                        )
+                                                                        ) {
+                                                                                // Quantité utilisée
+                                                                                Text(
+                                                                                        text =
+                                                                                                "Quantité: ${String.format("%.1f", quantite)}g",
+                                                                                        style =
+                                                                                                MaterialTheme
+                                                                                                        .typography
+                                                                                                        .body2,
+                                                                                        fontWeight =
+                                                                                                FontWeight
+                                                                                                        .Medium,
+                                                                                        color =
+                                                                                                VetNutriColors
+                                                                                                        .Primary
+                                                                                )
+
+                                                                                // Valeur
+                                                                                // nutritionnelle
+                                                                                // pour 100g
+                                                                                Text(
+                                                                                        text =
+                                                                                                if (valeurAliment !=
+                                                                                                                null
+                                                                                                ) {
+                                                                                                        "Valeur (100g): ${String.format("%.2f", valeurAliment)} ${valeurNutritionnelle.unite.displayName}"
+                                                                                                } else {
+                                                                                                        "Valeur (100g): NA"
+                                                                                                },
+                                                                                        style =
+                                                                                                MaterialTheme
+                                                                                                        .typography
+                                                                                                        .body2,
+                                                                                        fontWeight =
+                                                                                                FontWeight
+                                                                                                        .Medium,
+                                                                                        color =
+                                                                                                if (valeurAliment !=
+                                                                                                                null
+                                                                                                )
+                                                                                                        VetNutriColors
+                                                                                                                .Primary
+                                                                                                else
+                                                                                                        Color.Red
+                                                                                )
+                                                                        }
+
+                                                                        // Colonne droite
+                                                                        Column(
+                                                                                modifier =
+                                                                                        Modifier.weight(
+                                                                                                1f
+                                                                                        )
+                                                                        ) {
+                                                                                // Contribution
+                                                                                // absolue
+                                                                                Text(
+                                                                                        text =
+                                                                                                if (valeurAliment !=
+                                                                                                                null
+                                                                                                ) {
+                                                                                                        "Contribution: ${String.format("%.2f", contributionAbsolue)} ${valeurNutritionnelle.unite.displayName}"
+                                                                                                } else {
+                                                                                                        "Contribution: NA"
+                                                                                                },
+                                                                                        style =
+                                                                                                MaterialTheme
+                                                                                                        .typography
+                                                                                                        .body2,
+                                                                                        fontWeight =
+                                                                                                FontWeight
+                                                                                                        .Medium,
+                                                                                        color =
+                                                                                                if (valeurAliment !=
+                                                                                                                null
+                                                                                                )
+                                                                                                        VetNutriColors
+                                                                                                                .Secondary
+                                                                                                else
+                                                                                                        Color.Red
+                                                                                )
+
+                                                                                // Pourcentage de
+                                                                                // contribution
+                                                                                Text(
+                                                                                        text =
+                                                                                                if (valeurAliment !=
+                                                                                                                null
+                                                                                                ) {
+                                                                                                        "Part: ${String.format("%.1f", contributionPourcentage)}%"
+                                                                                                } else {
+                                                                                                        "Part: NA"
+                                                                                                },
+                                                                                        style =
+                                                                                                MaterialTheme
+                                                                                                        .typography
+                                                                                                        .body2,
+                                                                                        color =
+                                                                                                if (valeurAliment !=
+                                                                                                                null
+                                                                                                )
+                                                                                                        VetNutriColors
+                                                                                                                .Secondary
+                                                                                                else
+                                                                                                        Color.Red
+                                                                                )
+                                                                        }
+                                                                }
+                                                        }
+                                                }
+                                        }
+                                }
+                        }
+                },
+                confirmButton = {},
+                dismissButton = {}
+        )
 }

@@ -37,4 +37,10 @@ object AppIcons {
     val Save: ImageVector = Icons.Default.Done
     val Cancel: ImageVector = Icons.Default.Close
     val Library: ImageVector = Icons.Default.Info
+
+    // Icônes pour les nutriments et analyses
+    val Nutrient: ImageVector = Icons.Default.Star
+    val Complete: ImageVector = Icons.Default.Check
+    val Incomplete: ImageVector = Icons.Default.Warning
+    val Analysis: ImageVector = Icons.Default.List
 }
