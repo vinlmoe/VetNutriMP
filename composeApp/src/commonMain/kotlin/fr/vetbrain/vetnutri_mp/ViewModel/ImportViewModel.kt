@@ -1,115 +1,198 @@
 package fr.vetbrain.vetnutri_mp.ViewModel
 
 import fr.vetbrain.vetnutri_mp.Repository.AnimalRepository
+import fr.vetbrain.vetnutri_mp.Repository.BiblioRefRepository
+import fr.vetbrain.vetnutri_mp.Repository.DatabaseReferenceEvRepository
+import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
+import fr.vetbrain.vetnutri_mp.Utils.ImportUtils
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 class ImportViewModel(
         private val animalRepository: AnimalRepository,
-        private val coroutineScope: CoroutineScope
+        val databaseReferenceEvRepository: DatabaseReferenceEvRepository? = null,
+        val equationRepository: EquationRepository? = null,
+        val biblioRefRepository: BiblioRefRepository? = null
 ) {
+    // Scope des coroutines pour les opérations suspend
+    private val coroutineScope = CoroutineScope(AppDispatchers.Main)
+
     // Flag pour indiquer si les aliments doivent être supprimés avant l'importation
     var shouldClearFoodsBeforeImport: Boolean = false
 
     // Créer une instance d'AnimalListViewModel pour utiliser ses fonctions d'importation
     private val animalListViewModel = AnimalListViewModel(animalRepository)
 
-    // État de l'importation
-    private val _isImporting = MutableStateFlow(false)
-    val isImporting: StateFlow<Boolean> = _isImporting.asStateFlow()
+    // Variables simples pour l'état d'importation
+    var isImporting: Boolean = false
+        private set
 
-    // Résultat de l'importation
-    private val _importResult = MutableStateFlow<ImportResult?>(null)
-    val importResult: StateFlow<ImportResult?> = _importResult.asStateFlow()
+    var isImportingNutritionalRequirements: Boolean = false
+        private set
 
-    init {
-        // Observer les résultats d'importation d'AnimalListViewModel
-        coroutineScope.launch {
-            animalListViewModel.importResult.collectLatest { result ->
-                result?.let {
-                    when (it) {
-                        is AnimalListViewModel.ImportResult.Success -> {
-                            _importResult.value =
-                                    ImportResult.Success(
-                                            animalCount = it.count,
-                                            foodCount =
-                                                    0 // On ne peut pas savoir combien d'aliments
-                                            // ont été importés
-                                            )
-                        }
-                        is AnimalListViewModel.ImportResult.Error -> {
-                            _importResult.value = ImportResult.Error(it.message)
-                        }
-                    }
-                }
-            }
-        }
-    }
+    var importResultMessage: String? = null
+        private set
+
+    var nutritionalRequirementImportResultMessage: String? = null
+        private set
 
     /**
-     * Importe des animaux à partir d'une chaîne JSON
+     * Importe des références nutritionnelles à partir d'une chaîne JSON avec sauvegarde automatique
      *
-     * @param jsonContent Le contenu JSON à désérialiser
+     * @param jsonContent Le contenu JSON à désérialiser (.vbnr.json format)
      */
-    fun importAnimalsFromJson(jsonContent: String) {
-        _isImporting.value = true
-        coroutineScope.launch(AppDispatchers.IO) {
+    fun importNutritionalRequirementsFromJson(jsonContent: String) {
+        isImportingNutritionalRequirements = true
+        nutritionalRequirementImportResultMessage = "🔄 Importation en cours..."
+
+        coroutineScope.launch {
             try {
-                // Vider la base d'aliments si demandé
-                if (shouldClearFoodsBeforeImport) {
-                    println("Suppression de tous les aliments existants...")
-                    val foodRepository = animalRepository.getFoodRepository()
-                    if (foodRepository != null) {
-                        val deletedCount = foodRepository.clearAllFoods()
-                        println("$deletedCount aliments ont été supprimés")
-                    } else {
-                        println("Le repository des aliments n'est pas disponible.")
+                // Vider les résolutions problématiques précédentes
+                ImportUtils.clearResolutionsProblematiques()
+
+                // Utiliser la version suspend avec sauvegarde automatique
+                val references =
+                        ImportUtils.importNutritionalRequirementsFromJson(
+                                jsonContent = jsonContent,
+                                databaseReferenceEvRepository = databaseReferenceEvRepository,
+                                equationRepository = equationRepository,
+                                biblioRefRepository = biblioRefRepository,
+                                sauvegarderEnBase = true // Sauvegarde automatique activée
+                        )
+
+                if (references.isNotEmpty()) {
+                    // Générer un message détaillé de succès
+                    val message = StringBuilder()
+                    message.append(
+                            "✅ ${references.size} référence(s) nutritionnelle(s) importée(s) avec succès!\n\n"
+                    )
+
+                    // Détails des références importées
+                    message.append("📋 Références importées :\n")
+                    references.forEachIndexed { index, ref ->
+                        message.append(
+                                "  ${index + 1}. ${ref.nom} (${ref.espece} - ${ref.stadePhysio})"
+                        )
+                        if (ref.maladie) {
+                            message.append(" - 🏥 ${ref.nomMaladie}")
+                        }
+                        message.append("\n")
+
+                        // Compter et afficher les équations pour cette référence
+                        var equationsCount = 0
+                        if (ref.equationBEE != null) equationsCount++
+                        if (ref.equationBW != null) equationsCount++
+                        if (ref.equationDEcom != null) equationsCount++
+                        if (ref.equationDEraw != null) equationsCount++
+                        equationsCount += ref.equationsNut.size
+
+                        if (equationsCount > 0) {
+                            message.append("    🔧 ${equationsCount} équation(s) liée(s)\n")
+                        }
+
+                        // Compter les bibliographies pour cette référence
+                        val biblioCount = ref.getAllBiblioRefs().size
+                        if (biblioCount > 0) {
+                            message.append(
+                                    "    📚 ${biblioCount} référence(s) bibliographique(s) liée(s)\n"
+                            )
+                        }
                     }
 
-                    // Réinitialiser le flag après utilisation
-                    shouldClearFoodsBeforeImport = false
-                }
+                    // Message de sauvegarde réussie
+                    message.append("\n💾 Données sauvegardées en base de données :")
+                    message.append("\n  • Références : ${references.size} importées")
 
-                // Utiliser la méthode existante d'AnimalListViewModel
-                animalListViewModel.importAnimalsFromJson(jsonContent)
+                    // Compter le total d'équations et de bibliographies importées
+                    val totalEquations =
+                            references.sumOf { ref ->
+                                var count = 0
+                                if (ref.equationBEE != null) count++
+                                if (ref.equationBW != null) count++
+                                if (ref.equationDEcom != null) count++
+                                if (ref.equationDEraw != null) count++
+                                count += ref.equationsNut.size
+                                count
+                            }
+
+                    val totalBibliographies =
+                            references.sumOf { ref -> ref.getAllBiblioRefs().size }
+
+                    if (totalEquations > 0) {
+                        message.append("\n  • Équations : ${totalEquations} sauvegardées")
+                    }
+
+                    if (totalBibliographies > 0) {
+                        message.append("\n  • Bibliographies : ${totalBibliographies} sauvegardées")
+                    }
+
+                    // Afficher les problèmes de résolution s'il y en a
+                    val rapportProblemes = ImportUtils.genererRapportResolutionsProblematiques()
+                    if (rapportProblemes.contains("Aucune résolution problématique")) {
+                        message.append("\n\n🎯 Tous les nutriments ont été résolus correctement")
+                    } else {
+                        message.append(
+                                "\n\n⚠️ Voir les logs pour les détails des résolutions de nutriments"
+                        )
+                    }
+
+                    nutritionalRequirementImportResultMessage = message.toString()
+                    println(
+                            "🎉 ${references.size} références nutritionnelles importées avec succès"
+                    )
+                } else {
+                    nutritionalRequirementImportResultMessage =
+                            "❌ Aucune référence nutritionnelle trouvée dans le fichier"
+                }
             } catch (e: Exception) {
-                _importResult.value = ImportResult.Error(e.message ?: "Erreur inconnue")
-                _isImporting.value = false
+                println(
+                        "❌ Erreur lors de l'importation des références nutritionnelles: ${e.message}"
+                )
+                e.printStackTrace()
+                nutritionalRequirementImportResultMessage =
+                        "❌ Erreur lors de l'importation: ${e.message ?: "Erreur inconnue"}\n\nVérifiez que le fichier est au format .vbnr.json valide."
+            } finally {
+                isImportingNutritionalRequirements = false
             }
         }
     }
 
-    /** Réinitialise le résultat de l'importation */
+    /** Réinitialise les résultats d'importation */
     fun resetImportResult() {
-        _importResult.value = null
+        importResultMessage = null
+        nutritionalRequirementImportResultMessage = null
         animalListViewModel.resetImportResult()
     }
 
     /**
-     * Définit une erreur d'importation
+     * Définit une erreur d'importation pour les références nutritionnelles
      *
      * @param message Le message d'erreur à afficher
      */
-    fun setImportError(message: String) {
-        _importResult.value = ImportResult.Error(message)
+    fun setNutritionalRequirementImportError(message: String) {
+        nutritionalRequirementImportResultMessage = "❌ $message"
+        isImportingNutritionalRequirements = false
     }
 
-    /**
-     * Délègue l'importation des animaux à la fonction de plateforme spécifique Cela permet d'éviter
-     * l'ambiguïté d'appel direct dans la vue
-     */
+    /** Délègue l'importation des animaux à la fonction de plateforme spécifique */
     fun importAnimalsFromFileUI() {
         fr.vetbrain.vetnutri_mp.importAnimalsFromFile(animalListViewModel)
     }
 
-    /** Classe scellée représentant le résultat de l'importation */
-    sealed class ImportResult {
-        data class Success(val animalCount: Int, val foodCount: Int = 0) : ImportResult()
-        data class Error(val message: String) : ImportResult()
+    /**
+     * Délègue l'importation des références nutritionnelles à la fonction de plateforme spécifique
+     */
+    fun importNutritionalRequirementsFromFileUI() {
+        fr.vetbrain.vetnutri_mp.importNutritionalRequirementsFromFile(this)
+    }
+
+    /**
+     * Met à jour le message de résultat d'importation des références nutritionnelles
+     *
+     * @param message Le nouveau message à afficher
+     */
+    fun updateNutritionalRequirementImportResultMessage(message: String) {
+        nutritionalRequirementImportResultMessage = message
     }
 }

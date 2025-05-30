@@ -235,7 +235,7 @@ object NutrientResolver {
             "MAT",
             "PROT",
             "CP" -> "PROTEINE"
-            "LIPIDE", "LIPIDES", "FAT", "FATS", "MG", "EE", "MATIERE_GRASSE", "MATIÈRES_GRASSES" ->
+            "LIPIDE", "LIPIDES", "FAT", "FATS", "EE", "MATIERE_GRASSE", "MATIÈRES_GRASSES" ->
                     "LIPIDE"
             "GLUCIDE", "GLUCIDES", "CARBOHYDRATE", "CARBOHYDRATES", "CARBS", "CHO" -> "GLUCIDE"
             "CENDRE", "CENDRES", "ASH", "ASHES", "MM", "MINERALS" -> "CENDRE"
@@ -374,16 +374,20 @@ object NutrientResolver {
             "COBALAMIN",
             "VITAMIN B12" -> "VITB12"
 
-            // Minéraux
+            // Minéraux - Corriger pour utiliser les vrais labels des énumérations
             "CA",
             "CALCIUM",
-            "CALCIO",
-            "CAL" -> "CA"
-            "P", "PHOSPHORE", "PHOSPHORUS", "FOSFORO", "PHOS" -> "P"
+            "CALCIO" -> "CAL" // NutrientMacro.CAL a le label "CAL"
+            "CAL" -> "CAL"
+            "P", "PHOSPHORE", "PHOSPHORUS", "FOSFORO" ->
+                    "PHOS" // NutrientMacro.PHOS a le label "PHOS"
+            "PHOS" -> "PHOS"
             "NA", "SODIUM", "SODIO", "NATRIUM" -> "NA"
             "K", "POTASSIUM", "POTASIO", "KALIUM" -> "K"
-            "CL", "CHLORURE", "CHLORIDE", "CHLORE", "CHLORO", "CHL" -> "CHL"
-            "MG", "MAGNESIUM", "MAGNESIO", "MAGNÉSIUM" -> "MG"
+            "CL", "CHLORURE", "CHLORIDE", "CHLORE", "CHLORO" ->
+                    "CHL" // NutrientMacro.CHL a le label "CHL"
+            "CHL" -> "CHL"
+            "MG", "MAGNESIUM", "MAGNESIO", "MAGNÉSIUM" -> "MG" // NutrientMacro.MG a le label "MG"
             "FE", "FER", "IRON", "HIERRO", "FERRUM" -> "FE"
             "ZN", "ZINC", "ZINK", "ZINCUM" -> "ZN"
             "CU", "CUIVRE", "COPPER", "COBRE", "CUPRUM" -> "CU"
@@ -447,14 +451,16 @@ object NutrientResolver {
             "PUFA",
             "ACIDES_GRAS_POLY_INSATURES" -> "AGPI"
 
-            // Acides aminés
+            // Acides aminés - Corriger pour utiliser les vrais labels de AAEnum
             "ALANINE",
             "ALA",
             "A" -> "ALANINE"
             "ARGININE", "ARG", "R" -> "ARGININE"
-            "ASPARTIC_ACID", "ASPARTATE", "ASP", "D", "ACIDE_ASPARTIQUE" -> "ASPARTIC_ACID"
+            "ASPARTIC_ACID", "ASPARTATE", "ASP", "D", "ACIDE_ASPARTIQUE" ->
+                    "ASPARATE" // AAEnum.ASPARATE
             "CYSTEINE", "CYS", "C" -> "CYSTEINE"
-            "GLUTAMIC_ACID", "GLUTAMATE", "GLU", "E", "ACIDE_GLUTAMIQUE" -> "GLUTAMIC_ACID"
+            "GLUTAMIC_ACID", "GLUTAMATE", "GLU", "E", "ACIDE_GLUTAMIQUE" ->
+                    "GLUTAMATE" // AAEnum.GLUTAMATE
             "GLYCINE", "GLY", "G" -> "GLYCINE"
             "HISTIDINE", "HIS", "H" -> "HISTIDINE"
             "ISOLEUCINE", "ILE", "I" -> "ISOLEUCINE"
@@ -465,9 +471,28 @@ object NutrientResolver {
             "PROLINE", "PRO", "P" -> "PROLINE"
             "SERINE", "SER", "S", "SÉRINE" -> "SERINE"
             "THREONINE", "THR", "T", "THRÉONINE" -> "THREONINE"
-            "TRYPTOPHAN", "TRP", "W", "TRYPTOPHANE" -> "TRYPTOPHAN"
+            "TRYPTOPHAN", "TRP", "W", "TRYPTOPHANE" ->
+                    "TRYPTOPHANE" // AAEnum.TRYPTOPHANE a le label "TRYPTOPHANE"
             "TYROSINE", "TYR", "Y" -> "TYROSINE"
             "VALINE", "VAL", "V" -> "VALINE"
+
+            // Ratios et analyses - Corriger pour utiliser les vrais labels de NutrientAnalysis
+            "PCA",
+            "P/CA",
+            "PHOSPHOCALCIUM",
+            "RAPPORT_PHOSPHOCALCIQUE" -> "CAP" // NutrientAnalysis.PCa a le label "CAP"
+            "ZNCU", "ZN/CU", "ZINCCOPPER", "RAPPORT_ZINC_CUIVRE" ->
+                    "ZNCU" // NutrientAnalysis.ZnCu a le label "ZNCU"
+            "O6O3", "O6/O3", "OMEGA6OMEGA3", "RAPPORT_OMEGA6_OMEGA3" ->
+                    "O6O3" // NutrientAnalysis.o6o3 a le label "O6O3"
+            "KNA", "K/NA", "POTASSIUMSODIUM", "RAPPORT_K_NA" ->
+                    "KNA" // NutrientAnalysis.NaK a le label "KNA"
+            "PROTP", "PROT/P", "PROTEINPHOSPHORE", "RAPPORT_PROT_P" ->
+                    "PROTP" // NutrientAnalysis.PhosphProt a le label "PROTP"
+            "METHCYS", "METH+CYS", "METHIONINE_CYSTEINE", "METH_CYS" ->
+                    "METHCYS" // NutrientAnalysis.MethCys a le label "METHCYS"
+            "PHENTYR", "PHEN+TYR", "PHENYLALANINE_TYROSINE", "PHEN_TYR" ->
+                    "PHENTYR" // NutrientAnalysis.PhenTyr a le label "PHENTYR"
 
             // Autres
             "CARNITINE",

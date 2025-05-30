@@ -20,6 +20,12 @@ interface BiblioRefRepository {
     suspend fun insertBiblioRef(biblioRef: BiblioRef)
     suspend fun updateBiblioRef(biblioRef: BiblioRef)
     suspend fun deleteBiblioRef(biblioRef: BiblioRef)
+
+    /**
+     * Vide entièrement la base de données des références bibliographiques
+     * @return Le nombre de références bibliographiques supprimées
+     */
+    suspend fun clearAllBiblioRefs(): Int
 }
 
 /**
@@ -73,6 +79,12 @@ class InMemoryBiblioRefRepository : BiblioRefRepository {
         println(
                 "DEBUG InMemoryRepo: Référence supprimée. Total: ${_biblioRefs.value.size} références"
         )
+    }
+
+    override suspend fun clearAllBiblioRefs(): Int {
+        val count = _biblioRefs.value.size
+        _biblioRefs.value = emptyList()
+        return count
     }
 }
 
@@ -143,6 +155,12 @@ class TestBiblioRefRepository : BiblioRefRepository {
         println("DEBUG TestRepo: Suppression de référence: ${biblioRef.firstAuthor}")
         _biblioRefs.value = _biblioRefs.value.filter { it.uuid != biblioRef.uuid }
         println("DEBUG TestRepo: Référence supprimée. Total: ${_biblioRefs.value.size} références")
+    }
+
+    override suspend fun clearAllBiblioRefs(): Int {
+        val count = _biblioRefs.value.size
+        _biblioRefs.value = emptyList()
+        return count
     }
 }
 
@@ -367,6 +385,47 @@ class DatabaseBiblioRefRepository(private val biblioRefDao: BiblioRefDao) : Bibl
             refreshFromDatabase()
         } catch (e: Exception) {
             println("DEBUG DatabaseBiblioRefRepo: ERREUR lors de la suppression: ${e.message}")
+            e.printStackTrace()
+            throw e
+        }
+    }
+
+    override suspend fun clearAllBiblioRefs(): Int {
+        println("DEBUG DatabaseBiblioRefRepository: clearAllBiblioRefs() démarrée")
+
+        return try {
+            // Obtenir le nombre total de références bibliographiques avant suppression directement
+            // depuis la base
+            println(
+                    "DEBUG DatabaseBiblioRefRepository: Récupération de toutes les références biblio..."
+            )
+            val allBiblioRefEntities = biblioRefDao.getAllBiblioRefs()
+            val count = allBiblioRefEntities.size
+            println(
+                    "DEBUG DatabaseBiblioRefRepository: $count références biblio trouvées dans la base"
+            )
+
+            if (count > 0) {
+                println(
+                        "DEBUG DatabaseBiblioRefRepository: Suppression de toutes les références biblio..."
+                )
+                // Supprimer toutes les références bibliographiques
+                biblioRefDao.deleteAllBiblioRefs()
+                println("DEBUG DatabaseBiblioRefRepository: Suppression terminée")
+
+                // Rafraîchir le cache local
+                _biblioRefs.value = emptyList()
+                println("DEBUG DatabaseBiblioRefRepository: Cache local vidé")
+            }
+
+            println(
+                    "DEBUG DatabaseBiblioRefRepository: $count références bibliographiques supprimées avec succès"
+            )
+            count
+        } catch (e: Exception) {
+            println(
+                    "DEBUG DatabaseBiblioRefRepository: ERREUR lors de la suppression: ${e.message}"
+            )
             e.printStackTrace()
             throw e
         }

@@ -203,6 +203,61 @@ class DatabaseReferenceEvRepository(
         }
     }
 
+    /**
+     * Vide entièrement la base de données des références nutritionnelles
+     * @return Le nombre de références supprimées
+     */
+    suspend fun clearAllReferences(): Int {
+        println("DEBUG DatabaseReferenceEvRepository: clearAllReferences() démarrée")
+
+        return try {
+            // Obtenir le nombre total de références avant suppression
+            println("DEBUG DatabaseReferenceEvRepository: Récupération de toutes les références...")
+            val allReferences = getAllReferenceEv()
+            val count = allReferences.size
+            println("DEBUG DatabaseReferenceEvRepository: $count références trouvées dans la base")
+
+            if (count > 0) {
+                println(
+                        "DEBUG DatabaseReferenceEvRepository: Suppression des relations équations..."
+                )
+                referenceEvDao.deleteAllEquationRelations()
+                println("DEBUG DatabaseReferenceEvRepository: Relations équations supprimées")
+
+                println("DEBUG DatabaseReferenceEvRepository: Suppression des coefficients...")
+                referenceEvDao.deleteAllCoefficients()
+                println("DEBUG DatabaseReferenceEvRepository: Coefficients supprimés")
+
+                println("DEBUG DatabaseReferenceEvRepository: Suppression des nutriments...")
+                referenceEvDao.deleteAllNutrients()
+                println("DEBUG DatabaseReferenceEvRepository: Nutriments supprimés")
+
+                println(
+                        "DEBUG DatabaseReferenceEvRepository: Suppression des références principales..."
+                )
+                // Supprimer toutes les références
+                allReferences.forEach { reference ->
+                    println(
+                            "DEBUG DatabaseReferenceEvRepository: Suppression de la référence: ${reference.uuid}"
+                    )
+                    deleteReferenceEv(reference.uuid)
+                }
+                println(
+                        "DEBUG DatabaseReferenceEvRepository: Toutes les références principales supprimées"
+                )
+            }
+
+            println("DEBUG DatabaseReferenceEvRepository: $count références supprimées avec succès")
+            count
+        } catch (e: Exception) {
+            println(
+                    "DEBUG DatabaseReferenceEvRepository: ERREUR lors de la suppression: ${e.message}"
+            )
+            e.printStackTrace()
+            throw e
+        }
+    }
+
     // Méthodes de délégation pour les équations (compatibilité avec EquationViewModel)
     suspend fun updateEquationBW(referenceId: String, equation: Equation): Boolean {
         return try {

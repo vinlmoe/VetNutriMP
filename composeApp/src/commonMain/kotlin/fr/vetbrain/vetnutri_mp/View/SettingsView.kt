@@ -26,6 +26,7 @@ import fr.vetbrain.vetnutri_mp.Components.Section
 import fr.vetbrain.vetnutri_mp.Enumer.*
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
+import fr.vetbrain.vetnutri_mp.ViewModel.ImportViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.SettingsViewModel
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
@@ -210,6 +211,7 @@ fun SettingsSectionItem(
 @Composable
 fun SettingsView(
         viewModel: SettingsViewModel,
+        importViewModel: ImportViewModel,
         onImportAnimals: () -> Unit,
         onBack: () -> Unit,
         onAnimalListRefresh: () -> Unit,
@@ -220,6 +222,16 @@ fun SettingsView(
         var isProcessing by remember { mutableStateOf(false) }
         var resultMessage by remember { mutableStateOf("") }
         var isAnimalDeleteDialogVisible by remember { mutableStateOf(false) }
+
+        // États pour les nouveaux dialogues de suppression
+        var isReferenceDeleteDialogVisible by remember { mutableStateOf(false) }
+        var isEquationDeleteDialogVisible by remember { mutableStateOf(false) }
+        var isBiblioDeleteDialogVisible by remember { mutableStateOf(false) }
+
+        // État pour le dialogue d'alerte d'importation des références nutritionnelles
+        var showImportDialog by remember { mutableStateOf(false) }
+        var importDialogMessage by remember { mutableStateOf("") }
+
         val coroutineScope = rememberCoroutineScope()
         val uiScale by viewModel.uiScale.collectAsState()
 
@@ -234,6 +246,27 @@ fun SettingsView(
         val selectedLipids by viewModel.selectedLipids.collectAsState()
         val selectedAminoAcids by viewModel.selectedAminoAcids.collectAsState()
         val selectedOtherNutrients by viewModel.selectedOtherNutrients.collectAsState()
+
+        // Observer le message d'importation des références nutritionnelles
+        val nutritionalRequirementMessage by remember {
+                derivedStateOf { importViewModel.nutritionalRequirementImportResultMessage }
+        }
+
+        // Afficher le dialogue d'alerte quand l'importation est terminée
+        LaunchedEffect(nutritionalRequirementMessage) {
+                nutritionalRequirementMessage?.let { message ->
+                        // Afficher le dialogue si le message n'est pas vide et ne contient pas
+                        // l'indicateur de progression
+                        if (message.isNotEmpty() &&
+                                        !message.contains("🔄") &&
+                                        !message.contains("Sélection du fichier") &&
+                                        (message.startsWith("✅") || message.startsWith("❌"))
+                        ) {
+                                importDialogMessage = message
+                                showImportDialog = true
+                        }
+                }
+        }
 
         // État pour la catégorie de nutriments en cours d'édition
         var editingCategory by remember { mutableStateOf(MainNutrientEnum.BASE) }
@@ -626,6 +659,105 @@ fun SettingsView(
                                                         verticalArrangement =
                                                                 Arrangement.spacedBy(8.dp)
                                                 ) {
+                                                        // Affichage du message de résultat
+                                                        // d'importation des références
+                                                        // nutritionnelles
+                                                        nutritionalRequirementMessage?.let { message
+                                                                ->
+                                                                Card(
+                                                                        modifier =
+                                                                                Modifier.fillMaxWidth()
+                                                                                        .padding(
+                                                                                                bottom =
+                                                                                                        8.dp
+                                                                                        ),
+                                                                        backgroundColor =
+                                                                                if (message.startsWith(
+                                                                                                "✅"
+                                                                                        )
+                                                                                )
+                                                                                        VetNutriColors
+                                                                                                .Primary
+                                                                                                .copy(
+                                                                                                        alpha =
+                                                                                                                0.1f
+                                                                                                )
+                                                                                else if (message.startsWith(
+                                                                                                "❌"
+                                                                                        )
+                                                                                )
+                                                                                        VetNutriColors
+                                                                                                .Error
+                                                                                                .copy(
+                                                                                                        alpha =
+                                                                                                                0.1f
+                                                                                                )
+                                                                                else
+                                                                                        VetNutriColors
+                                                                                                .Secondary
+                                                                                                .copy(
+                                                                                                        alpha =
+                                                                                                                0.1f
+                                                                                                )
+                                                                ) {
+                                                                        Row(
+                                                                                modifier =
+                                                                                        Modifier.fillMaxWidth()
+                                                                                                .padding(
+                                                                                                        12.dp
+                                                                                                ),
+                                                                                horizontalArrangement =
+                                                                                        Arrangement
+                                                                                                .SpaceBetween,
+                                                                                verticalAlignment =
+                                                                                        Alignment
+                                                                                                .CenterVertically
+                                                                        ) {
+                                                                                Text(
+                                                                                        message,
+                                                                                        style =
+                                                                                                MaterialTheme
+                                                                                                        .typography
+                                                                                                        .body2,
+                                                                                        color =
+                                                                                                if (message.startsWith(
+                                                                                                                "✅"
+                                                                                                        )
+                                                                                                )
+                                                                                                        VetNutriColors
+                                                                                                                .Primary
+                                                                                                else if (message.startsWith(
+                                                                                                                "❌"
+                                                                                                        )
+                                                                                                )
+                                                                                                        VetNutriColors
+                                                                                                                .Error
+                                                                                                else
+                                                                                                        Color.DarkGray,
+                                                                                        modifier =
+                                                                                                Modifier.weight(
+                                                                                                        1f
+                                                                                                )
+                                                                                )
+                                                                                IconButton(
+                                                                                        onClick = {
+                                                                                                importViewModel
+                                                                                                        .resetImportResult()
+                                                                                        }
+                                                                                ) {
+                                                                                        Icon(
+                                                                                                Icons.Default
+                                                                                                        .Close,
+                                                                                                contentDescription =
+                                                                                                        "Fermer",
+                                                                                                tint =
+                                                                                                        Color.Gray
+                                                                                        )
+                                                                                }
+                                                                        }
+                                                                }
+                                                        }
+
                                                         Button(
                                                                 onClick = onImportAnimals,
                                                                 colors =
@@ -642,9 +774,7 @@ fun SettingsView(
                                                                 )
                                                         }
 
-                                                        // Bouton pour importer des aliments avec
-                                                        // lambda pour éviter
-                                                        // l'ambiguïté
+                                                        // Bouton pour importer des aliments
                                                         Button(
                                                                 onClick = {
                                                                         try {
@@ -671,6 +801,39 @@ fun SettingsView(
                                                         ) {
                                                                 Text(
                                                                         "Importer des aliments",
+                                                                        color = Color.White
+                                                                )
+                                                        }
+
+                                                        // Bouton pour importer des références
+                                                        // nutritionnelles
+                                                        Button(
+                                                                onClick = {
+                                                                        try {
+                                                                                // Utilisons la
+                                                                                // méthode du
+                                                                                // ImportViewModel
+                                                                                // pour
+                                                                                // importer les
+                                                                                // références
+                                                                                // nutritionnelles
+                                                                                importViewModel
+                                                                                        .importNutritionalRequirementsFromFileUI()
+                                                                        } catch (e: Exception) {
+                                                                                resultMessage =
+                                                                                        "Erreur lors de l'importation des références : ${e.message}"
+                                                                        }
+                                                                },
+                                                                colors =
+                                                                        ButtonDefaults.buttonColors(
+                                                                                backgroundColor =
+                                                                                        VetNutriColors
+                                                                                                .Secondary
+                                                                        ),
+                                                                modifier = Modifier.fillMaxWidth()
+                                                        ) {
+                                                                Text(
+                                                                        "Importer des références nutritionnelles (.vbnr.json)",
                                                                         color = Color.White
                                                                 )
                                                         }
@@ -722,6 +885,69 @@ fun SettingsView(
                                                         ) {
                                                                 Text(
                                                                         "Vider la base de données des animaux"
+                                                                )
+                                                        }
+
+                                                        // Boutons pour supprimer les références
+                                                        // nutritionnelles, équations et
+                                                        // bibliographies
+                                                        Button(
+                                                                onClick = {
+                                                                        isReferenceDeleteDialogVisible =
+                                                                                true
+                                                                },
+                                                                colors =
+                                                                        ButtonDefaults.buttonColors(
+                                                                                backgroundColor =
+                                                                                        VetNutriColors
+                                                                                                .Error,
+                                                                                contentColor =
+                                                                                        Color.White
+                                                                        ),
+                                                                modifier = Modifier.fillMaxWidth()
+                                                        ) {
+                                                                Text(
+                                                                        "Vider la base de données des références nutritionnelles"
+                                                                )
+                                                        }
+
+                                                        Button(
+                                                                onClick = {
+                                                                        isEquationDeleteDialogVisible =
+                                                                                true
+                                                                },
+                                                                colors =
+                                                                        ButtonDefaults.buttonColors(
+                                                                                backgroundColor =
+                                                                                        VetNutriColors
+                                                                                                .Error,
+                                                                                contentColor =
+                                                                                        Color.White
+                                                                        ),
+                                                                modifier = Modifier.fillMaxWidth()
+                                                        ) {
+                                                                Text(
+                                                                        "Vider la base de données des équations"
+                                                                )
+                                                        }
+
+                                                        Button(
+                                                                onClick = {
+                                                                        isBiblioDeleteDialogVisible =
+                                                                                true
+                                                                },
+                                                                colors =
+                                                                        ButtonDefaults.buttonColors(
+                                                                                backgroundColor =
+                                                                                        VetNutriColors
+                                                                                                .Error,
+                                                                                contentColor =
+                                                                                        Color.White
+                                                                        ),
+                                                                modifier = Modifier.fillMaxWidth()
+                                                        ) {
+                                                                Text(
+                                                                        "Vider la base de données des bibliographies"
                                                                 )
                                                         }
                                                 }
@@ -821,6 +1047,180 @@ fun SettingsView(
                 )
         }
 
+        // Dialogue de confirmation pour vider la base des références nutritionnelles
+        if (isReferenceDeleteDialogVisible) {
+                AlertDialog(
+                        onDismissRequest = { isReferenceDeleteDialogVisible = false },
+                        title = { Text("Confirmation") },
+                        text = {
+                                Text(
+                                        "Êtes-vous sûr de vouloir supprimer TOUTES les références nutritionnelles de la base de données ? Cette action est irréversible."
+                                )
+                        },
+                        confirmButton = {
+                                Button(
+                                        onClick = {
+                                                println(
+                                                        "DEBUG SettingsView: Bouton 'Vider les références' cliqué"
+                                                )
+                                                isReferenceDeleteDialogVisible = false
+                                                isProcessing = true
+                                                coroutineScope.launch {
+                                                        try {
+                                                                println(
+                                                                        "DEBUG SettingsView: Appel de viewModel.clearAllReferences()"
+                                                                )
+                                                                val count =
+                                                                        viewModel
+                                                                                .clearAllReferences()
+                                                                println(
+                                                                        "DEBUG SettingsView: clearAllReferences() a retourné: $count"
+                                                                )
+                                                                resultMessage =
+                                                                        "$count références nutritionnelles ont été supprimées avec succès."
+                                                        } catch (e: Exception) {
+                                                                println(
+                                                                        "DEBUG SettingsView: ERREUR dans clearAllReferences(): ${e.message}"
+                                                                )
+                                                                e.printStackTrace()
+                                                                resultMessage =
+                                                                        "Erreur lors de la suppression : ${e.message}"
+                                                        } finally {
+                                                                isProcessing = false
+                                                        }
+                                                }
+                                        },
+                                        colors =
+                                                ButtonDefaults.buttonColors(
+                                                        backgroundColor = VetNutriColors.Error,
+                                                        contentColor = Color.White
+                                                )
+                                ) { Text("Oui, vider la base") }
+                        },
+                        dismissButton = {
+                                Button(onClick = { isReferenceDeleteDialogVisible = false }) {
+                                        Text("Annuler")
+                                }
+                        }
+                )
+        }
+
+        // Dialogue de confirmation pour vider la base des équations
+        if (isEquationDeleteDialogVisible) {
+                AlertDialog(
+                        onDismissRequest = { isEquationDeleteDialogVisible = false },
+                        title = { Text("Confirmation") },
+                        text = {
+                                Text(
+                                        "Êtes-vous sûr de vouloir supprimer TOUTES les équations de la base de données ? Cette action est irréversible."
+                                )
+                        },
+                        confirmButton = {
+                                Button(
+                                        onClick = {
+                                                println(
+                                                        "DEBUG SettingsView: Bouton 'Vider les équations' cliqué"
+                                                )
+                                                isEquationDeleteDialogVisible = false
+                                                isProcessing = true
+                                                coroutineScope.launch {
+                                                        try {
+                                                                println(
+                                                                        "DEBUG SettingsView: Appel de viewModel.clearAllEquations()"
+                                                                )
+                                                                val count =
+                                                                        viewModel
+                                                                                .clearAllEquations()
+                                                                println(
+                                                                        "DEBUG SettingsView: clearAllEquations() a retourné: $count"
+                                                                )
+                                                                resultMessage =
+                                                                        "$count équations ont été supprimées avec succès."
+                                                        } catch (e: Exception) {
+                                                                println(
+                                                                        "DEBUG SettingsView: ERREUR dans clearAllEquations(): ${e.message}"
+                                                                )
+                                                                e.printStackTrace()
+                                                                resultMessage =
+                                                                        "Erreur lors de la suppression : ${e.message}"
+                                                        } finally {
+                                                                isProcessing = false
+                                                        }
+                                                }
+                                        },
+                                        colors =
+                                                ButtonDefaults.buttonColors(
+                                                        backgroundColor = VetNutriColors.Error,
+                                                        contentColor = Color.White
+                                                )
+                                ) { Text("Oui, vider la base") }
+                        },
+                        dismissButton = {
+                                Button(onClick = { isEquationDeleteDialogVisible = false }) {
+                                        Text("Annuler")
+                                }
+                        }
+                )
+        }
+
+        // Dialogue de confirmation pour vider la base des bibliographies
+        if (isBiblioDeleteDialogVisible) {
+                AlertDialog(
+                        onDismissRequest = { isBiblioDeleteDialogVisible = false },
+                        title = { Text("Confirmation") },
+                        text = {
+                                Text(
+                                        "Êtes-vous sûr de vouloir supprimer TOUTES les références bibliographiques de la base de données ? Cette action est irréversible."
+                                )
+                        },
+                        confirmButton = {
+                                Button(
+                                        onClick = {
+                                                println(
+                                                        "DEBUG SettingsView: Bouton 'Vider les bibliographies' cliqué"
+                                                )
+                                                isBiblioDeleteDialogVisible = false
+                                                isProcessing = true
+                                                coroutineScope.launch {
+                                                        try {
+                                                                println(
+                                                                        "DEBUG SettingsView: Appel de viewModel.clearAllBiblioRefs()"
+                                                                )
+                                                                val count =
+                                                                        viewModel
+                                                                                .clearAllBiblioRefs()
+                                                                println(
+                                                                        "DEBUG SettingsView: clearAllBiblioRefs() a retourné: $count"
+                                                                )
+                                                                resultMessage =
+                                                                        "$count références bibliographiques ont été supprimées avec succès."
+                                                        } catch (e: Exception) {
+                                                                println(
+                                                                        "DEBUG SettingsView: ERREUR dans clearAllBiblioRefs(): ${e.message}"
+                                                                )
+                                                                e.printStackTrace()
+                                                                resultMessage =
+                                                                        "Erreur lors de la suppression : ${e.message}"
+                                                        } finally {
+                                                                isProcessing = false
+                                                        }
+                                                }
+                                        },
+                                        colors =
+                                                ButtonDefaults.buttonColors(
+                                                        backgroundColor = VetNutriColors.Error,
+                                                        contentColor = Color.White
+                                                )
+                                ) { Text("Oui, vider la base") }
+                        },
+                        dismissButton = {
+                                Button(onClick = { isBiblioDeleteDialogVisible = false }) {
+                                        Text("Annuler")
+                                }
+                        }
+                )
+        }
+
         // Affichage du résultat
         if (resultMessage.isNotEmpty()) {
                 Snackbar(
@@ -836,6 +1236,43 @@ fun SettingsView(
                                 Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f)),
                         contentAlignment = Alignment.Center
                 ) { CircularProgressIndicator(color = VetNutriColors.Primary) }
+        }
+
+        // Dialogue d'alerte pour l'importation des références nutritionnelles
+        if (showImportDialog) {
+                AlertDialog(
+                        onDismissRequest = {
+                                showImportDialog = false
+                                importViewModel.resetImportResult()
+                        },
+                        title = {
+                                Text(
+                                        "Résultat de l'importation",
+                                        style = MaterialTheme.typography.h6,
+                                        color =
+                                                if (importDialogMessage.startsWith("✅"))
+                                                        VetNutriColors.Primary
+                                                else VetNutriColors.Error
+                                )
+                        },
+                        text = {
+                                Text(importDialogMessage, style = MaterialTheme.typography.body2)
+                        },
+                        confirmButton = {
+                                Button(
+                                        onClick = {
+                                                showImportDialog = false
+                                                importViewModel.resetImportResult()
+                                        },
+                                        colors =
+                                                ButtonDefaults.buttonColors(
+                                                        backgroundColor = VetNutriColors.Primary,
+                                                        contentColor = Color.White
+                                                )
+                                ) { Text("OK") }
+                        },
+                        backgroundColor = MaterialTheme.colors.surface
+                )
         }
 }
 

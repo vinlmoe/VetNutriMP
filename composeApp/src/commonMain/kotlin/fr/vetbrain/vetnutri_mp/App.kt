@@ -26,6 +26,8 @@ expect fun importAnimalsFromFile(viewModel: AnimalListViewModel)
 
 expect fun importFoodsFromFile(viewModel: SettingsViewModel)
 
+expect fun importNutritionalRequirementsFromFile(viewModel: ImportViewModel)
+
 @Composable
 fun App(appDatabase: AppDatabase) {
     // Initialisation de la localisation
@@ -96,7 +98,15 @@ fun App(appDatabase: AppDatabase) {
         )
     }
     val createAnimalViewModel = remember { CreateAnimalViewModel(animalRepository) }
-    val settingsViewModel = remember { SettingsViewModel(animalRepository, foodRepository) }
+    val settingsViewModel = remember {
+        SettingsViewModel(
+                animalRepository,
+                foodRepository,
+                databaseReferenceEvRepository,
+                equationRepository,
+                biblioRefRepository
+        )
+    }
     val foodListViewModel = remember { FoodListViewModel(foodRepository) }
     var selectedFoodUuid by remember { mutableStateOf<String?>(null) }
 
@@ -153,6 +163,16 @@ fun App(appDatabase: AppDatabase) {
     // Observer le résultat de l'importation des aliments
     val foodImportResult = settingsViewModel.importResult.collectAsState().value
     var showFoodImportResult by remember { mutableStateOf(false) }
+
+    // ViewModel pour l'importation avec tous les repositories nécessaires
+    val importViewModel = remember {
+        ImportViewModel(
+                animalRepository = animalRepository,
+                databaseReferenceEvRepository = databaseReferenceEvRepository,
+                equationRepository = equationRepository,
+                biblioRefRepository = biblioRefRepository
+        )
+    }
 
     LaunchedEffect(importResult) {
         if (importResult != null) {
@@ -491,6 +511,7 @@ fun App(appDatabase: AppDatabase) {
                                 // dialogue
                                 SettingsView(
                                         viewModel = settingsViewModel,
+                                        importViewModel = importViewModel,
                                         onImportAnimals = handleImportAnimals,
                                         onBack = { showSettings = false },
                                         onAnimalListRefresh = { animalListViewModel.loadAnimals() },

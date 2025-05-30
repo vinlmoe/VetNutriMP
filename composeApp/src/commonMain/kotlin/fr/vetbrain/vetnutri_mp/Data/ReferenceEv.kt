@@ -274,6 +274,12 @@ data class ReferenceEv(
         /** Récupère la map des nutriments OPTIMAX */
         fun getRefMapOMax(): MutableMap<Nutrient, Nut4Ref> = refMapOMax
 
+        /** Alias pour obtenirToutesEquations - pour compatibilité avec le code d'importation */
+        fun getAllEquations(): ArrayList<Equation> = obtenirToutesEquations()
+
+        /** Alias pour obtenirToutesBiblios - pour compatibilité avec le code d'importation */
+        fun getAllBiblioRefs(): ArrayList<BiblioRef> = obtenirToutesBiblios()
+
         override fun toString(): String {
                 return nom
         }

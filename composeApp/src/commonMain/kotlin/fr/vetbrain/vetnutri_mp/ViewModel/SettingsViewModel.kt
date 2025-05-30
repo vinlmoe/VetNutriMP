@@ -24,7 +24,14 @@ import kotlinx.serialization.json.Json
 /** ViewModel pour la gestion des paramètres de l'application */
 class SettingsViewModel(
         private val animalRepository: AnimalRepository,
-        private val foodRepository: DatabaseFoodRepository
+        private val foodRepository: DatabaseFoodRepository,
+        private val referenceEvRepository:
+                fr.vetbrain.vetnutri_mp.Repository.DatabaseReferenceEvRepository? =
+                null,
+        private val equationRepository: fr.vetbrain.vetnutri_mp.Repository.EquationRepository? =
+                null,
+        private val biblioRefRepository: fr.vetbrain.vetnutri_mp.Repository.BiblioRefRepository? =
+                null
 ) {
     private val _uiScale = MutableStateFlow(1f)
     val uiScale: StateFlow<Float> = _uiScale.asStateFlow()
@@ -32,6 +39,11 @@ class SettingsViewModel(
     // Résultat de l'importation
     private val _importResult = MutableStateFlow<ImportResult?>(null)
     val importResult: StateFlow<ImportResult?> = _importResult.asStateFlow()
+
+    // Message de résultat pour les références nutritionnelles
+    private val _nutritionalRequirementMessage = MutableStateFlow<String?>(null)
+    val nutritionalRequirementMessage: StateFlow<String?> =
+            _nutritionalRequirementMessage.asStateFlow()
 
     // Menu latéral
     private val _isDrawerOpen = MutableStateFlow(false)
@@ -190,6 +202,35 @@ class SettingsViewModel(
     }
 
     /**
+     * Interface pour importer des références nutritionnelles depuis l'UI Cette méthode est un point
+     * d'entrée pour l'importation via l'UI
+     */
+    fun importNutritionalRequirementsFromFileUI() {
+        try {
+            // Lancer l'importation avec feedback dans SettingsViewModel
+            _nutritionalRequirementMessage.value = "🔄 Sélection du fichier en cours..."
+
+            // Créer un ImportViewModel temporaire avec les repositories nécessaires
+            // Note: Nous devons utiliser l'ImportViewModel car il a les bons repositories
+            // Cette fonction devrait plutôt être appelée depuis l'ImportViewModel
+            _nutritionalRequirementMessage.value =
+                    "❌ Cette fonction doit être appelée depuis l'ImportViewModel qui a accès aux repositories nécessaires."
+        } catch (e: Exception) {
+            _nutritionalRequirementMessage.value = "❌ Erreur: ${e.message}"
+        }
+    }
+
+    /** Définit le message de résultat d'importation des références nutritionnelles */
+    fun setNutritionalRequirementMessage(message: String) {
+        _nutritionalRequirementMessage.value = message
+    }
+
+    /** Efface le message de résultat d'importation des références nutritionnelles */
+    fun clearNutritionalRequirementMessage() {
+        _nutritionalRequirementMessage.value = null
+    }
+
+    /**
      * Supprime tous les aliments de la base de données
      * @return Le nombre d'aliments supprimés
      */
@@ -232,5 +273,62 @@ class SettingsViewModel(
                 "Importation terminée. ${result.importedCount} aliments importés, ${result.updatedCount} mis à jour, ${result.deletedCount} supprimés."
         )
         return result
+    }
+
+    /**
+     * Supprime toutes les références de la base de données
+     * @return Le nombre de références supprimées
+     */
+    suspend fun clearAllReferences(): Int {
+        println("DEBUG SettingsViewModel: clearAllReferences() appelée")
+        println("DEBUG SettingsViewModel: referenceEvRepository = $referenceEvRepository")
+
+        return if (referenceEvRepository != null) {
+            println("DEBUG SettingsViewModel: Repository non null, appel de clearAllReferences()")
+            val result = referenceEvRepository.clearAllReferences()
+            println("DEBUG SettingsViewModel: clearAllReferences() a retourné: $result")
+            result
+        } else {
+            println("DEBUG SettingsViewModel: ERREUR - referenceEvRepository est NULL!")
+            0
+        }
+    }
+
+    /**
+     * Supprime toutes les équations de la base de données
+     * @return Le nombre d'équations supprimées
+     */
+    suspend fun clearAllEquations(): Int {
+        println("DEBUG SettingsViewModel: clearAllEquations() appelée")
+        println("DEBUG SettingsViewModel: equationRepository = $equationRepository")
+
+        return if (equationRepository != null) {
+            println("DEBUG SettingsViewModel: Repository non null, appel de clearAllEquations()")
+            val result = equationRepository.clearAllEquations()
+            println("DEBUG SettingsViewModel: clearAllEquations() a retourné: $result")
+            result
+        } else {
+            println("DEBUG SettingsViewModel: ERREUR - equationRepository est NULL!")
+            0
+        }
+    }
+
+    /**
+     * Supprime toutes les références bibliographiques de la base de données
+     * @return Le nombre de références bibliographiques supprimées
+     */
+    suspend fun clearAllBiblioRefs(): Int {
+        println("DEBUG SettingsViewModel: clearAllBiblioRefs() appelée")
+        println("DEBUG SettingsViewModel: biblioRefRepository = $biblioRefRepository")
+
+        return if (biblioRefRepository != null) {
+            println("DEBUG SettingsViewModel: Repository non null, appel de clearAllBiblioRefs()")
+            val result = biblioRefRepository.clearAllBiblioRefs()
+            println("DEBUG SettingsViewModel: clearAllBiblioRefs() a retourné: $result")
+            result
+        } else {
+            println("DEBUG SettingsViewModel: ERREUR - biblioRefRepository est NULL!")
+            0
+        }
     }
 }

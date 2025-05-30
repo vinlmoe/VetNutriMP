@@ -15,14 +15,29 @@ import fr.vetbrain.vetnutri_mp.ViewModel.rememberViewModel
 fun ImportView(viewModel: ImportViewModel = rememberViewModel(), onNavigateBack: () -> Unit) {
     var showImportDialog by remember { mutableStateOf(false) }
     var showClearAndImportDialog by remember { mutableStateOf(false) }
-    val isImporting by viewModel.isImporting.collectAsState()
-    val importResult by viewModel.importResult.collectAsState()
+    var showNutritionalRequirementImportDialog by remember { mutableStateOf(false) }
+
+    val isImporting by remember { derivedStateOf { viewModel.isImporting } }
+    val isImportingNutritionalRequirements by remember {
+        derivedStateOf { viewModel.isImportingNutritionalRequirements }
+    }
+    val nutritionalRequirementImportResult by remember {
+        derivedStateOf { viewModel.nutritionalRequirementImportResultMessage }
+    }
 
     // Effet pour gérer l'importation lorsque showImportDialog devient true
     LaunchedEffect(showImportDialog) {
         if (showImportDialog) {
             viewModel.importAnimalsFromFileUI()
             showImportDialog = false
+        }
+    }
+
+    // Effet pour gérer l'importation des références nutritionnelles
+    LaunchedEffect(showNutritionalRequirementImportDialog) {
+        if (showNutritionalRequirementImportDialog) {
+            viewModel.importNutritionalRequirementsFromFileUI()
+            showNutritionalRequirementImportDialog = false
         }
     }
 
@@ -48,55 +63,45 @@ fun ImportView(viewModel: ImportViewModel = rememberViewModel(), onNavigateBack:
         ) {
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Afficher le résultat de l'importation s'il y en a un
-            importResult?.let { result ->
-                when (result) {
-                    is ImportViewModel.ImportResult.Success -> {
-                        Card(
-                                modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-                                backgroundColor = MaterialTheme.colors.primary.copy(alpha = 0.1f)
-                        ) {
-                            Column(modifier = Modifier.padding(16.dp)) {
-                                Text(
-                                        "Importation réussie : ${result.animalCount} animaux importés",
-                                        style = MaterialTheme.typography.subtitle1,
-                                        color = MaterialTheme.colors.primary
-                                )
-                                if (result.foodCount > 0) {
-                                    Text(
-                                            "${result.foodCount} aliments importés",
-                                            style = MaterialTheme.typography.body2
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    is ImportViewModel.ImportResult.Error -> {
-                        Card(
-                                modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-                                backgroundColor = MaterialTheme.colors.error.copy(alpha = 0.1f)
-                        ) {
-                            Column(modifier = Modifier.padding(16.dp)) {
-                                Text(
-                                        "Erreur lors de l'importation",
-                                        style = MaterialTheme.typography.subtitle1,
-                                        color = MaterialTheme.colors.error
-                                )
-                                Text(result.message, style = MaterialTheme.typography.body2)
-                            }
-                        }
+            // Afficher le résultat de l'importation des références nutritionnelles
+            nutritionalRequirementImportResult?.let { result ->
+                Card(
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                        backgroundColor =
+                                if (result.startsWith("✅"))
+                                        MaterialTheme.colors.primary.copy(alpha = 0.1f)
+                                else MaterialTheme.colors.error.copy(alpha = 0.1f)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                                if (result.startsWith("✅")) "Références nutritionnelles"
+                                else "Erreur références nutritionnelles",
+                                style = MaterialTheme.typography.subtitle1,
+                                color =
+                                        if (result.startsWith("✅")) MaterialTheme.colors.primary
+                                        else MaterialTheme.colors.error
+                        )
+                        Text(result, style = MaterialTheme.typography.body2)
                     }
                 }
             }
 
+            // Section Importation d'animaux
+            Text(
+                    "Importation d'animaux",
+                    style = MaterialTheme.typography.h6,
+                    modifier = Modifier.padding(bottom = 8.dp)
+            )
+
             Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(bottom = 24.dp)
             ) {
                 // Bouton d'importation standard
                 Button(
                         onClick = { showImportDialog = true },
-                        enabled = !isImporting,
+                        enabled = !isImporting && !isImportingNutritionalRequirements,
                         colors =
                                 ButtonDefaults.buttonColors(
                                         backgroundColor = MaterialTheme.colors.primary
@@ -110,18 +115,61 @@ fun ImportView(viewModel: ImportViewModel = rememberViewModel(), onNavigateBack:
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                     }
-                    Text("Importer fichier")
+                    Text("Importer animaux")
                 }
 
                 // Bouton pour vider la base et importer
                 Button(
                         onClick = { showClearAndImportDialog = true },
-                        enabled = !isImporting,
+                        enabled = !isImporting && !isImportingNutritionalRequirements,
                         colors =
                                 ButtonDefaults.buttonColors(
                                         backgroundColor = MaterialTheme.colors.error
                                 )
                 ) { Text("Vider DB et importer") }
+            }
+
+            // Section Importation des références nutritionnelles
+            Text(
+                    "Importation des références nutritionnelles",
+                    style = MaterialTheme.typography.h6,
+                    modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            Button(
+                    onClick = { showNutritionalRequirementImportDialog = true },
+                    enabled = !isImporting && !isImportingNutritionalRequirements,
+                    colors =
+                            ButtonDefaults.buttonColors(
+                                    backgroundColor = MaterialTheme.colors.secondary
+                            ),
+                    modifier = Modifier.padding(bottom = 16.dp)
+            ) {
+                if (isImportingNutritionalRequirements) {
+                    CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            color = MaterialTheme.colors.onSecondary,
+                            strokeWidth = 2.dp
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
+                Text("Importer références (.vbnr.json)")
+            }
+
+            // Informations sur les formats de fichiers
+            Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    backgroundColor = MaterialTheme.colors.surface
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                            "Formats de fichiers supportés",
+                            style = MaterialTheme.typography.subtitle1,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                    Text("• Animaux: .json (format standard)")
+                    Text("• Références nutritionnelles: .vbnr.json")
+                }
             }
         }
 

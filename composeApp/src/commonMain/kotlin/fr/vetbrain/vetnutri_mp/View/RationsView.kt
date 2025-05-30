@@ -3,6 +3,9 @@ package fr.vetbrain.vetnutri_mp.View
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.*
@@ -1750,57 +1753,26 @@ private fun AnalyseNutritionnelleCard(
                                 color = VetNutriColors.Primary
                         )
 
-                        // Organisation des nutriments en 2 colonnes avec des cards
-                        val nutrimentsList = valeursNutritionnelles.toList()
-                        val chunkedNutriments = nutrimentsList.chunked(2)
-
-                        LazyColumn(
-                                verticalArrangement = Arrangement.spacedBy(AppSizes.paddingXSmall)
+                        // Grid adaptatif qui ajuste automatiquement le nombre de colonnes (1 à 4)
+                        // Taille minimale de 400dp par colonne
+                        LazyVerticalGrid(
+                                columns = GridCells.Adaptive(minSize = 125.dp),
+                                verticalArrangement = Arrangement.spacedBy(AppSizes.paddingXSmall),
+                                horizontalArrangement =
+                                        Arrangement.spacedBy(AppSizes.paddingXSmall),
+                                modifier = Modifier.fillMaxWidth()
                         ) {
-                                items(chunkedNutriments) { rowNutriments ->
-                                        Row(
+                                items(valeursNutritionnelles.toList()) { (nom, valeurNutritionnelle)
+                                        ->
+                                        NutrimentCard(
+                                                nom = nom,
+                                                valeurNutritionnelle = valeurNutritionnelle,
+                                                poidsMetabolique = poidsMetabolique,
                                                 modifier = Modifier.fillMaxWidth(),
-                                                horizontalArrangement =
-                                                        Arrangement.spacedBy(AppSizes.paddingXSmall)
-                                        ) {
-                                                // Première card de la ligne
-                                                if (rowNutriments.isNotEmpty()) {
-                                                        val (nom1, valeur1) = rowNutriments[0]
-                                                        NutrimentCard(
-                                                                nom = nom1,
-                                                                valeurNutritionnelle = valeur1,
-                                                                poidsMetabolique = poidsMetabolique,
-                                                                modifier = Modifier.weight(1f),
-                                                                onClick = {
-                                                                        onNutrimentClick(
-                                                                                nom1,
-                                                                                valeur1
-                                                                        )
-                                                                }
-                                                        )
+                                                onClick = {
+                                                        onNutrimentClick(nom, valeurNutritionnelle)
                                                 }
-
-                                                // Deuxième card de la ligne
-                                                if (rowNutriments.size > 1) {
-                                                        val (nom2, valeur2) = rowNutriments[1]
-                                                        NutrimentCard(
-                                                                nom = nom2,
-                                                                valeurNutritionnelle = valeur2,
-                                                                poidsMetabolique = poidsMetabolique,
-                                                                modifier = Modifier.weight(1f),
-                                                                onClick = {
-                                                                        onNutrimentClick(
-                                                                                nom2,
-                                                                                valeur2
-                                                                        )
-                                                                }
-                                                        )
-                                                } else {
-                                                        // Spacer pour équilibrer la ligne si nombre
-                                                        // impair
-                                                        Spacer(modifier = Modifier.weight(1f))
-                                                }
-                                        }
+                                        )
                                 }
                         }
                 }

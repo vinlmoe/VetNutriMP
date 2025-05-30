@@ -53,6 +53,12 @@ interface EquationRepository {
      * @param uuid L'UUID de l'équation à supprimer
      */
     suspend fun deleteEquation(uuid: String)
+
+    /**
+     * Supprime toutes les équations
+     * @return Le nombre d'équations supprimées
+     */
+    suspend fun clearAllEquations(): Int
 }
 
 /** Implémentation en mémoire du repository des équations */
@@ -86,6 +92,12 @@ class InMemoryEquationRepository : EquationRepository {
 
     override suspend fun deleteEquation(uuid: String) {
         _equations.update { currentList -> currentList.filter { it.uuid != uuid } }
+    }
+
+    override suspend fun clearAllEquations(): Int {
+        val count = _equations.value.size
+        _equations.value = emptyList()
+        return count
     }
 }
 
@@ -283,8 +295,32 @@ class DatabaseEquationRepository(
     }
 
     override suspend fun deleteEquation(uuid: String) {
-        val equation = equationDao.getEquationById(uuid) ?: return
-        equationDao.deleteEquation(equation)
-        loadEquations()
+        equationDao.deleteEquation(uuid)
+    }
+
+    override suspend fun clearAllEquations(): Int {
+        println("DEBUG DatabaseEquationRepository: clearAllEquations() démarrée")
+
+        return try {
+            // Obtenir le nombre total d'équations avant suppression
+            println("DEBUG DatabaseEquationRepository: Récupération de toutes les équations...")
+            val allEquations = getAllEquations()
+            val count = allEquations.size
+            println("DEBUG DatabaseEquationRepository: $count équations trouvées dans la base")
+
+            if (count > 0) {
+                println("DEBUG DatabaseEquationRepository: Suppression de toutes les équations...")
+                // Supprimer toutes les équations
+                equationDao.deleteAllEquations()
+                println("DEBUG DatabaseEquationRepository: Suppression terminée")
+            }
+
+            println("DEBUG DatabaseEquationRepository: $count équations supprimées avec succès")
+            count
+        } catch (e: Exception) {
+            println("DEBUG DatabaseEquationRepository: ERREUR lors de la suppression: ${e.message}")
+            e.printStackTrace()
+            throw e
+        }
     }
 }

@@ -20,7 +20,7 @@ enum class Espece(override val label: String, val categorie: Int, val id: String
     LAPIN("LAPIN", 7, "7"),
     CHEVAL("CHEVAL", 8, "8"),
     FELIN("FELIN", 9, "9"),
-    CANIN("LAPIN", 10, "10"),
+    CANIN("CANIN", 10, "10"),
     HERBIVORE("HERBIVORE", 11, "11"),
     FOLIVORE("FOLIVORE", 12, "12");
 

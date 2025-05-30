@@ -3,6 +3,9 @@ package fr.vetbrain.vetnutri_mp.Utils
 import fr.vetbrain.vetnutri_mp.Data.AlimentEvJson
 import fr.vetbrain.vetnutri_mp.Data.AnimalEvJson
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
+import kotlin.collections.mutableListOf
+import kotlin.collections.mutableMapOf
+import kotlin.collections.set
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -17,6 +20,84 @@ object ImportUtils {
         isLenient = true // Ajouter plus de tolérance pour le parsing
         prettyPrint = false
         explicitNulls = false
+    }
+
+    /** Liste pour traquer les résolutions de nutriments problématiques */
+    private val resolutionsProblematiques = mutableListOf<String>()
+
+    /** Fonction pour extraire tous les cas problématiques */
+    fun getResolutionsProblematiques(): List<String> {
+        return resolutionsProblematiques.toList()
+    }
+
+    /** Fonction pour vider la liste des résolutions problématiques */
+    fun clearResolutionsProblematiques() {
+        resolutionsProblematiques.clear()
+    }
+
+    /** Génère un rapport détaillé des résolutions problématiques */
+    fun genererRapportResolutionsProblematiques(): String {
+        val rapport = StringBuilder()
+        rapport.append("🔍 RAPPORT DES RÉSOLUTIONS PROBLÉMATIQUES DE NUTRIMENTS\n")
+        rapport.append("=".repeat(80) + "\n\n")
+
+        if (resolutionsProblematiques.isEmpty()) {
+            rapport.append("✅ Aucune résolution problématique détectée !\n")
+            return rapport.toString()
+        }
+
+        // Grouper par type de problème
+        val echecs = resolutionsProblematiques.filter { it.startsWith("ECHEC_TOTAL") }
+        val resolutionsParVariante =
+                resolutionsProblematiques.filter { it.startsWith("RESOLUTION_PAR_VARIANTE") }
+        val echecsExacts =
+                resolutionsProblematiques.filter { it.startsWith("ECHEC_RESOLUTION_EXACTE") }
+
+        rapport.append("📊 STATISTIQUES:\n")
+        rapport.append("  • Échecs totaux: ${echecs.size}\n")
+        rapport.append("  • Résolutions par variante: ${resolutionsParVariante.size}\n")
+        rapport.append("  • Échecs de résolution exacte: ${echecsExacts.size}\n")
+        rapport.append("  • Total des problèmes: ${resolutionsProblematiques.size}\n\n")
+
+        if (echecs.isNotEmpty()) {
+            rapport.append("❌ ÉCHECS TOTAUX (${echecs.size}):\n")
+            rapport.append("-".repeat(50) + "\n")
+            echecs.forEach { probleme ->
+                val nutrient = probleme.substringAfter("ECHEC_TOTAL: '").substringBefore("'")
+                rapport.append("  • $nutrient\n")
+            }
+            rapport.append("\n")
+        }
+
+        if (resolutionsParVariante.isNotEmpty()) {
+            rapport.append("⚠️ RÉSOLUTIONS PAR VARIANTE (${resolutionsParVariante.size}):\n")
+            rapport.append("-".repeat(50) + "\n")
+            resolutionsParVariante.forEach { probleme ->
+                val details = probleme.substringAfter("RESOLUTION_PAR_VARIANTE: ")
+                rapport.append("  • $details\n")
+            }
+            rapport.append("\n")
+        }
+
+        if (echecsExacts.isNotEmpty()) {
+            rapport.append("🔶 ÉCHECS DE RÉSOLUTION EXACTE (${echecsExacts.size}):\n")
+            rapport.append("-".repeat(50) + "\n")
+            val nutrientsProblematiques = mutableMapOf<String, String>()
+            echecsExacts.forEach { probleme ->
+                val parts = probleme.substringAfter("ECHEC_RESOLUTION_EXACTE: ").split(" → ")
+                if (parts.size == 2) {
+                    val original = parts[0].trim('\'')
+                    val normalise = parts[1].trim('\'')
+                    nutrientsProblematiques[original] = normalise
+                }
+            }
+
+            nutrientsProblematiques.forEach { (original, normalise) ->
+                rapport.append("  • '$original' → '$normalise'\n")
+            }
+        }
+
+        return rapport.toString()
     }
 
     /**
@@ -888,9 +969,6 @@ object ImportUtils {
                                         // Conserver la valeur originale si la conversion échoue
                                         newEspecesList.add(especeItem)
                                     }
-                                } else {
-                                    // Si ce n'est pas un nombre, conserver tel quel
-                                    newEspecesList.add(especeItem)
                                 }
                             }
                         }
@@ -1632,7 +1710,1682 @@ object ImportUtils {
         // Si le nouveau score est meilleur, remplacer
         return newScore > existingScore
     }
+
+    /**
+     * Importe une liste de références nutritionnelles à partir d'une chaîne JSON Format attendu:
+     * .vbnr.json (VetBrain Nutritional Requirements) Structure: Array de NutritionalRequirementData
+     * avec reference, allEquations, allBibliographicReferences, nutrientRequirements
+     *
+     * @param jsonContent Le contenu JSON à désérialiser (.vbnr.json format)
+     * @return La liste des références nutritionnelles importées
+     */
+    fun importNutritionalRequirementsFromJson(
+            jsonContent: String
+    ): List<fr.vetbrain.vetnutri_mp.Data.ReferenceEv> {
+        println("🚀 Début de l'importation des références nutritionnelles VetNutri")
+        println("📊 Taille du contenu: ${jsonContent.length} caractères")
+
+        try {
+            // Vérifier si le contenu est un JSON valide
+            if (!isValidJson(jsonContent)) {
+                println("❌ Erreur: Le contenu n'est pas un JSON valide")
+                return emptyList()
+            }
+
+            // Vérifier si le contenu correspond à un fichier de références nutritionnelles
+            if (!isNutritionalRequirementJsonContent(jsonContent)) {
+                println(
+                        "❌ Erreur: Le contenu JSON ne semble pas être un fichier de références nutritionnelles"
+                )
+                println(
+                        "Le fichier doit être au format .vbnr.json avec la structure: reference, allEquations, allBibliographicReferences, nutrientRequirements"
+                )
+                return emptyList()
+            }
+
+            println("✅ Format .vbnr.json détecté")
+            println("🔄 Analyse et extraction des références...")
+
+            val references = mutableListOf<fr.vetbrain.vetnutri_mp.Data.ReferenceEv>()
+            val jsonElement = json.parseToJsonElement(jsonContent)
+
+            when (jsonElement) {
+                is kotlinx.serialization.json.JsonArray -> {
+                    println("📋 Format: Tableau de ${jsonElement.size} références nutritionnelles")
+
+                    jsonElement.forEachIndexed { index, element ->
+                        if (element is kotlinx.serialization.json.JsonObject) {
+                            val ref = creerReferenceDepuisNutritionalRequirementData(element, index)
+                            if (ref != null) {
+                                references.add(ref)
+                                println("✅ Référence ${index + 1} créée: ${ref.nom}")
+                            } else {
+                                println("⚠️ Échec de création de la référence ${index + 1}")
+                            }
+                        }
+                    }
+                }
+                is kotlinx.serialization.json.JsonObject -> {
+                    println("📋 Format: Objet unique de référence nutritionnelle")
+                    val ref = creerReferenceDepuisNutritionalRequirementData(jsonElement, 0)
+                    if (ref != null) {
+                        references.add(ref)
+                        println("✅ Référence créée: ${ref.nom}")
+                    } else {
+                        println("⚠️ Échec de création de la référence")
+                    }
+                }
+                else -> {
+                    println("❌ Format JSON non reconnu")
+                    return emptyList()
+                }
+            }
+
+            println(
+                    "🎉 Importation terminée: ${references.size} références nutritionnelles importées"
+            )
+
+            // Afficher un résumé
+            if (references.isNotEmpty()) {
+                println("\n📈 RÉSUMÉ DES RÉFÉRENCES IMPORTÉES:")
+                references.forEach { ref ->
+                    println("  • ${ref.nom} - ${ref.espece} (${ref.stadePhysio})")
+                    if (ref.maladie) {
+                        println("    🏥 Maladie: ${ref.nomMaladie}")
+                    }
+                }
+            }
+
+            return references
+        } catch (e: Exception) {
+            println("💥 Erreur critique lors de l'importation: ${e.message}")
+            e.printStackTrace()
+            return emptyList()
+        }
+    }
+
+    /**
+     * Crée une ReferenceEv à partir d'un objet NutritionalRequirementData JSON Structure attendue:
+     * { reference: {...}, allEquations: [...], allBibliographicReferences: [...],
+     * nutrientRequirements: [...] }
+     */
+    private fun creerReferenceDepuisNutritionalRequirementData(
+            dataObj: kotlinx.serialization.json.JsonObject,
+            index: Int
+    ): fr.vetbrain.vetnutri_mp.Data.ReferenceEv? {
+        return try {
+            // Extraire l'objet reference du NutritionalRequirementData
+            val referenceObj = dataObj["reference"] as? kotlinx.serialization.json.JsonObject
+
+            if (referenceObj == null) {
+                println("❌ Aucun objet 'reference' trouvé dans NutritionalRequirementData ${index}")
+                return null
+            }
+
+            // Extraire les propriétés de base de la référence
+            val uuid =
+                    extraireStringDepuisJson(referenceObj, "UUID")
+                            ?: fr.vetbrain.vetnutri_mp.Utils.genUUID()
+
+            val nom =
+                    extraireStringDepuisJson(referenceObj, "nom")
+                            ?: "Référence importée ${index + 1}"
+
+            val description =
+                    extraireStringDepuisJson(referenceObj, "description")
+                            ?: "Référence nutritionnelle importée automatiquement"
+
+            val disease = extraireBooleanDepuisJson(referenceObj, "disease") ?: false
+            val nameDisease = extraireStringDepuisJson(referenceObj, "nameDisease") ?: ""
+            val nameEnergy =
+                    extraireStringDepuisJson(referenceObj, "nameEnergy") ?: "Énergie métabolisable"
+            val consistent = extraireIntDepuisJson(referenceObj, "consistent") ?: 1
+
+            // Convertir les espèces et stades physiologiques
+            val speciesStr = extraireStringDepuisJson(referenceObj, "species") ?: "CHIEN"
+            val sPhysioStr = extraireStringDepuisJson(referenceObj, "sPhysio") ?: "ADULTE"
+
+            val espece = convertirStringVersEspece(speciesStr)
+
+            // Utiliser la détection intelligente pour le stade physiologique
+            val stadePhysio = detecterStadePhysioDepuisNom(nom, sPhysioStr)
+
+            // Utiliser la détection intelligente pour les maladies
+            val (estMaladie, nomMaladieDetecte) = detecterMaladie(nom, disease, nameDisease)
+
+            // Créer la référence de base
+            val reference =
+                    fr.vetbrain.vetnutri_mp.Data.ReferenceEv(
+                            uuid = uuid,
+                            nom = nom,
+                            description = description,
+                            maladie = estMaladie,
+                            nomMaladie = nomMaladieDetecte,
+                            nomEnergie = nameEnergy,
+                            consistent = consistent,
+                            espece = espece,
+                            stadePhysio = stadePhysio
+                    )
+
+            // Traiter les équations si présentes
+            val allEquations = dataObj["allEquations"] as? kotlinx.serialization.json.JsonArray
+            if (allEquations != null) {
+                println("🔧 Traitement de ${allEquations.size} équations...")
+                val equations = traiterEquations(allEquations)
+                println("🔧 ${equations.size} équations créées avec succès")
+
+                // Assigner les équations selon leur type
+                equations.forEach { equation ->
+                    println(
+                            "🔧 Assignation de l'équation: ${equation.name} (${equation.kind.name})"
+                    )
+                    when (equation.kind) {
+                        fr.vetbrain.vetnutri_mp.Enumer.EquationKind.ENERGYNEED -> {
+                            if (equation.name.contains("BEE", ignoreCase = true) ||
+                                            equation.name.contains("energy", ignoreCase = true)
+                            ) {
+                                reference.equationBEE = equation
+                                println("  → Assignée comme équation BEE: ${equation.name}")
+                            } else {
+                                reference.equationsNut.add(equation)
+                                println(
+                                        "  → Ajoutée aux équations nutritionnelles: ${equation.name}"
+                                )
+                            }
+                        }
+                        fr.vetbrain.vetnutri_mp.Enumer.EquationKind.MW -> {
+                            reference.equationBW = equation
+                            println("  → Assignée comme équation BW: ${equation.name}")
+                        }
+                        fr.vetbrain.vetnutri_mp.Enumer.EquationKind.ENERGYDENSITY -> {
+                            if (equation.name.contains("commercial", ignoreCase = true)) {
+                                reference.equationDEcom = equation
+                                println("  → Assignée comme équation DEcom: ${equation.name}")
+                            } else {
+                                reference.equationDEraw = equation
+                                println("  → Assignée comme équation DEraw: ${equation.name}")
+                            }
+                        }
+                        fr.vetbrain.vetnutri_mp.Enumer.EquationKind.NEED -> {
+                            reference.equationsNut.add(equation)
+                            println("  → Ajoutée aux équations nutritionnelles: ${equation.name}")
+                        }
+                        else -> {
+                            reference.equationsNut.add(equation)
+                            println(
+                                    "  → Ajoutée aux équations nutritionnelles (type autre): ${equation.name}"
+                            )
+                        }
+                    }
+                }
+
+                // Vérification finale des équations assignées
+                println("🔍 Vérification finale des équations assignées à '${nom}':")
+                println("  - equationBEE: ${reference.equationBEE?.name ?: "non assignée"}")
+                println("  - equationBW: ${reference.equationBW?.name ?: "non assignée"}")
+                println("  - equationDEcom: ${reference.equationDEcom?.name ?: "non assignée"}")
+                println("  - equationDEraw: ${reference.equationDEraw?.name ?: "non assignée"}")
+                println("  - equationsNut: ${reference.equationsNut.size} équations")
+                reference.equationsNut.forEach { eq ->
+                    println("    * ${eq.name} (${eq.kind.name})")
+                }
+            } else {
+                println("⚠️ Aucune équation trouvée dans allEquations")
+            }
+
+            // Traiter les références bibliographiques
+            val allBibliographicReferences =
+                    dataObj["allBibliographicReferences"] as? kotlinx.serialization.json.JsonArray
+            if (allBibliographicReferences != null) {
+                println(
+                        "📚 Traitement de ${allBibliographicReferences.size} références bibliographiques..."
+                )
+                // Les références biblio sont utilisées dans les nutriments, pas stockées
+                // directement dans la référence
+            }
+
+            // Traiter les besoins nutritionnels
+            val nutrientRequirements =
+                    dataObj["nutrientRequirements"] as? kotlinx.serialization.json.JsonArray
+            if (nutrientRequirements != null) {
+                println("🧪 Traitement de ${nutrientRequirements.size} besoins nutritionnels...")
+                traiterBesoinsNutritionnels(
+                        reference,
+                        nutrientRequirements,
+                        allBibliographicReferences
+                )
+            }
+
+            // Traiter les coefficients de modification si présents
+            traiterCoefficientsModification(reference, referenceObj)
+
+            println("🔄 Référence '${nom}' créée avec succès (${espece} - ${stadePhysio})")
+
+            return reference
+        } catch (e: Exception) {
+            println("❌ Erreur lors de la création de la référence ${index}: ${e.message}")
+            e.printStackTrace()
+            return null
+        }
+    }
+
+    /** Traite les équations d'un tableau JSON et les convertit en objets Equation */
+    private fun traiterEquations(
+            equationsArray: kotlinx.serialization.json.JsonArray
+    ): List<fr.vetbrain.vetnutri_mp.Data.Equation> {
+        val equations = mutableListOf<fr.vetbrain.vetnutri_mp.Data.Equation>()
+
+        equationsArray.forEach { element ->
+            if (element is kotlinx.serialization.json.JsonObject) {
+                try {
+                    val equation = creerEquationDepuisJson(element)
+                    if (equation != null) {
+                        equations.add(equation)
+                    }
+                } catch (e: Exception) {
+                    println("⚠️ Erreur lors du traitement d'une équation: ${e.message}")
+                }
+            }
+        }
+
+        return equations
+    }
+
+    /** Crée un objet Equation à partir d'un objet JSON */
+    private fun creerEquationDepuisJson(
+            equationObj: kotlinx.serialization.json.JsonObject
+    ): fr.vetbrain.vetnutri_mp.Data.Equation? {
+        try {
+            val uuid =
+                    extraireStringDepuisJson(equationObj, "UUID")
+                            ?: fr.vetbrain.vetnutri_mp.Utils.genUUID()
+            val name = extraireStringDepuisJson(equationObj, "name") ?: "Équation importée"
+            val description =
+                    extraireStringDepuisJson(equationObj, "Description")
+                            ?: extraireStringDepuisJson(equationObj, "description") ?: ""
+            val equationScript = extraireStringDepuisJson(equationObj, "equationScript") ?: "0"
+
+            // Gestion du kind - peut être une string ou un int selon le format JSON
+            val kindValue: Int =
+                    when (val kindRaw = equationObj["kind"]) {
+                        is kotlinx.serialization.json.JsonPrimitive -> {
+                            if (kindRaw.isString) {
+                                // C'est une string comme "ENERGYNEED", convertir en int
+                                when (kindRaw.content.uppercase()) {
+                                    "ENERGYNEED" -> 0
+                                    "ENERGYDENSITY" -> 1
+                                    "MW" -> 2
+                                    "INDICATOR" -> 3
+                                    "NEED" -> 4
+                                    else -> 0
+                                }
+                            } else {
+                                // C'est déjà un int
+                                when (kindRaw) {
+                                    is kotlinx.serialization.json.JsonPrimitive -> {
+                                        if (kindRaw.isString) {
+                                            kindRaw.content.toIntOrNull() ?: 0
+                                        } else {
+                                            try {
+                                                kindRaw.content.toIntOrNull() ?: 0
+                                            } catch (e: Exception) {
+                                                0
+                                            }
+                                        }
+                                    }
+                                    else -> 0
+                                }
+                            }
+                        }
+                        else -> 0
+                    }
+
+            val speciesStr =
+                    extraireStringDepuisJson(equationObj, "Specie")
+                            ?: extraireStringDepuisJson(equationObj, "specie") ?: "CHIEN"
+            val consistent = extraireBooleanDepuisJson(equationObj, "consistent") ?: true
+
+            // Convertir le kind en énumération
+            val kind =
+                    when (kindValue) {
+                        0 -> fr.vetbrain.vetnutri_mp.Enumer.EquationKind.ENERGYNEED
+                        1 -> fr.vetbrain.vetnutri_mp.Enumer.EquationKind.ENERGYDENSITY
+                        2 -> fr.vetbrain.vetnutri_mp.Enumer.EquationKind.MW
+                        3 -> fr.vetbrain.vetnutri_mp.Enumer.EquationKind.INDICATOR
+                        4 -> fr.vetbrain.vetnutri_mp.Enumer.EquationKind.NEED
+                        else -> fr.vetbrain.vetnutri_mp.Enumer.EquationKind.ENERGYNEED
+                    }
+
+            val espece = convertirStringVersEspece(speciesStr)
+
+            // Traiter la référence bibliographique si présente
+            val bibRef =
+                    equationObj["bib"]?.let { bibElement ->
+                        if (bibElement is kotlinx.serialization.json.JsonObject) {
+                            creerBiblioRefDepuisJsonComplet(bibElement)
+                        } else null
+                    }
+                            ?: fr.vetbrain.vetnutri_mp.Data.BiblioRef()
+
+            val equation =
+                    fr.vetbrain.vetnutri_mp.Data.Equation(
+                            uuid = uuid,
+                            name = name,
+                            description = description,
+                            equationScript = equationScript,
+                            kind = kind,
+                            specie = espece,
+                            bib = bibRef,
+                            consistent = consistent
+                    )
+
+            println("✅ Équation créée: $name (${kind.name}) - UUID: $uuid")
+            return equation
+        } catch (e: Exception) {
+            println("❌ Erreur lors de la création de l'équation: ${e.message}")
+            e.printStackTrace()
+            return null
+        }
+    }
+
+    /**
+     * Crée un objet BiblioRef à partir d'un objet JSON complet (avec firstAuthor, year,
+     * completeRef)
+     */
+    private fun creerBiblioRefDepuisJsonComplet(
+            biblioObj: kotlinx.serialization.json.JsonObject
+    ): fr.vetbrain.vetnutri_mp.Data.BiblioRef? {
+        try {
+            val uuid =
+                    extraireStringDepuisJson(biblioObj, "UUID")
+                            ?: fr.vetbrain.vetnutri_mp.Utils.genUUID()
+            val firstAuthor = extraireStringDepuisJson(biblioObj, "firstAuthor") ?: ""
+            val year = extraireIntDepuisJson(biblioObj, "year") ?: 0
+            val completeRef = extraireStringDepuisJson(biblioObj, "completeRef") ?: ""
+            val comment = extraireStringDepuisJson(biblioObj, "comment") ?: ""
+            val consistent = extraireIntDepuisJson(biblioObj, "consistent") ?: 1
+
+            val biblioRef =
+                    fr.vetbrain.vetnutri_mp.Data.BiblioRef(
+                            uuid = uuid,
+                            firstAuthor = firstAuthor,
+                            year = year,
+                            completeRef = completeRef,
+                            comments = comment,
+                            consistent = consistent
+                    )
+
+            println("📚 Bibliographie créée: $firstAuthor ($year) - UUID: $uuid")
+            return biblioRef
+        } catch (e: Exception) {
+            println(
+                    "❌ Erreur lors de la création de la référence bibliographique complète: ${e.message}"
+            )
+            e.printStackTrace()
+            return null
+        }
+    }
+
+    /** Crée un objet BiblioRef à partir d'un objet JSON (ancienne version pour compatibilité) */
+    private fun creerBiblioRefDepuisJson(
+            biblioObj: kotlinx.serialization.json.JsonObject
+    ): fr.vetbrain.vetnutri_mp.Data.BiblioRef? {
+        // Essayer d'abord la version complète
+        val completeVersion = creerBiblioRefDepuisJsonComplet(biblioObj)
+        if (completeVersion != null && completeVersion.firstAuthor.isNotBlank()) {
+            return completeVersion
+        }
+
+        // Sinon, essayer l'ancienne méthode
+        try {
+            val uuid =
+                    extraireStringDepuisJson(biblioObj, "UUID")
+                            ?: fr.vetbrain.vetnutri_mp.Utils.genUUID()
+            val author = extraireStringDepuisJson(biblioObj, "author") ?: ""
+            val title = extraireStringDepuisJson(biblioObj, "title") ?: ""
+            val year = extraireIntDepuisJson(biblioObj, "year") ?: 0
+            val completeRef = "$author. $title. $year"
+
+            return fr.vetbrain.vetnutri_mp.Data.BiblioRef(
+                    uuid = uuid,
+                    firstAuthor = author,
+                    year = year,
+                    completeRef = completeRef
+            )
+        } catch (e: Exception) {
+            println("❌ Erreur lors de la création de la référence bibliographique: ${e.message}")
+            return null
+        }
+    }
+
+    /** Traite les besoins nutritionnels et les ajoute aux maps de la référence */
+    private fun traiterBesoinsNutritionnels(
+            reference: fr.vetbrain.vetnutri_mp.Data.ReferenceEv,
+            nutrientRequirements: kotlinx.serialization.json.JsonArray,
+            allBibliographicReferences: kotlinx.serialization.json.JsonArray?
+    ) {
+        // Créer un index des références bibliographiques pour la recherche rapide
+        val biblioIndex = mutableMapOf<String, fr.vetbrain.vetnutri_mp.Data.BiblioRef>()
+        allBibliographicReferences?.forEach { element ->
+            if (element is kotlinx.serialization.json.JsonObject) {
+                val biblioRef = creerBiblioRefDepuisJsonComplet(element)
+                if (biblioRef != null && biblioRef.uuid.isNotBlank()) {
+                    biblioIndex[biblioRef.uuid] = biblioRef
+                    println(
+                            "📚 Bibliographie indexée: ${biblioRef.firstAuthor} (${biblioRef.year}) - UUID: ${biblioRef.uuid}"
+                    )
+                }
+            }
+        }
+
+        println("📚 ${biblioIndex.size} références bibliographiques indexées")
+
+        nutrientRequirements.forEach { element ->
+            if (element is kotlinx.serialization.json.JsonObject) {
+                try {
+                    val nutrientInfo = creerNutrientRequirementInfoDepuisJson(element, biblioIndex)
+                    if (nutrientInfo != null) {
+                        ajouterNutrientALaReference(reference, nutrientInfo)
+                    }
+                } catch (e: Exception) {
+                    println("⚠️ Erreur lors du traitement d'un besoin nutritionnel: ${e.message}")
+                }
+            }
+        }
+    }
+
+    /** Crée un objet représentant un besoin nutritionnel à partir du JSON */
+    private fun creerNutrientRequirementInfoDepuisJson(
+            nutrientObj: kotlinx.serialization.json.JsonObject,
+            biblioIndex: Map<String, fr.vetbrain.vetnutri_mp.Data.BiblioRef>
+    ): NutrientRequirementInfo? {
+        try {
+            // Extraire le nutriment - le JSON a directement "nutrient": "K"
+            val nutrientString = extraireStringDepuisJson(nutrientObj, "nutrient")
+            if (nutrientString == null) {
+                println("⚠️ Champ nutrient manquant dans nutrientRequirementInfo")
+                return null
+            }
+
+            // Normaliser le nom du nutriment pour la résolution
+            val normalizedNutrientString = normaliserNomNutrient(nutrientString)
+            println(
+                    "Résolution du nutriment: original='$nutrientString', normalisé='$normalizedNutrientString'"
+            )
+
+            var finalNutrient =
+                    fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver.AllNutrientResolver(
+                            normalizedNutrientString
+                    )
+
+            if (finalNutrient != null) {
+                println(
+                        "  → Résolu comme ${finalNutrient::class.simpleName}: $normalizedNutrientString"
+                )
+            } else {
+                println(
+                        "  × Aucune correspondance exacte trouvée pour '$normalizedNutrientString', essai de correspondance partielle..."
+                )
+                resolutionsProblematiques.add(
+                        "ECHEC_RESOLUTION_EXACTE: '$nutrientString' → '$normalizedNutrientString'"
+                )
+
+                // Essayer avec d'autres variantes courantes
+                val variantes = genererVariantesNutrient(nutrientString)
+                for (variante in variantes) {
+                    finalNutrient =
+                            fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver.AllNutrientResolver(
+                                    variante
+                            )
+                    if (finalNutrient != null) {
+                        println(
+                                "  → Correspondance trouvée avec la variante '$variante' pour '$nutrientString'"
+                        )
+                        println("  → Résolu comme ${finalNutrient::class.simpleName}: $variante")
+                        resolutionsProblematiques.add(
+                                "RESOLUTION_PAR_VARIANTE: '$nutrientString' → '$variante' (${finalNutrient::class.simpleName})"
+                        )
+                        break
+                    }
+                }
+
+                if (finalNutrient == null) {
+                    println("  ❌ Aucune variante trouvée pour le nutriment: $nutrientString")
+                    resolutionsProblematiques.add(
+                            "ECHEC_TOTAL: '$nutrientString' - Aucune correspondance trouvée"
+                    )
+                    return null
+                }
+            }
+
+            // Extraire le niveau de référence
+            val referenceLevelStr = extraireStringDepuisJson(nutrientObj, "referenceLevel") ?: "MIN"
+            val referenceLevel = convertirStringVersReflevel(referenceLevelStr)
+
+            // Extraire la quantité et les unités
+            val quantity = extraireFloatDepuisJson(nutrientObj, "quantity") ?: 0f
+            val unitStr = extraireStringDepuisJson(nutrientObj, "unit") ?: "BUg"
+            val unitRequirementStr =
+                    extraireStringDepuisJson(nutrientObj, "unitRequirement") ?: "MCAL"
+
+            val unit = convertirStringVersUnitEnum(unitStr)
+            val unitRequirement = convertirStringVersUnitReqEnum(unitRequirementStr)
+
+            // Extraire la référence bibliographique
+            val biblioRefElement =
+                    nutrientObj["bibliographicReference"] as? kotlinx.serialization.json.JsonObject
+            val biblioRef =
+                    if (biblioRefElement != null) {
+                        // Chercher d'abord par UUID si présent
+                        val biblioUuid = extraireStringDepuisJson(biblioRefElement, "UUID")
+                        if (biblioUuid != null && biblioIndex.containsKey(biblioUuid)) {
+                            biblioIndex[biblioUuid]
+                        } else {
+                            // Sinon créer directement depuis le JSON
+                            creerBiblioRefDepuisJson(biblioRefElement)
+                        }
+                    } else null
+
+            return NutrientRequirementInfo(
+                    nutrient = finalNutrient,
+                    referenceLevel = referenceLevel,
+                    quantity = quantity,
+                    unit = unit,
+                    unitRequirement = unitRequirement,
+                    bibliographicReference = biblioRef
+            )
+        } catch (e: Exception) {
+            println("❌ Erreur lors de la création du NutrientRequirementInfo: ${e.message}")
+            e.printStackTrace()
+            return null
+        }
+    }
+
+    /** Normalise le nom d'un nutriment pour une meilleure résolution */
+    private fun normaliserNomNutrient(nutrient: String): String {
+        return when (nutrient.uppercase().trim()) {
+            // Corrections des minéraux essentiels - Utiliser les labels des énumérations
+            "MG",
+            "MAGNESIUM" -> "MG" // NutrientMacro.MG a le label "MG"
+            "CA", "CALCIUM" -> "CAL" // NutrientMacro.CAL a le label "CAL"
+            "P", "PHOSPHORE", "PHOSPHORUS" -> "PHOS" // NutrientMacro.PHOS a le label "PHOS"
+            "NA", "SODIUM" -> "NA" // NutrientMacro.NA a le label "NA"
+            "K", "POTASSIUM" -> "K" // NutrientMacro.K a le label "K"
+            "CL", "CHLORE", "CHLORIDE" -> "CHL" // NutrientMacro.CHL a le label "CHL"
+
+            // Corrections des oligo-éléments
+            "FE",
+            "IRON",
+            "FER" -> "FE"
+            "ZN", "ZINC" -> "ZN"
+            "CU", "COPPER", "CUIVRE" -> "CU"
+            "MN", "MANGANESE" -> "MN"
+            "I", "IODE", "IODINE" -> "I"
+            "SE", "SELENIUM" -> "SE"
+
+            // Corrections d'acides aminés - Utiliser les vrais labels de AAEnum
+            "METHCYS",
+            "METH+CYS",
+            "MET+CYS",
+            "METHIONINE_CYSTEINE" -> "METHCYS" // NutrientAnalysis.MethCys a le label "METHCYS"
+            "PHENTYR", "PHEN+TYR", "PHE+TYR", "PHENYLALANINE_TYROSINE" ->
+                    "PHENTYR" // NutrientAnalysis.PhenTyr a le label "PHENTYR"
+            "TRYPTOPHAN", "TRYPTOPHANE", "TRY" ->
+                    "TRYPTOPHANE" // AAEnum.TRYPTOPHANE a le label "TRYPTOPHANE"
+            "LYSINE", "LYS" -> "LYSINE"
+            "METHIONINE", "MET" -> "METHIONINE"
+            "CYSTEINE", "CYS" -> "CYSTEINE"
+            "PHENYLALANINE", "PHE" -> "PHENYLALANINE"
+            "TYROSINE", "TYR" -> "TYROSINE"
+            "LEUCINE", "LEU" -> "LEUCINE"
+            "ISOLEUCINE", "ILE" -> "ISOLEUCINE"
+            "VALINE", "VAL" -> "VALINE"
+            "THREONINE", "THR" -> "THREONINE"
+            "HISTIDINE", "HIS" -> "HISTIDINE"
+            "ARGININE", "ARG" -> "ARGININE"
+
+            // Corrections de vitamines
+            "VITB1",
+            "THIAMINE",
+            "THIAMIN" -> "VITB1"
+            "VITB2", "RIBOFLAVINE", "RIBOFLAVIN" -> "VITB2"
+            "VITB3", "NIACINE", "NIACIN" -> "VITB3"
+            "VITB5", "PANTOTHENIC", "PANTOTHENIC_ACID" -> "VITB5"
+            "VITB6", "PYRIDOXINE", "PYRIDOXIN" -> "VITB6"
+            "VITB9", "FOLATE", "FOLIC_ACID" -> "VITB9"
+            "VITB12", "COBALAMIN", "CYANOCOBALAMIN" -> "VITB12" // Correction importante !
+            "VITA", "RETINOL", "VITAMIN_A" -> "VITA"
+            "VITD", "CHOLECALCIFEROL", "VITAMIN_D" -> "VITD"
+            "VITE", "TOCOPHEROL", "VITAMIN_E" -> "VITE"
+            "VITK", "PHYLLOQUINONE", "VITAMIN_K" -> "VITK"
+            "VITC", "ASCORBIC", "VITAMIN_C" -> "VITC"
+            "CHOLINE" -> "CHOLINE"
+
+            // Corrections de ratios et analyses - Utiliser les vrais labels de NutrientAnalysis
+            "PCA",
+            "P/CA",
+            "PHOSPHOCALCIUM",
+            "PCa" -> "CAP" // NutrientAnalysis.PCa a le label "CAP" !
+            "O6O3", "O6/O3", "OMEGA6OMEGA3" -> "O6O3"
+            "ZNCU", "ZN/CU", "ZINCCOPPER", "ZnCu" -> "ZNCU"
+
+            // Corrections d'acides gras
+            "AG204",
+            "DHA" -> "AG204"
+            "AG183", "ALA" -> "AG183"
+            "AG205", "EPA" -> "AG205"
+            "AG182", "LINOLEIC", "LINOLEIQUE" -> "AG182"
+            "O3", "OMEGA3" -> "O3"
+            "O6", "OMEGA6" -> "O6"
+            "EPADHA", "EPA+DHA" -> "EPADHA"
+
+            // Corrections des macronutriments
+            "PROTEINE",
+            "PROTEIN" -> "PROTEINE"
+            "LIPIDE", "LIPIDES", "FAT" -> "LIPIDE"
+            "GLUCIDE", "GLUCIDES", "CARBOHYDRATE" -> "GLUCIDE"
+            "FIBRE", "FIBRES", "FIBER" -> "FIBRE"
+            "CELLULOSE" -> "CELLULOSE"
+            "AMIDON", "STARCH" -> "AMIDON"
+            "SUCRE", "SUGAR" -> "SUCRE"
+            "HUMIDITE", "MOISTURE" -> "HUMIDITE"
+            "CENDRE", "ASH" -> "CENDRE"
+            "ENA", "NFE" -> "ENA"
+
+            // Garder tel quel pour les autres
+            else -> nutrient.uppercase().trim()
+        }
+    }
+
+    /** Génère des variantes possibles pour un nom de nutriment */
+    private fun genererVariantesNutrient(nutrient: String): List<String> {
+        val base = nutrient.uppercase().trim()
+        val variantes = mutableListOf<String>()
+
+        // Ajouter la forme normalisée en premier
+        variantes.add(normaliserNomNutrient(base))
+
+        // Ajouter la forme originale
+        variantes.add(base)
+
+        // Variantes spécifiques pour les minéraux problématiques
+        when (base) {
+            "MG" -> variantes.addAll(listOf("MG", "MAGNESIUM"))
+            "CA" -> variantes.addAll(listOf("CA", "CALCIUM"))
+            "P" -> variantes.addAll(listOf("P", "PHOSPHORE", "PHOSPHORUS"))
+            "NA" -> variantes.addAll(listOf("NA", "SODIUM"))
+            "K" -> variantes.addAll(listOf("K", "POTASSIUM"))
+            "FE" -> variantes.addAll(listOf("FE", "IRON", "FER"))
+            "ZN" -> variantes.addAll(listOf("ZN", "ZINC"))
+            "CU" -> variantes.addAll(listOf("CU", "COPPER", "CUIVRE"))
+            "MN" -> variantes.addAll(listOf("MN", "MANGANESE"))
+            "I" -> variantes.addAll(listOf("I", "IODE", "IODINE"))
+            "SE" -> variantes.addAll(listOf("SE", "SELENIUM"))
+        }
+
+        // Variantes pour les acides aminés
+        when (base) {
+            "TRYPTOPHAN", "TRYPTOPHANE" ->
+                    variantes.addAll(listOf("TRY", "TRYPTOPHAN", "TRYPTOPHANE"))
+            "METHIONINE_CYSTEINE", "METH+CYS" ->
+                    variantes.addAll(listOf("METH_CYS", "METHCYS", "MET+CYS"))
+            "PHENYLALANINE_TYROSINE", "PHEN+TYR" ->
+                    variantes.addAll(listOf("PHEN_TYR", "PHENTYR", "PHE+TYR"))
+            "LYSINE" -> variantes.addAll(listOf("LYSINE", "LYS"))
+            "METHIONINE" -> variantes.addAll(listOf("METHIONINE", "MET"))
+            "LEUCINE" -> variantes.addAll(listOf("LEUCINE", "LEU"))
+            "ISOLEUCINE" -> variantes.addAll(listOf("ISOLEUCINE", "ILE"))
+            "VALINE" -> variantes.addAll(listOf("VALINE", "VAL"))
+            "THREONINE" -> variantes.addAll(listOf("THREONINE", "THR"))
+            "HISTIDINE" -> variantes.addAll(listOf("HISTIDINE", "HIS"))
+            "ARGININE" -> variantes.addAll(listOf("ARGININE", "ARG"))
+            "PHENYLALANINE" -> variantes.addAll(listOf("PHENYLALANINE", "PHE"))
+            "TYROSINE" -> variantes.addAll(listOf("TYROSINE", "TYR"))
+            "CYSTEINE" -> variantes.addAll(listOf("CYSTEINE", "CYS"))
+        }
+
+        // Variantes pour les vitamines
+        when (base) {
+            "CYANOCOBALAMIN", "COBALAMIN" ->
+                    variantes.addAll(listOf("VITB12", "B12", "CYANOCOBALAMIN"))
+            "THIAMINE", "THIAMIN" -> variantes.addAll(listOf("VITB1", "B1", "THIAMIN"))
+            "RIBOFLAVIN", "RIBOFLAVINE" -> variantes.addAll(listOf("VITB2", "B2", "RIBOFLAVIN"))
+            "NIACIN", "NIACINE" -> variantes.addAll(listOf("VITB3", "B3", "NIACIN"))
+            "PANTOTHENIC_ACID", "PANTOTHENIC" -> variantes.addAll(listOf("VITB5", "B5"))
+            "PYRIDOXIN", "PYRIDOXINE" -> variantes.addAll(listOf("VITB6", "B6", "PYRIDOXIN"))
+            "FOLIC_ACID", "FOLATE" -> variantes.addAll(listOf("VITB9", "B9", "FOLIC_ACID"))
+            "VITAMIN_A", "RETINOL" -> variantes.addAll(listOf("VITA", "VITAMIN_A"))
+            "VITAMIN_D", "CHOLECALCIFEROL" -> variantes.addAll(listOf("VITD", "VITAMIN_D"))
+            "VITAMIN_E", "TOCOPHEROL" -> variantes.addAll(listOf("VITE", "VITAMIN_E"))
+            "VITAMIN_K", "PHYLLOQUINONE" -> variantes.addAll(listOf("VITK", "VITAMIN_K"))
+            "CHOLINE" -> variantes.addAll(listOf("CHOLINE"))
+        }
+
+        // Variantes pour les ratios
+        when (base) {
+            "PCA", "P/CA", "PHOSPHOCALCIUM" -> variantes.addAll(listOf("PCa", "PCA", "P/CA"))
+            "ZNCU", "ZN/CU", "ZINCCOPPER" -> variantes.addAll(listOf("ZnCu", "ZNCU", "ZN/CU"))
+            "O6O3", "O6/O3", "OMEGA6OMEGA3" -> variantes.addAll(listOf("o6o3", "O6O3", "O6/O3"))
+        }
+
+        // Ajouter des variantes avec/sans préfixes pour les vitamines
+        if (base.startsWith("VIT")) {
+            variantes.add(base.removePrefix("VIT"))
+            variantes.add("VITAMIN_" + base.removePrefix("VIT"))
+        }
+
+        return variantes.distinct()
+    }
+
+    /** Ajoute un nutriment à la référence dans la map appropriée selon le niveau de référence */
+    private fun ajouterNutrientALaReference(
+            reference: fr.vetbrain.vetnutri_mp.Data.ReferenceEv,
+            nutrientInfo: NutrientRequirementInfo
+    ) {
+        try {
+            // Créer la référence bibliographique si elle n'existe pas
+            val biblio =
+                    nutrientInfo.bibliographicReference ?: fr.vetbrain.vetnutri_mp.Data.BiblioRef()
+
+            // Utiliser la méthode publique pour définir le nutriment
+            reference.definirNutriment(
+                    valeur = nutrientInfo.quantity,
+                    nutrient = nutrientInfo.nutrient,
+                    niveauRef = nutrientInfo.referenceLevel,
+                    uniteReq = nutrientInfo.unitRequirement,
+                    biblio = biblio
+            )
+
+            println(
+                    "✅ Nutriment ${nutrientInfo.nutrient} ajouté (${nutrientInfo.referenceLevel}: ${nutrientInfo.quantity})"
+            )
+        } catch (e: Exception) {
+            println("❌ Erreur lors de l'ajout du nutriment à la référence: ${e.message}")
+        }
+    }
+
+    /** Traite les coefficients de modification (modk1-5) si présents */
+    private fun traiterCoefficientsModification(
+            reference: fr.vetbrain.vetnutri_mp.Data.ReferenceEv,
+            referenceObj: kotlinx.serialization.json.JsonObject
+    ) {
+        try {
+            // Traiter les noms des coefficients
+            reference.nomk1 = extraireStringDepuisJson(referenceObj, "namek1") ?: ""
+            reference.nomk2 = extraireStringDepuisJson(referenceObj, "namek2") ?: ""
+            reference.nomk3 = extraireStringDepuisJson(referenceObj, "namek3") ?: ""
+            reference.nomk4 = extraireStringDepuisJson(referenceObj, "namek4") ?: ""
+            reference.nomk5 = extraireStringDepuisJson(referenceObj, "namek5") ?: ""
+
+            // Traiter les tableaux de coefficients
+            val coefArrays = listOf("modk1", "modk2", "modk3", "modk4", "modk5")
+            val referenceLists =
+                    listOf(
+                            reference.getModk1(),
+                            reference.getModk2(),
+                            reference.getModk3(),
+                            reference.getModk4(),
+                            reference.getModk5()
+                    )
+
+            coefArrays.forEachIndexed { index, arrayName ->
+                val coefArray = referenceObj[arrayName] as? kotlinx.serialization.json.JsonArray
+                if (coefArray != null) {
+                    val coefList = referenceLists[index]
+                    coefArray.forEach { element ->
+                        if (element is kotlinx.serialization.json.JsonObject) {
+                            val coefP = creerCoefPDepuisJson(element, index)
+                            if (coefP != null) {
+                                coefList.add(coefP)
+                            }
+                        }
+                    }
+                    println("✅ ${coefList.size} coefficients traités pour $arrayName")
+                }
+            }
+        } catch (e: Exception) {
+            println("⚠️ Erreur lors du traitement des coefficients de modification: ${e.message}")
+        }
+    }
+
+    /** Crée un objet CoefP à partir d'un objet JSON */
+    private fun creerCoefPDepuisJson(
+            coefObj: kotlinx.serialization.json.JsonObject,
+            groupUUID: Int
+    ): fr.vetbrain.vetnutri_mp.Data.CoefP? {
+        try {
+            val description =
+                    extraireStringDepuisJson(coefObj, "description")
+                            ?: extraireStringDepuisJson(coefObj, "name") ?: ""
+            val coef =
+                    extraireFloatDepuisJson(coefObj, "coef")
+                            ?: extraireFloatDepuisJson(coefObj, "value") ?: 0f
+
+            return fr.vetbrain.vetnutri_mp.Data.CoefP(
+                    description = description,
+                    coef = coef,
+                    groupUUID = groupUUID
+            )
+        } catch (e: Exception) {
+            println("❌ Erreur lors de la création du coefficient CoefP: ${e.message}")
+            return null
+        }
+    }
+
+    /** Extrait une chaîne d'un objet JSON */
+    private fun extraireStringDepuisJson(
+            obj: kotlinx.serialization.json.JsonObject,
+            key: String
+    ): String? {
+        return (obj[key] as? kotlinx.serialization.json.JsonPrimitive)?.content
+    }
+
+    /** Extrait un booléen d'un objet JSON */
+    private fun extraireBooleanDepuisJson(
+            obj: kotlinx.serialization.json.JsonObject,
+            key: String
+    ): Boolean? {
+        return (obj[key] as? kotlinx.serialization.json.JsonPrimitive)?.content?.toBoolean()
+    }
+
+    /** Extrait un entier d'un objet JSON */
+    private fun extraireIntDepuisJson(
+            obj: kotlinx.serialization.json.JsonObject,
+            key: String
+    ): Int? {
+        return (obj[key] as? kotlinx.serialization.json.JsonPrimitive)?.content?.toIntOrNull()
+    }
+
+    /** Extrait un float d'un objet JSON */
+    private fun extraireFloatDepuisJson(
+            obj: kotlinx.serialization.json.JsonObject,
+            key: String
+    ): Float? {
+        return (obj[key] as? kotlinx.serialization.json.JsonPrimitive)?.content?.toFloatOrNull()
+    }
+
+    /** Convertit une chaîne en énumération Espece */
+    private fun convertirStringVersEspece(species: String): fr.vetbrain.vetnutri_mp.Enumer.Espece {
+        return when (species.uppercase()) {
+            "CHIEN", "DOG", "CANINE" -> fr.vetbrain.vetnutri_mp.Enumer.Espece.CHIEN
+            "CHAT", "CAT", "FELINE" -> fr.vetbrain.vetnutri_mp.Enumer.Espece.CHAT
+            "LAPIN", "RABBIT", "LAPINE" -> fr.vetbrain.vetnutri_mp.Enumer.Espece.LAPIN
+            "PRIMATE", "PRIMATES", "MONKEY", "APE" -> fr.vetbrain.vetnutri_mp.Enumer.Espece.PRIMATE
+            "RAT", "RATS" -> fr.vetbrain.vetnutri_mp.Enumer.Espece.RAT
+            "SOURIS", "MOUSE", "MICE" -> fr.vetbrain.vetnutri_mp.Enumer.Espece.SOURIS
+            "FURET", "FERRET", "FURETS" -> fr.vetbrain.vetnutri_mp.Enumer.Espece.FURET
+            "CHEVAL", "HORSE", "EQUINE", "CHEVAUX" -> fr.vetbrain.vetnutri_mp.Enumer.Espece.CHEVAL
+            "FELIN", "FELINS", "FELINES" -> fr.vetbrain.vetnutri_mp.Enumer.Espece.FELIN
+            "CANIN", "CANINS", "CANINES" -> fr.vetbrain.vetnutri_mp.Enumer.Espece.CANIN
+            "HERBIVORE", "HERBIVORES" -> fr.vetbrain.vetnutri_mp.Enumer.Espece.HERBIVORE
+            "FOLIVORE", "FOLIVORES" -> fr.vetbrain.vetnutri_mp.Enumer.Espece.FOLIVORE
+            "ALL", "CH", "TOUTES", "TOUS" -> fr.vetbrain.vetnutri_mp.Enumer.Espece.CH
+            else -> {
+                // Essayer d'utiliser la méthode getFromString qui gère de nombreux cas
+                val especeDetectee = fr.vetbrain.vetnutri_mp.Enumer.Espece.getFromString(species)
+                if (especeDetectee != null) {
+                    println("✅ Espèce détectée automatiquement: $species -> ${especeDetectee.name}")
+                    especeDetectee
+                } else {
+                    println("⚠️ Espèce inconnue: $species, utilisation de CHIEN par défaut")
+                    fr.vetbrain.vetnutri_mp.Enumer.Espece.CHIEN
+                }
+            }
+        }
+    }
+
+    /**
+     * Convertit une chaîne en énumération StadePhysio Inclut une logique intelligente pour détecter
+     * le stade selon le contexte
+     */
+    private fun convertirStringVersStadePhysio(
+            sPhysio: String
+    ): fr.vetbrain.vetnutri_mp.Enumer.StadePhysio {
+        return when (sPhysio.uppercase()) {
+            "ADULTE", "ADULT" -> fr.vetbrain.vetnutri_mp.Enumer.StadePhysio.ADULTE
+            "CROISSANCE", "GROWTH" -> fr.vetbrain.vetnutri_mp.Enumer.StadePhysio.CROISSANCE
+            "GESTATION", "GESTANTE", "PREGNANT" ->
+                    fr.vetbrain.vetnutri_mp.Enumer.StadePhysio.GESTATION
+            "LACTATION", "LACTANTE", "LACTATING" ->
+                    fr.vetbrain.vetnutri_mp.Enumer.StadePhysio.LACTATION
+            else -> {
+                println(
+                        "⚠️ Stade physiologique inconnu: $sPhysio, utilisation de ADULTE par défaut"
+                )
+                fr.vetbrain.vetnutri_mp.Enumer.StadePhysio.ADULTE
+            }
+        }
+    }
+
+    /** Convertit une chaîne en énumération Reflevel */
+    private fun convertirStringVersReflevel(
+            reflevel: String
+    ): fr.vetbrain.vetnutri_mp.Enumer.Reflevel {
+        return when (reflevel.uppercase()) {
+            "MIN" -> fr.vetbrain.vetnutri_mp.Enumer.Reflevel.MIN
+            "MAX" -> fr.vetbrain.vetnutri_mp.Enumer.Reflevel.MAX
+            "OPTIMIN" -> fr.vetbrain.vetnutri_mp.Enumer.Reflevel.OPTIMIN
+            "OPTIMAX" -> fr.vetbrain.vetnutri_mp.Enumer.Reflevel.OPTIMAX
+            else -> {
+                println("⚠️ Niveau de référence inconnu: $reflevel, utilisation de MIN par défaut")
+                fr.vetbrain.vetnutri_mp.Enumer.Reflevel.MIN
+            }
+        }
+    }
+
+    /** Convertit une chaîne en énumération UnitEnum - amélioration pour les unités JSON réelles */
+    private fun convertirStringVersUnitEnum(unit: String): fr.vetbrain.vetnutri_mp.Enumer.UnitEnum {
+        return when (unit.uppercase()) {
+            // Unités de base existantes
+            "G",
+            "BUG" -> fr.vetbrain.vetnutri_mp.Enumer.UnitEnum.BUg
+            "MG", "BUMG" -> fr.vetbrain.vetnutri_mp.Enumer.UnitEnum.BUmg
+            "UG", "µG", "BUMU" -> fr.vetbrain.vetnutri_mp.Enumer.UnitEnum.BUmu
+            "IU", "UI", "AUUI" -> fr.vetbrain.vetnutri_mp.Enumer.UnitEnum.AUui
+            "DUI", "DUUI" -> fr.vetbrain.vetnutri_mp.Enumer.UnitEnum.DUui
+            "KCAL" -> fr.vetbrain.vetnutri_mp.Enumer.UnitEnum.KCAL
+            "NO" -> fr.vetbrain.vetnutri_mp.Enumer.UnitEnum.BUg // Par défaut pour "pas d'unité"
+            "PERCENT", "%" -> fr.vetbrain.vetnutri_mp.Enumer.UnitEnum.BUg
+            else -> {
+                println("⚠️ Unité inconnue: $unit, utilisation de BUg par défaut")
+                fr.vetbrain.vetnutri_mp.Enumer.UnitEnum.BUg
+            }
+        }
+    }
+
+    /**
+     * Convertit une chaîne en énumération UnitReqEnum - amélioration pour les unités de besoin JSON
+     * réelles
+     */
+    private fun convertirStringVersUnitReqEnum(
+            unitReq: String
+    ): fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum {
+        return when (unitReq.uppercase()) {
+            "NO" -> fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum.ABSOLUTE
+            "KGBW", "PERKG" -> fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum.PERKG
+            "KGMW" -> fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum.PERKG
+            "MCAL", "PERKCAL" -> fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum.PERKCAL
+            "DM", "PERMS" -> fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum.PERMS
+            else -> {
+                println("⚠️ Unité de besoin inconnue: $unitReq, utilisation de ABSOLUTE par défaut")
+                fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum.ABSOLUTE
+            }
+        }
+    }
+
+    /**
+     * Détecte le stade physiologique basé sur le nom de la référence si le champ sPhysio n'est pas
+     * informatif
+     */
+    private fun detecterStadePhysioDepuisNom(
+            nom: String,
+            sPhysio: String
+    ): fr.vetbrain.vetnutri_mp.Enumer.StadePhysio {
+        val nomLower = nom.lowercase()
+
+        // Si sPhysio est déjà informatif, l'utiliser
+        if (sPhysio.uppercase() != "ADULTE") {
+            return convertirStringVersStadePhysio(sPhysio)
+        }
+
+        // Sinon, détecter basé sur le nom
+        return when {
+            nomLower.contains("croissance") ||
+                    nomLower.contains("growth") ||
+                    nomLower.contains("chiot") ||
+                    nomLower.contains("chaton") ||
+                    nomLower.contains("jeune") ->
+                    fr.vetbrain.vetnutri_mp.Enumer.StadePhysio.CROISSANCE
+            nomLower.contains("gestation") ||
+                    nomLower.contains("gestante") ||
+                    nomLower.contains("pregnant") ->
+                    fr.vetbrain.vetnutri_mp.Enumer.StadePhysio.GESTATION
+            nomLower.contains("lactation") ||
+                    nomLower.contains("lactante") ||
+                    nomLower.contains("lactating") ||
+                    nomLower.contains("allaitement") ->
+                    fr.vetbrain.vetnutri_mp.Enumer.StadePhysio.LACTATION
+            else -> fr.vetbrain.vetnutri_mp.Enumer.StadePhysio.ADULTE
+        }
+    }
+
+    /**
+     * Détecte si une référence correspond à une maladie basé sur son nom et d'autres indicateurs
+     */
+    private fun detecterMaladie(
+            nom: String,
+            disease: Boolean,
+            nameDisease: String
+    ): Pair<Boolean, String> {
+        val nomLower = nom.lowercase()
+
+        // Si disease est explicitement défini et vrai
+        if (disease && nameDisease.isNotBlank()) {
+            return Pair(true, nameDisease)
+        }
+
+        // Si disease est défini mais nameDisease est vide, utiliser le nom comme nom de maladie
+        if (disease) {
+            return Pair(true, nom)
+        }
+
+        // Détection basée sur le nom
+        val indicateursMaladie =
+                listOf(
+                        "cardio",
+                        "cardiac",
+                        "heart",
+                        "cardiaque",
+                        "renal",
+                        "kidney",
+                        "rénal",
+                        "rein",
+                        "hepatic",
+                        "liver",
+                        "hépatique",
+                        "foie",
+                        "diabete",
+                        "diabetes",
+                        "diabétique",
+                        "obese",
+                        "obesity",
+                        "obésité",
+                        "cancer",
+                        "oncol",
+                        "tumeur",
+                        "allergi",
+                        "allergy",
+                        "allergique",
+                        "gastro",
+                        "digestif",
+                        "intestinal",
+                        "arthro",
+                        "joint",
+                        "articulaire"
+                )
+
+        val estMaladie = indicateursMaladie.any { nomLower.contains(it) }
+        val nomMaladie = if (estMaladie) nom else ""
+
+        return Pair(estMaladie, nomMaladie)
+    }
+
+    /** Vérifie si le contenu correspond à un fichier de références nutritionnelles (.vbnr.json) */
+    private fun isNutritionalRequirementJsonContent(content: String): Boolean {
+        return try {
+            val jsonElement = json.parseToJsonElement(content)
+
+            // Vérifier si c'est un tableau d'objets avec les clés requises
+            if (jsonElement is kotlinx.serialization.json.JsonArray && jsonElement.isNotEmpty()) {
+                val firstElement = jsonElement.first()
+                if (firstElement is kotlinx.serialization.json.JsonObject) {
+                    val requiredKeys =
+                            listOf(
+                                    "reference",
+                                    "allEquations",
+                                    "allBibliographicReferences",
+                                    "nutrientRequirements"
+                            )
+                    val hasAllRequiredKeys =
+                            requiredKeys.all { key -> firstElement.containsKey(key) }
+
+                    if (hasAllRequiredKeys) {
+                        println("✅ Fichier détecté comme .vbnr.json (format tableau)")
+                        return true
+                    }
+
+                    // Fallback: vérifier au moins 3 des 4 clés requises
+                    val keyCount = requiredKeys.count { key -> firstElement.containsKey(key) }
+                    if (keyCount >= 3) {
+                        println(
+                                "⚠️ Structure .vbnr.json partiellement détectée ($keyCount/4 clés trouvées)"
+                        )
+                        return true
+                    }
+                }
+            } else if (jsonElement is kotlinx.serialization.json.JsonObject) {
+                // Vérifier si c'est un objet unique avec la structure NutritionalRequirementData
+                val requiredKeys =
+                        listOf(
+                                "reference",
+                                "allEquations",
+                                "allBibliographicReferences",
+                                "nutrientRequirements"
+                        )
+                val hasAllRequiredKeys = requiredKeys.all { key -> jsonElement.containsKey(key) }
+
+                if (hasAllRequiredKeys) {
+                    println("✅ Fichier détecté comme .vbnr.json (format objet unique)")
+                    return true
+                }
+
+                // Fallback: vérifier au moins 3 des 4 clés requises
+                val keyCount = requiredKeys.count { key -> jsonElement.containsKey(key) }
+                if (keyCount >= 3) {
+                    println(
+                            "⚠️ Structure .vbnr.json partiellement détectée ($keyCount/4 clés trouvées)"
+                    )
+                    return true
+                }
+            }
+
+            // Fallback final: chercher des mots-clés caractéristiques dans le contenu
+            val contentLower = content.lowercase()
+            val nutritionalKeywords =
+                    listOf(
+                            "reference",
+                            "nutrient",
+                            "equation",
+                            "bibliographic",
+                            "species",
+                            "sphysio",
+                            "disease",
+                            "allequations",
+                            "nutritionalrequirement",
+                            "reflevel"
+                    )
+            val keywordCount = nutritionalKeywords.count { contentLower.contains(it) }
+
+            if (keywordCount >= 4) {
+                println(
+                        "⚠️ Format .vbnr.json supposé basé sur les mots-clés ($keywordCount mots-clés trouvés)"
+                )
+                return true
+            }
+
+            return false
+        } catch (e: Exception) {
+            println("❌ Erreur lors de la détection du type de fichier: ${e.message}")
+            return false
+        }
+    }
+
+    /**
+     * Teste l'importation de références nutritionnelles et génère un rapport détaillé
+     * @param jsonContent Le contenu JSON à tester
+     * @return Un rapport détaillé des tests effectués
+     */
+    fun testNutritionalRequirementImport(jsonContent: String): String {
+        val report = StringBuilder()
+        report.append("🧪 TEST D'IMPORTATION DES RÉFÉRENCES NUTRITIONNELLES (.vbnr.json)\n")
+        report.append("=".repeat(70) + "\n\n")
+
+        try {
+            // Analyse préliminaire du contenu
+            report.append("📋 ANALYSE PRÉLIMINAIRE\n")
+            report.append("-".repeat(30) + "\n")
+            report.append("Taille du contenu: ${jsonContent.length} caractères\n")
+
+            if (!isValidJson(jsonContent)) {
+                report.append("❌ ERREUR: Le contenu n'est pas un JSON valide\n")
+                return report.toString()
+            }
+            report.append("✅ Format JSON valide\n")
+
+            if (!isNutritionalRequirementJsonContent(jsonContent)) {
+                report.append("❌ ERREUR: Le contenu ne semble pas être un fichier .vbnr.json\n")
+                report.append(
+                        "Structure attendue: reference, allEquations, allBibliographicReferences, nutrientRequirements\n"
+                )
+                return report.toString()
+            }
+            report.append("✅ Format .vbnr.json détecté\n")
+
+            // Analyse de la structure JSON
+            report.append("\n🔍 ANALYSE DE LA STRUCTURE\n")
+            report.append("-".repeat(30) + "\n")
+
+            val jsonElement = json.parseToJsonElement(jsonContent)
+            when (jsonElement) {
+                is kotlinx.serialization.json.JsonArray -> {
+                    report.append("Format: Tableau de ${jsonElement.size} référence(s)\n")
+                }
+                is kotlinx.serialization.json.JsonObject -> {
+                    report.append("Format: Objet unique de référence\n")
+                }
+                else -> {
+                    report.append("❌ Format JSON non reconnu\n")
+                    return report.toString()
+                }
+            }
+
+            // Tentative d'importation
+            report.append("\n🚀 TENTATIVE D'IMPORTATION\n")
+            report.append("-".repeat(30) + "\n")
+
+            val references = importNutritionalRequirementsFromJson(jsonContent)
+
+            if (references.isEmpty()) {
+                report.append("❌ Aucune référence importée\n")
+            } else {
+                report.append("✅ ${references.size} référence(s) importée(s) avec succès\n\n")
+
+                references.forEachIndexed { index, ref ->
+                    report.append("📄 RÉFÉRENCE ${index + 1}: ${ref.nom}\n")
+                    report.append("   • Espèce: ${ref.espece}\n")
+                    report.append("   • Stade physiologique: ${ref.stadePhysio}\n")
+                    report.append(
+                            "   • Maladie: ${if (ref.maladie) "Oui (${ref.nomMaladie})" else "Non"}\n"
+                    )
+                    report.append("   • Nutriments MIN: ${ref.getRefMapMin().size}\n")
+                    report.append("   • Nutriments MAX: ${ref.getRefMapMax().size}\n")
+                    report.append("   • Équations: ${ref.equationsNut.size}\n")
+
+                    if (ref.equationBEE != null) {
+                        report.append("   • Équation BEE: ${ref.equationBEE!!.name}\n")
+                    }
+                    if (ref.equationBW != null) {
+                        report.append("   • Équation BW: ${ref.equationBW!!.name}\n")
+                    }
+                    if (ref.equationDEraw != null) {
+                        report.append("   • Équation DE raw: ${ref.equationDEraw!!.name}\n")
+                    }
+                    if (ref.equationDEcom != null) {
+                        report.append("   • Équation DE commercial: ${ref.equationDEcom!!.name}\n")
+                    }
+
+                    report.append("\n")
+                }
+
+                report.append("🎉 IMPORTATION RÉUSSIE!\n")
+            }
+        } catch (e: Exception) {
+            report.append("💥 ERREUR DURANT LE TEST:\n")
+            report.append("${e.message}\n")
+            report.append("${e.stackTraceToString()}\n")
+        }
+
+        return report.toString()
+    }
+
+    /** Sauvegarde automatiquement tous les éléments importés dans la base de données */
+    suspend fun sauvegarderDonneesImportees(
+            referencesImportees: List<fr.vetbrain.vetnutri_mp.Data.ReferenceEv>,
+            databaseReferenceEvRepository:
+                    fr.vetbrain.vetnutri_mp.Repository.DatabaseReferenceEvRepository?,
+            equationRepository: fr.vetbrain.vetnutri_mp.Repository.EquationRepository?,
+            biblioRefRepository: fr.vetbrain.vetnutri_mp.Repository.BiblioRefRepository?
+    ): SauvegardeResult {
+        var referencesAjoutees = 0
+        var referencesMisesAJour = 0
+        var equationsAjoutees = 0
+        var equationsMisesAJour = 0
+        var bibliographiesAjoutees = 0
+        var bibliographiesMisesAJour = 0
+        val erreurs = mutableListOf<String>()
+
+        println("🔄 💾 Début de la sauvegarde des données importées...")
+
+        try {
+            // 1. Sauvegarder toutes les bibliographies d'abord (références)
+            if (biblioRefRepository != null) {
+                val toutesLesBibliographies = mutableSetOf<fr.vetbrain.vetnutri_mp.Data.BiblioRef>()
+
+                for (reference in referencesImportees) {
+                    // Collecter toutes les bibliographies de la référence
+                    reference.getAllBiblioRefs().forEach {
+                            biblio: fr.vetbrain.vetnutri_mp.Data.BiblioRef ->
+                        if (biblio.uuid.isNotBlank() && biblio.firstAuthor.isNotBlank()) {
+                            toutesLesBibliographies.add(biblio)
+                        }
+                    }
+
+                    // Collecter les bibliographies des équations assignées aux propriétés
+                    // individuelles
+                    reference.equationBEE?.bib?.let { biblio ->
+                        if (biblio.uuid.isNotBlank() && biblio.firstAuthor.isNotBlank()) {
+                            toutesLesBibliographies.add(biblio)
+                            println(
+                                    "📚 Bibliographie BEE collectée: ${biblio.firstAuthor} (${biblio.year})"
+                            )
+                        }
+                    }
+
+                    reference.equationBW?.bib?.let { biblio ->
+                        if (biblio.uuid.isNotBlank() && biblio.firstAuthor.isNotBlank()) {
+                            toutesLesBibliographies.add(biblio)
+                            println(
+                                    "📚 Bibliographie BW collectée: ${biblio.firstAuthor} (${biblio.year})"
+                            )
+                        }
+                    }
+
+                    reference.equationDEraw?.bib?.let { biblio ->
+                        if (biblio.uuid.isNotBlank() && biblio.firstAuthor.isNotBlank()) {
+                            toutesLesBibliographies.add(biblio)
+                            println(
+                                    "📚 Bibliographie DE raw collectée: ${biblio.firstAuthor} (${biblio.year})"
+                            )
+                        }
+                    }
+
+                    reference.equationDEcom?.bib?.let { biblio ->
+                        if (biblio.uuid.isNotBlank() && biblio.firstAuthor.isNotBlank()) {
+                            toutesLesBibliographies.add(biblio)
+                            println(
+                                    "📚 Bibliographie DE commercial collectée: ${biblio.firstAuthor} (${biblio.year})"
+                            )
+                        }
+                    }
+
+                    // Bibliographies des équations nutritionnelles
+                    reference.equationsNut.forEach { equation ->
+                        equation.bib?.let { biblio ->
+                            if (biblio.uuid.isNotBlank() && biblio.firstAuthor.isNotBlank()) {
+                                toutesLesBibliographies.add(biblio)
+                                println(
+                                        "📚 Bibliographie équation nutritionnelle collectée: ${biblio.firstAuthor} (${biblio.year})"
+                                )
+                            }
+                        }
+                    }
+                }
+
+                println("📚 Sauvegarde de ${toutesLesBibliographies.size} bibliographies...")
+                for (bibliographie in toutesLesBibliographies) {
+                    try {
+                        val existante = biblioRefRepository.getBiblioRefById(bibliographie.uuid)
+                        if (existante != null) {
+                            if (existante != bibliographie) {
+                                biblioRefRepository.updateBiblioRef(bibliographie)
+                                bibliographiesMisesAJour++
+                                println(
+                                        "📝 Bibliographie mise à jour: ${bibliographie.firstAuthor} (${bibliographie.year})"
+                                )
+                            }
+                        } else {
+                            biblioRefRepository.insertBiblioRef(bibliographie)
+                            bibliographiesAjoutees++
+                            println(
+                                    "➕ Nouvelle bibliographie: ${bibliographie.firstAuthor} (${bibliographie.year})"
+                            )
+                        }
+                    } catch (e: Exception) {
+                        erreurs.add(
+                                "Erreur bibliographie ${bibliographie.firstAuthor}: ${e.message}"
+                        )
+                    }
+                }
+            }
+
+            // 2. Sauvegarder toutes les équations ensuite
+            if (equationRepository != null) {
+                val toutesLesEquations = mutableSetOf<fr.vetbrain.vetnutri_mp.Data.Equation>()
+
+                for (reference in referencesImportees) {
+                    // Collecter toutes les équations de la référence
+                    // Équations des listes existantes
+                    reference.getAllEquations().forEach {
+                            equation: fr.vetbrain.vetnutri_mp.Data.Equation ->
+                        if (equation.uuid.isNotBlank() && equation.name.isNotBlank()) {
+                            toutesLesEquations.add(equation)
+                        }
+                    }
+
+                    // Équations assignées aux propriétés individuelles (nouvellement importées)
+                    reference.equationBEE?.let { equation ->
+                        if (equation.uuid.isNotBlank() && equation.name.isNotBlank()) {
+                            toutesLesEquations.add(equation)
+                            println("🔧 Équation BEE collectée: ${equation.name}")
+                        }
+                    }
+
+                    reference.equationBW?.let { equation ->
+                        if (equation.uuid.isNotBlank() && equation.name.isNotBlank()) {
+                            toutesLesEquations.add(equation)
+                            println("🔧 Équation BW collectée: ${equation.name}")
+                        }
+                    }
+
+                    reference.equationDEraw?.let { equation ->
+                        if (equation.uuid.isNotBlank() && equation.name.isNotBlank()) {
+                            toutesLesEquations.add(equation)
+                            println("🔧 Équation DE raw collectée: ${equation.name}")
+                        }
+                    }
+
+                    reference.equationDEcom?.let { equation ->
+                        if (equation.uuid.isNotBlank() && equation.name.isNotBlank()) {
+                            toutesLesEquations.add(equation)
+                            println("🔧 Équation DE commercial collectée: ${equation.name}")
+                        }
+                    }
+
+                    // Équations dans la liste equationsNut
+                    reference.equationsNut.forEach { equation ->
+                        if (equation.uuid.isNotBlank() && equation.name.isNotBlank()) {
+                            toutesLesEquations.add(equation)
+                            println("🔧 Équation nutritionnelle collectée: ${equation.name}")
+                        }
+                    }
+                }
+
+                println("⚡ Sauvegarde de ${toutesLesEquations.size} équations...")
+                for (equation in toutesLesEquations) {
+                    try {
+                        val existante = equationRepository.getEquationById(equation.uuid)
+                        if (existante != null) {
+                            if (existante != equation) {
+                                equationRepository.updateEquation(equation)
+                                equationsMisesAJour++
+                                println("📝 Équation mise à jour: ${equation.name}")
+                            }
+                        } else {
+                            equationRepository.saveEquation(equation)
+                            equationsAjoutees++
+                            println("➕ Nouvelle équation: ${equation.name}")
+                        }
+                    } catch (e: Exception) {
+                        erreurs.add("Erreur équation ${equation.name}: ${e.message}")
+                    }
+                }
+            }
+
+            // 3. Sauvegarder les références nutritionnelles enfin
+            if (databaseReferenceEvRepository != null) {
+                println(
+                        "🍽️ Sauvegarde de ${referencesImportees.size} références nutritionnelles..."
+                )
+                for (reference in referencesImportees) {
+                    try {
+                        val existante =
+                                databaseReferenceEvRepository.getReferenceEvById(reference.uuid)
+                        if (existante != null) {
+                            if (existante != reference) {
+                                databaseReferenceEvRepository.updateReferenceEv(reference)
+                                referencesMisesAJour++
+                                println(
+                                        "📝 Référence mise à jour: ${reference.nom} (${reference.espece})"
+                                )
+                            }
+                        } else {
+                            databaseReferenceEvRepository.saveReferenceEv(reference)
+                            referencesAjoutees++
+                            println("➕ Nouvelle référence: ${reference.nom} (${reference.espece})")
+                        }
+                    } catch (e: Exception) {
+                        erreurs.add("Erreur référence ${reference.nom}: ${e.message}")
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            erreurs.add("Erreur générale de sauvegarde: ${e.message}")
+        }
+
+        return SauvegardeResult(
+                referencesAjoutees = referencesAjoutees,
+                referencesMisesAJour = referencesMisesAJour,
+                equationsAjoutees = equationsAjoutees,
+                equationsMisesAJour = equationsMisesAJour,
+                bibliographiesAjoutees = bibliographiesAjoutees,
+                bibliographiesMisesAJour = bibliographiesMisesAJour,
+                erreurs = erreurs
+        )
+    }
+
+    /**
+     * Importe des références nutritionnelles depuis un fichier JSON .vbnr avec sauvegarde
+     * automatique en base de données
+     *
+     * @param jsonContent Le contenu JSON du fichier .vbnr.json à importer
+     * @param databaseReferenceEvRepository Repository pour sauvegarder les références (optionnel)
+     * @param equationRepository Repository pour sauvegarder les équations (optionnel)
+     * @param biblioRefRepository Repository pour sauvegarder les bibliographies (optionnel)
+     * @param sauvegarderEnBase Si true, sauvegarde automatiquement en base de données
+     * @return La liste des références nutritionnelles importées
+     */
+    suspend fun importNutritionalRequirementsFromJson(
+            jsonContent: String,
+            databaseReferenceEvRepository:
+                    fr.vetbrain.vetnutri_mp.Repository.DatabaseReferenceEvRepository? =
+                    null,
+            equationRepository: fr.vetbrain.vetnutri_mp.Repository.EquationRepository? = null,
+            biblioRefRepository: fr.vetbrain.vetnutri_mp.Repository.BiblioRefRepository? = null,
+            sauvegarderEnBase: Boolean = true
+    ): List<fr.vetbrain.vetnutri_mp.Data.ReferenceEv> {
+        println("🚀 Début de l'importation des références nutritionnelles VetNutri")
+        println("📊 Taille du contenu: ${jsonContent.length} caractères")
+
+        try {
+            // Vérifier si le contenu est un JSON valide
+            if (!isValidJson(jsonContent)) {
+                println("❌ Erreur: Le contenu n'est pas un JSON valide")
+                return emptyList()
+            }
+
+            // Vérifier si le contenu correspond à un fichier de références nutritionnelles
+            if (!isNutritionalRequirementJsonContent(jsonContent)) {
+                println(
+                        "❌ Erreur: Le contenu JSON ne semble pas être un fichier de références nutritionnelles"
+                )
+                println(
+                        "Le fichier doit être au format .vbnr.json avec la structure: reference, allEquations, allBibliographicReferences, nutrientRequirements"
+                )
+                return emptyList()
+            }
+
+            println("✅ Format .vbnr.json détecté")
+            println("🔄 Analyse et extraction des références...")
+
+            val references = mutableListOf<fr.vetbrain.vetnutri_mp.Data.ReferenceEv>()
+            val jsonElement = json.parseToJsonElement(jsonContent)
+
+            when (jsonElement) {
+                is kotlinx.serialization.json.JsonArray -> {
+                    println("📋 Format: Tableau de ${jsonElement.size} références nutritionnelles")
+
+                    jsonElement.forEachIndexed { index, element ->
+                        if (element is kotlinx.serialization.json.JsonObject) {
+                            val ref = creerReferenceDepuisNutritionalRequirementData(element, index)
+                            if (ref != null) {
+                                references.add(ref)
+                                println("✅ Référence ${index + 1} créée: ${ref.nom}")
+                            } else {
+                                println("⚠️ Échec de création de la référence ${index + 1}")
+                            }
+                        }
+                    }
+                }
+                is kotlinx.serialization.json.JsonObject -> {
+                    println("📋 Format: Objet unique de référence nutritionnelle")
+                    val ref = creerReferenceDepuisNutritionalRequirementData(jsonElement, 0)
+                    if (ref != null) {
+                        references.add(ref)
+                        println("✅ Référence créée: ${ref.nom}")
+                    } else {
+                        println("⚠️ Échec de création de la référence")
+                    }
+                }
+                else -> {
+                    println("❌ Format JSON non reconnu")
+                    return emptyList()
+                }
+            }
+
+            println(
+                    "🎉 Importation terminée: ${references.size} références nutritionnelles importées"
+            )
+
+            // Afficher un résumé
+            if (references.isNotEmpty()) {
+                println("\n📈 RÉSUMÉ DES RÉFÉRENCES IMPORTÉES:")
+                references.forEach { ref ->
+                    println("  • ${ref.nom} - ${ref.espece} (${ref.stadePhysio})")
+                    if (ref.maladie) {
+                        println("    🏥 Maladie: ${ref.nomMaladie}")
+                    }
+                }
+            }
+
+            if (sauvegarderEnBase) {
+                val result =
+                        sauvegarderDonneesImportees(
+                                references,
+                                databaseReferenceEvRepository,
+                                equationRepository,
+                                biblioRefRepository
+                        )
+                println(
+                        "Sauvegarde réussie: ${result.totalReferences} références et ${result.totalEquations} équations importées"
+                )
+            }
+
+            return references
+        } catch (e: Exception) {
+            println("💥 Erreur critique lors de l'importation: ${e.message}")
+            e.printStackTrace()
+            return emptyList()
+        }
+    }
+
+    /**
+     * Version de compatibilité pour l'importation des références nutritionnelles (non-suspend)
+     * @deprecated Utiliser la version suspend importNutritionalRequirementsFromJson
+     */
+    fun importNutritionalRequirementsFromJsonLegacy(
+            jsonContent: String
+    ): List<fr.vetbrain.vetnutri_mp.Data.ReferenceEv> {
+        // Implementation of the legacy importNutritionalRequirementsFromJson function
+        // This function is deprecated and should not be used in the new code
+        // You can implement the legacy import logic here if needed
+        return emptyList()
+    }
 }
 
 /** Classe contenant le résultat de l'importation */
 data class ImportResult(val animals: List<AnimalEvJson>, val foods: List<AlimentEvJson>)
+
+/** Classe de données pour représenter un besoin nutritionnel lors de l'importation */
+data class NutrientRequirementInfo(
+        val nutrient: fr.vetbrain.vetnutri_mp.Enumer.Nutrient,
+        val referenceLevel: fr.vetbrain.vetnutri_mp.Enumer.Reflevel,
+        val quantity: Float,
+        val unit: fr.vetbrain.vetnutri_mp.Enumer.UnitEnum,
+        val unitRequirement: fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum,
+        val bibliographicReference: fr.vetbrain.vetnutri_mp.Data.BiblioRef?
+)
+
+/** Extension pour répéter une chaîne (comme Python * operator) */
+operator fun String.times(n: Int): String = repeat(n)
+
+/** Résultat d'une opération de sauvegarde automatique */
+data class SauvegardeResult(
+        val referencesAjoutees: Int,
+        val referencesMisesAJour: Int,
+        val equationsAjoutees: Int,
+        val equationsMisesAJour: Int,
+        val bibliographiesAjoutees: Int,
+        val bibliographiesMisesAJour: Int,
+        val erreurs: List<String>
+) {
+    val totalReferences: Int
+        get() = referencesAjoutees + referencesMisesAJour
+    val totalEquations: Int
+        get() = equationsAjoutees + equationsMisesAJour
+    val totalBibliographies: Int
+        get() = bibliographiesAjoutees + bibliographiesMisesAJour
+    val aDesErreurs: Boolean
+        get() = erreurs.isNotEmpty()
+    val succesTotal: Boolean
+        get() = !aDesErreurs
+}
