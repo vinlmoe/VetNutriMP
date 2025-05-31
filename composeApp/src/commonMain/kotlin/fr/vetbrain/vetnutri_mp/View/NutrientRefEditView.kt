@@ -14,6 +14,7 @@ import fr.vetbrain.vetnutri_mp.Components.TopBarSimple
 import fr.vetbrain.vetnutri_mp.Data.BiblioRef
 import fr.vetbrain.vetnutri_mp.Data.NutrientRef
 import fr.vetbrain.vetnutri_mp.Enumer.MainNutrientEnum
+import fr.vetbrain.vetnutri_mp.Enumer.UnitEnum
 import fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.NutrientRefViewModel
@@ -66,7 +67,12 @@ fun NutrientRefEditView(
                         modifier = Modifier.weight(1f).padding(horizontal = 8.dp)
                 )
                 Text(
-                        "Unité",
+                        "Unité physique",
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f).padding(horizontal = 8.dp)
+                )
+                Text(
+                        "Unité besoin",
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.weight(1f).padding(horizontal = 8.dp)
                 )
@@ -86,6 +92,9 @@ fun NutrientRefEditView(
                             nutrientRef = nutrientRef,
                             onValueChange = { newValue ->
                                 viewModel.updateNutrientValue(nutrientRef.id, newValue)
+                            },
+                            onUnitEnumChange = { newUnitEnum ->
+                                viewModel.updateNutrientUnitEnum(nutrientRef.id, newUnitEnum)
                             },
                             onUnitChange = { newUnit ->
                                 viewModel.updateNutrientUnit(nutrientRef.id, newUnit)
@@ -120,17 +129,34 @@ fun NutrientRefEditView(
     }
 }
 
+/**
+ * Obtient les unités compatibles selon l'idFamily de l'unité par défaut du nutriment
+ *
+ * @param defaultUnitEnum Unité par défaut du nutriment
+ * @return Liste des unités ayant la même idFamily
+ */
+private fun getCompatibleUnits(defaultUnitEnum: UnitEnum): List<UnitEnum> {
+    val targetFamily = defaultUnitEnum.getIDFamily()
+    return UnitEnum.values().filter { it.getIDFamily() == targetFamily }
+}
+
 @Composable
 private fun NutrientRefItem(
         nutrientRef: NutrientRef,
         onValueChange: (String) -> Unit,
+        onUnitEnumChange: (UnitEnum) -> Unit,
         onUnitChange: (UnitReqEnum) -> Unit,
         onBiblioRefChange: (BiblioRef?) -> Unit,
         availableBiblioRefs: List<BiblioRef>,
         modifier: Modifier = Modifier
 ) {
+    var showUnitEnumDropdown by remember { mutableStateOf(false) }
     var showUnitDropdown by remember { mutableStateOf(false) }
     var showBiblioDropdown by remember { mutableStateOf(false) }
+
+    // Obtenir les unités compatibles basées sur l'idFamily de l'unité actuelle
+    val compatibleUnits =
+            remember(nutrientRef.unitEnum) { getCompatibleUnits(nutrientRef.unitEnum) }
 
     Row(
             modifier = modifier.fillMaxWidth().padding(vertical = 8.dp),
@@ -152,7 +178,29 @@ private fun NutrientRefItem(
                         )
         )
 
-        // Sélection de l'unité
+        // Sélection de l'unité physique (UnitEnum)
+        Box(modifier = Modifier.weight(1f).padding(horizontal = 4.dp)) {
+            OutlinedButton(
+                    onClick = { showUnitEnumDropdown = true },
+                    modifier = Modifier.fillMaxWidth()
+            ) { Text(nutrientRef.unitEnum.displayName) }
+
+            DropdownMenu(
+                    expanded = showUnitEnumDropdown,
+                    onDismissRequest = { showUnitEnumDropdown = false }
+            ) {
+                compatibleUnits.forEach { unit ->
+                    DropdownMenuItem(
+                            onClick = {
+                                onUnitEnumChange(unit)
+                                showUnitEnumDropdown = false
+                            }
+                    ) { Text(unit.displayName) }
+                }
+            }
+        }
+
+        // Sélection de l'unité de besoin (UnitReqEnum)
         Box(modifier = Modifier.weight(1f).padding(horizontal = 4.dp)) {
             OutlinedButton(
                     onClick = { showUnitDropdown = true },

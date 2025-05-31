@@ -71,20 +71,23 @@ data class ReferenceEv(
          * @param niveauRef Le niveau de référence (MIN, MAX, OPTIMIN, OPTIMAX)
          * @param uniteReq L'unité de la valeur
          * @param biblio La référence bibliographique associée
+         * @param unitEnum L'unité physique personnalisée (optionnel, utilise celle du nutriment par
+         * défaut)
          */
         fun definirNutriment(
                 valeur: Float,
                 nutrient: Nutrient,
                 niveauRef: Reflevel,
                 uniteReq: UnitReqEnum,
-                biblio: BiblioRef
+                biblio: BiblioRef,
+                unitEnum: UnitEnum = nutrient.ue
         ) {
                 obtenirMap(niveauRef)[nutrient] =
                         Nut4Ref(
                                 nutrient = nutrient,
                                 niveauRelatif = niveauRef,
                                 quantite = valeur,
-                                unite = nutrient.ue,
+                                unite = unitEnum,
                                 uniteReq = uniteReq,
                                 biblio = biblio
                         )
@@ -153,6 +156,21 @@ data class ReferenceEv(
                         obtenirMap(niveauRef)[nutrient]?.uniteReq?.getID() ?: 0
                 } else {
                         0
+                }
+        }
+
+        /**
+         * Récupère l'UnitEnum d'un nutriment pour un niveau de référence donné
+         *
+         * @param nutrient Le nutriment concerné
+         * @param niveauRef Le niveau de référence
+         * @return L'UnitEnum ou l'UnitEnum par défaut du nutriment si non trouvée
+         */
+        fun obtenirUnitEnumNutriment(nutrient: Nutrient, niveauRef: Reflevel): UnitEnum {
+                return if (contientNutriment(nutrient, niveauRef)) {
+                        obtenirMap(niveauRef)[nutrient]?.unite ?: nutrient.ue
+                } else {
+                        nutrient.ue
                 }
         }
 

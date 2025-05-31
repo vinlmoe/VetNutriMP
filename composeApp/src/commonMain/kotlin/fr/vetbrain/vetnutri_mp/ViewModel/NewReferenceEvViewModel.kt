@@ -7,6 +7,7 @@ import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
 import fr.vetbrain.vetnutri_mp.Enumer.Reflevel
 import fr.vetbrain.vetnutri_mp.Enumer.StadePhysio
+import fr.vetbrain.vetnutri_mp.Enumer.UnitEnum
 import fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum
 import fr.vetbrain.vetnutri_mp.Repository.BiblioRefRepository
 import fr.vetbrain.vetnutri_mp.Repository.DatabaseReferenceEvRepository
@@ -259,26 +260,35 @@ class NewReferenceEvViewModel(
     }
 
     /**
-     * Met à jour la valeur d'un nutriment pour un niveau de référence spécifique.
+     * Met à jour la valeur d'un nutriment dans la référence
      *
      * @param nutrient Le nutriment à mettre à jour
      * @param value La valeur à définir
      * @param level Le niveau de référence (MIN, MAX, OPTIMIN, OPTIMAX)
      * @param unit L'unité de la valeur
      * @param biblioRef La référence bibliographique associée
+     * @param unitEnum L'unité physique personnalisée (optionnel)
      */
     fun updateNutrientValue(
             nutrient: Nutrient,
             value: Float,
             level: Reflevel,
             unit: UnitReqEnum,
-            biblioRef: BiblioRef
+            biblioRef: BiblioRef,
+            unitEnum: UnitEnum? = null
     ) {
         val reference = _currentReference.value
 
         if (value >= 0) {
-            // Définir la valeur du nutriment
-            reference.definirNutriment(value, nutrient, level, unit, biblioRef)
+            // Définir la valeur du nutriment avec l'UnitEnum personnalisé ou par défaut
+            reference.definirNutriment(
+                    value,
+                    nutrient,
+                    level,
+                    unit,
+                    biblioRef,
+                    unitEnum ?: nutrient.ue
+            )
         } else {
             // Supprimer le nutriment si la valeur est négative
             reference.supprimerNutriment(nutrient, level)
@@ -286,6 +296,20 @@ class NewReferenceEvViewModel(
 
         // Mettre à jour la référence
         _currentReference.value = reference.copy()
+
+        // Forcer la recomposition en créant une nouvelle instance
+        updateReferenceStateFlow()
+    }
+
+    /** Force la mise à jour du StateFlow pour déclencher la recomposition */
+    private fun updateReferenceStateFlow() {
+        val currentRef = _currentReference.value
+        _currentReference.value =
+                currentRef.copy(
+                        // On force une mise à jour en utilisant copy() qui crée une nouvelle
+                        // instance
+                        uuid = currentRef.uuid
+                )
     }
 
     /** Sauvegarde la référence dans le repository */

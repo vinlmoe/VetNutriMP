@@ -15,10 +15,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
 import androidx.compose.material.Button
 import androidx.compose.material.ButtonDefaults
@@ -57,6 +55,7 @@ import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
 import fr.vetbrain.vetnutri_mp.Enumer.StadePhysio
+import fr.vetbrain.vetnutri_mp.Enumer.UnitEnum
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.NewReferenceEvViewModel
 import kotlinx.coroutines.delay
@@ -360,8 +359,6 @@ fun ReferenceEvNutrientsTab(viewModel: NewReferenceEvViewModel, currentReference
                 // En-tête avec sélection du type de nutriment
                 Card(modifier = Modifier.fillMaxWidth(), elevation = 4.dp) {
                         Column(modifier = Modifier.padding(16.dp)) {
-                               
-
                                 Spacer(modifier = Modifier.height(8.dp))
 
                                 // Liste des types de nutriments disponibles
@@ -501,6 +498,10 @@ fun ReferenceEvNutrientsTab(viewModel: NewReferenceEvViewModel, currentReference
                                         unitMax,
                                         unitOptMin,
                                         unitOptMax,
+                                        unitEnumMin,
+                                        unitEnumMax,
+                                        unitEnumOptMin,
+                                        unitEnumOptMax,
                                         biblioMin,
                                         biblioMax,
                                         biblioOptMin,
@@ -515,7 +516,8 @@ fun ReferenceEvNutrientsTab(viewModel: NewReferenceEvViewModel, currentReference
                                                                 fr.vetbrain.vetnutri_mp.Enumer
                                                                         .Reflevel.MIN,
                                                         unit = unitMin,
-                                                        biblioRef = biblioMin
+                                                        biblioRef = biblioMin,
+                                                        unitEnum = unitEnumMin
                                                 )
                                         }
 
@@ -527,7 +529,8 @@ fun ReferenceEvNutrientsTab(viewModel: NewReferenceEvViewModel, currentReference
                                                                 fr.vetbrain.vetnutri_mp.Enumer
                                                                         .Reflevel.MAX,
                                                         unit = unitMax,
-                                                        biblioRef = biblioMax
+                                                        biblioRef = biblioMax,
+                                                        unitEnum = unitEnumMax
                                                 )
                                         }
 
@@ -539,7 +542,8 @@ fun ReferenceEvNutrientsTab(viewModel: NewReferenceEvViewModel, currentReference
                                                                 fr.vetbrain.vetnutri_mp.Enumer
                                                                         .Reflevel.OPTIMIN,
                                                         unit = unitOptMin,
-                                                        biblioRef = biblioOptMin
+                                                        biblioRef = biblioOptMin,
+                                                        unitEnum = unitEnumOptMin
                                                 )
                                         }
 
@@ -551,9 +555,15 @@ fun ReferenceEvNutrientsTab(viewModel: NewReferenceEvViewModel, currentReference
                                                                 fr.vetbrain.vetnutri_mp.Enumer
                                                                         .Reflevel.OPTIMAX,
                                                         unit = unitOptMax,
-                                                        biblioRef = biblioOptMax
+                                                        biblioRef = biblioOptMax,
+                                                        unitEnum = unitEnumOptMax
                                                 )
                                         }
+
+                                        // Les UnitEnum sont maintenant sauvegardés avec les valeurs
+                                        println(
+                                                "UnitEnum sauvegardés - Min: ${unitEnumMin.displayName}, Max: ${unitEnumMax.displayName}, OptMin: ${unitEnumOptMin.displayName}, OptMax: ${unitEnumOptMax.displayName}"
+                                        )
 
                                         selectedNutrient = null
                                 }
@@ -621,7 +631,6 @@ fun ReferenceEvEquationsTab(viewModel: NewReferenceEvViewModel) {
                 modifier = Modifier.fillMaxSize().padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-               
 
                 // Équation Poids corporel (BW)
                 Card(modifier = Modifier.fillMaxWidth(), elevation = 4.dp) {
@@ -850,7 +859,7 @@ fun ReferenceEvEquationsTab(viewModel: NewReferenceEvViewModel) {
                 }
 
                 // Bouton de sauvegarde des équations
-              
+
         }
 }
 
@@ -877,12 +886,10 @@ fun ReferenceEvCoefficientsTab(viewModel: NewReferenceEvViewModel, currentRefere
                 modifier = Modifier.fillMaxSize().padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-               
 
                 // Sélection du groupe de coefficients
                 Card(modifier = Modifier.fillMaxWidth(), elevation = 4.dp) {
                         Column(modifier = Modifier.padding(16.dp)) {
-                             
                                 Spacer(modifier = Modifier.height(8.dp))
 
                                 TabRow(
@@ -911,8 +918,6 @@ fun ReferenceEvCoefficientsTab(viewModel: NewReferenceEvViewModel, currentRefere
                                 showEditCoefficientDialog = true
                         }
                 )
-
-               
 
                 // Boîte de dialogue pour ajouter un coefficient
                 if (showAddCoefficientDialog) {
@@ -1091,6 +1096,36 @@ fun <T : Nutrient> NutrientCard(
                         )
                 else null
 
+        // Récupérer les UnitEnum si elles existent
+        val minUnitEnum =
+                if (hasMin)
+                        currentReference.obtenirUnitEnumNutriment(
+                                nutrient,
+                                fr.vetbrain.vetnutri_mp.Enumer.Reflevel.MIN
+                        )
+                else null
+        val maxUnitEnum =
+                if (hasMax)
+                        currentReference.obtenirUnitEnumNutriment(
+                                nutrient,
+                                fr.vetbrain.vetnutri_mp.Enumer.Reflevel.MAX
+                        )
+                else null
+        val optMinUnitEnum =
+                if (hasOptMin)
+                        currentReference.obtenirUnitEnumNutriment(
+                                nutrient,
+                                fr.vetbrain.vetnutri_mp.Enumer.Reflevel.OPTIMIN
+                        )
+                else null
+        val optMaxUnitEnum =
+                if (hasOptMax)
+                        currentReference.obtenirUnitEnumNutriment(
+                                nutrient,
+                                fr.vetbrain.vetnutri_mp.Enumer.Reflevel.OPTIMAX
+                        )
+                else null
+
         // Récupérer les bibliographies si elles existent
         val minBiblio =
                 if (hasMin)
@@ -1155,6 +1190,7 @@ fun <T : Nutrient> NutrientCard(
                                                         label = "Minimum",
                                                         value = minValue!!,
                                                         unit = minUnit?.label ?: "",
+                                                        unitEnum = minUnitEnum?.displayName ?: "",
                                                         biblio = minBiblio?.toString() ?: "",
                                                         color = MaterialTheme.colors.primary
                                                 )
@@ -1164,6 +1200,8 @@ fun <T : Nutrient> NutrientCard(
                                                         label = "Optimum Min",
                                                         value = optMinValue!!,
                                                         unit = optMinUnit?.label ?: "",
+                                                        unitEnum = optMinUnitEnum?.displayName
+                                                                        ?: "",
                                                         biblio = optMinBiblio?.toString() ?: "",
                                                         color = MaterialTheme.colors.primary
                                                 )
@@ -1173,6 +1211,8 @@ fun <T : Nutrient> NutrientCard(
                                                         label = "Optimum Max",
                                                         value = optMaxValue!!,
                                                         unit = optMaxUnit?.label ?: "",
+                                                        unitEnum = optMaxUnitEnum?.displayName
+                                                                        ?: "",
                                                         biblio = optMaxBiblio?.toString() ?: "",
                                                         color = MaterialTheme.colors.secondary
                                                 )
@@ -1182,6 +1222,7 @@ fun <T : Nutrient> NutrientCard(
                                                         label = "Maximum",
                                                         value = maxValue!!,
                                                         unit = maxUnit?.label ?: "",
+                                                        unitEnum = maxUnitEnum?.displayName ?: "",
                                                         biblio = maxBiblio?.toString() ?: "",
                                                         color = MaterialTheme.colors.secondary
                                                 )
@@ -1210,7 +1251,14 @@ fun <T : Nutrient> NutrientCard(
 
 /** Ligne affichant une valeur nutritionnelle avec son unité et sa référence bibliographique */
 @Composable
-fun NutrientValueRow(label: String, value: Float, unit: String, biblio: String, color: Color) {
+fun NutrientValueRow(
+        label: String,
+        value: Float,
+        unit: String,
+        unitEnum: String,
+        biblio: String,
+        color: Color
+) {
         Row(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -1224,9 +1272,9 @@ fun NutrientValueRow(label: String, value: Float, unit: String, biblio: String, 
                         color = color
                 )
 
-                // Valeur avec unité
+                // Valeur avec unité physique et unité de besoin
                 Text(
-                        text = "$value $unit",
+                        text = "$value $unitEnum $unit",
                         style = MaterialTheme.typography.body2,
                         fontWeight = FontWeight.Bold
                 )
@@ -1273,6 +1321,10 @@ fun NutrientEditDialog(
                         unitMax: fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum,
                         unitOptMin: fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum,
                         unitOptMax: fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum,
+                        unitEnumMin: UnitEnum,
+                        unitEnumMax: UnitEnum,
+                        unitEnumOptMin: UnitEnum,
+                        unitEnumOptMax: UnitEnum,
                         biblioMin: BiblioRef,
                         biblioMax: BiblioRef,
                         biblioOptMin: BiblioRef,
@@ -1344,7 +1396,7 @@ fun NutrientEditDialog(
                 )
         }
 
-        // États pour les unités
+        // États pour les unités UnitReqEnum
         val unitOptions = fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum.values()
 
         var selectedUnitMin by remember {
@@ -1415,6 +1467,16 @@ fun NutrientEditDialog(
                 )
         }
 
+        // États pour les UnitEnum avec filtrage par idFamily
+        val defaultUnitEnum = nutrient.ue
+        val availableUnitEnums =
+                UnitEnum.values().filter { it.getIDFamily() == defaultUnitEnum.getIDFamily() }
+
+        var selectedUnitEnumMin by remember { mutableStateOf(defaultUnitEnum) }
+        var selectedUnitEnumMax by remember { mutableStateOf(defaultUnitEnum) }
+        var selectedUnitEnumOptMin by remember { mutableStateOf(defaultUnitEnum) }
+        var selectedUnitEnumOptMax by remember { mutableStateOf(defaultUnitEnum) }
+
         // États pour les références bibliographiques
         var selectedBiblioMin by remember {
                 mutableStateOf(
@@ -1476,11 +1538,17 @@ fun NutrientEditDialog(
                 )
         }
 
-        // États d'expansion des menus déroulants pour les unités
+        // États d'expansion des menus déroulants pour les unités UnitReqEnum
         var unitMinExpanded by remember { mutableStateOf(false) }
         var unitMaxExpanded by remember { mutableStateOf(false) }
         var unitOptMinExpanded by remember { mutableStateOf(false) }
         var unitOptMaxExpanded by remember { mutableStateOf(false) }
+
+        // États d'expansion des menus déroulants pour les UnitEnum
+        var unitEnumMinExpanded by remember { mutableStateOf(false) }
+        var unitEnumMaxExpanded by remember { mutableStateOf(false) }
+        var unitEnumOptMinExpanded by remember { mutableStateOf(false) }
+        var unitEnumOptMaxExpanded by remember { mutableStateOf(false) }
 
         // États d'expansion des menus déroulants pour les références bibliographiques
         var biblioMinExpanded by remember { mutableStateOf(false) }
@@ -1493,432 +1561,866 @@ fun NutrientEditDialog(
                 title = { Text(text = "Édition de ${getNutrientDisplayNameLocal(nutrient)}") },
                 text = {
                         Column(
-                                modifier = Modifier.verticalScroll(rememberScrollState()),
-                                verticalArrangement = Arrangement.spacedBy(16.dp)
+                                modifier = Modifier.width(600.dp).height(500.dp) // Hauteur fixe
                         ) {
-                                // Minimum
-                                Card(elevation = 2.dp, modifier = Modifier.fillMaxWidth()) {
-                                        Column(modifier = Modifier.padding(12.dp)) {
-                                                Text(
-                                                        "Minimum",
-                                                        style = MaterialTheme.typography.subtitle1,
-                                                        fontWeight = FontWeight.Bold
-                                                )
-                                                Spacer(modifier = Modifier.height(8.dp))
-
-                                                OutlinedTextField(
-                                                        value = minValue,
-                                                        onValueChange = { minValue = it },
-                                                        label = { Text("Valeur") },
-                                                        keyboardOptions =
-                                                                KeyboardOptions(
-                                                                        keyboardType =
-                                                                                KeyboardType.Decimal
-                                                                ),
+                                LazyColumn(
+                                        modifier = Modifier.fillMaxSize().padding(8.dp),
+                                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                                ) {
+                                        // Minimum
+                                        item {
+                                                Card(
+                                                        elevation = 2.dp,
                                                         modifier = Modifier.fillMaxWidth()
-                                                )
-
-                                                Spacer(modifier = Modifier.height(8.dp))
-
-                                                Text(
-                                                        "Unité",
-                                                        style = MaterialTheme.typography.caption
-                                                )
-                                                Box(modifier = Modifier.fillMaxWidth()) {
-                                                        OutlinedButton(
-                                                                onClick = {
-                                                                        unitMinExpanded = true
-                                                                },
-                                                                modifier = Modifier.fillMaxWidth()
-                                                        ) { Text(selectedUnitMin.label) }
-
-                                                        DropdownMenu(
-                                                                expanded = unitMinExpanded,
-                                                                onDismissRequest = {
-                                                                        unitMinExpanded = false
-                                                                },
-                                                                modifier =
-                                                                        Modifier.fillMaxWidth(0.9f)
+                                                ) {
+                                                        Column(
+                                                                modifier = Modifier.padding(16.dp),
+                                                                verticalArrangement =
+                                                                        Arrangement.spacedBy(8.dp)
                                                         ) {
-                                                                unitOptions.forEach { unit ->
-                                                                        DropdownMenuItem(
+                                                                Text(
+                                                                        "Minimum",
+                                                                        style =
+                                                                                MaterialTheme
+                                                                                        .typography
+                                                                                        .subtitle1,
+                                                                        fontWeight = FontWeight.Bold
+                                                                )
+
+                                                                OutlinedTextField(
+                                                                        value = minValue,
+                                                                        onValueChange = {
+                                                                                minValue = it
+                                                                        },
+                                                                        label = { Text("Valeur") },
+                                                                        keyboardOptions =
+                                                                                KeyboardOptions(
+                                                                                        keyboardType =
+                                                                                                KeyboardType
+                                                                                                        .Decimal
+                                                                                ),
+                                                                        modifier =
+                                                                                Modifier.fillMaxWidth()
+                                                                )
+
+                                                                Text(
+                                                                        "Unité physique (${defaultUnitEnum.getIDFamily()})",
+                                                                        style =
+                                                                                MaterialTheme
+                                                                                        .typography
+                                                                                        .caption
+                                                                )
+                                                                Box(
+                                                                        modifier =
+                                                                                Modifier.fillMaxWidth()
+                                                                ) {
+                                                                        OutlinedButton(
                                                                                 onClick = {
-                                                                                        selectedUnitMin =
-                                                                                                unit
+                                                                                        unitEnumMinExpanded =
+                                                                                                true
+                                                                                },
+                                                                                modifier =
+                                                                                        Modifier.fillMaxWidth()
+                                                                        ) {
+                                                                                Text(
+                                                                                        selectedUnitEnumMin
+                                                                                                .displayName
+                                                                                )
+                                                                        }
+
+                                                                        DropdownMenu(
+                                                                                expanded =
+                                                                                        unitEnumMinExpanded,
+                                                                                onDismissRequest = {
+                                                                                        unitEnumMinExpanded =
+                                                                                                false
+                                                                                },
+                                                                                modifier =
+                                                                                        Modifier.fillMaxWidth(
+                                                                                                0.9f
+                                                                                        )
+                                                                        ) {
+                                                                                availableUnitEnums
+                                                                                        .forEach {
+                                                                                                unitEnum
+                                                                                                ->
+                                                                                                DropdownMenuItem(
+                                                                                                        onClick = {
+                                                                                                                selectedUnitEnumMin =
+                                                                                                                        unitEnum
+                                                                                                                unitEnumMinExpanded =
+                                                                                                                        false
+                                                                                                        }
+                                                                                                ) {
+                                                                                                        Text(
+                                                                                                                unitEnum.displayName
+                                                                                                        )
+                                                                                                }
+                                                                                        }
+                                                                        }
+                                                                }
+
+                                                                Text(
+                                                                        "Unité de besoin",
+                                                                        style =
+                                                                                MaterialTheme
+                                                                                        .typography
+                                                                                        .caption
+                                                                )
+                                                                Box(
+                                                                        modifier =
+                                                                                Modifier.fillMaxWidth()
+                                                                ) {
+                                                                        OutlinedButton(
+                                                                                onClick = {
+                                                                                        unitMinExpanded =
+                                                                                                true
+                                                                                },
+                                                                                modifier =
+                                                                                        Modifier.fillMaxWidth()
+                                                                        ) {
+                                                                                Text(
+                                                                                        selectedUnitMin
+                                                                                                .label
+                                                                                )
+                                                                        }
+
+                                                                        DropdownMenu(
+                                                                                expanded =
+                                                                                        unitMinExpanded,
+                                                                                onDismissRequest = {
                                                                                         unitMinExpanded =
                                                                                                 false
-                                                                                }
-                                                                        ) { Text(unit.label) }
+                                                                                },
+                                                                                modifier =
+                                                                                        Modifier.fillMaxWidth(
+                                                                                                0.9f
+                                                                                        )
+                                                                        ) {
+                                                                                unitOptions
+                                                                                        .forEach {
+                                                                                                unit
+                                                                                                ->
+                                                                                                DropdownMenuItem(
+                                                                                                        onClick = {
+                                                                                                                selectedUnitMin =
+                                                                                                                        unit
+                                                                                                                unitMinExpanded =
+                                                                                                                        false
+                                                                                                        }
+                                                                                                ) {
+                                                                                                        Text(
+                                                                                                                unit.label
+                                                                                                        )
+                                                                                                }
+                                                                                        }
+                                                                        }
                                                                 }
-                                                        }
-                                                }
 
-                                                Spacer(modifier = Modifier.height(8.dp))
-
-                                                Text(
-                                                        "Référence bibliographique",
-                                                        style = MaterialTheme.typography.caption
-                                                )
-                                                Box(modifier = Modifier.fillMaxWidth()) {
-                                                        OutlinedButton(
-                                                                onClick = {
-                                                                        biblioMinExpanded = true
-                                                                },
-                                                                modifier = Modifier.fillMaxWidth()
-                                                        ) {
                                                                 Text(
-                                                                        if (selectedBiblioMin.uuid
-                                                                                        .isNotEmpty()
-                                                                        )
-                                                                                "${selectedBiblioMin.firstAuthor} (${selectedBiblioMin.year})"
-                                                                        else
-                                                                                "Sélectionner une référence"
+                                                                        "Référence bibliographique",
+                                                                        style =
+                                                                                MaterialTheme
+                                                                                        .typography
+                                                                                        .caption
                                                                 )
-                                                        }
-
-                                                        DropdownMenu(
-                                                                expanded = biblioMinExpanded,
-                                                                onDismissRequest = {
-                                                                        biblioMinExpanded = false
-                                                                },
-                                                                modifier =
-                                                                        Modifier.fillMaxWidth(0.9f)
-                                                        ) {
-                                                                biblioRefs.forEach { biblio ->
-                                                                        DropdownMenuItem(
+                                                                Box(
+                                                                        modifier =
+                                                                                Modifier.fillMaxWidth()
+                                                                ) {
+                                                                        OutlinedButton(
                                                                                 onClick = {
-                                                                                        selectedBiblioMin =
-                                                                                                biblio
+                                                                                        biblioMinExpanded =
+                                                                                                true
+                                                                                },
+                                                                                modifier =
+                                                                                        Modifier.fillMaxWidth()
+                                                                        ) {
+                                                                                Text(
+                                                                                        if (selectedBiblioMin
+                                                                                                        .uuid
+                                                                                                        .isNotEmpty()
+                                                                                        )
+                                                                                                "${selectedBiblioMin.firstAuthor} (${selectedBiblioMin.year})"
+                                                                                        else
+                                                                                                "Sélectionner une référence"
+                                                                                )
+                                                                        }
+
+                                                                        DropdownMenu(
+                                                                                expanded =
+                                                                                        biblioMinExpanded,
+                                                                                onDismissRequest = {
                                                                                         biblioMinExpanded =
                                                                                                 false
-                                                                                }
+                                                                                },
+                                                                                modifier =
+                                                                                        Modifier.fillMaxWidth(
+                                                                                                0.9f
+                                                                                        )
                                                                         ) {
-                                                                                Text(
-                                                                                        "${biblio.firstAuthor} (${biblio.year})"
-                                                                                )
+                                                                                biblioRefs
+                                                                                        .forEach {
+                                                                                                biblio
+                                                                                                ->
+                                                                                                DropdownMenuItem(
+                                                                                                        onClick = {
+                                                                                                                selectedBiblioMin =
+                                                                                                                        biblio
+                                                                                                                biblioMinExpanded =
+                                                                                                                        false
+                                                                                                        }
+                                                                                                ) {
+                                                                                                        Text(
+                                                                                                                "${biblio.firstAuthor} (${biblio.year})"
+                                                                                                        )
+                                                                                                }
+                                                                                        }
                                                                         }
                                                                 }
                                                         }
                                                 }
                                         }
-                                }
 
-                                // Optimum Minimum
-                                Card(elevation = 2.dp, modifier = Modifier.fillMaxWidth()) {
-                                        Column(modifier = Modifier.padding(12.dp)) {
-                                                Text(
-                                                        "Optimum Minimum",
-                                                        style = MaterialTheme.typography.subtitle1,
-                                                        fontWeight = FontWeight.Bold
-                                                )
-                                                Spacer(modifier = Modifier.height(8.dp))
-
-                                                OutlinedTextField(
-                                                        value = optMinValue,
-                                                        onValueChange = { optMinValue = it },
-                                                        label = { Text("Valeur") },
-                                                        keyboardOptions =
-                                                                KeyboardOptions(
-                                                                        keyboardType =
-                                                                                KeyboardType.Decimal
-                                                                ),
+                                        // Maximum
+                                        item {
+                                                Card(
+                                                        elevation = 2.dp,
                                                         modifier = Modifier.fillMaxWidth()
-                                                )
-
-                                                Spacer(modifier = Modifier.height(8.dp))
-
-                                                Text(
-                                                        "Unité",
-                                                        style = MaterialTheme.typography.caption
-                                                )
-                                                Box(modifier = Modifier.fillMaxWidth()) {
-                                                        OutlinedButton(
-                                                                onClick = {
-                                                                        unitOptMinExpanded = true
-                                                                },
-                                                                modifier = Modifier.fillMaxWidth()
-                                                        ) { Text(selectedUnitOptMin.label) }
-
-                                                        DropdownMenu(
-                                                                expanded = unitOptMinExpanded,
-                                                                onDismissRequest = {
-                                                                        unitOptMinExpanded = false
-                                                                },
-                                                                modifier =
-                                                                        Modifier.fillMaxWidth(0.9f)
-                                                        ) {
-                                                                unitOptions.forEach { unit ->
-                                                                        DropdownMenuItem(
-                                                                                onClick = {
-                                                                                        selectedUnitOptMin =
-                                                                                                unit
-                                                                                        unitOptMinExpanded =
-                                                                                                false
-                                                                                }
-                                                                        ) { Text(unit.label) }
-                                                                }
-                                                        }
-                                                }
-
-                                                Spacer(modifier = Modifier.height(8.dp))
-
-                                                Text(
-                                                        "Référence bibliographique",
-                                                        style = MaterialTheme.typography.caption
-                                                )
-                                                Box(modifier = Modifier.fillMaxWidth()) {
-                                                        OutlinedButton(
-                                                                onClick = {
-                                                                        biblioOptMinExpanded = true
-                                                                },
-                                                                modifier = Modifier.fillMaxWidth()
+                                                ) {
+                                                        Column(
+                                                                modifier = Modifier.padding(16.dp),
+                                                                verticalArrangement =
+                                                                        Arrangement.spacedBy(8.dp)
                                                         ) {
                                                                 Text(
-                                                                        if (selectedBiblioOptMin
-                                                                                        .uuid
-                                                                                        .isNotEmpty()
-                                                                        )
-                                                                                "${selectedBiblioOptMin.firstAuthor} (${selectedBiblioOptMin.year})"
-                                                                        else
-                                                                                "Sélectionner une référence"
+                                                                        "Maximum",
+                                                                        style =
+                                                                                MaterialTheme
+                                                                                        .typography
+                                                                                        .subtitle1,
+                                                                        fontWeight = FontWeight.Bold
                                                                 )
-                                                        }
 
-                                                        DropdownMenu(
-                                                                expanded = biblioOptMinExpanded,
-                                                                onDismissRequest = {
-                                                                        biblioOptMinExpanded = false
-                                                                },
-                                                                modifier =
-                                                                        Modifier.fillMaxWidth(0.9f)
-                                                        ) {
-                                                                biblioRefs.forEach { biblio ->
-                                                                        DropdownMenuItem(
-                                                                                onClick = {
-                                                                                        selectedBiblioOptMin =
-                                                                                                biblio
-                                                                                        biblioOptMinExpanded =
-                                                                                                false
-                                                                                }
-                                                                        ) {
-                                                                                Text(
-                                                                                        "${biblio.firstAuthor} (${biblio.year})"
-                                                                                )
-                                                                        }
-                                                                }
-                                                        }
-                                                }
-                                        }
-                                }
+                                                                OutlinedTextField(
+                                                                        value = maxValue,
+                                                                        onValueChange = {
+                                                                                maxValue = it
+                                                                        },
+                                                                        label = { Text("Valeur") },
+                                                                        keyboardOptions =
+                                                                                KeyboardOptions(
+                                                                                        keyboardType =
+                                                                                                KeyboardType
+                                                                                                        .Decimal
+                                                                                ),
+                                                                        modifier =
+                                                                                Modifier.fillMaxWidth()
+                                                                )
 
-                                // Optimum Maximum
-                                Card(elevation = 2.dp, modifier = Modifier.fillMaxWidth()) {
-                                        Column(modifier = Modifier.padding(12.dp)) {
-                                                Text(
-                                                        "Optimum Maximum",
-                                                        style = MaterialTheme.typography.subtitle1,
-                                                        fontWeight = FontWeight.Bold
-                                                )
-                                                Spacer(modifier = Modifier.height(8.dp))
-
-                                                OutlinedTextField(
-                                                        value = optMaxValue,
-                                                        onValueChange = { optMaxValue = it },
-                                                        label = { Text("Valeur") },
-                                                        keyboardOptions =
-                                                                KeyboardOptions(
-                                                                        keyboardType =
-                                                                                KeyboardType.Decimal
-                                                                ),
-                                                        modifier = Modifier.fillMaxWidth()
-                                                )
-
-                                                Spacer(modifier = Modifier.height(8.dp))
-
-                                                Text(
-                                                        "Unité",
-                                                        style = MaterialTheme.typography.caption
-                                                )
-                                                Box(modifier = Modifier.fillMaxWidth()) {
-                                                        OutlinedButton(
-                                                                onClick = {
-                                                                        unitOptMaxExpanded = true
-                                                                },
-                                                                modifier = Modifier.fillMaxWidth()
-                                                        ) { Text(selectedUnitOptMax.label) }
-
-                                                        DropdownMenu(
-                                                                expanded = unitOptMaxExpanded,
-                                                                onDismissRequest = {
-                                                                        unitOptMaxExpanded = false
-                                                                },
-                                                                modifier =
-                                                                        Modifier.fillMaxWidth(0.9f)
-                                                        ) {
-                                                                unitOptions.forEach { unit ->
-                                                                        DropdownMenuItem(
-                                                                                onClick = {
-                                                                                        selectedUnitOptMax =
-                                                                                                unit
-                                                                                        unitOptMaxExpanded =
-                                                                                                false
-                                                                                }
-                                                                        ) { Text(unit.label) }
-                                                                }
-                                                        }
-                                                }
-
-                                                Spacer(modifier = Modifier.height(8.dp))
-
-                                                Text(
-                                                        "Référence bibliographique",
-                                                        style = MaterialTheme.typography.caption
-                                                )
-                                                Box(modifier = Modifier.fillMaxWidth()) {
-                                                        OutlinedButton(
-                                                                onClick = {
-                                                                        biblioOptMaxExpanded = true
-                                                                },
-                                                                modifier = Modifier.fillMaxWidth()
-                                                        ) {
                                                                 Text(
-                                                                        if (selectedBiblioOptMax
-                                                                                        .uuid
-                                                                                        .isNotEmpty()
-                                                                        )
-                                                                                "${selectedBiblioOptMax.firstAuthor} (${selectedBiblioOptMax.year})"
-                                                                        else
-                                                                                "Sélectionner une référence"
+                                                                        "Unité physique (${defaultUnitEnum.getIDFamily()})",
+                                                                        style =
+                                                                                MaterialTheme
+                                                                                        .typography
+                                                                                        .caption
                                                                 )
-                                                        }
-
-                                                        DropdownMenu(
-                                                                expanded = biblioOptMaxExpanded,
-                                                                onDismissRequest = {
-                                                                        biblioOptMaxExpanded = false
-                                                                },
-                                                                modifier =
-                                                                        Modifier.fillMaxWidth(0.9f)
-                                                        ) {
-                                                                biblioRefs.forEach { biblio ->
-                                                                        DropdownMenuItem(
+                                                                Box(
+                                                                        modifier =
+                                                                                Modifier.fillMaxWidth()
+                                                                ) {
+                                                                        OutlinedButton(
                                                                                 onClick = {
-                                                                                        selectedBiblioOptMax =
-                                                                                                biblio
-                                                                                        biblioOptMaxExpanded =
-                                                                                                false
-                                                                                }
+                                                                                        unitEnumMaxExpanded =
+                                                                                                true
+                                                                                },
+                                                                                modifier =
+                                                                                        Modifier.fillMaxWidth()
                                                                         ) {
                                                                                 Text(
-                                                                                        "${biblio.firstAuthor} (${biblio.year})"
+                                                                                        selectedUnitEnumMax
+                                                                                                .displayName
                                                                                 )
                                                                         }
+
+                                                                        DropdownMenu(
+                                                                                expanded =
+                                                                                        unitEnumMaxExpanded,
+                                                                                onDismissRequest = {
+                                                                                        unitEnumMaxExpanded =
+                                                                                                false
+                                                                                },
+                                                                                modifier =
+                                                                                        Modifier.fillMaxWidth(
+                                                                                                0.9f
+                                                                                        )
+                                                                        ) {
+                                                                                availableUnitEnums
+                                                                                        .forEach {
+                                                                                                unitEnum
+                                                                                                ->
+                                                                                                DropdownMenuItem(
+                                                                                                        onClick = {
+                                                                                                                selectedUnitEnumMax =
+                                                                                                                        unitEnum
+                                                                                                                unitEnumMaxExpanded =
+                                                                                                                        false
+                                                                                                        }
+                                                                                                ) {
+                                                                                                        Text(
+                                                                                                                unitEnum.displayName
+                                                                                                        )
+                                                                                                }
+                                                                                        }
+                                                                        }
                                                                 }
-                                                        }
-                                                }
-                                        }
-                                }
 
-                                // Maximum
-                                Card(elevation = 2.dp, modifier = Modifier.fillMaxWidth()) {
-                                        Column(modifier = Modifier.padding(12.dp)) {
-                                                Text(
-                                                        "Maximum",
-                                                        style = MaterialTheme.typography.subtitle1,
-                                                        fontWeight = FontWeight.Bold
-                                                )
-                                                Spacer(modifier = Modifier.height(8.dp))
-
-                                                OutlinedTextField(
-                                                        value = maxValue,
-                                                        onValueChange = { maxValue = it },
-                                                        label = { Text("Valeur") },
-                                                        keyboardOptions =
-                                                                KeyboardOptions(
-                                                                        keyboardType =
-                                                                                KeyboardType.Decimal
-                                                                ),
-                                                        modifier = Modifier.fillMaxWidth()
-                                                )
-
-                                                Spacer(modifier = Modifier.height(8.dp))
-
-                                                Text(
-                                                        "Unité",
-                                                        style = MaterialTheme.typography.caption
-                                                )
-                                                Box(modifier = Modifier.fillMaxWidth()) {
-                                                        OutlinedButton(
-                                                                onClick = {
-                                                                        unitMaxExpanded = true
-                                                                },
-                                                                modifier = Modifier.fillMaxWidth()
-                                                        ) { Text(selectedUnitMax.label) }
-
-                                                        DropdownMenu(
-                                                                expanded = unitMaxExpanded,
-                                                                onDismissRequest = {
-                                                                        unitMaxExpanded = false
-                                                                },
-                                                                modifier =
-                                                                        Modifier.fillMaxWidth(0.9f)
-                                                        ) {
-                                                                unitOptions.forEach { unit ->
-                                                                        DropdownMenuItem(
+                                                                Text(
+                                                                        "Unité de besoin",
+                                                                        style =
+                                                                                MaterialTheme
+                                                                                        .typography
+                                                                                        .caption
+                                                                )
+                                                                Box(
+                                                                        modifier =
+                                                                                Modifier.fillMaxWidth()
+                                                                ) {
+                                                                        OutlinedButton(
                                                                                 onClick = {
-                                                                                        selectedUnitMax =
-                                                                                                unit
+                                                                                        unitMaxExpanded =
+                                                                                                true
+                                                                                },
+                                                                                modifier =
+                                                                                        Modifier.fillMaxWidth()
+                                                                        ) {
+                                                                                Text(
+                                                                                        selectedUnitMax
+                                                                                                .label
+                                                                                )
+                                                                        }
+
+                                                                        DropdownMenu(
+                                                                                expanded =
+                                                                                        unitMaxExpanded,
+                                                                                onDismissRequest = {
                                                                                         unitMaxExpanded =
                                                                                                 false
-                                                                                }
-                                                                        ) { Text(unit.label) }
+                                                                                },
+                                                                                modifier =
+                                                                                        Modifier.fillMaxWidth(
+                                                                                                0.9f
+                                                                                        )
+                                                                        ) {
+                                                                                unitOptions
+                                                                                        .forEach {
+                                                                                                unit
+                                                                                                ->
+                                                                                                DropdownMenuItem(
+                                                                                                        onClick = {
+                                                                                                                selectedUnitMax =
+                                                                                                                        unit
+                                                                                                                unitMaxExpanded =
+                                                                                                                        false
+                                                                                                        }
+                                                                                                ) {
+                                                                                                        Text(
+                                                                                                                unit.label
+                                                                                                        )
+                                                                                                }
+                                                                                        }
+                                                                        }
+                                                                }
+
+                                                                Text(
+                                                                        "Référence bibliographique",
+                                                                        style =
+                                                                                MaterialTheme
+                                                                                        .typography
+                                                                                        .caption
+                                                                )
+                                                                Box(
+                                                                        modifier =
+                                                                                Modifier.fillMaxWidth()
+                                                                ) {
+                                                                        OutlinedButton(
+                                                                                onClick = {
+                                                                                        biblioMaxExpanded =
+                                                                                                true
+                                                                                },
+                                                                                modifier =
+                                                                                        Modifier.fillMaxWidth()
+                                                                        ) {
+                                                                                Text(
+                                                                                        if (selectedBiblioMax
+                                                                                                        .uuid
+                                                                                                        .isNotEmpty()
+                                                                                        )
+                                                                                                "${selectedBiblioMax.firstAuthor} (${selectedBiblioMax.year})"
+                                                                                        else
+                                                                                                "Sélectionner une référence"
+                                                                                )
+                                                                        }
+
+                                                                        DropdownMenu(
+                                                                                expanded =
+                                                                                        biblioMaxExpanded,
+                                                                                onDismissRequest = {
+                                                                                        biblioMaxExpanded =
+                                                                                                false
+                                                                                },
+                                                                                modifier =
+                                                                                        Modifier.fillMaxWidth(
+                                                                                                0.9f
+                                                                                        )
+                                                                        ) {
+                                                                                biblioRefs
+                                                                                        .forEach {
+                                                                                                biblio
+                                                                                                ->
+                                                                                                DropdownMenuItem(
+                                                                                                        onClick = {
+                                                                                                                selectedBiblioMax =
+                                                                                                                        biblio
+                                                                                                                biblioMaxExpanded =
+                                                                                                                        false
+                                                                                                        }
+                                                                                                ) {
+                                                                                                        Text(
+                                                                                                                "${biblio.firstAuthor} (${biblio.year})"
+                                                                                                        )
+                                                                                                }
+                                                                                        }
+                                                                        }
                                                                 }
                                                         }
                                                 }
+                                        }
 
-                                                Spacer(modifier = Modifier.height(8.dp))
-
-                                                Text(
-                                                        "Référence bibliographique",
-                                                        style = MaterialTheme.typography.caption
-                                                )
-                                                Box(modifier = Modifier.fillMaxWidth()) {
-                                                        OutlinedButton(
-                                                                onClick = {
-                                                                        biblioMaxExpanded = true
-                                                                },
-                                                                modifier = Modifier.fillMaxWidth()
+                                        // Optimum Minimum
+                                        item {
+                                                Card(
+                                                        elevation = 2.dp,
+                                                        modifier = Modifier.fillMaxWidth()
+                                                ) {
+                                                        Column(
+                                                                modifier = Modifier.padding(16.dp),
+                                                                verticalArrangement =
+                                                                        Arrangement.spacedBy(8.dp)
                                                         ) {
                                                                 Text(
-                                                                        if (selectedBiblioMax.uuid
-                                                                                        .isNotEmpty()
-                                                                        )
-                                                                                "${selectedBiblioMax.firstAuthor} (${selectedBiblioMax.year})"
-                                                                        else
-                                                                                "Sélectionner une référence"
+                                                                        "Optimum Minimum",
+                                                                        style =
+                                                                                MaterialTheme
+                                                                                        .typography
+                                                                                        .subtitle1,
+                                                                        fontWeight = FontWeight.Bold
                                                                 )
-                                                        }
 
-                                                        DropdownMenu(
-                                                                expanded = biblioMaxExpanded,
-                                                                onDismissRequest = {
-                                                                        biblioMaxExpanded = false
-                                                                },
-                                                                modifier =
-                                                                        Modifier.fillMaxWidth(0.9f)
-                                                        ) {
-                                                                biblioRefs.forEach { biblio ->
-                                                                        DropdownMenuItem(
+                                                                OutlinedTextField(
+                                                                        value = optMinValue,
+                                                                        onValueChange = {
+                                                                                optMinValue = it
+                                                                        },
+                                                                        label = { Text("Valeur") },
+                                                                        keyboardOptions =
+                                                                                KeyboardOptions(
+                                                                                        keyboardType =
+                                                                                                KeyboardType
+                                                                                                        .Decimal
+                                                                                ),
+                                                                        modifier =
+                                                                                Modifier.fillMaxWidth()
+                                                                )
+
+                                                                Text(
+                                                                        "Unité physique (${defaultUnitEnum.getIDFamily()})",
+                                                                        style =
+                                                                                MaterialTheme
+                                                                                        .typography
+                                                                                        .caption
+                                                                )
+                                                                Box(
+                                                                        modifier =
+                                                                                Modifier.fillMaxWidth()
+                                                                ) {
+                                                                        OutlinedButton(
                                                                                 onClick = {
-                                                                                        selectedBiblioMax =
-                                                                                                biblio
-                                                                                        biblioMaxExpanded =
-                                                                                                false
-                                                                                }
+                                                                                        unitEnumOptMinExpanded =
+                                                                                                true
+                                                                                },
+                                                                                modifier =
+                                                                                        Modifier.fillMaxWidth()
                                                                         ) {
                                                                                 Text(
-                                                                                        "${biblio.firstAuthor} (${biblio.year})"
+                                                                                        selectedUnitEnumOptMin
+                                                                                                .displayName
                                                                                 )
+                                                                        }
+
+                                                                        DropdownMenu(
+                                                                                expanded =
+                                                                                        unitEnumOptMinExpanded,
+                                                                                onDismissRequest = {
+                                                                                        unitEnumOptMinExpanded =
+                                                                                                false
+                                                                                },
+                                                                                modifier =
+                                                                                        Modifier.fillMaxWidth(
+                                                                                                0.9f
+                                                                                        )
+                                                                        ) {
+                                                                                availableUnitEnums
+                                                                                        .forEach {
+                                                                                                unitEnum
+                                                                                                ->
+                                                                                                DropdownMenuItem(
+                                                                                                        onClick = {
+                                                                                                                selectedUnitEnumOptMin =
+                                                                                                                        unitEnum
+                                                                                                                unitEnumOptMinExpanded =
+                                                                                                                        false
+                                                                                                        }
+                                                                                                ) {
+                                                                                                        Text(
+                                                                                                                unitEnum.displayName
+                                                                                                        )
+                                                                                                }
+                                                                                        }
+                                                                        }
+                                                                }
+
+                                                                Text(
+                                                                        "Unité de besoin",
+                                                                        style =
+                                                                                MaterialTheme
+                                                                                        .typography
+                                                                                        .caption
+                                                                )
+                                                                Box(
+                                                                        modifier =
+                                                                                Modifier.fillMaxWidth()
+                                                                ) {
+                                                                        OutlinedButton(
+                                                                                onClick = {
+                                                                                        unitOptMinExpanded =
+                                                                                                true
+                                                                                },
+                                                                                modifier =
+                                                                                        Modifier.fillMaxWidth()
+                                                                        ) {
+                                                                                Text(
+                                                                                        selectedUnitOptMin
+                                                                                                .label
+                                                                                )
+                                                                        }
+
+                                                                        DropdownMenu(
+                                                                                expanded =
+                                                                                        unitOptMinExpanded,
+                                                                                onDismissRequest = {
+                                                                                        unitOptMinExpanded =
+                                                                                                false
+                                                                                },
+                                                                                modifier =
+                                                                                        Modifier.fillMaxWidth(
+                                                                                                0.9f
+                                                                                        )
+                                                                        ) {
+                                                                                unitOptions
+                                                                                        .forEach {
+                                                                                                unit
+                                                                                                ->
+                                                                                                DropdownMenuItem(
+                                                                                                        onClick = {
+                                                                                                                selectedUnitOptMin =
+                                                                                                                        unit
+                                                                                                                unitOptMinExpanded =
+                                                                                                                        false
+                                                                                                        }
+                                                                                                ) {
+                                                                                                        Text(
+                                                                                                                unit.label
+                                                                                                        )
+                                                                                                }
+                                                                                        }
+                                                                        }
+                                                                }
+
+                                                                Text(
+                                                                        "Référence bibliographique",
+                                                                        style =
+                                                                                MaterialTheme
+                                                                                        .typography
+                                                                                        .caption
+                                                                )
+                                                                Box(
+                                                                        modifier =
+                                                                                Modifier.fillMaxWidth()
+                                                                ) {
+                                                                        OutlinedButton(
+                                                                                onClick = {
+                                                                                        biblioOptMinExpanded =
+                                                                                                true
+                                                                                },
+                                                                                modifier =
+                                                                                        Modifier.fillMaxWidth()
+                                                                        ) {
+                                                                                Text(
+                                                                                        if (selectedBiblioOptMin
+                                                                                                        .uuid
+                                                                                                        .isNotEmpty()
+                                                                                        )
+                                                                                                "${selectedBiblioOptMin.firstAuthor} (${selectedBiblioOptMin.year})"
+                                                                                        else
+                                                                                                "Sélectionner une référence"
+                                                                                )
+                                                                        }
+
+                                                                        DropdownMenu(
+                                                                                expanded =
+                                                                                        biblioOptMinExpanded,
+                                                                                onDismissRequest = {
+                                                                                        biblioOptMinExpanded =
+                                                                                                false
+                                                                                },
+                                                                                modifier =
+                                                                                        Modifier.fillMaxWidth(
+                                                                                                0.9f
+                                                                                        )
+                                                                        ) {
+                                                                                biblioRefs
+                                                                                        .forEach {
+                                                                                                biblio
+                                                                                                ->
+                                                                                                DropdownMenuItem(
+                                                                                                        onClick = {
+                                                                                                                selectedBiblioOptMin =
+                                                                                                                        biblio
+                                                                                                                biblioOptMinExpanded =
+                                                                                                                        false
+                                                                                                        }
+                                                                                                ) {
+                                                                                                        Text(
+                                                                                                                "${biblio.firstAuthor} (${biblio.year})"
+                                                                                                        )
+                                                                                                }
+                                                                                        }
+                                                                        }
+                                                                }
+                                                        }
+                                                }
+                                        }
+
+                                        // Optimum Maximum
+                                        item {
+                                                Card(
+                                                        elevation = 2.dp,
+                                                        modifier = Modifier.fillMaxWidth()
+                                                ) {
+                                                        Column(
+                                                                modifier = Modifier.padding(16.dp),
+                                                                verticalArrangement =
+                                                                        Arrangement.spacedBy(8.dp)
+                                                        ) {
+                                                                Text(
+                                                                        "Optimum Maximum",
+                                                                        style =
+                                                                                MaterialTheme
+                                                                                        .typography
+                                                                                        .subtitle1,
+                                                                        fontWeight = FontWeight.Bold
+                                                                )
+
+                                                                OutlinedTextField(
+                                                                        value = optMaxValue,
+                                                                        onValueChange = {
+                                                                                optMaxValue = it
+                                                                        },
+                                                                        label = { Text("Valeur") },
+                                                                        keyboardOptions =
+                                                                                KeyboardOptions(
+                                                                                        keyboardType =
+                                                                                                KeyboardType
+                                                                                                        .Decimal
+                                                                                ),
+                                                                        modifier =
+                                                                                Modifier.fillMaxWidth()
+                                                                )
+
+                                                                Text(
+                                                                        "Unité physique (${defaultUnitEnum.getIDFamily()})",
+                                                                        style =
+                                                                                MaterialTheme
+                                                                                        .typography
+                                                                                        .caption
+                                                                )
+                                                                Box(
+                                                                        modifier =
+                                                                                Modifier.fillMaxWidth()
+                                                                ) {
+                                                                        OutlinedButton(
+                                                                                onClick = {
+                                                                                        unitEnumOptMaxExpanded =
+                                                                                                true
+                                                                                },
+                                                                                modifier =
+                                                                                        Modifier.fillMaxWidth()
+                                                                        ) {
+                                                                                Text(
+                                                                                        selectedUnitEnumOptMax
+                                                                                                .displayName
+                                                                                )
+                                                                        }
+
+                                                                        DropdownMenu(
+                                                                                expanded =
+                                                                                        unitEnumOptMaxExpanded,
+                                                                                onDismissRequest = {
+                                                                                        unitEnumOptMaxExpanded =
+                                                                                                false
+                                                                                },
+                                                                                modifier =
+                                                                                        Modifier.fillMaxWidth(
+                                                                                                0.9f
+                                                                                        )
+                                                                        ) {
+                                                                                availableUnitEnums
+                                                                                        .forEach {
+                                                                                                unitEnum
+                                                                                                ->
+                                                                                                DropdownMenuItem(
+                                                                                                        onClick = {
+                                                                                                                selectedUnitEnumOptMax =
+                                                                                                                        unitEnum
+                                                                                                                unitEnumOptMaxExpanded =
+                                                                                                                        false
+                                                                                                        }
+                                                                                                ) {
+                                                                                                        Text(
+                                                                                                                unitEnum.displayName
+                                                                                                        )
+                                                                                                }
+                                                                                        }
+                                                                        }
+                                                                }
+
+                                                                Text(
+                                                                        "Unité de besoin",
+                                                                        style =
+                                                                                MaterialTheme
+                                                                                        .typography
+                                                                                        .caption
+                                                                )
+                                                                Box(
+                                                                        modifier =
+                                                                                Modifier.fillMaxWidth()
+                                                                ) {
+                                                                        OutlinedButton(
+                                                                                onClick = {
+                                                                                        unitOptMaxExpanded =
+                                                                                                true
+                                                                                },
+                                                                                modifier =
+                                                                                        Modifier.fillMaxWidth()
+                                                                        ) {
+                                                                                Text(
+                                                                                        selectedUnitOptMax
+                                                                                                .label
+                                                                                )
+                                                                        }
+
+                                                                        DropdownMenu(
+                                                                                expanded =
+                                                                                        unitOptMaxExpanded,
+                                                                                onDismissRequest = {
+                                                                                        unitOptMaxExpanded =
+                                                                                                false
+                                                                                },
+                                                                                modifier =
+                                                                                        Modifier.fillMaxWidth(
+                                                                                                0.9f
+                                                                                        )
+                                                                        ) {
+                                                                                unitOptions
+                                                                                        .forEach {
+                                                                                                unit
+                                                                                                ->
+                                                                                                DropdownMenuItem(
+                                                                                                        onClick = {
+                                                                                                                selectedUnitOptMax =
+                                                                                                                        unit
+                                                                                                                unitOptMaxExpanded =
+                                                                                                                        false
+                                                                                                        }
+                                                                                                ) {
+                                                                                                        Text(
+                                                                                                                unit.label
+                                                                                                        )
+                                                                                                }
+                                                                                        }
+                                                                        }
+                                                                }
+
+                                                                Text(
+                                                                        "Référence bibliographique",
+                                                                        style =
+                                                                                MaterialTheme
+                                                                                        .typography
+                                                                                        .caption
+                                                                )
+                                                                Box(
+                                                                        modifier =
+                                                                                Modifier.fillMaxWidth()
+                                                                ) {
+                                                                        OutlinedButton(
+                                                                                onClick = {
+                                                                                        biblioOptMaxExpanded =
+                                                                                                true
+                                                                                },
+                                                                                modifier =
+                                                                                        Modifier.fillMaxWidth()
+                                                                        ) {
+                                                                                Text(
+                                                                                        if (selectedBiblioOptMax
+                                                                                                        .uuid
+                                                                                                        .isNotEmpty()
+                                                                                        )
+                                                                                                "${selectedBiblioOptMax.firstAuthor} (${selectedBiblioOptMax.year})"
+                                                                                        else
+                                                                                                "Sélectionner une référence"
+                                                                                )
+                                                                        }
+
+                                                                        DropdownMenu(
+                                                                                expanded =
+                                                                                        biblioOptMaxExpanded,
+                                                                                onDismissRequest = {
+                                                                                        biblioOptMaxExpanded =
+                                                                                                false
+                                                                                },
+                                                                                modifier =
+                                                                                        Modifier.fillMaxWidth(
+                                                                                                0.9f
+                                                                                        )
+                                                                        ) {
+                                                                                biblioRefs
+                                                                                        .forEach {
+                                                                                                biblio
+                                                                                                ->
+                                                                                                DropdownMenuItem(
+                                                                                                        onClick = {
+                                                                                                                selectedBiblioOptMax =
+                                                                                                                        biblio
+                                                                                                                biblioOptMaxExpanded =
+                                                                                                                        false
+                                                                                                        }
+                                                                                                ) {
+                                                                                                        Text(
+                                                                                                                "${biblio.firstAuthor} (${biblio.year})"
+                                                                                                        )
+                                                                                                }
+                                                                                        }
                                                                         }
                                                                 }
                                                         }
@@ -1928,9 +2430,9 @@ fun NutrientEditDialog(
                         }
                 },
                 confirmButton = {
-                        Button(
+                        TextButton(
                                 onClick = {
-                                        // Conversion des valeurs textuelles en float
+                                        // Logique de sauvegarde
                                         val min = minValue.toFloatOrNull() ?: -1f
                                         val max = maxValue.toFloatOrNull() ?: -1f
                                         val optMin = optMinValue.toFloatOrNull() ?: -1f
@@ -1945,23 +2447,19 @@ fun NutrientEditDialog(
                                                 selectedUnitMax,
                                                 selectedUnitOptMin,
                                                 selectedUnitOptMax,
+                                                selectedUnitEnumMin,
+                                                selectedUnitEnumMax,
+                                                selectedUnitEnumOptMin,
+                                                selectedUnitEnumOptMax,
                                                 selectedBiblioMin,
                                                 selectedBiblioMax,
                                                 selectedBiblioOptMin,
                                                 selectedBiblioOptMax
                                         )
                                 }
-                        ) { Text("Enregistrer") }
+                        ) { Text("Sauvegarder") }
                 },
-                dismissButton = {
-                        Button(
-                                onClick = onDismiss,
-                                colors =
-                                        ButtonDefaults.buttonColors(
-                                                backgroundColor = MaterialTheme.colors.surface
-                                        )
-                        ) { Text("Annuler") }
-                }
+                dismissButton = { TextButton(onClick = onDismiss) { Text("Annuler") } }
         )
 }
 

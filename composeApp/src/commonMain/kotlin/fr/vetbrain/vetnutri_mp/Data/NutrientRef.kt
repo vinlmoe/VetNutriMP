@@ -1,6 +1,7 @@
 package fr.vetbrain.vetnutri_mp.Data
 
 import fr.vetbrain.vetnutri_mp.Enumer.MainNutrientEnum
+import fr.vetbrain.vetnutri_mp.Enumer.UnitEnum
 import fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum
 
 /**
@@ -13,6 +14,7 @@ import fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum
  * @property nutrientType Type principal du nutriment (BASE, MACRO, MIN, etc.)
  * @property nutrientCode Code spécifique du nutriment dans son type
  * @property unitReq Unité de mesure pour la valeur du besoin
+ * @property unitEnum Unité physique du nutriment (g, mg, µg, UI, kcal)
  * @property biblioRef Référence bibliographique associée (facultatif)
  */
 data class NutrientRef(
@@ -23,5 +25,6 @@ data class NutrientRef(
         val nutrientType: MainNutrientEnum,
         val nutrientCode: Int = 0,
         val unitReq: UnitReqEnum = UnitReqEnum.PERKG,
+        val unitEnum: UnitEnum = UnitEnum.BUg,
         val biblioRef: BiblioRef? = null
 )

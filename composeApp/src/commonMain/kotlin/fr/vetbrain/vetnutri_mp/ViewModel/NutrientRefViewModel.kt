@@ -4,6 +4,7 @@ import fr.vetbrain.vetnutri_mp.Data.BiblioRef
 import fr.vetbrain.vetnutri_mp.Data.NutrientRef
 import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
 import fr.vetbrain.vetnutri_mp.Enumer.MainNutrientEnum
+import fr.vetbrain.vetnutri_mp.Enumer.UnitEnum
 import fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum
 import fr.vetbrain.vetnutri_mp.Repository.BiblioRefRepository
 import fr.vetbrain.vetnutri_mp.Repository.DatabaseReferenceEvRepository
@@ -198,6 +199,17 @@ class NutrientRefViewModel(
         }
     }
 
+    /** Met à jour l'unité physique d'un nutriment */
+    fun updateNutrientUnitEnum(nutrientId: String, newUnitEnum: UnitEnum) {
+        val currentList = _nutrientRefs.value.toMutableList()
+        val index = currentList.indexOfFirst { it.id == nutrientId }
+        if (index >= 0) {
+            val nutrient = currentList[index]
+            currentList[index] = nutrient.copy(unitEnum = newUnitEnum)
+            _nutrientRefs.value = currentList
+        }
+    }
+
     /** Met à jour la référence bibliographique d'un nutriment */
     fun updateNutrientBiblioRef(nutrientId: String, newBiblioRef: BiblioRef?) {
         val currentList = _nutrientRefs.value.toMutableList()
@@ -327,6 +339,7 @@ class NutrientRefViewModel(
                                     nutrientType = nutrientType,
                                     nutrientCode = index,
                                     unitReq = unit,
+                                    unitEnum = nutrient.ue,
                                     biblioRef = biblio
                             )
                     )
@@ -548,6 +561,7 @@ class NutrientRefViewModel(
                             nutrientType = type,
                             nutrientCode = index,
                             unitReq = unitReq,
+                            unitEnum = UnitEnum.BUg,
                             biblioRef = biblioRef
                     )
             )
