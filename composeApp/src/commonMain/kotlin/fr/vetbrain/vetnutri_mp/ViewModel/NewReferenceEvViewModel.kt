@@ -36,6 +36,10 @@ class NewReferenceEvViewModel(
     private val _currentReference = MutableStateFlow(ReferenceEv())
     val currentReference: StateFlow<ReferenceEv> = _currentReference.asStateFlow()
 
+    // État pour forcer la recomposition
+    private val _forceUpdate = MutableStateFlow(0L)
+    val forceUpdate: StateFlow<Long> = _forceUpdate.asStateFlow()
+
     // État pour les équations disponibles
     private val _availableEquations = MutableStateFlow<List<Equation>>(emptyList())
     val availableEquations: StateFlow<List<Equation>> = _availableEquations.asStateFlow()
@@ -294,22 +298,34 @@ class NewReferenceEvViewModel(
             reference.supprimerNutriment(nutrient, level)
         }
 
-        // Mettre à jour la référence
-        _currentReference.value = reference.copy()
+        // Forcer la recomposition en assignant une nouvelle référence
+        _currentReference.value = reference
 
-        // Forcer la recomposition en créant une nouvelle instance
-        updateReferenceStateFlow()
+        // Déclencher un timestamp de mise à jour forcée
+        _forceUpdate.value = System.currentTimeMillis()
+    }
+
+    /**
+     * Supprime un nutriment à un niveau donné
+     *
+     * @param nutrient Le nutriment à supprimer
+     * @param level Le niveau de référence (MIN, MAX, OPTIMIN, OPTIMAX)
+     */
+    fun removeNutrientValue(nutrient: Nutrient, level: Reflevel) {
+        val reference = _currentReference.value
+        reference.supprimerNutriment(nutrient, level)
+
+        // Forcer la recomposition en assignant une nouvelle référence
+        _currentReference.value = reference
+
+        // Déclencher un timestamp de mise à jour forcée
+        _forceUpdate.value = System.currentTimeMillis()
     }
 
     /** Force la mise à jour du StateFlow pour déclencher la recomposition */
     private fun updateReferenceStateFlow() {
-        val currentRef = _currentReference.value
-        _currentReference.value =
-                currentRef.copy(
-                        // On force une mise à jour en utilisant copy() qui crée une nouvelle
-                        // instance
-                        uuid = currentRef.uuid
-                )
+        // Déclencher un timestamp de mise à jour forcée
+        _forceUpdate.value = System.currentTimeMillis()
     }
 
     /** Sauvegarde la référence dans le repository */
