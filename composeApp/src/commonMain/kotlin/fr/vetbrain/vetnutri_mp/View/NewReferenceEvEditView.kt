@@ -13,8 +13,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.*
@@ -47,6 +52,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Components.TopBarSimple
@@ -839,6 +845,9 @@ fun ReferenceEvEquationsTab(viewModel: NewReferenceEvViewModel) {
  */
 @Composable
 fun ReferenceEvCoefficientsTab(viewModel: NewReferenceEvViewModel, currentReference: ReferenceEv) {
+        // Vérifier si la référence est pour maladie
+        val isForMaladie = currentReference.maladie
+
         // État pour suivre le groupe de coefficients sélectionné
         var selectedGroupIndex by remember { mutableStateOf(0) }
 
@@ -855,84 +864,118 @@ fun ReferenceEvCoefficientsTab(viewModel: NewReferenceEvViewModel, currentRefere
                 verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
 
-                // Sélection du groupe de coefficients
-                Card(modifier = Modifier.fillMaxWidth(), elevation = 4.dp) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                                Spacer(modifier = Modifier.height(8.dp))
+                // Afficher un message d'information si la référence est pour maladie
+                if (isForMaladie) {
+                        Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                elevation = 2.dp,
+                                backgroundColor = MaterialTheme.colors.secondary.copy(alpha = 0.1f)
+                        ) {
+                                Column(modifier = Modifier.padding(16.dp)) {
+                                        Text(
+                                                text = "Référence pour maladie",
+                                                style = MaterialTheme.typography.subtitle1,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colors.secondary
+                                        )
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Text(
+                                                text =
+                                                        "Les coefficients ne sont pas applicables pour les références liées à une maladie.",
+                                                style = MaterialTheme.typography.body2,
+                                                color =
+                                                        MaterialTheme.colors.onSurface.copy(
+                                                                alpha = 0.7f
+                                                        )
+                                        )
+                                }
+                        }
+                } else {
+                        // Afficher les coefficients seulement si ce n'est pas pour maladie
 
-                                TabRow(
-                                        selectedTabIndex = selectedGroupIndex,
-                                        backgroundColor = MaterialTheme.colors.surface,
-                                        contentColor = VetNutriColors.Primary
-                                ) {
-                                        groupNames.forEachIndexed { index, title ->
-                                                Tab(
-                                                        text = { Text(title) },
-                                                        selected = selectedGroupIndex == index,
-                                                        onClick = { selectedGroupIndex = index }
-                                                )
+                        // Sélection du groupe de coefficients
+                        Card(modifier = Modifier.fillMaxWidth(), elevation = 4.dp) {
+                                Column(modifier = Modifier.padding(16.dp)) {
+                                        Spacer(modifier = Modifier.height(8.dp))
+
+                                        TabRow(
+                                                selectedTabIndex = selectedGroupIndex,
+                                                backgroundColor = MaterialTheme.colors.surface,
+                                                contentColor = VetNutriColors.Primary
+                                        ) {
+                                                groupNames.forEachIndexed { index, title ->
+                                                        Tab(
+                                                                text = { Text(title) },
+                                                                selected =
+                                                                        selectedGroupIndex == index,
+                                                                onClick = {
+                                                                        selectedGroupIndex = index
+                                                                }
+                                                        )
+                                                }
                                         }
                                 }
                         }
-                }
 
-                // Gestion du groupe sélectionné
-                CoefficientGroupView(
-                        viewModel = viewModel,
-                        groupIndex = selectedGroupIndex,
-                        onAddCoefficient = { showAddCoefficientDialog = true },
-                        onEditCoefficient = { index ->
-                                editingCoefficientIndex = index
-                                showEditCoefficientDialog = true
-                        }
-                )
-
-                // Boîte de dialogue pour ajouter un coefficient
-                if (showAddCoefficientDialog) {
-                        AddCoefficientDialog(
-                                onDismiss = { showAddCoefficientDialog = false },
-                                onConfirm = { description, coef ->
-                                        viewModel.addCoefficient(
-                                                selectedGroupIndex,
-                                                description,
-                                                coef
-                                        )
-                                        showAddCoefficientDialog = false
+                        // Gestion du groupe sélectionné
+                        CoefficientGroupView(
+                                viewModel = viewModel,
+                                groupIndex = selectedGroupIndex,
+                                onAddCoefficient = { showAddCoefficientDialog = true },
+                                onEditCoefficient = { index ->
+                                        editingCoefficientIndex = index
+                                        showEditCoefficientDialog = true
                                 }
                         )
-                }
 
-                // Boîte de dialogue pour éditer un coefficient
-                if (showEditCoefficientDialog && editingCoefficientIndex >= 0) {
-                        val coefficients = viewModel.getCoefficientGroup(selectedGroupIndex)
-                        if (editingCoefficientIndex < coefficients.size) {
-                                val coefficient = coefficients[editingCoefficientIndex]
-                                EditCoefficientDialog(
-                                        initialDescription = coefficient.description ?: "Normal",
-                                        initialCoef = coefficient.coef ?: 1.0f,
-                                        onDismiss = {
-                                                showEditCoefficientDialog = false
-                                                editingCoefficientIndex = -1
-                                        },
+                        // Boîte de dialogue pour ajouter un coefficient
+                        if (showAddCoefficientDialog) {
+                                AddCoefficientDialog(
+                                        onDismiss = { showAddCoefficientDialog = false },
                                         onConfirm = { description, coef ->
-                                                viewModel.updateCoefficient(
+                                                viewModel.addCoefficient(
                                                         selectedGroupIndex,
-                                                        editingCoefficientIndex,
                                                         description,
                                                         coef
                                                 )
-                                                showEditCoefficientDialog = false
-                                                editingCoefficientIndex = -1
-                                        },
-                                        onDelete = {
-                                                viewModel.removeCoefficient(
-                                                        selectedGroupIndex,
-                                                        editingCoefficientIndex
-                                                )
-                                                showEditCoefficientDialog = false
-                                                editingCoefficientIndex = -1
+                                                showAddCoefficientDialog = false
                                         }
                                 )
+                        }
+
+                        // Boîte de dialogue pour éditer un coefficient
+                        if (showEditCoefficientDialog && editingCoefficientIndex >= 0) {
+                                val coefficients = viewModel.getCoefficientGroup(selectedGroupIndex)
+                                if (editingCoefficientIndex < coefficients.size) {
+                                        val coefficient = coefficients[editingCoefficientIndex]
+                                        EditCoefficientDialog(
+                                                initialDescription = coefficient.description
+                                                                ?: "Normal",
+                                                initialCoef = coefficient.coef ?: 1.0f,
+                                                onDismiss = {
+                                                        showEditCoefficientDialog = false
+                                                        editingCoefficientIndex = -1
+                                                },
+                                                onConfirm = { description, coef ->
+                                                        viewModel.updateCoefficient(
+                                                                selectedGroupIndex,
+                                                                editingCoefficientIndex,
+                                                                description,
+                                                                coef
+                                                        )
+                                                        showEditCoefficientDialog = false
+                                                        editingCoefficientIndex = -1
+                                                },
+                                                onDelete = {
+                                                        viewModel.removeCoefficient(
+                                                                selectedGroupIndex,
+                                                                editingCoefficientIndex
+                                                        )
+                                                        showEditCoefficientDialog = false
+                                                        editingCoefficientIndex = -1
+                                                }
+                                        )
+                                }
                         }
                 }
         }
@@ -947,11 +990,18 @@ fun <T : Nutrient> NutrientListView(
         onNutrientSelected: (Nutrient) -> Unit,
         viewModel: NewReferenceEvViewModel
 ) {
-        LazyColumn(
+        LazyVerticalGrid(
+                columns =
+                        GridCells.Adaptive(
+                                minSize = 280.dp
+                        ), // Adaptation automatique avec largeur minimale de 280dp
                 modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(4.dp)
         ) {
-                items(nutrients) { nutrient ->
+                items(nutrients.size) { index ->
+                        val nutrient = nutrients[index]
                         NutrientCard(
                                 nutrient = nutrient,
                                 currentReference = currentReference,
@@ -1187,7 +1237,12 @@ fun <T : Nutrient> NutrientCard(
                         else null
         }
 
-        Card(modifier = Modifier.fillMaxWidth(), elevation = 2.dp) {
+        Card(
+                modifier = Modifier.fillMaxWidth(),
+                elevation = 4.dp,
+                backgroundColor = MaterialTheme.colors.surface,
+                shape = RoundedCornerShape(12.dp)
+        ) {
                 Column(modifier = Modifier.padding(12.dp)) {
                         // En-tête avec le nom du nutriment et bouton d'édition
                         Row(
@@ -1197,15 +1252,23 @@ fun <T : Nutrient> NutrientCard(
                         ) {
                                 Text(
                                         text = nutrient.label,
-                                        style = MaterialTheme.typography.subtitle1,
-                                        fontWeight = FontWeight.Bold
+                                        style = MaterialTheme.typography.subtitle2,
+                                        fontWeight = FontWeight.Bold,
+                                        color = VetNutriColors.Primary,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.weight(1f)
                                 )
 
-                                IconButton(onClick = { onNutrientSelected(nutrient) }) {
+                                IconButton(
+                                        onClick = { onNutrientSelected(nutrient) },
+                                        modifier = Modifier.size(32.dp)
+                                ) {
                                         Icon(
                                                 Icons.Default.Edit,
                                                 contentDescription = "Éditer",
-                                                tint = VetNutriColors.Primary
+                                                tint = VetNutriColors.Primary,
+                                                modifier = Modifier.size(18.dp)
                                         )
                                 }
                         }
@@ -1217,68 +1280,141 @@ fun <T : Nutrient> NutrientCard(
                                 // Si au moins une valeur est définie
                                 Column(modifier = Modifier.fillMaxWidth()) {
                                         if (hasMin) {
-                                                NutrientValueRow(
-                                                        label = "Minimum",
+                                                CompactNutrientValueRow(
+                                                        label = "Min",
                                                         value = minValue,
                                                         unit = minUnit?.label ?: "",
                                                         unitEnum = minUnitEnum?.displayName ?: "",
-                                                        biblio = minBiblio?.toString() ?: "",
                                                         color = MaterialTheme.colors.primary,
-                                                        shouldShowUnitReq = shouldShowUnitReq
+                                                        shouldShowUnitReq = shouldShowUnitReq,
+                                                        biblio = minBiblio?.toString() ?: ""
                                                 )
                                         }
                                         if (hasOptMin) {
-                                                NutrientValueRow(
-                                                        label = "Optimum Min",
+                                                CompactNutrientValueRow(
+                                                        label = "Opt-",
                                                         value = optMinValue,
                                                         unit = optMinUnit?.label ?: "",
                                                         unitEnum = optMinUnitEnum?.displayName
                                                                         ?: "",
-                                                        biblio = optMinBiblio?.toString() ?: "",
-                                                        color = MaterialTheme.colors.primary,
-                                                        shouldShowUnitReq = shouldShowUnitReq
+                                                        color =
+                                                                Color(
+                                                                        0xFF4CAF50
+                                                                ), // Vert pour optimum,
+                                                        shouldShowUnitReq = shouldShowUnitReq,
+                                                        biblio = optMinBiblio?.toString() ?: ""
                                                 )
                                         }
                                         if (hasOptMax) {
-                                                NutrientValueRow(
-                                                        label = "Optimum Max",
+                                                CompactNutrientValueRow(
+                                                        label = "Opt+",
                                                         value = optMaxValue,
                                                         unit = optMaxUnit?.label ?: "",
                                                         unitEnum = optMaxUnitEnum?.displayName
                                                                         ?: "",
-                                                        biblio = optMaxBiblio?.toString() ?: "",
-                                                        color = MaterialTheme.colors.secondary,
-                                                        shouldShowUnitReq = shouldShowUnitReq
+                                                        color =
+                                                                Color(
+                                                                        0xFF4CAF50
+                                                                ), // Vert pour optimum,
+                                                        shouldShowUnitReq = shouldShowUnitReq,
+                                                        biblio = optMaxBiblio?.toString() ?: ""
                                                 )
                                         }
                                         if (hasMax) {
-                                                NutrientValueRow(
-                                                        label = "Maximum",
+                                                CompactNutrientValueRow(
+                                                        label = "Max",
                                                         value = maxValue,
                                                         unit = maxUnit?.label ?: "",
                                                         unitEnum = maxUnitEnum?.displayName ?: "",
-                                                        biblio = maxBiblio?.toString() ?: "",
                                                         color = MaterialTheme.colors.secondary,
-                                                        shouldShowUnitReq = shouldShowUnitReq
+                                                        shouldShowUnitReq = shouldShowUnitReq,
+                                                        biblio = maxBiblio?.toString() ?: ""
                                                 )
                                         }
                                 }
                         } else {
                                 // Si aucune valeur n'est définie
-                                Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.Center,
-                                        verticalAlignment = Alignment.CenterVertically
+                                Box(
+                                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                                        contentAlignment = Alignment.Center
                                 ) {
                                         Text(
-                                                "Aucune valeur définie",
+                                                "Non défini",
                                                 style = MaterialTheme.typography.caption,
                                                 color =
                                                         MaterialTheme.colors.onSurface.copy(
-                                                                alpha = 0.6f
+                                                                alpha = 0.5f
                                                         )
                                         )
                                 }
+                        }
+                }
+        }
+}
+
+/** Ligne compacte affichant une valeur nutritionnelle pour les cartes */
+@Composable
+fun CompactNutrientValueRow(
+        label: String,
+        value: Float,
+        unit: String,
+        unitEnum: String,
+        biblio: String,
+        color: Color,
+        shouldShowUnitReq: Boolean = true
+) {
+        Column(modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
+                // Première ligne : Label et valeur avec unités
+                Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                ) {
+                        // Étiquette du niveau avec couleur
+                        Text(
+                                text = label,
+                                style = MaterialTheme.typography.caption,
+                                fontWeight = FontWeight.Bold,
+                                color = color,
+                                modifier = Modifier.width(35.dp)
+                        )
+
+                        // Valeur avec unités
+                        val displayText =
+                                if (shouldShowUnitReq) "$value $unitEnum $unit"
+                                else "$value $unitEnum"
+                        Text(
+                                text = displayText,
+                                style = MaterialTheme.typography.caption,
+                                fontWeight = FontWeight.Medium,
+                                textAlign = TextAlign.End,
+                                modifier = Modifier.weight(1f),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                        )
+                }
+
+                // Deuxième ligne : Référence bibliographique (si disponible)
+                if (biblio.isNotEmpty()) {
+                        Row(
+                                modifier = Modifier.fillMaxWidth().padding(top = 1.dp),
+                                horizontalArrangement = Arrangement.End
+                        ) {
+                                Text(
+                                        text = "Réf: $biblio",
+                                        style =
+                                                MaterialTheme.typography.caption.copy(
+                                                        fontSize =
+                                                                MaterialTheme.typography
+                                                                        .caption
+                                                                        .fontSize * 0.85f
+                                                ),
+                                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f),
+                                        modifier = Modifier.fillMaxWidth(),
+                                        textAlign = TextAlign.End,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                )
                         }
                 }
         }
