@@ -1,0 +1,502 @@
+package fr.vetbrain.vetnutri_mp.View.AnalNut
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import fr.vetbrain.vetnutri_mp.Data.*
+import fr.vetbrain.vetnutri_mp.Enumer.*
+import fr.vetbrain.vetnutri_mp.Theme.AppSizes
+import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
+
+// Fonction locale InfoRow po
+
+/**
+ * Dialog détaillé pour afficher les informations complètes d'un nutriment Affiche l'apport total et
+ * la contribution de chaque ingrédient
+ */
+@Composable
+fun NutrimentDetailDialog(
+        nom: String,
+        valeurNutritionnelle: ValeurNutritionnelle,
+        ration: Ration,
+        poidsMetabolique: Double?,
+        referenceUtilisee: ReferenceEv?,
+        besoinEnergetiqueEntretien: Double?,
+        poidsAnimal: Double?,
+        onDismiss: () -> Unit
+) {
+    AlertDialog(
+            onDismissRequest = onDismiss,
+            title = {
+                Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                            text = "Détails : $nom",
+                            style = MaterialTheme.typography.h6,
+                            fontWeight = FontWeight.Bold,
+                            color = VetNutriColors.Primary,
+                            modifier = Modifier.weight(1f)
+                    )
+                    IconButton(onClick = onDismiss) {
+                        Icon(
+                                imageVector = Icons.Filled.Close,
+                                contentDescription = "Fermer",
+                                tint = VetNutriColors.Primary
+                        )
+                    }
+                }
+            },
+            text = {
+                Column(
+                        modifier = Modifier.fillMaxWidth().height(600.dp),
+                        verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
+                ) {
+                    // Section récapitulatif
+                    Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            elevation = AppSizes.elevationSmall,
+                            backgroundColor = VetNutriColors.Primary.copy(alpha = 0.1f)
+                    ) {
+                        Column(
+                                modifier = Modifier.padding(AppSizes.paddingMedium),
+                                verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
+                        ) {
+                            Text(
+                                    text = "Récapitulatif",
+                                    style = MaterialTheme.typography.subtitle1,
+                                    fontWeight = FontWeight.Bold,
+                                    color = VetNutriColors.Primary
+                            )
+
+                            // Apport par kg métabolique (priorité - en gras si disponible)
+                            if (poidsMetabolique != null) {
+                                Text(
+                                        text =
+                                                "Apport: ${String.format("%.2f", valeurNutritionnelle.valeur / poidsMetabolique)} ${valeurNutritionnelle.unite.displayName}/kg^0.75",
+                                        style = MaterialTheme.typography.body1,
+                                        fontWeight = FontWeight.Bold,
+                                        color = VetNutriColors.Primary
+                                )
+
+                                // Apport absolu total avec flèche (comme les références)
+                                Text(
+                                        text =
+                                                "→ ${String.format("%.2f", valeurNutritionnelle.valeur)} ${valeurNutritionnelle.unite.displayName}/jour",
+                                        style = MaterialTheme.typography.body2,
+                                        fontWeight = FontWeight.Medium,
+                                        color = VetNutriColors.Primary.copy(alpha = 0.8f)
+                                )
+                            } else {
+                                // Si pas de poids métabolique, afficher seulement l'apport absolu
+                                // en gras
+                                Text(
+                                        text =
+                                                "Apport total: ${String.format("%.2f", valeurNutritionnelle.valeur)} ${valeurNutritionnelle.unite.displayName}/jour",
+                                        style = MaterialTheme.typography.body1,
+                                        fontWeight = FontWeight.Bold,
+                                        color = VetNutriColors.Primary
+                                )
+                            }
+
+                            // Statut de complétude
+                            val isComplete = valeurNutritionnelle.complete
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                        imageVector =
+                                                if (isComplete) Icons.Filled.Check
+                                                else Icons.Filled.Warning,
+                                        contentDescription =
+                                                if (isComplete) "Données complètes"
+                                                else "Données incomplètes",
+                                        tint = if (isComplete) Color.Green else Color.Red,
+                                        modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                        text =
+                                                if (isComplete) "Données complètes"
+                                                else "Données incomplètes",
+                                        style = MaterialTheme.typography.body2,
+                                        color = if (isComplete) Color.Green else Color.Red
+                                )
+                            }
+                        }
+                    }
+
+                    // Section des références nutritionnelles (nouvelle)
+                    referenceUtilisee?.let { reference ->
+                        val nutrient = valeurNutritionnelle.nutriment
+                        val hasReferenceValues =
+                                listOf(
+                                                Reflevel.MIN,
+                                                Reflevel.MAX,
+                                                Reflevel.OPTIMIN,
+                                                Reflevel.OPTIMAX
+                                        )
+                                        .any { level ->
+                                            reference.contientNutriment(nutrient, level)
+                                        }
+
+                        if (hasReferenceValues) {
+                            Card(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    elevation = AppSizes.elevationSmall,
+                                    backgroundColor = VetNutriColors.Secondary.copy(alpha = 0.1f)
+                            ) {
+                                Column(
+                                        modifier = Modifier.padding(AppSizes.paddingMedium),
+                                        verticalArrangement =
+                                                Arrangement.spacedBy(AppSizes.paddingSmall)
+                                ) {
+                                    Text(
+                                            text = "Références nutritionnelles - ${reference.nom}",
+                                            style = MaterialTheme.typography.subtitle1,
+                                            fontWeight = FontWeight.Bold,
+                                            color = VetNutriColors.Secondary
+                                    )
+
+                                    // Afficher les valeurs de référence disponibles
+                                    val refLevels =
+                                            listOf(
+                                                    Reflevel.MIN to "Minimum",
+                                                    Reflevel.OPTIMIN to "Optimal minimum",
+                                                    Reflevel.OPTIMAX to "Optimal maximum",
+                                                    Reflevel.MAX to "Maximum"
+                                            )
+
+                                    refLevels.forEach { (level, levelName) ->
+                                        if (reference.contientNutriment(nutrient, level)) {
+                                            val valeurRef =
+                                                    reference.obtenirNutriment(nutrient, level)
+                                            val uniteRef =
+                                                    UnitReqEnum.getById(
+                                                            reference.obtenirUniteNutriment(
+                                                                    nutrient,
+                                                                    level
+                                                            )
+                                                    )
+                                            val biblioRef =
+                                                    reference.obtenirBiblioNutriment(
+                                                            nutrient,
+                                                            level
+                                                    )
+
+                                            // Calculer le besoin absolu selon l'unité de référence
+                                            val besoinAbsolu =
+                                                    calculerBesoinAbsolu(
+                                                            valeurRef,
+                                                            uniteRef,
+                                                            besoinEnergetiqueEntretien,
+                                                            poidsAnimal,
+                                                            poidsMetabolique
+                                                    )
+
+                                            Column(modifier = Modifier.fillMaxWidth()) {
+                                                Row(
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        horizontalArrangement =
+                                                                Arrangement.SpaceBetween
+                                                ) {
+                                                    Text(
+                                                            text = "$levelName:",
+                                                            style = MaterialTheme.typography.body2,
+                                                            fontWeight = FontWeight.Medium
+                                                    )
+                                                    Column(horizontalAlignment = Alignment.End) {
+                                                        // Valeur de référence avec son unité
+                                                        Text(
+                                                                text =
+                                                                        "${String.format("%.2f", valeurRef)} ${uniteRef.label}",
+                                                                style =
+                                                                        MaterialTheme.typography
+                                                                                .body2,
+                                                                color = VetNutriColors.Secondary
+                                                        )
+
+                                                        // Besoin absolu calculé
+                                                        besoinAbsolu?.let { valeurAbsolue ->
+                                                            Text(
+                                                                    text =
+                                                                            "→ ${String.format("%.2f", valeurAbsolue)} ${valeurNutritionnelle.unite.displayName}/jour",
+                                                                    style =
+                                                                            MaterialTheme.typography
+                                                                                    .caption,
+                                                                    fontWeight = FontWeight.Bold,
+                                                                    color = VetNutriColors.Secondary
+                                                            )
+                                                        }
+
+                                                        // Référence bibliographique
+                                                        if (biblioRef.firstAuthor.isNotEmpty() ||
+                                                                        biblioRef.completeRef
+                                                                                .isNotEmpty()
+                                                        ) {
+                                                            Text(
+                                                                    text =
+                                                                            "Réf: ${biblioRef.firstAuthor} ${biblioRef.completeRef}".take(
+                                                                                    30
+                                                                            ) +
+                                                                                    if (biblioRef
+                                                                                                    .firstAuthor
+                                                                                                    .length +
+                                                                                                    biblioRef
+                                                                                                            .completeRef
+                                                                                                            .length >
+                                                                                                    30
+                                                                                    )
+                                                                                            "..."
+                                                                                    else "",
+                                                                    style =
+                                                                            MaterialTheme.typography
+                                                                                    .caption,
+                                                                    color =
+                                                                            VetNutriColors.Secondary
+                                                                                    .copy(
+                                                                                            alpha =
+                                                                                                    0.7f
+                                                                                    )
+                                                            )
+                                                        }
+                                                    }
+                                                }
+                                                Spacer(modifier = Modifier.height(4.dp))
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Section contribution des ingrédients
+                    Text(
+                            text = "Contribution par ingrédient (par ordre décroissant)",
+                            style = MaterialTheme.typography.subtitle1,
+                            fontWeight = FontWeight.Bold,
+                            color = VetNutriColors.Primary
+                    )
+
+                    // Calculer et trier les contributions
+                    val contributionsTriees =
+                            ration.alimentMutableList
+                                    .map { alimentRation ->
+                                        val quantite = alimentRation.quantite
+                                        val nutriment = valeurNutritionnelle.nutriment
+                                        val valeurAliment =
+                                                alimentRation
+                                                        .aliment
+                                                        ?.getNutrient(nutriment)
+                                                        ?.toDouble()
+                                        val contributionAbsolue =
+                                                if (valeurAliment != null) {
+                                                    (valeurAliment * quantite.toDouble()) / 100.0
+                                                } else {
+                                                    0.0
+                                                }
+                                        val contributionPourcentage =
+                                                if (valeurNutritionnelle.valeur > 0) {
+                                                    (contributionAbsolue /
+                                                            valeurNutritionnelle.valeur
+                                                                    .toDouble()) * 100.0
+                                                } else {
+                                                    0.0
+                                                }
+                                        Triple(
+                                                alimentRation,
+                                                contributionAbsolue,
+                                                contributionPourcentage
+                                        )
+                                    }
+                                    .sortedByDescending { it.second }
+
+                    // Liste scrollable des contributions
+                    LazyColumn(
+                            modifier = Modifier.fillMaxWidth().weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
+                    ) {
+                        items(contributionsTriees) {
+                                (alimentRation, contributionAbsolue, contributionPourcentage) ->
+                            val quantite = alimentRation.quantite
+                            val nutriment = valeurNutritionnelle.nutriment
+                            val valeurAliment = alimentRation.aliment?.getNutrient(nutriment)
+
+                            Card(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    elevation = AppSizes.elevationSmall,
+                                    backgroundColor = MaterialTheme.colors.surface
+                            ) {
+                                Column(modifier = Modifier.padding(AppSizes.paddingMedium)) {
+                                    // En-tête avec nom et icône d'état
+                                    Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                                text = alimentRation.aliment?.nom
+                                                                ?: "Aliment inconnu",
+                                                style = MaterialTheme.typography.subtitle2,
+                                                fontWeight = FontWeight.Bold,
+                                                modifier = Modifier.weight(1f)
+                                        )
+
+                                        // Icône d'état basée sur la disponibilité des données
+                                        if (valeurAliment == null) {
+                                            Icon(
+                                                    imageVector = Icons.Filled.Warning,
+                                                    contentDescription = "Information manquante",
+                                                    tint = Color.Red,
+                                                    modifier = Modifier.size(16.dp)
+                                            )
+                                        }
+                                    }
+
+                                    Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
+
+                                    // Informations sur 2 colonnes
+                                    Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement =
+                                                    Arrangement.spacedBy(AppSizes.paddingMedium)
+                                    ) {
+                                        // Colonne gauche
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            // Quantité utilisée
+                                            Text(
+                                                    text =
+                                                            "Quantité: ${String.format("%.1f", quantite)}g",
+                                                    style = MaterialTheme.typography.body2,
+                                                    fontWeight = FontWeight.Medium,
+                                                    color = VetNutriColors.Primary
+                                            )
+
+                                            // Valeur nutritionnelle pour 100g
+                                            Text(
+                                                    text =
+                                                            if (valeurAliment != null) {
+                                                                "Valeur (100g): ${String.format("%.2f", valeurAliment)} ${valeurNutritionnelle.unite.displayName}"
+                                                            } else {
+                                                                "Valeur (100g): NA"
+                                                            },
+                                                    style = MaterialTheme.typography.body2,
+                                                    fontWeight = FontWeight.Medium,
+                                                    color =
+                                                            if (valeurAliment != null)
+                                                                    VetNutriColors.Primary
+                                                            else Color.Red
+                                            )
+                                        }
+
+                                        // Colonne droite
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            // Contribution absolue
+                                            Text(
+                                                    text =
+                                                            if (valeurAliment != null) {
+                                                                "Contribution: ${String.format("%.2f", contributionAbsolue)} ${valeurNutritionnelle.unite.displayName}"
+                                                            } else {
+                                                                "Contribution: NA"
+                                                            },
+                                                    style = MaterialTheme.typography.body2,
+                                                    fontWeight = FontWeight.Medium,
+                                                    color =
+                                                            if (valeurAliment != null)
+                                                                    VetNutriColors.Secondary
+                                                            else Color.Red
+                                            )
+
+                                            // Pourcentage de contribution
+                                            Text(
+                                                    text =
+                                                            if (valeurAliment != null) {
+                                                                "Part: ${String.format("%.1f", contributionPourcentage)}%"
+                                                            } else {
+                                                                "Part: NA"
+                                                            },
+                                                    style = MaterialTheme.typography.body2,
+                                                    color =
+                                                            if (valeurAliment != null)
+                                                                    VetNutriColors.Secondary
+                                                            else Color.Red
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {}
+    )
+}
+
+/**
+ * Calcule le besoin absolu d'un nutriment selon son unité de référence
+ *
+ * @param valeurRef Valeur de référence du nutriment
+ * @param uniteRef Unité de la référence (PERKG, PERKCAL, PERMS, etc.)
+ * @param besoinEnergetiqueEntretien Besoin énergétique d'entretien en kcal/jour
+ * @param poidsAnimal Poids de l'animal en kg
+ * @param poidsMetabolique Poids métabolique en kg^0.75
+ * @return Besoin absolu calculé ou null si impossible à calculer
+ */
+private fun calculerBesoinAbsolu(
+        valeurRef: Float,
+        uniteRef: UnitReqEnum,
+        besoinEnergetiqueEntretien: Double?,
+        poidsAnimal: Double?,
+        poidsMetabolique: Double?
+): Double? {
+    return when (uniteRef) {
+        // Basé sur l'énergie (par 1000 kcal)
+        UnitReqEnum.PERKCAL -> {
+            besoinEnergetiqueEntretien?.let { bee -> (valeurRef * bee) / 1000.0 }
+        }
+
+        // Basé sur l'énergie (par 1000 kJ) - conversion en kcal puis calcul
+        UnitReqEnum.PERKJ -> {
+            besoinEnergetiqueEntretien?.let { bee ->
+                // Convertir kJ en kcal : 1 kcal = 4.184 kJ
+                val beeEnKj = bee * 4.184
+                (valeurRef * beeEnKj) / 1000.0
+            }
+        }
+
+        // Basé sur le poids corporel (par kg de poids vif)
+        UnitReqEnum.PERKG -> {
+            poidsAnimal?.let { poids -> valeurRef * poids }
+        }
+
+        // Basé sur le poids métabolique (par kg^0.75)
+        UnitReqEnum.PERMS -> {
+            poidsMetabolique?.let { poidsMetab -> valeurRef * poidsMetab }
+        }
+
+        // Valeur absolue (déjà en unité finale)
+        UnitReqEnum.ABSOLUTE -> {
+            valeurRef.toDouble()
+        }
+
+        // Ratio - pas de calcul absolu possible
+        UnitReqEnum.RATIO -> null
+
+        // Autres unités non supportées pour le calcul absolu
+        else -> null
+    }
+}
