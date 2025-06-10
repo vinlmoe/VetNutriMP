@@ -14,6 +14,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.runtime.*
@@ -960,6 +961,13 @@ fun RationsView(
                                                         AnalyseNutritionnelleCard(
                                                                 ration = selectedRation!!,
                                                                 poidsMetabolique = poidsMetabolique,
+                                                                referenceUtilisee =
+                                                                        referenceUtilisee,
+                                                                besoinEnergetiqueEntretien =
+                                                                        besoinEnergetiqueStandard,
+                                                                poidsAnimal =
+                                                                        selectedConsultation?.weight
+                                                                                ?.toDouble(),
                                                                 modifier = Modifier.fillMaxWidth(),
                                                                 onNutrimentClick = {
                                                                         nom,
@@ -1739,6 +1747,9 @@ private fun DetailedLocalInfoRow(label: String, value: String, description: Stri
 private fun AnalyseNutritionnelleCard(
         ration: Ration,
         poidsMetabolique: Double?,
+        referenceUtilisee: ReferenceEv?,
+        besoinEnergetiqueEntretien: Double?,
+        poidsAnimal: Double?,
         modifier: Modifier = Modifier,
         onNutrimentClick: (String, ValeurNutritionnelle) -> Unit
 ) {
@@ -1772,6 +1783,10 @@ private fun AnalyseNutritionnelleCard(
                                                 nom = nom,
                                                 valeurNutritionnelle = valeurNutritionnelle,
                                                 poidsMetabolique = poidsMetabolique,
+                                                referenceUtilisee = referenceUtilisee,
+                                                besoinEnergetiqueEntretien =
+                                                        besoinEnergetiqueEntretien,
+                                                poidsAnimal = poidsAnimal,
                                                 modifier = Modifier.fillMaxWidth(),
                                                 onClick = {
                                                         onNutrimentClick(nom, valeurNutritionnelle)
@@ -1789,9 +1804,22 @@ private fun NutrimentCard(
         nom: String,
         valeurNutritionnelle: ValeurNutritionnelle,
         poidsMetabolique: Double?,
+        referenceUtilisee: ReferenceEv?,
+        besoinEnergetiqueEntretien: Double?,
+        poidsAnimal: Double?,
         modifier: Modifier = Modifier,
         onClick: () -> Unit
 ) {
+        // Vérifier la conformité aux références
+        val iconeConformite =
+                obtenirIconeConformite(
+                        valeurNutritionnelle,
+                        referenceUtilisee,
+                        besoinEnergetiqueEntretien,
+                        poidsAnimal,
+                        poidsMetabolique
+                )
+
         Card(
                 modifier = modifier.fillMaxWidth().clickable { onClick() },
                 elevation = AppSizes.elevationSmall,
@@ -1801,7 +1829,7 @@ private fun NutrimentCard(
                         modifier = Modifier.padding(AppSizes.paddingXSmall),
                         verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
-                        // Nom du nutriment avec icône de statut
+                        // Nom du nutriment avec icônes de statut
                         Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -1816,26 +1844,38 @@ private fun NutrimentCard(
                                         modifier = Modifier.weight(1f)
                                 )
 
-                                // Icône de statut (complet ou incomplet)
-                                if (valeurNutritionnelle.complete) {
-                                        Icon(
-                                                imageVector = Icons.Filled.Check,
-                                                contentDescription = "Informations complètes",
-                                                tint = Color.Green,
-                                                modifier = Modifier.size(12.dp)
-                                        )
-                                } else {
-                                        Icon(
-                                                imageVector = Icons.Filled.Warning,
-                                                contentDescription = "Informations incomplètes",
-                                                tint =
-                                                        VetNutriColors.Primary.copy(
-                                                                red = 1.0f,
-                                                                green = 0.0f,
-                                                                blue = 0.0f
-                                                        ),
-                                                modifier = Modifier.size(12.dp)
-                                        )
+                                Row(
+                                        horizontalArrangement = Arrangement.spacedBy(2.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                        // Icône de conformité aux références (+ ou -)
+                                        iconeConformite?.let { (icone, couleur, description) ->
+                                                Icon(
+                                                        imageVector = icone,
+                                                        contentDescription = description,
+                                                        tint = couleur,
+                                                        modifier = Modifier.size(12.dp)
+                                                )
+                                        }
+
+                                        // Icône de statut (complet ou incomplet)
+                                        if (valeurNutritionnelle.complete) {
+                                                Icon(
+                                                        imageVector = Icons.Filled.Check,
+                                                        contentDescription =
+                                                                "Informations complètes",
+                                                        tint = Color.Green,
+                                                        modifier = Modifier.size(12.dp)
+                                                )
+                                        } else {
+                                                Icon(
+                                                        imageVector = Icons.Filled.Warning,
+                                                        contentDescription =
+                                                                "Informations incomplètes",
+                                                        tint = VetNutriColors.Error,
+                                                        modifier = Modifier.size(12.dp)
+                                                )
+                                        }
                                 }
                         }
 
@@ -1856,5 +1896,127 @@ private fun NutrimentCard(
                                 maxLines = 2
                         )
                 }
+        }
+}
+
+/**
+ * Détermine l'icône de conformité aux références nutritionnelles
+ *
+ * @param valeurNutritionnelle Valeur nutritionnelle de la ration
+ * @param referenceUtilisee Référence nutritionnelle utilisée
+ * @param besoinEnergetiqueEntretien Besoin énergétique d'entretien
+ * @param poidsAnimal Poids de l'animal
+ * @param poidsMetabolique Poids métabolique
+ * @return Triple avec icône, couleur et description si non conforme, null sinon
+ */
+private fun obtenirIconeConformite(
+        valeurNutritionnelle: ValeurNutritionnelle,
+        referenceUtilisee: ReferenceEv?,
+        besoinEnergetiqueEntretien: Double?,
+        poidsAnimal: Double?,
+        poidsMetabolique: Double?
+): Triple<androidx.compose.ui.graphics.vector.ImageVector, Color, String>? {
+
+        referenceUtilisee?.let { reference ->
+                val nutrient = valeurNutritionnelle.nutriment
+                val apportAbsolu = valeurNutritionnelle.valeur
+
+                // Vérifier les minimums (MIN et OPTIMIN)
+                listOf(Reflevel.MIN, Reflevel.OPTIMIN).forEach { level ->
+                        if (reference.contientNutriment(nutrient, level)) {
+                                val valeurRef = reference.obtenirNutriment(nutrient, level)
+                                val uniteRef =
+                                        UnitReqEnum.getById(
+                                                reference.obtenirUniteNutriment(nutrient, level)
+                                        )
+
+                                val besoinAbsolu =
+                                        calculerBesoinAbsoluLocal(
+                                                valeurRef,
+                                                uniteRef,
+                                                besoinEnergetiqueEntretien,
+                                                poidsAnimal,
+                                                poidsMetabolique
+                                        )
+
+                                besoinAbsolu?.let { besoin ->
+                                        if (apportAbsolu < besoin) {
+                                                return Triple(
+                                                        Icons.Filled.KeyboardArrowDown, // Icône "↓"
+                                                        // pour carence
+                                                        VetNutriColors.Error,
+                                                        "Carence : apport inférieur au ${if (level == Reflevel.MIN) "minimum" else "optimal minimum"}"
+                                                )
+                                        }
+                                }
+                        }
+                }
+
+                // Vérifier les maximums (MAX et OPTIMAX)
+                listOf(Reflevel.MAX, Reflevel.OPTIMAX).forEach { level ->
+                        if (reference.contientNutriment(nutrient, level)) {
+                                val valeurRef = reference.obtenirNutriment(nutrient, level)
+                                val uniteRef =
+                                        UnitReqEnum.getById(
+                                                reference.obtenirUniteNutriment(nutrient, level)
+                                        )
+
+                                val besoinAbsolu =
+                                        calculerBesoinAbsoluLocal(
+                                                valeurRef,
+                                                uniteRef,
+                                                besoinEnergetiqueEntretien,
+                                                poidsAnimal,
+                                                poidsMetabolique
+                                        )
+
+                                besoinAbsolu?.let { besoin ->
+                                        if (apportAbsolu > besoin) {
+                                                return Triple(
+                                                        Icons.Filled.Add, // Icône "+" pour excès
+                                                        VetNutriColors.Error,
+                                                        "Excès : apport supérieur au ${if (level == Reflevel.MAX) "maximum" else "optimal maximum"}"
+                                                )
+                                        }
+                                }
+                        }
+                }
+        }
+
+        return null // Conforme ou pas de référence
+}
+
+/**
+ * Version locale de la fonction de calcul des besoins absolus (Copie de celle dans
+ * DetailNutrimentAnalysis.kt pour éviter les dépendances)
+ */
+private fun calculerBesoinAbsoluLocal(
+        valeurRef: Float,
+        uniteRef: UnitReqEnum,
+        besoinEnergetiqueEntretien: Double?,
+        poidsAnimal: Double?,
+        poidsMetabolique: Double?
+): Double? {
+        return when (uniteRef) {
+                UnitReqEnum.PERKCAL -> {
+                        besoinEnergetiqueEntretien?.let { bee -> (valeurRef * bee) / 1000.0 }
+                }
+                UnitReqEnum.PERKJ -> {
+                        besoinEnergetiqueEntretien?.let { bee ->
+                                val beeEnKj = bee * 4.184
+                                (valeurRef * beeEnKj) / 1000.0
+                        }
+                }
+                UnitReqEnum.PERKG -> {
+                        poidsAnimal?.let { poids -> valeurRef * poids }
+                }
+                UnitReqEnum.PERMS -> {
+                        poidsMetabolique?.let { poidsMetab -> valeurRef * poidsMetab }
+                }
+                UnitReqEnum.ABSOLUTE -> {
+                        valeurRef.toDouble()
+                }
+                UnitReqEnum.RATIO -> null
+                else -> null
         }
 }

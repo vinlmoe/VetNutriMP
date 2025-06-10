@@ -22,6 +22,39 @@ import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 // Fonction locale InfoRow po
 
 /**
+ * Détermine la couleur d'affichage selon la conformité aux références
+ *
+ * @param level Niveau de référence (MIN, MAX, etc.)
+ * @param apportAbsolu Apport absolu de la ration
+ * @param besoinAbsolu Besoin absolu calculé selon la référence
+ * @return Couleur à utiliser (rouge du thème si non conforme, secondaire sinon)
+ */
+private fun obtenirCouleurConformite(
+        level: Reflevel,
+        apportAbsolu: Double,
+        besoinAbsolu: Double?
+): Color {
+    besoinAbsolu?.let { besoin ->
+        return when (level) {
+            // Pour les minimums : rouge si apport < besoin
+            Reflevel.MIN,
+            Reflevel.OPTIMIN -> {
+                if (apportAbsolu < besoin) VetNutriColors.Error else VetNutriColors.Secondary
+            }
+            // Pour les maximums : rouge si apport > besoin
+            Reflevel.MAX,
+            Reflevel.OPTIMAX -> {
+                if (apportAbsolu > besoin) VetNutriColors.Error else VetNutriColors.Secondary
+            }
+            // Autres niveaux : couleur normale
+            else -> VetNutriColors.Secondary
+        }
+    }
+    // Si pas de calcul possible, couleur normale
+    return VetNutriColors.Secondary
+}
+
+/**
  * Dialog détaillé pour afficher les informations complètes d'un nutriment Affiche l'apport total et
  * la contribution de chaque ingrédient
  */
@@ -122,7 +155,9 @@ fun NutrimentDetailDialog(
                                         contentDescription =
                                                 if (isComplete) "Données complètes"
                                                 else "Données incomplètes",
-                                        tint = if (isComplete) Color.Green else Color.Red,
+                                        tint =
+                                                if (isComplete) Color.Green
+                                                else VetNutriColors.Error,
                                         modifier = Modifier.size(16.dp)
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
@@ -131,7 +166,9 @@ fun NutrimentDetailDialog(
                                                 if (isComplete) "Données complètes"
                                                 else "Données incomplètes",
                                         style = MaterialTheme.typography.body2,
-                                        color = if (isComplete) Color.Green else Color.Red
+                                        color =
+                                                if (isComplete) Color.Green
+                                                else VetNutriColors.Error
                                 )
                             }
                         }
@@ -205,6 +242,14 @@ fun NutrimentDetailDialog(
                                                             poidsMetabolique
                                                     )
 
+                                            // Déterminer la couleur selon la conformité
+                                            val couleurConformite =
+                                                    obtenirCouleurConformite(
+                                                            level,
+                                                            valeurNutritionnelle.valeur,
+                                                            besoinAbsolu
+                                                    )
+
                                             Column(modifier = Modifier.fillMaxWidth()) {
                                                 Row(
                                                         modifier = Modifier.fillMaxWidth(),
@@ -224,7 +269,7 @@ fun NutrimentDetailDialog(
                                                                 style =
                                                                         MaterialTheme.typography
                                                                                 .body2,
-                                                                color = VetNutriColors.Secondary
+                                                                color = couleurConformite
                                                         )
 
                                                         // Besoin absolu calculé
@@ -236,7 +281,7 @@ fun NutrimentDetailDialog(
                                                                             MaterialTheme.typography
                                                                                     .caption,
                                                                     fontWeight = FontWeight.Bold,
-                                                                    color = VetNutriColors.Secondary
+                                                                    color = couleurConformite
                                                             )
                                                         }
 
@@ -264,11 +309,9 @@ fun NutrimentDetailDialog(
                                                                             MaterialTheme.typography
                                                                                     .caption,
                                                                     color =
-                                                                            VetNutriColors.Secondary
-                                                                                    .copy(
-                                                                                            alpha =
-                                                                                                    0.7f
-                                                                                    )
+                                                                            couleurConformite.copy(
+                                                                                    alpha = 0.7f
+                                                                            )
                                                             )
                                                         }
                                                     }
@@ -359,7 +402,7 @@ fun NutrimentDetailDialog(
                                             Icon(
                                                     imageVector = Icons.Filled.Warning,
                                                     contentDescription = "Information manquante",
-                                                    tint = Color.Red,
+                                                    tint = VetNutriColors.Error,
                                                     modifier = Modifier.size(16.dp)
                                             )
                                         }
@@ -397,7 +440,7 @@ fun NutrimentDetailDialog(
                                                     color =
                                                             if (valeurAliment != null)
                                                                     VetNutriColors.Primary
-                                                            else Color.Red
+                                                            else VetNutriColors.Error
                                             )
                                         }
 
@@ -416,7 +459,7 @@ fun NutrimentDetailDialog(
                                                     color =
                                                             if (valeurAliment != null)
                                                                     VetNutriColors.Secondary
-                                                            else Color.Red
+                                                            else VetNutriColors.Error
                                             )
 
                                             // Pourcentage de contribution
@@ -431,7 +474,7 @@ fun NutrimentDetailDialog(
                                                     color =
                                                             if (valeurAliment != null)
                                                                     VetNutriColors.Secondary
-                                                            else Color.Red
+                                                            else VetNutriColors.Error
                                             )
                                         }
                                     }
