@@ -1,6 +1,8 @@
 package fr.vetbrain.vetnutri_mp.View
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -12,6 +14,7 @@ import fr.vetbrain.vetnutri_mp.Components.AppDatePicker
 import fr.vetbrain.vetnutri_mp.Components.AppTextField
 import fr.vetbrain.vetnutri_mp.Components.NumberTextField
 import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
+import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Animal
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Consultation
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.General
@@ -20,12 +23,14 @@ import fr.vetbrain.vetnutri_mp.Theme.AppIcons
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 import kotlinx.datetime.LocalDate
 
 @OptIn(ExperimentalUuidApi::class)
 @Composable
 fun AppConsultationDetailView(
         consultation: ConsultationEv?,
+        availableReferences: List<ReferenceEv> = emptyList(),
         onDismiss: () -> Unit,
         onSave: (ConsultationEv) -> Unit
 ) {
@@ -42,7 +47,9 @@ fun AppConsultationDetailView(
         var weightErrorMessage by remember(consultation) { mutableStateOf<String?>(null) }
 
         Column(
-                modifier = Modifier.padding(AppSizes.paddingMedium),
+                modifier =
+                        Modifier.padding(AppSizes.paddingMedium)
+                                .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
         ) {
                 // Titre
@@ -176,6 +183,50 @@ fun AppConsultationDetailView(
                                                                 ?: "Aucune observation",
                                                 style = MaterialTheme.typography.body1,
                                                 modifier = Modifier.padding(AppSizes.paddingMedium)
+                                        )
+                                }
+                        }
+                }
+
+                // Section Note d'État Corporel (BCS)
+                Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        elevation = AppSizes.elevationSmall,
+                        backgroundColor = VetNutriColors.Surface
+                ) {
+                        Column(
+                                modifier = Modifier.padding(AppSizes.paddingMedium),
+                                verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
+                        ) {
+                                Text(
+                                        text = "Note d'État Corporel (BCS)",
+                                        style = MaterialTheme.typography.h6,
+                                        color = VetNutriColors.Primary
+                                )
+
+                                Divider(color = VetNutriColors.Primary.copy(alpha = 0.3f))
+
+                                val bcsValue =
+                                        if (isNewConsultation) editedConsultation.BCS
+                                        else consultation?.BCS
+                                val bcsDescription = getBCSDescription(bcsValue)
+
+                                InfoRow(
+                                        label = "Note BCS",
+                                        value =
+                                                if (bcsValue != null) "$bcsValue/9"
+                                                else "Non renseigné"
+                                )
+
+                                if (bcsValue != null) {
+                                        Text(
+                                                text = bcsDescription,
+                                                style = MaterialTheme.typography.body2,
+                                                color = Color.Gray,
+                                                modifier =
+                                                        Modifier.padding(
+                                                                start = AppSizes.paddingSmall
+                                                        )
                                         )
                                 }
                         }
@@ -542,8 +593,14 @@ fun AppConsultationDetailView(
                                         InfoRow(
                                                 label = "Référence générale",
                                                 value =
-                                                        consultation?.referenceGeneraleId?.ifBlank {
-                                                                "Aucune"
+                                                        consultation?.referenceGeneraleId?.let { id
+                                                                ->
+                                                                if (id.isBlank()) "Aucune"
+                                                                else
+                                                                        getReferenceNameById(
+                                                                                id,
+                                                                                availableReferences
+                                                                        )
                                                         }
                                                                 ?: "Aucune"
                                         )
@@ -596,7 +653,10 @@ fun AppConsultationDetailView(
                                                                 ) {
                                                                         Text(
                                                                                 text =
-                                                                                        "Référence: $referenceId",
+                                                                                        getReferenceNameById(
+                                                                                                referenceId,
+                                                                                                availableReferences
+                                                                                        ),
                                                                                 style =
                                                                                         MaterialTheme
                                                                                                 .typography
@@ -701,4 +761,28 @@ fun AppConsultationDetailView(
                         }
                 }
         }
+}
+
+/** Fonction helper pour obtenir la description du BCS */
+private fun getBCSDescription(bcs: Int?): String {
+        return when (bcs) {
+                1 -> "Très maigre - Côtes, vertèbres et os du bassin très saillants"
+                2 -> "Maigre - Côtes facilement palpables, graisse corporelle minimale"
+                3 -> "Mince - Côtes palpables avec une légère couche de graisse"
+                4 -> "Sous-optimal - Côtes palpables avec un peu d'effort"
+                5 -> "Idéal - Côtes palpables sans excès de graisse"
+                6 -> "Légèrement en surpoids - Côtes difficilement palpables"
+                7 -> "En surpoids - Côtes difficiles à palper, graisse visible"
+                8 -> "Obèse - Côtes non palpables, accumulation de graisse"
+                9 -> "Très obèse - Accumulation massive de graisse, problèmes de mobilité"
+                else -> "Non renseigné"
+        }
+}
+
+/** Fonction helper pour obtenir le nom d'une référence par son UUID */
+private fun getReferenceNameById(
+        referenceId: String,
+        availableReferences: List<ReferenceEv>
+): String {
+        return availableReferences.find { it.uuid == referenceId }?.nom ?: "Référence inconnue"
 }

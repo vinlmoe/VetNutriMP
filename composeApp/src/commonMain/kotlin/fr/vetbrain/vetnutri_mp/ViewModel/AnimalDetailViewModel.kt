@@ -233,6 +233,7 @@ class AnimalDetailViewModel(
             isEditingConsultation = false
             isEditingRation = false
             isEditingAnimal = false
+            _showFullScreenEdit.value = false
 
             // Conserver une référence à l'animal original
             val originalAnimal =
@@ -819,6 +820,7 @@ class AnimalDetailViewModel(
                 isEditingConsultation = false
                 isEditingRation = false
                 isEditingAnimal = false
+                _showFullScreenEdit.value = false
             } catch (e: Exception) {
                 println("Erreur lors de la suppression de l'animal: ${e.message}")
                 e.printStackTrace()

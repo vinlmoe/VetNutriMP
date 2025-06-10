@@ -57,6 +57,7 @@ fun ConsultationsView(
         ConsultationFullScreenEditView(
                 consultation = selectedConsultation,
                 animalName = animal?.nom ?: "",
+                animalEspece = animal?.getEspece(),
                 availableReferences = availableReferences,
                 onBackPressed = { consultation -> viewModel.saveFromFullScreen(consultation) },
                 onLoadReferences = { viewModel.chargerReferencesDisponibles() }
@@ -219,8 +220,14 @@ private fun ConsultationsMainView(
         if (showConsultationDetail) {
             Box(modifier = Modifier.weight(0.6f).fillMaxHeight()) {
                 selectedConsultation?.let { consultation ->
+                    val availableReferences by viewModel.availableReferences.collectAsState()
+
+                    // Charger les références au démarrage
+                    LaunchedEffect(Unit) { viewModel.chargerReferencesDisponibles() }
+
                     AppConsultationDetailView(
                             consultation = consultation,
+                            availableReferences = availableReferences,
                             onDismiss = {
                                 if (isEditingConsultation && consultation.uuid.isEmpty()) {
                                     // Si on annule l'ajout d'une nouvelle consultation
