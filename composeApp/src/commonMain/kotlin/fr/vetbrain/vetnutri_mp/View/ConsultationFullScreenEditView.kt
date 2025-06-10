@@ -1,7 +1,9 @@
 package fr.vetbrain.vetnutri_mp.View
 
-import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
@@ -15,7 +17,6 @@ import fr.vetbrain.vetnutri_mp.Components.AppDatePicker
 import fr.vetbrain.vetnutri_mp.Components.AppTextField
 import fr.vetbrain.vetnutri_mp.Components.NumberTextField
 import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
-import fr.vetbrain.vetnutri_mp.Data.Ration
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Animal
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Consultation
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.General
@@ -47,6 +48,19 @@ fun ConsultationFullScreenEditView(
     // États pour les dialogues de sélection de références
     var showReferenceGeneraleDialog by remember(consultation) { mutableStateOf(false) }
     var showReferenceMaladieDialog by remember(consultation) { mutableStateOf(false) }
+
+    // États pour les dialogues de coefficients
+    var showK1Dialog by remember { mutableStateOf(false) }
+    var showK2Dialog by remember { mutableStateOf(false) }
+    var showK3Dialog by remember { mutableStateOf(false) }
+    var showK4Dialog by remember { mutableStateOf(false) }
+    var showK5Dialog by remember { mutableStateOf(false) }
+
+    // Trouver la référence générale sélectionnée
+    val referenceGeneraleSelectionnee =
+            remember(editedConsultation.referenceGeneraleId, availableReferences) {
+                availableReferences.find { it.uuid == editedConsultation.referenceGeneraleId }
+            }
 
     // Charger les références au démarrage
     LaunchedEffect(Unit) { onLoadReferences() }
@@ -190,6 +204,57 @@ fun ConsultationFullScreenEditView(
                     singleLine = false
             )
 
+            // Section Note d'État Corporel
+            Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    elevation = AppSizes.elevationSmall,
+                    backgroundColor = VetNutriColors.Surface
+            ) {
+                Column(
+                        modifier = Modifier.padding(AppSizes.paddingLarge),
+                        verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
+                ) {
+                    Text(
+                            text = "Note d'État Corporel (BCS)",
+                            style = MaterialTheme.typography.h6,
+                            color = VetNutriColors.Primary
+                    )
+
+                    Divider(color = VetNutriColors.Primary.copy(alpha = 0.3f))
+
+                    // Sélecteur de BCS
+                    ScoreSelector(
+                            label = "Note BCS (1-9)",
+                            valeurSelectionnee = editedConsultation.BCS,
+                            onScoreSelected = { score ->
+                                editedConsultation = editedConsultation.copy(BCS = score)
+                            },
+                            plageScore = 1..9,
+                            descriptions =
+                                    mapOf(
+                                            1 to
+                                                    "Très maigre - Côtes, vertèbres et os du bassin très saillants",
+                                            2 to
+                                                    "Maigre - Côtes facilement palpables, faible couverture graisseuse",
+                                            3 to
+                                                    "Mince - Côtes palpables avec légère couverture graisseuse",
+                                            4 to
+                                                    "Idéal inférieur - Côtes facilement palpables, taille visible",
+                                            5 to
+                                                    "Idéal - Côtes palpables sans excès de graisse, taille bien définie",
+                                            6 to
+                                                    "Idéal supérieur - Côtes palpables avec légère couverture graisseuse",
+                                            7 to
+                                                    "Surpoids - Côtes difficiles à palper, dépôts graisseux visibles",
+                                            8 to
+                                                    "Obèse - Côtes très difficiles à palper, importante couverture graisseuse",
+                                            9 to
+                                                    "Très obèse - Côtes non palpables, dépôts graisseux massifs"
+                                    )
+                    )
+                }
+            }
+
             // Section Références Nutritionnelles
             Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -299,62 +364,104 @@ fun ConsultationFullScreenEditView(
                 }
             }
 
-            // Section Rations
-            Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    elevation = AppSizes.elevationSmall,
-                    backgroundColor = VetNutriColors.Surface
-            ) {
-                Column(
-                        modifier = Modifier.padding(AppSizes.paddingLarge),
-                        verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
+            // Section Coefficients
+            if (referenceGeneraleSelectionnee != null) {
+                Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        elevation = AppSizes.elevationSmall,
+                        backgroundColor = VetNutriColors.Surface
                 ) {
-                    Row(
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth()
+                    Column(
+                            modifier = Modifier.padding(AppSizes.paddingLarge),
+                            verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
                     ) {
                         Text(
-                                text = "Rations",
+                                text = "Coefficients d'ajustement énergétique",
                                 style = MaterialTheme.typography.h6,
                                 color = VetNutriColors.Primary
                         )
 
-                        OutlinedButton(
-                                onClick = {
-                                    // TODO: Ajouter une nouvelle ration
-                                },
-                                colors =
-                                        ButtonDefaults.outlinedButtonColors(
-                                                contentColor = VetNutriColors.Primary
-                                        )
-                        ) {
-                            Icon(
-                                    AppIcons.Add,
-                                    contentDescription = "Ajouter une ration",
-                                    modifier = Modifier.size(AppSizes.iconSizeSmall)
-                            )
-                            Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
-                            Text("Ajouter ration")
-                        }
-                    }
+                        Divider(color = VetNutriColors.Primary.copy(alpha = 0.3f))
 
-                    Divider(color = VetNutriColors.Primary.copy(alpha = 0.3f))
-
-                    if (editedConsultation.rations.isEmpty()) {
-                        Text(
-                                text = "Aucune ration ajoutée",
-                                style = MaterialTheme.typography.body1,
-                                color = Color.Gray,
-                                modifier = Modifier.padding(AppSizes.paddingMedium)
-                        )
-                    } else {
+                        // Grille des coefficients K1-K5
                         Column(verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)) {
-                            editedConsultation.rations.forEach { ration ->
-                                RationCard(
-                                        ration = ration,
-                                        onEdit = { /* TODO: Implémenter l'édition de ration */},
-                                        onDelete = { editedConsultation.rations.remove(ration) }
+                            if (referenceGeneraleSelectionnee.nomk1.isNotBlank()) {
+                                CoefficientSelector(
+                                        nom = referenceGeneraleSelectionnee.nomk1,
+                                        valeurSelectionnee = editedConsultation.k1Value,
+                                        descriptionSelectionnee = editedConsultation.k1Id,
+                                        coefficients = referenceGeneraleSelectionnee.getModk1(),
+                                        onCoefficientSelected = { coef ->
+                                            editedConsultation =
+                                                    editedConsultation.copy(
+                                                            k1Id = coef.description,
+                                                            k1Value = coef.coef
+                                                    )
+                                        }
+                                )
+                            }
+
+                            if (referenceGeneraleSelectionnee.nomk2.isNotBlank()) {
+                                CoefficientSelector(
+                                        nom = referenceGeneraleSelectionnee.nomk2,
+                                        valeurSelectionnee = editedConsultation.k2Value,
+                                        descriptionSelectionnee = editedConsultation.k2Id,
+                                        coefficients = referenceGeneraleSelectionnee.getModk2(),
+                                        onCoefficientSelected = { coef ->
+                                            editedConsultation =
+                                                    editedConsultation.copy(
+                                                            k2Id = coef.description,
+                                                            k2Value = coef.coef
+                                                    )
+                                        }
+                                )
+                            }
+
+                            if (referenceGeneraleSelectionnee.nomk3.isNotBlank()) {
+                                CoefficientSelector(
+                                        nom = referenceGeneraleSelectionnee.nomk3,
+                                        valeurSelectionnee = editedConsultation.k3Value,
+                                        descriptionSelectionnee = editedConsultation.k3Id,
+                                        coefficients = referenceGeneraleSelectionnee.getModk3(),
+                                        onCoefficientSelected = { coef ->
+                                            editedConsultation =
+                                                    editedConsultation.copy(
+                                                            k3Id = coef.description,
+                                                            k3Value = coef.coef
+                                                    )
+                                        }
+                                )
+                            }
+
+                            if (referenceGeneraleSelectionnee.nomk4.isNotBlank()) {
+                                CoefficientSelector(
+                                        nom = referenceGeneraleSelectionnee.nomk4,
+                                        valeurSelectionnee = editedConsultation.k4Value,
+                                        descriptionSelectionnee = editedConsultation.k4Id,
+                                        coefficients = referenceGeneraleSelectionnee.getModk4(),
+                                        onCoefficientSelected = { coef ->
+                                            editedConsultation =
+                                                    editedConsultation.copy(
+                                                            k4Id = coef.description,
+                                                            k4Value = coef.coef
+                                                    )
+                                        }
+                                )
+                            }
+
+                            if (referenceGeneraleSelectionnee.nomk5.isNotBlank()) {
+                                CoefficientSelector(
+                                        nom = referenceGeneraleSelectionnee.nomk5,
+                                        valeurSelectionnee = editedConsultation.k5Value,
+                                        descriptionSelectionnee = editedConsultation.k5Id,
+                                        coefficients = referenceGeneraleSelectionnee.getModk5(),
+                                        onCoefficientSelected = { coef ->
+                                            editedConsultation =
+                                                    editedConsultation.copy(
+                                                            k5Id = coef.description,
+                                                            k5Value = coef.coef
+                                                    )
+                                        }
                                 )
                             }
                         }
@@ -400,63 +507,223 @@ fun ConsultationFullScreenEditView(
 }
 
 @Composable
-private fun RationCard(
-        ration: Ration,
-        onEdit: () -> Unit,
-        onDelete: () -> Unit,
+private fun ScoreSelector(
+        label: String,
+        valeurSelectionnee: Int?,
+        onScoreSelected: (Int?) -> Unit,
+        plageScore: IntRange,
+        descriptions: Map<Int, String>,
         modifier: Modifier = Modifier
 ) {
-    Card(
-            modifier = modifier.fillMaxWidth(),
-            elevation = AppSizes.elevationSmall,
-            backgroundColor = MaterialTheme.colors.surface,
-            shape = MaterialTheme.shapes.medium,
-            border = BorderStroke(AppSizes.borderWidth, Color.LightGray.copy(alpha = 0.5f))
-    ) {
-        Row(
-                modifier = Modifier.padding(AppSizes.paddingMedium),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-        ) {
-            Row(
-                    modifier = Modifier.weight(1f),
-                    horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall),
-                    verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                        AppIcons.Ration,
-                        contentDescription = null,
-                        tint = VetNutriColors.Primary,
-                        modifier = Modifier.size(AppSizes.iconSizeMedium)
-                )
-                Column {
-                    Text(text = ration.name, style = MaterialTheme.typography.subtitle1)
-                    Text(
-                            text = "Coef: ${ration.coef}",
-                            style = MaterialTheme.typography.body2,
-                            color = Color.Gray
-                    )
-                }
-            }
+    var showDialog by remember { mutableStateOf(false) }
 
-            Row {
-                IconButton(onClick = onEdit) {
-                    Icon(
-                            imageVector = AppIcons.Edit,
-                            contentDescription = "Modifier la ration",
-                            tint = VetNutriColors.Primary
-                    )
+    Column(modifier = modifier) {
+        // Label du score
+        Text(
+                text = label,
+                style = MaterialTheme.typography.subtitle1,
+                fontWeight = FontWeight.Bold,
+                color = VetNutriColors.Primary
+        )
+
+        // Champ de sélection
+        OutlinedTextField(
+                value =
+                        if (valeurSelectionnee != null) {
+                            "$valeurSelectionnee/9 - ${descriptions[valeurSelectionnee] ?: "Description non disponible"}"
+                        } else {
+                            "Aucune note sélectionnée"
+                        },
+                onValueChange = {},
+                label = { Text("Note d'état corporel") },
+                readOnly = true,
+                modifier = Modifier.fillMaxWidth(),
+                trailingIcon = {
+                    Row {
+                        if (valeurSelectionnee != null) {
+                            IconButton(onClick = { onScoreSelected(null) }) {
+                                Icon(
+                                        AppIcons.Close,
+                                        contentDescription = "Effacer la note",
+                                        tint = Color.Gray
+                                )
+                            }
+                        }
+                        IconButton(onClick = { showDialog = true }) {
+                            Icon(
+                                    AppIcons.ArrowDropDown,
+                                    contentDescription = "Sélectionner une note"
+                            )
+                        }
+                    }
                 }
-                IconButton(onClick = onDelete) {
-                    Icon(
-                            imageVector = AppIcons.Delete,
-                            contentDescription = "Supprimer la ration",
-                            tint = Color.Red
-                    )
-                }
-            }
-        }
+        )
     }
+
+    // Dialog de sélection
+    if (showDialog) {
+        ScoreSelectionDialog(
+                label = label,
+                plageScore = plageScore,
+                descriptions = descriptions,
+                scoreSelectionne = valeurSelectionnee,
+                onScoreSelected = { score ->
+                    onScoreSelected(score)
+                    showDialog = false
+                },
+                onDismiss = { showDialog = false }
+        )
+    }
+}
+
+@Composable
+private fun ScoreSelectionDialog(
+        label: String,
+        plageScore: IntRange,
+        descriptions: Map<Int, String>,
+        scoreSelectionne: Int?,
+        onScoreSelected: (Int) -> Unit,
+        onDismiss: () -> Unit
+) {
+    AlertDialog(
+            onDismissRequest = onDismiss,
+            title = { Text("Sélectionner $label") },
+            text = {
+                LazyColumn {
+                    items(plageScore.toList()) { score ->
+                        Row(
+                                modifier =
+                                        Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable {
+                                            onScoreSelected(score)
+                                        },
+                                verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                    selected = scoreSelectionne == score,
+                                    onClick = { onScoreSelected(score) }
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column {
+                                Text(
+                                        text = "$score/9",
+                                        style = MaterialTheme.typography.h6,
+                                        fontWeight = FontWeight.Bold,
+                                        color = VetNutriColors.Primary
+                                )
+                                Text(
+                                        text = descriptions[score] ?: "Description non disponible",
+                                        style = MaterialTheme.typography.body2,
+                                        color = Color.Gray
+                                )
+                            }
+                        }
+                        Divider(color = Color.LightGray.copy(alpha = 0.3f))
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = onDismiss) { Text("Fermer") } }
+    )
+}
+
+@Composable
+private fun CoefficientSelector(
+        nom: String,
+        valeurSelectionnee: Float?,
+        descriptionSelectionnee: String?,
+        coefficients: ArrayList<fr.vetbrain.vetnutri_mp.Data.CoefP>,
+        onCoefficientSelected: (fr.vetbrain.vetnutri_mp.Data.CoefP) -> Unit,
+        modifier: Modifier = Modifier
+) {
+    var showDialog by remember { mutableStateOf(false) }
+
+    Column(modifier = modifier) {
+        // Label du coefficient
+        Text(
+                text = nom,
+                style = MaterialTheme.typography.subtitle1,
+                fontWeight = FontWeight.Bold,
+                color = VetNutriColors.Primary
+        )
+
+        // Champ de sélection
+        OutlinedTextField(
+                value =
+                        if (valeurSelectionnee != null && descriptionSelectionnee != null) {
+                            "$descriptionSelectionnee (${String.format("%.2f", valeurSelectionnee)})"
+                        } else {
+                            "Sélectionner un coefficient"
+                        },
+                onValueChange = {},
+                label = { Text("Coefficient") },
+                readOnly = true,
+                modifier = Modifier.fillMaxWidth(),
+                trailingIcon = {
+                    IconButton(onClick = { showDialog = true }) {
+                        Icon(
+                                AppIcons.ArrowDropDown,
+                                contentDescription = "Sélectionner un coefficient"
+                        )
+                    }
+                }
+        )
+    }
+
+    // Dialog de sélection
+    if (showDialog) {
+        CoefficientSelectionDialog(
+                nom = nom,
+                coefficients = coefficients,
+                descriptionSelectionnee = descriptionSelectionnee,
+                onCoefficientSelected = { coef ->
+                    onCoefficientSelected(coef)
+                    showDialog = false
+                },
+                onDismiss = { showDialog = false }
+        )
+    }
+}
+
+@Composable
+private fun CoefficientSelectionDialog(
+        nom: String,
+        coefficients: ArrayList<fr.vetbrain.vetnutri_mp.Data.CoefP>,
+        descriptionSelectionnee: String?,
+        onCoefficientSelected: (fr.vetbrain.vetnutri_mp.Data.CoefP) -> Unit,
+        onDismiss: () -> Unit
+) {
+    AlertDialog(
+            onDismissRequest = onDismiss,
+            title = { Text("Sélectionner $nom") },
+            text = {
+                LazyColumn {
+                    items(coefficients) { coef ->
+                        Row(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                    selected = descriptionSelectionnee == coef.description,
+                                    onClick = { onCoefficientSelected(coef) }
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column {
+                                Text(
+                                        text = coef.description ?: "Sans description",
+                                        style = MaterialTheme.typography.body1
+                                )
+                                Text(
+                                        text =
+                                                "Coefficient: ${String.format("%.2f", coef.coef ?: 1.0f)}",
+                                        style = MaterialTheme.typography.body2,
+                                        color = Color.Gray
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = onDismiss) { Text("Fermer") } }
+    )
 }
 
 @Composable

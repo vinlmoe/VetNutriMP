@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.runtime.*
@@ -1849,25 +1850,50 @@ private fun NutrimentCard(
                                         verticalAlignment = Alignment.CenterVertically
                                 ) {
                                         // Icône de conformité aux références (+ ou -)
-                                        iconeConformite?.let { (icone, couleur, description) ->
-                                                Icon(
-                                                        imageVector = icone,
-                                                        contentDescription = description,
-                                                        tint = couleur,
-                                                        modifier = Modifier.size(12.dp)
-                                                )
+                                        iconeConformite?.let { conformite ->
+                                                if (conformite.isCritical) {
+                                                        // Double icône pour les références
+                                                        // critiques non respectées
+                                                        Row(
+                                                                horizontalArrangement =
+                                                                        Arrangement.spacedBy(1.dp)
+                                                        ) {
+                                                                Icon(
+                                                                        imageVector =
+                                                                                conformite.icone,
+                                                                        contentDescription =
+                                                                                conformite
+                                                                                        .description,
+                                                                        tint = conformite.couleur,
+                                                                        modifier =
+                                                                                Modifier.size(10.dp)
+                                                                )
+                                                                Icon(
+                                                                        imageVector =
+                                                                                conformite.icone,
+                                                                        contentDescription =
+                                                                                conformite
+                                                                                        .description,
+                                                                        tint = conformite.couleur,
+                                                                        modifier =
+                                                                                Modifier.size(10.dp)
+                                                                )
+                                                        }
+                                                } else {
+                                                        // Icône simple pour les références
+                                                        // optimales
+                                                        Icon(
+                                                                imageVector = conformite.icone,
+                                                                contentDescription =
+                                                                        conformite.description,
+                                                                tint = conformite.couleur,
+                                                                modifier = Modifier.size(12.dp)
+                                                        )
+                                                }
                                         }
 
-                                        // Icône de statut (complet ou incomplet)
-                                        if (valeurNutritionnelle.complete) {
-                                                Icon(
-                                                        imageVector = Icons.Filled.Check,
-                                                        contentDescription =
-                                                                "Informations complètes",
-                                                        tint = Color.Green,
-                                                        modifier = Modifier.size(12.dp)
-                                                )
-                                        } else {
+                                        // Icône de statut (seulement si incomplet)
+                                        if (!valeurNutritionnelle.complete) {
                                                 Icon(
                                                         imageVector = Icons.Filled.Warning,
                                                         contentDescription =
@@ -1899,6 +1925,16 @@ private fun NutrimentCard(
         }
 }
 
+/** Données pour l'icône de conformité */
+private data class IconeConformite(
+        val icone: androidx.compose.ui.graphics.vector.ImageVector,
+        val couleur: Color,
+        val description: String,
+        val isCritical:
+                Boolean // true pour MIN/MAX (double icône), false pour OPTIMIN/OPTIMAX (simple
+// icône)
+)
+
 /**
  * Détermine l'icône de conformité aux références nutritionnelles
  *
@@ -1907,7 +1943,7 @@ private fun NutrimentCard(
  * @param besoinEnergetiqueEntretien Besoin énergétique d'entretien
  * @param poidsAnimal Poids de l'animal
  * @param poidsMetabolique Poids métabolique
- * @return Triple avec icône, couleur et description si non conforme, null sinon
+ * @return IconeConformite si non conforme, null sinon
  */
 private fun obtenirIconeConformite(
         valeurNutritionnelle: ValeurNutritionnelle,
@@ -1915,15 +1951,17 @@ private fun obtenirIconeConformite(
         besoinEnergetiqueEntretien: Double?,
         poidsAnimal: Double?,
         poidsMetabolique: Double?
-): Triple<androidx.compose.ui.graphics.vector.ImageVector, Color, String>? {
+): IconeConformite? {
 
         referenceUtilisee?.let { reference ->
                 val nutrient = valeurNutritionnelle.nutriment
                 val apportAbsolu = valeurNutritionnelle.valeur
+                var hasReferences = false
 
                 // Vérifier les minimums (MIN et OPTIMIN)
                 listOf(Reflevel.MIN, Reflevel.OPTIMIN).forEach { level ->
                         if (reference.contientNutriment(nutrient, level)) {
+                                hasReferences = true
                                 val valeurRef = reference.obtenirNutriment(nutrient, level)
                                 val uniteRef =
                                         UnitReqEnum.getById(
@@ -1941,11 +1979,17 @@ private fun obtenirIconeConformite(
 
                                 besoinAbsolu?.let { besoin ->
                                         if (apportAbsolu < besoin) {
-                                                return Triple(
-                                                        Icons.Filled.KeyboardArrowDown, // Icône "↓"
-                                                        // pour carence
-                                                        VetNutriColors.Error,
-                                                        "Carence : apport inférieur au ${if (level == Reflevel.MIN) "minimum" else "optimal minimum"}"
+                                                return IconeConformite(
+                                                        icone =
+                                                                Icons.Filled
+                                                                        .KeyboardArrowDown, // Icône
+                                                        // "↓"
+                                                        // pour
+                                                        // carence
+                                                        couleur = VetNutriColors.Error,
+                                                        description =
+                                                                "Carence : apport inférieur au ${if (level == Reflevel.MIN) "minimum" else "optimal minimum"}",
+                                                        isCritical = level == Reflevel.MIN
                                                 )
                                         }
                                 }
@@ -1955,6 +1999,7 @@ private fun obtenirIconeConformite(
                 // Vérifier les maximums (MAX et OPTIMAX)
                 listOf(Reflevel.MAX, Reflevel.OPTIMAX).forEach { level ->
                         if (reference.contientNutriment(nutrient, level)) {
+                                hasReferences = true
                                 val valeurRef = reference.obtenirNutriment(nutrient, level)
                                 val uniteRef =
                                         UnitReqEnum.getById(
@@ -1972,18 +2017,35 @@ private fun obtenirIconeConformite(
 
                                 besoinAbsolu?.let { besoin ->
                                         if (apportAbsolu > besoin) {
-                                                return Triple(
-                                                        Icons.Filled.Add, // Icône "+" pour excès
-                                                        VetNutriColors.Error,
-                                                        "Excès : apport supérieur au ${if (level == Reflevel.MAX) "maximum" else "optimal maximum"}"
+                                                return IconeConformite(
+                                                        icone =
+                                                                Icons.Filled
+                                                                        .KeyboardArrowUp, // Icône
+                                                        // "↑"
+                                                        // pour
+                                                        // excès
+                                                        couleur = VetNutriColors.Error,
+                                                        description =
+                                                                "Excès : apport supérieur au ${if (level == Reflevel.MAX) "maximum" else "optimal maximum"}",
+                                                        isCritical = level == Reflevel.MAX
                                                 )
                                         }
                                 }
                         }
                 }
+
+                // Si il y a des références et qu'aucune n'est violée, tout est conforme
+                if (hasReferences) {
+                        return IconeConformite(
+                                icone = Icons.Filled.Check, // Icône "✓" pour conformité
+                                couleur = Color.Green,
+                                description = "Conforme : toutes les références sont respectées",
+                                isCritical = false
+                        )
+                }
         }
 
-        return null // Conforme ou pas de référence
+        return null // Pas de référence
 }
 
 /**
