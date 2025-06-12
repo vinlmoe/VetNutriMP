@@ -33,10 +33,20 @@ class RationAnalyzer {
      * Analyse une ration et retourne un résultat détaillé
      *
      * @param ration La ration à analyser
+     * @param consultation La consultation associée (pour les variables supplémentaires)
      * @return Le résultat de l'analyse
      */
-    fun analyserRation(ration: Ration): AnalyseResultat {
+    fun analyserRation(ration: Ration, consultation: ConsultationEv? = null): AnalyseResultat {
         println("Analyse de la ration: ${ration.name} (${ration.uuid})")
+
+        if (consultation != null) {
+            println(
+                    "DEBUG: Analyse avec consultation - Variables supplémentaires: ${consultation.suppVarp.size}"
+            )
+            consultation.suppVarp.forEach { variable ->
+                println("DEBUG: Variable ${variable.variable?.variable} = ${variable.varue}")
+            }
+        }
 
         // Listes des nutriments à analyser par catégorie
         val macronutriments = NutrientMain.entries.toList() as List<Nutrient>

@@ -90,6 +90,50 @@ class MathParser {
 
     // Parsing des expressions
     private fun parseExpression(): Double {
+        return parseComparison()
+    }
+
+    private fun parseComparison(): Double {
+        var result = parseArithmetic()
+
+        while (position < expression.length) {
+            when {
+                currentChar() == '>' && peek() == '=' -> {
+                    nextChar()
+                    nextChar()
+                    result = if (result >= parseArithmetic()) 1.0 else 0.0
+                }
+                currentChar() == '<' && peek() == '=' -> {
+                    nextChar()
+                    nextChar()
+                    result = if (result <= parseArithmetic()) 1.0 else 0.0
+                }
+                currentChar() == '=' && peek() == '=' -> {
+                    nextChar()
+                    nextChar()
+                    result = if (result == parseArithmetic()) 1.0 else 0.0
+                }
+                currentChar() == '!' && peek() == '=' -> {
+                    nextChar()
+                    nextChar()
+                    result = if (result != parseArithmetic()) 1.0 else 0.0
+                }
+                currentChar() == '>' -> {
+                    nextChar()
+                    result = if (result > parseArithmetic()) 1.0 else 0.0
+                }
+                currentChar() == '<' -> {
+                    nextChar()
+                    result = if (result < parseArithmetic()) 1.0 else 0.0
+                }
+                else -> break
+            }
+        }
+
+        return result
+    }
+
+    private fun parseArithmetic(): Double {
         var result = parseTerm()
 
         while (position < expression.length) {
@@ -218,15 +262,43 @@ class MathParser {
 
     private fun parseFunction(functionName: String): Double {
         nextChar() // Consommer '('
+        skipWhitespace()
 
         val args = mutableListOf<Double>()
 
         if (currentChar() != ')') {
-            args.add(parseExpression())
-
-            while (currentChar() == ',') {
-                nextChar()
+            // Cas spécial pour IF qui peut utiliser des points-virgules OU des virgules
+            if (functionName.lowercase() == "if") {
                 args.add(parseExpression())
+                skipWhitespace()
+
+                // Détecter le séparateur utilisé (virgule ou point-virgule)
+                val separator =
+                        when (currentChar()) {
+                            ',' -> ','
+                            ';' -> ';'
+                            else -> null
+                        }
+
+                if (separator != null) {
+                    while (currentChar() == separator) {
+                        nextChar()
+                        skipWhitespace()
+                        args.add(parseExpression())
+                        skipWhitespace()
+                    }
+                }
+            } else {
+                // Fonctions normales avec des virgules
+                args.add(parseExpression())
+                skipWhitespace()
+
+                while (currentChar() == ',') {
+                    nextChar()
+                    skipWhitespace()
+                    args.add(parseExpression())
+                    skipWhitespace()
+                }
             }
         }
 
@@ -242,6 +314,14 @@ class MathParser {
 
     private fun evaluerFonction(name: String, args: List<Double>): Double {
         return when (name.lowercase()) {
+            "if" -> {
+                verifierNombreArguments(name, args, 3)
+                val condition = args[0]
+                val siVrai = args[1]
+                val siFaux = args[2]
+                // En mathématiques, toute valeur non-nulle est vraie
+                if (condition != 0.0) siVrai else siFaux
+            }
             "sin" -> {
                 verifierNombreArguments(name, args, 1)
                 sin(args[0])
@@ -338,6 +418,7 @@ class MathParser {
     private fun estFonctionMathematique(name: String): Boolean {
         val fonctions =
                 setOf(
+                        "if",
                         "sin",
                         "cos",
                         "tan",
@@ -366,6 +447,16 @@ class MathParser {
 
     private fun nextChar() {
         position++
+    }
+
+    private fun skipWhitespace() {
+        while (position < expression.length && currentChar().isWhitespace()) {
+            position++
+        }
+    }
+
+    private fun peek(): Char {
+        return if (position + 1 < expression.length) expression[position + 1] else '\u0000'
     }
 }
 

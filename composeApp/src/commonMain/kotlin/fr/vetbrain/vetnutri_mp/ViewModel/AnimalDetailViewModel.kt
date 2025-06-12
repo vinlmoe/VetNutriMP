@@ -329,7 +329,12 @@ class AnimalDetailViewModel(
             }
 
             // Calculer automatiquement les valeurs métaboliques pour la consultation sélectionnée
-            fullConsultation?.let { consultation -> calculerValeursMetaboliques(consultation) }
+            fullConsultation?.let { consultation ->
+                println(
+                        "🔍 DEBUG: Déclenchement calculerValeursMetaboliques pour consultation ${consultation.uuid}"
+                )
+                calculerValeursMetaboliques(consultation)
+            }
         }
     }
 
@@ -378,6 +383,7 @@ class AnimalDetailViewModel(
      */
     fun analyserRationSelectionnee() {
         val rationActuelle = _selectedRation.value ?: return
+        val consultationActuelle = _selectedConsultation.value
 
         viewModelScope.launch {
             try {
@@ -394,8 +400,9 @@ class AnimalDetailViewModel(
                     return@launch
                 }
 
-                // Effectuer l'analyse
-                val resultat = rationAnalyzer.analyserRation(rationActuelle)
+                // Effectuer l'analyse en passant la consultation pour les variables supplémentaires
+                println("DEBUG: Lancement analyse avec consultation: ${consultationActuelle?.uuid}")
+                val resultat = rationAnalyzer.analyserRation(rationActuelle, consultationActuelle)
                 _rationAnalyseResultat.value = resultat
 
                 println(
@@ -1038,12 +1045,13 @@ class AnimalDetailViewModel(
      * Analyse une ration et met à jour le StateFlow des résultats
      *
      * @param ration La ration à analyser
+     * @param consultation La consultation associée (optionnelle)
      */
-    fun analyserRation(ration: Ration) {
+    fun analyserRation(ration: Ration, consultation: ConsultationEv? = null) {
         viewModelScope.launch {
             try {
                 _isAnalyzing.value = true
-                val resultat = rationAnalyzer.analyserRation(ration)
+                val resultat = rationAnalyzer.analyserRation(ration, consultation)
                 _rationAnalyseResultat.value = resultat
                 println("Analyse de la ration ${ration.name} terminée")
             } catch (e: Exception) {
@@ -1315,14 +1323,19 @@ class AnimalDetailViewModel(
     // ===== MÉTHODES DE CALCUL MÉTABOLIQUE =====
 
     /**
-     * Calcule toutes les valeurs métaboliques pour une consultation donnée dans l'ordre : Poids
-     * métabolique → BEE → Besoin énergétique total
+     * Calcule les valeurs métaboliques (poids métabolique, BEE) pour une consultation donnée
+     *
+     * @param consultation La consultation pour laquelle calculer les valeurs
      */
     fun calculerValeursMetaboliques(consultation: ConsultationEv) {
+        println(
+                "🎯 DEBUG: calculerValeursMetaboliques APPELÉE pour consultation ${consultation.uuid}"
+        )
+
         viewModelScope.launch {
             try {
                 println(
-                        "DEBUG: Début calcul valeurs métaboliques pour consultation ${consultation.uuid}"
+                        "🚀 DEBUG: Début calcul valeurs métaboliques pour consultation ${consultation.uuid}"
                 )
 
                 // 1. Charger la référence appropriée
@@ -1330,31 +1343,46 @@ class AnimalDetailViewModel(
                 _referenceUtilisee.value = reference
 
                 if (reference == null) {
-                    println("DEBUG: Aucune référence trouvée pour la consultation")
+                    println("❌ DEBUG: Aucune référence trouvée pour la consultation")
                     resetCalculsMetaboliques()
                     return@launch
                 }
 
-                println("DEBUG: Référence utilisée: ${reference.nom} (UUID: ${reference.uuid})")
+                println("✅ DEBUG: Référence utilisée: ${reference.nom} (UUID: ${reference.uuid})")
 
                 // 2. Calculer le poids métabolique
                 val poidsMetabolique = calculerPoidsMetabolique(consultation, reference)
                 _poidsMetabolique.value = poidsMetabolique
+                println("📊 DEBUG: Poids métabolique calculé: $poidsMetabolique")
 
                 // 3. Calculer le BEE (Besoin Énergétique Standard)
+                println("📋 DEBUG: Début calcul BEE...")
                 val bee = calculerBesoinEnergetiqueStandard(consultation, reference)
                 _besoinEnergetiqueStandard.value = bee
+                println("⚡ DEBUG: BEE calculé et stocké: $bee")
+
+                if (bee == null) {
+                    println("❌ DEBUG: BEE est null - vérifier l'équation BEE de la référence")
+                }
 
                 // 4. Calculer le besoin énergétique total en multipliant le BEE avec tous les
                 // coefficients
+                println("📋 DEBUG: Début calcul besoin énergétique total...")
                 val besoinTotal = bee?.let { calculerBesoinEnergetiqueTotal(consultation, it) }
                 _besoinEnergetiqueTotal.value = besoinTotal
+                println("🎯 DEBUG: Besoin total calculé et stocké: $besoinTotal")
 
                 println(
-                        "DEBUG: Calculs terminés - PM: $poidsMetabolique, BEE: $bee, Total: $besoinTotal"
+                        "🎯 DEBUG: Calculs terminés - PM: $poidsMetabolique, BEE: $bee, Total: $besoinTotal"
+                )
+
+                // Vérifier les valeurs dans les StateFlow
+                println(
+                        "📊 DEBUG: Vérification StateFlow - PM: ${_poidsMetabolique.value}, BEE: ${_besoinEnergetiqueStandard.value}, Total: ${_besoinEnergetiqueTotal.value}"
                 )
             } catch (e: Exception) {
-                println("Erreur lors du calcul des valeurs métaboliques: ${e.message}")
+                println("💥 Erreur lors du calcul des valeurs métaboliques: ${e.message}")
+                e.printStackTrace()
                 resetCalculsMetaboliques()
             }
         }
@@ -1378,7 +1406,26 @@ class AnimalDetailViewModel(
                     "DEBUG: Calcul poids métabolique avec équation: ${equationBW.name} - ${equationBW.equationScript}"
             )
 
-            val variables = mapOf("BW" to poids.toDouble())
+            // Créer la map des variables incluant BW et les variables supplémentaires
+            val variables = mutableMapOf<String, Double>()
+            variables["BW"] = poids.toDouble()
+
+            // Ajouter les variables supplémentaires de la consultation
+            consultation.suppVarp.forEach { suppVar ->
+                suppVar.variable?.let { varKind ->
+                    val valeur = suppVar.varue?.toDouble() ?: 0.0
+                    variables[varKind.variable] = valeur
+                    println("DEBUG: Variable supplémentaire pour BW: ${varKind.variable} = $valeur")
+                }
+            }
+
+            // Mapper les variables avec leurs équivalents dans l'équation
+            mapperVariablesEquation(variables)
+
+            // Ajouter des valeurs par défaut pour les variables manquantes courantes
+            val variablesManquantes =
+                    ajouterVariablesParDefaut(variables, equationBW.equationScript)
+
             val resultat = ExpressionEvaluator.evaluer(equationBW.equationScript, variables)
 
             println("DEBUG: Poids métabolique calculé: $resultat kg^0.75")
@@ -1403,17 +1450,73 @@ class AnimalDetailViewModel(
                 return null
             }
 
+            // Validation du type de poids et conversion sécurisée
+            val poidsDouble: Double =
+                    try {
+                        when (poids) {
+                            is Double -> poids
+                            is Float -> poids.toDouble()
+                            is Int -> poids.toDouble()
+                            is String -> poids.toDouble()
+                            else -> {
+                                println("ERROR: Type de poids non supporté: ${poids::class}")
+                                return null
+                            }
+                        }
+                    } catch (e: NumberFormatException) {
+                        println("ERROR: Conversion du poids impossible: $poids")
+                        return null
+                    }
+
             println(
                     "DEBUG: Calcul BEE avec équation: ${equationBEE.name} - ${equationBEE.equationScript}"
             )
 
-            val variables = mapOf("BW" to poids.toDouble())
+            // Créer la map des variables incluant BW et les variables supplémentaires
+            val variables = mutableMapOf<String, Double>()
+            variables["BW"] = poidsDouble
+            println("🔍 DEBUG BEE: Équation à évaluer: ${equationBEE.equationScript}")
+            println("🔍 DEBUG BEE: Variables de base - BW = $poidsDouble")
+
+            // Ajouter les variables supplémentaires de la consultation
+            println(
+                    "🔍 DEBUG BEE: Nombre de variables supplémentaires: ${consultation.suppVarp.size}"
+            )
+            consultation.suppVarp.forEach { suppVar ->
+                suppVar.variable?.let { varKind ->
+                    val valeur = suppVar.varue?.toDouble() ?: 0.0
+                    variables[varKind.variable] = valeur
+                    println(
+                            "🔍 DEBUG BEE: Variable supplémentaire ajoutée: ${varKind.variable} = $valeur"
+                    )
+                }
+            }
+
+            // Mappe les variables avec leurs équivalents dans les équations
+            mapperVariablesEquation(variables)
+
+            // Ajouter des valeurs par défaut pour les variables manquantes courantes
+            println("🔍 DEBUG BEE: Variables avant ajout par défaut: ${variables.keys}")
+            val variablesManquantes =
+                    ajouterVariablesParDefaut(variables, equationBEE.equationScript)
+            if (variablesManquantes.isNotEmpty()) {
+                println("WARNING: Variables manquantes dans l'équation: $variablesManquantes")
+                // Ne pas arrêter l'exécution, mais logger pour le debugging
+            }
+            println("🔍 DEBUG BEE: Variables finales avant évaluation: $variables")
+
             val resultat = ExpressionEvaluator.evaluer(equationBEE.equationScript, variables)
+
+            if (resultat == null) {
+                println("ERROR: Échec de l'évaluation de l'équation BEE")
+                return null
+            }
 
             println("DEBUG: BEE calculé: $resultat kcal/jour")
             return resultat
         } catch (e: Exception) {
             println("ERROR: Erreur lors du calcul du BEE: ${e.message}")
+            e.printStackTrace() // Ajout pour debugging
             return null
         }
     }
@@ -1473,6 +1576,76 @@ class AnimalDetailViewModel(
             println("Erreur lors de la récupération de la référence: ${e.message}")
             null
         }
+    }
+
+    /** Mappe les variables avec leurs équivalents dans les équations */
+    private fun mapperVariablesEquation(variables: MutableMap<String, Double>) {
+        // Mapping des variables courantes vers les noms utilisés dans les équations
+        val mappings =
+                mapOf(
+                        "adultWeight" to "AW", // Adult Weight
+                        "litterSize" to "L", // Litter size (taille de portée)
+                        "gestationWeek" to
+                                "wG", // Gestation week (peut être utilisé pour weight gain)
+                        "lactationWeek" to
+                                "wL", // Lactation week (peut être utilisé pour weight loss)
+                        "bodyConditionScore" to "BCS" // Body Condition Score
+                )
+
+        mappings.forEach { (originalName, mappedName) ->
+            variables[originalName]?.let { value ->
+                variables[mappedName] = value
+                println("🔄 DEBUG: Variable mappée: $originalName ($value) -> $mappedName")
+            }
+        }
+    }
+
+    /** Ajoute des valeurs par défaut pour les variables manquantes dans une équation */
+    private fun ajouterVariablesParDefaut(
+            variables: MutableMap<String, Double>,
+            equationScript: String
+    ): List<String> {
+        // Extraire toutes les variables utilisées dans l'équation
+        val variablesUtilisees = ExpressionEvaluator.extraireVariables(equationScript)
+        println("🔍 DEBUG: Variables extraites de l'équation: $variablesUtilisees")
+
+        // Valeurs par défaut pour les variables courantes
+        val valeursParDefaut =
+                mapOf(
+                        "wG" to 0.0, // Weight gain (gain de poids)
+                        "AW" to 0.0, // Adult weight (poids adulte)
+                        "L" to 0.0, // Lactation
+                        "wL" to 0.0, // Weight loss (perte de poids)
+                        "BCS" to 5.0, // Body condition score
+                        "REI" to 1.0, // Reproductive efficiency index
+                        "AF" to 1.0, // Activity factor
+                        "TE" to 1.0, // Thermic effect
+                        "GE" to 1.0, // Growth efficiency
+                        "ME" to 1.0 // Metabolizable energy
+                )
+
+        val variablesManquantes = mutableListOf<String>()
+
+        // Ajouter les valeurs par défaut pour les variables manquantes
+        variablesUtilisees.forEach { variable ->
+            if (!variables.containsKey(variable)) {
+                if (valeursParDefaut.containsKey(variable)) {
+                    variables[variable] = valeursParDefaut[variable]!!
+                    println(
+                            "🎯 DEBUG: Variable par défaut ajoutée: $variable = ${valeursParDefaut[variable]}"
+                    )
+                } else {
+                    println("⚠️ DEBUG: Variable $variable non trouvée dans les valeurs par défaut!")
+                    variablesManquantes.add(variable)
+                }
+            } else {
+                println(
+                        "✅ DEBUG: Variable $variable déjà présente avec valeur: ${variables[variable]}"
+                )
+            }
+        }
+
+        return variablesManquantes
     }
 
     /** Remet à zéro tous les calculs métaboliques */
