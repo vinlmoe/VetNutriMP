@@ -22,6 +22,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -34,8 +35,12 @@ import fr.vetbrain.vetnutri_mp.Data.analyserValeursNutritionnellesRation
 import fr.vetbrain.vetnutri_mp.Enumer.*
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
+import fr.vetbrain.vetnutri_mp.Utils.TextUtils
 import fr.vetbrain.vetnutri_mp.View.AnalNut.NutrimentDetailDialog
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailViewModel
+
+// Constante pour l'exposant formaté
+private const val EXPOSANT_075 = "⁰·⁷⁵"
 
 // Fonction locale InfoRow pour éviter les problèmes d'import
 @Composable
@@ -265,7 +270,10 @@ fun RationsView(
                                                                         value =
                                                                                 poidsMetabolique
                                                                                         ?.let {
-                                                                                                "${String.format("%.2f", it)} kg^0.75"
+                                                                                                TextUtils
+                                                                                                        .formatKgPuissance075(
+                                                                                                                it
+                                                                                                        )
                                                                                         }
                                                                                         ?: "Non calculé"
                                                                 )
@@ -1486,7 +1494,7 @@ private fun MetabolicValuesDialog(
                                         label = "Poids métabolique",
                                         value =
                                                 poidsMetabolique?.let {
-                                                        "${String.format("%.3f", it)} kg^0.75"
+                                                        TextUtils.formatKgPuissance075(it)
                                                 }
                                                         ?: "Non calculé"
                                 )
@@ -1910,7 +1918,7 @@ private fun NutrimentCard(
                                 if (poidsMetabolique != null && poidsMetabolique > 0) {
                                         val valeurParKgMetabolique =
                                                 valeurNutritionnelle.valeur / poidsMetabolique
-                                        "${String.format("%.2f", valeurParKgMetabolique)} ${valeurNutritionnelle.unite.displayName}/kg^0.75"
+                                        "${String.format("%.2f", valeurParKgMetabolique)} ${valeurNutritionnelle.unite.displayName}/kg${TextUtils.toSuperscript("0.75")}"
                                 } else {
                                         "${String.format("%.2f", valeurNutritionnelle.valeur)} ${valeurNutritionnelle.unite.displayName}"
                                 }
@@ -1927,7 +1935,7 @@ private fun NutrimentCard(
 
 /** Données pour l'icône de conformité */
 private data class IconeConformite(
-        val icone: androidx.compose.ui.graphics.vector.ImageVector,
+        val icone: ImageVector,
         val couleur: Color,
         val description: String,
         val isCritical:
