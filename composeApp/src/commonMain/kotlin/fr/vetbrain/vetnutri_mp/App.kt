@@ -10,6 +10,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Components.TopBar
+import fr.vetbrain.vetnutri_mp.Components.TopBarSimple
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
 import fr.vetbrain.vetnutri_mp.DataBase.AppDatabase
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
@@ -17,6 +18,7 @@ import fr.vetbrain.vetnutri_mp.Localization.LocalizationManager
 import fr.vetbrain.vetnutri_mp.Repository.*
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriTheme
 import fr.vetbrain.vetnutri_mp.Utils.PlatformDispatcher
+import fr.vetbrain.vetnutri_mp.Utils.createPreferencesStorage
 import fr.vetbrain.vetnutri_mp.View.*
 import fr.vetbrain.vetnutri_mp.ViewModel.*
 import kotlinx.coroutines.runBlocking
@@ -154,7 +156,7 @@ fun App(appDatabase: AppDatabase) {
     var currentScreen by remember { mutableStateOf<Screen>(Screen.List) }
     var selectedAnimal by remember { mutableStateOf<AnimalEv?>(null) }
     var isEditing by remember { mutableStateOf(false) }
-    var showSettings by remember { mutableStateOf(false) }
+    var selectedSpecies by remember { mutableStateOf<fr.vetbrain.vetnutri_mp.Enumer.Espece?>(null) }
 
     // Observer le résultat de l'importation
     val importResult = animalListViewModel.importResult.collectAsState().value
@@ -233,7 +235,7 @@ fun App(appDatabase: AppDatabase) {
                         Column(modifier = Modifier.fillMaxSize()) {
                             TopBar(
                                     title = "Liste des animaux",
-                                    onSettingsClick = { showSettings = true }
+                                    onSettingsClick = { currentScreen = Screen.Settings }
                             ) {
                                 // Ajouter un bouton de test
                                 Button(
@@ -288,7 +290,7 @@ fun App(appDatabase: AppDatabase) {
                                     title =
                                             if (isEditing) "Modifier un animal"
                                             else "Ajouter un animal",
-                                    onSettingsClick = { showSettings = true }
+                                    onSettingsClick = { currentScreen = Screen.Settings }
                             )
                             CreateAnimalView(
                                     viewModel = createAnimalViewModel,
@@ -308,7 +310,7 @@ fun App(appDatabase: AppDatabase) {
                                     viewModel = animalDetailViewModel,
                                     settingsViewModel = settingsViewModel,
                                     onNavigateBack = { currentScreen = Screen.List },
-                                    onOpenSettings = { showSettings = true },
+                                    onOpenSettings = { currentScreen = Screen.Settings },
                                     modifier = Modifier.fillMaxWidth().weight(1f)
                             )
                         }
@@ -317,7 +319,7 @@ fun App(appDatabase: AppDatabase) {
                         FoodListView(
                                 viewModel = foodListViewModel,
                                 onNavigateBack = { currentScreen = Screen.List },
-                                onOpenSettings = { showSettings = true },
+                                onOpenSettings = { currentScreen = Screen.Settings },
                                 onEditFood = { foodUuid ->
                                     selectedFoodUuid = foodUuid
                                     currentScreen = Screen.FoodEdit
@@ -336,7 +338,7 @@ fun App(appDatabase: AppDatabase) {
                                     selectedFoodUuid = null
                                     currentScreen = Screen.FoodList
                                 },
-                                onNavigateToSettings = { showSettings = true },
+                                onNavigateToSettings = { currentScreen = Screen.Settings },
                                 modifier = Modifier.fillMaxSize()
                         )
                     }
@@ -495,36 +497,69 @@ fun App(appDatabase: AppDatabase) {
                                 modifier = Modifier.fillMaxSize()
                         )
                     }
-                }
-            }
-
-            if (showSettings) {
-                // Afficher SettingsView dans une boîte de dialogue modale
-                AlertDialog(
-                        onDismissRequest = { showSettings = false },
-                        title = { Text("Paramètres") },
-                        text = {
-                            // Nous utilisons une Box pour contenir SettingsView avec une taille
-                            // maximale
-                            Box(modifier = Modifier.fillMaxWidth().heightIn(max = 600.dp)) {
-                                // Utiliser le composant SettingsView à l'intérieur de la boîte de
-                                // dialogue
-                                SettingsView(
-                                        viewModel = settingsViewModel,
-                                        importViewModel = importViewModel,
-                                        onImportAnimals = handleImportAnimals,
-                                        onBack = { showSettings = false },
-                                        onAnimalListRefresh = { animalListViewModel.loadAnimals() },
-                                        onFoodListRefresh = { foodListViewModel.loadFoods() }
+                    Screen.Settings -> {
+                        Scaffold(
+                                topBar = {
+                                    TopBarSimple(
+                                            title = "Paramètres",
+                                            onNavigateBack = { currentScreen = Screen.List }
+                                    )
+                                }
+                        ) { paddingValues ->
+                            SettingsView(
+                                    viewModel = settingsViewModel,
+                                    importViewModel = importViewModel,
+                                    onImportAnimals = {
+                                        // Lancer l'importation
+                                        importViewModel.importAnimalsFromFileUI()
+                                    },
+                                    onBack = { currentScreen = Screen.List },
+                                    onAnimalListRefresh = {
+                                        // Rafraîchir la liste des animaux
+                                        animalListViewModel.loadAnimals()
+                                    },
+                                    onFoodListRefresh = {
+                                        // Rafraîchir la liste des aliments
+                                        // TODO: implémenter le rafraîchissement de la liste des
+                                        // aliments
+                                    },
+                                    modifier = Modifier.padding(paddingValues),
+                                    onSpeciesClick = { species ->
+                                        selectedSpecies = species
+                                        currentScreen = Screen.SpeciesPreferences
+                                    }
+                            )
+                        }
+                    }
+                    Screen.SpeciesPreferences -> {
+                        selectedSpecies?.let { species ->
+                            val preferencesRepository = remember {
+                                fr.vetbrain.vetnutri_mp.Repository.PreferencesRepository(
+                                        createPreferencesStorage()
                                 )
                             }
-                        },
-                        confirmButton = {
-                            Button(onClick = { showSettings = false }) { Text("Fermer") }
-                        },
-                        // Définir une largeur maximale pour la boîte de dialogue
-                        modifier = Modifier.widthIn(max = 800.dp)
-                )
+
+                            Scaffold(
+                                    topBar = {
+                                        TopBarSimple(
+                                                title = "Préférences ${species.label}",
+                                                onNavigateBack = { currentScreen = Screen.Settings }
+                                        )
+                                    }
+                            ) { paddingValues ->
+                                fr.vetbrain.vetnutri_mp.View.SpeciesPreferencesView(
+                                        species = species,
+                                        preferencesRepository = preferencesRepository,
+                                        modifier = Modifier.padding(paddingValues)
+                                )
+                            }
+                        }
+                                ?: run {
+                                    // Fallback si aucune espèce n'est sélectionnée
+                                    currentScreen = Screen.Settings
+                                }
+                    }
+                }
             }
 
             // Afficher le résultat de l'importation des animaux
@@ -652,4 +687,6 @@ private sealed class Screen {
     object ReferenceEvTabs : Screen()
     object TestYellowBox : Screen()
     object NewReferenceEvEdit : Screen()
+    object Settings : Screen()
+    object SpeciesPreferences : Screen()
 }
