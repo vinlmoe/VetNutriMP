@@ -146,7 +146,7 @@ fun PreferencesView(preferencesRepository: PreferencesRepository, modifier: Modi
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                            text = "Préférences pour ${preferences.selectedSpecies.label}",
+                            text = "Préférences pour ${preferences.getEspeceEnum().label}",
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Medium,
                             modifier = Modifier.padding(bottom = 8.dp)
@@ -154,19 +154,14 @@ fun PreferencesView(preferencesRepository: PreferencesRepository, modifier: Modi
 
                     Text(
                             text =
-                                    "Format d'affichage des décimales: ${preferences.formatAffichageDecimales}",
+                                    "Expression des besoins: ${preferences.getTypeExpressionBesoinEnum().displayName}",
                             modifier = Modifier.padding(bottom = 4.dp)
                     )
 
+                    val selectedNutrientsCount =
+                            preferences.nutrimentsSelectionnes.values.sumOf { it.size }
                     Text(
-                            text =
-                                    "Afficher valeurs absolues: ${if (preferences.afficherValeursAbsolues) "Oui" else "Non"}",
-                            modifier = Modifier.padding(bottom = 4.dp)
-                    )
-
-                    Text(
-                            text =
-                                    "Afficher valeurs relatives: ${if (preferences.afficherValeursRelatives) "Oui" else "Non"}",
+                            text = "Nutriments sélectionnés: $selectedNutrientsCount",
                             modifier = Modifier.padding(bottom = 4.dp)
                     )
                 }

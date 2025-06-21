@@ -1480,7 +1480,7 @@ private fun PreferencesContentWithPersistence(
                 try {
                         isLoading = true
                         preferencesRepository.loadPreferences()
-                        currentPreferences = preferencesRepository.preferences.value
+                        currentPreferences = preferencesRepository.preferences
                         preferencesLoaded = true
                         println("DEBUG: Préférences chargées avec succès")
                 } catch (e: Exception) {
@@ -1671,7 +1671,7 @@ private fun SpeciesPreferenceCardWithPersistence(
                                                                                                         val updatedSpeciesPrefs =
                                                                                                                 speciesPreferences
                                                                                                                         .copy(
-                                                                                                                                typeExpressionBesoin =
+                                                                                                                                typeExpressionBesoinId =
                                                                                                                                         type.id
                                                                                                                         )
 
@@ -1733,7 +1733,9 @@ private fun SpeciesPreferenceCardWithPersistence(
                                                                                 else Color.Black
                                                                 )
                                                                 Text(
-                                                                        text = type.description,
+                                                                        text =
+                                                                                type.unitReqEnum
+                                                                                        .label,
                                                                         style =
                                                                                 MaterialTheme
                                                                                         .typography
@@ -1926,7 +1928,9 @@ private fun SpeciesPreferenceCardSimplified(
                                                                                         .body1
                                                                 )
                                                                 Text(
-                                                                        text = type.description,
+                                                                        text =
+                                                                                type.unitReqEnum
+                                                                                        .label,
                                                                         style =
                                                                                 MaterialTheme
                                                                                         .typography
