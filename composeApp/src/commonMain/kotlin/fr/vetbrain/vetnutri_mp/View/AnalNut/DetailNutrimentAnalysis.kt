@@ -117,10 +117,10 @@ fun NutrimentDetailDialog(
 
                             // Apport par kg métabolique (priorité - en gras si disponible)
                             if (poidsMetabolique != null) {
-                                Text(
-                                        text =
+                            Text(
+                                    text =
                                                 "Apport: ${String.format("%.2f", valeurNutritionnelle.valeur / poidsMetabolique)} ${valeurNutritionnelle.unite.displayName}/kg^0.75",
-                                        style = MaterialTheme.typography.body1,
+                                    style = MaterialTheme.typography.body1,
                                         fontWeight = FontWeight.Bold,
                                         color = VetNutriColors.Primary
                                 )
@@ -221,9 +221,9 @@ fun NutrimentDetailDialog(
                                                     reference.obtenirNutriment(nutrient, level)
                                             val uniteRef =
                                                     UnitReqEnum.getById(
-                                                            reference.obtenirUniteNutriment(
-                                                                    nutrient,
-                                                                    level
+                                                                    reference.obtenirUniteNutriment(
+                                                                            nutrient,
+                                                                            level
                                                             )
                                                     )
                                             val biblioRef =
@@ -251,21 +251,21 @@ fun NutrimentDetailDialog(
                                                     )
 
                                             Column(modifier = Modifier.fillMaxWidth()) {
-                                                Row(
-                                                        modifier = Modifier.fillMaxWidth(),
+                                            Row(
+                                                    modifier = Modifier.fillMaxWidth(),
                                                         horizontalArrangement =
                                                                 Arrangement.SpaceBetween
-                                                ) {
-                                                    Text(
-                                                            text = "$levelName:",
-                                                            style = MaterialTheme.typography.body2,
-                                                            fontWeight = FontWeight.Medium
-                                                    )
-                                                    Column(horizontalAlignment = Alignment.End) {
+                                            ) {
+                                                Text(
+                                                        text = "$levelName:",
+                                                        style = MaterialTheme.typography.body2,
+                                                        fontWeight = FontWeight.Medium
+                                                )
+                                                Column(horizontalAlignment = Alignment.End) {
                                                         // Valeur de référence avec son unité
-                                                        Text(
-                                                                text =
-                                                                        "${String.format("%.2f", valeurRef)} ${uniteRef.label}",
+                                                    Text(
+                                                            text =
+                                                                    "${String.format("%.2f", valeurRef)} ${uniteRef.label}",
                                                                 style =
                                                                         MaterialTheme.typography
                                                                                 .body2,
@@ -286,33 +286,33 @@ fun NutrimentDetailDialog(
                                                         }
 
                                                         // Référence bibliographique
-                                                        if (biblioRef.firstAuthor.isNotEmpty() ||
-                                                                        biblioRef.completeRef
-                                                                                .isNotEmpty()
-                                                        ) {
-                                                            Text(
-                                                                    text =
-                                                                            "Réf: ${biblioRef.firstAuthor} ${biblioRef.completeRef}".take(
-                                                                                    30
-                                                                            ) +
-                                                                                    if (biblioRef
-                                                                                                    .firstAuthor
-                                                                                                    .length +
-                                                                                                    biblioRef
-                                                                                                            .completeRef
-                                                                                                            .length >
-                                                                                                    30
-                                                                                    )
-                                                                                            "..."
-                                                                                    else "",
-                                                                    style =
-                                                                            MaterialTheme.typography
-                                                                                    .caption,
-                                                                    color =
+                                                    if (biblioRef.firstAuthor.isNotEmpty() ||
+                                                                    biblioRef.completeRef
+                                                                            .isNotEmpty()
+                                                    ) {
+                                                        Text(
+                                                                text =
+                                                                        "Réf: ${biblioRef.firstAuthor} ${biblioRef.completeRef}".take(
+                                                                                30
+                                                                        ) +
+                                                                                if (biblioRef
+                                                                                                .firstAuthor
+                                                                                                .length +
+                                                                                                biblioRef
+                                                                                                        .completeRef
+                                                                                                        .length >
+                                                                                                30
+                                                                                )
+                                                                                        "..."
+                                                                                else "",
+                                                                style =
+                                                                        MaterialTheme.typography
+                                                                                .caption,
+                                                                color =
                                                                             couleurConformite.copy(
                                                                                     alpha = 0.7f
                                                                             )
-                                                            )
+                                                        )
                                                         }
                                                     }
                                                 }

@@ -41,18 +41,18 @@ fun ConsultationFullScreenEditView(
         onBackPressed: (ConsultationEv) -> Unit,
         onLoadReferences: () -> Unit = {}
 ) {
-        var editedConsultation by
-                remember(consultation) { mutableStateOf(consultation ?: ConsultationEv()) }
-        var weightText by
-                remember(consultation) { mutableStateOf(consultation?.weight?.toString() ?: "") }
-        var showDateError by remember(consultation) { mutableStateOf(false) }
-        var showWeightError by remember(consultation) { mutableStateOf(false) }
-        var dateErrorMessage by remember(consultation) { mutableStateOf<String?>(null) }
-        var weightErrorMessage by remember(consultation) { mutableStateOf<String?>(null) }
+    var editedConsultation by
+            remember(consultation) { mutableStateOf(consultation ?: ConsultationEv()) }
+    var weightText by
+            remember(consultation) { mutableStateOf(consultation?.weight?.toString() ?: "") }
+    var showDateError by remember(consultation) { mutableStateOf(false) }
+    var showWeightError by remember(consultation) { mutableStateOf(false) }
+    var dateErrorMessage by remember(consultation) { mutableStateOf<String?>(null) }
+    var weightErrorMessage by remember(consultation) { mutableStateOf<String?>(null) }
 
-        // États pour les dialogues de sélection de références
-        var showReferenceGeneraleDialog by remember(consultation) { mutableStateOf(false) }
-        var showReferenceMaladieDialog by remember(consultation) { mutableStateOf(false) }
+    // États pour les dialogues de sélection de références
+    var showReferenceGeneraleDialog by remember(consultation) { mutableStateOf(false) }
+    var showReferenceMaladieDialog by remember(consultation) { mutableStateOf(false) }
 
         // États pour les dialogues de coefficients
         var showK1Dialog by remember { mutableStateOf(false) }
@@ -85,163 +85,163 @@ fun ConsultationFullScreenEditView(
                         }
                 }
 
-        // Charger les références au démarrage
-        LaunchedEffect(Unit) { onLoadReferences() }
+    // Charger les références au démarrage
+    LaunchedEffect(Unit) { onLoadReferences() }
 
-        // Fonction pour sauvegarder et retourner
-        val saveAndGoBack = {
-                if (!showDateError && !showWeightError && editedConsultation.date != null) {
-                        // S'assurer que l'UUID est généré si c'est une nouvelle consultation
-                        if (editedConsultation.uuid.isEmpty()) {
-                                editedConsultation =
+    // Fonction pour sauvegarder et retourner
+    val saveAndGoBack = {
+        if (!showDateError && !showWeightError && editedConsultation.date != null) {
+            // S'assurer que l'UUID est généré si c'est une nouvelle consultation
+            if (editedConsultation.uuid.isEmpty()) {
+                editedConsultation =
                                         editedConsultation.copy(
                                                 uuid = kotlin.uuid.Uuid.random().toString()
                                         )
-                        }
-                        onBackPressed(editedConsultation)
-                } else if (editedConsultation.date == null) {
-                        showDateError = true
-                        dateErrorMessage = "La date est obligatoire"
-                }
+            }
+            onBackPressed(editedConsultation)
+        } else if (editedConsultation.date == null) {
+            showDateError = true
+            dateErrorMessage = "La date est obligatoire"
         }
+    }
 
-        Scaffold(
-                topBar = {
-                        TopAppBar(
-                                title = {
-                                        Column {
-                                                Text(
-                                                        text =
-                                                                if (consultation == null ||
+    Scaffold(
+            topBar = {
+                TopAppBar(
+                        title = {
+                            Column {
+                                Text(
+                                        text =
+                                                if (consultation == null ||
                                                                                 consultation.uuid
                                                                                         .isEmpty()
-                                                                )
-                                                                        "Nouvelle consultation"
-                                                                else "Modifier consultation",
-                                                        style = MaterialTheme.typography.h6,
-                                                        color = VetNutriColors.OnPrimary
                                                 )
-                                                if (animalName.isNotEmpty()) {
-                                                        Text(
-                                                                text = animalName,
+                                                        "Nouvelle consultation"
+                                                else "Modifier consultation",
+                                        style = MaterialTheme.typography.h6,
+                                        color = VetNutriColors.OnPrimary
+                                )
+                                if (animalName.isNotEmpty()) {
+                                    Text(
+                                            text = animalName,
                                                                 style =
                                                                         MaterialTheme.typography
                                                                                 .subtitle2,
                                                                 color =
                                                                         VetNutriColors.OnPrimary
                                                                                 .copy(alpha = 0.8f)
-                                                        )
-                                                }
-                                        }
-                                },
-                                navigationIcon = {
-                                        IconButton(onClick = { saveAndGoBack() }) {
-                                                Icon(
-                                                        AppIcons.ArrowBack,
-                                                        contentDescription = "Retour et sauvegarde",
-                                                        tint = VetNutriColors.OnPrimary
-                                                )
-                                        }
-                                },
-                                actions = {
-                                        // Bouton de sauvegarde explicite
-                                        TextButton(
-                                                onClick = { saveAndGoBack() },
-                                                enabled = !showDateError && !showWeightError
-                                        ) {
-                                                Text(
-                                                        text = General.SAVE.translate(),
-                                                        color = VetNutriColors.OnPrimary
-                                                )
-                                        }
-                                },
-                                backgroundColor = VetNutriColors.Primary,
-                                contentColor = VetNutriColors.OnPrimary
-                        )
-                }
-        ) { paddingValues ->
-                Column(
-                        modifier =
-                                Modifier.fillMaxSize()
-                                        .padding(paddingValues)
-                                        .verticalScroll(rememberScrollState())
-                                        .padding(AppSizes.paddingLarge),
-                        verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
-                ) {
-                        // Date
-                        AppDatePicker(
-                                selectedDate = editedConsultation.date,
-                                onDateSelected = { date: LocalDate ->
-                                        editedConsultation = editedConsultation.copy(date = date)
-                                        showDateError = false
-                                        dateErrorMessage = null
-                                },
-                                label = Consultation.DATE.translate(),
-                                isError = showDateError,
-                                errorMessage = dateErrorMessage,
-                                modifier = Modifier.fillMaxWidth()
-                        )
+                                    )
+                                }
+                            }
+                        },
+                        navigationIcon = {
+                            IconButton(onClick = { saveAndGoBack() }) {
+                                Icon(
+                                        AppIcons.ArrowBack,
+                                        contentDescription = "Retour et sauvegarde",
+                                        tint = VetNutriColors.OnPrimary
+                                )
+                            }
+                        },
+                        actions = {
+                            // Bouton de sauvegarde explicite
+                            TextButton(
+                                    onClick = { saveAndGoBack() },
+                                    enabled = !showDateError && !showWeightError
+                            ) {
+                                Text(
+                                        text = General.SAVE.translate(),
+                                        color = VetNutriColors.OnPrimary
+                                )
+                            }
+                        },
+                        backgroundColor = VetNutriColors.Primary,
+                        contentColor = VetNutriColors.OnPrimary
+                )
+            }
+    ) { paddingValues ->
+        Column(
+                modifier =
+                        Modifier.fillMaxSize()
+                                .padding(paddingValues)
+                                .verticalScroll(rememberScrollState())
+                                .padding(AppSizes.paddingLarge),
+                verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
+        ) {
+            // Date
+            AppDatePicker(
+                    selectedDate = editedConsultation.date,
+                    onDateSelected = { date: LocalDate ->
+                        editedConsultation = editedConsultation.copy(date = date)
+                        showDateError = false
+                        dateErrorMessage = null
+                    },
+                    label = Consultation.DATE.translate(),
+                    isError = showDateError,
+                    errorMessage = dateErrorMessage,
+                    modifier = Modifier.fillMaxWidth()
+            )
 
-                        // Poids
-                        NumberTextField(
-                                value = weightText,
-                                onValueChange = { newValue: String ->
-                                        weightText = newValue
-                                        try {
-                                                if (newValue.isNotEmpty()) {
-                                                        val weight = newValue.toFloat()
+            // Poids
+            NumberTextField(
+                    value = weightText,
+                    onValueChange = { newValue: String ->
+                        weightText = newValue
+                        try {
+                            if (newValue.isNotEmpty()) {
+                                val weight = newValue.toFloat()
                                                         editedConsultation =
                                                                 editedConsultation.copy(
                                                                         weight = weight
                                                                 )
-                                                        showWeightError = false
-                                                        weightErrorMessage = null
-                                                } else {
+                                showWeightError = false
+                                weightErrorMessage = null
+                            } else {
                                                         editedConsultation =
                                                                 editedConsultation.copy(
                                                                         weight = null
                                                                 )
-                                                        showWeightError = false
-                                                        weightErrorMessage = null
-                                                }
-                                        } catch (e: Exception) {
-                                                showWeightError = true
+                                showWeightError = false
+                                weightErrorMessage = null
+                            }
+                        } catch (e: Exception) {
+                            showWeightError = true
                                                 weightErrorMessage =
                                                         "Format de poids invalide (nombre décimal)"
-                                        }
-                                },
-                                label = Animal.WEIGHT.translate(),
-                                leadingIcon = AppIcons.Weight,
-                                isError = showWeightError,
-                                errorMessage = weightErrorMessage,
-                                modifier = Modifier.fillMaxWidth()
-                        )
+                        }
+                    },
+                    label = Animal.WEIGHT.translate(),
+                    leadingIcon = AppIcons.Weight,
+                    isError = showWeightError,
+                    errorMessage = weightErrorMessage,
+                    modifier = Modifier.fillMaxWidth()
+            )
 
-                        // Objectif
-                        AppTextField(
-                                value = editedConsultation.objectConsult,
-                                onValueChange = { newValue: String ->
+            // Objectif
+            AppTextField(
+                    value = editedConsultation.objectConsult,
+                    onValueChange = { newValue: String ->
                                         editedConsultation =
                                                 editedConsultation.copy(objectConsult = newValue)
-                                },
-                                label = Consultation.OBJECTIVE.translate(),
-                                leadingIcon = AppIcons.Info,
-                                modifier = Modifier.fillMaxWidth()
-                        )
+                    },
+                    label = Consultation.OBJECTIVE.translate(),
+                    leadingIcon = AppIcons.Info,
+                    modifier = Modifier.fillMaxWidth()
+            )
 
-                        // Observations
-                        AppTextField(
-                                value = editedConsultation.observation,
-                                onValueChange = { newValue: String ->
+            // Observations
+            AppTextField(
+                    value = editedConsultation.observation,
+                    onValueChange = { newValue: String ->
                                         editedConsultation =
                                                 editedConsultation.copy(observation = newValue)
-                                },
-                                label = Consultation.OBSERVATION.translate(),
-                                leadingIcon = AppIcons.Info,
-                                modifier = Modifier.fillMaxWidth().heightIn(min = 120.dp),
-                                maxLines = 6,
-                                singleLine = false
-                        )
+                    },
+                    label = Consultation.OBSERVATION.translate(),
+                    leadingIcon = AppIcons.Info,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 120.dp),
+                    maxLines = 6,
+                    singleLine = false
+            )
 
                         // Section Note d'État Corporel
                         Card(
@@ -296,66 +296,66 @@ fun ConsultationFullScreenEditView(
                                 }
                         }
 
-                        // Section Références Nutritionnelles
-                        Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                elevation = AppSizes.elevationSmall,
-                                backgroundColor = VetNutriColors.Surface
-                        ) {
-                                Column(
-                                        modifier = Modifier.padding(AppSizes.paddingLarge),
+            // Section Références Nutritionnelles
+            Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    elevation = AppSizes.elevationSmall,
+                    backgroundColor = VetNutriColors.Surface
+            ) {
+                Column(
+                        modifier = Modifier.padding(AppSizes.paddingLarge),
                                         verticalArrangement =
                                                 Arrangement.spacedBy(AppSizes.paddingMedium)
-                                ) {
-                                        Text(
-                                                text = "Références nutritionnelles",
-                                                style = MaterialTheme.typography.h6,
-                                                color = VetNutriColors.Primary
-                                        )
+                ) {
+                    Text(
+                            text = "Références nutritionnelles",
+                            style = MaterialTheme.typography.h6,
+                            color = VetNutriColors.Primary
+                    )
 
-                                        Divider(color = VetNutriColors.Primary.copy(alpha = 0.3f))
+                    Divider(color = VetNutriColors.Primary.copy(alpha = 0.3f))
 
-                                        // Référence générale
-                                        Text(
-                                                text = "Référence générale",
-                                                style = MaterialTheme.typography.subtitle1,
-                                                fontWeight = FontWeight.Bold
-                                        )
+                    // Référence générale
+                    Text(
+                            text = "Référence générale",
+                            style = MaterialTheme.typography.subtitle1,
+                            fontWeight = FontWeight.Bold
+                    )
 
-                                        OutlinedTextField(
+                    OutlinedTextField(
                                                 value = referenceGeneraleSelectionnee?.nom
-                                                                ?: "Aucune référence sélectionnée",
-                                                onValueChange = {},
-                                                label = { Text("Référence générale") },
-                                                readOnly = true,
-                                                modifier = Modifier.fillMaxWidth(),
-                                                trailingIcon = {
+                                            ?: "Aucune référence sélectionnée",
+                            onValueChange = {},
+                            label = { Text("Référence générale") },
+                            readOnly = true,
+                            modifier = Modifier.fillMaxWidth(),
+                            trailingIcon = {
                                                         IconButton(
                                                                 onClick = {
                                                                         showReferenceGeneraleDialog =
                                                                                 true
                                                                 }
                                                         ) {
-                                                                Icon(
-                                                                        AppIcons.ArrowDropDown,
+                                    Icon(
+                                            AppIcons.ArrowDropDown,
                                                                         contentDescription =
                                                                                 "Sélectionner une référence"
-                                                                )
-                                                        }
-                                                }
-                                        )
+                                    )
+                                }
+                            }
+                    )
 
-                                        Spacer(modifier = Modifier.height(AppSizes.paddingMedium))
+                    Spacer(modifier = Modifier.height(AppSizes.paddingMedium))
 
-                                        // Références liées aux maladies
-                                        Text(
-                                                text = "Références liées aux maladies",
-                                                style = MaterialTheme.typography.subtitle1,
-                                                fontWeight = FontWeight.Bold
-                                        )
+                    // Références liées aux maladies
+                    Text(
+                            text = "Références liées aux maladies",
+                            style = MaterialTheme.typography.subtitle1,
+                            fontWeight = FontWeight.Bold
+                    )
 
-                                        // Liste des références de maladies
-                                        if (editedConsultation.referencesMaladies.isNotEmpty()) {
+                    // Liste des références de maladies
+                    if (editedConsultation.referencesMaladies.isNotEmpty()) {
                                                 Column(
                                                         verticalArrangement =
                                                                 Arrangement.spacedBy(
@@ -370,7 +370,7 @@ fun ConsultationFullScreenEditView(
                                                                                                 it.uuid ==
                                                                                                         referenceId
                                                                                         }
-                                                                        Card(
+                                Card(
                                                                                 modifier =
                                                                                         Modifier.fillMaxWidth(),
                                                                                 backgroundColor =
@@ -380,9 +380,9 @@ fun ConsultationFullScreenEditView(
                                                                                                         alpha =
                                                                                                                 0.7f
                                                                                                 ),
-                                                                                elevation = 2.dp
-                                                                        ) {
-                                                                                Row(
+                                        elevation = 2.dp
+                                ) {
+                                    Row(
                                                                                         modifier =
                                                                                                 Modifier.padding(
                                                                                                         AppSizes.paddingMedium
@@ -399,8 +399,8 @@ fun ConsultationFullScreenEditView(
                                                                                                         Modifier.weight(
                                                                                                                 1f
                                                                                                         )
-                                                                                        ) {
-                                                                                                Text(
+                                    ) {
+                                        Text(
                                                                                                         text =
                                                                                                                 referenceMaladie
                                                                                                                         ?.nom
@@ -431,40 +431,40 @@ fun ConsultationFullScreenEditView(
                                                                                                         )
                                                                                                 }
                                                                                         }
-                                                                                        IconButton(
-                                                                                                onClick = {
+                                        IconButton(
+                                                onClick = {
                                                                                                         editedConsultation
                                                                                                                 .supprimerReferenceMaladie(
-                                                                                                                        referenceId
-                                                                                                                )
-                                                                                                }
-                                                                                        ) {
-                                                                                                Icon(
-                                                                                                        AppIcons.Delete,
+                                                            referenceId
+                                                    )
+                                                }
+                                        ) {
+                                            Icon(
+                                                    AppIcons.Delete,
                                                                                                         contentDescription =
                                                                                                                 "Supprimer la référence",
                                                                                                         tint =
                                                                                                                 Color.Red
-                                                                                                )
-                                                                                        }
-                                                                                }
-                                                                        }
-                                                                }
-                                                }
+                                            )
                                         }
+                                    }
+                                }
+                            }
+                        }
+                    }
 
-                                        // Bouton pour ajouter une référence de maladie
-                                        OutlinedButton(
-                                                onClick = { showReferenceMaladieDialog = true },
-                                                modifier = Modifier.fillMaxWidth(),
-                                                colors =
-                                                        ButtonDefaults.outlinedButtonColors(
+                    // Bouton pour ajouter une référence de maladie
+                    OutlinedButton(
+                            onClick = { showReferenceMaladieDialog = true },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors =
+                                    ButtonDefaults.outlinedButtonColors(
                                                                 contentColor =
                                                                         VetNutriColors.Primary
-                                                        )
-                                        ) {
-                                                Icon(
-                                                        AppIcons.Add,
+                                    )
+                    ) {
+                        Icon(
+                                AppIcons.Add,
                                                         contentDescription =
                                                                 "Ajouter une référence de maladie",
                                                         modifier =
@@ -478,10 +478,10 @@ fun ConsultationFullScreenEditView(
                                                                         AppSizes.paddingSmall
                                                                 )
                                                 )
-                                                Text("Ajouter une référence de maladie")
-                                        }
-                                }
-                        }
+                        Text("Ajouter une référence de maladie")
+                    }
+                }
+            }
 
                         // Section Variables Supplémentaires
                         val variablesRequises =
@@ -618,22 +618,22 @@ fun ConsultationFullScreenEditView(
 
                         // Section Coefficients
                         if (referenceGeneraleSelectionnee != null) {
-                                Card(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        elevation = AppSizes.elevationSmall,
-                                        backgroundColor = VetNutriColors.Surface
-                                ) {
-                                        Column(
-                                                modifier = Modifier.padding(AppSizes.paddingLarge),
+            Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    elevation = AppSizes.elevationSmall,
+                    backgroundColor = VetNutriColors.Surface
+            ) {
+                Column(
+                        modifier = Modifier.padding(AppSizes.paddingLarge),
                                                 verticalArrangement =
                                                         Arrangement.spacedBy(AppSizes.paddingMedium)
-                                        ) {
-                                                Text(
+                    ) {
+                        Text(
                                                         text =
                                                                 "Coefficients d'ajustement énergétique",
-                                                        style = MaterialTheme.typography.h6,
-                                                        color = VetNutriColors.Primary
-                                                )
+                                style = MaterialTheme.typography.h6,
+                                color = VetNutriColors.Primary
+                        )
 
                                                 Divider(
                                                         color =
@@ -800,46 +800,46 @@ fun ConsultationFullScreenEditView(
                                                         }
                                                 }
                                         }
-                                }
-                        }
-
-                        // Espacement final
-                        Spacer(modifier = Modifier.height(AppSizes.paddingLarge))
                 }
-        }
+            }
 
-        if (showReferenceGeneraleDialog) {
-                ReferenceGeneraleDialog(
-                        value = editedConsultation.referenceGeneraleId ?: "",
-                        onValueChange = { newValue: String ->
+            // Espacement final
+            Spacer(modifier = Modifier.height(AppSizes.paddingLarge))
+        }
+    }
+
+    if (showReferenceGeneraleDialog) {
+        ReferenceGeneraleDialog(
+                value = editedConsultation.referenceGeneraleId ?: "",
+                onValueChange = { newValue: String ->
                                 editedConsultation =
                                         editedConsultation.copy(referenceGeneraleId = newValue)
-                                showReferenceGeneraleDialog = false
-                        },
+                    showReferenceGeneraleDialog = false
+                },
                         availableReferences = referencesGeneralesFiltrees
-                )
-        }
+        )
+    }
 
-        if (showReferenceMaladieDialog) {
-                ReferenceMaladieDialog(
-                        references = editedConsultation.referencesMaladies,
+    if (showReferenceMaladieDialog) {
+        ReferenceMaladieDialog(
+                references = editedConsultation.referencesMaladies,
                         availableReferences = availableReferences,
-                        onReferenceSelected = { referenceId ->
-                                editedConsultation =
-                                        editedConsultation.copy(
-                                                referencesMaladies = referenceId.toMutableList()
-                                        )
-                                showReferenceMaladieDialog = false
-                        },
-                        onReferenceRemoved = { referenceId ->
-                                editedConsultation =
-                                        editedConsultation.copy(
-                                                referencesMaladies = referenceId.toMutableList()
-                                        )
-                                showReferenceMaladieDialog = false
-                        }
-                )
-        }
+                onReferenceSelected = { referenceId ->
+                    editedConsultation =
+                            editedConsultation.copy(
+                                    referencesMaladies = referenceId.toMutableList()
+                            )
+                    showReferenceMaladieDialog = false
+                },
+                onReferenceRemoved = { referenceId ->
+                    editedConsultation =
+                            editedConsultation.copy(
+                                    referencesMaladies = referenceId.toMutableList()
+                            )
+                    showReferenceMaladieDialog = false
+                }
+        )
+    }
 }
 
 @Composable
@@ -935,15 +935,15 @@ private fun ScoreSelectionDialog(
                                                                 .clickable {
                                                                         onScoreSelected(score)
                                                                 },
-                                                verticalAlignment = Alignment.CenterVertically
-                                        ) {
+                verticalAlignment = Alignment.CenterVertically
+        ) {
                                                 RadioButton(
                                                         selected = scoreSelectionne == score,
                                                         onClick = { onScoreSelected(score) }
                                                 )
                                                 Spacer(modifier = Modifier.width(8.dp))
-                                                Column {
-                                                        Text(
+                Column {
+                    Text(
                                                                 text = "$score/9",
                                                                 style = MaterialTheme.typography.h6,
                                                                 fontWeight = FontWeight.Bold,
@@ -955,9 +955,9 @@ private fun ScoreSelectionDialog(
                                                                 style =
                                                                         MaterialTheme.typography
                                                                                 .body2,
-                                                                color = Color.Gray
-                                                        )
-                                                }
+                            color = Color.Gray
+                    )
+                }
                                         }
                                         Divider(color = Color.LightGray.copy(alpha = 0.3f))
                                 }
@@ -1001,7 +1001,7 @@ private fun CoefficientSelector(
                         modifier = Modifier.fillMaxWidth(),
                         trailingIcon = {
                                 IconButton(onClick = { showDialog = true }) {
-                                        Icon(
+                    Icon(
                                                 AppIcons.ArrowDropDown,
                                                 contentDescription = "Sélectionner un coefficient"
                                         )
@@ -1083,7 +1083,7 @@ private fun ReferenceGeneraleDialog(
         onValueChange: (String) -> Unit,
         availableReferences: List<fr.vetbrain.vetnutri_mp.Data.ReferenceEv>
 ) {
-        val referencesGenerales = availableReferences.filter { !it.maladie }
+    val referencesGenerales = availableReferences.filter { !it.maladie }
         var searchText by remember { mutableStateOf("") }
 
         // Filtrer les références selon le texte de recherche
@@ -1102,10 +1102,10 @@ private fun ReferenceGeneraleDialog(
                         }
                 }
 
-        AlertDialog(
-                onDismissRequest = { onValueChange(value) },
-                title = { Text("Sélectionner une référence générale") },
-                text = {
+    AlertDialog(
+            onDismissRequest = { onValueChange(value) },
+            title = { Text("Sélectionner une référence générale") },
+            text = {
                         Column(modifier = Modifier.width(500.dp).height(400.dp)) {
                                 // Barre de recherche
                                 OutlinedTextField(
@@ -1134,7 +1134,7 @@ private fun ReferenceGeneraleDialog(
 
                                 // Liste scrollable des références
                                 LazyColumn(modifier = Modifier.fillMaxWidth().weight(1f)) {
-                                        // Option pour aucune référence
+                    // Option pour aucune référence
                                         item {
                                                 Row(
                                                         modifier =
@@ -1166,9 +1166,9 @@ private fun ReferenceGeneraleDialog(
                                                                         .padding(4.dp),
                                                         verticalAlignment =
                                                                 Alignment.CenterVertically
-                                                ) {
-                                                        RadioButton(
-                                                                selected = value == reference.uuid,
+                        ) {
+                            RadioButton(
+                                    selected = value == reference.uuid,
                                                                 onClick = {
                                                                         onValueChange(
                                                                                 reference.uuid
@@ -1226,7 +1226,7 @@ private fun ReferenceGeneraleDialog(
                 confirmButton = {
                         TextButton(onClick = { onValueChange(value) }) { Text("Fermer") }
                 }
-        )
+    )
 }
 
 @Composable
@@ -1255,10 +1255,10 @@ private fun ReferenceMaladieDialog(
                         }
                 }
 
-        AlertDialog(
+    AlertDialog(
                 onDismissRequest = { onReferenceSelected(references) },
-                title = { Text("Gérer les références de maladies") },
-                text = {
+            title = { Text("Gérer les références de maladies") },
+            text = {
                         Column(modifier = Modifier.width(500.dp).height(400.dp)) {
                                 // Barre de recherche
                                 OutlinedTextField(
@@ -1362,12 +1362,12 @@ private fun ReferenceMaladieDialog(
                                                 Divider(color = Color.LightGray.copy(alpha = 0.3f))
                                         }
                                 }
-                        }
-                },
-                confirmButton = {
-                        TextButton(onClick = { onReferenceSelected(references) }) { Text("Fermer") }
                 }
-        )
+            },
+            confirmButton = {
+                TextButton(onClick = { onReferenceSelected(references) }) { Text("Fermer") }
+            }
+    )
 }
 
 /** Fonction pour extraire les variables requises par les équations d'une référence */

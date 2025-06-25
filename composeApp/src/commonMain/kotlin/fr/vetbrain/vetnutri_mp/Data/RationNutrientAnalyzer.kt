@@ -1,6 +1,7 @@
 package fr.vetbrain.vetnutri_mp.Data
 
 import fr.vetbrain.vetnutri_mp.Enumer.AAEnum
+import fr.vetbrain.vetnutri_mp.Enumer.MainNutrientEnum
 import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientAnalysis
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientLipid
@@ -9,6 +10,7 @@ import fr.vetbrain.vetnutri_mp.Enumer.NutrientMain
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientMin
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientOther
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientVitam
+import fr.vetbrain.vetnutri_mp.Utils.NutrientUtils
 
 /**
  * Fonction qui analyse une ration et retourne une Map de tous les nutriments avec en clés le label
@@ -128,6 +130,67 @@ private fun obtenirTousLesNutriments(): List<Nutrient> {
 }
 
 /**
+ * Obtient une liste filtrée de nutriments selon les préférences utilisateur
+ *
+ * @param nutrimentsSelectionnes Liste des labels des nutriments sélectionnés dans les préférences
+ * @return Liste des nutriments correspondant aux préférences
+ */
+fun obtenirNutrimentsSelonPreferences(nutrimentsSelectionnes: List<String>): List<Nutrient> {
+    // Obtenir tous les nutriments disponibles
+    val tousLesNutriments = obtenirTousLesNutriments()
+
+    // Filtrer selon les préférences (comparaison par label)
+    return tousLesNutriments.filter { nutriment ->
+        nutrimentsSelectionnes.contains(nutriment.label)
+    }
+}
+
+/**
+ * Obtient une liste filtrée de nutriments selon les préférences utilisateur (version alternative
+ * avec enum names)
+ *
+ * @param nutrimentsSelectionnes Liste des noms d'enum des nutriments sélectionnés dans les
+ * préférences
+ * @return Liste des nutriments correspondant aux préférences
+ */
+fun obtenirNutrimentsSelonPreferencesParNom(nutrimentsSelectionnes: List<String>): List<Nutrient> {
+    // Obtenir tous les nutriments disponibles
+    val tousLesNutriments = obtenirTousLesNutriments()
+
+    // Filtrer selon les préférences (comparaison par label puisque les nutriments sont labelable)
+    return tousLesNutriments.filter { nutriment ->
+        nutrimentsSelectionnes.contains(nutriment.label)
+    }
+}
+
+/**
+ * Version modifiée de analyserValeursNutritionnellesRation qui ne traite que les nutriments
+ * sélectionnés
+ *
+ * @param ration La ration à analyser
+ * @param nutrimentsSelectionnes Liste des labels des nutriments à analyser
+ * @return Map<String, ValeurNutritionnelle> contenant uniquement l'analyse des nutriments
+ * sélectionnés
+ */
+fun analyserValeursNutritionnellesRationSelective(
+        ration: Ration,
+        nutrimentsSelectionnes: List<String>
+): Map<String, ValeurNutritionnelle> {
+    val resultat = mutableMapOf<String, ValeurNutritionnelle>()
+
+    // Obtenir seulement les nutriments sélectionnés selon les préférences
+    val nutrimentsAAnalyser = obtenirNutrimentsSelonPreferences(nutrimentsSelectionnes)
+
+    // Pour chaque nutriment sélectionné, calculer sa valeur dans la ration
+    nutrimentsAAnalyser.forEach { nutriment ->
+        val valeurNutritionnelle = calculerValeurNutrimentDansRation(ration, nutriment)
+        resultat[nutriment.label] = valeurNutritionnelle
+    }
+
+    return resultat
+}
+
+/**
  * Fonction d'exemple montrant comment utiliser analyserValeursNutritionnellesRation
  *
  * @param ration La ration à analyser
@@ -162,4 +225,88 @@ fun exempleUtilisationAnalyseRation(ration: Ration) {
     println(
             "Pourcentage de complétude: ${String.format("%.1f", (nutrimentsComplets.toDouble() / totalNutriments) * 100)}%"
     )
+}
+
+/**
+ * Exemple d'utilisation des nouvelles fonctions de filtrage par préférences
+ *
+ * @param ration La ration à analyser
+ */
+fun exempleUtilisationAnalyseRationSelective(ration: Ration) {
+    println("=== Analyse nutritionnelle sélective de la ration: ${ration.name} ===")
+
+    // Exemple de préférences utilisateur : seulement les nutriments principaux et quelques
+    // vitamines
+    val preferencesUtilisateur =
+            listOf(
+                    "PROTEINE",
+                    "LIPIDE",
+                    "GLUCIDE",
+                    "ENERGIE",
+                    "CAL",
+                    "PHOS",
+                    "VITA",
+                    "VITD",
+                    "VITE",
+                    "FE",
+                    "ZN",
+                    "CU"
+            )
+
+    // Analyser seulement les nutriments sélectionnés
+    val valeursNutritionnellesSelectives =
+            analyserValeursNutritionnellesRationSelective(ration, preferencesUtilisateur)
+
+    // Afficher les résultats
+    println(
+            "Nutriments analysés selon les préférences (${valeursNutritionnellesSelectives.size} nutriments):"
+    )
+    valeursNutritionnellesSelectives.forEach { (label, valeur) ->
+        println(
+                "- $label: ${String.format("%.2f", valeur.valeur)} ${valeur.unite.label} " +
+                        "(Complet: ${if (valeur.complete) "Oui" else "Non"})"
+        )
+    }
+
+    // Comparaison avec l'analyse complète
+    val valeursNutritionnellesCompletes = analyserValeursNutritionnellesRation(ration)
+    println("\nComparaison:")
+    println("- Analyse complète: ${valeursNutritionnellesCompletes.size} nutriments")
+    println("- Analyse sélective: ${valeursNutritionnellesSelectives.size} nutriments")
+    println(
+            "- Réduction: ${String.format("%.1f", 
+        (1.0 - valeursNutritionnellesSelectives.size.toDouble() / valeursNutritionnellesCompletes.size) * 100)}%"
+    )
+}
+
+/**
+ * Convertit les préférences d'une espèce en liste de labels de nutriments sélectionnés
+ *
+ * @param preferencesEspece Les préférences pour l'espèce
+ * @return Liste des labels des nutriments sélectionnés
+ */
+fun convertirPreferencesVersLabelsNutriments(preferencesEspece: PreferencesEspece): List<String> {
+    val labelsSelectionnes = mutableListOf<String>()
+
+    // Parcourir chaque catégorie de nutriments dans les préférences
+    preferencesEspece.nutrimentsSelectionnes.forEach { (categorieNom, coefsSelectionnes) ->
+        // Convertir le nom de catégorie en enum
+        val categorie =
+                try {
+                    MainNutrientEnum.valueOf(categorieNom)
+                } catch (e: IllegalArgumentException) {
+                    return@forEach // Ignorer les catégories non reconnues
+                }
+
+        // Obtenir tous les nutriments de cette catégorie
+        val nutrimentsCategorie = NutrientUtils.getNutrientsForCategory(categorie)
+
+        // Filtrer les nutriments sélectionnés et récupérer leurs labels
+        coefsSelectionnes.forEach { coefSelectionne ->
+            val nutrimentTrouve = nutrimentsCategorie.find { it.coef == coefSelectionne }
+            nutrimentTrouve?.let { nutriment -> labelsSelectionnes.add(nutriment.label) }
+        }
+    }
+
+    return labelsSelectionnes.distinct() // Éliminer les doublons éventuels
 }
