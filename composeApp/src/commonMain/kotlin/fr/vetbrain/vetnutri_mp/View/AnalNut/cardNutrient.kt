@@ -2,9 +2,7 @@ package fr.vetbrain.vetnutri_mp.View.AnalNut
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -20,6 +18,12 @@ import fr.vetbrain.vetnutri_mp.Enumer.*
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.TextUtils
+
+/** Données pour un item de la grille (titre ou nutriment) */
+private sealed class GridItem {
+    data class TitreSection(val categorie: String, val titre: String) : GridItem()
+    data class NutrimentItem(val nom: String, val valeur: ValeurNutritionnelle) : GridItem()
+}
 
 /** Composant pour afficher l'analyse nutritionnelle d'une ration */
 @Composable
@@ -46,7 +50,11 @@ fun AnalyseNutritionnelleCard(
                 analyserValeursNutritionnellesRationSelective(ration, nutrimentsSelectionnes)
             }
 
-    val nutrimentsAffiches = valeursNutritionnelles
+    // Grouper les nutriments par catégorie
+    val nutrimentsGroupes =
+            remember(valeursNutritionnelles) {
+                grouperNutrimentsParCategorie(valeursNutritionnelles)
+            }
 
     Card(modifier = modifier, elevation = AppSizes.elevationSmall) {
         Column(
@@ -98,28 +106,351 @@ fun AnalyseNutritionnelleCard(
                 }
             }
 
-            // Grid adaptatif qui ajuste automatiquement le nombre de colonnes (1 à 4)
-            // Taille minimale de 400dp par colonne
-            LazyVerticalGrid(
-                    columns = GridCells.Adaptive(minSize = 125.dp),
-                    verticalArrangement = Arrangement.spacedBy(AppSizes.paddingXSmall),
-                    horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingXSmall),
+            // Liste avec titres de section et grilles de nutriments
+            LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall),
                     modifier = Modifier.fillMaxWidth()
             ) {
-                items(nutrimentsAffiches.toList()) { (nom, valeurNutritionnelle) ->
-                    NutrimentCard(
-                            nom = nom,
-                            valeurNutritionnelle = valeurNutritionnelle,
-                            poidsMetabolique = poidsMetabolique,
-                            referenceUtilisee = referenceUtilisee,
-                            besoinEnergetiqueEntretien = besoinEnergetiqueEntretien,
-                            poidsAnimal = poidsAnimal,
-                            modifier = Modifier.fillMaxWidth(),
-                            onClick = { onNutrimentClick(nom, valeurNutritionnelle) }
-                    )
+                // Ordre d'affichage des catégories
+                val ordreCategories =
+                        listOf("BASE", "MACRO", "MIN", "VITAM", "LIPID", "AMA", "ANA", "OTHER")
+
+                ordreCategories.forEach { categorie ->
+                    nutrimentsGroupes[categorie]?.let { nutriments ->
+                        if (nutriments.isNotEmpty()) {
+                            // Titre de section
+                            item {
+                                TitreSectionCard(
+                                        titre = obtenirTitreCategorie(categorie),
+                                        modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+
+                            // Grille des nutriments pour cette catégorie
+                            item {
+                                // Utiliser une Column avec des Rows pour éviter les problèmes de
+                                // LazyVerticalGrid imbriqués
+                                Column(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalArrangement =
+                                                Arrangement.spacedBy(AppSizes.paddingXSmall)
+                                ) {
+                                    nutriments.chunked(3).forEach { rangeeNutriments ->
+                                        Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement =
+                                                        Arrangement.spacedBy(AppSizes.paddingXSmall)
+                                        ) {
+                                            rangeeNutriments.forEach { (nom, valeur) ->
+                                                NutrimentCard(
+                                                        nom = nom,
+                                                        valeurNutritionnelle = valeur,
+                                                        poidsMetabolique = poidsMetabolique,
+                                                        referenceUtilisee = referenceUtilisee,
+                                                        besoinEnergetiqueEntretien =
+                                                                besoinEnergetiqueEntretien,
+                                                        poidsAnimal = poidsAnimal,
+                                                        modifier = Modifier.weight(1f),
+                                                        onClick = { onNutrimentClick(nom, valeur) }
+                                                )
+                                            }
+                                            // Remplir l'espace restant s'il y a moins de 3 éléments
+                                            repeat(3 - rangeeNutriments.size) {
+                                                Spacer(modifier = Modifier.weight(1f))
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
+    }
+}
+
+/** Composant pour afficher un titre de section */
+@Composable
+private fun TitreSectionCard(titre: String, modifier: Modifier = Modifier) {
+    Card(
+            modifier = modifier,
+            elevation = 2.dp,
+            backgroundColor = VetNutriColors.Primary.copy(alpha = 0.1f)
+    ) {
+        Row(
+                modifier = Modifier.fillMaxWidth().padding(AppSizes.paddingSmall),
+                verticalAlignment = Alignment.CenterVertically
+        ) {
+            Divider(
+                    modifier = Modifier.weight(1f).height(1.dp),
+                    color = VetNutriColors.Primary.copy(alpha = 0.3f)
+            )
+            Text(
+                    text = titre,
+                    style = MaterialTheme.typography.subtitle2,
+                    fontWeight = FontWeight.Bold,
+                    color = VetNutriColors.Primary,
+                    modifier = Modifier.padding(horizontal = AppSizes.paddingSmall)
+            )
+            Divider(
+                    modifier = Modifier.weight(1f).height(1.dp),
+                    color = VetNutriColors.Primary.copy(alpha = 0.3f)
+            )
+        }
+    }
+}
+
+/** Groupe les nutriments par catégorie selon leur type */
+private fun grouperNutrimentsParCategorie(
+        valeursNutritionnelles: Map<String, ValeurNutritionnelle>
+): Map<String, List<Pair<String, ValeurNutritionnelle>>> {
+    val groupes = mutableMapOf<String, MutableList<Pair<String, ValeurNutritionnelle>>>()
+
+    valeursNutritionnelles.forEach { (nom, valeur) ->
+        val categorie = determinerCategorieNutriment(nom, valeur.nutriment)
+        groupes.getOrPut(categorie) { mutableListOf() }.add(nom to valeur)
+    }
+
+    // Trier les nutriments dans chaque catégorie selon l'ordre de l'enum
+    return groupes.mapValues { (categorie, nutriments) ->
+        trierNutrimentsParOrdreEnum(categorie, nutriments)
+    }
+}
+
+/** Trie une liste de nutriments selon l'ordre défini dans l'énumération correspondante */
+private fun trierNutrimentsParOrdreEnum(
+        categorie: String,
+        nutriments: List<Pair<String, ValeurNutritionnelle>>
+): List<Pair<String, ValeurNutritionnelle>> {
+    return when (categorie) {
+        "BASE" -> {
+            nutriments.sortedBy { (nom, _) -> obtenirOrdreNutrimentBase(nom) }
+        }
+        "MACRO" -> {
+            nutriments.sortedBy { (nom, _) -> obtenirOrdreNutrimentMacro(nom) }
+        }
+        "MIN" -> {
+            nutriments.sortedBy { (nom, _) -> obtenirOrdreNutrimentMin(nom) }
+        }
+        "VITAM" -> {
+            nutriments.sortedBy { (nom, _) -> obtenirOrdreNutrimentVitam(nom) }
+        }
+        "LIPID" -> {
+            nutriments.sortedBy { (nom, _) -> obtenirOrdreNutrimentLipid(nom) }
+        }
+        "AMA" -> {
+            nutriments.sortedBy { (nom, _) -> obtenirOrdreNutrimentAA(nom) }
+        }
+        "ANA" -> {
+            nutriments.sortedBy { (nom, _) -> obtenirOrdreNutrimentAnalysis(nom) }
+        }
+        else -> {
+            // Pour les autres catégories, garder l'ordre alphabétique
+            nutriments.sortedBy { it.first }
+        }
+    }
+}
+
+/** Obtient l'ordre d'un nutriment de base selon l'enum NutrientMain */
+private fun obtenirOrdreNutrimentBase(nom: String): Int {
+    return when (nom) {
+        "HUMIDITE" -> 0
+        "PROTEINE" -> 1
+        "LIPIDE" -> 2
+        "GLUCIDE" -> 3
+        "ENA" -> 4
+        "FIBRE" -> 5
+        "CELLULOSE" -> 6
+        "CENDRE" -> 7
+        "ENERGIE" -> 8
+        "SUCRE" -> 9
+        "AMIDON" -> 10
+        "FIBRESOL" -> 11
+        "FIBRETOT" -> 12
+        "NDF" -> 13
+        "ADF" -> 14
+        else -> 999 // Pour les nutriments non définis dans l'enum
+    }
+}
+
+/** Obtient l'ordre d'un macronutriment selon l'enum NutrientMacro */
+private fun obtenirOrdreNutrimentMacro(nom: String): Int {
+    return when (nom) {
+        "CAL" -> 0 // Calcium
+        "PHOS" -> 1 // Phosphore
+        "MG" -> 2 // Magnésium
+        "NA" -> 3 // Sodium
+        "K" -> 4 // Potassium
+        "CHL" -> 5 // Chlore
+        else -> 999
+    }
+}
+
+/** Obtient l'ordre d'un minéral selon l'enum NutrientMin */
+private fun obtenirOrdreNutrimentMin(nom: String): Int {
+    return when (nom) {
+        "FE" -> 0 // Fer
+        "CU" -> 1 // Cuivre
+        "ZN" -> 2 // Zinc
+        "MN" -> 3 // Manganèse
+        "I" -> 4 // Iode
+        "SE" -> 5 // Sélénium
+        else -> 999
+    }
+}
+
+/** Obtient l'ordre d'une vitamine selon l'enum NutrientVitam */
+private fun obtenirOrdreNutrimentVitam(nom: String): Int {
+    return when (nom) {
+        "VITA" -> 0
+        "VITC" -> 1
+        "VITD" -> 2
+        "VITE" -> 3
+        "VITK" -> 4
+        "VITB1" -> 5
+        "VITB2" -> 6
+        "VITB3" -> 7
+        "VITB5" -> 8
+        "VITB6" -> 9
+        "VITB8" -> 10
+        "VITB9" -> 11
+        "VITB12" -> 12
+        "CHOLINE" -> 13
+        "RETINOL" -> 14
+        "BETACAR" -> 15
+        else -> 999
+    }
+}
+
+/** Obtient l'ordre d'un lipide selon l'enum NutrientLipid */
+private fun obtenirOrdreNutrimentLipid(nom: String): Int {
+    return when (nom) {
+        "AGSATURE" -> 0
+        "AGMONO" -> 1
+        "AGPOLY" -> 2
+        "AG40" -> 3
+        "AG60" -> 4
+        "AG80" -> 5
+        "AG100" -> 6
+        "AG120" -> 7
+        "AG140" -> 8
+        "AG160" -> 9
+        "AG180" -> 10
+        "AG181" -> 11
+        "AG182" -> 12
+        "AG183" -> 13
+        "AG204" -> 14
+        "AG205" -> 15
+        "AG226" -> 16
+        "CHOLES" -> 17
+        "O3" -> 18
+        "O6" -> 19
+        "EPADHA" -> 20
+        else -> 999
+    }
+}
+
+/** Obtient l'ordre d'un acide aminé selon l'enum AAEnum */
+private fun obtenirOrdreNutrimentAA(nom: String): Int {
+    return when (nom) {
+        "ALANINE" -> 0
+        "ARGININE" -> 1
+        "ASPARAGINE" -> 2
+        "ASPARATE" -> 3
+        "CYSTEINE" -> 4
+        "GLUTAMATE" -> 5
+        "GLUTAMINE" -> 6
+        "GLYCINE" -> 7
+        "HISTIDINE" -> 8
+        "ISOLEUCINE" -> 9
+        "LEUCINE" -> 10
+        "LYSINE" -> 11
+        "METHIONINE" -> 12
+        "PHENYLALANINE" -> 13
+        "PROLINE" -> 14
+        "PYRROLYSINE" -> 15
+        "SELENOCYSTEINE" -> 16
+        "SERINE" -> 17
+        "THREONINE" -> 18
+        "TRYPTOPHANE" -> 19
+        "TYROSINE" -> 20
+        "VALINE" -> 21
+        else -> 999
+    }
+}
+
+/** Obtient l'ordre d'un nutriment d'analyse selon l'enum NutrientAnalysis */
+private fun obtenirOrdreNutrimentAnalysis(nom: String): Int {
+    return when (nom) {
+        "KNA" -> 0 // Rapport K/NA
+        "CAP" -> 1 // Rapport phosphocalcique
+        "O6O3" -> 2 // Rapport omega 6/omega3
+        "ZNCU" -> 3 // Rapport Zn/Cu
+        "PROTP" -> 4 // Rapport Protéines/Phosphore
+        "METHCYS" -> 5 // Methionine+cystéine
+        "PHENTYR" -> 6 // Phénylalanine+tyrosine
+        "nonOsPhos" -> 7 // Phosphore non osseux
+        "nonOsProt" -> 8 // Proteine non osseuse
+        "nonOsPP" -> 9 // Ratio Prot/phos non osseux
+        else -> 999
+    }
+}
+
+/** Détermine la catégorie d'un nutriment selon son nom et son type */
+private fun determinerCategorieNutriment(nom: String, nutriment: Any): String {
+    return when {
+        // Nutriments de base
+        nom in
+                listOf(
+                        "HUMIDITE",
+                        "PROTEINE",
+                        "LIPIDE",
+                        "GLUCIDE",
+                        "ENA",
+                        "FIBRE",
+                        "CELLULOSE",
+                        "CENDRE",
+                        "ENERGIE"
+                ) -> "BASE"
+
+        // Macronutriments
+        nom in listOf("CAL", "PHOS", "MG", "NA", "K", "CHL") -> "MACRO"
+
+        // Minéraux
+        nom in listOf("FE", "CU", "ZN", "MN", "I", "SE") -> "MIN"
+
+        // Vitamines
+        nom.startsWith("VIT") || nom in listOf("CHOLINE", "RETINOL", "BETACAR") -> "VITAM"
+
+        // Lipides
+        nom in listOf("O3", "O6", "EPADHA", "AGSATURE", "AGMONO", "AGPOLY") ||
+                nom.startsWith("AG") -> "LIPID"
+
+        // Acides aminés
+        nom in listOf("LYSINE", "METHIONINE", "TRYPTOPHANE", "METHCYS", "PHENTYR") -> "AMA"
+
+        // Analyses/Ratios
+        nom in listOf("KNA", "CAP", "O6O3", "ZNCU", "nonOsPhos", "nonOsProt", "nonOsPP", "PROTP") ->
+                "ANA"
+
+        // Autres
+        else -> "OTHER"
+    }
+}
+
+/** Traduit les codes de catégorie en titres lisibles */
+private fun obtenirTitreCategorie(categorie: String): String {
+    return when (categorie) {
+        "BASE" -> "Nutriments de base"
+        "MACRO" -> "Macroéléments"
+        "MIN" -> "Oligoéléments"
+        "VITAM" -> "Vitamines"
+        "LIPID" -> "Acides gras"
+        "AMA" -> "Acides aminés"
+        "ANA" -> "Analyses/Ratios"
+        "OTHER" -> "Autres"
+        else -> "Divers"
     }
 }
 
