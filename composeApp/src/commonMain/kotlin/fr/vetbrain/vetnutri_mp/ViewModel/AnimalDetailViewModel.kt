@@ -1465,8 +1465,8 @@ class AnimalDetailViewModel(
                         }
                     } catch (e: NumberFormatException) {
                         println("ERROR: Conversion du poids impossible: $poids")
-                        return null
-                    }
+                return null
+            }
 
             println(
                     "DEBUG: Calcul BEE avec équation: ${equationBEE.name} - ${equationBEE.equationScript}"

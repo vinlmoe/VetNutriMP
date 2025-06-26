@@ -123,3 +123,4 @@ data class PreferencesApplication(
         return copy(preferencesParEspece = nouvellesPreferences)
     }
 }
+ 

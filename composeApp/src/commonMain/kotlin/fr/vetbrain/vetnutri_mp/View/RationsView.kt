@@ -1104,7 +1104,12 @@ fun RationsView(
                                                                                 )
                                                                         showNutrimentDetailDialog =
                                                                                 true
-                                                                }
+                                                                },
+                                                                // Nouveaux paramètres pour les
+                                                                // préférences
+                                                                animal = animal,
+                                                                preferencesRepository =
+                                                                        preferencesRepository
                                                         )
                                                 } else {
                                                         Card(
@@ -1249,6 +1254,8 @@ fun RationsView(
                         referenceUtilisee = referenceUtilisee,
                         besoinEnergetiqueEntretien = besoinEnergetiqueStandard,
                         poidsAnimal = selectedConsultation?.weight?.toDouble(),
+                        espece = animal?.getEspece() ?: Espece.CHIEN,
+                        preferencesStorage = preferencesStorage,
                         onDismiss = {
                                 showNutrimentDetailDialog = false
                                 selectedNutrimentData = null

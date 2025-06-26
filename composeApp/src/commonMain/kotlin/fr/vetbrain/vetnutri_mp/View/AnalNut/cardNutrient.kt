@@ -15,6 +15,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Data.*
 import fr.vetbrain.vetnutri_mp.Enumer.*
+import fr.vetbrain.vetnutri_mp.Repository.PreferencesRepository
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.TextUtils
@@ -35,10 +36,36 @@ fun AnalyseNutritionnelleCard(
         poidsAnimal: Double?,
         modifier: Modifier = Modifier,
         nutrimentsSelectionnes: List<String>? = null,
-        onNutrimentClick: (String, ValeurNutritionnelle) -> Unit
+        onNutrimentClick: (String, ValeurNutritionnelle) -> Unit,
+        // Nouveaux paramètres pour les préférences
+        animal: AnimalEv? = null,
+        preferencesRepository: PreferencesRepository? = null
 ) {
     // Etat pour basculer entre affichage filtré et complet
     var afficherTousLesNutriments by remember { mutableStateOf(false) }
+
+    // Charger les préférences d'expression pour l'espèce de l'animal
+    var typeExpressionBesoin by remember { mutableStateOf<TypeExpressionBesoin?>(null) }
+
+    LaunchedEffect(animal, preferencesRepository) {
+        animal?.let { animalData ->
+            preferencesRepository?.let { repo ->
+                try {
+                    val preferences = repo.getPreferencesForSpecies(animalData.getEspece())
+                    typeExpressionBesoin = preferences.getTypeExpressionBesoinEnum()
+                    println(
+                            "DEBUG EXPRESSION: Type d'expression trouvé pour ${animalData.getEspece().label}: ${typeExpressionBesoin?.displayName}"
+                    )
+                } catch (e: Exception) {
+                    println(
+                            "DEBUG EXPRESSION: Erreur lors du chargement des préférences: ${e.message}"
+                    )
+                    typeExpressionBesoin = TypeExpressionBesoin.DEFAULT
+                }
+            }
+        }
+                ?: run { typeExpressionBesoin = TypeExpressionBesoin.DEFAULT }
+    }
 
     val valeursNutritionnelles =
             if (afficherTousLesNutriments ||
@@ -151,7 +178,8 @@ fun AnalyseNutritionnelleCard(
                                                                 besoinEnergetiqueEntretien,
                                                         poidsAnimal = poidsAnimal,
                                                         modifier = Modifier.weight(1f),
-                                                        onClick = { onNutrimentClick(nom, valeur) }
+                                                        onClick = { onNutrimentClick(nom, valeur) },
+                                                        typeExpressionBesoin = typeExpressionBesoin
                                                 )
                                             }
                                             // Remplir l'espace restant s'il y a moins de 3 éléments
@@ -411,7 +439,13 @@ private fun determinerCategorieNutriment(nom: String, nutriment: Any): String {
                         "FIBRE",
                         "CELLULOSE",
                         "CENDRE",
-                        "ENERGIE"
+                        "ENERGIE",
+                        "SUCRE",
+                        "AMIDON",
+                        "FIBRESOL",
+                        "FIBRETOT",
+                        "NDF",
+                        "ADF"
                 ) -> "BASE"
 
         // Macronutriments
@@ -464,7 +498,8 @@ private fun NutrimentCard(
         besoinEnergetiqueEntretien: Double?,
         poidsAnimal: Double?,
         modifier: Modifier = Modifier,
-        onClick: () -> Unit
+        onClick: () -> Unit,
+        typeExpressionBesoin: TypeExpressionBesoin?
 ) {
     // Vérifier la conformité aux références
     val iconeConformite =
@@ -547,17 +582,18 @@ private fun NutrimentCard(
                 }
             }
 
-            // Valeur et unité (affichage par défaut pour l'instant)
-            val valeurAffichee =
-                    if (poidsMetabolique != null && poidsMetabolique > 0) {
-                        val valeurParKgMetabolique = valeurNutritionnelle.valeur / poidsMetabolique
-                        "${String.format("%.2f", valeurParKgMetabolique)} ${valeurNutritionnelle.unite.displayName}/kg${TextUtils.toSuperscript("0.75")}"
-                    } else {
-                        "${String.format("%.2f", valeurNutritionnelle.valeur)} ${valeurNutritionnelle.unite.displayName}"
-                    }
+            // Valeur et unité selon les préférences d'expression
+            val (valeurAffichee, uniteAffichee) =
+                    calculerAffichageNutriment(
+                            valeurNutritionnelle = valeurNutritionnelle,
+                            typeExpressionBesoin = typeExpressionBesoin,
+                            poidsMetabolique = poidsMetabolique,
+                            poidsAnimal = poidsAnimal,
+                            besoinEnergetiqueEntretien = besoinEnergetiqueEntretien
+                    )
 
             Text(
-                    text = valeurAffichee,
+                    text = "$valeurAffichee $uniteAffichee",
                     style = MaterialTheme.typography.overline,
                     color = MaterialTheme.colors.onSurface,
                     maxLines = 2
@@ -711,5 +747,84 @@ private fun calculerBesoinAbsoluLocal(
         }
         UnitReqEnum.RATIO -> null
         else -> null
+    }
+}
+
+/**
+ * Calcule l'affichage d'un nutriment selon le type d'expression des besoins choisi
+ * @param valeurNutritionnelle Valeur nutritionnelle du nutriment
+ * @param typeExpressionBesoin Type d'expression des besoins (préférences utilisateur)
+ * @param poidsMetabolique Poids métabolique de l'animal
+ * @param poidsAnimal Poids vif de l'animal
+ * @param besoinEnergetiqueEntretien Besoin énergétique d'entretien (BEE)
+ * @return Pair<valeur formatée, unité d'affichage>
+ */
+private fun calculerAffichageNutriment(
+        valeurNutritionnelle: ValeurNutritionnelle,
+        typeExpressionBesoin: TypeExpressionBesoin?,
+        poidsMetabolique: Double?,
+        poidsAnimal: Double?,
+        besoinEnergetiqueEntretien: Double?
+): Pair<String, String> {
+
+    val valeurAbsolue = valeurNutritionnelle.valeur
+    val uniteOriginale = valeurNutritionnelle.unite.displayName
+
+    // Si pas de type d'expression défini, affichage par défaut
+    val typeExpression = typeExpressionBesoin ?: TypeExpressionBesoin.DEFAULT
+
+    return when (typeExpression) {
+        TypeExpressionBesoin.PAR_KG -> {
+            // Par kg de poids vif
+            poidsAnimal?.let { poids ->
+                if (poids > 0) {
+                    val valeurParKg = valeurAbsolue / poids
+                    Pair(String.format("%.2f", valeurParKg), "$uniteOriginale/kg")
+                } else {
+                    Pair(String.format("%.2f", valeurAbsolue), uniteOriginale)
+                }
+            }
+                    ?: Pair(String.format("%.2f", valeurAbsolue), uniteOriginale)
+        }
+        TypeExpressionBesoin.PAR_KG_METABOLIQUE -> {
+            // Par kg de poids métabolique (kg^0.75)
+            poidsMetabolique?.let { poidsMetab ->
+                if (poidsMetab > 0) {
+                    val valeurParKgMetab = valeurAbsolue / poidsMetab
+                    Pair(
+                            String.format("%.2f", valeurParKgMetab),
+                            "$uniteOriginale/kg${TextUtils.toSuperscript("0.75")}"
+                    )
+                } else {
+                    Pair(String.format("%.2f", valeurAbsolue), uniteOriginale)
+                }
+            }
+                    ?: Pair(String.format("%.2f", valeurAbsolue), uniteOriginale)
+        }
+        TypeExpressionBesoin.PAR_KCAL -> {
+            // Par 1000 kcal de BEE (Besoin Énergétique d'Entretien)
+            besoinEnergetiqueEntretien?.let { bee ->
+                if (bee > 0) {
+                    val valeurPar1000Kcal = (valeurAbsolue / bee) * 1000
+                    Pair(String.format("%.2f", valeurPar1000Kcal), "$uniteOriginale/1000 kcal")
+                } else {
+                    Pair(String.format("%.2f", valeurAbsolue), uniteOriginale)
+                }
+            }
+                    ?: Pair(String.format("%.2f", valeurAbsolue), uniteOriginale)
+        }
+        TypeExpressionBesoin.PAR_KJ -> {
+            // Par 1000 kJ de BEE (conversion : 1 kcal = 4.184 kJ)
+            besoinEnergetiqueEntretien?.let { bee ->
+                if (bee > 0) {
+                    val beeEnKj = bee * 4.184 // Conversion kcal vers kJ
+                    val valeurPar1000Kj = (valeurAbsolue / beeEnKj) * 1000
+                    Pair(String.format("%.2f", valeurPar1000Kj), "$uniteOriginale/1000 kJ")
+                } else {
+                    Pair(String.format("%.2f", valeurAbsolue), uniteOriginale)
+                }
+            }
+                    ?: Pair(String.format("%.2f", valeurAbsolue), uniteOriginale)
+        }
     }
 }

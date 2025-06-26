@@ -21,3 +21,4 @@ expect class PreferencesStorage {
 
 /** Fonction helper pour créer une instance de PreferencesStorage */
 expect fun createPreferencesStorage(): PreferencesStorage
+ 

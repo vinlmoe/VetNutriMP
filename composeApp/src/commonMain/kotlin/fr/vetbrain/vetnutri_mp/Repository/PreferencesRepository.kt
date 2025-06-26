@@ -106,6 +106,9 @@ class PreferencesRepository(private val preferencesStorage: PreferencesStorage) 
         preferences.preferencesParEspece.forEach { (speciesName, prefs) ->
             val nutrientsJson = serializeNutrientsMap(prefs.nutrimentsSelectionnes)
             // Utiliser directement l'ID de l'enum
+            println(
+                    "DEBUG SAVE: Sauvegarde $speciesName avec expressionId=${prefs.typeExpressionBesoinId} (${TypeExpressionBesoin.getById(prefs.typeExpressionBesoinId).displayName})"
+            )
             speciesEntries.add(
                     "\"$speciesName\":{\"expressionId\":${prefs.typeExpressionBesoinId},\"nutrients\":$nutrientsJson}"
             )
@@ -113,7 +116,9 @@ class PreferencesRepository(private val preferencesStorage: PreferencesStorage) 
         sb.append(speciesEntries.joinToString(","))
 
         sb.append("}}")
-        return sb.toString()
+        val result = sb.toString()
+        println("DEBUG SAVE: JSON généré: $result")
+        return result
     }
 
     /** Sérialise la map des nutriments */
@@ -162,7 +167,9 @@ class PreferencesRepository(private val preferencesStorage: PreferencesStorage) 
                                 expressionMatch?.groupValues?.get(1)?.toIntOrNull()
                                         ?: TypeExpressionBesoin.DEFAULT.id
 
-                        println("DEBUG: Expression ID trouvée pour $speciesName: $expressionId")
+                        println(
+                                "DEBUG LOAD: Expression ID trouvée pour $speciesName: $expressionId (${TypeExpressionBesoin.getById(expressionId).displayName})"
+                        )
 
                         // Extraire les nutriments
                         val nutrients = parseNutrientsFromJson(speciesData)
@@ -178,7 +185,7 @@ class PreferencesRepository(private val preferencesStorage: PreferencesStorage) 
                                         nutrimentsSelectionnes = nutrients
                                 )
                         println(
-                                "DEBUG: Préférences créées pour $speciesName avec expression ID: $expressionId"
+                                "DEBUG LOAD: Préférences créées pour $speciesName avec expression ID: $expressionId"
                         )
                     } else {
                         println("DEBUG: Aucune donnée trouvée pour $speciesName dans le JSON")

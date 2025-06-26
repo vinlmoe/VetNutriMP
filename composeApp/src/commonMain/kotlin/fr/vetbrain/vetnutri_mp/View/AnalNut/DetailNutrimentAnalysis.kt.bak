@@ -19,8 +19,6 @@ import fr.vetbrain.vetnutri_mp.Enumer.*
 import fr.vetbrain.vetnutri_mp.Repository.PreferencesRepository
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
-import fr.vetbrain.vetnutri_mp.Utils.PreferencesStorage
-import fr.vetbrain.vetnutri_mp.Utils.TextUtils
 
 // Fonction locale InfoRow po
 
@@ -60,98 +58,6 @@ private fun obtenirCouleurConformite(
 }
 
 /**
- * Calcule l'affichage d'un nutriment selon le type d'expression des besoins choisi
- * @param valeurNutritionnelle Valeur nutritionnelle du nutriment
- * @param typeExpressionBesoin Type d'expression des besoins (préférences utilisateur)
- * @param poidsMetabolique Poids métabolique de l'animal
- * @param poidsAnimal Poids vif de l'animal
- * @param besoinEnergetiqueEntretien Besoin énergétique d'entretien (BEE)
- * @return Pair<valeur formatée, unité d'affichage>
- */
-private fun calculerAffichageNutriment(
-        valeurNutritionnelle: ValeurNutritionnelle,
-        typeExpressionBesoin: TypeExpressionBesoin?,
-        poidsMetabolique: Double?,
-        poidsAnimal: Double?,
-        besoinEnergetiqueEntretien: Double?
-): Pair<String, String> {
-
-        val valeurAbsolue = valeurNutritionnelle.valeur
-        val uniteOriginale = valeurNutritionnelle.unite.displayName
-
-        // Si pas de type d'expression défini, affichage par défaut
-        val typeExpression = typeExpressionBesoin ?: TypeExpressionBesoin.DEFAULT
-
-        println(
-                "DEBUG CALCUL: TypeExpression utilisé: ${typeExpression.displayName} -> UnitReqEnum: ${typeExpression.unitReqEnum.label}"
-        )
-
-        return when (typeExpression) {
-                TypeExpressionBesoin.PAR_KG -> {
-                        // Par kg de poids vif
-                        poidsAnimal?.let { poids ->
-                                if (poids > 0) {
-                                        val valeurParKg = valeurAbsolue / poids
-                                        Pair(
-                                                String.format("%.2f", valeurParKg),
-                                                "$uniteOriginale/kg"
-                                        )
-                                } else {
-                                        Pair(String.format("%.2f", valeurAbsolue), uniteOriginale)
-                                }
-                        }
-                                ?: Pair(String.format("%.2f", valeurAbsolue), uniteOriginale)
-                }
-                TypeExpressionBesoin.PAR_KG_METABOLIQUE -> {
-                        // Par kg de poids métabolique (kg^0.75)
-                        poidsMetabolique?.let { poidsMetab ->
-                                if (poidsMetab > 0) {
-                                        val valeurParKgMetab = valeurAbsolue / poidsMetab
-                                        Pair(
-                                                String.format("%.2f", valeurParKgMetab),
-                                                "$uniteOriginale/kg${TextUtils.toSuperscript("0.75")}"
-                                        )
-                                } else {
-                                        Pair(String.format("%.2f", valeurAbsolue), uniteOriginale)
-                                }
-                        }
-                                ?: Pair(String.format("%.2f", valeurAbsolue), uniteOriginale)
-                }
-                TypeExpressionBesoin.PAR_KCAL -> {
-                        // Par 1000 kcal de BEE (Besoin Énergétique d'Entretien)
-                        besoinEnergetiqueEntretien?.let { bee ->
-                                if (bee > 0) {
-                                        val valeurPar1000Kcal = (valeurAbsolue / bee) * 1000
-                                        Pair(
-                                                String.format("%.2f", valeurPar1000Kcal),
-                                                "$uniteOriginale/1000 kcal"
-                                        )
-                                } else {
-                                        Pair(String.format("%.2f", valeurAbsolue), uniteOriginale)
-                                }
-                        }
-                                ?: Pair(String.format("%.2f", valeurAbsolue), uniteOriginale)
-                }
-                TypeExpressionBesoin.PAR_KJ -> {
-                        // Par 1000 kJ de BEE (conversion : 1 kcal = 4.184 kJ)
-                        besoinEnergetiqueEntretien?.let { bee ->
-                                if (bee > 0) {
-                                        val beeEnKj = bee * 4.184 // Conversion kcal vers kJ
-                                        val valeurPar1000Kj = (valeurAbsolue / beeEnKj) * 1000
-                                        Pair(
-                                                String.format("%.2f", valeurPar1000Kj),
-                                                "$uniteOriginale/1000 kJ"
-                                        )
-                                } else {
-                                        Pair(String.format("%.2f", valeurAbsolue), uniteOriginale)
-                                }
-                        }
-                                ?: Pair(String.format("%.2f", valeurAbsolue), uniteOriginale)
-                }
-        }
-}
-
-/**
  * Dialog détaillé pour afficher les informations complètes d'un nutriment Affiche l'apport total et
  * la contribution de chaque ingrédient
  */
@@ -164,38 +70,37 @@ fun NutrimentDetailDialog(
         referenceUtilisee: ReferenceEv?,
         besoinEnergetiqueEntretien: Double?,
         poidsAnimal: Double?,
-        espece: Espece,
-        preferencesStorage: PreferencesStorage,
-        onDismiss: () -> Unit
+        onDismiss: () -> Unit,
+        // Nouveaux paramètres pour les préférences
+        animal: AnimalEv? = null,
+        preferencesRepository: PreferencesRepository? = null
 ) {
-        // Récupération des préférences de l'espèce
-        val preferencesRepo = remember { PreferencesRepository(preferencesStorage) }
-        var typeExpressionBesoin by remember { mutableStateOf(TypeExpressionBesoin.DEFAULT) }
+        // Récupérer le type d'expression des besoins depuis les préférences
+        var typeExpressionBesoin by remember { mutableStateOf<TypeExpressionBesoin?>(null) }
 
-        LaunchedEffect(espece) {
-                try {
-                        println(
-                                "DEBUG DETAIL DIALOG: Chargement des préférences pour ${espece.label}"
-                        )
-                        // IMPORTANT: Charger les préférences depuis le stockage avant de les
-                        // utiliser
-                        preferencesRepo.loadPreferences()
-                        val preferences = preferencesRepo.getPreferencesForSpecies(espece)
-                        typeExpressionBesoin = preferences.getTypeExpressionBesoinEnum()
-                        println(
-                                "DEBUG DETAIL DIALOG: Type d'expression trouvé: ${typeExpressionBesoin.displayName} (ID: ${typeExpressionBesoin.id})"
-                        )
-                        println(
-                                "DEBUG DETAIL DIALOG: UnitReqEnum correspondant: ${typeExpressionBesoin.unitReqEnum.label}"
-                        )
-                } catch (e: Exception) {
-                        println(
-                                "DEBUG DETAIL DIALOG: Erreur lors du chargement des préférences: ${e.message}"
-                        )
-                        typeExpressionBesoin = TypeExpressionBesoin.DEFAULT
+        LaunchedEffect(animal, preferencesRepository) {
+                animal?.let { animalData ->
+                        preferencesRepository?.let { repo ->
+                                try {
+                                        val preferences =
+                                                repo.getPreferencesForSpecies(
+                                                        animalData.getEspece()
+                                                )
+                                        typeExpressionBesoin =
+                                                preferences.getTypeExpressionBesoinEnum()
+                                        println(
+                                                "DEBUG DETAIL: Type d'expression trouvé pour ${animalData.getEspece().label}: ${typeExpressionBesoin?.displayName}"
+                                        )
+                                } catch (e: Exception) {
+                                        println(
+                                                "DEBUG DETAIL: Erreur lors du chargement des préférences: ${e.message}"
+                                        )
+                                        typeExpressionBesoin = TypeExpressionBesoin.DEFAULT
+                                }
+                        }
                 }
+                        ?: run { typeExpressionBesoin = TypeExpressionBesoin.DEFAULT }
         }
-
         AlertDialog(
                 onDismissRequest = onDismiss,
                 title = {
@@ -243,46 +148,47 @@ fun NutrimentDetailDialog(
                                                         color = VetNutriColors.Primary
                                                 )
 
-                                                // Apport selon le type d'expression choisi
-                                                // (priorité - en gras)
-                                                println(
-                                                        "DEBUG DETAIL DIALOG: Calcul pour ${nom} avec type ${typeExpressionBesoin.displayName}"
-                                                )
-                                                println(
-                                                        "DEBUG DETAIL DIALOG: BEE = $besoinEnergetiqueEntretien, Poids = $poidsAnimal, PoidsMetab = $poidsMetabolique"
-                                                )
-                                                val (valeurFormatee, uniteAffichage) =
-                                                        calculerAffichageNutriment(
-                                                                valeurNutritionnelle,
-                                                                typeExpressionBesoin,
-                                                                poidsMetabolique,
-                                                                poidsAnimal,
-                                                                besoinEnergetiqueEntretien
+                                                // Apport par kg métabolique (priorité - en gras si
+                                                // disponible)
+                                                if (poidsMetabolique != null) {
+                                                        Text(
+                                                                text =
+                                                                        "Apport: ${String.format("%.2f", valeurNutritionnelle.valeur / poidsMetabolique)} ${valeurNutritionnelle.unite.displayName}/kg^0.75",
+                                                                style =
+                                                                        MaterialTheme.typography
+                                                                                .body1,
+                                                                fontWeight = FontWeight.Bold,
+                                                                color = VetNutriColors.Primary
                                                         )
-                                                println(
-                                                        "DEBUG DETAIL DIALOG: Résultat calculé: $valeurFormatee $uniteAffichage"
-                                                )
 
-                                                Text(
-                                                        text =
-                                                                "Apport: $valeurFormatee $uniteAffichage",
-                                                        style = MaterialTheme.typography.body1,
-                                                        fontWeight = FontWeight.Bold,
-                                                        color = VetNutriColors.Primary
-                                                )
-
-                                                // Apport absolu total avec flèche (comme les
-                                                // références)
-                                                Text(
-                                                        text =
-                                                                "→ ${String.format("%.2f", valeurNutritionnelle.valeur)} ${valeurNutritionnelle.unite.displayName}/jour",
-                                                        style = MaterialTheme.typography.body2,
-                                                        fontWeight = FontWeight.Medium,
-                                                        color =
-                                                                VetNutriColors.Primary.copy(
-                                                                        alpha = 0.8f
-                                                                )
-                                                )
+                                                        // Apport absolu total avec flèche (comme
+                                                        // les références)
+                                                        Text(
+                                                                text =
+                                                                        "→ ${String.format("%.2f", valeurNutritionnelle.valeur)} ${valeurNutritionnelle.unite.displayName}/jour",
+                                                                style =
+                                                                        MaterialTheme.typography
+                                                                                .body2,
+                                                                fontWeight = FontWeight.Medium,
+                                                                color =
+                                                                        VetNutriColors.Primary.copy(
+                                                                                alpha = 0.8f
+                                                                        )
+                                                        )
+                                                } else {
+                                                        // Si pas de poids métabolique, afficher
+                                                        // seulement l'apport absolu
+                                                        // en gras
+                                                        Text(
+                                                                text =
+                                                                        "Apport total: ${String.format("%.2f", valeurNutritionnelle.valeur)} ${valeurNutritionnelle.unite.displayName}/jour",
+                                                                style =
+                                                                        MaterialTheme.typography
+                                                                                .body1,
+                                                                fontWeight = FontWeight.Bold,
+                                                                color = VetNutriColors.Primary
+                                                        )
+                                                }
 
                                                 // Statut de complétude
                                                 val isComplete = valeurNutritionnelle.complete
@@ -321,7 +227,7 @@ fun NutrimentDetailDialog(
                                         }
                                 }
 
-                                // Section des références nutritionnelles
+                                // Section des références nutritionnelles (nouvelle)
                                 referenceUtilisee?.let { reference ->
                                         val nutrient = valeurNutritionnelle.nutriment
                                         val hasReferenceValues =
@@ -477,49 +383,6 @@ fun NutrimentDetailDialog(
                                                                                                                 color =
                                                                                                                         couleurConformite
                                                                                                         )
-
-                                                                                                        // Expression selon les préférences (si différente de la référence)
-                                                                                                        if (typeExpressionBesoin
-                                                                                                                        .unitReqEnum !=
-                                                                                                                        uniteRef
-                                                                                                        ) {
-                                                                                                                // Créer une ValeurNutritionnelle temporaire pour la conversion
-                                                                                                                val valeurTemp =
-                                                                                                                        ValeurNutritionnelle(
-                                                                                                                                valeurNutritionnelle
-                                                                                                                                        .nutriment,
-                                                                                                                                valeurNutritionnelle
-                                                                                                                                        .unite,
-                                                                                                                                valeurRef
-                                                                                                                                        .toDouble(),
-                                                                                                                                "Référence convertie",
-                                                                                                                                true
-                                                                                                                        )
-                                                                                                                val (
-                                                                                                                        valeurPreferee,
-                                                                                                                        unitePreferee) =
-                                                                                                                        calculerAffichageNutriment(
-                                                                                                                                valeurTemp,
-                                                                                                                                typeExpressionBesoin,
-                                                                                                                                poidsMetabolique,
-                                                                                                                                poidsAnimal,
-                                                                                                                                besoinEnergetiqueEntretien
-                                                                                                                        )
-
-                                                                                                                Text(
-                                                                                                                        text =
-                                                                                                                                "→ $valeurPreferee $unitePreferee",
-                                                                                                                        style =
-                                                                                                                                MaterialTheme
-                                                                                                                                        .typography
-                                                                                                                                        .caption,
-                                                                                                                        fontWeight =
-                                                                                                                                FontWeight
-                                                                                                                                        .Bold,
-                                                                                                                        color =
-                                                                                                                                couleurConformite
-                                                                                                                )
-                                                                                                        }
 
                                                                                                         // Besoin absolu calculé
                                                                                                         besoinAbsolu

@@ -506,9 +506,9 @@ fun App(appDatabase: AppDatabase) {
                                     )
                                 }
                         ) { paddingValues ->
-                            SettingsView(
-                                    viewModel = settingsViewModel,
-                                    importViewModel = importViewModel,
+                                SettingsView(
+                                        viewModel = settingsViewModel,
+                                        importViewModel = importViewModel,
                                     onImportAnimals = {
                                         // Lancer l'importation
                                         importViewModel.importAnimalsFromFileUI()
