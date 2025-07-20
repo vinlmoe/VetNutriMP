@@ -30,6 +30,7 @@ import fr.vetbrain.vetnutri_mp.Enumer.*
 import fr.vetbrain.vetnutri_mp.Repository.PreferencesRepository
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
+import fr.vetbrain.vetnutri_mp.Utils.ExpressionMathematique
 import fr.vetbrain.vetnutri_mp.Utils.PreferencesStorage
 import fr.vetbrain.vetnutri_mp.Utils.TextUtils
 import fr.vetbrain.vetnutri_mp.Utils.createPreferencesStorage
@@ -39,6 +40,103 @@ import fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailViewModel
 
 // Constante pour l'exposant formaté
 private const val EXPOSANT_075 = "⁰·⁷⁵"
+
+/**
+ * Calcule la densité énergétique d'un aliment selon les formules de la référence
+ * @param aliment L'aliment pour lequel calculer la densité énergétique
+ * @param reference La référence contenant les équations DE commerciale et brute
+ * @return La densité énergétique en kcal/100g
+ */
+private fun calculerDensiteEnergetique(
+        alimentRation: AlimentRation,
+        reference: ReferenceEv
+): Double {
+        try {
+                val aliment = alimentRation.aliment ?: return 0.0
+
+                // Déterminer si l'aliment est commercial (complet/complémentaire) ou brut
+                val estCommercial =
+                        aliment.indicat.any { indication ->
+                                indication.name == "COMP" || indication.name == "COMPL"
+                        }
+
+                // Choisir l'équation appropriée
+                val equation =
+                        if (estCommercial) {
+                                reference.equationDEcom
+                        } else {
+                                reference.equationDEraw
+                        }
+
+                if (equation == null || equation.equationScript.isEmpty()) {
+                        println(
+                                "DEBUG: Aucune équation DE ${if (estCommercial) "commerciale" else "brute"} disponible"
+                        )
+                        return 0.0
+                }
+
+                // Créer les variables pour l'évaluation
+                val variables = mutableMapOf<String, Double>()
+
+                // Ajouter les nutriments principaux nécessaires aux formules
+                aliment.valMap.forEach { (nutrient, quantity) ->
+                        when (nutrient.label.uppercase()) {
+                                "PROTEINE", "PB" -> {
+                                        variables["PB"] = quantity.value.toDouble()
+                                        variables["PROT"] =
+                                                quantity.value
+                                                        .toDouble() // Alias pour compatibilité
+                                        // équations
+                                }
+                                "LIPIDE", "MG" -> {
+                                        variables["MG"] = quantity.value.toDouble()
+                                        variables["LIP"] =
+                                                quantity.value
+                                                        .toDouble() // Alias pour compatibilité
+                                        // équations
+                                }
+                                "ENA" -> variables["ENA"] = quantity.value.toDouble()
+                                "CELLULOSE", "FIBRES", "FB" ->
+                                        variables["FB"] = quantity.value.toDouble()
+                                "CENDRE", "MM" -> variables["MM"] = quantity.value.toDouble()
+                        }
+                }
+
+                // Vérifier que les nutriments essentiels sont présents
+                if (!variables.containsKey("PB") ||
+                                !variables.containsKey("MG") ||
+                                !variables.containsKey("ENA")
+                ) {
+                        println(
+                                "DEBUG: Nutriments essentiels manquants pour ${aliment.nom} (PB:${variables["PB"]}, MG:${variables["MG"]}, ENA:${variables["ENA"]})"
+                        )
+                        return 0.0
+                }
+
+                println(
+                        "DEBUG: Calcul DE pour ${aliment.nom} - Type: ${if (estCommercial) "commercial" else "brut"}"
+                )
+                println("DEBUG: Équation: ${equation.equationScript}")
+                println(
+                        "DEBUG: Variables: PB=${variables["PB"]}, MG=${variables["MG"]}, ENA=${variables["ENA"]}"
+                )
+
+                // Évaluer l'équation
+                val resultat =
+                        fr.vetbrain.vetnutri_mp.Utils.ExpressionMathematique.evaluer(
+                                equation.equationScript,
+                                variables
+                        )
+
+                println("DEBUG: Densité énergétique calculée: $resultat kcal/100g")
+                return resultat ?: 0.0
+        } catch (e: Exception) {
+                println(
+                        "ERREUR: Calcul de densité énergétique pour ${alimentRation.aliment?.nom}: ${e.message}"
+                )
+                return 0.0
+        }
+}
 
 // Fonction locale InfoRow pour éviter les problèmes d'import
 @Composable
@@ -78,6 +176,43 @@ fun RationsView(
         val besoinEnergetiqueStandard by viewModel.besoinEnergetiqueStandard.collectAsState()
         val besoinEnergetiqueTotal by viewModel.besoinEnergetiqueTotal.collectAsState()
         val referenceUtilisee by viewModel.referenceUtilisee.collectAsState()
+
+        // Calcul de l'énergie totale apportée par la ration sélectionnée
+        val energieApportee =
+                remember(selectedRation, referenceUtilisee) {
+                        selectedRation?.let { ration ->
+                                referenceUtilisee?.let { reference ->
+                                        ration.alimentMutableList.sumOf { aliment ->
+                                                val densiteEnergetique =
+                                                        calculerDensiteEnergetique(
+                                                                aliment,
+                                                                reference
+                                                        )
+                                                (densiteEnergetique * aliment.quantite) / 100.0
+                                        }
+                                }
+                                        ?: 0.0
+                        }
+                                ?: 0.0
+                }
+
+        // Calcul du pourcentage de couverture avec le besoin énergétique total
+        val pourcentageCouverture =
+                remember(energieApportee, besoinEnergetiqueTotal) {
+                        besoinEnergetiqueTotal?.let { besoin ->
+                                if (besoin > 0) (energieApportee / besoin) * 100.0 else 0.0
+                        }
+                                ?: 0.0
+                }
+
+        // Calcul du K Observé avec le besoin énergétique de référence
+        val kObserve =
+                remember(energieApportee, besoinEnergetiqueStandard) {
+                        besoinEnergetiqueStandard?.let { besoin ->
+                                if (besoin > 0) energieApportee / besoin else 0.0
+                        }
+                                ?: 0.0
+                }
 
         // Système de préférences pour le filtrage des nutriments avec logs de debug
         val preferencesStorage: PreferencesStorage = remember { createPreferencesStorage() }
@@ -666,6 +801,153 @@ fun RationsView(
                                                                 }
                                                         }
                                                 }
+
+                                                // Colonne droite - Bilan énergétique
+                                                Column(modifier = Modifier.weight(1f)) {
+                                                        Row(
+                                                                modifier = Modifier.fillMaxWidth(),
+                                                                horizontalArrangement =
+                                                                        Arrangement.SpaceBetween,
+                                                                verticalAlignment =
+                                                                        Alignment.CenterVertically
+                                                        ) {
+                                                                Text(
+                                                                        text = "Bilan énergétique",
+                                                                        style =
+                                                                                MaterialTheme
+                                                                                        .typography
+                                                                                        .overline,
+                                                                        fontWeight =
+                                                                                FontWeight.Bold,
+                                                                        color =
+                                                                                VetNutriColors
+                                                                                        .Primary
+                                                                )
+                                                        }
+
+                                                        // Première ligne du bilan (Énergie
+                                                        // apportée, Couverture)
+                                                        Row(modifier = Modifier.fillMaxWidth()) {
+                                                                CompactLocalInfoRow(
+                                                                        label = "Énergie apportée",
+                                                                        value =
+                                                                                "${String.format("%.0f", energieApportee)} kcal/j"
+                                                                )
+                                                                Spacer(
+                                                                        modifier =
+                                                                                Modifier.width(
+                                                                                        AppSizes.paddingXSmall
+                                                                                )
+                                                                )
+                                                                // Couverture avec couleur
+                                                                Column {
+                                                                        Text(
+                                                                                text = "Couverture",
+                                                                                style =
+                                                                                        MaterialTheme
+                                                                                                .typography
+                                                                                                .caption,
+                                                                                color =
+                                                                                        MaterialTheme
+                                                                                                .colors
+                                                                                                .onSurface
+                                                                                                .copy(
+                                                                                                        alpha =
+                                                                                                                0.6f
+                                                                                                )
+                                                                        )
+                                                                        Text(
+                                                                                text =
+                                                                                        "${String.format("%.0f", pourcentageCouverture)}%",
+                                                                                style =
+                                                                                        MaterialTheme
+                                                                                                .typography
+                                                                                                .caption,
+                                                                                fontWeight =
+                                                                                        FontWeight
+                                                                                                .Medium,
+                                                                                color =
+                                                                                        when {
+                                                                                                pourcentageCouverture >=
+                                                                                                        90 &&
+                                                                                                        pourcentageCouverture <=
+                                                                                                                110 ->
+                                                                                                        Color(
+                                                                                                                0xFF4CAF50
+                                                                                                        ) // Vert
+                                                                                                pourcentageCouverture >=
+                                                                                                        80 &&
+                                                                                                        pourcentageCouverture <=
+                                                                                                                120 ->
+                                                                                                        Color(
+                                                                                                                0xFFFF9800
+                                                                                                        ) // Orange
+                                                                                                else ->
+                                                                                                        Color(
+                                                                                                                0xFFF44336
+                                                                                                        ) // Rouge
+                                                                                        }
+                                                                        )
+                                                                }
+                                                        }
+
+                                                        // Deuxième ligne du bilan (K Observé)
+                                                        Row(modifier = Modifier.fillMaxWidth()) {
+                                                                // K Observé avec couleur
+                                                                Column {
+                                                                        Text(
+                                                                                text = "K Observé",
+                                                                                style =
+                                                                                        MaterialTheme
+                                                                                                .typography
+                                                                                                .caption,
+                                                                                color =
+                                                                                        MaterialTheme
+                                                                                                .colors
+                                                                                                .onSurface
+                                                                                                .copy(
+                                                                                                        alpha =
+                                                                                                                0.6f
+                                                                                                )
+                                                                        )
+                                                                        Text(
+                                                                                text =
+                                                                                        String.format(
+                                                                                                "%.2f",
+                                                                                                kObserve
+                                                                                        ),
+                                                                                style =
+                                                                                        MaterialTheme
+                                                                                                .typography
+                                                                                                .caption,
+                                                                                fontWeight =
+                                                                                        FontWeight
+                                                                                                .Medium,
+                                                                                color =
+                                                                                        when {
+                                                                                                kObserve >=
+                                                                                                        0.9 &&
+                                                                                                        kObserve <=
+                                                                                                                1.1 ->
+                                                                                                        Color(
+                                                                                                                0xFF4CAF50
+                                                                                                        ) // Vert
+                                                                                                kObserve >=
+                                                                                                        0.8 &&
+                                                                                                        kObserve <=
+                                                                                                                1.2 ->
+                                                                                                        Color(
+                                                                                                                0xFFFF9800
+                                                                                                        ) // Orange
+                                                                                                else ->
+                                                                                                        Color(
+                                                                                                                0xFFF44336
+                                                                                                        ) // Rouge
+                                                                                        }
+                                                                        )
+                                                                }
+                                                        }
+                                                }
                                         }
                                 }
                         }
@@ -994,6 +1276,7 @@ fun RationsView(
                                                 verticalArrangement =
                                                         Arrangement.spacedBy(AppSizes.paddingMedium)
                                         ) {
+
                                                 // Analyse nutritionnelle de la ration sélectionnée
                                                 if (selectedRation != null) {
                                                         // Obtenir les nutriments sélectionnés selon

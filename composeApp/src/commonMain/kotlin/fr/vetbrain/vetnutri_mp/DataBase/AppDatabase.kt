@@ -33,7 +33,7 @@ import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
                         ReferenceEvEquationEntity::class,
                         ReferenceEvCoefficientEntity::class,
                         ReferenceEvNutrientEntity::class],
-        version = 18,
+        version = 19,
         exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -72,7 +72,9 @@ fun getRoomDatabase(builder: RoomDatabase.Builder<AppDatabase>): AppDatabase {
         // ✅ Configuration sécurisée avec migrations explicites
         builder.addMigrations(
                         // Migration 17→18 : Test de montée de version sécurisée
-                        createMigration17to18()
+                        createMigration17to18(),
+                        // Migration 18→19 : Test de notre système Room KMP
+                        createMigration18to19()
                 )
                 .setDriver(BundledSQLiteDriver())
                 .setQueryCoroutineContext(AppDispatchers.IO)
@@ -153,6 +155,62 @@ fun createMigration17to18(): Migration {
                 println("✅ Migration 17 → 18 réussie avec préservation des données!")
             } catch (e: Exception) {
                 println("❌ Erreur migration 17 → 18: ${e.message}")
+                throw e
+            }
+        }
+    }
+}
+
+/**
+ * Migration sécurisée de la version 18 à 19
+ *
+ * Cette migration teste notre système de montée de version Room KMP. Aucune modification de
+ * structure n'est nécessaire, c'est juste un test.
+ */
+fun createMigration18to19(): Migration {
+    return object : Migration(18, 19) {
+        override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
+            println("🔄 Migration 18 → 19 en cours...")
+            println("🔵 Test migration Room KMP avec préservation des données")
+
+            try {
+                // Cette migration ne fait aucune modification de structure
+                // C'est juste un test pour vérifier que les données sont préservées
+
+                // ✅ API Room KMP : utilisation de SQLiteConnection
+                connection.prepare("SELECT COUNT(*) FROM ANIMALS").use { statement ->
+                    if (statement.step()) {
+                        val animalCount = statement.getInt(0)
+                        println("✅ Vérification: $animalCount animaux toujours présents")
+                    }
+                }
+
+                connection.prepare("SELECT COUNT(*) FROM FOOD").use { statement ->
+                    if (statement.step()) {
+                        val foodCount = statement.getInt(0)
+                        println("✅ Vérification: $foodCount aliments toujours présents")
+                    }
+                }
+
+                connection.prepare("SELECT COUNT(*) FROM CONSULTATIONS").use { statement ->
+                    if (statement.step()) {
+                        val consultationCount = statement.getInt(0)
+                        println(
+                                "✅ Vérification: $consultationCount consultations toujours présentes"
+                        )
+                    }
+                }
+
+                connection.prepare("SELECT COUNT(*) FROM RATIONS").use { statement ->
+                    if (statement.step()) {
+                        val rationCount = statement.getInt(0)
+                        println("✅ Vérification: $rationCount rations toujours présentes")
+                    }
+                }
+
+                println("✅ Migration 18 → 19 réussie avec préservation complète des données!")
+            } catch (e: Exception) {
+                println("❌ Erreur migration 18 → 19: ${e.message}")
                 throw e
             }
         }
