@@ -2,6 +2,7 @@ package fr.vetbrain.vetnutri_mp.View
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
+import androidx.compose.material.DrawerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.List
@@ -44,6 +45,8 @@ fun AnimalDetailView(
 ) {
         val animal by viewModel.animal.collectAsState()
         val currentSection by viewModel.currentSection.collectAsState()
+        val showFullScreenEdit by viewModel.showFullScreenEdit.collectAsState()
+        val selectedConsultation by viewModel.selectedConsultation.collectAsState()
         var showConsultationDetail by remember { mutableStateOf(false) }
 
         // État du drawer pour les écrans étroits
@@ -52,6 +55,47 @@ fun AnimalDetailView(
 
         // État pour les messages Snackbar
         val snackbarHostState = remember { SnackbarHostState() }
+
+        // Effet pour détecter les changements de section et sauvegarder automatiquement
+        LaunchedEffect(currentSection) {
+                // Si on quitte la section consultation et qu'une édition plein écran est en cours
+                val currentConsultation = selectedConsultation
+                if (currentSection != AnimalDetailSection.CONSULTATIONS &&
+                                showFullScreenEdit &&
+                                currentConsultation != null
+                ) {
+                        // Sauvegarder automatiquement la consultation en cours d'édition
+                        viewModel.saveFromFullScreen(currentConsultation)
+                }
+        }
+
+        // Fonction pour gérer la navigation avec sauvegarde automatique
+        val handleNavigateBack: () -> Unit = {
+                val currentConsultation = selectedConsultation
+                if (showFullScreenEdit && currentConsultation != null) {
+                        // Sauvegarder avant de naviguer
+                        scope.launch {
+                                viewModel.saveFromFullScreen(currentConsultation)
+                                onNavigateBack()
+                        }
+                } else {
+                        onNavigateBack()
+                }
+        }
+
+        // Fonction pour gérer l'ouverture des paramètres avec sauvegarde automatique
+        val handleOpenSettings: () -> Unit = {
+                val currentConsultation = selectedConsultation
+                if (showFullScreenEdit && currentConsultation != null) {
+                        // Sauvegarder avant d'ouvrir les paramètres
+                        scope.launch {
+                                viewModel.saveFromFullScreen(currentConsultation)
+                                onOpenSettings()
+                        }
+                } else {
+                        onOpenSettings()
+                }
+        }
 
         // Options du menu
         val menuOptions =
@@ -87,8 +131,8 @@ fun AnimalDetailView(
                                         animalDetails = animalDetails,
                                         currentSection = currentSection,
                                         menuOptions = menuOptions,
-                                        onNavigateBack = onNavigateBack,
-                                        onOpenSettings = onOpenSettings,
+                                        onNavigateBack = handleNavigateBack,
+                                        onOpenSettings = handleOpenSettings,
                                         viewModel = viewModel,
                                         isEditing = isEditing,
                                         onIsEditingChange = { isEditing = it },
@@ -104,8 +148,8 @@ fun AnimalDetailView(
                                         animalDetails = animalDetails,
                                         currentSection = currentSection,
                                         menuOptions = menuOptions,
-                                        onNavigateBack = onNavigateBack,
-                                        onOpenSettings = onOpenSettings,
+                                        onNavigateBack = handleNavigateBack,
+                                        onOpenSettings = handleOpenSettings,
                                         viewModel = viewModel,
                                         isEditing = isEditing,
                                         onIsEditingChange = { isEditing = it },
@@ -125,13 +169,35 @@ fun AnimalDetailView(
                                         title = "Confirmation de suppression",
                                         message = "Êtes-vous sûr de vouloir supprimer cet animal ?",
                                         onConfirm = {
-                                                // Appeler la fonction de suppression du ViewModel
-                                                val success = viewModel.deleteAnimal()
-                                                if (success) {
-                                                        // Naviguer vers la liste des animaux
-                                                        onNavigateBack()
+                                                // Sauvegarder automatiquement si une édition est en
+                                                // cours
+                                                val currentConsultation = selectedConsultation
+                                                if (showFullScreenEdit &&
+                                                                currentConsultation != null
+                                                ) {
+                                                        scope.launch {
+                                                                viewModel.saveFromFullScreen(
+                                                                        currentConsultation
+                                                                )
+                                                                // Puis supprimer l'animal
+                                                                val success =
+                                                                        viewModel.deleteAnimal()
+                                                                if (success) {
+                                                                        onNavigateBack()
+                                                                }
+                                                                showDeleteConfirmation = false
+                                                        }
+                                                } else {
+                                                        // Appeler la fonction de suppression du
+                                                        // ViewModel
+                                                        val success = viewModel.deleteAnimal()
+                                                        if (success) {
+                                                                // Naviguer vers la liste des
+                                                                // animaux
+                                                                onNavigateBack()
+                                                        }
+                                                        showDeleteConfirmation = false
                                                 }
-                                                showDeleteConfirmation = false
                                         },
                                         onDismiss = { showDeleteConfirmation = false }
                                 )

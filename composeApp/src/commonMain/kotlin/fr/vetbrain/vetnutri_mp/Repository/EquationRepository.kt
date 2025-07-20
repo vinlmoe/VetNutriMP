@@ -114,9 +114,20 @@ class DatabaseEquationRepository(
         runBlocking {
             val equations = equationDao.getAllEquations()
             if (equations.isEmpty()) {
-                // Récupérer une référence bibliographique existante
+                // Récupérer une référence bibliographique existante ou créer une référence par
+                // défaut
+                val biblioRefFromDb = biblioRefDao.getAllBiblioRefs().firstOrNull()?.toDomain()
                 val biblioRef =
-                        biblioRefDao.getAllBiblioRefs().firstOrNull()?.toDomain() ?: BiblioRef()
+                        biblioRefFromDb
+                                ?: BiblioRef(
+                                        uuid = "default-biblio",
+                                        firstAuthor = "Système",
+                                        year = 2024,
+                                        completeRef = "Référence générée automatiquement",
+                                        comments = "Référence par défaut",
+                                        bibtex = "",
+                                        consistent = 1
+                                )
 
                 // Équation 1 : Besoin énergétique pour chien
                 val equation1 =
