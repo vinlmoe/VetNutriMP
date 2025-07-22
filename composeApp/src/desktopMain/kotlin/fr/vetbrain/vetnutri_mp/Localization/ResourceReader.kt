@@ -1,16 +1,58 @@
 package fr.vetbrain.vetnutri_mp.Localization
 
 import java.io.File
-import kotlin.io.path.Path
 import kotlin.io.path.readText
 
 actual open class ResourceReader actual constructor() {
     actual open fun readResource(name: String): String {
-        val resourcePath = "src/commonMain/resources/$name"
         return try {
-            Path(resourcePath).readText()
+            // Méthode 1: Essayer d'accéder via le classloader (ressources JAR)
+            val classLoader = this::class.java.classLoader
+            val resourceStream = classLoader.getResourceAsStream(name)
+            if (resourceStream != null) {
+                println("DEBUG ResourceReader: Ressource trouvée via classloader: $name")
+                return resourceStream.bufferedReader().use { it.readText() }
+            }
+
+            // Méthode 2: Essayer avec un chemin relatif depuis le répertoire de travail
+            val relativePath = "composeApp/src/commonMain/resources/$name"
+            val relativeFile = File(relativePath)
+            if (relativeFile.exists()) {
+                println("DEBUG ResourceReader: Ressource trouvée via chemin relatif: $relativePath")
+                return relativeFile.readText()
+            }
+
+            // Méthode 3: Essayer depuis le répertoire parent
+            val parentPath = "../composeApp/src/commonMain/resources/$name"
+            val parentFile = File(parentPath)
+            if (parentFile.exists()) {
+                println("DEBUG ResourceReader: Ressource trouvée via chemin parent: $parentPath")
+                return parentFile.readText()
+            }
+
+            // Méthode 4: Essayer le chemin original pour compatibilité
+            val originalPath = "src/commonMain/resources/$name"
+            val originalFile = File(originalPath)
+            if (originalFile.exists()) {
+                println(
+                        "DEBUG ResourceReader: Ressource trouvée via chemin original: $originalPath"
+                )
+                return originalFile.readText()
+            }
+
+            // Aucune méthode n'a fonctionné
+            val currentDir = System.getProperty("user.dir")
+            println("DEBUG ResourceReader: Répertoire de travail actuel: $currentDir")
+            println("DEBUG ResourceReader: Tentatives de chemins:")
+            println("  - Classloader: $name")
+            println("  - Relatif: $relativePath")
+            println("  - Parent: $parentPath")
+            println("  - Original: $originalPath")
+
+            throw IllegalStateException("Resource not found: $name")
         } catch (e: Exception) {
-            throw IllegalStateException("Failed to read resource $name: ${e.message}")
+            println("ERROR ResourceReader: Failed to read resource $name: ${e.message}")
+            throw IllegalStateException("Failed to read resource $name: ${e.message}", e)
         }
     }
 

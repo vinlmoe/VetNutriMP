@@ -73,7 +73,40 @@ fun App(appDatabase: AppDatabase) {
     }
 
     // Création du repository pour les références bibliographiques - version database directe
-    val biblioRefRepository = remember { DatabaseBiblioRefRepository(appDatabase.biblioRefDao()) }
+    val biblioRefRepository = remember {
+        val repo = DatabaseBiblioRefRepository(appDatabase.biblioRefDao())
+
+        // S'assurer que la référence par défaut existe dès la création du repository
+        runBlocking {
+            try {
+                val defaultUuid = "default-biblio"
+                val existingRef = repo.getBiblioRefById(defaultUuid)
+
+                if (existingRef == null) {
+                    println("🔧 Création de la référence bibliographique par défaut au démarrage")
+                    val defaultRef =
+                            fr.vetbrain.vetnutri_mp.Data.BiblioRef(
+                                    uuid = defaultUuid,
+                                    firstAuthor = "Système VetNutri",
+                                    year = 2024,
+                                    completeRef = "Référence par défaut générée automatiquement",
+                                    comments =
+                                            "Créée automatiquement pour éviter les erreurs de clé étrangère",
+                                    consistent = 1
+                            )
+                    repo.insertBiblioRef(defaultRef)
+                    println("✅ Référence par défaut créée avec succès: $defaultUuid")
+                } else {
+                    println("✅ Référence par défaut existe déjà: $defaultUuid")
+                }
+            } catch (e: Exception) {
+                println("❌ Erreur lors de la création de la référence par défaut: ${e.message}")
+                e.printStackTrace()
+            }
+        }
+
+        repo
+    }
 
     // Création du repository pour les équations avec base de données
     val equationRepository = remember {
@@ -227,6 +260,45 @@ fun App(appDatabase: AppDatabase) {
     val handleImportFoods: () -> Unit = {
         // Utiliser la méthode du ViewModel pour éviter l'ambiguïté
         settingsViewModel.importFoodsFromFileUI()
+    }
+
+    // Import automatique des aliments ET des références AVANT le thème
+    runBlocking {
+        // --- ALIMENTS ---
+        val currentFoodCount = foodRepository.getAllFoods().size
+        println("DEBUG App: [PRE-THEME] currentFoodCount = $currentFoodCount")
+        if (currentFoodCount == 0) {
+            try {
+                println("DEBUG App: [PRE-THEME] Import automatique des aliments")
+                val json = ResourceReader().readResource("data/vetfood.json")
+                if (json.isNotEmpty()) {
+                    val result = settingsViewModel.importFoodsFromJson(json)
+                    println("DEBUG App: [PRE-THEME] Import aliments terminé: $result")
+                } else {
+                    println("DEBUG App: [PRE-THEME] ERREUR: vetfood.json vide ou non trouvé")
+                }
+            } catch (e: Exception) {
+                println("DEBUG App: [PRE-THEME] ERREUR import aliments: ${e.message}")
+            }
+        }
+
+        // --- REFERENCES ---
+        val currentReferenceCount = databaseReferenceEvRepository.getAllReferenceEv().size
+        println("DEBUG App: [PRE-THEME] currentReferenceCount = $currentReferenceCount")
+        if (currentReferenceCount == 0) {
+            try {
+                println("DEBUG App: [PRE-THEME] Import automatique des références")
+                val jsonRef = ResourceReader().readResource("data/references.json")
+                if (jsonRef.isNotEmpty()) {
+                    val result = importViewModel.importNutritionalRequirementsFromJson(jsonRef)
+                    println("DEBUG App: [PRE-THEME] Import références terminé: $result")
+                } else {
+                    println("DEBUG App: [PRE-THEME] ERREUR: references.json vide ou non trouvé")
+                }
+            } catch (e: Exception) {
+                println("DEBUG App: [PRE-THEME] ERREUR import références: ${e.message}")
+            }
+        }
     }
 
     VetNutriTheme {
@@ -668,31 +740,6 @@ fun App(appDatabase: AppDatabase) {
                             ) { Text("OK") }
                         }
                 )
-            }
-        }
-    }
-
-    // Import automatique des données internes si base vide
-    LaunchedEffect(Unit) {
-        if (foodRepository.getAllFoods().isEmpty()) {
-            try {
-                val json = ResourceReader().readResource("data/vetfood.json")
-                if (json.isNotEmpty()) {
-                    settingsViewModel.importFoodsFromJson(json)
-                }
-            } catch (e: Exception) {
-                println("Erreur import automatique aliments: ${e.message}")
-            }
-        }
-
-        if (databaseReferenceEvRepository.getAllReferenceEv().isEmpty()) {
-            try {
-                val jsonRef = ResourceReader().readResource("data/references.json")
-                if (jsonRef.isNotEmpty()) {
-                    importViewModel.importNutritionalRequirementsFromJson(jsonRef)
-                }
-            } catch (e: Exception) {
-                println("Erreur import automatique références: ${e.message}")
             }
         }
     }

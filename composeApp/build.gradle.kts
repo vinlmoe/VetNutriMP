@@ -168,3 +168,7 @@ dependencies {
 }
 
 room { schemaDirectory("$projectDir/schemas") }
+    implementation("org.burnoutcrew.composereorderable:reorderable:0.9.6")
+}
+
+room { schemaDirectory("$projectDir/schemas") }

@@ -1088,17 +1088,44 @@ fun SettingsView(
                                                                 println(
                                                                         "DEBUG SettingsView: Appel de viewModel.clearAllReferences()"
                                                                 )
-                                                                val count =
-                                                                        viewModel
-                                                                                .clearAllReferences()
-                                                                println(
-                                                                        "DEBUG SettingsView: clearAllReferences() a retourné: $count"
-                                                                )
+                                                                // Suppression robuste : même si une
+                                                                // référence est corrompue,
+                                                                // continuer
+                                                                var refCount = 0
+                                                                try {
+                                                                        refCount =
+                                                                                viewModel
+                                                                                        .clearAllReferences()
+                                                                } catch (e: Exception) {
+                                                                        println(
+                                                                                "DEBUG SettingsView: ERREUR suppression références: ${e.message}"
+                                                                        )
+                                                                }
+                                                                var eqCount = 0
+                                                                try {
+                                                                        eqCount =
+                                                                                viewModel
+                                                                                        .clearAllEquations()
+                                                                } catch (e: Exception) {
+                                                                        println(
+                                                                                "DEBUG SettingsView: ERREUR suppression équations: ${e.message}"
+                                                                        )
+                                                                }
+                                                                var bibCount = 0
+                                                                try {
+                                                                        bibCount =
+                                                                                viewModel
+                                                                                        .clearAllBiblioRefs()
+                                                                } catch (e: Exception) {
+                                                                        println(
+                                                                                "DEBUG SettingsView: ERREUR suppression biblioRefs: ${e.message}"
+                                                                        )
+                                                                }
                                                                 resultMessage =
-                                                                        "$count références nutritionnelles ont été supprimées avec succès."
+                                                                        "$refCount références nutritionnelles, $eqCount équations et $bibCount bibliographies ont été supprimées avec succès."
                                                         } catch (e: Exception) {
                                                                 println(
-                                                                        "DEBUG SettingsView: ERREUR dans clearAllReferences(): ${e.message}"
+                                                                        "DEBUG SettingsView: ERREUR globale dans clearAllReferences(): ${e.message}"
                                                                 )
                                                                 e.printStackTrace()
                                                                 resultMessage =

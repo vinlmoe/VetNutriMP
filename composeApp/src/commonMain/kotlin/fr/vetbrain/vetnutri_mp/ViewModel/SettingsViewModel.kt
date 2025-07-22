@@ -188,7 +188,8 @@ class SettingsViewModel(
      */
     suspend fun importFoodsFromJson(jsonContent: String): FoodImportResult {
         // Utilisation de kotlinx.serialization pour parser le JSON
-        val alimentsJson = Json.decodeFromString<List<AlimentEvJson>>(jsonContent)
+        val alimentsJson =
+                Json { ignoreUnknownKeys = true }.decodeFromString<List<AlimentEvJson>>(jsonContent)
         return foodRepository.importFoods(alimentsJson)
     }
 
