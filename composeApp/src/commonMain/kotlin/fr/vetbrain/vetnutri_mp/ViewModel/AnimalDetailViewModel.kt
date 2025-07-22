@@ -1465,8 +1465,8 @@ class AnimalDetailViewModel(
                         }
                     } catch (e: NumberFormatException) {
                         println("ERROR: Conversion du poids impossible: $poids")
-                return null
-            }
+                        return null
+                    }
 
             println(
                     "DEBUG: Calcul BEE avec équation: ${equationBEE.name} - ${equationBEE.equationScript}"
@@ -1683,6 +1683,70 @@ class AnimalDetailViewModel(
                 }
             } catch (e: Exception) {
                 println("Erreur lors de la mise à jour du coefficient d'ajustement: ${e.message}")
+            }
+        }
+    }
+
+    /** Met à jour un coefficient K spécifique (K1-K5) et recalcule les valeurs métaboliques */
+    fun updateCoefficient(
+            consultationId: String,
+            coefficientType: String,
+            nouveauCoefficient: Float,
+            description: String?
+    ) {
+        viewModelScope.launch {
+            try {
+                val animalActuel = _animal.value
+                if (animalActuel != null) {
+                    val consultation = animalActuel.consultations.find { it.uuid == consultationId }
+                    if (consultation != null) {
+                        val consultationMiseAJour =
+                                when (coefficientType) {
+                                    "k1" ->
+                                            consultation.copy(
+                                                    k1Value = nouveauCoefficient,
+                                                    k1Id = description
+                                            )
+                                    "k2" ->
+                                            consultation.copy(
+                                                    k2Value = nouveauCoefficient,
+                                                    k2Id = description
+                                            )
+                                    "k3" ->
+                                            consultation.copy(
+                                                    k3Value = nouveauCoefficient,
+                                                    k3Id = description
+                                            )
+                                    "k4" ->
+                                            consultation.copy(
+                                                    k4Value = nouveauCoefficient,
+                                                    k4Id = description
+                                            )
+                                    "k5" ->
+                                            consultation.copy(
+                                                    k5Value = nouveauCoefficient,
+                                                    k5Id = description
+                                            )
+                                    else -> {
+                                        println("Type de coefficient non reconnu: $coefficientType")
+                                        return@launch
+                                    }
+                                }
+
+                        updateConsultation(consultationMiseAJour)
+
+                        // Recalculer les valeurs métaboliques
+                        calculerValeursMetaboliques(consultationMiseAJour)
+
+                        println(
+                                "Coefficient $coefficientType mis à jour: $nouveauCoefficient (description: $description)"
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                println(
+                        "Erreur lors de la mise à jour du coefficient $coefficientType: ${e.message}"
+                )
             }
         }
     }

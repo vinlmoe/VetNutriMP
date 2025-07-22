@@ -12,11 +12,14 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -1936,6 +1939,292 @@ private fun MetabolicValuesDialog(
         )
 }
 
+/**
+ * Composable pour éditer un coefficient avec une combobox de valeurs prédéfinies et édition directe
+ * pour valeurs personnalisées
+ */
+@Composable
+private fun CoefficientEditableRow(
+        label: String,
+        currentValue: Float?,
+        currentDescription: String?,
+        availableCoefficients: List<fr.vetbrain.vetnutri_mp.Data.CoefP>,
+        onCoefficientSelected: (fr.vetbrain.vetnutri_mp.Data.CoefP) -> Unit
+) {
+        var showDropdown by remember { mutableStateOf(false) }
+
+        // Vérifier si la valeur actuelle est personnalisée (pas dans la liste prédéfinie)
+        val isCustomValue =
+                remember(currentValue, currentDescription, availableCoefficients) {
+                        currentDescription == "Valeur personnalisée" ||
+                                availableCoefficients.none {
+                                        it.coef == currentValue &&
+                                                it.description == currentDescription
+                                }
+                }
+
+        // État pour l'édition directe des valeurs personnalisées
+        var editableValue by
+                remember(currentValue) {
+                        mutableStateOf(
+                                String.format("%.2f", currentValue ?: 1.0f).replace('.', ',')
+                        )
+                }
+        var isEditing by remember { mutableStateOf(false) }
+
+        Column(modifier = Modifier.fillMaxWidth()) {
+                // Label du coefficient
+                Text(
+                        text = label,
+                        style = MaterialTheme.typography.subtitle1,
+                        fontWeight = FontWeight.Bold,
+                        color = VetNutriColors.Primary
+                )
+
+                // Champ de sélection avec dropdown ou édition directe
+                if (isEditing) {
+                        // Mode édition : afficher le TextField
+                        OutlinedTextField(
+                                value = editableValue,
+                                onValueChange = { newValue ->
+                                        editableValue = newValue
+                                        // Validation et mise à jour en temps réel
+                                        val normalizedText = newValue.replace(',', '.')
+                                        val value = normalizedText.toFloatOrNull()
+                                        if (value != null && value > 0) {
+                                                val customCoef =
+                                                        fr.vetbrain.vetnutri_mp.Data.CoefP(
+                                                                description =
+                                                                        "Valeur personnalisée",
+                                                                coef = value,
+                                                                groupUUID = null
+                                                        )
+                                                onCoefficientSelected(customCoef)
+                                        }
+                                },
+                                label = { Text("Coefficient") },
+                                modifier = Modifier.fillMaxWidth(),
+                                keyboardOptions =
+                                        KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                placeholder = { Text("Ex: 1,2 ou 1.2") },
+                                trailingIcon = {
+                                        Row {
+                                                // Bouton de validation (uniquement en mode édition)
+                                                if (isEditing) {
+                                                        IconButton(
+                                                                onClick = {
+                                                                        // Valider et sortir du mode
+                                                                        // édition
+                                                                        val normalizedText =
+                                                                                editableValue
+                                                                                        .replace(
+                                                                                                ',',
+                                                                                                '.'
+                                                                                        )
+                                                                        val value =
+                                                                                normalizedText
+                                                                                        .toFloatOrNull()
+                                                                        if (value != null &&
+                                                                                        value > 0
+                                                                        ) {
+                                                                                val customCoef =
+                                                                                        fr.vetbrain
+                                                                                                .vetnutri_mp
+                                                                                                .Data
+                                                                                                .CoefP(
+                                                                                                        description =
+                                                                                                                "Valeur personnalisée",
+                                                                                                        coef =
+                                                                                                                value,
+                                                                                                        groupUUID =
+                                                                                                                null
+                                                                                                )
+                                                                                onCoefficientSelected(
+                                                                                        customCoef
+                                                                                )
+                                                                        }
+                                                                        isEditing = false
+                                                                }
+                                                        ) {
+                                                                Icon(
+                                                                        imageVector =
+                                                                                Icons.Default.Check,
+                                                                        contentDescription =
+                                                                                "Valider",
+                                                                        tint =
+                                                                                VetNutriColors
+                                                                                        .Primary
+                                                                )
+                                                        }
+                                                }
+
+                                                // Bouton dropdown (toujours présent)
+                                                IconButton(
+                                                        onClick = {
+                                                                showDropdown = true
+                                                                isEditing = false // Sortir du mode
+                                                                // édition si
+                                                                // on ouvre le dropdown
+                                                        }
+                                                ) {
+                                                        Icon(
+                                                                imageVector =
+                                                                        if (showDropdown)
+                                                                                Icons.Default
+                                                                                        .KeyboardArrowUp
+                                                                        else
+                                                                                Icons.Default
+                                                                                        .KeyboardArrowDown,
+                                                                contentDescription =
+                                                                        "Sélectionner un coefficient"
+                                                        )
+                                                }
+                                        }
+                                }
+                        )
+                } else {
+                        // Mode lecture : afficher le texte cliquable dans un Box
+                        Box(modifier = Modifier.fillMaxWidth()) {
+                                OutlinedTextField(
+                                        value =
+                                                buildString {
+                                                        if (currentDescription != null &&
+                                                                        currentValue != null &&
+                                                                        !isCustomValue
+                                                        ) {
+                                                                append(
+                                                                        "$currentDescription (${String.format("%.2f", currentValue)})"
+                                                                )
+                                                        } else {
+                                                                append(
+                                                                        String.format(
+                                                                                        "%.2f",
+                                                                                        currentValue
+                                                                                                ?: 1.0f
+                                                                                )
+                                                                                .replace('.', ',')
+                                                                )
+                                                        }
+                                                },
+                                        onValueChange = { /* Pas d'édition en mode lecture */},
+                                        label = { Text("Coefficient") },
+                                        readOnly = true,
+                                        modifier = Modifier.fillMaxWidth(),
+                                        trailingIcon = {
+                                                // Bouton dropdown (toujours présent)
+                                                IconButton(onClick = { showDropdown = true }) {
+                                                        Icon(
+                                                                imageVector =
+                                                                        if (showDropdown)
+                                                                                Icons.Default
+                                                                                        .KeyboardArrowUp
+                                                                        else
+                                                                                Icons.Default
+                                                                                        .KeyboardArrowDown,
+                                                                contentDescription =
+                                                                        "Sélectionner un coefficient"
+                                                        )
+                                                }
+                                        }
+                                )
+
+                                // Zone cliquable invisible qui couvre le contenu du TextField
+                                Box(
+                                        modifier =
+                                                Modifier.fillMaxWidth()
+                                                        .height(
+                                                                56.dp
+                                                        ) // Hauteur standard d'un OutlinedTextField
+                                                        .clickable {
+                                                                // Cliquer sur le texte lance
+                                                                // directement l'édition
+                                                                isEditing = true
+                                                                // Si c'était un coefficient de
+                                                                // référence, on initialise avec la
+                                                                // valeur seule
+                                                                if (!isCustomValue &&
+                                                                                currentValue != null
+                                                                ) {
+                                                                        editableValue =
+                                                                                String.format(
+                                                                                                "%.2f",
+                                                                                                currentValue
+                                                                                        )
+                                                                                        .replace(
+                                                                                                '.',
+                                                                                                ','
+                                                                                        )
+                                                                }
+                                                        }
+                                                        .padding(
+                                                                end = 64.dp
+                                                        ) // Eviter de chevaucher avec le bouton
+                                        // dropdown (plus de marge)
+                                        )
+                        }
+                }
+
+                // DropdownMenu avec les coefficients disponibles
+                DropdownMenu(
+                        expanded = showDropdown,
+                        onDismissRequest = { showDropdown = false },
+                        modifier = Modifier.fillMaxWidth()
+                ) {
+                        availableCoefficients.forEach { coef ->
+                                DropdownMenuItem(
+                                        onClick = {
+                                                onCoefficientSelected(coef)
+                                                showDropdown = false
+                                        }
+                                ) {
+                                        Column {
+                                                Text(
+                                                        text = coef.description
+                                                                        ?: "Sans description",
+                                                        style = MaterialTheme.typography.body1
+                                                )
+                                                Text(
+                                                        text =
+                                                                "Coefficient: ${String.format("%.2f", coef.coef ?: 1.0f)}",
+                                                        style = MaterialTheme.typography.body2,
+                                                        color = Color.Gray
+                                                )
+                                        }
+                                }
+                        }
+
+                        // Option pour saisie manuelle
+                        Divider()
+                        DropdownMenuItem(
+                                onClick = {
+                                        // Lancer l'édition directe
+                                        isEditing = true
+                                        if (!isCustomValue && currentValue != null) {
+                                                editableValue =
+                                                        String.format("%.2f", currentValue)
+                                                                .replace('.', ',')
+                                        }
+                                        showDropdown = false
+                                }
+                        ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                                imageVector = Icons.Default.Edit,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(16.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                                text = "Édition directe...",
+                                                style = MaterialTheme.typography.body2,
+                                                fontStyle = FontStyle.Italic
+                                        )
+                                }
+                        }
+                }
+        }
+}
+
 /** Dialogue agrandi pour les coefficients */
 @Composable
 private fun CoefficientsDialog(
@@ -1943,7 +2232,10 @@ private fun CoefficientsDialog(
         viewModel: AnimalDetailViewModel,
         onDismiss: () -> Unit
 ) {
-        // État pour l'édition du coefficient
+        // Observer la référence utilisée pour récupérer les coefficients disponibles
+        val referenceUtilisee by viewModel.referenceUtilisee.collectAsState()
+
+        // État pour l'édition du coefficient d'ajustement
         var isEditingCoefficient by remember { mutableStateOf(false) }
         var coefficientText by
                 remember(selectedConsultation) {
@@ -1962,165 +2254,253 @@ private fun CoefficientsDialog(
                         )
                 },
                 text = {
-                        Column(verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)) {
-                                // Coefficients K (lecture seule pour l'instant)
-                                LocalInfoRow(
-                                        label = "K1 (Stade physiologique)",
-                                        value =
-                                                selectedConsultation?.k1Value?.let {
-                                                        String.format("%.2f", it)
-                                                }
-                                                        ?: "1.00"
-                                )
+                        LazyColumn(
+                                verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium),
+                                modifier = Modifier.height(400.dp)
+                        ) {
+                                item {
+                                        Text(
+                                                "Coefficients K",
+                                                style = MaterialTheme.typography.h6,
+                                                color = VetNutriColors.Primary,
+                                                fontWeight = FontWeight.Bold
+                                        )
+                                }
 
-                                LocalInfoRow(
-                                        label = "K2 (Activité)",
-                                        value =
-                                                selectedConsultation?.k2Value?.let {
-                                                        String.format("%.2f", it)
+                                // K1 - Stade physiologique
+                                item {
+                                        CoefficientEditableRow(
+                                                label = "K1 (Stade physiologique)",
+                                                currentValue = selectedConsultation?.k1Value,
+                                                currentDescription = selectedConsultation?.k1Id,
+                                                availableCoefficients =
+                                                        referenceUtilisee?.getModk1()
+                                                                ?: emptyList(),
+                                                onCoefficientSelected = { coef ->
+                                                        selectedConsultation?.let { consultation ->
+                                                                viewModel.updateCoefficient(
+                                                                        consultation.uuid,
+                                                                        "k1",
+                                                                        coef.coef ?: 1.0f,
+                                                                        coef.description
+                                                                )
+                                                        }
                                                 }
-                                                        ?: "1.00"
-                                )
+                                        )
+                                }
 
-                                LocalInfoRow(
-                                        label = "K3 (Environnement)",
-                                        value =
-                                                selectedConsultation?.k3Value?.let {
-                                                        String.format("%.2f", it)
+                                // K2 - Activité
+                                item {
+                                        CoefficientEditableRow(
+                                                label = "K2 (Activité)",
+                                                currentValue = selectedConsultation?.k2Value,
+                                                currentDescription = selectedConsultation?.k2Id,
+                                                availableCoefficients =
+                                                        referenceUtilisee?.getModk2()
+                                                                ?: emptyList(),
+                                                onCoefficientSelected = { coef ->
+                                                        selectedConsultation?.let { consultation ->
+                                                                viewModel.updateCoefficient(
+                                                                        consultation.uuid,
+                                                                        "k2",
+                                                                        coef.coef ?: 1.0f,
+                                                                        coef.description
+                                                                )
+                                                        }
                                                 }
-                                                        ?: "1.00"
-                                )
+                                        )
+                                }
 
-                                LocalInfoRow(
-                                        label = "K4 (État corporel)",
-                                        value =
-                                                selectedConsultation?.k4Value?.let {
-                                                        String.format("%.2f", it)
+                                // K3 - Environnement
+                                item {
+                                        CoefficientEditableRow(
+                                                label = "K3 (Environnement)",
+                                                currentValue = selectedConsultation?.k3Value,
+                                                currentDescription = selectedConsultation?.k3Id,
+                                                availableCoefficients =
+                                                        referenceUtilisee?.getModk3()
+                                                                ?: emptyList(),
+                                                onCoefficientSelected = { coef ->
+                                                        selectedConsultation?.let { consultation ->
+                                                                viewModel.updateCoefficient(
+                                                                        consultation.uuid,
+                                                                        "k3",
+                                                                        coef.coef ?: 1.0f,
+                                                                        coef.description
+                                                                )
+                                                        }
                                                 }
-                                                        ?: "1.00"
-                                )
+                                        )
+                                }
 
-                                LocalInfoRow(
-                                        label = "K5 (Pathologie)",
-                                        value =
-                                                selectedConsultation?.k5Value?.let {
-                                                        String.format("%.2f", it)
+                                // K4 - État corporel
+                                item {
+                                        CoefficientEditableRow(
+                                                label = "K4 (État corporel)",
+                                                currentValue = selectedConsultation?.k4Value,
+                                                currentDescription = selectedConsultation?.k4Id,
+                                                availableCoefficients =
+                                                        referenceUtilisee?.getModk4()
+                                                                ?: emptyList(),
+                                                onCoefficientSelected = { coef ->
+                                                        selectedConsultation?.let { consultation ->
+                                                                viewModel.updateCoefficient(
+                                                                        consultation.uuid,
+                                                                        "k4",
+                                                                        coef.coef ?: 1.0f,
+                                                                        coef.description
+                                                                )
+                                                        }
                                                 }
-                                                        ?: "1.00"
-                                )
+                                        )
+                                }
 
-                                Divider()
+                                // K5 - Pathologie
+                                item {
+                                        CoefficientEditableRow(
+                                                label = "K5 (Pathologie)",
+                                                currentValue = selectedConsultation?.k5Value,
+                                                currentDescription = selectedConsultation?.k5Id,
+                                                availableCoefficients =
+                                                        referenceUtilisee?.getModk5()
+                                                                ?: emptyList(),
+                                                onCoefficientSelected = { coef ->
+                                                        selectedConsultation?.let { consultation ->
+                                                                viewModel.updateCoefficient(
+                                                                        consultation.uuid,
+                                                                        "k5",
+                                                                        coef.coef ?: 1.0f,
+                                                                        coef.description
+                                                                )
+                                                        }
+                                                }
+                                        )
+                                }
+
+                                item { Divider(color = VetNutriColors.Primary.copy(alpha = 0.3f)) }
 
                                 // Coefficient d'ajustement éditable
-                                Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                        Text(
-                                                "Coefficient d'ajustement",
-                                                style = MaterialTheme.typography.subtitle1
-                                        )
+                                item {
+                                        Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                                Text(
+                                                        "Coefficient d'ajustement",
+                                                        style = MaterialTheme.typography.subtitle1
+                                                )
 
-                                        if (isEditingCoefficient) {
-                                                Row(
-                                                        verticalAlignment =
-                                                                Alignment.CenterVertically
-                                                ) {
-                                                        OutlinedTextField(
-                                                                value = coefficientText,
-                                                                onValueChange = {
-                                                                        coefficientText = it
-                                                                },
-                                                                modifier = Modifier.width(100.dp),
-                                                                singleLine = true,
-                                                                keyboardOptions =
-                                                                        KeyboardOptions(
-                                                                                keyboardType =
-                                                                                        KeyboardType
-                                                                                                .Number
-                                                                        )
-                                                        )
-                                                        IconButton(
-                                                                onClick = {
-                                                                        coefficientText
-                                                                                .toDoubleOrNull()
-                                                                                ?.let { newValue ->
-                                                                                        selectedConsultation
-                                                                                                ?.let {
-                                                                                                        consultation
-                                                                                                        ->
-                                                                                                        viewModel
-                                                                                                                .updateCoefficientAjustement(
-                                                                                                                        consultation
-                                                                                                                                .uuid,
-                                                                                                                        newValue
-                                                                                                                )
-                                                                                                }
-                                                                                }
-                                                                        isEditingCoefficient = false
-                                                                }
+                                                if (isEditingCoefficient) {
+                                                        Row(
+                                                                verticalAlignment =
+                                                                        Alignment.CenterVertically
                                                         ) {
-                                                                Icon(
-                                                                        Icons.Filled.Check,
-                                                                        contentDescription =
-                                                                                "Valider",
-                                                                        tint = Color.Green
-                                                                )
-                                                        }
-                                                        IconButton(
-                                                                onClick = {
-                                                                        coefficientText =
-                                                                                selectedConsultation
-                                                                                        ?.coefficientAjustement
-                                                                                        ?.toString()
-                                                                                        ?: "1.0"
-                                                                        isEditingCoefficient = false
-                                                                }
-                                                        ) {
-                                                                Icon(
-                                                                        Icons.Filled.Close,
-                                                                        contentDescription =
-                                                                                "Annuler",
-                                                                        tint = Color.Red
-                                                                )
-                                                        }
-                                                }
-                                        } else {
-                                                Row(
-                                                        verticalAlignment =
-                                                                Alignment.CenterVertically
-                                                ) {
-                                                        Text(
-                                                                selectedConsultation
-                                                                        ?.coefficientAjustement
-                                                                        ?.let {
-                                                                                String.format(
-                                                                                        "%.2f",
-                                                                                        it
+                                                                OutlinedTextField(
+                                                                        value = coefficientText,
+                                                                        onValueChange = {
+                                                                                coefficientText = it
+                                                                        },
+                                                                        modifier =
+                                                                                Modifier.width(
+                                                                                        100.dp
+                                                                                ),
+                                                                        singleLine = true,
+                                                                        keyboardOptions =
+                                                                                KeyboardOptions(
+                                                                                        keyboardType =
+                                                                                                KeyboardType
+                                                                                                        .Number
                                                                                 )
-                                                                        }
-                                                                        ?: "1.00",
-                                                                style =
-                                                                        MaterialTheme.typography
-                                                                                .body1,
-                                                                fontWeight = FontWeight.Medium
-                                                        )
-                                                        IconButton(
-                                                                onClick = {
-                                                                        coefficientText =
-                                                                                selectedConsultation
-                                                                                        ?.coefficientAjustement
-                                                                                        ?.toString()
-                                                                                        ?: "1.0"
-                                                                        isEditingCoefficient = true
-                                                                }
-                                                        ) {
-                                                                Icon(
-                                                                        Icons.Filled.Edit,
-                                                                        contentDescription =
-                                                                                "Éditer"
                                                                 )
+                                                                IconButton(
+                                                                        onClick = {
+                                                                                coefficientText
+                                                                                        .toDoubleOrNull()
+                                                                                        ?.let {
+                                                                                                newValue
+                                                                                                ->
+                                                                                                selectedConsultation
+                                                                                                        ?.let {
+                                                                                                                consultation
+                                                                                                                ->
+                                                                                                                viewModel
+                                                                                                                        .updateCoefficientAjustement(
+                                                                                                                                consultation
+                                                                                                                                        .uuid,
+                                                                                                                                newValue
+                                                                                                                        )
+                                                                                                        }
+                                                                                        }
+                                                                                isEditingCoefficient =
+                                                                                        false
+                                                                        }
+                                                                ) {
+                                                                        Icon(
+                                                                                Icons.Filled.Check,
+                                                                                contentDescription =
+                                                                                        "Valider",
+                                                                                tint = Color.Green
+                                                                        )
+                                                                }
+                                                                IconButton(
+                                                                        onClick = {
+                                                                                coefficientText =
+                                                                                        selectedConsultation
+                                                                                                ?.coefficientAjustement
+                                                                                                ?.toString()
+                                                                                                ?: "1.0"
+                                                                                isEditingCoefficient =
+                                                                                        false
+                                                                        }
+                                                                ) {
+                                                                        Icon(
+                                                                                Icons.Filled.Close,
+                                                                                contentDescription =
+                                                                                        "Annuler",
+                                                                                tint = Color.Red
+                                                                        )
+                                                                }
+                                                        }
+                                                } else {
+                                                        Row(
+                                                                verticalAlignment =
+                                                                        Alignment.CenterVertically
+                                                        ) {
+                                                                Text(
+                                                                        selectedConsultation
+                                                                                ?.coefficientAjustement
+                                                                                ?.let {
+                                                                                        String.format(
+                                                                                                "%.2f",
+                                                                                                it
+                                                                                        )
+                                                                                }
+                                                                                ?: "1.00",
+                                                                        style =
+                                                                                MaterialTheme
+                                                                                        .typography
+                                                                                        .body1,
+                                                                        fontWeight =
+                                                                                FontWeight.Medium
+                                                                )
+                                                                IconButton(
+                                                                        onClick = {
+                                                                                coefficientText =
+                                                                                        selectedConsultation
+                                                                                                ?.coefficientAjustement
+                                                                                                ?.toString()
+                                                                                                ?: "1.0"
+                                                                                isEditingCoefficient =
+                                                                                        true
+                                                                        }
+                                                                ) {
+                                                                        Icon(
+                                                                                Icons.Filled.Edit,
+                                                                                contentDescription =
+                                                                                        "Éditer"
+                                                                        )
+                                                                }
                                                         }
                                                 }
                                         }
