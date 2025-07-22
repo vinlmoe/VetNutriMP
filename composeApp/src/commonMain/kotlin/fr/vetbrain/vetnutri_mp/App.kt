@@ -15,6 +15,7 @@ import fr.vetbrain.vetnutri_mp.Data.AnimalEv
 import fr.vetbrain.vetnutri_mp.DataBase.AppDatabase
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationManager
+import fr.vetbrain.vetnutri_mp.Localization.ResourceReader
 import fr.vetbrain.vetnutri_mp.Repository.*
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriTheme
 import fr.vetbrain.vetnutri_mp.Utils.PlatformDispatcher
@@ -79,9 +80,7 @@ fun App(appDatabase: AppDatabase) {
         DatabaseEquationRepository(appDatabase.equationDao(), appDatabase.biblioRefDao())
     }
 
-    // Création des ViewModels
-    val animalListViewModel = remember { AnimalListViewModel(animalRepository) }
-
+    // création des ViewModels (existant)...
     // ViewModel et état pour les équations et références (déclarée avant AnimalDetailViewModel)
     val platformDispatcher = remember { PlatformDispatcher() }
     val databaseReferenceEvRepository = remember {
@@ -91,6 +90,9 @@ fun App(appDatabase: AppDatabase) {
                 appDatabase.biblioRefDao()
         )
     }
+
+    // Création des ViewModels
+    val animalListViewModel = remember { AnimalListViewModel(animalRepository) }
 
     val animalDetailViewModel = remember {
         AnimalDetailViewModel(
@@ -666,6 +668,31 @@ fun App(appDatabase: AppDatabase) {
                             ) { Text("OK") }
                         }
                 )
+            }
+        }
+    }
+
+    // Import automatique des données internes si base vide
+    LaunchedEffect(Unit) {
+        if (foodRepository.getAllFoods().isEmpty()) {
+            try {
+                val json = ResourceReader().readResource("data/vetfood.json")
+                if (json.isNotEmpty()) {
+                    settingsViewModel.importFoodsFromJson(json)
+                }
+            } catch (e: Exception) {
+                println("Erreur import automatique aliments: ${e.message}")
+            }
+        }
+
+        if (databaseReferenceEvRepository.getAllReferenceEv().isEmpty()) {
+            try {
+                val jsonRef = ResourceReader().readResource("data/references.json")
+                if (jsonRef.isNotEmpty()) {
+                    importViewModel.importNutritionalRequirementsFromJson(jsonRef)
+                }
+            } catch (e: Exception) {
+                println("Erreur import automatique références: ${e.message}")
             }
         }
     }

@@ -7,10 +7,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
 import androidx.compose.material.LocalTextStyle
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Search
@@ -23,6 +25,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import fr.vetbrain.vetnutri_mp.Components.DropdownField
+import fr.vetbrain.vetnutri_mp.Components.MultiSelectDropdownField
 import fr.vetbrain.vetnutri_mp.Components.TopBar
 import fr.vetbrain.vetnutri_mp.Data.AlimentEv
 import fr.vetbrain.vetnutri_mp.Data.Ration
@@ -205,69 +208,144 @@ fun AddAlimentView(
                                                 )
 
                                                 // Champ de recherche textuelle
-                                                OutlinedTextField(
-                                                        value = searchQuery,
-                                                        onValueChange = { searchQuery = it },
-                                                        label = {
-                                                                Text("Rechercher", fontSize = 12.sp)
-                                                        },
-                                                        placeholder = {
-                                                                Text(
-                                                                        "Nom, marque, ingrédients...",
-                                                                        fontSize = 12.sp
-                                                                )
-                                                        },
-                                                        textStyle =
-                                                                LocalTextStyle.current.copy(
-                                                                        fontSize = 13.sp
-                                                                ),
-                                                        leadingIcon = {
-                                                                Icon(
-                                                                        imageVector =
-                                                                                Icons.Default
-                                                                                        .Search,
-                                                                        contentDescription =
-                                                                                "Rechercher",
-                                                                        modifier =
-                                                                                Modifier.size(9.dp)
-                                                                )
-                                                        },
-                                                        trailingIcon =
-                                                                if (searchQuery.isNotEmpty()) {
-                                                                        {
-                                                                                IconButton(
-                                                                                        onClick = {
-                                                                                                searchQuery =
-                                                                                                        ""
-                                                                                        }
+                                                Box(
+                                                        modifier =
+                                                                Modifier.fillMaxWidth()
+                                                                        .height(40.dp)
+                                                ) {
+                                                        BasicTextField(
+                                                                value = searchQuery,
+                                                                onValueChange = {
+                                                                        searchQuery = it
+                                                                },
+                                                                textStyle =
+                                                                        LocalTextStyle.current.copy(
+                                                                                fontSize = 13.sp,
+                                                                                color =
+                                                                                        MaterialTheme
+                                                                                                .colors
+                                                                                                .onSurface
+                                                                        ),
+                                                                singleLine = true,
+                                                                modifier = Modifier.fillMaxSize(),
+                                                                decorationBox = { innerTextField ->
+                                                                        Box(
+                                                                                modifier =
+                                                                                        Modifier.fillMaxSize()
+                                                                                                .border(
+                                                                                                        width =
+                                                                                                                0.5.dp,
+                                                                                                        color =
+                                                                                                                MaterialTheme
+                                                                                                                        .colors
+                                                                                                                        .onSurface
+                                                                                                                        .copy(
+                                                                                                                                alpha =
+                                                                                                                                        0.4f
+                                                                                                                        ),
+                                                                                                        shape =
+                                                                                                                RoundedCornerShape(
+                                                                                                                        4.dp
+                                                                                                                )
+                                                                                                )
+                                                                                                .padding(
+                                                                                                        horizontal =
+                                                                                                                8.dp,
+                                                                                                        vertical =
+                                                                                                                6.dp
+                                                                                                )
+                                                                        ) {
+                                                                                Row(
+                                                                                        modifier =
+                                                                                                Modifier.fillMaxSize(),
+                                                                                        verticalAlignment =
+                                                                                                Alignment
+                                                                                                        .CenterVertically
                                                                                 ) {
                                                                                         Icon(
                                                                                                 imageVector =
                                                                                                         Icons.Default
-                                                                                                                .Clear,
+                                                                                                                .Search,
                                                                                                 contentDescription =
-                                                                                                        "Effacer",
+                                                                                                        "Rechercher",
                                                                                                 modifier =
                                                                                                         Modifier.size(
-                                                                                                                18.dp
-                                                                                                        )
+                                                                                                                        16.dp
+                                                                                                                )
+                                                                                                                .padding(
+                                                                                                                        end =
+                                                                                                                                4.dp
+                                                                                                                ),
+                                                                                                tint =
+                                                                                                        MaterialTheme
+                                                                                                                .colors
+                                                                                                                .onSurface
+                                                                                                                .copy(
+                                                                                                                        alpha =
+                                                                                                                                0.7f
+                                                                                                                )
                                                                                         )
+                                                                                        Box(
+                                                                                                modifier =
+                                                                                                        Modifier.weight(
+                                                                                                                1f
+                                                                                                        )
+                                                                                        ) {
+                                                                                                if (searchQuery
+                                                                                                                .isEmpty()
+                                                                                                ) {
+                                                                                                        Text(
+                                                                                                                text =
+                                                                                                                        "Nom, marque, ingrédients...",
+                                                                                                                fontSize =
+                                                                                                                        13.sp,
+                                                                                                                color =
+                                                                                                                        MaterialTheme
+                                                                                                                                .colors
+                                                                                                                                .onSurface
+                                                                                                                                .copy(
+                                                                                                                                        alpha =
+                                                                                                                                                0.4f
+                                                                                                                                )
+                                                                                                        )
+                                                                                                }
+                                                                                                innerTextField()
+                                                                                        }
+                                                                                        if (searchQuery
+                                                                                                        .isNotEmpty()
+                                                                                        ) {
+                                                                                                IconButton(
+                                                                                                        onClick = {
+                                                                                                                searchQuery =
+                                                                                                                        ""
+                                                                                                        }
+                                                                                                ) {
+                                                                                                        Icon(
+                                                                                                                imageVector =
+                                                                                                                        Icons.Default
+                                                                                                                                .Clear,
+                                                                                                                contentDescription =
+                                                                                                                        "Effacer",
+                                                                                                                modifier =
+                                                                                                                        Modifier.size(
+                                                                                                                                16.dp
+                                                                                                                        ),
+                                                                                                                tint =
+                                                                                                                        MaterialTheme
+                                                                                                                                .colors
+                                                                                                                                .onSurface
+                                                                                                                                .copy(
+                                                                                                                                        alpha =
+                                                                                                                                                0.6f
+                                                                                                                                )
+                                                                                                        )
+                                                                                                }
+                                                                                        }
                                                                                 }
                                                                         }
-                                                                } else null,
-                                                        modifier =
-                                                                Modifier.fillMaxWidth()
-                                                                        .height(70.dp),
-                                                        singleLine = true,
-                                                        colors =
-                                                                TextFieldDefaults
-                                                                        .outlinedTextFieldColors(
-                                                                                textColor =
-                                                                                        MaterialTheme
-                                                                                                .colors
-                                                                                                .onSurface
-                                                                        )
-                                                )
+                                                                }
+                                                        )
+                                                }
 
                                                 // Filtres par dropdowns en grille 2x2
                                                 Row(
@@ -281,11 +359,18 @@ fun AddAlimentView(
                                                         Box(modifier = Modifier.weight(1f)) {
                                                                 DropdownField(
                                                                         label = "Type",
-                                                                        selectedValue = selectedFoodType,
+                                                                        selectedValue =
+                                                                                selectedFoodType,
                                                                         options = FoodKind.entries,
-                                                                        onValueChange = { selectedFoodType = it },
-                                                                        valueToString = { it.label },
-                                                                        modifier = Modifier.fillMaxWidth(),
+                                                                        onValueChange = {
+                                                                                selectedFoodType =
+                                                                                        it
+                                                                        },
+                                                                        valueToString = {
+                                                                                it.label
+                                                                        },
+                                                                        modifier =
+                                                                                Modifier.fillMaxWidth(),
                                                                         height = 40.dp,
                                                                         fontSize = 12.sp,
                                                                         labelFontSize = 10.sp,
@@ -297,11 +382,18 @@ fun AddAlimentView(
                                                         Box(modifier = Modifier.weight(1f)) {
                                                                 DropdownField(
                                                                         label = "Groupe",
-                                                                        selectedValue = selectedFoodGroup,
+                                                                        selectedValue =
+                                                                                selectedFoodGroup,
                                                                         options = GroupAlim.entries,
-                                                                        onValueChange = { selectedFoodGroup = it },
-                                                                        valueToString = { it.label },
-                                                                        modifier = Modifier.fillMaxWidth(),
+                                                                        onValueChange = {
+                                                                                selectedFoodGroup =
+                                                                                        it
+                                                                        },
+                                                                        valueToString = {
+                                                                                it.label
+                                                                        },
+                                                                        modifier =
+                                                                                Modifier.fillMaxWidth(),
                                                                         height = 40.dp,
                                                                         fontSize = 12.sp,
                                                                         labelFontSize = 10.sp,
@@ -321,11 +413,17 @@ fun AddAlimentView(
                                                         Box(modifier = Modifier.weight(1f)) {
                                                                 DropdownField(
                                                                         label = "Espèce",
-                                                                        selectedValue = selectedEspece,
+                                                                        selectedValue =
+                                                                                selectedEspece,
                                                                         options = Espece.entries,
-                                                                        onValueChange = { selectedEspece = it },
-                                                                        valueToString = { it.label },
-                                                                        modifier = Modifier.fillMaxWidth(),
+                                                                        onValueChange = {
+                                                                                selectedEspece = it
+                                                                        },
+                                                                        valueToString = {
+                                                                                it.label
+                                                                        },
+                                                                        modifier =
+                                                                                Modifier.fillMaxWidth(),
                                                                         height = 40.dp,
                                                                         fontSize = 12.sp,
                                                                         labelFontSize = 10.sp,
@@ -335,174 +433,25 @@ fun AddAlimentView(
 
                                                         // Indications (multi-sélection)
                                                         Box(modifier = Modifier.weight(1f)) {
-                                                                OutlinedTextField(
-                                                                        value =
-                                                                                if (selectedIndications
-                                                                                                .isEmpty()
-                                                                                )
-                                                                                        "Toutes indications"
-                                                                                else
-                                                                                        "${selectedIndications.size} sélectionnée(s)",
-                                                                        onValueChange = {},
-                                                                        label = {
-                                                                                Text(
-                                                                                        "Indications",
-                                                                                        fontSize =
-                                                                                                11.sp
-                                                                                )
+                                                                MultiSelectDropdownField(
+                                                                        label = "Indications",
+                                                                        selectedValues =
+                                                                                selectedIndications,
+                                                                        options = AlimIndic.entries,
+                                                                        onValuesChange = {
+                                                                                selectedIndications =
+                                                                                        it
                                                                         },
-                                                                        readOnly = true,
-                                                                        trailingIcon = {
-                                                                                IconButton(
-                                                                                        onClick = {
-                                                                                                showIndicationsDropdown =
-                                                                                                        true
-                                                                                        }
-                                                                                ) {
-                                                                                        Icon(
-                                                                                                Icons.Default
-                                                                                                        .ArrowDropDown,
-                                                                                                "Dropdown",
-                                                                                                modifier =
-                                                                                                        Modifier.size(
-                                                                                                                16.dp
-                                                                                                        )
-                                                                                        )
-                                                                                }
+                                                                        valueToString = {
+                                                                                it.label
                                                                         },
                                                                         modifier =
-                                                                                Modifier.fillMaxWidth()
-                                                                                        .height(
-                                                                                                40.dp
-                                                                                        ),
-                                                                        colors =
-                                                                                TextFieldDefaults
-                                                                                        .outlinedTextFieldColors(
-                                                                                                textColor =
-                                                                                                        MaterialTheme
-                                                                                                                .colors
-                                                                                                                .onSurface,
-                                                                                                unfocusedBorderColor =
-                                                                                                        MaterialTheme
-                                                                                                                .colors
-                                                                                                                .onSurface
-                                                                                                                .copy(
-                                                                                                                        alpha =
-                                                                                                                                0.3f
-                                                                                                                ),
-                                                                                                focusedBorderColor =
-                                                                                                        MaterialTheme
-                                                                                                                .colors
-                                                                                                                .primary
-                                                                                                                .copy(
-                                                                                                                        alpha =
-                                                                                                                                0.4f
-                                                                                                                )
-                                                                                        )
+                                                                                Modifier.fillMaxWidth(),
+                                                                        height = 40.dp,
+                                                                        fontSize = 12.sp,
+                                                                        labelFontSize = 10.sp,
+                                                                        borderWidth = 0.5.dp
                                                                 )
-                                                                DropdownMenu(
-                                                                        expanded =
-                                                                                showIndicationsDropdown,
-                                                                        onDismissRequest = {
-                                                                                showIndicationsDropdown =
-                                                                                        false
-                                                                        }
-                                                                ) {
-                                                                        // Option "Toutes
-                                                                        // indications"
-                                                                        DropdownMenuItem(
-                                                                                onClick = {
-                                                                                        selectedIndications =
-                                                                                                emptySet()
-                                                                                        showIndicationsDropdown =
-                                                                                                false
-                                                                                }
-                                                                        ) {
-                                                                                Row(
-                                                                                        verticalAlignment =
-                                                                                                Alignment
-                                                                                                        .CenterVertically
-                                                                                ) {
-                                                                                        Icon(
-                                                                                                if (selectedIndications
-                                                                                                                .isEmpty()
-                                                                                                )
-                                                                                                        Icons.Default
-                                                                                                                .Check
-                                                                                                else
-                                                                                                        Icons.Default
-                                                                                                                .Clear,
-                                                                                                contentDescription =
-                                                                                                        null,
-                                                                                                modifier =
-                                                                                                        Modifier.size(
-                                                                                                                16.dp
-                                                                                                        )
-                                                                                        )
-                                                                                        Spacer(
-                                                                                                modifier =
-                                                                                                        Modifier.width(
-                                                                                                                8.dp
-                                                                                                        )
-                                                                                        )
-                                                                                        Text(
-                                                                                                "Toutes indications"
-                                                                                        )
-                                                                                }
-                                                                        }
-
-                                                                        // Options individuelles
-                                                                        AlimIndic.entries.forEach {
-                                                                                indication ->
-                                                                                DropdownMenuItem(
-                                                                                        onClick = {
-                                                                                                selectedIndications =
-                                                                                                        if (indication in
-                                                                                                                        selectedIndications
-                                                                                                        ) {
-                                                                                                                selectedIndications -
-                                                                                                                        indication
-                                                                                                        } else {
-                                                                                                                selectedIndications +
-                                                                                                                        indication
-                                                                                                        }
-                                                                                        }
-                                                                                ) {
-                                                                                        Row(
-                                                                                                verticalAlignment =
-                                                                                                        Alignment
-                                                                                                                .CenterVertically
-                                                                                        ) {
-                                                                                                Icon(
-                                                                                                        if (indication in
-                                                                                                                        selectedIndications
-                                                                                                        )
-                                                                                                                Icons.Default
-                                                                                                                        .Check
-                                                                                                        else
-                                                                                                                Icons.Default
-                                                                                                                        .Clear,
-                                                                                                        contentDescription =
-                                                                                                                null,
-                                                                                                        modifier =
-                                                                                                                Modifier.size(
-                                                                                                                        16.dp
-                                                                                                                )
-                                                                                                )
-                                                                                                Spacer(
-                                                                                                        modifier =
-                                                                                                                Modifier.width(
-                                                                                                                        8.dp
-                                                                                                                )
-                                                                                                )
-                                                                                                Text(
-                                                                                                        indication
-                                                                                                                .label
-                                                                                                )
-                                                                                        }
-                                                                                }
-                                                                        }
-                                                                }
                                                         }
                                                 }
 
