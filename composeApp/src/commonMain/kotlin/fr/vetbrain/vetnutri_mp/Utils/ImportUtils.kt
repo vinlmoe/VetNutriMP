@@ -2065,7 +2065,9 @@ object ImportUtils {
                             creerBiblioRefDepuisJsonComplet(bibElement)
                         } else null
                     }
-                            ?: fr.vetbrain.vetnutri_mp.Data.BiblioRef()
+                            ?: creerBiblioRefParDefaut(
+                                    "Aucune référence bibliographique fournie pour l'équation"
+                            )
 
             val equation =
                     fr.vetbrain.vetnutri_mp.Data.Equation(
@@ -2096,14 +2098,23 @@ object ImportUtils {
             biblioObj: kotlinx.serialization.json.JsonObject
     ): fr.vetbrain.vetnutri_mp.Data.BiblioRef? {
         try {
-            val uuid =
-                    extraireStringDepuisJson(biblioObj, "UUID")
-                            ?: fr.vetbrain.vetnutri_mp.Utils.genUUID()
+            val uuid = extraireStringDepuisJson(biblioObj, "UUID")
             val firstAuthor = extraireStringDepuisJson(biblioObj, "firstAuthor") ?: ""
             val year = extraireIntDepuisJson(biblioObj, "year") ?: 0
             val completeRef = extraireStringDepuisJson(biblioObj, "completeRef") ?: ""
             val comment = extraireStringDepuisJson(biblioObj, "comment") ?: ""
             val consistent = extraireIntDepuisJson(biblioObj, "consistent") ?: 1
+
+            // Vérifier si les données sont valides et utilisables
+            if (uuid.isNullOrBlank() || firstAuthor.isBlank() || year < 1900 || consistent == 0) {
+                println("⚠️ Données bibliographiques invalides ou incomplètes:")
+                println(
+                        "  UUID: '$uuid', firstAuthor: '$firstAuthor', year: $year, consistent: $consistent"
+                )
+                println("  → Création d'une référence par défaut")
+
+                return creerBiblioRefParDefaut("Données incomplètes dans JSON")
+            }
 
             val biblioRef =
                     fr.vetbrain.vetnutri_mp.Data.BiblioRef(
@@ -2122,8 +2133,24 @@ object ImportUtils {
                     "❌ Erreur lors de la création de la référence bibliographique complète: ${e.message}"
             )
             e.printStackTrace()
-            return null
+            return creerBiblioRefParDefaut("Erreur lors de la création")
         }
+    }
+
+    /** Crée une référence bibliographique par défaut pour éviter les erreurs de clé étrangère */
+    private fun creerBiblioRefParDefaut(motif: String): fr.vetbrain.vetnutri_mp.Data.BiblioRef {
+        // Utiliser un UUID fixe pour éviter les duplicatas et garantir la cohérence
+        val defaultUuid = "default-biblio"
+        println("🔧 Création d'une référence bibliographique par défaut - UUID: $defaultUuid")
+
+        return fr.vetbrain.vetnutri_mp.Data.BiblioRef(
+                uuid = defaultUuid,
+                firstAuthor = "Système VetNutri",
+                year = 2024,
+                completeRef = "Référence par défaut générée automatiquement lors de l'import",
+                comments = "Créée automatiquement - $motif",
+                consistent = 1
+        )
     }
 
     /** Crée un objet BiblioRef à partir d'un objet JSON (ancienne version pour compatibilité) */
