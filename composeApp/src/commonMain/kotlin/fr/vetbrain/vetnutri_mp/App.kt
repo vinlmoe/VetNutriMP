@@ -139,7 +139,7 @@ fun App(appDatabase: AppDatabase) {
             remember(selectedFoodUuid) {
                 mutableStateOf(
                         FoodEditViewModel(
-                                alimentRepository = AlimentRepository(foodRepository),
+                                alimentRepository = AlimentRepository.getInstance(foodRepository),
                                 alimentUuid = selectedFoodUuid
                         )
                 )
@@ -506,9 +506,9 @@ fun App(appDatabase: AppDatabase) {
                                     )
                                 }
                         ) { paddingValues ->
-                                SettingsView(
-                                        viewModel = settingsViewModel,
-                                        importViewModel = importViewModel,
+                            SettingsView(
+                                    viewModel = settingsViewModel,
+                                    importViewModel = importViewModel,
                                     onImportAnimals = {
                                         // Lancer l'importation
                                         importViewModel.importAnimalsFromFileUI()

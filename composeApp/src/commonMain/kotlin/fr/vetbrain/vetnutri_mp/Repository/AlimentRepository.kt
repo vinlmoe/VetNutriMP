@@ -4,6 +4,7 @@ import fr.vetbrain.vetnutri_mp.Data.AlimentEv
 import fr.vetbrain.vetnutri_mp.Data.AlimentEvJson
 import fr.vetbrain.vetnutri_mp.Data.AlimentEvLight
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
 
 /**
@@ -91,7 +92,9 @@ class AlimentRepository(private val dataSource: FoodRepository) {
 
         fun getInstance(foodRepository: FoodRepository): AlimentRepository {
             if (instance == null) {
-                instance = AlimentRepository(foodRepository)
+                // Utiliser le même repository que les méthodes statiques si disponible
+                val repositoryToUse = _databaseFoodRepository ?: foodRepository
+                instance = AlimentRepository(repositoryToUse)
             }
             return instance!!
         }
@@ -144,6 +147,22 @@ class AlimentRepository(private val dataSource: FoodRepository) {
             } else {
                 // Retourner null si le repository n'est pas initialisé
                 null
+            }
+        }
+
+        /**
+         * Observe les aliments avec des mises à jour automatiques. Cette méthode est une version
+         * statique pour les besoins du ViewModel.
+         *
+         * @return Flow qui émet la liste des aliments à chaque mise à jour
+         */
+        fun observeAllAliments(): Flow<List<AlimentEv>> {
+            // Utiliser le repository réel si disponible
+            return if (_databaseFoodRepository != null) {
+                _databaseFoodRepository!!.observeAllFoods()
+            } else {
+                // Retourner un flow vide si le repository n'est pas initialisé
+                flowOf(emptyList())
             }
         }
     }

@@ -24,6 +24,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
@@ -66,15 +69,13 @@ class AnimalDetailViewModel(
     var isEditingAnimal by mutableStateOf(false)
         private set
 
-    // Liste de tous les aliments disponibles
-    private val _availableFoods = mutableStateOf<List<AlimentEv>>(emptyList())
-    val availableFoods: List<AlimentEv>
-        get() = _availableFoods.value
+    // Liste de tous les aliments disponibles (StateFlow pour observation par Compose)
+    private val _availableFoods = MutableStateFlow<List<AlimentEv>>(emptyList())
+    val availableFoods: StateFlow<List<AlimentEv>> = _availableFoods.asStateFlow()
 
-    // État de chargement des aliments
-    private val _isLoadingFoods = mutableStateOf(false)
-    val isLoadingFoods: Boolean
-        get() = _isLoadingFoods.value
+    // État de chargement des aliments (StateFlow pour observation par Compose)
+    private val _isLoadingFoods = MutableStateFlow(false)
+    val isLoadingFoods: StateFlow<Boolean> = _isLoadingFoods.asStateFlow()
 
     // Requête de recherche d'aliment
     private val _alimentSearchQuery = mutableStateOf("")
@@ -123,45 +124,47 @@ class AnimalDetailViewModel(
     private val _referenceUtilisee = MutableStateFlow<ReferenceEv?>(null)
     val referenceUtilisee: StateFlow<ReferenceEv?> = _referenceUtilisee.asStateFlow()
 
+    init {
+        // Démarrer automatiquement l'observation des aliments
+        loadAvailableFoods()
+    }
+
     /**
-     * Charge tous les aliments disponibles en utilisant la version légère pour de meilleures
-     * performances
+     * S'abonne au Flow des aliments pour recevoir des mises à jour automatiques quand de nouveaux
+     * aliments sont ajoutés ou modifiés
      */
     fun loadAvailableFoods() {
-        viewModelScope.launch {
-            try {
                 _isLoadingFoods.value = true
+        println("AnimalDetailViewModel: Démarrage de l'observation des aliments")
 
-                // Utiliser la version légère des aliments pour de meilleures performances
-                val alimentsLight = AlimentRepository.getAllAlimentsLight()
+        // S'abonner au Flow réactif des aliments pour des mises à jour automatiques
+        // Utiliser onEach + launchIn pour lancer l'observation en arrière-plan
+        AlimentRepository.observeAllAliments()
+                .onEach { aliments ->
+                    println(
+                            "AnimalDetailViewModel: Mise à jour automatique de la liste des aliments - ${aliments.size} aliments"
+                    )
 
-                // Convertir les AlimentEvLight en AlimentEv avec une valMap vide
+                    // Convertir en version légère pour l'affichage (sans valMap pour les
+                    // performances)
                 _availableFoods.value =
-                        alimentsLight.map { alimentLight ->
-                            AlimentEv(
-                                    uuid = alimentLight.uuid,
-                                    nom = alimentLight.nom,
-                                    typeAliment = alimentLight.typeAliment,
-                                    group = alimentLight.group,
-                                    brand = alimentLight.brand,
-                                    gamme = alimentLight.gamme,
-                                    especes = alimentLight.especes.toMutableList(),
-                                    indicat = alimentLight.indicat.toMutableList(),
-                                    deprecated = alimentLight.deprecated,
-                                    valMap = mutableMapOf(),
-                                    rationUUID = ""
-                            )
-                        }
+                            aliments.map { aliment ->
+                                aliment.copy(
+                                        valMap = mutableMapOf()
+                                ) // Vider valMap pour les performances
+                            }
 
-                println("Aliments légers chargés: ${_availableFoods.value.size}")
-            } catch (e: Exception) {
-                println("Erreur lors du chargement des aliments: ${e.message}")
+                    if (_isLoadingFoods.value) {
+                        _isLoadingFoods.value = false
+                    }
+                }
+                .catch { e ->
+                    println("Erreur lors de l'observation des aliments: ${e.message}")
                 e.printStackTrace()
                 _availableFoods.value = emptyList()
-            } finally {
                 _isLoadingFoods.value = false
             }
-        }
+                .launchIn(viewModelScope)
     }
 
     /** Définit la requête de recherche pour les aliments */
@@ -171,9 +174,10 @@ class AnimalDetailViewModel(
 
     /** Retourne la liste des aliments filtrée par la requête de recherche */
     fun getFilteredFoods(query: String): List<AlimentEv> {
-        if (query.isBlank()) return availableFoods
+        val currentFoods = _availableFoods.value
+        if (query.isBlank()) return currentFoods
 
-        return availableFoods.filter { aliment ->
+        return currentFoods.filter { aliment ->
             aliment.nom?.contains(query, ignoreCase = true) == true ||
                     aliment.brand?.contains(query, ignoreCase = true) == true ||
                     aliment.group?.label?.contains(query, ignoreCase = true) == true ||
@@ -1465,8 +1469,8 @@ class AnimalDetailViewModel(
                         }
                     } catch (e: NumberFormatException) {
                         println("ERROR: Conversion du poids impossible: $poids")
-                        return null
-                    }
+                return null
+            }
 
             println(
                     "DEBUG: Calcul BEE avec équation: ${equationBEE.name} - ${equationBEE.equationScript}"

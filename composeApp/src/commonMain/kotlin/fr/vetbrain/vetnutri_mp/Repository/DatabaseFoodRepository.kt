@@ -19,8 +19,11 @@ import fr.vetbrain.vetnutri_mp.Enumer.NutrientLipid
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientMain
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientVitam
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -35,12 +38,34 @@ class DatabaseFoodRepository(
 ) : FoodRepository {
     private val json = Json { ignoreUnknownKeys = true }
 
+    // Flow réactif pour notifier les changements
+    private val _foodsFlow = MutableStateFlow<List<AlimentEv>>(emptyList())
+    private val coroutineScope = CoroutineScope(AppDispatchers.Main)
+
+    init {
+        // Initialiser le flow au démarrage
+        coroutineScope.launch { refreshFoodsFlow() }
+    }
+
+    /** Met à jour le Flow avec la liste actuelle des aliments */
+    private suspend fun refreshFoodsFlow() {
+        try {
+            val foods = getAllFoods()
+            _foodsFlow.value = foods
+            println("DatabaseFoodRepository: Flow mis à jour avec ${foods.size} aliments")
+        } catch (e: Exception) {
+            println("Erreur lors du rafraîchissement du Flow des aliments: ${e.message}")
+            e.printStackTrace()
+        }
+    }
+
     /**
      * Insère un aliment dans la base de données.
      * @param food L'aliment à insérer
      */
     override suspend fun insert(food: AlimentEv) {
         withContext(AppDispatchers.IO) { foodDao.insert(food.toFoodEntity()) }
+        refreshFoodsFlow()
     }
 
     /**
@@ -49,6 +74,7 @@ class DatabaseFoodRepository(
      */
     override suspend fun update(food: AlimentEv) {
         withContext(AppDispatchers.IO) { foodDao.update(food.toFoodEntity()) }
+        refreshFoodsFlow()
     }
 
     /**
@@ -57,6 +83,7 @@ class DatabaseFoodRepository(
      */
     override suspend fun delete(food: AlimentEv) {
         withContext(AppDispatchers.IO) { foodDao.delete(food.toFoodEntity()) }
+        refreshFoodsFlow()
     }
 
     /**
@@ -144,7 +171,7 @@ class DatabaseFoodRepository(
      * @return Un Flow émettant la liste des aliments à chaque modification
      */
     override fun observeAllFoods(): Flow<List<AlimentEv>> {
-        return flow { emit(getAllFoods()) }
+        return _foodsFlow.asStateFlow()
     }
 
     /**
@@ -860,6 +887,9 @@ class DatabaseFoodRepository(
                 }
 
                 println("DEBUG DatabaseFoodRepository: Insertion de l'aliment terminée avec succès")
+
+                // Mettre à jour le Flow pour notifier les observateurs
+                refreshFoodsFlow()
             } catch (e: Exception) {
                 println(
                         "DEBUG DatabaseFoodRepository: ERREUR lors de l'insertion de l'aliment: ${e.message}"
@@ -1051,6 +1081,9 @@ class DatabaseFoodRepository(
                 println(
                         "DEBUG DatabaseFoodRepository: Mise à jour de l'aliment terminée avec succès"
                 )
+
+                // Mettre à jour le Flow pour notifier les observateurs
+                refreshFoodsFlow()
                 return@withContext
             } catch (e: Exception) {
                 println(
