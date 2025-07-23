@@ -1032,6 +1032,9 @@ class AnimalDetailViewModel(
         // Créer une copie de la ration avec la liste d'aliments mise à jour
         val updatedRation = ration.copy(alimentMutableList = aliments.toMutableList())
 
+        // Mettre à jour la ration sélectionnée pour rafraîchir l'UI
+        _selectedRation.value = updatedRation
+
         // Mettre à jour la ration dans la consultation
         updateRationInConsultation(updatedRation)
     }
