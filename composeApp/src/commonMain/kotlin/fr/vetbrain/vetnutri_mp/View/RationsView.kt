@@ -40,6 +40,7 @@ import fr.vetbrain.vetnutri_mp.Utils.createPreferencesStorage
 import fr.vetbrain.vetnutri_mp.View.AnalNut.AnalyseNutritionnelleCard
 import fr.vetbrain.vetnutri_mp.View.AnalNut.NutrimentDetailDialog
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailViewModel
+import kotlinx.coroutines.launch
 
 // Constante pour l'exposant formaté
 private const val EXPOSANT_075 = "⁰·⁷⁵"
@@ -255,6 +256,9 @@ fun RationsView(
         var rationForAddAliment by remember { mutableStateOf<Ration?>(null) }
         var editingAlimentId by remember { mutableStateOf<String?>(null) }
 
+        // Scope pour les coroutines locales dans le composable
+        val coroutineScope = rememberCoroutineScope()
+
         // États pour les dialogues de section agrandie
         var showMetabolicValuesDialog by remember { mutableStateOf(false) }
         var showCoefficientsDialog by remember { mutableStateOf(false) }
@@ -275,56 +279,85 @@ fun RationsView(
                                 rationForAddAliment = null
                         },
                         onAddAliment = { aliment, quantite ->
-                                // Suivre le même pattern que l'ajout de rations
-                                selectedConsultation?.let { consultation ->
-                                        // Créer un nouvel AlimentRation
-                                        val newAlimentRation =
-                                                AlimentRation(
-                                                        refAlimUnif = aliment.uuid,
-                                                        quantite = quantite,
-                                                        aliment = aliment,
-                                                        refRation = rationForAddAliment!!.uuid
-                                                )
+                                // Ajout asynchrone pour garantir la version complète de l'aliment
+                                coroutineScope.launch {
+                                        val alimentComplet =
+                                                viewModel.getAlimentComplet(aliment.uuid)
+                                        if (alimentComplet != null) {
+                                                selectedConsultation?.let { consultation ->
+                                                        // Créer un nouvel AlimentRation
+                                                        val newAlimentRation =
+                                                                AlimentRation(
+                                                                        refAlimUnif =
+                                                                                alimentComplet.uuid,
+                                                                        quantite = quantite,
+                                                                        aliment = alimentComplet,
+                                                                        refRation =
+                                                                                rationForAddAliment!!
+                                                                                        .uuid
+                                                                )
 
-                                        // Créer une copie de la liste des aliments de la ration
-                                        val updatedAliments =
-                                                rationForAddAliment!!.alimentMutableList
-                                                        .toMutableList()
-                                        updatedAliments.add(newAlimentRation)
+                                                        // Créer une copie de la liste des aliments
+                                                        // de la ration
+                                                        val updatedAliments =
+                                                                rationForAddAliment!!
+                                                                        .alimentMutableList
+                                                                        .toMutableList()
+                                                        updatedAliments.add(newAlimentRation)
 
-                                        // Créer une ration mise à jour
-                                        val updatedRation =
-                                                rationForAddAliment!!.copy(
-                                                        alimentMutableList = updatedAliments
-                                                )
+                                                        // Créer une ration mise à jour
+                                                        val updatedRation =
+                                                                rationForAddAliment!!.copy(
+                                                                        alimentMutableList =
+                                                                                updatedAliments
+                                                                )
 
-                                        // Mettre à jour la consultation avec la ration modifiée
-                                        val updatedRations = consultation.rations.toMutableList()
-                                        val rationIndex =
-                                                updatedRations.indexOfFirst {
-                                                        it.uuid == rationForAddAliment!!.uuid
+                                                        // Mettre à jour la consultation avec la
+                                                        // ration modifiée
+                                                        val updatedRations =
+                                                                consultation.rations.toMutableList()
+                                                        val rationIndex =
+                                                                updatedRations.indexOfFirst {
+                                                                        it.uuid ==
+                                                                                rationForAddAliment!!
+                                                                                        .uuid
+                                                                }
+                                                        if (rationIndex >= 0) {
+                                                                updatedRations[rationIndex] =
+                                                                        updatedRation
+
+                                                                val updatedConsultation =
+                                                                        consultation.copy(
+                                                                                rations =
+                                                                                        updatedRations
+                                                                        )
+
+                                                                // Sauvegarder la consultation mise
+                                                                // à jour
+                                                                viewModel.updateConsultation(
+                                                                        updatedConsultation
+                                                                )
+
+                                                                // Sélectionner la ration mise à
+                                                                // jour
+                                                                viewModel.selectRation(
+                                                                        updatedRation
+                                                                )
+                                                        }
                                                 }
-                                        if (rationIndex >= 0) {
-                                                updatedRations[rationIndex] = updatedRation
 
-                                                val updatedConsultation =
-                                                        consultation.copy(rations = updatedRations)
-
-                                                // Sauvegarder la consultation mise à jour
-                                                viewModel.updateConsultation(updatedConsultation)
-
-                                                // Sélectionner la ration mise à jour
-                                                viewModel.selectRation(updatedRation)
+                                                showSnackbar(
+                                                        "Aliment '${alimentComplet.nom}' ajouté à la ration (${quantite}g)"
+                                                )
+                                        } else {
+                                                showSnackbar(
+                                                        "Erreur : aliment non trouvé dans la base complète"
+                                                )
                                         }
+                                        // Fermer la vue d'ajout et revenir à la vue des rations
+                                        showAddAlimentView = false
+                                        rationForAddAliment = null
                                 }
-
-                                showSnackbar(
-                                        "Aliment '${aliment.nom}' ajouté à la ration (${quantite}g)"
-                                )
-
-                                // Fermer la vue d'ajout et revenir à la vue des rations
-                                showAddAlimentView = false
-                                rationForAddAliment = null
                         },
                         modifier = modifier
                 )
