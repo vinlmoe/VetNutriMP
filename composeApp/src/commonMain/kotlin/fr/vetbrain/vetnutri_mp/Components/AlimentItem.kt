@@ -37,99 +37,140 @@ fun AlimentItem(
         onDelete: () -> Unit,
         modifier: Modifier = Modifier
 ) {
-    // État local pour la quantité en cours d'édition
-    var quantityText by remember(aliment.quantite) { mutableStateOf(aliment.quantite.toString()) }
+        // État local pour la quantité en cours d'édition
+        var quantityText by
+                remember(aliment.quantite) { mutableStateOf(aliment.quantite.toString()) }
 
-    Card(
-            modifier = modifier.fillMaxWidth(),
-            elevation = AppSizes.elevationSmall,
-            backgroundColor = MaterialTheme.colors.surface
-    ) {
-        Column(modifier = Modifier.padding(AppSizes.paddingSmall)) {
-            // En-tête avec nom et boutons d'action
-            Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                        text = aliment.aliment?.nom ?: "Aliment sans nom",
-                        style = MaterialTheme.typography.subtitle1,
-                        fontWeight = FontWeight.Medium
-                )
+        Card(
+                modifier = modifier.fillMaxWidth(),
+                elevation = AppSizes.elevationSmall,
+                backgroundColor = MaterialTheme.colors.surface
+        ) {
+                Column(modifier = Modifier.padding(AppSizes.paddingSmall)) {
+                        // En-tête avec nom et boutons d'action
+                        Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                        ) {
+                                Text(
+                                        text = aliment.aliment?.nom ?: "Aliment sans nom",
+                                        style = MaterialTheme.typography.body2, // taille réduite
+                                        fontWeight = FontWeight.Medium
+                                )
 
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    IconButton(
-                            onClick = onStartEditing,
-                            modifier = Modifier.size(AppSizes.iconSizeSmall)
-                    ) {
-                        Icon(
-                                imageVector = Icons.Filled.Edit,
-                                contentDescription = "Éditer la quantité",
-                                tint = VetNutriColors.Secondary
-                        )
-                    }
+                                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                        IconButton(
+                                                onClick = onStartEditing,
+                                                modifier = Modifier.size(16.dp) // icône plus petite
+                                        ) {
+                                                Icon(
+                                                        imageVector = Icons.Filled.Edit,
+                                                        contentDescription = "Éditer la quantité",
+                                                        tint = VetNutriColors.Secondary,
+                                                        modifier =
+                                                                Modifier.size(
+                                                                        16.dp
+                                                                ) // icône plus petite
+                                                )
+                                        }
 
-                    IconButton(
-                            onClick = onDelete,
-                            modifier = Modifier.size(AppSizes.iconSizeSmall)
-                    ) {
-                        Icon(
-                                imageVector = Icons.Filled.Delete,
-                                contentDescription = "Supprimer",
-                                tint = VetNutriColors.Error
-                        )
-                    }
-                }
-            }
-
-            // Informations sur l'aliment
-            Row(
-                    modifier = Modifier.fillMaxWidth().padding(top = AppSizes.paddingXSmall),
-                    verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(text = "Quantité: ", style = MaterialTheme.typography.body2)
-
-                if (isEditing) {
-                    // Mode édition avec champ de texte
-                    OutlinedTextField(
-                            value = quantityText,
-                            onValueChange = { newValue ->
-                                // Filtrer pour n'accepter que les nombres et décimaux
-                                if (newValue.isEmpty() || newValue.matches(Regex("^\\d*\\.?\\d*$"))) {
-                                    quantityText = newValue
+                                        IconButton(
+                                                onClick = onDelete,
+                                                modifier = Modifier.size(16.dp) // icône plus petite
+                                        ) {
+                                                Icon(
+                                                        imageVector = Icons.Filled.Delete,
+                                                        contentDescription = "Supprimer",
+                                                        tint = VetNutriColors.Error,
+                                                        modifier =
+                                                                Modifier.size(
+                                                                        16.dp
+                                                                ) // icône plus petite
+                                                )
+                                        }
                                 }
-                            },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            singleLine = true,
-                            modifier = Modifier.weight(1f).height(56.dp),
-                            colors = TextFieldDefaults.outlinedTextFieldColors(
-                                    focusedBorderColor = VetNutriColors.Primary,
-                                    unfocusedBorderColor = VetNutriColors.Secondary
-                            )
-                    )
+                        }
 
-                    Button(
-                            onClick = {
-                                val newQuantity = quantityText.toFloatOrNull() ?: aliment.quantite
-                                onQuantityChange(newQuantity)
-                                onFinishEditing()
-                            },
-                            colors = ButtonDefaults.buttonColors(
-                                    backgroundColor = VetNutriColors.Primary,
-                                    contentColor = VetNutriColors.OnPrimary
-                            ),
-                            modifier = Modifier.padding(start = AppSizes.paddingSmall)
-                    ) { Text("OK") }
-                } else {
-                    // Mode affichage
-                    Text(
-                            text = "${aliment.quantite} g",
-                            style = MaterialTheme.typography.body1,
-                            fontWeight = FontWeight.Medium
-                    )
+                        // Informations sur l'aliment
+                        Row(
+                                modifier =
+                                        Modifier.fillMaxWidth()
+                                                .padding(top = AppSizes.paddingXSmall),
+                                verticalAlignment = Alignment.CenterVertically
+                        ) {
+                                Text(
+                                        text = "Quantité: ",
+                                        style = MaterialTheme.typography.caption
+                                ) // texte réduit
+
+                                if (isEditing) {
+                                        // Mode édition avec champ de texte
+                                        OutlinedTextField(
+                                                value = quantityText,
+                                                onValueChange = { newValue ->
+                                                        // Filtrer pour n'accepter que les nombres
+                                                        // et décimaux
+                                                        if (newValue.isEmpty() ||
+                                                                        newValue.matches(
+                                                                                Regex(
+                                                                                        "^\\d*\\.?\\d*$"
+                                                                                )
+                                                                        )
+                                                        ) {
+                                                                quantityText = newValue
+                                                        }
+                                                },
+                                                keyboardOptions =
+                                                        KeyboardOptions(
+                                                                keyboardType = KeyboardType.Number
+                                                        ),
+                                                singleLine = true,
+                                                modifier =
+                                                        Modifier.weight(1f)
+                                                                .height(40.dp), // hauteur réduite
+                                                colors =
+                                                        TextFieldDefaults.outlinedTextFieldColors(
+                                                                focusedBorderColor =
+                                                                        VetNutriColors.Primary,
+                                                                unfocusedBorderColor =
+                                                                        VetNutriColors.Secondary
+                                                        )
+                                        )
+
+                                        Button(
+                                                onClick = {
+                                                        val newQuantity =
+                                                                quantityText.toFloatOrNull()
+                                                                        ?: aliment.quantite
+                                                        onQuantityChange(newQuantity)
+                                                        onFinishEditing()
+                                                },
+                                                colors =
+                                                        ButtonDefaults.buttonColors(
+                                                                backgroundColor =
+                                                                        VetNutriColors.Primary,
+                                                                contentColor =
+                                                                        VetNutriColors.OnPrimary
+                                                        ),
+                                                modifier =
+                                                        Modifier.padding(
+                                                                start = AppSizes.paddingSmall
+                                                        )
+                                        ) {
+                                                Text("OK", style = MaterialTheme.typography.caption)
+                                        } // texte réduit
+                                } else {
+                                        // Mode affichage
+                                        Text(
+                                                text = "${aliment.quantite} g",
+                                                style =
+                                                        MaterialTheme.typography
+                                                                .caption, // texte réduit
+                                                fontWeight = FontWeight.Medium
+                                        )
+                                }
+                        }
                 }
-            }
         }
-    }
 }

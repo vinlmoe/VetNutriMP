@@ -2,10 +2,19 @@ package fr.vetbrain.vetnutri_mp.View
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -91,32 +100,23 @@ private fun calculerDensiteEnergetique(
                                         variables["PROT"] =
                                                 quantity.value
                                                         .toDouble() // Alias pour compatibilité
+                                        variables["PROTEINE"] = quantity.value.toDouble()
                                         // équations
                                 }
-                                "LIPIDE", "MG" -> {
-                                        variables["MG"] = quantity.value.toDouble()
+                                "LIPIDE" -> {
+                                        variables["LIPIDE"] = quantity.value.toDouble()
                                         variables["LIP"] =
                                                 quantity.value
                                                         .toDouble() // Alias pour compatibilité
                                         // équations
                                 }
                                 "ENA" -> variables["ENA"] = quantity.value.toDouble()
-                                "CELLULOSE", "FIBRES", "FB" ->
-                                        variables["FB"] = quantity.value.toDouble()
-                                "CENDRE", "MM" -> variables["MM"] = quantity.value.toDouble()
+                                "CENDRE" -> variables["CENDRE"] = quantity.value.toDouble()
                         }
                 }
 
                 // Vérifier que les nutriments essentiels sont présents
-                if (!variables.containsKey("PB") ||
-                                !variables.containsKey("MG") ||
-                                !variables.containsKey("ENA")
-                ) {
-                        println(
-                                "DEBUG: Nutriments essentiels manquants pour ${aliment.nom} (PB:${variables["PB"]}, MG:${variables["MG"]}, ENA:${variables["ENA"]})"
-                        )
-                        return 0.0
-                }
+              
 
                 println(
                         "DEBUG: Calcul DE pour ${aliment.nom} - Type: ${if (estCommercial) "commercial" else "brut"}"
@@ -363,18 +363,16 @@ fun RationsView(
                         modifier = modifier
                 )
         } else {
-                Column(
-                        modifier = modifier.fillMaxSize().padding(AppSizes.paddingMedium),
-                        verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
-                ) {
+                val scrollState = rememberScrollState()
+
+                Column(modifier = Modifier.fillMaxSize().verticalScroll(scrollState)) {
                         if (selectedConsultation == null) {
                                 Box(
                                         modifier = Modifier.fillMaxSize(),
                                         contentAlignment = Alignment.Center
                                 ) { Text("Sélectionnez une consultation pour voir les rations") }
                         } else {
-                                // En-tête compact avec informations de consultation et valeurs
-                                // métaboliques
+                                // En-tête avec nom de la consultation
                                 Card(
                                         modifier = Modifier.fillMaxWidth(),
                                         elevation = AppSizes.elevationSmall
@@ -382,814 +380,482 @@ fun RationsView(
                                         Column(
                                                 modifier =
                                                         Modifier.fillMaxWidth()
-                                                                .padding(
-                                                                        AppSizes.paddingSmall
-                                                                ), // Réduction du padding
+                                                                .padding(AppSizes.paddingMedium),
                                                 verticalArrangement =
-                                                        Arrangement.spacedBy(
-                                                                AppSizes.paddingXSmall
-                                                        ) // Réduction de l'espacement
+                                                        Arrangement.spacedBy(AppSizes.paddingXSmall)
                                         ) {
-                                                // Titre principal avec bouton d'édition
-                                                Row(
-                                                        modifier = Modifier.fillMaxWidth(),
-                                                        horizontalArrangement =
-                                                                Arrangement.SpaceBetween,
-                                                        verticalAlignment =
-                                                                Alignment.CenterVertically
-                                                ) {
-                                                        Column(modifier = Modifier.weight(1f)) {
-                                                                selectedConsultation?.date?.let {
-                                                                        date ->
-                                                                        Text(
-                                                                                text =
-                                                                                        "Consultation du $date",
-                                                                                style =
-                                                                                        MaterialTheme
-                                                                                                .typography
-                                                                                                .subtitle1, // Réduction de h6 à subtitle1
-                                                                                color =
-                                                                                        VetNutriColors
-                                                                                                .Primary
-                                                                        )
-                                                                }
-                                                                animal?.let { anim ->
-                                                                        Text(
-                                                                                text =
-                                                                                        "Animal: ${anim.nom}",
-                                                                                style =
-                                                                                        MaterialTheme
-                                                                                                .typography
-                                                                                                .caption // Réduction de subtitle2 à caption
-                                                                        )
-                                                                }
-                                                        }
-
-                                                        // Bouton d'édition de la consultation
-                                                        IconButton(
-                                                                onClick = {
-                                                                        selectedConsultation?.let {
-                                                                                consultation ->
-                                                                                viewModel
-                                                                                        .editConsultationFullScreen(
-                                                                                                consultation
-                                                                                        )
-                                                                        }
-                                                                },
-                                                                modifier =
-                                                                        Modifier.size(
-                                                                                AppSizes.iconSizeMedium
-                                                                        )
-                                                        ) {
-                                                                Icon(
-                                                                        imageVector =
-                                                                                Icons.Filled.Edit,
-                                                                        contentDescription =
-                                                                                "Éditer la consultation",
-                                                                        tint =
-                                                                                VetNutriColors
-                                                                                        .Primary
-                                                                )
-                                                        }
-                                                }
-
-                                                Divider(
-                                                        color =
-                                                                VetNutriColors.Primary.copy(
-                                                                        alpha = 0.3f
-                                                                )
+                                                Text(
+                                                        text =
+                                                                "Consultation du " +
+                                                                        (selectedConsultation?.date
+                                                                                ?: ""),
+                                                        style =
+                                                                MaterialTheme.typography
+                                                                        .subtitle1, // taille
+                                                        // réduite
+                                                        color = VetNutriColors.Primary
                                                 )
-
-                                                // Section Valeurs Métaboliques et Énergétiques
-                                                // (réorganisée
-                                                // sur 2 lignes)
-                                                Row(
-                                                        modifier = Modifier.fillMaxWidth(),
-                                                        horizontalArrangement =
-                                                                Arrangement.spacedBy(
-                                                                        AppSizes.paddingMedium
-                                                                )
+                                                if (!selectedConsultation?.objectConsult
+                                                                .isNullOrBlank()
                                                 ) {
-                                                        // Colonne gauche - Valeurs métaboliques (2
-                                                        // lignes)
-                                                        Column(modifier = Modifier.weight(1f)) {
-                                                                Row(
-                                                                        modifier =
-                                                                                Modifier.fillMaxWidth(),
-                                                                        horizontalArrangement =
-                                                                                Arrangement
-                                                                                        .SpaceBetween,
-                                                                        verticalAlignment =
-                                                                                Alignment
-                                                                                        .CenterVertically
-                                                                ) {
-                                                                        Text(
-                                                                                text =
-                                                                                        "Valeurs métaboliques",
-                                                                                style =
-                                                                                        MaterialTheme
-                                                                                                .typography
-                                                                                                .overline,
-                                                                                fontWeight =
-                                                                                        FontWeight
-                                                                                                .Bold,
-                                                                                color =
-                                                                                        VetNutriColors
-                                                                                                .Primary
+                                                        Text(
+                                                                text =
+                                                                        selectedConsultation
+                                                                                ?.objectConsult
+                                                                                ?: "",
+                                                                style =
+                                                                        MaterialTheme.typography
+                                                                                .body2,
+                                                                color =
+                                                                        MaterialTheme.colors
+                                                                                .onSurface.copy(
+                                                                                alpha = 0.7f
                                                                         )
-                                                                        IconButton(
-                                                                                onClick = {
-                                                                                        showMetabolicValuesDialog =
-                                                                                                true
-                                                                                },
-                                                                                modifier =
-                                                                                        Modifier.size(
-                                                                                                16.dp
-                                                                                        )
-                                                                        ) {
-                                                                                Icon(
-                                                                                        imageVector =
-                                                                                                Icons.Filled
-                                                                                                        .Search,
-                                                                                        contentDescription =
-                                                                                                "Agrandir les valeurs métaboliques",
-                                                                                        tint =
-                                                                                                VetNutriColors
-                                                                                                        .Primary,
-                                                                                        modifier =
-                                                                                                Modifier.size(
-                                                                                                        12.dp
-                                                                                                )
-                                                                                )
-                                                                        }
-                                                                }
-
-                                                                // Première ligne
-                                                                Row(
-                                                                        modifier =
-                                                                                Modifier.fillMaxWidth(),
-                                                                        horizontalArrangement =
-                                                                                Arrangement
-                                                                                        .spacedBy(
-                                                                                                AppSizes.paddingSmall
-                                                                                        )
-                                                                ) {
-                                                                        CompactLocalInfoRow(
-                                                                                label = "Poids",
-                                                                                value =
-                                                                                        selectedConsultation
-                                                                                                ?.weight
-                                                                                                ?.let {
-                                                                                                        "${
-                                                                                                    String.format(
-                                                                                                            "%.1f",
-                                                                                                            it
-                                                                                                    )
-                                                                                                } kg"
-                                                                                                }
-                                                                                                ?: "Non renseigné"
-                                                                        )
-                                                                        Spacer(
-                                                                                modifier =
-                                                                                        Modifier.width(
-                                                                                                AppSizes.paddingSmall
-                                                                                        )
-                                                                        )
-                                                                        CompactLocalInfoRow(
-                                                                                label =
-                                                                                        "P. métabolique",
-                                                                                value =
-                                                                                        poidsMetabolique
-                                                                                                ?.let {
-                                                                                                        TextUtils
-                                                                                                                .formatKgPuissance075(
-                                                                                                                        it
-                                                                                                                )
-                                                                                                }
-                                                                                                ?: "Non calculé"
-                                                                        )
-                                                                }
-
-                                                                Spacer(
-                                                                        modifier =
-                                                                                Modifier.height(
-                                                                                        AppSizes.paddingSmall
-                                                                                )
-                                                                )
-
-                                                                // Deuxième ligne
-                                                                Row(
-                                                                        modifier =
-                                                                                Modifier.fillMaxWidth(),
-                                                                        horizontalArrangement =
-                                                                                Arrangement
-                                                                                        .spacedBy(
-                                                                                                AppSizes.paddingSmall
-                                                                                        )
-                                                                ) {
-                                                                        CompactLocalInfoRow(
-                                                                                label =
-                                                                                        "B. énergétique", // Label raccourci
-                                                                                value =
-                                                                                        besoinEnergetiqueStandard
-                                                                                                ?.let {
-                                                                                                        "${String.format("%.0f", it)} kcal/j"
-                                                                                                }
-                                                                                                ?: "Non calculé"
-                                                                        )
-                                                                        Spacer(
-                                                                                modifier =
-                                                                                        Modifier.width(
-                                                                                                AppSizes.paddingSmall
-                                                                                        )
-                                                                        )
-                                                                        CompactLocalInfoRow(
-                                                                                label =
-                                                                                        "Besoin total",
-                                                                                value =
-                                                                                        besoinEnergetiqueTotal
-                                                                                                ?.let {
-                                                                                                        "${String.format("%.0f", it)} kcal/j"
-                                                                                                }
-                                                                                                ?: "Non calculé"
-                                                                        )
-                                                                }
-                                                        }
-
-                                                        // Colonne droite - Coefficients (2 lignes)
-                                                        Column(modifier = Modifier.weight(1f)) {
-                                                                Row(
-                                                                        modifier =
-                                                                                Modifier.fillMaxWidth(),
-                                                                        horizontalArrangement =
-                                                                                Arrangement
-                                                                                        .SpaceBetween,
-                                                                        verticalAlignment =
-                                                                                Alignment
-                                                                                        .CenterVertically
-                                                                ) {
-                                                                        Text(
-                                                                                text =
-                                                                                        "Coefficients",
-                                                                                style =
-                                                                                        MaterialTheme
-                                                                                                .typography
-                                                                                                .overline,
-                                                                                fontWeight =
-                                                                                        FontWeight
-                                                                                                .Bold,
-                                                                                color =
-                                                                                        VetNutriColors
-                                                                                                .Primary
-                                                                        )
-                                                                        IconButton(
-                                                                                onClick = {
-                                                                                        showCoefficientsDialog =
-                                                                                                true
-                                                                                },
-                                                                                modifier =
-                                                                                        Modifier.size(
-                                                                                                16.dp
-                                                                                        )
-                                                                        ) {
-                                                                                Icon(
-                                                                                        imageVector =
-                                                                                                Icons.Filled
-                                                                                                        .Search,
-                                                                                        contentDescription =
-                                                                                                "Agrandir les coefficients",
-                                                                                        tint =
-                                                                                                VetNutriColors
-                                                                                                        .Primary,
-                                                                                        modifier =
-                                                                                                Modifier.size(
-                                                                                                        12.dp
-                                                                                                )
-                                                                                )
-                                                                        }
-                                                                }
-
-                                                                // Première ligne des coefficients
-                                                                // (K1, K2,
-                                                                // K3)
-                                                                Row(
-                                                                        modifier =
-                                                                                Modifier.fillMaxWidth()
-                                                                ) {
-                                                                        CompactLocalInfoRow(
-                                                                                label =
-                                                                                        "K1 (Stade physiologique)",
-                                                                                value =
-                                                                                        selectedConsultation
-                                                                                                ?.k1Value
-                                                                                                ?.let {
-                                                                                                        String.format(
-                                                                                                                "%.2f",
-                                                                                                                it
-                                                                                                        )
-                                                                                                }
-                                                                                                ?: "1.00"
-                                                                        )
-                                                                        Spacer(
-                                                                                modifier =
-                                                                                        Modifier.width(
-                                                                                                AppSizes.paddingXSmall
-                                                                                        )
-                                                                        )
-                                                                        CompactLocalInfoRow(
-                                                                                label =
-                                                                                        "K2 (Activité)",
-                                                                                value =
-                                                                                        selectedConsultation
-                                                                                                ?.k2Value
-                                                                                                ?.let {
-                                                                                                        String.format(
-                                                                                                                "%.2f",
-                                                                                                                it
-                                                                                                        )
-                                                                                                }
-                                                                                                ?: "1.00"
-                                                                        )
-                                                                        Spacer(
-                                                                                modifier =
-                                                                                        Modifier.width(
-                                                                                                AppSizes.paddingXSmall
-                                                                                        )
-                                                                        )
-                                                                        CompactLocalInfoRow(
-                                                                                label =
-                                                                                        "K3 (Environnement)",
-                                                                                value =
-                                                                                        selectedConsultation
-                                                                                                ?.k3Value
-                                                                                                ?.let {
-                                                                                                        String.format(
-                                                                                                                "%.2f",
-                                                                                                                it
-                                                                                                        )
-                                                                                                }
-                                                                                                ?: "1.00"
-                                                                        )
-                                                                }
-
-                                                                // Deuxième ligne des coefficients
-                                                                // (K4, K5,
-                                                                // Coeff. ajust.)
-                                                                Row(
-                                                                        modifier =
-                                                                                Modifier.fillMaxWidth()
-                                                                ) {
-                                                                        CompactLocalInfoRow(
-                                                                                label =
-                                                                                        "K4 (État corporel)",
-                                                                                value =
-                                                                                        selectedConsultation
-                                                                                                ?.k4Value
-                                                                                                ?.let {
-                                                                                                        String.format(
-                                                                                                                "%.2f",
-                                                                                                                it
-                                                                                                        )
-                                                                                                }
-                                                                                                ?: "1.00"
-                                                                        )
-                                                                        Spacer(
-                                                                                modifier =
-                                                                                        Modifier.width(
-                                                                                                AppSizes.paddingXSmall
-                                                                                        )
-                                                                        )
-                                                                        CompactLocalInfoRow(
-                                                                                label =
-                                                                                        "K5 (Pathologie)",
-                                                                                value =
-                                                                                        selectedConsultation
-                                                                                                ?.k5Value
-                                                                                                ?.let {
-                                                                                                        String.format(
-                                                                                                                "%.2f",
-                                                                                                                it
-                                                                                                        )
-                                                                                                }
-                                                                                                ?: "1.00"
-                                                                        )
-                                                                        Spacer(
-                                                                                modifier =
-                                                                                        Modifier.width(
-                                                                                                AppSizes.paddingXSmall
-                                                                                        )
-                                                                        )
-
-                                                                        // Coefficient d'ajustement
-                                                                        // avec
-                                                                        // icône d'édition
-                                                                        var isEditingCoefficient by remember {
-                                                                                mutableStateOf(
-                                                                                        false
-                                                                                )
-                                                                        }
-                                                                        var coefficientText by
-                                                                                remember(
-                                                                                        selectedConsultation
-                                                                                ) {
-                                                                                        mutableStateOf(
-                                                                                                selectedConsultation
-                                                                                                        ?.coefficientAjustement
-                                                                                                        ?.toString()
-                                                                                                        ?: "1.0"
-                                                                                        )
-                                                                                }
-
-                                                                        if (isEditingCoefficient) {
-                                                                                // Mode édition
-                                                                                OutlinedTextField(
-                                                                                        value =
-                                                                                                coefficientText,
-                                                                                        onValueChange = {
-                                                                                                coefficientText =
-                                                                                                        it
-                                                                                        },
-                                                                                        modifier =
-                                                                                                Modifier.width(
-                                                                                                                80.dp
-                                                                                                        )
-                                                                                                        .height(
-                                                                                                                50.dp
-                                                                                                        ),
-                                                                                        textStyle =
-                                                                                                MaterialTheme
-                                                                                                        .typography
-                                                                                                        .body2,
-                                                                                        singleLine =
-                                                                                                true,
-                                                                                        keyboardOptions =
-                                                                                                KeyboardOptions(
-                                                                                                        keyboardType =
-                                                                                                                KeyboardType
-                                                                                                                        .Number
-                                                                                                ),
-                                                                                        trailingIcon = {
-                                                                                                Row(
-                                                                                                        horizontalArrangement =
-                                                                                                                Arrangement
-                                                                                                                        .spacedBy(
-                                                                                                                                2.dp
-                                                                                                                        )
-                                                                                                ) {
-                                                                                                        IconButton(
-                                                                                                                onClick = {
-                                                                                                                        // Valider
-                                                                                                                        coefficientText
-                                                                                                                                .toDoubleOrNull()
-                                                                                                                                ?.let {
-                                                                                                                                        newValue
-                                                                                                                                        ->
-                                                                                                                                        selectedConsultation
-                                                                                                                                                ?.let {
-                                                                                                                                                        consultation
-                                                                                                                                                        ->
-                                                                                                                                                        viewModel
-                                                                                                                                                                .updateCoefficientAjustement(
-                                                                                                                                                                        consultation
-                                                                                                                                                                                .uuid,
-                                                                                                                                                                        newValue
-                                                                                                                                                                )
-                                                                                                                                                }
-                                                                                                                                }
-                                                                                                                        isEditingCoefficient =
-                                                                                                                                false
-                                                                                                                },
-                                                                                                                modifier =
-                                                                                                                        Modifier.size(
-                                                                                                                                24.dp
-                                                                                                                        )
-                                                                                                        ) {
-                                                                                                                Icon(
-                                                                                                                        Icons.Filled
-                                                                                                                                .Check,
-                                                                                                                        contentDescription =
-                                                                                                                                "Valider",
-                                                                                                                        tint =
-                                                                                                                                Color.Green
-                                                                                                                )
-                                                                                                        }
-                                                                                                        IconButton(
-                                                                                                                onClick = {
-                                                                                                                        // Annuler
-                                                                                                                        coefficientText =
-                                                                                                                                selectedConsultation
-                                                                                                                                        ?.coefficientAjustement
-                                                                                                                                        ?.toString()
-                                                                                                                                        ?: "1.0"
-                                                                                                                        isEditingCoefficient =
-                                                                                                                                false
-                                                                                                                },
-                                                                                                                modifier =
-                                                                                                                        Modifier.size(
-                                                                                                                                24.dp
-                                                                                                                        )
-                                                                                                        ) {
-                                                                                                                Icon(
-                                                                                                                        Icons.Filled
-                                                                                                                                .Close,
-                                                                                                                        contentDescription =
-                                                                                                                                "Annuler",
-                                                                                                                        tint =
-                                                                                                                                Color.Red
-                                                                                                                )
-                                                                                                        }
-                                                                                                }
-                                                                                        }
-                                                                                )
-                                                                        } else {
-                                                                                // Mode affichage
-                                                                                Row(
-                                                                                        verticalAlignment =
-                                                                                                Alignment
-                                                                                                        .CenterVertically
-                                                                                ) {
-                                                                                        CompactLocalInfoRow(
-                                                                                                label =
-                                                                                                        "Coeff. ajust.",
-                                                                                                value =
-                                                                                                        selectedConsultation
-                                                                                                                ?.coefficientAjustement
-                                                                                                                ?.let {
-                                                                                                                        String.format(
-                                                                                                                                "%.2f",
-                                                                                                                                it
-                                                                                                                        )
-                                                                                                                }
-                                                                                                                ?: "1.00"
-                                                                                        )
-                                                                                        IconButton(
-                                                                                                onClick = {
-                                                                                                        coefficientText =
-                                                                                                                selectedConsultation
-                                                                                                                        ?.coefficientAjustement
-                                                                                                                        ?.toString()
-                                                                                                                        ?: "1.0"
-                                                                                                        isEditingCoefficient =
-                                                                                                                true
-                                                                                                },
-                                                                                                modifier =
-                                                                                                        Modifier.size(
-                                                                                                                20.dp
-                                                                                                        )
-                                                                                        ) {
-                                                                                                Icon(
-                                                                                                        Icons.Filled
-                                                                                                                .Edit,
-                                                                                                        contentDescription =
-                                                                                                                "Éditer",
-                                                                                                        modifier =
-                                                                                                                Modifier.size(
-                                                                                                                        16.dp
-                                                                                                                )
-                                                                                                )
-                                                                                        }
-                                                                                }
-                                                                        }
-                                                                }
-                                                        }
-
-                                                        // Colonne droite - Bilan énergétique
-                                                        Column(modifier = Modifier.weight(1f)) {
-                                                                Row(
-                                                                        modifier =
-                                                                                Modifier.fillMaxWidth(),
-                                                                        horizontalArrangement =
-                                                                                Arrangement
-                                                                                        .SpaceBetween,
-                                                                        verticalAlignment =
-                                                                                Alignment
-                                                                                        .CenterVertically
-                                                                ) {
-                                                                        Text(
-                                                                                text =
-                                                                                        "Bilan énergétique",
-                                                                                style =
-                                                                                        MaterialTheme
-                                                                                                .typography
-                                                                                                .overline,
-                                                                                fontWeight =
-                                                                                        FontWeight
-                                                                                                .Bold,
-                                                                                color =
-                                                                                        VetNutriColors
-                                                                                                .Primary
-                                                                        )
-                                                                }
-
-                                                                // Première ligne du bilan (Énergie
-                                                                // apportée, Couverture)
-                                                                Row(
-                                                                        modifier =
-                                                                                Modifier.fillMaxWidth()
-                                                                ) {
-                                                                        CompactLocalInfoRow(
-                                                                                label =
-                                                                                        "Énergie apportée",
-                                                                                value =
-                                                                                        "${String.format("%.0f", energieApportee)} kcal/j"
-                                                                        )
-                                                                        Spacer(
-                                                                                modifier =
-                                                                                        Modifier.width(
-                                                                                                AppSizes.paddingXSmall
-                                                                                        )
-                                                                        )
-                                                                        // Couverture avec couleur
-                                                                        Column {
-                                                                                Text(
-                                                                                        text =
-                                                                                                "Couverture",
-                                                                                        style =
-                                                                                                MaterialTheme
-                                                                                                        .typography
-                                                                                                        .caption,
-                                                                                        color =
-                                                                                                MaterialTheme
-                                                                                                        .colors
-                                                                                                        .onSurface
-                                                                                                        .copy(
-                                                                                                                alpha =
-                                                                                                                        0.6f
-                                                                                                        )
-                                                                                )
-                                                                                Text(
-                                                                                        text =
-                                                                                                "${String.format("%.0f", pourcentageCouverture)}%",
-                                                                                        style =
-                                                                                                MaterialTheme
-                                                                                                        .typography
-                                                                                                        .caption,
-                                                                                        fontWeight =
-                                                                                                FontWeight
-                                                                                                        .Medium,
-                                                                                        color =
-                                                                                                when {
-                                                                                                        pourcentageCouverture >=
-                                                                                                                90 &&
-                                                                                                                pourcentageCouverture <=
-                                                                                                                        110 ->
-                                                                                                                Color(
-                                                                                                                        0xFF4CAF50
-                                                                                                                ) // Vert
-                                                                                                        pourcentageCouverture >=
-                                                                                                                80 &&
-                                                                                                                pourcentageCouverture <=
-                                                                                                                        120 ->
-                                                                                                                Color(
-                                                                                                                        0xFFFF9800
-                                                                                                                ) // Orange
-                                                                                                        else ->
-                                                                                                                Color(
-                                                                                                                        0xFFF44336
-                                                                                                                ) // Rouge
-                                                                                                }
-                                                                                )
-                                                                        }
-                                                                }
-
-                                                                // Deuxième ligne du bilan (K
-                                                                // Observé)
-                                                                Row(
-                                                                        modifier =
-                                                                                Modifier.fillMaxWidth()
-                                                                ) {
-                                                                        // K Observé avec couleur
-                                                                        Column {
-                                                                                Text(
-                                                                                        text =
-                                                                                                "K Observé",
-                                                                                        style =
-                                                                                                MaterialTheme
-                                                                                                        .typography
-                                                                                                        .caption,
-                                                                                        color =
-                                                                                                MaterialTheme
-                                                                                                        .colors
-                                                                                                        .onSurface
-                                                                                                        .copy(
-                                                                                                                alpha =
-                                                                                                                        0.6f
-                                                                                                        )
-                                                                                )
-                                                                                Text(
-                                                                                        text =
-                                                                                                String.format(
-                                                                                                        "%.2f",
-                                                                                                        kObserve
-                                                                                                ),
-                                                                                        style =
-                                                                                                MaterialTheme
-                                                                                                        .typography
-                                                                                                        .caption,
-                                                                                        fontWeight =
-                                                                                                FontWeight
-                                                                                                        .Medium,
-                                                                                        color =
-                                                                                                when {
-                                                                                                        kObserve >=
-                                                                                                                0.9 &&
-                                                                                                                kObserve <=
-                                                                                                                        1.1 ->
-                                                                                                                Color(
-                                                                                                                        0xFF4CAF50
-                                                                                                                ) // Vert
-                                                                                                        kObserve >=
-                                                                                                                0.8 &&
-                                                                                                                kObserve <=
-                                                                                                                        1.2 ->
-                                                                                                                Color(
-                                                                                                                        0xFFFF9800
-                                                                                                                ) // Orange
-                                                                                                        else ->
-                                                                                                                Color(
-                                                                                                                        0xFFF44336
-                                                                                                                ) // Rouge
-                                                                                                }
-                                                                                )
-                                                                        }
-                                                                }
-                                                        }
+                                                        )
                                                 }
                                         }
                                 }
-
-                                // Contenu principal - grille 2x2 de cartes (colonnes fixes 50/50)
-                                Box(modifier = Modifier.weight(1f)) {
-                                        Row(
-                                                modifier = Modifier.fillMaxSize(),
-                                                horizontalArrangement =
-                                                        Arrangement.spacedBy(AppSizes.paddingMedium)
-                                        ) {
-                                                // Colonne gauche (listes) - 50% de l'espace
+                                Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
+                                // Section responsive dans une Card
+                                BoxWithConstraints(
+                                        modifier =
+                                                Modifier.fillMaxWidth()
+                                                        .padding(AppSizes.paddingMedium)
+                                ) {
+                                        val isCompact = maxWidth < 600.dp // seuil abaissé à 600
+                                        if (isCompact) {
                                                 Column(
-                                                        modifier = Modifier.weight(0.5f),
+                                                        modifier = Modifier.fillMaxWidth(),
                                                         verticalArrangement =
+                                                                Arrangement.spacedBy(
+                                                                        AppSizes.paddingSmall
+                                                                )
+                                                ) {
+                                                        MetabolicValuesSection(
+                                                                selectedConsultation =
+                                                                        selectedConsultation,
+                                                                poidsMetabolique = poidsMetabolique,
+                                                                besoinEnergetiqueStandard =
+                                                                        besoinEnergetiqueStandard,
+                                                                besoinEnergetiqueTotal =
+                                                                        besoinEnergetiqueTotal,
+                                                                onExpand = {
+                                                                        showMetabolicValuesDialog =
+                                                                                true
+                                                                },
+                                                                modifier = Modifier.fillMaxWidth()
+                                                        )
+                                                        Divider()
+                                                        CoefficientsSection(
+                                                                selectedConsultation =
+                                                                        selectedConsultation,
+                                                                showCoefficientsDialog = {
+                                                                        showCoefficientsDialog =
+                                                                                true
+                                                                },
+                                                                viewModel = viewModel,
+                                                                modifier = Modifier.fillMaxWidth()
+                                                        )
+                                                        Divider()
+                                                        BilanEnergetiqueSection(
+                                                                energieApportee = energieApportee,
+                                                                pourcentageCouverture =
+                                                                        pourcentageCouverture,
+                                                                kObserve = kObserve,
+                                                                modifier = Modifier.fillMaxWidth()
+                                                        )
+                                                }
+                                        } else {
+                                                Row(
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        horizontalArrangement =
                                                                 Arrangement.spacedBy(
                                                                         AppSizes.paddingMedium
                                                                 )
                                                 ) {
-                                                        // Segment 2: Liste des rations de la
-                                                        // consultation
-                                                        Card(
+                                                        MetabolicValuesSection(
+                                                                selectedConsultation =
+                                                                        selectedConsultation,
+                                                                poidsMetabolique = poidsMetabolique,
+                                                                besoinEnergetiqueStandard =
+                                                                        besoinEnergetiqueStandard,
+                                                                besoinEnergetiqueTotal =
+                                                                        besoinEnergetiqueTotal,
+                                                                onExpand = {
+                                                                        showMetabolicValuesDialog =
+                                                                                true
+                                                                },
+                                                                modifier = Modifier.weight(1f)
+                                                        )
+                                                        Divider(
                                                                 modifier =
-                                                                        Modifier.weight(1f)
-                                                                                .fillMaxWidth(),
-                                                                elevation =
-                                                                        AppSizes.elevationMedium,
-                                                                backgroundColor =
-                                                                        MaterialTheme.colors.surface
+                                                                        Modifier.width(1.dp)
+                                                                                .fillMaxHeight()
+                                                        )
+                                                        CoefficientsSection(
+                                                                selectedConsultation =
+                                                                        selectedConsultation,
+                                                                showCoefficientsDialog = {
+                                                                        showCoefficientsDialog =
+                                                                                true
+                                                                },
+                                                                viewModel = viewModel,
+                                                                modifier = Modifier.weight(1f)
+                                                        )
+                                                        Divider(
+                                                                modifier =
+                                                                        Modifier.width(1.dp)
+                                                                                .fillMaxHeight()
+                                                        )
+                                                        BilanEnergetiqueSection(
+                                                                energieApportee = energieApportee,
+                                                                pourcentageCouverture =
+                                                                        pourcentageCouverture,
+                                                                kObserve = kObserve,
+                                                                modifier = Modifier.weight(1f)
+                                                        )
+                                                }
+                                        }
+                                }
+                                // ... le reste du contenu de la vue ...
+                        }
+
+                        // Contenu principal - grille 2x2 de cartes (colonnes fixes 50/50)
+                        Box(modifier = Modifier.weight(1f)) {
+                                Row(
+                                        modifier = Modifier.fillMaxSize(),
+                                        horizontalArrangement =
+                                                Arrangement.spacedBy(AppSizes.paddingMedium)
+                                ) {
+                                        // Colonne gauche (listes) - 50% de l'espace
+                                        Column(
+                                                modifier = Modifier.weight(0.5f),
+                                                verticalArrangement =
+                                                        Arrangement.spacedBy(AppSizes.paddingMedium)
+                                        ) {
+                                                // Segment 2: Liste des rations de la
+                                                // consultation
+                                                Card(
+                                                        modifier =
+                                                                Modifier.weight(1f).fillMaxWidth(),
+                                                        elevation = AppSizes.elevationMedium,
+                                                        backgroundColor =
+                                                                MaterialTheme.colors.surface
+                                                ) {
+                                                        Column(
+                                                                modifier =
+                                                                        Modifier.fillMaxSize()
+                                                                                .padding(
+                                                                                        AppSizes.paddingMedium
+                                                                                ),
+                                                                verticalArrangement =
+                                                                        Arrangement.spacedBy(
+                                                                                AppSizes.paddingSmall
+                                                                        )
                                                         ) {
-                                                                Column(
+                                                                // En-tête avec titre et
+                                                                // bouton
+                                                                // d'ajout
+                                                                Row(
                                                                         modifier =
-                                                                                Modifier.fillMaxSize()
-                                                                                        .padding(
-                                                                                                AppSizes.paddingMedium
-                                                                                        ),
-                                                                        verticalArrangement =
+                                                                                Modifier.fillMaxWidth(),
+                                                                        horizontalArrangement =
                                                                                 Arrangement
-                                                                                        .spacedBy(
-                                                                                                AppSizes.paddingSmall
-                                                                                        )
+                                                                                        .SpaceBetween,
+                                                                        verticalAlignment =
+                                                                                Alignment
+                                                                                        .CenterVertically
                                                                 ) {
-                                                                        // En-tête avec titre et
-                                                                        // bouton
-                                                                        // d'ajout
-                                                                        Row(
+                                                                        // Titre "Rations de la
+                                                                        // consultation" (dans la
+                                                                        // Card en-tête)
+                                                                        Text(
+                                                                                text =
+                                                                                        "Rations de la consultation",
+                                                                                style =
+                                                                                        MaterialTheme
+                                                                                                .typography
+                                                                                                .subtitle2, // taille réduite
+                                                                                color =
+                                                                                        VetNutriColors
+                                                                                                .Primary
+                                                                        )
+
+                                                                        // Bouton pour
+                                                                        // ajouter une
+                                                                        // nouvelle ration
+                                                                        IconButton(
+                                                                                onClick = {
+                                                                                        rationToEdit =
+                                                                                                null // Nouvelle ration
+                                                                                        showRationEditDialog =
+                                                                                                true
+                                                                                },
                                                                                 modifier =
-                                                                                        Modifier.fillMaxWidth(),
-                                                                                horizontalArrangement =
-                                                                                        Arrangement
-                                                                                                .SpaceBetween,
-                                                                                verticalAlignment =
-                                                                                        Alignment
-                                                                                                .CenterVertically
+                                                                                        Modifier.size(
+                                                                                                AppSizes.iconSizeMedium
+                                                                                        )
                                                                         ) {
-                                                                                Text(
-                                                                                        text =
-                                                                                                "Rations de la consultation",
-                                                                                        style =
-                                                                                                MaterialTheme
-                                                                                                        .typography
-                                                                                                        .h6,
-                                                                                        color =
+                                                                                Icon(
+                                                                                        Icons.Filled
+                                                                                                .Add,
+                                                                                        contentDescription =
+                                                                                                "Ajouter une ration",
+                                                                                        tint =
                                                                                                 VetNutriColors
                                                                                                         .Primary
                                                                                 )
+                                                                        }
+                                                                }
 
-                                                                                // Bouton pour
-                                                                                // ajouter une
-                                                                                // nouvelle ration
+                                                                Divider()
+
+                                                                if (selectedConsultation?.rations
+                                                                                .isNullOrEmpty()
+                                                                ) {
+                                                                        CenteredMessage(
+                                                                                message =
+                                                                                        "Aucune ration disponible",
+                                                                                modifier =
+                                                                                        Modifier.weight(
+                                                                                                1f
+                                                                                        )
+                                                                        )
+                                                                } else {
+                                                                        LazyColumn(
+                                                                                modifier =
+                                                                                        Modifier.weight(
+                                                                                                1f
+                                                                                        ),
+                                                                                verticalArrangement =
+                                                                                        Arrangement
+                                                                                                .spacedBy(
+                                                                                                        8.dp
+                                                                                                )
+                                                                        ) {
+                                                                                items(
+                                                                                        selectedConsultation
+                                                                                                ?.rations
+                                                                                                ?: emptyList()
+                                                                                ) { ration ->
+                                                                                        RationItem(
+                                                                                                ration =
+                                                                                                        ration,
+                                                                                                isSelected =
+                                                                                                        ration.uuid ==
+                                                                                                                selectedRation
+                                                                                                                        ?.uuid,
+                                                                                                onClick = {
+                                                                                                        viewModel
+                                                                                                                .selectRation(
+                                                                                                                        ration
+                                                                                                                )
+                                                                                                },
+                                                                                                onEdit = {
+                                                                                                        rationToEdit =
+                                                                                                                ration
+                                                                                                        showRationEditDialog =
+                                                                                                                true
+                                                                                                },
+                                                                                                onDuplicate = {
+                                                                                                        viewModel
+                                                                                                                .duplicateRation(
+                                                                                                                        ration
+                                                                                                                )
+                                                                                                        showSnackbar(
+                                                                                                                "Ration '${ration.name}' dupliquée"
+                                                                                                        )
+                                                                                                },
+                                                                                                onDelete = {
+                                                                                                        // Temporairement commenté jusqu'à l'implémentation de cette méthode
+                                                                                                        showSnackbar(
+                                                                                                                "Suppression de ration non implémentée"
+                                                                                                        )
+                                                                                                        // viewModel.deleteRation(ration)
+                                                                                                }
+                                                                                        )
+                                                                                }
+                                                                        }
+                                                                }
+                                                        }
+                                                }
+
+                                                // Segment 3: Liste des aliments de la
+                                                // ration
+                                                // sélectionnée
+                                                Card(
+                                                        modifier =
+                                                                Modifier.weight(1f).fillMaxWidth(),
+                                                        elevation = AppSizes.elevationMedium,
+                                                        backgroundColor =
+                                                                MaterialTheme.colors.surface
+                                                ) {
+                                                        Column(
+                                                                modifier =
+                                                                        Modifier.fillMaxSize()
+                                                                                .padding(
+                                                                                        AppSizes.paddingMedium
+                                                                                ),
+                                                                verticalArrangement =
+                                                                        Arrangement.spacedBy(
+                                                                                AppSizes.paddingSmall
+                                                                        )
+                                                        ) {
+                                                                // En-tête avec titre et
+                                                                // bouton
+                                                                // d'ajout
+                                                                Row(
+                                                                        modifier =
+                                                                                Modifier.fillMaxWidth(),
+                                                                        horizontalArrangement =
+                                                                                Arrangement
+                                                                                        .SpaceBetween,
+                                                                        verticalAlignment =
+                                                                                Alignment
+                                                                                        .CenterVertically
+                                                                ) {
+                                                                        Text(
+                                                                                text =
+                                                                                        "Aliments de la ration",
+                                                                                style =
+                                                                                        MaterialTheme
+                                                                                                .typography
+                                                                                                .subtitle2, // taille réduite
+                                                                                color =
+                                                                                        VetNutriColors
+                                                                                                .Primary
+                                                                        )
+
+                                                                        Row(
+                                                                                verticalAlignment =
+                                                                                        Alignment
+                                                                                                .CenterVertically,
+                                                                                horizontalArrangement =
+                                                                                        Arrangement
+                                                                                                .spacedBy(
+                                                                                                        AppSizes.paddingXSmall
+                                                                                                )
+                                                                        ) {
+                                                                                // Bouton
+                                                                                // pour
+                                                                                // ajuster
+                                                                                // la ration
+                                                                                // (icône)
+                                                                                val coroutineScope =
+                                                                                        rememberCoroutineScope()
+                                                                                val ration =
+                                                                                        selectedRation
+                                                                                val beTotal =
+                                                                                        besoinEnergetiqueTotal
                                                                                 IconButton(
                                                                                         onClick = {
-                                                                                                rationToEdit =
-                                                                                                        null // Nouvelle ration
-                                                                                                showRationEditDialog =
-                                                                                                        true
+                                                                                                if (ration !=
+                                                                                                                null &&
+                                                                                                                beTotal !=
+                                                                                                                        null &&
+                                                                                                                beTotal >
+                                                                                                                        0
+                                                                                                ) {
+                                                                                                        val energieApportee =
+                                                                                                                ration.alimentMutableList
+                                                                                                                        .sumOf {
+                                                                                                                                alimentRation
+                                                                                                                                ->
+                                                                                                                                val densiteEnergetique =
+                                                                                                                                        referenceUtilisee
+                                                                                                                                                ?.let {
+                                                                                                                                                        ref
+                                                                                                                                                        ->
+                                                                                                                                                        calculerDensiteEnergetique(
+                                                                                                                                                                alimentRation,
+                                                                                                                                                                ref
+                                                                                                                                                        )
+                                                                                                                                                }
+                                                                                                                                                ?: 0.0
+                                                                                                                                (densiteEnergetique *
+                                                                                                                                        alimentRation
+                                                                                                                                                .quantite) /
+                                                                                                                                        100.0
+                                                                                                                        }
+                                                                                                        if (energieApportee >
+                                                                                                                        0
+                                                                                                        ) {
+                                                                                                                val ratio =
+                                                                                                                        beTotal /
+                                                                                                                                energieApportee
+                                                                                                                val alimentsAjustes =
+                                                                                                                        ration.alimentMutableList
+                                                                                                                                .map {
+                                                                                                                                        alimentRation
+                                                                                                                                        ->
+                                                                                                                                        alimentRation
+                                                                                                                                                .copy(
+                                                                                                                                                        quantite =
+                                                                                                                                                                (alimentRation
+                                                                                                                                                                                .quantite *
+                                                                                                                                                                                ratio)
+                                                                                                                                                                        .toFloat()
+                                                                                                                                                )
+                                                                                                                                }
+                                                                                                                coroutineScope
+                                                                                                                        .launch {
+                                                                                                                                viewModel
+                                                                                                                                        .updateRationAliments(
+                                                                                                                                                ration,
+                                                                                                                                                alimentsAjustes
+                                                                                                                                        )
+                                                                                                                                showSnackbar(
+                                                                                                                                        "Ration ajustée pour couvrir 100% du besoin énergétique total"
+                                                                                                                                )
+                                                                                                                        }
+                                                                                                        } else {
+                                                                                                                showSnackbar(
+                                                                                                                        "Impossible d'ajuster : apport énergétique nul"
+                                                                                                                )
+                                                                                                        }
+                                                                                                }
+                                                                                        },
+                                                                                        enabled =
+                                                                                                ration !=
+                                                                                                        null &&
+                                                                                                        beTotal !=
+                                                                                                                null &&
+                                                                                                        beTotal >
+                                                                                                                0 &&
+                                                                                                        (ration.alimentMutableList
+                                                                                                                .isNotEmpty()),
+                                                                                ) {
+                                                                                        Icon(
+                                                                                                imageVector =
+                                                                                                        Icons.Filled
+                                                                                                                .Tune,
+                                                                                                contentDescription =
+                                                                                                        "Ajuster la ration",
+                                                                                                tint =
+                                                                                                        VetNutriColors
+                                                                                                                .Primary
+                                                                                        )
+                                                                                }
+                                                                                // Bouton
+                                                                                // pour
+                                                                                // ajouter
+                                                                                // un
+                                                                                // aliment
+                                                                                IconButton(
+                                                                                        onClick = {
+                                                                                                // Vérifier que la ration existe avant d'afficher le dialogue
+                                                                                                if (selectedRation !=
+                                                                                                                null
+                                                                                                ) {
+                                                                                                        rationForAddAliment =
+                                                                                                                selectedRation
+                                                                                                        showAddAlimentView =
+                                                                                                                true
+                                                                                                } else {
+                                                                                                        showSnackbar(
+                                                                                                                "Sélectionnez d'abord une ration"
+                                                                                                        )
+                                                                                                }
                                                                                         },
                                                                                         modifier =
                                                                                                 Modifier.size(
@@ -1197,452 +863,162 @@ fun RationsView(
                                                                                                 )
                                                                                 ) {
                                                                                         Icon(
-                                                                                                Icons.Filled
-                                                                                                        .Add,
+                                                                                                imageVector =
+                                                                                                        Icons.Filled
+                                                                                                                .Add,
                                                                                                 contentDescription =
-                                                                                                        "Ajouter une ration",
+                                                                                                        "Ajouter un aliment",
                                                                                                 tint =
                                                                                                         VetNutriColors
                                                                                                                 .Primary
                                                                                         )
                                                                                 }
                                                                         }
-
-                                                                        Divider()
-
-                                                                        if (selectedConsultation
-                                                                                        ?.rations
-                                                                                        .isNullOrEmpty()
-                                                                        ) {
-                                                                                CenteredMessage(
-                                                                                        message =
-                                                                                                "Aucune ration disponible",
-                                                                                        modifier =
-                                                                                                Modifier.weight(
-                                                                                                        1f
-                                                                                                )
-                                                                                )
-                                                                        } else {
-                                                                                LazyColumn(
-                                                                                        modifier =
-                                                                                                Modifier.weight(
-                                                                                                        1f
-                                                                                                ),
-                                                                                        verticalArrangement =
-                                                                                                Arrangement
-                                                                                                        .spacedBy(
-                                                                                                                8.dp
-                                                                                                        )
-                                                                                ) {
-                                                                                        items(
-                                                                                                selectedConsultation
-                                                                                                        ?.rations
-                                                                                                        ?: emptyList()
-                                                                                        ) { ration
-                                                                                                ->
-                                                                                                RationItem(
-                                                                                                        ration =
-                                                                                                                ration,
-                                                                                                        isSelected =
-                                                                                                                ration.uuid ==
-                                                                                                                        selectedRation
-                                                                                                                                ?.uuid,
-                                                                                                        onClick = {
-                                                                                                                viewModel
-                                                                                                                        .selectRation(
-                                                                                                                                ration
-                                                                                                                        )
-                                                                                                        },
-                                                                                                        onEdit = {
-                                                                                                                rationToEdit =
-                                                                                                                        ration
-                                                                                                                showRationEditDialog =
-                                                                                                                        true
-                                                                                                        },
-                                                                                                        onDuplicate = {
-                                                                                                                viewModel
-                                                                                                                        .duplicateRation(
-                                                                                                                                ration
-                                                                                                                        )
-                                                                                                                showSnackbar(
-                                                                                                                        "Ration '${ration.name}' dupliquée"
-                                                                                                                )
-                                                                                                        },
-                                                                                                        onDelete = {
-                                                                                                                // Temporairement commenté jusqu'à l'implémentation de cette méthode
-                                                                                                                showSnackbar(
-                                                                                                                        "Suppression de ration non implémentée"
-                                                                                                                )
-                                                                                                                // viewModel.deleteRation(ration)
-                                                                                                        }
-                                                                                                )
-                                                                                        }
-                                                                                }
-                                                                        }
                                                                 }
-                                                        }
 
-                                                        // Segment 3: Liste des aliments de la
-                                                        // ration
-                                                        // sélectionnée
-                                                        Card(
-                                                                modifier =
-                                                                        Modifier.weight(1f)
-                                                                                .fillMaxWidth(),
-                                                                elevation =
-                                                                        AppSizes.elevationMedium,
-                                                                backgroundColor =
-                                                                        MaterialTheme.colors.surface
-                                                        ) {
-                                                                Column(
-                                                                        modifier =
-                                                                                Modifier.fillMaxSize()
-                                                                                        .padding(
-                                                                                                AppSizes.paddingMedium
-                                                                                        ),
-                                                                        verticalArrangement =
-                                                                                Arrangement
-                                                                                        .spacedBy(
-                                                                                                AppSizes.paddingSmall
-                                                                                        )
+                                                                Divider()
+
+                                                                if (selectedRation
+                                                                                ?.alimentMutableList
+                                                                                .isNullOrEmpty()
                                                                 ) {
-                                                                        // En-tête avec titre et
-                                                                        // bouton
-                                                                        // d'ajout
-                                                                        Row(
+                                                                        // Message plus
+                                                                        // explicite et
+                                                                        // vérification que
+                                                                        // la liste
+                                                                        // est vide
+                                                                        CenteredMessage(
+                                                                                message =
+                                                                                        "Aucun aliment dans cette ration",
                                                                                 modifier =
-                                                                                        Modifier.fillMaxWidth(),
-                                                                                horizontalArrangement =
+                                                                                        Modifier.weight(
+                                                                                                1f
+                                                                                        )
+                                                                        )
+                                                                } else {
+                                                                        LazyColumn(
+                                                                                modifier =
+                                                                                        Modifier.weight(
+                                                                                                1f
+                                                                                        ),
+                                                                                verticalArrangement =
                                                                                         Arrangement
-                                                                                                .SpaceBetween,
-                                                                                verticalAlignment =
-                                                                                        Alignment
-                                                                                                .CenterVertically
+                                                                                                .spacedBy(
+                                                                                                        AppSizes.paddingSmall
+                                                                                                )
                                                                         ) {
-                                                                                Text(
-                                                                                        text =
-                                                                                                "Aliments de la ration",
-                                                                                        style =
-                                                                                                MaterialTheme
-                                                                                                        .typography
-                                                                                                        .h6,
-                                                                                        color =
-                                                                                                VetNutriColors
-                                                                                                        .Primary
-                                                                                )
-
-                                                                                Row(
-                                                                                        verticalAlignment =
-                                                                                                Alignment
-                                                                                                        .CenterVertically,
-                                                                                        horizontalArrangement =
-                                                                                                Arrangement
-                                                                                                        .spacedBy(
-                                                                                                                AppSizes.paddingXSmall
-                                                                                                        )
-                                                                                ) {
-                                                                                        // Bouton
-                                                                                        // pour
-                                                                                        // ajuster
-                                                                                        // la ration
-                                                                                        // (icône)
-                                                                                        val coroutineScope =
-                                                                                                rememberCoroutineScope()
-                                                                                        val ration =
-                                                                                                selectedRation
-                                                                                        val beTotal =
-                                                                                                besoinEnergetiqueTotal
-                                                                                        IconButton(
-                                                                                                onClick = {
-                                                                                                        if (ration !=
+                                                                                items(
+                                                                                        selectedRation
+                                                                                                ?.alimentMutableList
+                                                                                                ?: emptyList()
+                                                                                ) { aliment ->
+                                                                                        AlimentItem(
+                                                                                                aliment =
+                                                                                                        aliment,
+                                                                                                isEditing =
+                                                                                                        editingAlimentId ==
+                                                                                                                aliment.uuid,
+                                                                                                onStartEditing = {
+                                                                                                        // Si une autre édition est en cours, valider cette édition d'abord
+                                                                                                        if (editingAlimentId !=
                                                                                                                         null &&
-                                                                                                                        beTotal !=
-                                                                                                                                null &&
-                                                                                                                        beTotal >
-                                                                                                                                0
-                                                                                                        ) {
-                                                                                                                val energieApportee =
-                                                                                                                        ration.alimentMutableList
-                                                                                                                                .sumOf {
-                                                                                                                                        alimentRation
-                                                                                                                                        ->
-                                                                                                                                        val densiteEnergetique =
-                                                                                                                                                referenceUtilisee
-                                                                                                                                                        ?.let {
-                                                                                                                                                                ref
-                                                                                                                                                                ->
-                                                                                                                                                                calculerDensiteEnergetique(
-                                                                                                                                                                        alimentRation,
-                                                                                                                                                                        ref
-                                                                                                                                                                )
-                                                                                                                                                        }
-                                                                                                                                                        ?: 0.0
-                                                                                                                                        (densiteEnergetique *
-                                                                                                                                                alimentRation
-                                                                                                                                                        .quantite) /
-                                                                                                                                                100.0
-                                                                                                                                }
-                                                                                                                if (energieApportee >
-                                                                                                                                0
-                                                                                                                ) {
-                                                                                                                        val ratio =
-                                                                                                                                beTotal /
-                                                                                                                                        energieApportee
-                                                                                                                        val alimentsAjustes =
-                                                                                                                                ration.alimentMutableList
-                                                                                                                                        .map {
-                                                                                                                                                alimentRation
-                                                                                                                                                ->
-                                                                                                                                                alimentRation
-                                                                                                                                                        .copy(
-                                                                                                                                                                quantite =
-                                                                                                                                                                        (alimentRation
-                                                                                                                                                                                        .quantite *
-                                                                                                                                                                                        ratio)
-                                                                                                                                                                                .toFloat()
-                                                                                                                                                        )
-                                                                                                                                        }
-                                                                                                                        coroutineScope
-                                                                                                                                .launch {
-                                                                                                                                        viewModel
-                                                                                                                                                .updateRationAliments(
-                                                                                                                                                        ration,
-                                                                                                                                                        alimentsAjustes
-                                                                                                                                                )
-                                                                                                                                        showSnackbar(
-                                                                                                                                                "Ration ajustée pour couvrir 100% du besoin énergétique total"
-                                                                                                                                        )
-                                                                                                                                }
-                                                                                                                } else {
-                                                                                                                        showSnackbar(
-                                                                                                                                "Impossible d'ajuster : apport énergétique nul"
-                                                                                                                        )
-                                                                                                                }
-                                                                                                        }
-                                                                                                },
-                                                                                                enabled =
-                                                                                                        ration !=
-                                                                                                                null &&
-                                                                                                                beTotal !=
-                                                                                                                        null &&
-                                                                                                                beTotal >
-                                                                                                                        0 &&
-                                                                                                                (ration.alimentMutableList
-                                                                                                                        .isNotEmpty()),
-                                                                                        ) {
-                                                                                                Icon(
-                                                                                                        imageVector =
-                                                                                                                Icons.Filled
-                                                                                                                        .Tune,
-                                                                                                        contentDescription =
-                                                                                                                "Ajuster la ration",
-                                                                                                        tint =
-                                                                                                                VetNutriColors
-                                                                                                                        .Primary
-                                                                                                )
-                                                                                        }
-                                                                                        // Bouton
-                                                                                        // pour
-                                                                                        // ajouter
-                                                                                        // un
-                                                                                        // aliment
-                                                                                        IconButton(
-                                                                                                onClick = {
-                                                                                                        // Vérifier que la ration existe avant d'afficher le dialogue
-                                                                                                        if (selectedRation !=
-                                                                                                                        null
-                                                                                                        ) {
-                                                                                                                rationForAddAliment =
-                                                                                                                        selectedRation
-                                                                                                                showAddAlimentView =
-                                                                                                                        true
-                                                                                                        } else {
-                                                                                                                showSnackbar(
-                                                                                                                        "Sélectionnez d'abord une ration"
-                                                                                                                )
-                                                                                                        }
-                                                                                                },
-                                                                                                modifier =
-                                                                                                        Modifier.size(
-                                                                                                                AppSizes.iconSizeMedium
-                                                                                                        )
-                                                                                        ) {
-                                                                                                Icon(
-                                                                                                        imageVector =
-                                                                                                                Icons.Filled
-                                                                                                                        .Add,
-                                                                                                        contentDescription =
-                                                                                                                "Ajouter un aliment",
-                                                                                                        tint =
-                                                                                                                VetNutriColors
-                                                                                                                        .Primary
-                                                                                                )
-                                                                                        }
-                                                                                }
-                                                                        }
-
-                                                                        Divider()
-
-                                                                        if (selectedRation
-                                                                                        ?.alimentMutableList
-                                                                                        .isNullOrEmpty()
-                                                                        ) {
-                                                                                // Message plus
-                                                                                // explicite et
-                                                                                // vérification que
-                                                                                // la liste
-                                                                                // est vide
-                                                                                CenteredMessage(
-                                                                                        message =
-                                                                                                "Aucun aliment dans cette ration",
-                                                                                        modifier =
-                                                                                                Modifier.weight(
-                                                                                                        1f
-                                                                                                )
-                                                                                )
-                                                                        } else {
-                                                                                LazyColumn(
-                                                                                        modifier =
-                                                                                                Modifier.weight(
-                                                                                                        1f
-                                                                                                ),
-                                                                                        verticalArrangement =
-                                                                                                Arrangement
-                                                                                                        .spacedBy(
-                                                                                                                AppSizes.paddingSmall
-                                                                                                        )
-                                                                                ) {
-                                                                                        items(
-                                                                                                selectedRation
-                                                                                                        ?.alimentMutableList
-                                                                                                        ?: emptyList()
-                                                                                        ) { aliment
-                                                                                                ->
-                                                                                                AlimentItem(
-                                                                                                        aliment =
-                                                                                                                aliment,
-                                                                                                        isEditing =
-                                                                                                                editingAlimentId ==
-                                                                                                                        aliment.uuid,
-                                                                                                        onStartEditing = {
-                                                                                                                // Si une autre édition est en cours, valider cette édition d'abord
-                                                                                                                if (editingAlimentId !=
-                                                                                                                                null &&
-                                                                                                                                editingAlimentId !=
-                                                                                                                                        aliment.uuid
-                                                                                                                ) {
-                                                                                                                        editingAlimentId =
-                                                                                                                                null
-                                                                                                                }
-                                                                                                                editingAlimentId =
-                                                                                                                        aliment.uuid
-                                                                                                        },
-                                                                                                        onQuantityChange = {
-                                                                                                                newQuantity
-                                                                                                                ->
-                                                                                                                viewModel
-                                                                                                                        .updateAlimentQuantity(
-                                                                                                                                aliment.uuid,
-                                                                                                                                newQuantity
-                                                                                                                        )
-                                                                                                        },
-                                                                                                        onFinishEditing = {
-                                                                                                                editingAlimentId =
-                                                                                                                        null
-                                                                                                        },
-                                                                                                        onDelete = {
-                                                                                                                // Utilisation de l'UUID au lieu de l'objet
-                                                                                                                viewModel
-                                                                                                                        .removeAlimentFromRation(
+                                                                                                                        editingAlimentId !=
                                                                                                                                 aliment.uuid
-                                                                                                                        )
+                                                                                                        ) {
+                                                                                                                editingAlimentId =
+                                                                                                                        null
                                                                                                         }
-                                                                                                )
-                                                                                        }
+                                                                                                        editingAlimentId =
+                                                                                                                aliment.uuid
+                                                                                                },
+                                                                                                onQuantityChange = {
+                                                                                                        newQuantity
+                                                                                                        ->
+                                                                                                        viewModel
+                                                                                                                .updateAlimentQuantity(
+                                                                                                                        aliment.uuid,
+                                                                                                                        newQuantity
+                                                                                                                )
+                                                                                                },
+                                                                                                onFinishEditing = {
+                                                                                                        editingAlimentId =
+                                                                                                                null
+                                                                                                },
+                                                                                                onDelete = {
+                                                                                                        // Utilisation de l'UUID au lieu de l'objet
+                                                                                                        viewModel
+                                                                                                                .removeAlimentFromRation(
+                                                                                                                        aliment.uuid
+                                                                                                                )
+                                                                                                }
+                                                                                        )
                                                                                 }
                                                                         }
                                                                 }
                                                         }
                                                 }
+                                        }
 
-                                                // Colonne droite (analyses) - 50% de l'espace
-                                                Column(
-                                                        modifier = Modifier.weight(0.5f),
-                                                        verticalArrangement =
-                                                                Arrangement.spacedBy(
-                                                                        AppSizes.paddingMedium
-                                                                )
-                                                ) {
+                                        // Colonne droite (analyses) - 50% de l'espace
+                                        Column(
+                                                modifier = Modifier.weight(0.5f),
+                                                verticalArrangement =
+                                                        Arrangement.spacedBy(AppSizes.paddingMedium)
+                                        ) {
 
-                                                        // Analyse nutritionnelle de la ration
-                                                        // sélectionnée
-                                                        if (selectedRation != null) {
-                                                                // Obtenir les nutriments
-                                                                // sélectionnés selon
-                                                                // l'espèce avec logs
-                                                                val nutrimentsSelectionnes =
-                                                                        remember(
-                                                                                animal,
+                                                // Analyse nutritionnelle de la ration
+                                                // sélectionnée
+                                                if (selectedRation != null) {
+                                                        // Obtenir les nutriments
+                                                        // sélectionnés selon
+                                                        // l'espèce avec logs
+                                                        val nutrimentsSelectionnes =
+                                                                remember(
+                                                                        animal,
+                                                                        preferencesApplication
+                                                                ) {
+                                                                        val animalActuel = animal
+                                                                        val prefsApp =
                                                                                 preferencesApplication
-                                                                        ) {
-                                                                                val animalActuel =
-                                                                                        animal
-                                                                                val prefsApp =
-                                                                                        preferencesApplication
 
+                                                                        println(
+                                                                                "DEBUG FILTRAGE: Animal=$animalActuel, Préférences=$prefsApp"
+                                                                        )
+
+                                                                        if (animalActuel != null &&
+                                                                                        prefsApp !=
+                                                                                                null
+                                                                        ) {
+                                                                                val especeAnimal =
+                                                                                        animalActuel
+                                                                                                .getEspece()
                                                                                 println(
-                                                                                        "DEBUG FILTRAGE: Animal=$animalActuel, Préférences=$prefsApp"
+                                                                                        "DEBUG FILTRAGE: Espèce de l'animal: ${especeAnimal.name} (${especeAnimal.label})"
                                                                                 )
 
-                                                                                if (animalActuel !=
-                                                                                                null &&
-                                                                                                prefsApp !=
-                                                                                                        null
+                                                                                val preferencesEspece =
+                                                                                        prefsApp.getPreferencesEspece(
+                                                                                                especeAnimal
+                                                                                        )
+                                                                                println(
+                                                                                        "DEBUG FILTRAGE: Préférences trouvées pour cette espèce: ${preferencesEspece.getTotalSelectedNutrients()} nutriments"
+                                                                                )
+
+                                                                                val nutrimentsLabels =
+                                                                                        convertirPreferencesVersLabelsNutriments(
+                                                                                                preferencesEspece
+                                                                                        )
+                                                                                println(
+                                                                                        "DEBUG FILTRAGE: Labels de nutriments extraits: $nutrimentsLabels"
+                                                                                )
+
+                                                                                if (nutrimentsLabels
+                                                                                                .isNotEmpty()
                                                                                 ) {
-                                                                                        val especeAnimal =
-                                                                                                animalActuel
-                                                                                                        .getEspece()
-                                                                                        println(
-                                                                                                "DEBUG FILTRAGE: Espèce de l'animal: ${especeAnimal.name} (${especeAnimal.label})"
-                                                                                        )
-
-                                                                                        val preferencesEspece =
-                                                                                                prefsApp.getPreferencesEspece(
-                                                                                                        especeAnimal
-                                                                                                )
-                                                                                        println(
-                                                                                                "DEBUG FILTRAGE: Préférences trouvées pour cette espèce: ${preferencesEspece.getTotalSelectedNutrients()} nutriments"
-                                                                                        )
-
-                                                                                        val nutrimentsLabels =
-                                                                                                convertirPreferencesVersLabelsNutriments(
-                                                                                                        preferencesEspece
-                                                                                                )
-                                                                                        println(
-                                                                                                "DEBUG FILTRAGE: Labels de nutriments extraits: $nutrimentsLabels"
-                                                                                        )
-
-                                                                                        if (nutrimentsLabels
-                                                                                                        .isNotEmpty()
-                                                                                        ) {
-                                                                                                nutrimentsLabels
-                                                                                        } else {
-                                                                                                println(
-                                                                                                        "DEBUG FILTRAGE: Aucun nutriment trouvé dans les préférences, utilisation de la liste par défaut"
-                                                                                                )
-                                                                                                listOf(
-                                                                                                        "PROTEINE",
-                                                                                                        "LIPIDE",
-                                                                                                        "ENA",
-                                                                                                        "CELLULOSE",
-                                                                                                        "CENDRE",
-                                                                                                        "CAL",
-                                                                                                        "PHOS"
-                                                                                                )
-                                                                                        }
+                                                                                        nutrimentsLabels
                                                                                 } else {
                                                                                         println(
-                                                                                                "DEBUG FILTRAGE: Animal ou préférences null, utilisation de la liste par défaut"
+                                                                                                "DEBUG FILTRAGE: Aucun nutriment trouvé dans les préférences, utilisation de la liste par défaut"
                                                                                         )
                                                                                         listOf(
                                                                                                 "PROTEINE",
@@ -1651,203 +1027,200 @@ fun RationsView(
                                                                                                 "CELLULOSE",
                                                                                                 "CENDRE",
                                                                                                 "CAL",
-                                                                                                "PHOS",
-                                                                                                "FE",
-                                                                                                "ZN",
-                                                                                                "CU",
-                                                                                                "VITA",
-                                                                                                "VITD",
-                                                                                                "VITE",
-                                                                                                "VITB1",
-                                                                                                "VITB2"
+                                                                                                "PHOS"
                                                                                         )
                                                                                 }
-                                                                        }
-
-                                                                AnalyseNutritionnelleCard(
-                                                                        ration = selectedRation!!,
-                                                                        poidsMetabolique =
-                                                                                poidsMetabolique,
-                                                                        referenceUtilisee =
-                                                                                referenceUtilisee,
-                                                                        besoinEnergetiqueEntretien =
-                                                                                besoinEnergetiqueStandard,
-                                                                        poidsAnimal =
-                                                                                selectedConsultation
-                                                                                        ?.weight
-                                                                                        ?.toDouble(),
-                                                                        modifier =
-                                                                                Modifier.fillMaxWidth(),
-                                                                        nutrimentsSelectionnes =
-                                                                                nutrimentsSelectionnes, // Utilisation des préférences
-                                                                        onNutrimentClick = {
-                                                                                nom,
-                                                                                valeurNutritionnelle
-                                                                                ->
-                                                                                selectedNutrimentData =
-                                                                                        Triple(
-                                                                                                nom,
-                                                                                                valeurNutritionnelle,
-                                                                                                selectedRation!!
-                                                                                        )
-                                                                                showNutrimentDetailDialog =
-                                                                                        true
-                                                                        },
-                                                                        // Nouveaux paramètres pour
-                                                                        // les
-                                                                        // préférences
-                                                                        animal = animal,
-                                                                        preferencesRepository =
-                                                                                preferencesRepository
-                                                                )
-                                                        } else {
-                                                                Card(
-                                                                        modifier =
-                                                                                Modifier.fillMaxSize(),
-                                                                        elevation =
-                                                                                AppSizes.elevationMedium
-                                                                ) {
-                                                                        Box(
-                                                                                modifier =
-                                                                                        Modifier.fillMaxSize(),
-                                                                                contentAlignment =
-                                                                                        Alignment
-                                                                                                .Center
-                                                                        ) {
-                                                                                Text(
-                                                                                        "Sélectionnez une ration pour voir l'analyse nutritionnelle"
+                                                                        } else {
+                                                                                println(
+                                                                                        "DEBUG FILTRAGE: Animal ou préférences null, utilisation de la liste par défaut"
+                                                                                )
+                                                                                listOf(
+                                                                                        "PROTEINE",
+                                                                                        "LIPIDE",
+                                                                                        "ENA",
+                                                                                        "CELLULOSE",
+                                                                                        "CENDRE",
+                                                                                        "CAL",
+                                                                                        "PHOS",
+                                                                                        "FE",
+                                                                                        "ZN",
+                                                                                        "CU",
+                                                                                        "VITA",
+                                                                                        "VITD",
+                                                                                        "VITE",
+                                                                                        "VITB1",
+                                                                                        "VITB2"
                                                                                 )
                                                                         }
+                                                                }
+
+                                                        AnalyseNutritionnelleCard(
+                                                                ration = selectedRation!!,
+                                                                poidsMetabolique = poidsMetabolique,
+                                                                referenceUtilisee =
+                                                                        referenceUtilisee,
+                                                                besoinEnergetiqueEntretien =
+                                                                        besoinEnergetiqueStandard,
+                                                                poidsAnimal =
+                                                                        selectedConsultation?.weight
+                                                                                ?.toDouble(),
+                                                                modifier = Modifier.fillMaxWidth(),
+                                                                nutrimentsSelectionnes =
+                                                                        nutrimentsSelectionnes, // Utilisation des préférences
+                                                                onNutrimentClick = {
+                                                                        nom,
+                                                                        valeurNutritionnelle ->
+                                                                        selectedNutrimentData =
+                                                                                Triple(
+                                                                                        nom,
+                                                                                        valeurNutritionnelle,
+                                                                                        selectedRation!!
+                                                                                )
+                                                                        showNutrimentDetailDialog =
+                                                                                true
+                                                                },
+                                                                // Nouveaux paramètres pour
+                                                                // les
+                                                                // préférences
+                                                                animal = animal,
+                                                                preferencesRepository =
+                                                                        preferencesRepository
+                                                        )
+                                                } else {
+                                                        Card(
+                                                                modifier = Modifier.fillMaxSize(),
+                                                                elevation = AppSizes.elevationMedium
+                                                        ) {
+                                                                Box(
+                                                                        modifier =
+                                                                                Modifier.fillMaxSize(),
+                                                                        contentAlignment =
+                                                                                Alignment.Center
+                                                                ) {
+                                                                        Text(
+                                                                                "Sélectionnez une ration pour voir l'analyse nutritionnelle"
+                                                                        )
                                                                 }
                                                         }
                                                 }
                                         }
                                 }
-
-                                // TODO: Réimplémentez les dialogues d'édition ici quand nécessaire
-
-                                // Afficher le dialogue d'édition de ration si nécessaire
-                                if (showRationEditDialog) {
-                                        RationEditDialog(
-                                                ration = rationToEdit,
-                                                onDismiss = {
-                                                        showRationEditDialog = false
-                                                        rationToEdit = null
-                                                },
-                                                onSave = { updatedRation ->
-                                                        if (rationToEdit == null) {
-                                                                // Création d'une nouvelle ration
-                                                                // Assurer que la ration est liée à
-                                                                // la
-                                                                // consultation
-                                                                val newRation =
-                                                                        updatedRation.copy(
-                                                                                idConsult =
-                                                                                        selectedConsultation
-                                                                                                ?.uuid
-                                                                                                ?: ""
-                                                                        )
-
-                                                                selectedConsultation?.let {
-                                                                        consultation ->
-                                                                        // Créer une copie de la
-                                                                        // liste des
-                                                                        // rations et y ajouter la
-                                                                        // nouvelle
-                                                                        // ration
-                                                                        val updatedRations =
-                                                                                consultation.rations
-                                                                                        .toMutableList()
-                                                                        updatedRations.add(
-                                                                                newRation
-                                                                        )
-
-                                                                        // Mettre à jour la
-                                                                        // consultation
-                                                                        // avec la nouvelle liste de
-                                                                        // rations
-                                                                        val updatedConsultation =
-                                                                                consultation.copy(
-                                                                                        rations =
-                                                                                                updatedRations
-                                                                                )
-
-                                                                        // Sauvegarder la
-                                                                        // consultation mise
-                                                                        // à jour
-                                                                        viewModel
-                                                                                .updateConsultation(
-                                                                                        updatedConsultation
-                                                                                )
-
-                                                                        // Sélectionner la nouvelle
-                                                                        // ration
-                                                                        viewModel.selectRation(
-                                                                                newRation
-                                                                        )
-
-                                                                        showSnackbar(
-                                                                                "Ration '${newRation.name}' créée"
-                                                                        )
-                                                                }
-                                                        } else {
-                                                                // Mise à jour d'une ration
-                                                                // existante
-                                                                viewModel.updateRation(
-                                                                        updatedRation
-                                                                )
-                                                                showSnackbar(
-                                                                        "Ration '${updatedRation.name}' mise à jour"
-                                                                )
-                                                        }
-
-                                                        showRationEditDialog = false
-                                                        rationToEdit = null
-                                                }
-                                        )
-                                }
-
-                                // Dialogues d'agrandissement des sections
-                                if (showMetabolicValuesDialog) {
-                                        MetabolicValuesDialog(
-                                                selectedConsultation = selectedConsultation,
-                                                poidsMetabolique = poidsMetabolique,
-                                                besoinEnergetiqueStandard =
-                                                        besoinEnergetiqueStandard,
-                                                besoinEnergetiqueTotal = besoinEnergetiqueTotal,
-                                                referenceUtilisee = referenceUtilisee,
-                                                onDismiss = { showMetabolicValuesDialog = false }
-                                        )
-                                }
-
-                                if (showCoefficientsDialog) {
-                                        CoefficientsDialog(
-                                                selectedConsultation = selectedConsultation,
-                                                viewModel = viewModel,
-                                                onDismiss = { showCoefficientsDialog = false }
-                                        )
-                                }
                         }
 
-                        // Dialog détaillé de nutriment
-                        if (showNutrimentDetailDialog && selectedNutrimentData != null) {
-                                val (nom, valeurNutritionnelle, ration) = selectedNutrimentData!!
-                                NutrimentDetailDialog(
-                                        nom = nom,
-                                        valeurNutritionnelle = valeurNutritionnelle,
-                                        ration = ration,
-                                        poidsMetabolique = poidsMetabolique,
-                                        referenceUtilisee = referenceUtilisee,
-                                        besoinEnergetiqueEntretien = besoinEnergetiqueStandard,
-                                        poidsAnimal = selectedConsultation?.weight?.toDouble(),
-                                        espece = animal?.getEspece() ?: Espece.CHIEN,
-                                        preferencesStorage = preferencesStorage,
+                        // TODO: Réimplémentez les dialogues d'édition ici quand nécessaire
+
+                        // Afficher le dialogue d'édition de ration si nécessaire
+                        if (showRationEditDialog) {
+                                RationEditDialog(
+                                        ration = rationToEdit,
                                         onDismiss = {
-                                                showNutrimentDetailDialog = false
-                                                selectedNutrimentData = null
+                                                showRationEditDialog = false
+                                                rationToEdit = null
+                                        },
+                                        onSave = { updatedRation ->
+                                                if (rationToEdit == null) {
+                                                        // Création d'une nouvelle ration
+                                                        // Assurer que la ration est liée à
+                                                        // la
+                                                        // consultation
+                                                        val newRation =
+                                                                updatedRation.copy(
+                                                                        idConsult =
+                                                                                selectedConsultation
+                                                                                        ?.uuid
+                                                                                        ?: ""
+                                                                )
+
+                                                        selectedConsultation?.let { consultation ->
+                                                                // Créer une copie de la
+                                                                // liste des
+                                                                // rations et y ajouter la
+                                                                // nouvelle
+                                                                // ration
+                                                                val updatedRations =
+                                                                        consultation.rations
+                                                                                .toMutableList()
+                                                                updatedRations.add(newRation)
+
+                                                                // Mettre à jour la
+                                                                // consultation
+                                                                // avec la nouvelle liste de
+                                                                // rations
+                                                                val updatedConsultation =
+                                                                        consultation.copy(
+                                                                                rations =
+                                                                                        updatedRations
+                                                                        )
+
+                                                                // Sauvegarder la
+                                                                // consultation mise
+                                                                // à jour
+                                                                viewModel.updateConsultation(
+                                                                        updatedConsultation
+                                                                )
+
+                                                                // Sélectionner la nouvelle
+                                                                // ration
+                                                                viewModel.selectRation(newRation)
+
+                                                                showSnackbar(
+                                                                        "Ration '${newRation.name}' créée"
+                                                                )
+                                                        }
+                                                } else {
+                                                        // Mise à jour d'une ration
+                                                        // existante
+                                                        viewModel.updateRation(updatedRation)
+                                                        showSnackbar(
+                                                                "Ration '${updatedRation.name}' mise à jour"
+                                                        )
+                                                }
+
+                                                showRationEditDialog = false
+                                                rationToEdit = null
                                         }
                                 )
                         }
+
+                        // Dialogues d'agrandissement des sections
+                        if (showMetabolicValuesDialog) {
+                                MetabolicValuesDialog(
+                                        selectedConsultation = selectedConsultation,
+                                        poidsMetabolique = poidsMetabolique,
+                                        besoinEnergetiqueStandard = besoinEnergetiqueStandard,
+                                        besoinEnergetiqueTotal = besoinEnergetiqueTotal,
+                                        referenceUtilisee = referenceUtilisee,
+                                        onDismiss = { showMetabolicValuesDialog = false }
+                                )
+                        }
+
+                        if (showCoefficientsDialog) {
+                                CoefficientsDialog(
+                                        selectedConsultation = selectedConsultation,
+                                        viewModel = viewModel,
+                                        onDismiss = { showCoefficientsDialog = false }
+                                )
+                        }
+                }
+
+                // Dialog détaillé de nutriment
+                if (showNutrimentDetailDialog && selectedNutrimentData != null) {
+                        val (nom, valeurNutritionnelle, ration) = selectedNutrimentData!!
+                        NutrimentDetailDialog(
+                                nom = nom,
+                                valeurNutritionnelle = valeurNutritionnelle,
+                                ration = ration,
+                                poidsMetabolique = poidsMetabolique,
+                                referenceUtilisee = referenceUtilisee,
+                                besoinEnergetiqueEntretien = besoinEnergetiqueStandard,
+                                poidsAnimal = selectedConsultation?.weight?.toDouble(),
+                                espece = animal?.getEspece() ?: Espece.CHIEN,
+                                preferencesStorage = preferencesStorage,
+                                onDismiss = {
+                                        showNutrimentDetailDialog = false
+                                        selectedNutrimentData = null
+                                }
+                        )
                 }
         }
 }
@@ -2381,7 +1754,7 @@ private fun CoefficientsDialog(
                                 // K1 - Stade physiologique
                                 item {
                                         CoefficientEditableRow(
-                                                label = "K1 (Stade physiologique)",
+                                                label = "K1",
                                                 currentValue = selectedConsultation?.k1Value,
                                                 currentDescription = selectedConsultation?.k1Id,
                                                 availableCoefficients =
@@ -2403,7 +1776,7 @@ private fun CoefficientsDialog(
                                 // K2 - Activité
                                 item {
                                         CoefficientEditableRow(
-                                                label = "K2 (Activité)",
+                                                label = "K2",
                                                 currentValue = selectedConsultation?.k2Value,
                                                 currentDescription = selectedConsultation?.k2Id,
                                                 availableCoefficients =
@@ -2425,7 +1798,7 @@ private fun CoefficientsDialog(
                                 // K3 - Environnement
                                 item {
                                         CoefficientEditableRow(
-                                                label = "K3 (Environnement)",
+                                                label = "K3",
                                                 currentValue = selectedConsultation?.k3Value,
                                                 currentDescription = selectedConsultation?.k3Id,
                                                 availableCoefficients =
@@ -2447,7 +1820,7 @@ private fun CoefficientsDialog(
                                 // K4 - État corporel
                                 item {
                                         CoefficientEditableRow(
-                                                label = "K4 (État corporel)",
+                                                label = "K4",
                                                 currentValue = selectedConsultation?.k4Value,
                                                 currentDescription = selectedConsultation?.k4Id,
                                                 availableCoefficients =
@@ -2469,7 +1842,7 @@ private fun CoefficientsDialog(
                                 // K5 - Pathologie
                                 item {
                                         CoefficientEditableRow(
-                                                label = "K5 (Pathologie)",
+                                                label = "K5",
                                                 currentValue = selectedConsultation?.k5Value,
                                                 currentDescription = selectedConsultation?.k5Id,
                                                 availableCoefficients =
@@ -2643,6 +2016,339 @@ private fun DetailedLocalInfoRow(label: String, value: String, description: Stri
                                 style = MaterialTheme.typography.caption,
                                 color = VetNutriColors.Primary.copy(alpha = 0.7f)
                         )
+                }
+        }
+}
+
+// --- Composables privés pour chaque section ---
+@Composable
+private fun MetabolicValuesSection(
+        selectedConsultation: ConsultationEv?,
+        poidsMetabolique: Double?,
+        besoinEnergetiqueStandard: Double?,
+        besoinEnergetiqueTotal: Double?,
+        onExpand: () -> Unit,
+        modifier: Modifier = Modifier
+) {
+        Column(modifier = modifier) {
+                Row(
+                        // PAS de fillMaxWidth ici
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                ) {
+                        Text(
+                                text = "Valeurs métaboliques",
+                                style = MaterialTheme.typography.overline,
+                                fontWeight = FontWeight.Bold,
+                                color = VetNutriColors.Primary
+                        )
+                        IconButton(onClick = onExpand, modifier = Modifier.size(16.dp)) {
+                                Icon(
+                                        imageVector = Icons.Filled.Search,
+                                        contentDescription = "Agrandir les valeurs métaboliques",
+                                        tint = VetNutriColors.Primary,
+                                        modifier = Modifier.size(12.dp)
+                                )
+                        }
+                }
+                Row(
+                        // PAS de fillMaxWidth ici
+                        horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
+                ) {
+                        CompactLocalInfoRow(
+                                label = "Poids",
+                                value =
+                                        selectedConsultation?.weight?.let {
+                                                "${String.format("%.1f", it)} kg"
+                                        }
+                                                ?: "Non renseigné"
+                        )
+                        Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
+                        CompactLocalInfoRow(
+                                label = "P. métabolique",
+                                value = poidsMetabolique?.let { TextUtils.formatKgPuissance075(it) }
+                                                ?: "Non calculé"
+                        )
+                }
+                Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
+                Row(
+                        // PAS de fillMaxWidth ici
+                        horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
+                ) {
+                        CompactLocalInfoRow(
+                                label = "BEE standard",
+                                value =
+                                        besoinEnergetiqueStandard?.let {
+                                                "${String.format("%.0f", it)} kcal/j"
+                                        }
+                                                ?: "Non calculé"
+                        )
+                        Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
+                        CompactLocalInfoRow(
+                                label = "BE",
+                                value =
+                                        besoinEnergetiqueTotal?.let {
+                                                "${String.format("%.0f", it)} kcal/j"
+                                        }
+                                                ?: "Non calculé"
+                        )
+                }
+        }
+}
+
+@Composable
+private fun CoefficientsSection(
+        selectedConsultation: ConsultationEv?,
+        showCoefficientsDialog: () -> Unit,
+        viewModel: AnimalDetailViewModel,
+        modifier: Modifier = Modifier
+) {
+        Column(modifier = modifier) {
+                Row(
+                        // PAS de fillMaxWidth ici
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                ) {
+                        Text(
+                                text = "Coefficients",
+                                style = MaterialTheme.typography.overline,
+                                fontWeight = FontWeight.Bold,
+                                color = VetNutriColors.Primary
+                        )
+                        IconButton(
+                                onClick = showCoefficientsDialog,
+                                modifier = Modifier.size(16.dp)
+                        ) {
+                                Icon(
+                                        imageVector = Icons.Filled.Search,
+                                        contentDescription = "Agrandir les coefficients",
+                                        tint = VetNutriColors.Primary,
+                                        modifier = Modifier.size(12.dp)
+                                )
+                        }
+                }
+                Row() {
+                        CompactLocalInfoRow(
+                                label = "K1",
+                                value =
+                                        selectedConsultation?.k1Value?.let {
+                                                String.format("%.2f", it)
+                                        }
+                                                ?: "1.00"
+                        )
+                        Spacer(modifier = Modifier.width(AppSizes.paddingXSmall))
+                        CompactLocalInfoRow(
+                                label = "K2",
+                                value =
+                                        selectedConsultation?.k2Value?.let {
+                                                String.format("%.2f", it)
+                                        }
+                                                ?: "1.00"
+                        )
+                        Spacer(modifier = Modifier.width(AppSizes.paddingXSmall))
+                        CompactLocalInfoRow(
+                                label = "K3",
+                                value =
+                                        selectedConsultation?.k3Value?.let {
+                                                String.format("%.2f", it)
+                                        }
+                                                ?: "1.00"
+                        )
+                }
+                Row() {
+                        CompactLocalInfoRow(
+                                label = "K4",
+                                value =
+                                        selectedConsultation?.k4Value?.let {
+                                                String.format("%.2f", it)
+                                        }
+                                                ?: "1.00"
+                        )
+                        Spacer(modifier = Modifier.width(AppSizes.paddingXSmall))
+                        CompactLocalInfoRow(
+                                label = "K5",
+                                value =
+                                        selectedConsultation?.k5Value?.let {
+                                                String.format("%.2f", it)
+                                        }
+                                                ?: "1.00"
+                        )
+                        Spacer(modifier = Modifier.width(AppSizes.paddingXSmall))
+                        // Coefficient d'ajustement (édition inline)
+                        var isEditingCoefficient by remember { mutableStateOf(false) }
+                        var coefficientText by
+                                remember(selectedConsultation) {
+                                        mutableStateOf(
+                                                selectedConsultation?.coefficientAjustement
+                                                        ?.toString()
+                                                        ?: "1.0"
+                                        )
+                                }
+                        if (isEditingCoefficient) {
+                                OutlinedTextField(
+                                        value = coefficientText,
+                                        onValueChange = { coefficientText = it },
+                                        modifier = Modifier.width(80.dp).height(50.dp),
+                                        textStyle = MaterialTheme.typography.body2,
+                                        singleLine = true,
+                                        keyboardOptions =
+                                                KeyboardOptions(keyboardType = KeyboardType.Number),
+                                        trailingIcon = {
+                                                Row(
+                                                        horizontalArrangement =
+                                                                Arrangement.spacedBy(2.dp)
+                                                ) {
+                                                        IconButton(
+                                                                onClick = {
+                                                                        coefficientText
+                                                                                .toDoubleOrNull()
+                                                                                ?.let { newValue ->
+                                                                                        selectedConsultation
+                                                                                                ?.let {
+                                                                                                        consultation
+                                                                                                        ->
+                                                                                                        viewModel
+                                                                                                                .updateCoefficientAjustement(
+                                                                                                                        consultation
+                                                                                                                                .uuid,
+                                                                                                                        newValue
+                                                                                                                )
+                                                                                                }
+                                                                                }
+                                                                        isEditingCoefficient = false
+                                                                },
+                                                                modifier = Modifier.size(24.dp)
+                                                        ) {
+                                                                Icon(
+                                                                        Icons.Filled.Check,
+                                                                        contentDescription =
+                                                                                "Valider",
+                                                                        tint = Color.Green
+                                                                )
+                                                        }
+                                                        IconButton(
+                                                                onClick = {
+                                                                        coefficientText =
+                                                                                selectedConsultation
+                                                                                        ?.coefficientAjustement
+                                                                                        ?.toString()
+                                                                                        ?: "1.0"
+                                                                        isEditingCoefficient = false
+                                                                },
+                                                                modifier = Modifier.size(24.dp)
+                                                        ) {
+                                                                Icon(
+                                                                        Icons.Filled.Close,
+                                                                        contentDescription =
+                                                                                "Annuler",
+                                                                        tint = Color.Red
+                                                                )
+                                                        }
+                                                }
+                                        }
+                                )
+                        } else {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                        CompactLocalInfoRow(
+                                                label = "Coeff. ajust.",
+                                                value =
+                                                        selectedConsultation?.coefficientAjustement
+                                                                ?.let { String.format("%.2f", it) }
+                                                                ?: "1.00"
+                                        )
+                                        IconButton(
+                                                onClick = {
+                                                        coefficientText =
+                                                                selectedConsultation
+                                                                        ?.coefficientAjustement
+                                                                        ?.toString()
+                                                                        ?: "1.0"
+                                                        isEditingCoefficient = true
+                                                },
+                                                modifier = Modifier.size(20.dp)
+                                        ) {
+                                                Icon(
+                                                        Icons.Filled.Edit,
+                                                        contentDescription = "Éditer",
+                                                        modifier = Modifier.size(16.dp)
+                                                )
+                                        }
+                                }
+                        }
+                }
+        }
+}
+
+@Composable
+private fun BilanEnergetiqueSection(
+        energieApportee: Double,
+        pourcentageCouverture: Double,
+        kObserve: Double,
+        modifier: Modifier = Modifier
+) {
+        Column(modifier = modifier) {
+                Row(
+                        // PAS de fillMaxWidth ici
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                ) {
+                        Text(
+                                text = "Bilan énergétique",
+                                style = MaterialTheme.typography.overline,
+                                fontWeight = FontWeight.Bold,
+                                color = VetNutriColors.Primary
+                        )
+                }
+                Row() {
+                        CompactLocalInfoRow(
+                                label = "Énergie apportée",
+                                value = "${String.format("%.0f", energieApportee)} kcal/j"
+                        )
+                        Spacer(modifier = Modifier.width(AppSizes.paddingXSmall))
+                        Column {
+                                Text(
+                                        text = "Couverture",
+                                        style = MaterialTheme.typography.caption,
+                                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                                )
+                                Text(
+                                        text = "${String.format("%.0f", pourcentageCouverture)}%",
+                                        style = MaterialTheme.typography.caption,
+                                        fontWeight = FontWeight.Medium,
+                                        color =
+                                                when {
+                                                        pourcentageCouverture >= 90 &&
+                                                                pourcentageCouverture <= 110 ->
+                                                                Color(0xFF4CAF50)
+                                                        pourcentageCouverture >= 80 &&
+                                                                pourcentageCouverture <= 120 ->
+                                                                Color(0xFFFF9800)
+                                                        else -> Color(0xFFF44336)
+                                                }
+                                )
+                        }
+                }
+                Row() {
+                        Column {
+                                Text(
+                                        text = "K Observé",
+                                        style = MaterialTheme.typography.caption,
+                                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                                )
+                                Text(
+                                        text = String.format("%.2f", kObserve),
+                                        style = MaterialTheme.typography.caption,
+                                        fontWeight = FontWeight.Medium,
+                                        color =
+                                                when {
+                                                        kObserve >= 0.9 && kObserve <= 1.1 ->
+                                                                Color(0xFF4CAF50)
+                                                        kObserve >= 0.8 && kObserve <= 1.2 ->
+                                                                Color(0xFFFF9800)
+                                                        else -> Color(0xFFF44336)
+                                                }
+                                )
+                        }
                 }
         }
 }
