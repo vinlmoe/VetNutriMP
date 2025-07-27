@@ -425,6 +425,7 @@ fun RationsView(
                                 ) {
                                         val isCompact = maxWidth < 600.dp // seuil abaissé à 600
                                         if (isCompact) {
+                                                // Vue compacte : une seule colonne, scroll global
                                                 Column(
                                                         modifier = Modifier.fillMaxWidth(),
                                                         verticalArrangement =
@@ -432,6 +433,7 @@ fun RationsView(
                                                                         AppSizes.paddingSmall
                                                                 )
                                                 ) {
+                                                        // Section 1: Valeurs métaboliques
                                                         SectionValeursMetaboliques(
                                                                 selectedConsultation =
                                                                         selectedConsultation,
@@ -447,6 +449,8 @@ fun RationsView(
                                                                 modifier = Modifier.fillMaxWidth()
                                                         )
                                                         Divider()
+
+                                                        // Section 2: Coefficients
                                                         SectionCoefficients(
                                                                 selectedConsultation =
                                                                         selectedConsultation,
@@ -458,6 +462,8 @@ fun RationsView(
                                                                 modifier = Modifier.fillMaxWidth()
                                                         )
                                                         Divider()
+
+                                                        // Section 3: Bilan énergétique
                                                         SectionBilanEnergetique(
                                                                 energieApportee = energieApportee,
                                                                 pourcentageCouverture =
@@ -465,6 +471,594 @@ fun RationsView(
                                                                 kObserve = kObserve,
                                                                 modifier = Modifier.fillMaxWidth()
                                                         )
+                                                        Divider()
+
+                                                        // Section 4: Liste des rations
+                                                        Card(
+                                                                modifier = Modifier.fillMaxWidth(),
+                                                                elevation =
+                                                                        AppSizes.elevationMedium,
+                                                                backgroundColor =
+                                                                        MaterialTheme.colors.surface
+                                                        ) {
+                                                                Column(
+                                                                        modifier =
+                                                                                Modifier.fillMaxWidth()
+                                                                                        .padding(
+                                                                                                AppSizes.paddingMedium
+                                                                                        ),
+                                                                        verticalArrangement =
+                                                                                Arrangement
+                                                                                        .spacedBy(
+                                                                                                AppSizes.paddingSmall
+                                                                                        )
+                                                                ) {
+                                                                        Row(
+                                                                                modifier =
+                                                                                        Modifier.fillMaxWidth(),
+                                                                                horizontalArrangement =
+                                                                                        Arrangement
+                                                                                                .SpaceBetween,
+                                                                                verticalAlignment =
+                                                                                        Alignment
+                                                                                                .CenterVertically
+                                                                        ) {
+                                                                                Text(
+                                                                                        text =
+                                                                                                "Rations de la consultation",
+                                                                                        style =
+                                                                                                MaterialTheme
+                                                                                                        .typography
+                                                                                                        .subtitle2,
+                                                                                        color =
+                                                                                                VetNutriColors
+                                                                                                        .Primary
+                                                                                )
+                                                                                IconButton(
+                                                                                        onClick = {
+                                                                                                rationToEdit =
+                                                                                                        null
+                                                                                                showRationEditDialog =
+                                                                                                        true
+                                                                                        },
+                                                                                        modifier =
+                                                                                                Modifier.size(
+                                                                                                        AppSizes.iconSizeMedium
+                                                                                                )
+                                                                                ) {
+                                                                                        Icon(
+                                                                                                Icons.Filled
+                                                                                                        .Add,
+                                                                                                contentDescription =
+                                                                                                        "Ajouter une ration",
+                                                                                                tint =
+                                                                                                        VetNutriColors
+                                                                                                                .Primary
+                                                                                        )
+                                                                                }
+                                                                        }
+                                                                        Divider()
+                                                                        if (selectedConsultation
+                                                                                        ?.rations
+                                                                                        .isNullOrEmpty()
+                                                                        ) {
+                                                                                CenteredMessage(
+                                                                                        message =
+                                                                                                "Aucune ration disponible",
+                                                                                        modifier =
+                                                                                                Modifier.fillMaxWidth()
+                                                                                )
+                                                                        } else {
+                                                                                Column(
+                                                                                        modifier =
+                                                                                                Modifier.fillMaxWidth(),
+                                                                                        verticalArrangement =
+                                                                                                Arrangement
+                                                                                                        .spacedBy(
+                                                                                                                8.dp
+                                                                                                        )
+                                                                                ) {
+                                                                                        selectedConsultation
+                                                                                                ?.rations
+                                                                                                ?.forEach {
+                                                                                                        ration
+                                                                                                        ->
+                                                                                                        RationItem(
+                                                                                                                ration =
+                                                                                                                        ration,
+                                                                                                                isSelected =
+                                                                                                                        ration.uuid ==
+                                                                                                                                selectedRation
+                                                                                                                                        ?.uuid,
+                                                                                                                onClick = {
+                                                                                                                        viewModel
+                                                                                                                                .selectRation(
+                                                                                                                                        ration
+                                                                                                                                )
+                                                                                                                },
+                                                                                                                onEdit = {
+                                                                                                                        rationToEdit =
+                                                                                                                                ration
+                                                                                                                        showRationEditDialog =
+                                                                                                                                true
+                                                                                                                },
+                                                                                                                onDuplicate = {
+                                                                                                                        viewModel
+                                                                                                                                .duplicateRation(
+                                                                                                                                        ration
+                                                                                                                                )
+                                                                                                                        showSnackbar(
+                                                                                                                                "Ration '${ration.name}' dupliquée"
+                                                                                                                        )
+                                                                                                                },
+                                                                                                                onDelete = {
+                                                                                                                        viewModel
+                                                                                                                                .removeRationFromConsultation(
+                                                                                                                                        ration
+                                                                                                                                )
+                                                                                                                        showSnackbar(
+                                                                                                                                "Ration supprimée"
+                                                                                                                        )
+                                                                                                                }
+                                                                                                        )
+                                                                                                }
+                                                                                }
+                                                                        }
+                                                                }
+                                                        }
+                                                        Divider()
+
+                                                        // Section 5: Liste des aliments de la
+                                                        // ration sélectionnée
+                                                        Card(
+                                                                modifier = Modifier.fillMaxWidth(),
+                                                                elevation =
+                                                                        AppSizes.elevationMedium,
+                                                                backgroundColor =
+                                                                        MaterialTheme.colors.surface
+                                                        ) {
+                                                                Column(
+                                                                        modifier =
+                                                                                Modifier.fillMaxWidth()
+                                                                                        .padding(
+                                                                                                AppSizes.paddingMedium
+                                                                                        ),
+                                                                        verticalArrangement =
+                                                                                Arrangement
+                                                                                        .spacedBy(
+                                                                                                AppSizes.paddingSmall
+                                                                                        )
+                                                                ) {
+                                                                        Row(
+                                                                                modifier =
+                                                                                        Modifier.fillMaxWidth(),
+                                                                                horizontalArrangement =
+                                                                                        Arrangement
+                                                                                                .SpaceBetween,
+                                                                                verticalAlignment =
+                                                                                        Alignment
+                                                                                                .CenterVertically
+                                                                        ) {
+                                                                                Text(
+                                                                                        text =
+                                                                                                "Aliments de la ration",
+                                                                                        style =
+                                                                                                MaterialTheme
+                                                                                                        .typography
+                                                                                                        .subtitle2,
+                                                                                        color =
+                                                                                                VetNutriColors
+                                                                                                        .Primary
+                                                                                )
+                                                                                Row(
+                                                                                        verticalAlignment =
+                                                                                                Alignment
+                                                                                                        .CenterVertically,
+                                                                                        horizontalArrangement =
+                                                                                                Arrangement
+                                                                                                        .spacedBy(
+                                                                                                                AppSizes.paddingXSmall
+                                                                                                        )
+                                                                                ) {
+                                                                                        // Bouton
+                                                                                        // pour
+                                                                                        // ajuster
+                                                                                        // la ration
+                                                                                        val coroutineScope =
+                                                                                                rememberCoroutineScope()
+                                                                                        val ration =
+                                                                                                selectedRation
+                                                                                        val beTotal =
+                                                                                                besoinEnergetiqueTotal
+                                                                                        IconButton(
+                                                                                                onClick = {
+                                                                                                        if (ration !=
+                                                                                                                        null &&
+                                                                                                                        beTotal !=
+                                                                                                                                null &&
+                                                                                                                        beTotal >
+                                                                                                                                0
+                                                                                                        ) {
+                                                                                                                val energieApportee =
+                                                                                                                        ration.alimentMutableList
+                                                                                                                                .sumOf {
+                                                                                                                                        alimentRation
+                                                                                                                                        ->
+                                                                                                                                        val densiteEnergetique =
+                                                                                                                                                referenceUtilisee
+                                                                                                                                                        ?.let {
+                                                                                                                                                                ref
+                                                                                                                                                                ->
+                                                                                                                                                                calculerDensiteEnergetique(
+                                                                                                                                                                        alimentRation,
+                                                                                                                                                                        ref
+                                                                                                                                                                )
+                                                                                                                                                        }
+                                                                                                                                                        ?: 0.0
+                                                                                                                                        (densiteEnergetique *
+                                                                                                                                                alimentRation
+                                                                                                                                                        .quantite) /
+                                                                                                                                                100.0
+                                                                                                                                }
+                                                                                                                if (energieApportee >
+                                                                                                                                0
+                                                                                                                ) {
+                                                                                                                        val ratio =
+                                                                                                                                beTotal /
+                                                                                                                                        energieApportee
+                                                                                                                        val alimentsAjustes =
+                                                                                                                                ration.alimentMutableList
+                                                                                                                                        .map {
+                                                                                                                                                alimentRation
+                                                                                                                                                ->
+                                                                                                                                                alimentRation
+                                                                                                                                                        .copy(
+                                                                                                                                                                quantite =
+                                                                                                                                                                        (alimentRation
+                                                                                                                                                                                        .quantite *
+                                                                                                                                                                                        ratio)
+                                                                                                                                                                                .toFloat()
+                                                                                                                                                        )
+                                                                                                                                        }
+                                                                                                                        coroutineScope
+                                                                                                                                .launch {
+                                                                                                                                        viewModel
+                                                                                                                                                .updateRationAliments(
+                                                                                                                                                        ration,
+                                                                                                                                                        alimentsAjustes
+                                                                                                                                                )
+                                                                                                                                        showSnackbar(
+                                                                                                                                                "Ration ajustée pour couvrir 100% du besoin énergétique total"
+                                                                                                                                        )
+                                                                                                                                }
+                                                                                                                } else {
+                                                                                                                        showSnackbar(
+                                                                                                                                "Impossible d'ajuster : apport énergétique nul"
+                                                                                                                        )
+                                                                                                                }
+                                                                                                        }
+                                                                                                },
+                                                                                                enabled =
+                                                                                                        ration !=
+                                                                                                                null &&
+                                                                                                                beTotal !=
+                                                                                                                        null &&
+                                                                                                                beTotal >
+                                                                                                                        0 &&
+                                                                                                                (ration.alimentMutableList
+                                                                                                                        .isNotEmpty())
+                                                                                        ) {
+                                                                                                Icon(
+                                                                                                        imageVector =
+                                                                                                                Icons.Filled
+                                                                                                                        .Tune,
+                                                                                                        contentDescription =
+                                                                                                                "Ajuster la ration",
+                                                                                                        tint =
+                                                                                                                VetNutriColors
+                                                                                                                        .Primary
+                                                                                                )
+                                                                                        }
+                                                                                        // Bouton
+                                                                                        // pour
+                                                                                        // ajouter
+                                                                                        // un
+                                                                                        // aliment
+                                                                                        IconButton(
+                                                                                                onClick = {
+                                                                                                        if (selectedRation !=
+                                                                                                                        null
+                                                                                                        ) {
+                                                                                                                rationForAddAliment =
+                                                                                                                        selectedRation
+                                                                                                                showAddAlimentView =
+                                                                                                                        true
+                                                                                                        } else {
+                                                                                                                showSnackbar(
+                                                                                                                        "Sélectionnez d'abord une ration"
+                                                                                                                )
+                                                                                                        }
+                                                                                                },
+                                                                                                modifier =
+                                                                                                        Modifier.size(
+                                                                                                                AppSizes.iconSizeMedium
+                                                                                                        )
+                                                                                        ) {
+                                                                                                Icon(
+                                                                                                        imageVector =
+                                                                                                                Icons.Filled
+                                                                                                                        .Add,
+                                                                                                        contentDescription =
+                                                                                                                "Ajouter un aliment",
+                                                                                                        tint =
+                                                                                                                VetNutriColors
+                                                                                                                        .Primary
+                                                                                                )
+                                                                                        }
+                                                                                }
+                                                                        }
+                                                                        Divider()
+                                                                        if (selectedRation
+                                                                                        ?.alimentMutableList
+                                                                                        .isNullOrEmpty()
+                                                                        ) {
+                                                                                CenteredMessage(
+                                                                                        message =
+                                                                                                "Aucun aliment dans cette ration",
+                                                                                        modifier =
+                                                                                                Modifier.fillMaxWidth()
+                                                                                )
+                                                                        } else {
+                                                                                Column(
+                                                                                        modifier =
+                                                                                                Modifier.fillMaxWidth(),
+                                                                                        verticalArrangement =
+                                                                                                Arrangement
+                                                                                                        .spacedBy(
+                                                                                                                AppSizes.paddingSmall
+                                                                                                        )
+                                                                                ) {
+                                                                                        selectedRation
+                                                                                                ?.alimentMutableList
+                                                                                                ?.forEach {
+                                                                                                        aliment
+                                                                                                        ->
+                                                                                                        AlimentItem(
+                                                                                                                aliment =
+                                                                                                                        aliment,
+                                                                                                                isEditing =
+                                                                                                                        editingAlimentId ==
+                                                                                                                                aliment.uuid,
+                                                                                                                onStartEditing = {
+                                                                                                                        if (editingAlimentId !=
+                                                                                                                                        null &&
+                                                                                                                                        editingAlimentId !=
+                                                                                                                                                aliment.uuid
+                                                                                                                        ) {
+                                                                                                                                editingAlimentId =
+                                                                                                                                        null
+                                                                                                                        }
+                                                                                                                        editingAlimentId =
+                                                                                                                                aliment.uuid
+                                                                                                                },
+                                                                                                                onQuantityChange = {
+                                                                                                                        newQuantity
+                                                                                                                        ->
+                                                                                                                        viewModel
+                                                                                                                                .updateAlimentQuantity(
+                                                                                                                                        aliment.uuid,
+                                                                                                                                        newQuantity
+                                                                                                                                )
+                                                                                                                },
+                                                                                                                onFinishEditing = {
+                                                                                                                        editingAlimentId =
+                                                                                                                                null
+                                                                                                                },
+                                                                                                                onDelete = {
+                                                                                                                        viewModel
+                                                                                                                                .removeAlimentFromRation(
+                                                                                                                                        aliment.uuid
+                                                                                                                                )
+                                                                                                                }
+                                                                                                        )
+                                                                                                }
+                                                                                }
+                                                                        }
+                                                                }
+                                                        }
+
+                                                        // Section 6: Analyse nutritionnelle (si une
+                                                        // ration est sélectionnée)
+                                                        if (selectedRation != null) {
+                                                                Divider()
+                                                                // Obtenir les nutriments
+                                                                // sélectionnés selon l'espèce avec
+                                                                // logs
+                                                                val nutrimentsSelectionnes =
+                                                                        remember(
+                                                                                animal,
+                                                                                preferencesApplication
+                                                                        ) {
+                                                                                val animalActuel =
+                                                                                        animal
+                                                                                val prefsApp =
+                                                                                        preferencesApplication
+                                                                                println(
+                                                                                        "DEBUG FILTRAGE: Animal=$animalActuel, Préférences=$prefsApp"
+                                                                                )
+                                                                                if (animalActuel !=
+                                                                                                null &&
+                                                                                                prefsApp !=
+                                                                                                        null
+                                                                                ) {
+                                                                                        val especeAnimal =
+                                                                                                animalActuel
+                                                                                                        .getEspece()
+                                                                                        println(
+                                                                                                "DEBUG FILTRAGE: Espèce de l'animal: ${especeAnimal.name} (${especeAnimal.label})"
+                                                                                        )
+                                                                                        val preferencesEspece =
+                                                                                                prefsApp.getPreferencesEspece(
+                                                                                                        especeAnimal
+                                                                                                )
+                                                                                        println(
+                                                                                                "DEBUG FILTRAGE: Préférences trouvées pour cette espèce: ${preferencesEspece.getTotalSelectedNutrients()} nutriments"
+                                                                                        )
+                                                                                        val nutrimentsLabels =
+                                                                                                convertirPreferencesVersLabelsNutriments(
+                                                                                                        preferencesEspece
+                                                                                                )
+                                                                                        println(
+                                                                                                "DEBUG FILTRAGE: Labels de nutriments extraits: $nutrimentsLabels"
+                                                                                        )
+                                                                                        if (nutrimentsLabels
+                                                                                                        .isNotEmpty()
+                                                                                        ) {
+                                                                                                nutrimentsLabels
+                                                                                        } else {
+                                                                                                println(
+                                                                                                        "DEBUG FILTRAGE: Aucun nutriment trouvé dans les préférences, utilisation de la liste par défaut"
+                                                                                                )
+                                                                                                listOf(
+                                                                                                        "PROTEINE",
+                                                                                                        "LIPIDE",
+                                                                                                        "ENA",
+                                                                                                        "CELLULOSE",
+                                                                                                        "CENDRE",
+                                                                                                        "CAL",
+                                                                                                        "PHOS"
+                                                                                                )
+                                                                                        }
+                                                                                } else {
+                                                                                        println(
+                                                                                                "DEBUG FILTRAGE: Animal ou préférences null, utilisation de la liste par défaut"
+                                                                                        )
+                                                                                        listOf(
+                                                                                                "PROTEINE",
+                                                                                                "LIPIDE",
+                                                                                                "ENA",
+                                                                                                "CELLULOSE",
+                                                                                                "CENDRE",
+                                                                                                "CAL",
+                                                                                                "PHOS",
+                                                                                                "FE",
+                                                                                                "ZN",
+                                                                                                "CU",
+                                                                                                "MN",
+                                                                                                "I",
+                                                                                                "SE",
+                                                                                                "NA",
+                                                                                                "K",
+                                                                                                "MG",
+                                                                                                "CHL",
+                                                                                                "VITA",
+                                                                                                "VITD",
+                                                                                                "VITE",
+                                                                                                "VITB1",
+                                                                                                "VITB2",
+                                                                                                "VITB3",
+                                                                                                "VITB5",
+                                                                                                "VITB6",
+                                                                                                "VITB8",
+                                                                                                "VITB9",
+                                                                                                "VITB12",
+                                                                                                "O3",
+                                                                                                "O6",
+                                                                                                "AG205",
+                                                                                                "AG226",
+                                                                                                "EPADHA",
+                                                                                                "AG60",
+                                                                                                "AG80",
+                                                                                                "AG100",
+                                                                                                "LYSINE",
+                                                                                                "METHIONINE",
+                                                                                                "TRYPTOPHANE",
+                                                                                                "CAP",
+                                                                                                "O6O3",
+                                                                                                "KNA",
+                                                                                                "ZNCU",
+                                                                                                "TAURINE",
+                                                                                                "CARNITINE"
+                                                                                        )
+                                                                                }
+                                                                        }
+
+                                                                // Obtenir le type d'expression
+                                                                // selon l'espèce
+                                                                val typeExpressionBesoin =
+                                                                        remember(
+                                                                                animal,
+                                                                                preferencesApplication
+                                                                        ) {
+                                                                                val animalActuel =
+                                                                                        animal
+                                                                                val prefsApp =
+                                                                                        preferencesApplication
+                                                                                if (animalActuel !=
+                                                                                                null &&
+                                                                                                prefsApp !=
+                                                                                                        null
+                                                                                ) {
+                                                                                        val especeAnimal =
+                                                                                                animalActuel
+                                                                                                        .getEspece()
+                                                                                        val preferencesEspece =
+                                                                                                prefsApp.getPreferencesEspece(
+                                                                                                        especeAnimal
+                                                                                                )
+                                                                                        preferencesEspece
+                                                                                                .typeExpressionBesoinId
+                                                                                } else {
+                                                                                        0 // Par
+                                                                                        // défaut
+                                                                                }
+                                                                        }
+
+                                                                println(
+                                                                        "DEBUG EXPRESSION: Type d'expression trouvé pour ${animal?.getEspece()?.label}: ${when (typeExpressionBesoin) {
+                                                                        0 -> "par kg de poids métabolique"
+                                                                        1 -> "par 1000 kcal"
+                                                                        else -> "par kg de poids métabolique"
+                                                                }}"
+                                                                )
+
+                                                                // Utiliser la version existante de
+                                                                // AnalyseNutritionnelleCard
+                                                                AnalyseNutritionnelleCard(
+                                                                        ration = selectedRation!!,
+                                                                        poidsMetabolique =
+                                                                                poidsMetabolique,
+                                                                        referenceUtilisee =
+                                                                                referenceUtilisee,
+                                                                        besoinEnergetiqueEntretien =
+                                                                                besoinEnergetiqueStandard,
+                                                                        poidsAnimal =
+                                                                                selectedConsultation
+                                                                                        ?.weight
+                                                                                        ?.toDouble(),
+                                                                        modifier =
+                                                                                Modifier.fillMaxWidth(),
+                                                                        nutrimentsSelectionnes =
+                                                                                nutrimentsSelectionnes,
+                                                                        onNutrimentClick = {
+                                                                                nom,
+                                                                                valeurNutritionnelle
+                                                                                ->
+                                                                                selectedNutrimentData =
+                                                                                        Triple(
+                                                                                                nom,
+                                                                                                valeurNutritionnelle,
+                                                                                                selectedRation!!
+                                                                                        )
+                                                                                showNutrimentDetailDialog =
+                                                                                        true
+                                                                        },
+                                                                        animal = animal,
+                                                                        preferencesRepository =
+                                                                                preferencesRepository,
+                                                                        isLargeView = !isCompact
+                                                                )
+                                                        }
                                                 }
                                         } else {
                                                 Row(
@@ -892,9 +1486,7 @@ fun RationsView(
                                                                                 message =
                                                                                         "Aucun aliment dans cette ration",
                                                                                 modifier =
-                                                                                        Modifier.weight(
-                                                                                                1f
-                                                                                        )
+                                                                                        Modifier.fillMaxWidth()
                                                                         )
                                                                 } else {
                                                                         LazyColumn(
@@ -1085,7 +1677,8 @@ fun RationsView(
                                                                 // préférences
                                                                 animal = animal,
                                                                 preferencesRepository =
-                                                                        preferencesRepository
+                                                                        preferencesRepository,
+                                                                isLargeView = true
                                                         )
                                                 } else {
                                                         Card(

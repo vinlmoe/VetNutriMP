@@ -39,7 +39,9 @@ fun AnalyseNutritionnelleCard(
         onNutrimentClick: (String, ValeurNutritionnelle) -> Unit,
         // Nouveaux paramètres pour les préférences
         animal: AnimalEv? = null,
-        preferencesRepository: PreferencesRepository? = null
+        preferencesRepository: PreferencesRepository? = null,
+        // Paramètre pour adapter la hauteur selon la vue (large ou compacte)
+        isLargeView: Boolean = false
 ) {
     // Etat pour basculer entre affichage filtré et complet
     var afficherTousLesNutriments by remember { mutableStateOf(false) }
@@ -136,7 +138,16 @@ fun AnalyseNutritionnelleCard(
             // Liste avec titres de section et grilles de nutriments
             LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier =
+                            if (isLargeView) {
+                                // En vue large, utiliser une hauteur adaptative basée sur l'espace
+                                // disponible
+                                Modifier.fillMaxWidth().fillMaxHeight()
+                            } else {
+                                // En vue compacte, utiliser une hauteur fixe pour éviter les
+                                // conflits de scroll
+                                Modifier.fillMaxWidth().height(400.dp)
+                            }
             ) {
                 // Ordre d'affichage des catégories
                 val ordreCategories =
