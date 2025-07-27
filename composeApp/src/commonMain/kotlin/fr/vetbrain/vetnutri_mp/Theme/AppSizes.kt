@@ -103,7 +103,7 @@ object AppSizes {
         get() = (120 * sizeMultiplier).dp
 
     // Breakpoints
-    val breakpointWideScreen = 840.dp
+    val breakpointWideScreen = 900.dp
 
     // Tailles spécifiques de dialogue
     val dialogMaxHeight
