@@ -24,8 +24,8 @@ dependencyResolutionManagement {
                 includeGroupAndSubgroups("com.google")
             }
         }
-        maven("https://s01.oss.sonatype.org/content/repositories/releases/")
-        mavenCentral()
+         mavenCentral()
+        maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
     }
 }
 

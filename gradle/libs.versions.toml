@@ -39,7 +39,7 @@ assertk = "0.28.1"
 coreKtx = "1.6.1"
 composeTest = "1.7.8"
 junitJupiter = "5.9.3"
-
+koalaPlot = "0.9.0"
 
 pagingComposeAndroid = "3.3.5"
 junitVersion = "4.13.2"
@@ -52,6 +52,7 @@ jansi = "2.4.1"
 
 
 [libraries]
+koalaPlot-core = { module = "io.github.koalaplot:koalaplot-core", version.ref = "koalaPlot" }
 
 androidx-datastore-core-okio = { group = "androidx.datastore", name = "datastore-core-okio", version.ref = "dataStore" }
 androidx-datastore-preferences-core = { group = "androidx.datastore", name = "datastore-preferences-core", version.ref = "dataStore" }
