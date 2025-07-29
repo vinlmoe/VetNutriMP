@@ -38,7 +38,8 @@ import kotlinx.datetime.toLocalDateTime
 enum class AnimalDetailSection {
     IDENTIFICATION, // Informations d'identification de l'animal
     CONSULTATIONS, // Liste des consultations
-    RATIONS // Vue des rations
+    RATIONS, // Vue des rations
+    GRAPHIQUE
 }
 
 class AnimalDetailViewModel(
@@ -134,7 +135,7 @@ class AnimalDetailViewModel(
      * aliments sont ajoutés ou modifiés
      */
     fun loadAvailableFoods() {
-                _isLoadingFoods.value = true
+        _isLoadingFoods.value = true
         println("AnimalDetailViewModel: Démarrage de l'observation des aliments")
 
         // S'abonner au Flow réactif des aliments pour des mises à jour automatiques
@@ -147,7 +148,7 @@ class AnimalDetailViewModel(
 
                     // Convertir en version légère pour l'affichage (sans valMap pour les
                     // performances)
-                _availableFoods.value =
+                    _availableFoods.value =
                             aliments.map { aliment ->
                                 aliment.copy(
                                         valMap = mutableMapOf()
@@ -160,10 +161,10 @@ class AnimalDetailViewModel(
                 }
                 .catch { e ->
                     println("Erreur lors de l'observation des aliments: ${e.message}")
-                e.printStackTrace()
-                _availableFoods.value = emptyList()
-                _isLoadingFoods.value = false
-            }
+                    e.printStackTrace()
+                    _availableFoods.value = emptyList()
+                    _isLoadingFoods.value = false
+                }
                 .launchIn(viewModelScope)
     }
 
@@ -1472,8 +1473,8 @@ class AnimalDetailViewModel(
                         }
                     } catch (e: NumberFormatException) {
                         println("ERROR: Conversion du poids impossible: $poids")
-                return null
-            }
+                        return null
+                    }
 
             println(
                     "DEBUG: Calcul BEE avec équation: ${equationBEE.name} - ${equationBEE.equationScript}"

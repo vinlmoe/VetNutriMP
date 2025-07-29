@@ -10,6 +10,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Analytics
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -18,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Components.ConfirmDialog
 import fr.vetbrain.vetnutri_mp.Components.TopBar
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
+import fr.vetbrain.vetnutri_mp.Theme.AppIcons
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailSection
@@ -114,6 +116,11 @@ fun AnimalDetailView(
                                 section = AnimalDetailSection.RATIONS,
                                 title = "Rations",
                                 icon = Icons.AutoMirrored.Filled.List
+                        ),
+                        MenuOption(
+                            section = AnimalDetailSection.GRAPHIQUE,
+                            title = "Graphique",
+                            icon = AppIcons.Analytics
                         )
                 )
 
@@ -334,6 +341,9 @@ private fun WideScreenLayout(
                                                 }
                                         )
                                 }
+                                AnimalDetailSection.GRAPHIQUE -> {
+                                    AnalyseGraphiqueView(modifier = Modifier.fillMaxSize())
+                                }
                         }
                 }
         }
@@ -531,33 +541,12 @@ private fun NarrowScreenLayout(
                                                                 }
                                                         )
                                                 }
+                                                AnimalDetailSection.GRAPHIQUE -> {
+                                                    AnalyseGraphiqueView(modifier = Modifier.fillMaxSize())
+                                                }
                                         }
                                 }
                         }
                 }
         )
-}
-
-@OptIn(ExperimentalMaterialApi::class)
-@Composable
-private fun AnimaTablDetailScreenDesktop(
-        animal: AnimalEv?,
-        currentSection: AnimalDetailSection,
-        viewModel: AnimalDetailViewModel,
-        settingsViewModel: SettingsViewModel,
-        onChangeSection: (AnimalDetailSection) -> Unit,
-        onNavigateBack: () -> Unit,
-        onOpenSettings: () -> Unit,
-        modifier: Modifier = Modifier
-) {
-        Column(modifier = modifier.fillMaxSize().padding(16.dp)) {
-                // Utiliser la nouvelle signature de TopBar avec onBackClick
-                TopBar(
-                        title = animal?.nom ?: "Détail de l'animal",
-                        onBackClick = onNavigateBack,
-                        onSettingsClick = onOpenSettings
-                )
-
-                // ... existing code ...
-        }
 }

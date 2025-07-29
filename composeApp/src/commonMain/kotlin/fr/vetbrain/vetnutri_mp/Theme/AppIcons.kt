@@ -2,6 +2,12 @@ package fr.vetbrain.vetnutri_mp.Theme
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Analytics
+import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.ui.graphics.vector.ImageVector
 
 /** Objet contenant toutes les icônes utilisées dans l'application */
@@ -25,6 +31,7 @@ object AppIcons {
     val Share: ImageVector = Icons.Default.Share
     val ViewList: ImageVector = Icons.Default.ViewList
     val Warning: ImageVector = Icons.Default.Warning
+    val Analytics: ImageVector = Icons.Default.Analytics
 
     // Icônes spécifiques à l'application
     val Animal: ImageVector = Icons.Default.Favorite

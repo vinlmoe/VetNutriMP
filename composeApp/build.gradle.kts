@@ -35,6 +35,7 @@ kotlin {
         }
 
         commonMain.dependencies {
+            implementation("io.github.koalaplot:koalaplot-core:0.8.0")
             implementation("org.jetbrains.compose.material:material-icons-extended:1.7.3")
             implementation(libs.androidx.sqlite.bundled)
             implementation(compose.runtime)
