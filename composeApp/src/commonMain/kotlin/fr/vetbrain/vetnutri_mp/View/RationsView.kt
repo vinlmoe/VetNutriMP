@@ -47,7 +47,7 @@ import fr.vetbrain.vetnutri_mp.Utils.PreferencesStorage
 import fr.vetbrain.vetnutri_mp.Utils.TextUtils
 import fr.vetbrain.vetnutri_mp.Utils.createPreferencesStorage
 import fr.vetbrain.vetnutri_mp.View.AnalNut.AnalyseNutritionnelleCard
-import fr.vetbrain.vetnutri_mp.View.AnalNut.NutrimentDetailDialog
+import fr.vetbrain.vetnutri_mp.View.AnalNut.NutrientDetailDialog
 import fr.vetbrain.vetnutri_mp.View.AnalNut.SectionBilanEnergetique
 import fr.vetbrain.vetnutri_mp.View.AnalNut.SectionCoefficients
 import fr.vetbrain.vetnutri_mp.View.AnalNut.SectionValeursMetaboliques
@@ -1800,7 +1800,7 @@ fun RationsView(
                 // Dialog détaillé de nutriment
                 if (showNutrimentDetailDialog && selectedNutrimentData != null) {
                         val (nom, valeurNutritionnelle, ration) = selectedNutrimentData!!
-                        NutrimentDetailDialog(
+                        NutrientDetailDialog(
                                 nom = nom,
                                 valeurNutritionnelle = valeurNutritionnelle,
                                 ration = ration,

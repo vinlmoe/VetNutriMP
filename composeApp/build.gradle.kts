@@ -111,8 +111,8 @@ android {
         applicationId = "fr.vetbrain.vetnutri_mp"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 3
-        versionName = "1.0.3"
+        versionCode = 4
+        versionName = "1.0.4"
 
         // Configuration de Room
 
@@ -143,7 +143,7 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "fr.vetbrain.vetnutri_mp"
-            packageVersion = "1.0.3"
+            packageVersion = "1.0.4"
         }
     }
 }
@@ -169,3 +169,4 @@ dependencies {
 }
 
 room { schemaDirectory("$projectDir/schemas") }
+
