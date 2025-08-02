@@ -7,6 +7,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -35,7 +36,9 @@ data class ConsultationAgeData(
         val ageInDays: Int,
         val ageInYears: Double,
         val ageInMonths: Double,
-        val weight: Float
+        val weight: Float,
+        val isFromConsultation: Boolean = false,
+        val weightUuid: String? = null
 )
 
 // Fonction pour formater l'âge en années et mois
@@ -297,7 +300,8 @@ private fun EvolutionPoidsChart(viewModel: AnimalDetailViewModel) {
                                                                 ageInDays,
                                                                 ageInYears,
                                                                 ageInMonths,
-                                                                weight
+                                                                weight,
+                                                                isFromConsultation = true
                                                         )
                                                 )
                                         }
@@ -318,7 +322,9 @@ private fun EvolutionPoidsChart(viewModel: AnimalDetailViewModel) {
                                                                 ageInDays,
                                                                 ageInYears,
                                                                 ageInMonths,
-                                                                weightEntry.value
+                                                                weightEntry.value,
+                                                                isFromConsultation = false,
+                                                                weightUuid = weightEntry.uuid
                                                         )
                                                 )
                                         }
@@ -455,7 +461,7 @@ private fun PoidsTableau(
 
                         if (consultationsWithAge.isEmpty()) {
                                 Text(
-                                        text = "Aucune consultation avec poids enregistrée",
+                                        text = "Aucun poids enregistré",
                                         style = MaterialTheme.typography.body2,
                                         color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                                 )
@@ -483,6 +489,18 @@ private fun PoidsTableau(
                                                 style = MaterialTheme.typography.caption,
                                                 fontWeight = FontWeight.Bold
                                         )
+                                        Text(
+                                                text = "Source",
+                                                modifier = Modifier.weight(1f),
+                                                style = MaterialTheme.typography.caption,
+                                                fontWeight = FontWeight.Bold
+                                        )
+                                        Text(
+                                                text = "Actions",
+                                                modifier = Modifier.weight(0.5f),
+                                                style = MaterialTheme.typography.caption,
+                                                fontWeight = FontWeight.Bold
+                                        )
                                 }
 
                                 Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
@@ -491,7 +509,8 @@ private fun PoidsTableau(
                                 consultationsWithAge.forEach { consultationData ->
                                         Row(
                                                 modifier = Modifier.fillMaxWidth(),
-                                                horizontalArrangement = Arrangement.SpaceBetween
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                verticalAlignment = Alignment.CenterVertically
                                         ) {
                                                 Text(
                                                         text = consultationData.date.toString(),
@@ -515,6 +534,50 @@ private fun PoidsTableau(
                                                         modifier = Modifier.weight(1f),
                                                         style = MaterialTheme.typography.caption
                                                 )
+                                                Text(
+                                                        text =
+                                                                if (consultationData
+                                                                                .isFromConsultation
+                                                                )
+                                                                        "Consultation"
+                                                                else "Hors consultation",
+                                                        modifier = Modifier.weight(1f),
+                                                        style = MaterialTheme.typography.caption,
+                                                        color =
+                                                                if (consultationData
+                                                                                .isFromConsultation
+                                                                )
+                                                                        VetNutriColors.Primary
+                                                                else VetNutriColors.Secondary
+                                                )
+                                                // Bouton de suppression pour les poids hors
+                                                // consultation
+                                                if (!consultationData.isFromConsultation &&
+                                                                consultationData.weightUuid != null
+                                                ) {
+                                                        IconButton(
+                                                                onClick = {
+                                                                        viewModel.deleteWeight(
+                                                                                consultationData
+                                                                                        .weightUuid!!
+                                                                        )
+                                                                },
+                                                                modifier = Modifier.weight(0.5f)
+                                                        ) {
+                                                                Icon(
+                                                                        imageVector =
+                                                                                Icons.Default
+                                                                                        .Delete,
+                                                                        contentDescription =
+                                                                                "Supprimer le poids",
+                                                                        tint = Color.Red,
+                                                                        modifier =
+                                                                                Modifier.size(16.dp)
+                                                                )
+                                                        }
+                                                } else {
+                                                        Spacer(modifier = Modifier.weight(0.5f))
+                                                }
                                         }
 
                                         if (consultationsWithAge.last() != consultationData) {
