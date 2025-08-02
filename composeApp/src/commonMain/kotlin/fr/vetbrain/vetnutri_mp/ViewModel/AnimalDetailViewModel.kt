@@ -70,6 +70,10 @@ class AnimalDetailViewModel(
     var isEditingAnimal by mutableStateOf(false)
         private set
 
+    // État pour l'ajout de poids supplémentaire
+    var isAddingWeight by mutableStateOf(false)
+        private set
+
     // Liste de tous les aliments disponibles (StateFlow pour observation par Compose)
     private val _availableFoods = MutableStateFlow<List<AlimentEv>>(emptyList())
     val availableFoods: StateFlow<List<AlimentEv>> = _availableFoods.asStateFlow()
@@ -1802,5 +1806,119 @@ class AnimalDetailViewModel(
      */
     suspend fun getAlimentComplet(uuid: String): AlimentEv? {
         return AlimentRepository.getAlimentByUUID(uuid)
+    }
+
+    // MARK: - Gestion des poids supplémentaires
+
+    /** Active le mode d'ajout de poids */
+    fun startAddingWeight() {
+        isAddingWeight = true
+    }
+
+    /** Désactive le mode d'ajout de poids */
+    fun stopAddingWeight() {
+        isAddingWeight = false
+    }
+
+    /**
+     * Ajoute un nouveau poids à l'animal
+     * @param date La date de la mesure
+     * @param weight Le poids en kg
+     */
+    fun addWeight(date: LocalDate, weight: Float) {
+        println("ADDWEIGHT CALLED")
+        println("ADDWEIGHT CALLED")
+        println("ADDWEIGHT CALLED")
+        viewModelScope.launch {
+            try {
+                val animalActuel = _animal.value
+                println(
+                        "DEBUG_ADDWEIGHT: Animal actuel: ${animalActuel?.nom}, UUID: ${animalActuel?.uuid}"
+                )
+                if (animalActuel != null) {
+                    // Créer un nouveau WeightDate
+                    val newWeight =
+                            WeightDate(refAnimal = animalActuel.uuid, date = date, value = weight)
+
+                    // Créer une nouvelle liste avec le nouveau poids
+                    val updatedWeightHistory = animalActuel.weightHistory.toMutableList()
+                    updatedWeightHistory.add(newWeight)
+
+                    // Créer un nouvel animal avec l'historique mis à jour
+                    val updatedAnimal = animalActuel.copy(weightHistory = updatedWeightHistory)
+
+                    // Sauvegarder l'animal mis à jour
+                    animalRepository.updateAnimal(updatedAnimal)
+
+                    // Mettre à jour l'animal dans le ViewModel
+                    _animal.update { updatedAnimal }
+                    println(
+                            "DEBUG_ADDWEIGHT: Animal mis à jour dans le ViewModel, nb poids: ${updatedAnimal.weightHistory.size}"
+                    )
+
+                    // Mettre à jour la consultation sélectionnée si elle existe
+                    _selectedConsultation.value?.let { currentConsultation ->
+                        val updatedConsultation =
+                                updatedAnimal.consultations.find {
+                                    it.uuid == currentConsultation.uuid
+                                }
+                        if (updatedConsultation != null) {
+                            _selectedConsultation.value = updatedConsultation
+                        }
+                    }
+
+                    // Désactiver le mode d'ajout
+                    isAddingWeight = false
+
+                    println("Poids ajouté avec succès: ${weight}kg le ${date}")
+                    println(
+                            "DEBUG_ADDWEIGHT: Fin addWeight - total poids dans l'animal: ${updatedAnimal.weightHistory.size}"
+                    )
+                }
+            } catch (e: Exception) {
+                println("Erreur lors de l'ajout du poids: ${e.message}")
+            }
+        }
+    }
+
+    /**
+     * Supprime un poids de l'historique
+     * @param weightUuid L'UUID du poids à supprimer
+     */
+    fun deleteWeight(weightUuid: String) {
+        viewModelScope.launch {
+            try {
+                val animalActuel = _animal.value
+                if (animalActuel != null) {
+                    // Créer une nouvelle liste sans le poids à supprimer
+                    val updatedWeightHistory = animalActuel.weightHistory.toMutableList()
+                    updatedWeightHistory.removeAll { it.uuid == weightUuid }
+
+                    // Créer un nouvel animal avec l'historique mis à jour
+                    val updatedAnimal = animalActuel.copy(weightHistory = updatedWeightHistory)
+
+                    // Sauvegarder l'animal mis à jour
+                    animalRepository.updateAnimal(updatedAnimal)
+
+                    // Mettre à jour l'animal dans le ViewModel
+                    _animal.update { updatedAnimal }
+
+                    // Mettre à jour la consultation sélectionnée si elle existe
+                    _selectedConsultation.value?.let { currentConsultation ->
+                        val updatedConsultation =
+                                updatedAnimal.consultations.find {
+                                    it.uuid == currentConsultation.uuid
+                                }
+                        if (updatedConsultation != null) {
+                            _selectedConsultation.value = updatedConsultation
+                        }
+                    }
+
+                    println("Poids supprimé avec succès")
+                }
+            } catch (e: Exception) {
+                println("Erreur lors de la suppression du poids: ${e.message}")
+            }
+        }
     }
 }

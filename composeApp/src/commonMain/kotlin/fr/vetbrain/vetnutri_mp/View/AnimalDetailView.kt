@@ -6,18 +6,17 @@ import androidx.compose.material.DrawerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.Analytics
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Analytics
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Components.ConfirmDialog
-import fr.vetbrain.vetnutri_mp.Components.TopBar
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
 import fr.vetbrain.vetnutri_mp.Theme.AppIcons
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
@@ -118,9 +117,9 @@ fun AnimalDetailView(
                                 icon = Icons.AutoMirrored.Filled.List
                         ),
                         MenuOption(
-                            section = AnimalDetailSection.GRAPHIQUE,
-                            title = "Graphique",
-                            icon = AppIcons.Analytics
+                                section = AnimalDetailSection.GRAPHIQUE,
+                                title = "Graphique",
+                                icon = AppIcons.Analytics
                         )
                 )
 
@@ -342,7 +341,10 @@ private fun WideScreenLayout(
                                         )
                                 }
                                 AnimalDetailSection.GRAPHIQUE -> {
-                                    AnalyseGraphiqueView(modifier = Modifier.fillMaxSize())
+                                        AnalyseGraphiqueView(
+                                                viewModel = viewModel,
+                                                modifier = Modifier.fillMaxSize()
+                                        )
                                 }
                         }
                 }
@@ -542,7 +544,10 @@ private fun NarrowScreenLayout(
                                                         )
                                                 }
                                                 AnimalDetailSection.GRAPHIQUE -> {
-                                                    AnalyseGraphiqueView(modifier = Modifier.fillMaxSize())
+                                                        AnalyseGraphiqueView(
+                                                                viewModel = viewModel,
+                                                                modifier = Modifier.fillMaxSize()
+                                                        )
                                                 }
                                         }
                                 }

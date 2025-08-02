@@ -20,7 +20,8 @@ interface AnimalDao {
         @Query("SELECT * FROM animals WHERE uuid = :id")
         suspend fun getAnimalById(id: String): AnimalEntity?
 
-        @Insert suspend fun insertWeight(weight: WeightEntity)
+        @Insert(onConflict = OnConflictStrategy.REPLACE)
+        suspend fun insertWeight(weight: WeightEntity)
 
         @Insert suspend fun insertConsultation(consultation: ConsultationEntity)
 
