@@ -282,12 +282,48 @@ class AnimalDetailViewModel(
                     println(
                             "DEBUG_ALIMENTS: Animal mis à jour avec ${consultations.size} consultations"
                     )
+
+                    // Sélectionner automatiquement la consultation la plus récente
+                    val mostRecentConsultation =
+                            consultations.filter { it.date != null }.maxByOrNull { it.date!! }
+                    if (mostRecentConsultation != null) {
+                        println(
+                                "DEBUG_ALIMENTS: Sélection automatique de la consultation la plus récente: ${mostRecentConsultation.date}"
+                        )
+                        selectConsultation(mostRecentConsultation)
+                    } else if (consultations.isNotEmpty()) {
+                        // Si aucune consultation n'a de date, prendre la première
+                        println(
+                                "DEBUG_ALIMENTS: Aucune consultation avec date valide, sélection de la première consultation"
+                        )
+                        selectConsultation(consultations.first())
+                    }
                 } else {
                     // Si aucune consultation n'est chargée, conservons celles qui étaient déjà dans
                     // l'animal
                     println(
                             "DEBUG_ALIMENTS: Aucune consultation chargée, conservation des ${animal.consultations.size} consultations existantes"
                     )
+
+                    // Si l'animal a des consultations existantes, sélectionner la plus récente
+                    if (animal.consultations.isNotEmpty()) {
+                        val mostRecentConsultation =
+                                animal.consultations.filter { it.date != null }.maxByOrNull {
+                                    it.date!!
+                                }
+                        if (mostRecentConsultation != null) {
+                            println(
+                                    "DEBUG_ALIMENTS: Sélection automatique de la consultation existante la plus récente: ${mostRecentConsultation.date}"
+                            )
+                            selectConsultation(mostRecentConsultation)
+                        } else {
+                            // Si aucune consultation n'a de date, prendre la première
+                            println(
+                                    "DEBUG_ALIMENTS: Aucune consultation existante avec date valide, sélection de la première consultation"
+                            )
+                            selectConsultation(animal.consultations.first())
+                        }
+                    }
                 }
 
                 println("DEBUG_ALIMENTS: Animal mis à jour avec les consultations")
