@@ -102,6 +102,26 @@ class DatabaseAnimalRepository(
 
                         animalDao.update(animalEntity)
 
+                        // Supprimer tous les poids existants pour cet animal
+                        animalDao.deleteWeightsForAnimal(animal.uuid)
+                        println(
+                                "DEBUG_SAVE_WEIGHTS: Poids existants supprimés pour l'animal ${animal.uuid}"
+                        )
+
+                        // Sauvegarder les nouveaux poids
+                        println(
+                                "DEBUG_SAVE_WEIGHTS: Sauvegarde de ${animal.weightHistory.size} poids pour l'animal ${animal.uuid}"
+                        )
+                        animal.weightHistory.forEach { weight ->
+                                // S'assurer que la référence de l'animal est correctement définie
+                                weight.refAnimal = animal.uuid
+                                // Insérer le poids
+                                animalDao.insertWeight(weight.toEntity())
+                                println(
+                                        "DEBUG_SAVE_WEIGHTS: Poids sauvegardé: ${weight.value}kg le ${weight.date}"
+                                )
+                        }
+
                         // Vérifier que l'animal a été correctement mis à jour
                         val updatedAnimal = animalDao.getAnimalById(animal.uuid)
                         if (updatedAnimal != null) {
@@ -181,6 +201,9 @@ class DatabaseAnimalRepository(
 
                         // Charger les poids associés
                         val weightEntities = animalDao.getWeightsForAnimal(id)
+                        println(
+                                "DEBUG_LOAD_WEIGHTS: ${weightEntities.size} poids trouvés pour l'animal $id"
+                        )
                         if (weightEntities.isNotEmpty()) {
                                 animalEv.weightHistory.addAll(
                                         weightEntities.map { weightEntity ->
@@ -191,6 +214,9 @@ class DatabaseAnimalRepository(
                                                         value = weightEntity.value
                                                 )
                                         }
+                                )
+                                println(
+                                        "DEBUG_LOAD_WEIGHTS: ${animalEv.weightHistory.size} poids chargés dans l'animal"
                                 )
                         }
 

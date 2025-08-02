@@ -284,16 +284,11 @@ object Mappers {
                 val especesList = mutableListOf<String>()
 
                 // Ajouter des logs de débogage pour comprendre le contenu de especesJson
-                println(
-                        "DEBUG Mappers: Extraction des espèces pour l'aliment ${this.uuid} (${this.nameDef})"
-                )
-                println("DEBUG Mappers: especesJson = ${this.especesJson}")
-
+                
                 if (!this.especesJson.isNullOrEmpty()) {
                         // Extraire la liste des espèces du JSON
                         val especesStringList = this.especesJson.split(",")
-                        println("DEBUG Mappers: especesStringList = $especesStringList")
-
+                      
                         // Essayer de convertir chaque espèce en énumération
                         especesStringList.forEach { especeStr ->
                                 try {
@@ -301,16 +296,12 @@ object Mappers {
                                         // la conversion
                                         val espece = Espece.getFromString(especeStr)
                                         if (espece != null) {
-                                                println(
-                                                        "DEBUG Mappers: Conversion réussie de l'espèce: $especeStr -> ${espece.name}"
-                                                )
+                                              
                                                 especesList.add(
                                                         espece.name
                                                 ) // Utiliser le nom de l'énumération
                                         } else {
-                                                println(
-                                                        "DEBUG Mappers: Espèce non reconnue, conservation du texte original: $especeStr"
-                                                )
+                                               
                                                 // Si l'espèce n'est pas vide, l'ajouter à la liste
                                                 val cleanedEspece =
                                                         especeStr
@@ -323,9 +314,7 @@ object Mappers {
                                                 }
                                         }
                                 } catch (e: Exception) {
-                                        println(
-                                                "DEBUG Mappers: Erreur lors de la conversion de l'espèce $especeStr: ${e.message}"
-                                        )
+                                        
                                         // Nettoyer quand même en cas d'erreur
                                         val cleanedEspece =
                                                 especeStr

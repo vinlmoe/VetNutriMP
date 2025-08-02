@@ -2,27 +2,64 @@ package fr.vetbrain.vetnutri_mp.View
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import fr.vetbrain.vetnutri_mp.Components.AppDatePicker
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
+import fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailViewModel
 import io.github.koalaplot.core.line.LinePlot
 import io.github.koalaplot.core.style.LineStyle
 import io.github.koalaplot.core.util.ExperimentalKoalaPlotApi
 import io.github.koalaplot.core.xygraph.*
-import kotlin.random.Random
+import kotlinx.datetime.Clock
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.daysUntil
+import kotlinx.datetime.toLocalDateTime
+
+// Data class pour stocker les informations d'âge d'une consultation
+data class ConsultationAgeData(
+        val date: LocalDate,
+        val ageInDays: Int,
+        val ageInYears: Double,
+        val ageInMonths: Double,
+        val weight: Float
+)
+
+// Fonction pour formater l'âge en années et mois
+private fun formatAge(ageInYears: Double, ageInMonths: Double): String {
+        return when {
+                ageInYears >= 1.0 -> {
+                        val years = ageInYears.toInt()
+                        val remainingMonths = ((ageInYears - years) * 12).toInt()
+                        if (remainingMonths > 0) {
+                                "$years an${if (years > 1) "s" else ""} $remainingMonths mois"
+                        } else {
+                                "$years an${if (years > 1) "s" else ""}"
+                        }
+                }
+                else -> {
+                        val months = ageInMonths.toInt()
+                        "$months mois"
+                }
+        }
+}
 
 @OptIn(ExperimentalKoalaPlotApi::class)
 @Composable
-fun AnalyseGraphiqueView(modifier: Modifier = Modifier) {
+fun AnalyseGraphiqueView(viewModel: AnimalDetailViewModel, modifier: Modifier = Modifier) {
         var selectedChart by remember { mutableStateOf(ChartType.EVOLUTION_POIDS) }
 
         Column(
@@ -41,7 +78,7 @@ fun AnalyseGraphiqueView(modifier: Modifier = Modifier) {
 
                 // Affichage du graphique sélectionné
                 when (selectedChart) {
-                        ChartType.EVOLUTION_POIDS -> EvolutionPoidsChart()
+                        ChartType.EVOLUTION_POIDS -> EvolutionPoidsChart(viewModel)
                         ChartType.COMPOSITION_NUTRITIONNELLE -> CompositionNutritionnelleChart()
                         ChartType.COMPARAISON_BESOINS -> ComparaisonBesoinsChart()
                         ChartType.REPARTITION_ENERGIE -> RepartitionEnergieChart()
@@ -49,6 +86,115 @@ fun AnalyseGraphiqueView(modifier: Modifier = Modifier) {
 
                 // Légende et informations
                 GraphiqueLegend(selectedChart)
+        }
+}
+
+@Composable
+private fun AddWeightForm(viewModel: AnimalDetailViewModel) {
+        var selectedDate by remember {
+                mutableStateOf(
+                        Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+                )
+        }
+        var weightText by remember { mutableStateOf("") }
+        var showDatePicker by remember { mutableStateOf(false) }
+
+        Card(
+                modifier = Modifier.fillMaxWidth(),
+                elevation = AppSizes.elevationSmall,
+                backgroundColor = MaterialTheme.colors.surface.copy(alpha = 0.8f)
+        ) {
+                Column(modifier = Modifier.padding(AppSizes.paddingMedium)) {
+                        Text(
+                                text = "Ajouter un nouveau poids",
+                                style = MaterialTheme.typography.subtitle2,
+                                fontWeight = FontWeight.Bold,
+                                color = VetNutriColors.Primary
+                        )
+
+                        Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
+
+                        // Sélecteur de date
+                        Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                        ) {
+                                Text(
+                                        text = "Date: ${selectedDate}",
+                                        modifier = Modifier.weight(1f),
+                                        style = MaterialTheme.typography.body2
+                                )
+
+                                Button(
+                                        onClick = { showDatePicker = true },
+                                        colors =
+                                                ButtonDefaults.buttonColors(
+                                                        backgroundColor = VetNutriColors.Primary
+                                                )
+                                ) { Text("Choisir une date") }
+                        }
+
+                        Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
+
+                        // Champ de poids
+                        OutlinedTextField(
+                                value = weightText,
+                                onValueChange = { weightText = it },
+                                label = { Text("Poids (kg)") },
+                                keyboardOptions =
+                                        KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true
+                        )
+
+                        Spacer(modifier = Modifier.height(AppSizes.paddingMedium))
+
+                        // Boutons d'action
+                        Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.End
+                        ) {
+                                TextButton(onClick = { viewModel.stopAddingWeight() }) {
+                                        Text("Annuler")
+                                }
+
+                                Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
+
+                                Button(
+                                        onClick = {
+                                                println("BOUTON CLIQUE - DEBUT")
+                                                val weight = weightText.toFloatOrNull()
+                                                println("WEIGHT PARSED: $weight")
+                                                if (weight != null && weight > 0) {
+                                                        println("CALLING viewModel.addWeight")
+                                                        viewModel.addWeight(selectedDate, weight)
+                                                        println("APRES CALL viewModel.addWeight")
+                                                        weightText = ""
+                                                }
+                                                println("BOUTON CLIQUE - FIN")
+                                        },
+                                        enabled =
+                                                weightText.toFloatOrNull() != null &&
+                                                        weightText.toFloatOrNull()!! > 0,
+                                        colors =
+                                                ButtonDefaults.buttonColors(
+                                                        backgroundColor = VetNutriColors.Primary
+                                                )
+                                ) { Text("Ajouter") }
+                        }
+                }
+        }
+
+        // Date picker
+        if (showDatePicker) {
+                AppDatePicker(
+                        selectedDate = selectedDate,
+                        onDateSelected = {
+                                selectedDate = it
+                                showDatePicker = false
+                        },
+                        label = "Date de mesure"
+                )
         }
 }
 
@@ -121,45 +267,277 @@ private fun GraphiqueHeader(selectedChart: ChartType, onChartSelected: (ChartTyp
 
 @OptIn(ExperimentalKoalaPlotApi::class)
 @Composable
-private fun EvolutionPoidsChart() {
-        // Données d'exemple pour l'évolution du poids
-        val donneesPoids = remember {
-                generateSequence(1) { it + 1 }
-                        .take(12)
-                        .map { mois ->
-                                Point(
-                                        x = mois.toFloat(),
-                                        y = (15f + Random.nextFloat() * 5f) // Entre 15 et 20 kg
-                                )
-                        }
-                        .toList()
-        }
+private fun EvolutionPoidsChart(viewModel: AnimalDetailViewModel) {
+        val animal by viewModel.animal.collectAsState()
 
-        GraphCard(titre = "Évolution du poids corporel", sousTitre = "Poids en kg sur 12 mois") {
-                XYGraph(
-                        xAxisModel =
-                                FloatLinearAxisModel(
-                                        range = 1f..12f,
-                                        minimumMajorTickIncrement = 1f
-                                ),
-                        yAxisModel =
-                                FloatLinearAxisModel(
-                                        range = 10f..25f,
-                                        minimumMajorTickIncrement = 2.5f
-                                ),
-                        modifier = Modifier.height(250.dp)
-                ) {
-                        LinePlot(
-                                data = donneesPoids,
-                                lineStyle =
-                                        LineStyle(
-                                                brush =
-                                                        androidx.compose.ui.graphics.SolidColor(
-                                                                VetNutriColors.Primary
-                                                        ),
-                                                strokeWidth = 2.dp
+        // Utiliser derivedStateOf pour forcer la recomposition quand les données changent
+        val consultationsWithAge by
+                remember(animal?.consultations?.size, animal?.weightHistory?.size) {
+                        derivedStateOf {
+                                val consultations =
+                                        animal?.consultations?.sortedBy { it.date } ?: emptyList()
+                                val weightHistory =
+                                        animal?.weightHistory?.sortedBy { it.date } ?: emptyList()
+
+                                // Combiner les poids des consultations et de l'historique
+                                val allWeights = mutableListOf<ConsultationAgeData>()
+
+                                // Ajouter les poids des consultations
+                                consultations.forEach { consultation ->
+                                        val birthDate = animal?.birthdate
+                                        val consultationDate = consultation.date
+                                        val weight = consultation.weight
+
+                                        if (birthDate != null &&
+                                                        consultationDate != null &&
+                                                        weight != null
+                                        ) {
+                                                val ageInDays =
+                                                        birthDate.daysUntil(consultationDate)
+                                                val ageInYears = ageInDays / 365.25
+                                                val ageInMonths = ageInDays / 30.44
+                                                allWeights.add(
+                                                        ConsultationAgeData(
+                                                                consultationDate,
+                                                                ageInDays,
+                                                                ageInYears,
+                                                                ageInMonths,
+                                                                weight
+                                                        )
+                                                )
+                                        }
+                                }
+
+                                // Ajouter les poids supplémentaires de l'historique
+                                weightHistory.forEach { weightEntry ->
+                                        val birthDate = animal?.birthdate
+                                        val weightDate = weightEntry.date
+
+                                        if (birthDate != null) {
+                                                val ageInDays = birthDate.daysUntil(weightDate)
+                                                val ageInYears = ageInDays / 365.25
+                                                val ageInMonths = ageInDays / 30.44
+                                                allWeights.add(
+                                                        ConsultationAgeData(
+                                                                weightDate,
+                                                                ageInDays,
+                                                                ageInYears,
+                                                                ageInMonths,
+                                                                weightEntry.value
+                                                        )
+                                                )
+                                        }
+                                }
+
+                                // Trier par date
+                                allWeights.sortedBy { it.date }
+                        }
+                }
+
+        Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
+        ) {
+                // Graphique d'évolution (si on a des données)
+                if (consultationsWithAge.isNotEmpty()) {
+                        // Déterminer si on utilise les années ou les mois selon l'âge maximal
+                        val maxAgeInMonths = consultationsWithAge.maxOf { it.ageInMonths }
+                        val useYears = maxAgeInMonths > 18.0
+
+                        val donneesPoids =
+                                consultationsWithAge.map { consultationData ->
+                                        val xValue =
+                                                if (useYears) consultationData.ageInYears.toFloat()
+                                                else consultationData.ageInMonths.toFloat()
+                                        Point(x = xValue, y = consultationData.weight)
+                                }
+
+                        val xAxisTitle = if (useYears) "Âge (années)" else "Âge (mois)"
+                        GraphCard(
+                                titre = "Évolution du poids corporel",
+                                sousTitre = "Poids en kg selon l'âge"
+                        ) {
+                                XYGraph(
+                                        xAxisModel =
+                                                FloatLinearAxisModel(
+                                                        range =
+                                                                donneesPoids
+                                                                        .minOfOrNull { it.x }
+                                                                        ?.let {
+                                                                                it..donneesPoids
+                                                                                                .maxOfOrNull {
+                                                                                                        it.x
+                                                                                                }!!
+                                                                        }
+                                                                        ?: if (useYears) 0f..10f
+                                                                        else 0f..24f,
+                                                        minimumMajorTickIncrement =
+                                                                if (useYears) 1f else 3f
+                                                ),
+                                        yAxisModel =
+                                                FloatLinearAxisModel(
+                                                        range =
+                                                                donneesPoids
+                                                                        .minOfOrNull { it.y }
+                                                                        ?.let {
+                                                                                it..donneesPoids
+                                                                                                .maxOfOrNull {
+                                                                                                        it.y
+                                                                                                }!!
+                                                                        }
+                                                                        ?: 0f..50f,
+                                                        minimumMajorTickIncrement = 5f
+                                                ),
+                                        modifier = Modifier.height(250.dp)
+                                ) {
+                                        LinePlot(
+                                                data = donneesPoids,
+                                                lineStyle =
+                                                        LineStyle(
+                                                                brush =
+                                                                        androidx.compose.ui.graphics
+                                                                                .SolidColor(
+                                                                                        VetNutriColors
+                                                                                                .Primary
+                                                                                ),
+                                                                strokeWidth = 2.dp
+                                                        )
                                         )
-                        )
+                                }
+                        }
+                }
+
+                // Tableau des poids
+                PoidsTableau(consultationsWithAge, viewModel)
+        }
+}
+
+@Composable
+private fun PoidsTableau(
+        consultationsWithAge: List<ConsultationAgeData>,
+        viewModel: AnimalDetailViewModel
+) {
+        val isAddingWeight = viewModel.isAddingWeight
+
+        Card(modifier = Modifier.fillMaxWidth(), elevation = AppSizes.elevationMedium) {
+                Column(modifier = Modifier.padding(AppSizes.paddingMedium)) {
+                        Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                        ) {
+                                Text(
+                                        text = "Historique des poids",
+                                        style = MaterialTheme.typography.subtitle1,
+                                        fontWeight = FontWeight.Bold,
+                                        color = VetNutriColors.Primary
+                                )
+
+                                Button(
+                                        onClick = { viewModel.startAddingWeight() },
+                                        colors =
+                                                ButtonDefaults.buttonColors(
+                                                        backgroundColor = VetNutriColors.Secondary
+                                                )
+                                ) {
+                                        Icon(
+                                                imageVector = Icons.Default.Add,
+                                                contentDescription = "Ajouter un poids",
+                                                tint = Color.White
+                                        )
+                                        Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
+                                        Text("Ajouter un poids")
+                                }
+                        }
+
+                        Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
+
+                        // Interface d'ajout de poids
+                        if (isAddingWeight) {
+                                AddWeightForm(viewModel)
+                                Spacer(modifier = Modifier.height(AppSizes.paddingMedium))
+                        }
+
+                        if (consultationsWithAge.isEmpty()) {
+                                Text(
+                                        text = "Aucune consultation avec poids enregistrée",
+                                        style = MaterialTheme.typography.body2,
+                                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                                )
+                        } else {
+                                // En-têtes du tableau
+                                Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                        Text(
+                                                text = "Date",
+                                                modifier = Modifier.weight(1f),
+                                                style = MaterialTheme.typography.caption,
+                                                fontWeight = FontWeight.Bold
+                                        )
+                                        Text(
+                                                text = "Âge",
+                                                modifier = Modifier.weight(1f),
+                                                style = MaterialTheme.typography.caption,
+                                                fontWeight = FontWeight.Bold
+                                        )
+                                        Text(
+                                                text = "Poids (kg)",
+                                                modifier = Modifier.weight(1f),
+                                                style = MaterialTheme.typography.caption,
+                                                fontWeight = FontWeight.Bold
+                                        )
+                                }
+
+                                Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
+
+                                // Lignes du tableau
+                                consultationsWithAge.forEach { consultationData ->
+                                        Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                                Text(
+                                                        text = consultationData.date.toString(),
+                                                        modifier = Modifier.weight(1f),
+                                                        style = MaterialTheme.typography.caption
+                                                )
+                                                Text(
+                                                        text =
+                                                                formatAge(
+                                                                        consultationData.ageInYears,
+                                                                        consultationData.ageInMonths
+                                                                ),
+                                                        modifier = Modifier.weight(1f),
+                                                        style = MaterialTheme.typography.caption
+                                                )
+                                                Text(
+                                                        text =
+                                                                "%.1f".format(
+                                                                        consultationData.weight
+                                                                ),
+                                                        modifier = Modifier.weight(1f),
+                                                        style = MaterialTheme.typography.caption
+                                                )
+                                        }
+
+                                        if (consultationsWithAge.last() != consultationData) {
+                                                Divider(
+                                                        modifier =
+                                                                Modifier.padding(
+                                                                        vertical =
+                                                                                AppSizes.paddingSmall /
+                                                                                        2
+                                                                ),
+                                                        color =
+                                                                MaterialTheme.colors.onSurface.copy(
+                                                                        alpha = 0.1f
+                                                                )
+                                                )
+                                        }
+                                }
+                        }
                 }
         }
 }
