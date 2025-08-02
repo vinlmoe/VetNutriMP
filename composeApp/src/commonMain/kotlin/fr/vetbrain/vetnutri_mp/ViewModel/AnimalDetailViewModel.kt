@@ -237,6 +237,17 @@ class AnimalDetailViewModel(
             isEditingAnimal = false
             _showFullScreenEdit.value = false
 
+            // DEBUG: Vérifier l'historique des poids de l'animal reçu
+            println("🔍 DEBUG setAnimal: Animal reçu - ${animal.nom} (${animal.uuid})")
+            println(
+                    "🔍 DEBUG setAnimal: Historique des poids initial: ${animal.weightHistory.size} poids"
+            )
+            animal.weightHistory.forEachIndexed { index, weight ->
+                println(
+                        "🔍 DEBUG setAnimal: Poids $index - Date: ${weight.date}, Valeur: ${weight.value}kg"
+                )
+            }
+
             // Conserver une référence à l'animal original
             val originalAnimal =
                     animal.copy(
@@ -254,8 +265,7 @@ class AnimalDetailViewModel(
                 // Pour chaque consultation, vérifiez combien de rations et d'aliments elle contient
                 consultations.forEachIndexed { i, c ->
                     c.rations.forEachIndexed { j, r ->
-                        r.alimentMutableList.forEachIndexed { k, a ->
-                        }
+                        r.alimentMutableList.forEachIndexed { k, a -> }
                     }
                 }
 
@@ -292,12 +302,10 @@ class AnimalDetailViewModel(
                         }
                     }
                 }
-
             } catch (e: Exception) {
                 // Gérer les erreurs potentielles lors du chargement des consultations
                 e.printStackTrace()
             }
-
         }
     }
 
@@ -312,8 +320,7 @@ class AnimalDetailViewModel(
 
             // Afficher des détails de débogage pour s'assurer que les aliments sont bien chargés
             fullConsultation?.rations?.forEachIndexed { index, ration ->
-                ration.alimentMutableList.forEachIndexed { alimentIndex, aliment ->
-                }
+                ration.alimentMutableList.forEachIndexed { alimentIndex, aliment -> }
             }
 
             // Si aucune ration n'est sélectionnée mais qu'il y en a dans la consultation, en
@@ -323,9 +330,7 @@ class AnimalDetailViewModel(
             }
 
             // Calculer automatiquement les valeurs métaboliques pour la consultation sélectionnée
-            fullConsultation?.let { consultation ->
-                calculerValeursMetaboliques(consultation)
-            }
+            fullConsultation?.let { consultation -> calculerValeursMetaboliques(consultation) }
         }
     }
 
@@ -337,8 +342,7 @@ class AnimalDetailViewModel(
     fun selectRation(ration: Ration) {
         println("DEBUG_ALIMENTS: Début selectRation pour ration ${ration.uuid} (${ration.name})")
 
-        ration.alimentMutableList.forEachIndexed { k, a ->
-        }
+        ration.alimentMutableList.forEachIndexed { k, a -> }
 
         // Créer une copie profonde de la ration, y compris sa liste d'aliments
         val rationCopy =
@@ -347,14 +351,12 @@ class AnimalDetailViewModel(
                                 ration.alimentMutableList.map { it.copy() }.toMutableList()
                 )
 
-        rationCopy.alimentMutableList.forEachIndexed { k, a ->
-        }
+        rationCopy.alimentMutableList.forEachIndexed { k, a -> }
 
         _selectedRation.value = rationCopy
 
         // Lancer l'analyse de la ration automatiquement
         analyserRationSelectionnee()
-
     }
 
     /**
@@ -384,7 +386,6 @@ class AnimalDetailViewModel(
                 // Effectuer l'analyse en passant la consultation pour les variables supplémentaires
                 val resultat = rationAnalyzer.analyserRation(rationActuelle, consultationActuelle)
                 _rationAnalyseResultat.value = resultat
-
             } catch (e: Exception) {
                 e.printStackTrace()
 
@@ -416,7 +417,6 @@ class AnimalDetailViewModel(
                 // Effectuer la comparaison
                 val resultat = rationAnalyzer.comparerRations(rationActuelle, autreRation)
                 _rationsComparaison.value = resultat
-
             } catch (e: Exception) {
                 e.printStackTrace()
 
@@ -571,8 +571,7 @@ class AnimalDetailViewModel(
                         consultationRepository.getConsultationById(consultationToSave.uuid)
                 if (savedConsultation != null) {
                     _selectedConsultation.value = savedConsultation
-                } else {
-                }
+                } else {}
 
                 // Arrêter le mode édition
                 isEditingConsultation = false
@@ -625,8 +624,7 @@ class AnimalDetailViewModel(
 
     fun updateRationInConsultation(ration: Ration) {
 
-        ration.alimentMutableList.forEachIndexed { k, a ->
-        }
+        ration.alimentMutableList.forEachIndexed { k, a -> }
 
         val consultation = _selectedConsultation.value?.copy() ?: return
 
@@ -637,13 +635,10 @@ class AnimalDetailViewModel(
             updatedRations[index] = ration
             val updatedConsultation = consultation.copy(rations = updatedRations)
 
-
             _selectedConsultation.value = updatedConsultation
 
             updateConsultation(updatedConsultation)
-        } else {
-        }
-
+        } else {}
     }
 
     fun removeRationFromConsultation(ration: Ration) {
@@ -691,14 +686,12 @@ class AnimalDetailViewModel(
             // Conserver l'UUID et les consultations de l'animal original
             val animalToUpdate =
                     _animal.value?.let { originalAnimal ->
-
                         updatedAnimal.copy(
                                 uuid = originalAnimal.uuid,
                                 consultations = originalAnimal.consultations
                         )
                     }
                             ?: return@launch
-
 
             animalRepository.updateAnimal(animalToUpdate)
 
@@ -924,7 +917,6 @@ class AnimalDetailViewModel(
 
             // Sauvegarder les modifications dans la base de données
             consultationRepository.saveConsultation(updatedConsultation)
-
         }
     }
 
@@ -1039,8 +1031,7 @@ class AnimalDetailViewModel(
                         updateConsultation(consultation)
                     }
                 }
-            } catch (e: Exception) {
-            }
+            } catch (e: Exception) {}
         }
     }
 
@@ -1061,8 +1052,7 @@ class AnimalDetailViewModel(
                         updateConsultation(consultation)
                     }
                 }
-            } catch (e: Exception) {
-            }
+            } catch (e: Exception) {}
         }
     }
 
@@ -1083,8 +1073,7 @@ class AnimalDetailViewModel(
                         updateConsultation(consultation)
                     }
                 }
-            } catch (e: Exception) {
-            }
+            } catch (e: Exception) {}
         }
     }
 
@@ -1122,8 +1111,7 @@ class AnimalDetailViewModel(
                     val updatedConsultation = it.copy(referenceGeneraleId = referenceId)
                     updateConsultation(updatedConsultation)
                 }
-            } catch (e: Exception) {
-            }
+            } catch (e: Exception) {}
         }
     }
 
@@ -1140,8 +1128,7 @@ class AnimalDetailViewModel(
                         updateConsultation(updatedConsultation)
                     }
                 }
-            } catch (e: Exception) {
-            }
+            } catch (e: Exception) {}
         }
     }
 
@@ -1156,8 +1143,7 @@ class AnimalDetailViewModel(
                     val updatedConsultation = it.copy(referencesMaladies = newReferences)
                     updateConsultation(updatedConsultation)
                 }
-            } catch (e: Exception) {
-            }
+            } catch (e: Exception) {}
         }
     }
 
@@ -1204,8 +1190,7 @@ class AnimalDetailViewModel(
 
                 // Recalculer les valeurs métaboliques après la sauvegarde
                 calculerValeursMetaboliques(consultation)
-            } catch (e: Exception) {
-            }
+            } catch (e: Exception) {}
         }
     }
 
@@ -1240,14 +1225,12 @@ class AnimalDetailViewModel(
                 val bee = calculerBesoinEnergetiqueStandard(consultation, reference)
                 _besoinEnergetiqueStandard.value = bee
 
-                if (bee == null) {
-                }
+                if (bee == null) {}
 
                 // 4. Calculer le besoin énergétique total en multipliant le BEE avec tous les
                 // coefficients
                 val besoinTotal = bee?.let { calculerBesoinEnergetiqueTotal(consultation, it) }
                 _besoinEnergetiqueTotal.value = besoinTotal
-
 
                 // Vérifier les valeurs dans les StateFlow
             } catch (e: Exception) {
@@ -1269,7 +1252,6 @@ class AnimalDetailViewModel(
             if (equationBW == null || equationBW.equationScript.isEmpty()) {
                 return null
             }
-
 
             // Créer la map des variables incluant BW et les variables supplémentaires
             val variables = mutableMapOf<String, Double>()
@@ -1327,7 +1309,6 @@ class AnimalDetailViewModel(
                         return null
                     }
 
-
             // Créer la map des variables incluant BW et les variables supplémentaires
             val variables = mutableMapOf<String, Double>()
             variables["BW"] = poidsDouble
@@ -1378,7 +1359,6 @@ class AnimalDetailViewModel(
 
         // Calcul du besoin total
         val besoinTotal = bee * k1 * k2 * k3 * k4 * k5 * coefficientAjustement
-
 
         return besoinTotal
     }
@@ -1467,8 +1447,7 @@ class AnimalDetailViewModel(
                 } else {
                     variablesManquantes.add(variable)
                 }
-            } else {
-            }
+            } else {}
         }
 
         return variablesManquantes
@@ -1503,11 +1482,9 @@ class AnimalDetailViewModel(
 
                         // Recalculer les valeurs métaboliques
                         calculerValeursMetaboliques(consultationMiseAJour)
-
                     }
                 }
-            } catch (e: Exception) {
-            }
+            } catch (e: Exception) {}
         }
     }
 
@@ -1560,11 +1537,9 @@ class AnimalDetailViewModel(
 
                         // Recalculer les valeurs métaboliques
                         calculerValeursMetaboliques(consultationMiseAJour)
-
                     }
                 }
-            } catch (e: Exception) {
-            }
+            } catch (e: Exception) {}
         }
     }
 
@@ -1629,10 +1604,8 @@ class AnimalDetailViewModel(
 
                     // Désactiver le mode d'ajout
                     isAddingWeight = false
-
                 }
-            } catch (e: Exception) {
-            }
+            } catch (e: Exception) {}
         }
     }
 
@@ -1668,10 +1641,8 @@ class AnimalDetailViewModel(
                             _selectedConsultation.value = updatedConsultation
                         }
                     }
-
                 }
-            } catch (e: Exception) {
-            }
+            } catch (e: Exception) {}
         }
     }
 }

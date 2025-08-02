@@ -53,19 +53,56 @@ class DatabaseAnimalRepository(
 
         override suspend fun getAllAnimals(): List<AnimalEv> {
                 return withContext(AppDispatchers.Default) {
-                        animalDao.getAllAnimals().map { entity ->
-                                AnimalEv(
-                                        uuid = entity.uuid,
-                                        nom = entity.nom ?: "",
-                                        dead = entity.dead ?: false,
-                                        id = entity.id,
-                                        sexId = entity.sexId ?: 0,
-                                        specieId = entity.specieId ?: "",
-                                        ownerName = entity.ownerName ?: "",
-                                        birthdate = entity.birthdate?.let { LocalDate.parse(it) },
-                                        race = entity.race ?: "",
-                                        summary = entity.summary ?: ""
-                                )
+                        println("🔍 DEBUG DatabaseAnimalRepository: getAllAnimals() appelé")
+                        val entities = animalDao.getAllAnimals()
+                        println(
+                                "🔍 DEBUG DatabaseAnimalRepository: ${entities.size} animaux trouvés en base"
+                        )
+
+                        entities.map { entity ->
+                                val animalEv =
+                                        AnimalEv(
+                                                uuid = entity.uuid,
+                                                nom = entity.nom ?: "",
+                                                dead = entity.dead ?: false,
+                                                id = entity.id,
+                                                sexId = entity.sexId ?: 0,
+                                                specieId = entity.specieId ?: "",
+                                                ownerName = entity.ownerName ?: "",
+                                                birthdate =
+                                                        entity.birthdate?.let {
+                                                                LocalDate.parse(it)
+                                                        },
+                                                race = entity.race ?: "",
+                                                summary = entity.summary ?: ""
+                                        )
+
+                                // Charger les poids pour chaque animal
+                                val weightEntities = animalDao.getWeightsForAnimal(entity.uuid)
+                                if (weightEntities.isNotEmpty()) {
+                                        animalEv.weightHistory.addAll(
+                                                weightEntities.map { weightEntity ->
+                                                        WeightDate(
+                                                                uuid = weightEntity.uuid,
+                                                                refAnimal = weightEntity.refAnimal,
+                                                                date =
+                                                                        LocalDate.parse(
+                                                                                weightEntity.date
+                                                                        ),
+                                                                value = weightEntity.value
+                                                        )
+                                                }
+                                        )
+                                        println(
+                                                "🔍 DEBUG DatabaseAnimalRepository: ${weightEntities.size} poids chargés pour ${animalEv.nom}"
+                                        )
+                                } else {
+                                        println(
+                                                "🔍 DEBUG DatabaseAnimalRepository: Aucun poids pour ${animalEv.nom}"
+                                        )
+                                }
+
+                                animalEv
                         }
                 }
         }
@@ -81,9 +118,7 @@ class DatabaseAnimalRepository(
 
                         // Vérifier si l'animal existe avant la mise à jour
                         val existingAnimal = animalDao.getAnimalById(animal.uuid)
-                        if (existingAnimal != null) {
-                        } else {
-                        }
+                        if (existingAnimal != null) {} else {}
 
                         // Convertir l'animal en entité et le mettre à jour
                         val animalEntity = animal.toEntity(includeRelations = false)
@@ -103,9 +138,7 @@ class DatabaseAnimalRepository(
 
                         // Vérifier que l'animal a été correctement mis à jour
                         val updatedAnimal = animalDao.getAnimalById(animal.uuid)
-                        if (updatedAnimal != null) {
-                        } else {
-                        }
+                        if (updatedAnimal != null) {} else {}
                 }
         }
 
@@ -174,6 +207,13 @@ class DatabaseAnimalRepository(
 
                         // Charger les poids associés
                         val weightEntities = animalDao.getWeightsForAnimal(id)
+                        println(
+                                "🔍 DEBUG DatabaseAnimalRepository: Chargement des poids pour l'animal $id"
+                        )
+                        println(
+                                "🔍 DEBUG DatabaseAnimalRepository: ${weightEntities.size} poids trouvés en base"
+                        )
+
                         if (weightEntities.isNotEmpty()) {
                                 animalEv.weightHistory.addAll(
                                         weightEntities.map { weightEntity ->
@@ -184,6 +224,17 @@ class DatabaseAnimalRepository(
                                                         value = weightEntity.value
                                                 )
                                         }
+                                )
+
+                                // DEBUG: Afficher les poids chargés
+                                animalEv.weightHistory.forEachIndexed { index, weight ->
+                                        println(
+                                                "🔍 DEBUG DatabaseAnimalRepository: Poids $index chargé - Date: ${weight.date}, Valeur: ${weight.value}kg"
+                                        )
+                                }
+                        } else {
+                                println(
+                                        "🔍 DEBUG DatabaseAnimalRepository: Aucun poids trouvé pour l'animal $id"
                                 )
                         }
 
@@ -276,7 +327,6 @@ class DatabaseAnimalRepository(
                                 food.name?.let { name -> foodNamesMap[food.uuid] = name }
                         }
 
-
                         // Première passe : extraire tous les aliments uniques des rations
                         // et stocker leurs noms dans la map
                         val alimToImport = mutableMapOf<String, AlimentEvJson>()
@@ -368,7 +418,6 @@ class DatabaseAnimalRepository(
                                         e.printStackTrace()
                                 }
                         }
-
 
                         var importedCount = 0
                         var updatedCount = 0
@@ -715,7 +764,6 @@ class DatabaseAnimalRepository(
                                                                                                         refAlimUnif]
                                                                                                         ?: "Aliment importé ${refAlimUnif}"
 
-
                                                                                         val foodEntity =
                                                                                                 FoodEntity(
                                                                                                         uuid =
@@ -796,8 +844,7 @@ class DatabaseAnimalRepository(
                                                                                 .insertAlimentRation(
                                                                                         aliment.toEntity()
                                                                                 )
-                                                                } catch (e: Exception) {
-                                                                }
+                                                                } catch (e: Exception) {}
                                                         }
 
                                                         // Charger les données AlimentEv pour chaque
@@ -869,8 +916,7 @@ class DatabaseAnimalRepository(
                                                                                 )
                                                                         alimentRation.aliment =
                                                                                 alimentEv
-                                                                } else {
-                                                                }
+                                                                } else {}
                                                         }
 
                                                         rationsWithAliments++
@@ -888,7 +934,6 @@ class DatabaseAnimalRepository(
                                         // débogage
                                 }
                         }
-
 
                         val totalCount = getAllAnimals().size
 
