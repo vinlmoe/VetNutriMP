@@ -138,17 +138,11 @@ class ImportViewModel(
                     }
 
                     nutritionalRequirementImportResultMessage = message.toString()
-                    println(
-                            "🎉 ${references.size} références nutritionnelles importées avec succès"
-                    )
                 } else {
                     nutritionalRequirementImportResultMessage =
                             "❌ Aucune référence nutritionnelle trouvée dans le fichier"
                 }
             } catch (e: Exception) {
-                println(
-                        "❌ Erreur lors de l'importation des références nutritionnelles: ${e.message}"
-                )
                 e.printStackTrace()
                 nutritionalRequirementImportResultMessage =
                         "❌ Erreur lors de l'importation: ${e.message ?: "Erreur inconnue"}\n\nVérifiez que le fichier est au format .vbnr.json valide."

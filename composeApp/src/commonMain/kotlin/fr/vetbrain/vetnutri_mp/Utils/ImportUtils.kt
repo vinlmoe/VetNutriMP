@@ -108,27 +108,20 @@ object ImportUtils {
      * des rations
      */
     fun importAnimalsFromJson(content: String): ImportResult {
-        println("Début de l'importation JSON. Taille du contenu: ${content.length} caractères")
 
         try {
             // Étape 1: Valider le format JSON de base
             if (content.isBlank()) {
-                println("Erreur: Le contenu JSON est vide")
                 return ImportResult(emptyList(), emptyList())
             }
 
             // Vérifier si le contenu est un JSON valide
             if (!isValidJson(content)) {
-                println("Erreur: Le contenu n'est pas un JSON valide")
                 return ImportResult(emptyList(), emptyList())
             }
 
             // Vérifier si le contenu correspond à un fichier d'animaux
             if (!isAnimalJsonContent(content)) {
-                println("Erreur: Le contenu JSON ne semble pas être un fichier d'animaux")
-                println(
-                        "Le fichier semble être un fichier d'aliments. Utilisez la commande import-food pour ce type de fichier."
-                )
                 return ImportResult(emptyList(), emptyList())
             }
 
@@ -141,67 +134,47 @@ object ImportUtils {
                 explicitNulls = false
             }
 
-            println("Analyse de la structure JSON...")
             val originalJson = jsonParser.parseToJsonElement(content)
 
-            println("Prétraitement des valeurs nutritionnelles...")
             val preprocessedJson = preprocessNutrientValues(originalJson)
 
-            println("Prétraitement des espèces des animaux...")
             val preprocessedWithEspeces = preprocessAnimalEspeces(preprocessedJson)
             val preprocessedContent = jsonParser.encodeToString(preprocessedWithEspeces)
 
-            println("Tentative d'importation comme liste d'animaux...")
             val animals =
                     try {
                         val result =
                                 jsonParser.decodeFromString<List<AnimalEvJson>>(preprocessedContent)
-                        println("Importation réussie comme liste: ${result.size} animaux")
                         result
                     } catch (e: Exception) {
-                        println("Erreur lors de l'importation comme liste: ${e.message}")
-                        println("Cause: ${e.cause}")
 
                         // Essayer d'importer comme un seul animal
-                        println("Tentative d'importation comme un seul animal...")
                         try {
                             val animal =
                                     jsonParser.decodeFromString<AnimalEvJson>(preprocessedContent)
-                            println("Importation réussie comme animal unique")
                             listOf(animal)
                         } catch (e: Exception) {
-                            println(
-                                    "Erreur lors de l'importation comme animal unique: ${e.message}"
-                            )
-                            println("Cause: ${e.cause}")
                             e.printStackTrace()
                             emptyList()
                         }
                     }
 
-            println("Importation terminée: ${animals.size} animaux trouvés")
 
             // Si aucun animal n'a été importé, retourner un résultat vide
             if (animals.isEmpty()) {
-                println("Aucun animal importé")
                 return ImportResult(emptyList(), emptyList())
             }
 
             // Extraire tous les aliments des rations
             val allFoods = mutableSetOf<AlimentEvJson>()
 
-            println("Extraction des aliments depuis les rations...")
             animals.forEach { animal ->
-                println("Traitement de l'animal: ${animal.nom}")
 
                 // Vérifier les consultations directes
                 animal.consultations?.forEach { consultation ->
-                    println("Traitement de la consultation du ${consultation.date}")
                     // Vérifier les rations dans la consultation
                     consultation.rationList.forEach { (_, ration) ->
-                        println("Traitement de la ration: ${ration.Nom}")
                         ration.alimentList.forEach { alimentRation ->
-                            println("Ajout de l'aliment: ${alimentRation.alime.nom}")
                             alimentRation.alime.let { aliment -> allFoods.add(aliment) }
                         }
                     }
@@ -211,20 +184,16 @@ object ImportUtils {
                 animal.list?.consultations?.forEach { consultation ->
                     println("Traitement de la consultation (via list) du ${consultation.date}")
                     consultation.rationList.forEach { (_, ration) ->
-                        println("Traitement de la ration: ${ration.Nom}")
                         ration.alimentList.forEach { alimentRation ->
-                            println("Ajout de l'aliment: ${alimentRation.alime.nom}")
                             alimentRation.alime.let { aliment -> allFoods.add(aliment) }
                         }
                     }
                 }
             }
 
-            println("Extraction terminée: ${allFoods.size} aliments extraits des rations")
 
             return ImportResult(animals, allFoods.toList())
         } catch (e: Exception) {
-            println("Erreur critique lors de l'importation JSON: ${e.message}")
             e.printStackTrace()
             return ImportResult(emptyList(), emptyList())
         }
@@ -237,22 +206,14 @@ object ImportUtils {
      * @return La liste des aliments importés
      */
     fun importFoodsFromJson(jsonContent: String): List<AlimentEvJson> {
-        println(
-                "Début de l'importation JSON des aliments. Taille du contenu: ${jsonContent.length} caractères"
-        )
 
         // Vérifier si le contenu est un JSON valide
         if (!isValidJson(jsonContent)) {
-            println("Erreur: Le contenu n'est pas un JSON valide")
             return emptyList()
         }
 
         // Vérifier si le contenu correspond à un fichier d'aliments
         if (isAnimalJsonContent(jsonContent)) {
-            println("Erreur: Le contenu JSON ne semble pas être un fichier d'aliments")
-            println(
-                    "Le fichier semble être un fichier d'animaux. Utilisez la commande import-ani pour ce type de fichier."
-            )
             return emptyList()
         }
 
@@ -266,7 +227,6 @@ object ImportUtils {
             // Diagnostic : Examiner les données d'espèces dans le JSON brut
             val rawJson = json.parseToJsonElement(jsonContent)
             if (rawJson is kotlinx.serialization.json.JsonArray) {
-                println("Format JSON : tableau de ${rawJson.size} éléments")
 
                 // Examiner jusqu'à 5 éléments
                 val samplesToCheck = minOf(5, rawJson.size)
@@ -277,13 +237,11 @@ object ImportUtils {
                         val especeVal = item["espece"]
                         val especesVal = item["Especes"]
 
-                        println("Aliment brut $nom - espece: $especeVal, Especes: $especesVal")
 
                         // Vérifier si Especes est un tableau vide dans le JSON
                         if (especesVal is kotlinx.serialization.json.JsonArray &&
                                         especesVal.isEmpty()
                         ) {
-                            println("  => Especes est un tableau vide pour $nom")
                         }
 
                         // Examiner les nutriments
@@ -318,15 +276,10 @@ object ImportUtils {
                     json.encodeToString(JsonElement.serializer(), preprocessedJson)
 
             try {
-                println("Tentative d'importation comme liste d'aliments...")
                 val foods = json.decodeFromString<List<AlimentEvJson>>(preprocessedJsonString)
-                println("Importation réussie: ${foods.size} aliments trouvés")
 
                 // Afficher des informations de débogage sur les espèces
                 foods.forEach { food ->
-                    println(
-                            "Aliment: ${food.nom}, Especes: ${food.Especes}, espece: ${food.espece}"
-                    )
 
                     // Vérifier les nutriments dans chaque aliment
                     food.valMap.forEach { (_, nutrientQuantity) ->
@@ -347,8 +300,6 @@ object ImportUtils {
 
                 // Afficher les nutriments non résolus
                 if (nonResolvedNutrients.isNotEmpty()) {
-                    println("\n========== RAPPORT DES NUTRIMENTS NON RÉSOLUS ==========")
-                    println("${nonResolvedNutrients.size} nutriments n'ont pas pu être résolus:")
 
                     // Trier et compter par occurrence
                     val countByNutrient =
@@ -359,22 +310,7 @@ object ImportUtils {
                         println("  - $nutrient (présent dans $count aliments)")
                     }
 
-                    println("\nSuggestions pour résoudre le problème:")
-                    println(
-                            "1. Vérifiez que les labels des nutriments dans le fichier d'importation correspondent exactement aux labels définis dans les énumérations."
-                    )
-                    println(
-                            "2. Assurez-vous que les énumérations NutrientVitam, NutrientMain, etc. incluent tous les nutriments nécessaires."
-                    )
-                    println(
-                            "3. Les labels de nutriments doivent correspondre aux valeurs de la propriété 'label' dans les énumérations."
-                    )
-                    println(
-                            "4. Ajoutez des cas spéciaux dans NutrientResolver.AllNutrientResolver pour ces nutriments."
-                    )
-                    println("========================================================")
                 } else {
-                    println("\nTous les nutriments ont été résolus avec succès!")
                 }
 
                 // Stocker les erreurs pour consultation ultérieure
@@ -384,13 +320,10 @@ object ImportUtils {
 
                 return foods
             } catch (e: Exception) {
-                println("Erreur lors de l'importation comme liste: ${e.message}")
                 importErrors.add("Erreur générale lors de l'importation: ${e.message}")
 
                 try {
-                    println("Tentative d'importation comme un seul aliment...")
                     val food = json.decodeFromString<AlimentEvJson>(preprocessedJsonString)
-                    println("Importation réussie: 1 aliment trouvé")
 
                     // Vérifier les nutriments dans l'aliment unique
                     food.valMap.forEach { (_, nutrientQuantity) ->
@@ -410,9 +343,6 @@ object ImportUtils {
 
                     // Afficher les nutriments non résolus
                     if (nonResolvedNutrients.isNotEmpty()) {
-                        println(
-                                "\nNutriments non résolus dans le JSON (${nonResolvedNutrients.size}):"
-                        )
                         nonResolvedNutrients.entries.sortedByDescending { it.value }.forEach {
                                 (nutrientKey, count) ->
                             println("  - $nutrientKey (${count} occurrences)")
@@ -426,21 +356,17 @@ object ImportUtils {
 
                     return listOf(food)
                 } catch (e: Exception) {
-                    println("Erreur lors de l'importation comme un seul aliment: ${e.message}")
                     importErrors.add(
                             "Erreur lors de l'importation comme aliment unique: ${e.message}"
                     )
                 }
             }
         } catch (e: Exception) {
-            println("Erreur lors du prétraitement du JSON: ${e.message}")
             importErrors.add("Erreur lors du prétraitement du JSON: ${e.message}")
 
             // Fallback à la méthode standard
             try {
-                println("Tentative d'importation standard comme liste d'aliments...")
                 val foods = json.decodeFromString<List<AlimentEvJson>>(jsonContent)
-                println("Importation réussie: ${foods.size} aliments trouvés")
 
                 // Vérifier les nutriments dans chaque aliment
                 foods.forEach { food ->
@@ -476,13 +402,10 @@ object ImportUtils {
 
                 return foods
             } catch (e: Exception) {
-                println("Erreur lors de l'importation standard comme liste: ${e.message}")
                 importErrors.add("Erreur lors de l'importation standard comme liste: ${e.message}")
 
                 try {
-                    println("Tentative d'importation standard comme un seul aliment...")
                     val food = json.decodeFromString<AlimentEvJson>(jsonContent)
-                    println("Importation réussie: 1 aliment trouvé")
 
                     // Vérifier les nutriments dans l'aliment unique
                     food.valMap.forEach { (_, nutrientQuantity) ->
@@ -502,9 +425,6 @@ object ImportUtils {
 
                     // Afficher les nutriments non résolus
                     if (nonResolvedNutrients.isNotEmpty()) {
-                        println(
-                                "\nNutriments non résolus dans le JSON (${nonResolvedNutrients.size}):"
-                        )
                         nonResolvedNutrients.entries.sortedByDescending { it.value }.forEach {
                                 (nutrientKey, count) ->
                             println("  - $nutrientKey (${count} occurrences)")
@@ -518,9 +438,6 @@ object ImportUtils {
 
                     return listOf(food)
                 } catch (e: Exception) {
-                    println(
-                            "Erreur lors de l'importation standard comme un seul aliment: ${e.message}"
-                    )
                     importErrors.add(
                             "Erreur lors de l'importation standard comme un seul aliment: ${e.message}"
                     )
@@ -528,7 +445,6 @@ object ImportUtils {
             }
         }
 
-        println("Échec de l'importation. Retour d'une liste vide.")
 
         // Même en cas d'échec, afficher les nutriments non résolus collectés lors de l'analyse
         if (nonResolvedNutrients.isNotEmpty()) {
@@ -594,16 +510,13 @@ object ImportUtils {
             }
 
             // Au lieu d'écrire dans un fichier, afficher les détails dans la console
-            println("\n=== RAPPORT DÉTAILLÉ DES ERREURS D'IMPORTATION ===")
             println(errorReport.toString())
-            println("=== FIN DU RAPPORT ===")
 
             // Note: L'écriture dans un fichier a été supprimée car elle n'est pas compatible
             // multiplateforme
             // Pour implémenter cette fonctionnalité, il faudrait utiliser expect/actual ou une
             // bibliothèque multiplateforme d'I/O
         } catch (e: Exception) {
-            println("Erreur lors de la génération du rapport d'erreurs: ${e.message}")
         }
     }
 
@@ -632,7 +545,6 @@ object ImportUtils {
                 // Traitement spécial pour les objets nommés "purison" ou contenant ce nom
                 val nom = result["nom"]
                 if (nom is JsonPrimitive && nom.content.contains("purison", ignoreCase = true)) {
-                    println("Traitement spécial pour l'aliment purison: ${nom.content}")
                 }
 
                 // Si on trouve un champ "valMap", traiter son contenu
@@ -641,7 +553,6 @@ object ImportUtils {
 
                     // Détecter si valMap est null ou vide
                     if (valMap == null || (valMap is JsonObject && valMap.isEmpty())) {
-                        println("ALERTE: valMap est null ou vide pour l'aliment: ${result["nom"]}")
 
                         // Créer un valMap par défaut avec des nutriments essentiels
                         val defaultValMap = mutableMapOf<String, JsonElement>()
@@ -654,7 +565,6 @@ object ImportUtils {
                         for ((key, value) in valMap.entries) {
                             // Tentative de normalisation du label du nutriment
                             val normalizedKey = normalizeNutrientLabel(key)
-                            println("Traitement du nutriment: $key -> $normalizedKey")
 
                             try {
                                 // Vérifier les différents formats possibles
@@ -685,9 +595,6 @@ object ImportUtils {
                                                                 )
                                                         )
                                                 newValMap[normalizedKey] = nutritionValue
-                                                println(
-                                                        "Nutriment normalisé: $key ($nutrientKey) -> $normalizedKey ($normalizedNutrientKey)"
-                                                )
                                             } else {
                                                 // Sinon, conserver l'objet tel quel avec la clé
                                                 // normalisée
@@ -723,9 +630,6 @@ object ImportUtils {
                                                         )
                                                 )
                                         newValMap[normalizedKey] = nutritionValue
-                                        println(
-                                                "Nutriment avec value uniquement: $key -> $normalizedKey"
-                                        )
                                     }
 
                                     // Format 3: Valeur numérique directe (chaîne qui peut être
@@ -747,9 +651,6 @@ object ImportUtils {
                                                         )
                                                 )
                                         newValMap[normalizedKey] = nutritionValue
-                                        println(
-                                                "Nutriment avec valeur numérique en chaîne: $key -> $normalizedKey (${value.content})"
-                                        )
                                     }
 
                                     // Format 4: Valeur numérique directe
@@ -768,9 +669,6 @@ object ImportUtils {
                                                         )
                                                 )
                                         newValMap[normalizedKey] = nutritionValue
-                                        println(
-                                                "Nutriment avec valeur primitive: $key -> $normalizedKey ($floatValue)"
-                                        )
                                     }
 
                                     // Format 5: Valeur null mais clé importante
@@ -787,17 +685,11 @@ object ImportUtils {
                                                         )
                                                 )
                                         newValMap[normalizedKey] = nutritionValue
-                                        println(
-                                                "Nutriment essentiel avec valeur null: $key -> $normalizedKey (défaut: 0)"
-                                        )
                                     }
 
                                     // Autres cas - format spécial pouvant inclure des structures
                                     // JSON imbriquées
                                     else -> {
-                                        println(
-                                                "Format non standard pour la valeur nutritionnelle $key: $value"
-                                        )
 
                                         // Analyse plus poussée pour extraire des données imbriquées
                                         if (value is JsonObject) {
@@ -827,9 +719,6 @@ object ImportUtils {
                                                                         )
                                                                 )
                                                         newValMap[normalizedKey] = nutritionValue
-                                                        println(
-                                                                "Valeur extraite du chemin '$path': $key -> $normalizedKey ($extractedValue)"
-                                                        )
                                                         break
                                                     }
                                                 }
@@ -866,39 +755,24 @@ object ImportUtils {
                                                                         )
                                                                 )
                                                         newValMap[normalizedKey] = nutritionValue
-                                                        println(
-                                                                "Nutriment avec valeur extraite: $key -> $normalizedKey ($extractedNumber)"
-                                                        )
                                                     } else {
                                                         // Si la conversion échoue, enregistrer la
                                                         // valeur originale
                                                         newValMap[normalizedKey] = value
-                                                        println(
-                                                                "Conservation de la valeur originale pour $normalizedKey après échec d'extraction"
-                                                        )
                                                     }
                                                 } else {
                                                     // Conserver tel quel si aucun nombre n'est
                                                     // trouvé
                                                     newValMap[normalizedKey] = value
-                                                    println(
-                                                            "Conservation de la valeur originale pour $normalizedKey (aucun nombre trouvé)"
-                                                    )
                                                 }
                                             } catch (e: Exception) {
                                                 // Conserver tel quel en cas d'erreur
                                                 newValMap[normalizedKey] = value
-                                                println(
-                                                        "Erreur lors du traitement du nutriment $key: ${e.message}"
-                                                )
                                             }
                                         }
                                     }
                                 }
                             } catch (e: Exception) {
-                                println(
-                                        "Exception lors du traitement du nutriment $key: ${e.message}"
-                                )
                                 e.printStackTrace()
                             }
                         }
@@ -933,18 +807,12 @@ object ImportUtils {
                                             kotlinx.serialization.json.JsonArray(
                                                     listOf(JsonPrimitive(especeEnum.label))
                                             )
-                                    println(
-                                            "Prétraitement: Conversion de l'espèce $especeValue en ${especeEnum.label}"
-                                    )
                                 } catch (e: Exception) {
                                     // Fallback à l'ancienne méthode si la conversion échoue
                                     result["Especes"] =
                                             kotlinx.serialization.json.JsonArray(
                                                     listOf(JsonPrimitive(especeValue.toString()))
                                             )
-                                    println(
-                                            "Prétraitement: Fallback - Ajout de l'espèce $especeValue à Especes pour l'aliment ${result["nom"]}"
-                                    )
                                 }
                             }
                         }
@@ -962,9 +830,6 @@ object ImportUtils {
                                         // Tenter de convertir l'ID en énumération Espece
                                         val especeEnum = Espece.getEnumFromInt(especeValue)
                                         newEspecesList.add(JsonPrimitive(especeEnum.label))
-                                        println(
-                                                "Prétraitement: Conversion de l'espèce $especeValue en ${especeEnum.label}"
-                                        )
                                     } catch (e: Exception) {
                                         // Conserver la valeur originale si la conversion échoue
                                         newEspecesList.add(especeItem)
@@ -1043,7 +908,6 @@ object ImportUtils {
                                 )
                         )
                 valMap[nutrient] = nutritionValue
-                println("Ajout du nutriment essentiel manquant: $nutrient = $defaultValue")
             }
         }
 
@@ -1102,12 +966,8 @@ object ImportUtils {
                                         )
                                 )
                         valMap["ENA"] = nutritionValue
-                        println(
-                                "ENA calculé: $calculatedEna à partir de PROTEINE=$proteine, LIPIDE=$lipide, HUMIDITE=$humidite, CENDRE=$cendre, CELLULOSE=$cellulose"
-                        )
                     }
                 } catch (e: Exception) {
-                    println("Erreur lors du calcul de l'ENA: ${e.message}")
                 }
             }
         }
@@ -1131,7 +991,6 @@ object ImportUtils {
             val preprocessedJson = preprocessNutrientValues(originalJson)
             val preprocessedContent = jsonParser.encodeToString(preprocessedJson)
 
-            println("Extraction des aliments à partir du JSON d'animaux...")
 
             // D'abord essayer de parser comme liste d'animaux
             val animals =
@@ -1169,10 +1028,8 @@ object ImportUtils {
                 }
             }
 
-            println("Extraction terminée: ${allFoods.size} aliments extraits des rations")
             return allFoods.toList()
         } catch (e: Exception) {
-            println("Erreur lors de l'extraction des aliments du JSON: ${e.message}")
             return emptyList()
         }
     }
@@ -1209,29 +1066,17 @@ object ImportUtils {
                                 // Utiliser l'id de l'énumération comme valeur pour espece (au lieu
                                 // de categorie)
                                 result["espece"] = JsonPrimitive(especeEnum.id)
-                                println(
-                                        "Prétraitement animal: Conversion de l'espèce $especeValue en ${especeEnum.label} (id: ${especeEnum.id})"
-                                )
                             } catch (e: Exception) {
                                 // Conserver la valeur originale si la conversion échoue
-                                println(
-                                        "Prétraitement animal: Échec de conversion de l'espèce $especeValue: ${e.message}, utilisation de l'ID par défaut"
-                                )
                                 // Essayer de trouver une correspondance directe par categorie
                                 val especeByCategorie =
                                         Espece.entries.find { it.categorie == especeValue }
                                 if (especeByCategorie != null) {
                                     result["espece"] = JsonPrimitive(especeByCategorie.id)
-                                    println(
-                                            "Prétraitement animal: Espèce trouvée par catégorie: $especeValue -> ${especeByCategorie.label} (id: ${especeByCategorie.id})"
-                                    )
                                 } else {
                                     // En cas d'échec, définir une valeur par défaut pour éviter des
                                     // erreurs
                                     result["espece"] = JsonPrimitive("0") // Par défaut CHIEN (ID 0)
-                                    println(
-                                            "Prétraitement animal: Utilisation de l'ID par défaut CHIEN (0)"
-                                    )
                                 }
                             }
                         } else {
@@ -1240,20 +1085,11 @@ object ImportUtils {
                                 val especeEnum = Espece.getByLabel(especeStr)
                                 if (especeEnum != null) {
                                     result["espece"] = JsonPrimitive(especeEnum.id.toString())
-                                    println(
-                                            "Prétraitement animal: Conversion du label d'espèce $especeStr en ID ${especeEnum.id}"
-                                    )
                                 } else {
                                     // Si non trouvé par label, utiliser une valeur par défaut
-                                    println(
-                                            "Prétraitement animal: Espèce non reconnue '$especeStr', utilisation de l'ID par défaut"
-                                    )
                                     result["espece"] = JsonPrimitive("1") // Par défaut CHIEN (ID 1)
                                 }
                             } catch (e: Exception) {
-                                println(
-                                        "Prétraitement animal: Erreur lors de la conversion de l'espèce '$especeStr': ${e.message}"
-                                )
                                 result["espece"] = JsonPrimitive("1") // Par défaut CHIEN (ID 1)
                             }
                         }
@@ -1599,7 +1435,6 @@ object ImportUtils {
 
             return false
         } catch (e: Exception) {
-            println("Erreur lors de l'analyse du contenu JSON: ${e.message}")
             return false
         }
     }
@@ -1664,7 +1499,6 @@ object ImportUtils {
             jsonParser.parseToJsonElement(content)
             true
         } catch (e: Exception) {
-            println("Le contenu n'est pas un JSON valide: ${e.message}")
             false
         }
     }
@@ -1722,83 +1556,59 @@ object ImportUtils {
     fun importNutritionalRequirementsFromJson(
             jsonContent: String
     ): List<fr.vetbrain.vetnutri_mp.Data.ReferenceEv> {
-        println("🚀 Début de l'importation des références nutritionnelles VetNutri")
-        println("📊 Taille du contenu: ${jsonContent.length} caractères")
 
         try {
             // Vérifier si le contenu est un JSON valide
             if (!isValidJson(jsonContent)) {
-                println("❌ Erreur: Le contenu n'est pas un JSON valide")
                 return emptyList()
             }
 
             // Vérifier si le contenu correspond à un fichier de références nutritionnelles
             if (!isNutritionalRequirementJsonContent(jsonContent)) {
-                println(
-                        "❌ Erreur: Le contenu JSON ne semble pas être un fichier de références nutritionnelles"
-                )
-                println(
-                        "Le fichier doit être au format .vbnr.json avec la structure: reference, allEquations, allBibliographicReferences, nutrientRequirements"
-                )
                 return emptyList()
             }
 
-            println("✅ Format .vbnr.json détecté")
-            println("🔄 Analyse et extraction des références...")
 
             val references = mutableListOf<fr.vetbrain.vetnutri_mp.Data.ReferenceEv>()
             val jsonElement = json.parseToJsonElement(jsonContent)
 
             when (jsonElement) {
                 is kotlinx.serialization.json.JsonArray -> {
-                    println("📋 Format: Tableau de ${jsonElement.size} références nutritionnelles")
 
                     jsonElement.forEachIndexed { index, element ->
                         if (element is kotlinx.serialization.json.JsonObject) {
                             val ref = creerReferenceDepuisNutritionalRequirementData(element, index)
                             if (ref != null) {
                                 references.add(ref)
-                                println("✅ Référence ${index + 1} créée: ${ref.nom}")
                             } else {
-                                println("⚠️ Échec de création de la référence ${index + 1}")
                             }
                         }
                     }
                 }
                 is kotlinx.serialization.json.JsonObject -> {
-                    println("📋 Format: Objet unique de référence nutritionnelle")
                     val ref = creerReferenceDepuisNutritionalRequirementData(jsonElement, 0)
                     if (ref != null) {
                         references.add(ref)
-                        println("✅ Référence créée: ${ref.nom}")
                     } else {
-                        println("⚠️ Échec de création de la référence")
                     }
                 }
                 else -> {
-                    println("❌ Format JSON non reconnu")
                     return emptyList()
                 }
             }
 
-            println(
-                    "🎉 Importation terminée: ${references.size} références nutritionnelles importées"
-            )
 
             // Afficher un résumé
             if (references.isNotEmpty()) {
-                println("\n📈 RÉSUMÉ DES RÉFÉRENCES IMPORTÉES:")
                 references.forEach { ref ->
                     println("  • ${ref.nom} - ${ref.espece} (${ref.stadePhysio})")
                     if (ref.maladie) {
-                        println("    🏥 Maladie: ${ref.nomMaladie}")
                     }
                 }
             }
 
             return references
         } catch (e: Exception) {
-            println("💥 Erreur critique lors de l'importation: ${e.message}")
             e.printStackTrace()
             return emptyList()
         }
@@ -1818,7 +1628,6 @@ object ImportUtils {
             val referenceObj = dataObj["reference"] as? kotlinx.serialization.json.JsonObject
 
             if (referenceObj == null) {
-                println("❌ Aucun objet 'reference' trouvé dans NutritionalRequirementData ${index}")
                 return null
             }
 
@@ -1870,76 +1679,50 @@ object ImportUtils {
             // Traiter les équations si présentes
             val allEquations = dataObj["allEquations"] as? kotlinx.serialization.json.JsonArray
             if (allEquations != null) {
-                println("🔧 Traitement de ${allEquations.size} équations...")
                 val equations = traiterEquations(allEquations)
-                println("🔧 ${equations.size} équations créées avec succès")
 
                 // Assigner les équations selon leur type
                 equations.forEach { equation ->
-                    println(
-                            "🔧 Assignation de l'équation: ${equation.name} (${equation.kind.name})"
-                    )
                     when (equation.kind) {
                         fr.vetbrain.vetnutri_mp.Enumer.EquationKind.ENERGYNEED -> {
                             if (equation.name.contains("BEE", ignoreCase = true) ||
                                             equation.name.contains("energy", ignoreCase = true)
                             ) {
                                 reference.equationBEE = equation
-                                println("  → Assignée comme équation BEE: ${equation.name}")
                             } else {
                                 reference.equationsNut.add(equation)
-                                println(
-                                        "  → Ajoutée aux équations nutritionnelles: ${equation.name}"
-                                )
                             }
                         }
                         fr.vetbrain.vetnutri_mp.Enumer.EquationKind.MW -> {
                             reference.equationBW = equation
-                            println("  → Assignée comme équation BW: ${equation.name}")
                         }
                         fr.vetbrain.vetnutri_mp.Enumer.EquationKind.ENERGYDENSITY -> {
                             if (equation.name.contains("commercial", ignoreCase = true)) {
                                 reference.equationDEcom = equation
-                                println("  → Assignée comme équation DEcom: ${equation.name}")
                             } else {
                                 reference.equationDEraw = equation
-                                println("  → Assignée comme équation DEraw: ${equation.name}")
                             }
                         }
                         fr.vetbrain.vetnutri_mp.Enumer.EquationKind.NEED -> {
                             reference.equationsNut.add(equation)
-                            println("  → Ajoutée aux équations nutritionnelles: ${equation.name}")
                         }
                         else -> {
                             reference.equationsNut.add(equation)
-                            println(
-                                    "  → Ajoutée aux équations nutritionnelles (type autre): ${equation.name}"
-                            )
                         }
                     }
                 }
 
                 // Vérification finale des équations assignées
-                println("🔍 Vérification finale des équations assignées à '${nom}':")
-                println("  - equationBEE: ${reference.equationBEE?.name ?: "non assignée"}")
-                println("  - equationBW: ${reference.equationBW?.name ?: "non assignée"}")
-                println("  - equationDEcom: ${reference.equationDEcom?.name ?: "non assignée"}")
-                println("  - equationDEraw: ${reference.equationDEraw?.name ?: "non assignée"}")
-                println("  - equationsNut: ${reference.equationsNut.size} équations")
                 reference.equationsNut.forEach { eq ->
                     println("    * ${eq.name} (${eq.kind.name})")
                 }
             } else {
-                println("⚠️ Aucune équation trouvée dans allEquations")
             }
 
             // Traiter les références bibliographiques
             val allBibliographicReferences =
                     dataObj["allBibliographicReferences"] as? kotlinx.serialization.json.JsonArray
             if (allBibliographicReferences != null) {
-                println(
-                        "📚 Traitement de ${allBibliographicReferences.size} références bibliographiques..."
-                )
                 // Les références biblio sont utilisées dans les nutriments, pas stockées
                 // directement dans la référence
             }
@@ -1948,7 +1731,6 @@ object ImportUtils {
             val nutrientRequirements =
                     dataObj["nutrientRequirements"] as? kotlinx.serialization.json.JsonArray
             if (nutrientRequirements != null) {
-                println("🧪 Traitement de ${nutrientRequirements.size} besoins nutritionnels...")
                 traiterBesoinsNutritionnels(
                         reference,
                         nutrientRequirements,
@@ -1963,7 +1745,6 @@ object ImportUtils {
 
             return reference
         } catch (e: Exception) {
-            println("❌ Erreur lors de la création de la référence ${index}: ${e.message}")
             e.printStackTrace()
             return null
         }
@@ -1983,7 +1764,6 @@ object ImportUtils {
                         equations.add(equation)
                     }
                 } catch (e: Exception) {
-                    println("⚠️ Erreur lors du traitement d'une équation: ${e.message}")
                 }
             }
         }
@@ -2084,7 +1864,6 @@ object ImportUtils {
             println("✅ Équation créée: $name (${kind.name}) - UUID: $uuid")
             return equation
         } catch (e: Exception) {
-            println("❌ Erreur lors de la création de l'équation: ${e.message}")
             e.printStackTrace()
             return null
         }
@@ -2107,11 +1886,6 @@ object ImportUtils {
 
             // Vérifier si les données sont valides et utilisables
             if (uuid.isNullOrBlank() || firstAuthor.isBlank() || year < 1900 || consistent == 0) {
-                println("⚠️ Données bibliographiques invalides ou incomplètes:")
-                println(
-                        "  UUID: '$uuid', firstAuthor: '$firstAuthor', year: $year, consistent: $consistent"
-                )
-                println("  → Création d'une référence par défaut")
 
                 return creerBiblioRefParDefaut("Données incomplètes dans JSON")
             }
@@ -2129,9 +1903,6 @@ object ImportUtils {
             println("📚 Bibliographie créée: $firstAuthor ($year) - UUID: $uuid")
             return biblioRef
         } catch (e: Exception) {
-            println(
-                    "❌ Erreur lors de la création de la référence bibliographique complète: ${e.message}"
-            )
             e.printStackTrace()
             return creerBiblioRefParDefaut("Erreur lors de la création")
         }
@@ -2141,7 +1912,6 @@ object ImportUtils {
     private fun creerBiblioRefParDefaut(motif: String): fr.vetbrain.vetnutri_mp.Data.BiblioRef {
         // Utiliser un UUID fixe pour éviter les duplicatas et garantir la cohérence
         val defaultUuid = "default-biblio"
-        println("🔧 Création d'une référence bibliographique par défaut - UUID: $defaultUuid")
 
         return fr.vetbrain.vetnutri_mp.Data.BiblioRef(
                 uuid = defaultUuid,
@@ -2180,7 +1950,6 @@ object ImportUtils {
                     completeRef = completeRef
             )
         } catch (e: Exception) {
-            println("❌ Erreur lors de la création de la référence bibliographique: ${e.message}")
             return null
         }
     }
@@ -2198,14 +1967,10 @@ object ImportUtils {
                 val biblioRef = creerBiblioRefDepuisJsonComplet(element)
                 if (biblioRef != null && biblioRef.uuid.isNotBlank()) {
                     biblioIndex[biblioRef.uuid] = biblioRef
-                    println(
-                            "📚 Bibliographie indexée: ${biblioRef.firstAuthor} (${biblioRef.year}) - UUID: ${biblioRef.uuid}"
-                    )
                 }
             }
         }
 
-        println("📚 ${biblioIndex.size} références bibliographiques indexées")
 
         nutrientRequirements.forEach { element ->
             if (element is kotlinx.serialization.json.JsonObject) {
@@ -2215,7 +1980,6 @@ object ImportUtils {
                         ajouterNutrientALaReference(reference, nutrientInfo)
                     }
                 } catch (e: Exception) {
-                    println("⚠️ Erreur lors du traitement d'un besoin nutritionnel: ${e.message}")
                 }
             }
         }
@@ -2230,15 +1994,11 @@ object ImportUtils {
             // Extraire le nutriment - le JSON a directement "nutrient": "K"
             val nutrientString = extraireStringDepuisJson(nutrientObj, "nutrient")
             if (nutrientString == null) {
-                println("⚠️ Champ nutrient manquant dans nutrientRequirementInfo")
                 return null
             }
 
             // Normaliser le nom du nutriment pour la résolution
             val normalizedNutrientString = normaliserNomNutrient(nutrientString)
-            println(
-                    "Résolution du nutriment: original='$nutrientString', normalisé='$normalizedNutrientString'"
-            )
 
             var finalNutrient =
                     fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver.AllNutrientResolver(
@@ -2246,13 +2006,7 @@ object ImportUtils {
                     )
 
             if (finalNutrient != null) {
-                println(
-                        "  → Résolu comme ${finalNutrient::class.simpleName}: $normalizedNutrientString"
-                )
             } else {
-                println(
-                        "  × Aucune correspondance exacte trouvée pour '$normalizedNutrientString', essai de correspondance partielle..."
-                )
                 resolutionsProblematiques.add(
                         "ECHEC_RESOLUTION_EXACTE: '$nutrientString' → '$normalizedNutrientString'"
                 )
@@ -2265,10 +2019,6 @@ object ImportUtils {
                                     variante
                             )
                     if (finalNutrient != null) {
-                        println(
-                                "  → Correspondance trouvée avec la variante '$variante' pour '$nutrientString'"
-                        )
-                        println("  → Résolu comme ${finalNutrient::class.simpleName}: $variante")
                         resolutionsProblematiques.add(
                                 "RESOLUTION_PAR_VARIANTE: '$nutrientString' → '$variante' (${finalNutrient::class.simpleName})"
                         )
@@ -2277,7 +2027,6 @@ object ImportUtils {
                 }
 
                 if (finalNutrient == null) {
-                    println("  ❌ Aucune variante trouvée pour le nutriment: $nutrientString")
                     resolutionsProblematiques.add(
                             "ECHEC_TOTAL: '$nutrientString' - Aucune correspondance trouvée"
                     )
@@ -2322,7 +2071,6 @@ object ImportUtils {
                     bibliographicReference = biblioRef
             )
         } catch (e: Exception) {
-            println("❌ Erreur lors de la création du NutrientRequirementInfo: ${e.message}")
             e.printStackTrace()
             return null
         }
@@ -2523,11 +2271,7 @@ object ImportUtils {
                     biblio = biblio
             )
 
-            println(
-                    "✅ Nutriment ${nutrientInfo.nutrient} ajouté (${nutrientInfo.referenceLevel}: ${nutrientInfo.quantity})"
-            )
         } catch (e: Exception) {
-            println("❌ Erreur lors de l'ajout du nutriment à la référence: ${e.message}")
         }
     }
 
@@ -2567,11 +2311,9 @@ object ImportUtils {
                             }
                         }
                     }
-                    println("✅ ${coefList.size} coefficients traités pour $arrayName")
                 }
             }
         } catch (e: Exception) {
-            println("⚠️ Erreur lors du traitement des coefficients de modification: ${e.message}")
         }
     }
 
@@ -2594,7 +2336,6 @@ object ImportUtils {
                     groupUUID = groupUUID
             )
         } catch (e: Exception) {
-            println("❌ Erreur lors de la création du coefficient CoefP: ${e.message}")
             return null
         }
     }
@@ -2651,10 +2392,8 @@ object ImportUtils {
                 // Essayer d'utiliser la méthode getFromString qui gère de nombreux cas
                 val especeDetectee = fr.vetbrain.vetnutri_mp.Enumer.Espece.getFromString(species)
                 if (especeDetectee != null) {
-                    println("✅ Espèce détectée automatiquement: $species -> ${especeDetectee.name}")
                     especeDetectee
                 } else {
-                    println("⚠️ Espèce inconnue: $species, utilisation de CHIEN par défaut")
                     fr.vetbrain.vetnutri_mp.Enumer.Espece.CHIEN
                 }
             }
@@ -2676,9 +2415,6 @@ object ImportUtils {
             "LACTATION", "LACTANTE", "LACTATING" ->
                     fr.vetbrain.vetnutri_mp.Enumer.StadePhysio.LACTATION
             else -> {
-                println(
-                        "⚠️ Stade physiologique inconnu: $sPhysio, utilisation de ADULTE par défaut"
-                )
                 fr.vetbrain.vetnutri_mp.Enumer.StadePhysio.ADULTE
             }
         }
@@ -2694,7 +2430,6 @@ object ImportUtils {
             "OPTIMIN" -> fr.vetbrain.vetnutri_mp.Enumer.Reflevel.OPTIMIN
             "OPTIMAX" -> fr.vetbrain.vetnutri_mp.Enumer.Reflevel.OPTIMAX
             else -> {
-                println("⚠️ Niveau de référence inconnu: $reflevel, utilisation de MIN par défaut")
                 fr.vetbrain.vetnutri_mp.Enumer.Reflevel.MIN
             }
         }
@@ -2714,7 +2449,6 @@ object ImportUtils {
             "NO" -> fr.vetbrain.vetnutri_mp.Enumer.UnitEnum.BUg // Par défaut pour "pas d'unité"
             "PERCENT", "%" -> fr.vetbrain.vetnutri_mp.Enumer.UnitEnum.BUg
             else -> {
-                println("⚠️ Unité inconnue: $unit, utilisation de BUg par défaut")
                 fr.vetbrain.vetnutri_mp.Enumer.UnitEnum.BUg
             }
         }
@@ -2734,7 +2468,6 @@ object ImportUtils {
             "MCAL", "PERKCAL" -> fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum.PERKCAL
             "DM", "PERMS" -> fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum.PERMS
             else -> {
-                println("⚠️ Unité de besoin inconnue: $unitReq, utilisation de ABSOLUTE par défaut")
                 fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum.ABSOLUTE
             }
         }
@@ -2864,9 +2597,6 @@ object ImportUtils {
                     // Fallback: vérifier au moins 3 des 4 clés requises
                     val keyCount = requiredKeys.count { key -> firstElement.containsKey(key) }
                     if (keyCount >= 3) {
-                        println(
-                                "⚠️ Structure .vbnr.json partiellement détectée ($keyCount/4 clés trouvées)"
-                        )
                         return true
                     }
                 }
@@ -2889,9 +2619,6 @@ object ImportUtils {
                 // Fallback: vérifier au moins 3 des 4 clés requises
                 val keyCount = requiredKeys.count { key -> jsonElement.containsKey(key) }
                 if (keyCount >= 3) {
-                    println(
-                            "⚠️ Structure .vbnr.json partiellement détectée ($keyCount/4 clés trouvées)"
-                    )
                     return true
                 }
             }
@@ -2914,15 +2641,11 @@ object ImportUtils {
             val keywordCount = nutritionalKeywords.count { contentLower.contains(it) }
 
             if (keywordCount >= 4) {
-                println(
-                        "⚠️ Format .vbnr.json supposé basé sur les mots-clés ($keywordCount mots-clés trouvés)"
-                )
                 return true
             }
 
             return false
         } catch (e: Exception) {
-            println("❌ Erreur lors de la détection du type de fichier: ${e.message}")
             return false
         }
     }
@@ -3041,7 +2764,6 @@ object ImportUtils {
         var bibliographiesMisesAJour = 0
         val erreurs = mutableListOf<String>()
 
-        println("🔄 💾 Début de la sauvegarde des données importées...")
 
         try {
             // 1. Sauvegarder toutes les bibliographies d'abord (références)
@@ -3062,36 +2784,24 @@ object ImportUtils {
                     reference.equationBEE?.bib?.let { biblio ->
                         if (biblio.uuid.isNotBlank() && biblio.firstAuthor.isNotBlank()) {
                             toutesLesBibliographies.add(biblio)
-                            println(
-                                    "📚 Bibliographie BEE collectée: ${biblio.firstAuthor} (${biblio.year})"
-                            )
                         }
                     }
 
                     reference.equationBW?.bib?.let { biblio ->
                         if (biblio.uuid.isNotBlank() && biblio.firstAuthor.isNotBlank()) {
                             toutesLesBibliographies.add(biblio)
-                            println(
-                                    "📚 Bibliographie BW collectée: ${biblio.firstAuthor} (${biblio.year})"
-                            )
                         }
                     }
 
                     reference.equationDEraw?.bib?.let { biblio ->
                         if (biblio.uuid.isNotBlank() && biblio.firstAuthor.isNotBlank()) {
                             toutesLesBibliographies.add(biblio)
-                            println(
-                                    "📚 Bibliographie DE raw collectée: ${biblio.firstAuthor} (${biblio.year})"
-                            )
                         }
                     }
 
                     reference.equationDEcom?.bib?.let { biblio ->
                         if (biblio.uuid.isNotBlank() && biblio.firstAuthor.isNotBlank()) {
                             toutesLesBibliographies.add(biblio)
-                            println(
-                                    "📚 Bibliographie DE commercial collectée: ${biblio.firstAuthor} (${biblio.year})"
-                            )
                         }
                     }
 
@@ -3100,15 +2810,11 @@ object ImportUtils {
                         equation.bib?.let { biblio ->
                             if (biblio.uuid.isNotBlank() && biblio.firstAuthor.isNotBlank()) {
                                 toutesLesBibliographies.add(biblio)
-                                println(
-                                        "📚 Bibliographie équation nutritionnelle collectée: ${biblio.firstAuthor} (${biblio.year})"
-                                )
                             }
                         }
                     }
                 }
 
-                println("📚 Sauvegarde de ${toutesLesBibliographies.size} bibliographies...")
                 for (bibliographie in toutesLesBibliographies) {
                     try {
                         val existante = biblioRefRepository.getBiblioRefById(bibliographie.uuid)
@@ -3116,16 +2822,10 @@ object ImportUtils {
                             if (existante != bibliographie) {
                                 biblioRefRepository.updateBiblioRef(bibliographie)
                                 bibliographiesMisesAJour++
-                                println(
-                                        "📝 Bibliographie mise à jour: ${bibliographie.firstAuthor} (${bibliographie.year})"
-                                )
                             }
                         } else {
                             biblioRefRepository.insertBiblioRef(bibliographie)
                             bibliographiesAjoutees++
-                            println(
-                                    "➕ Nouvelle bibliographie: ${bibliographie.firstAuthor} (${bibliographie.year})"
-                            )
                         }
                     } catch (e: Exception) {
                         erreurs.add(
@@ -3153,28 +2853,24 @@ object ImportUtils {
                     reference.equationBEE?.let { equation ->
                         if (equation.uuid.isNotBlank() && equation.name.isNotBlank()) {
                             toutesLesEquations.add(equation)
-                            println("🔧 Équation BEE collectée: ${equation.name}")
                         }
                     }
 
                     reference.equationBW?.let { equation ->
                         if (equation.uuid.isNotBlank() && equation.name.isNotBlank()) {
                             toutesLesEquations.add(equation)
-                            println("🔧 Équation BW collectée: ${equation.name}")
                         }
                     }
 
                     reference.equationDEraw?.let { equation ->
                         if (equation.uuid.isNotBlank() && equation.name.isNotBlank()) {
                             toutesLesEquations.add(equation)
-                            println("🔧 Équation DE raw collectée: ${equation.name}")
                         }
                     }
 
                     reference.equationDEcom?.let { equation ->
                         if (equation.uuid.isNotBlank() && equation.name.isNotBlank()) {
                             toutesLesEquations.add(equation)
-                            println("🔧 Équation DE commercial collectée: ${equation.name}")
                         }
                     }
 
@@ -3182,12 +2878,10 @@ object ImportUtils {
                     reference.equationsNut.forEach { equation ->
                         if (equation.uuid.isNotBlank() && equation.name.isNotBlank()) {
                             toutesLesEquations.add(equation)
-                            println("🔧 Équation nutritionnelle collectée: ${equation.name}")
                         }
                     }
                 }
 
-                println("⚡ Sauvegarde de ${toutesLesEquations.size} équations...")
                 for (equation in toutesLesEquations) {
                     try {
                         val existante = equationRepository.getEquationById(equation.uuid)
@@ -3195,12 +2889,10 @@ object ImportUtils {
                             if (existante != equation) {
                                 equationRepository.updateEquation(equation)
                                 equationsMisesAJour++
-                                println("📝 Équation mise à jour: ${equation.name}")
                             }
                         } else {
                             equationRepository.saveEquation(equation)
                             equationsAjoutees++
-                            println("➕ Nouvelle équation: ${equation.name}")
                         }
                     } catch (e: Exception) {
                         erreurs.add("Erreur équation ${equation.name}: ${e.message}")
@@ -3210,9 +2902,6 @@ object ImportUtils {
 
             // 3. Sauvegarder les références nutritionnelles enfin
             if (databaseReferenceEvRepository != null) {
-                println(
-                        "🍽️ Sauvegarde de ${referencesImportees.size} références nutritionnelles..."
-                )
                 for (reference in referencesImportees) {
                     try {
                         val existante =
@@ -3221,9 +2910,6 @@ object ImportUtils {
                             if (existante != reference) {
                                 databaseReferenceEvRepository.updateReferenceEv(reference)
                                 referencesMisesAJour++
-                                println(
-                                        "📝 Référence mise à jour: ${reference.nom} (${reference.espece})"
-                                )
                             }
                         } else {
                             databaseReferenceEvRepository.saveReferenceEv(reference)
@@ -3270,76 +2956,53 @@ object ImportUtils {
             biblioRefRepository: fr.vetbrain.vetnutri_mp.Repository.BiblioRefRepository? = null,
             sauvegarderEnBase: Boolean = true
     ): List<fr.vetbrain.vetnutri_mp.Data.ReferenceEv> {
-        println("🚀 Début de l'importation des références nutritionnelles VetNutri")
-        println("📊 Taille du contenu: ${jsonContent.length} caractères")
 
         try {
             // Vérifier si le contenu est un JSON valide
             if (!isValidJson(jsonContent)) {
-                println("❌ Erreur: Le contenu n'est pas un JSON valide")
                 return emptyList()
             }
 
             // Vérifier si le contenu correspond à un fichier de références nutritionnelles
             if (!isNutritionalRequirementJsonContent(jsonContent)) {
-                println(
-                        "❌ Erreur: Le contenu JSON ne semble pas être un fichier de références nutritionnelles"
-                )
-                println(
-                        "Le fichier doit être au format .vbnr.json avec la structure: reference, allEquations, allBibliographicReferences, nutrientRequirements"
-                )
                 return emptyList()
             }
 
-            println("✅ Format .vbnr.json détecté")
-            println("🔄 Analyse et extraction des références...")
 
             val references = mutableListOf<fr.vetbrain.vetnutri_mp.Data.ReferenceEv>()
             val jsonElement = json.parseToJsonElement(jsonContent)
 
             when (jsonElement) {
                 is kotlinx.serialization.json.JsonArray -> {
-                    println("📋 Format: Tableau de ${jsonElement.size} références nutritionnelles")
 
                     jsonElement.forEachIndexed { index, element ->
                         if (element is kotlinx.serialization.json.JsonObject) {
                             val ref = creerReferenceDepuisNutritionalRequirementData(element, index)
                             if (ref != null) {
                                 references.add(ref)
-                                println("✅ Référence ${index + 1} créée: ${ref.nom}")
                             } else {
-                                println("⚠️ Échec de création de la référence ${index + 1}")
                             }
                         }
                     }
                 }
                 is kotlinx.serialization.json.JsonObject -> {
-                    println("📋 Format: Objet unique de référence nutritionnelle")
                     val ref = creerReferenceDepuisNutritionalRequirementData(jsonElement, 0)
                     if (ref != null) {
                         references.add(ref)
-                        println("✅ Référence créée: ${ref.nom}")
                     } else {
-                        println("⚠️ Échec de création de la référence")
                     }
                 }
                 else -> {
-                    println("❌ Format JSON non reconnu")
                     return emptyList()
                 }
             }
 
-            println(
-                    "🎉 Importation terminée: ${references.size} références nutritionnelles importées"
-            )
 
             // Afficher un résumé
             if (references.isNotEmpty()) {
-                println("\n📈 RÉSUMÉ DES RÉFÉRENCES IMPORTÉES:")
                 references.forEach { ref ->
                     println("  • ${ref.nom} - ${ref.espece} (${ref.stadePhysio})")
                     if (ref.maladie) {
-                        println("    🏥 Maladie: ${ref.nomMaladie}")
                     }
                 }
             }
@@ -3352,14 +3015,10 @@ object ImportUtils {
                                 equationRepository,
                                 biblioRefRepository
                         )
-                println(
-                        "Sauvegarde réussie: ${result.totalReferences} références et ${result.totalEquations} équations importées"
-                )
             }
 
             return references
         } catch (e: Exception) {
-            println("💥 Erreur critique lors de l'importation: ${e.message}")
             e.printStackTrace()
             return emptyList()
         }

@@ -87,9 +87,6 @@ private fun calculerDensiteEnergetique(
                         }
 
                 if (equation == null || equation.equationScript.isEmpty()) {
-                        println(
-                                "DEBUG: Aucune équation DE ${if (estCommercial) "commerciale" else "brute"} disponible"
-                        )
                         return 0.0
                 }
 
@@ -121,13 +118,6 @@ private fun calculerDensiteEnergetique(
 
                 // Vérifier que les nutriments essentiels sont présents
 
-                println(
-                        "DEBUG: Calcul DE pour ${aliment.nom} - Type: ${if (estCommercial) "commercial" else "brut"}"
-                )
-                println("DEBUG: Équation: ${equation.equationScript}")
-                println(
-                        "DEBUG: Variables: PB=${variables["PB"]}, MG=${variables["MG"]}, ENA=${variables["ENA"]}"
-                )
 
                 // Évaluer l'équation
                 val resultat =
@@ -136,12 +126,8 @@ private fun calculerDensiteEnergetique(
                                 variables
                         )
 
-                println("DEBUG: Densité énergétique calculée: $resultat kcal/100g")
                 return resultat ?: 0.0
         } catch (e: Exception) {
-                println(
-                        "ERREUR: Calcul de densité énergétique pour ${alimentRation.aliment?.nom}: ${e.message}"
-                )
                 return 0.0
         }
 }
@@ -233,22 +219,12 @@ fun RationsView(
 
         // Charger les préférences au démarrage avec logs
         LaunchedEffect(Unit) {
-                println("DEBUG PREFERENCES: Début du chargement des préférences...")
                 preferencesRepository.loadPreferences()
                 preferencesApplication = preferencesRepository.preferences
-                println(
-                        "DEBUG PREFERENCES: Préférences chargées - ${preferencesApplication?.preferencesParEspece?.size ?: 0} espèces trouvées"
-                )
 
                 // Log des préférences par espèce
                 preferencesApplication?.preferencesParEspece?.forEach { (espece, prefs) ->
-                        println(
-                                "DEBUG PREFERENCES: Espèce $espece - ${prefs.getTotalSelectedNutrients()} nutriments sélectionnés"
-                        )
                         prefs.nutrimentsSelectionnes.forEach { (categorie, nutriments) ->
-                                println(
-                                        "DEBUG PREFERENCES:   - Catégorie $categorie: ${nutriments.size} nutriments"
-                                )
                         }
                 }
         }
@@ -948,9 +924,6 @@ fun RationsView(
                                                                                         animal
                                                                                 val prefsApp =
                                                                                         preferencesApplication
-                                                                                println(
-                                                                                        "DEBUG FILTRAGE: Animal=$animalActuel, Préférences=$prefsApp"
-                                                                                )
                                                                                 if (animalActuel !=
                                                                                                 null &&
                                                                                                 prefsApp !=
@@ -959,31 +932,19 @@ fun RationsView(
                                                                                         val especeAnimal =
                                                                                                 animalActuel
                                                                                                         .getEspece()
-                                                                                        println(
-                                                                                                "DEBUG FILTRAGE: Espèce de l'animal: ${especeAnimal.name} (${especeAnimal.label})"
-                                                                                        )
                                                                                         val preferencesEspece =
                                                                                                 prefsApp.getPreferencesEspece(
                                                                                                         especeAnimal
                                                                                                 )
-                                                                                        println(
-                                                                                                "DEBUG FILTRAGE: Préférences trouvées pour cette espèce: ${preferencesEspece.getTotalSelectedNutrients()} nutriments"
-                                                                                        )
                                                                                         val nutrimentsLabels =
                                                                                                 convertirPreferencesVersLabelsNutriments(
                                                                                                         preferencesEspece
                                                                                                 )
-                                                                                        println(
-                                                                                                "DEBUG FILTRAGE: Labels de nutriments extraits: $nutrimentsLabels"
-                                                                                        )
                                                                                         if (nutrimentsLabels
                                                                                                         .isNotEmpty()
                                                                                         ) {
                                                                                                 nutrimentsLabels
                                                                                         } else {
-                                                                                                println(
-                                                                                                        "DEBUG FILTRAGE: Aucun nutriment trouvé dans les préférences, utilisation de la liste par défaut"
-                                                                                                )
                                                                                                 listOf(
                                                                                                         "PROTEINE",
                                                                                                         "LIPIDE",
@@ -995,9 +956,6 @@ fun RationsView(
                                                                                                 )
                                                                                         }
                                                                                 } else {
-                                                                                        println(
-                                                                                                "DEBUG FILTRAGE: Animal ou préférences null, utilisation de la liste par défaut"
-                                                                                        )
                                                                                         listOf(
                                                                                                 "PROTEINE",
                                                                                                 "LIPIDE",
@@ -1079,13 +1037,6 @@ fun RationsView(
                                                                                 }
                                                                         }
 
-                                                                println(
-                                                                        "DEBUG EXPRESSION: Type d'expression trouvé pour ${animal?.getEspece()?.label}: ${when (typeExpressionBesoin) {
-                                                                        0 -> "par kg de poids métabolique"
-                                                                        1 -> "par 1000 kcal"
-                                                                        else -> "par kg de poids métabolique"
-                                                                }}"
-                                                                )
 
                                                                 // Utiliser la version existante de
                                                                 // AnalyseNutritionnelleCard
@@ -1689,9 +1640,6 @@ fun RationsView(
                                                                         val prefsApp =
                                                                                 preferencesApplication
 
-                                                                        println(
-                                                                                "DEBUG FILTRAGE: Animal=$animalActuel, Préférences=$prefsApp"
-                                                                        )
 
                                                                         if (animalActuel != null &&
                                                                                         prefsApp !=
@@ -1700,34 +1648,22 @@ fun RationsView(
                                                                                 val especeAnimal =
                                                                                         animalActuel
                                                                                                 .getEspece()
-                                                                                println(
-                                                                                        "DEBUG FILTRAGE: Espèce de l'animal: ${especeAnimal.name} (${especeAnimal.label})"
-                                                                                )
 
                                                                                 val preferencesEspece =
                                                                                         prefsApp.getPreferencesEspece(
                                                                                                 especeAnimal
                                                                                         )
-                                                                                println(
-                                                                                        "DEBUG FILTRAGE: Préférences trouvées pour cette espèce: ${preferencesEspece.getTotalSelectedNutrients()} nutriments"
-                                                                                )
 
                                                                                 val nutrimentsLabels =
                                                                                         convertirPreferencesVersLabelsNutriments(
                                                                                                 preferencesEspece
                                                                                         )
-                                                                                println(
-                                                                                        "DEBUG FILTRAGE: Labels de nutriments extraits: $nutrimentsLabels"
-                                                                                )
 
                                                                                 if (nutrimentsLabels
                                                                                                 .isNotEmpty()
                                                                                 ) {
                                                                                         nutrimentsLabels
                                                                                 } else {
-                                                                                        println(
-                                                                                                "DEBUG FILTRAGE: Aucun nutriment trouvé dans les préférences, utilisation de la liste par défaut"
-                                                                                        )
                                                                                         listOf(
                                                                                                 "PROTEINE",
                                                                                                 "LIPIDE",
@@ -1739,9 +1675,6 @@ fun RationsView(
                                                                                         )
                                                                                 }
                                                                         } else {
-                                                                                println(
-                                                                                        "DEBUG FILTRAGE: Animal ou préférences null, utilisation de la liste par défaut"
-                                                                                )
                                                                                 listOf(
                                                                                         "PROTEINE",
                                                                                         "LIPIDE",

@@ -12,16 +12,13 @@ fun importNutritionalRequirementsFromFile(
         filePath: String
 ): List<fr.vetbrain.vetnutri_mp.Data.ReferenceEv> {
   return try {
-    println("📂 Lecture du fichier: $filePath")
     val file = File(filePath)
 
     if (!file.exists()) {
-      println("❌ Fichier non trouvé: $filePath")
       return emptyList()
     }
 
     if (!file.canRead()) {
-      println("❌ Impossible de lire le fichier: $filePath")
       return emptyList()
     }
 
@@ -31,7 +28,6 @@ fun importNutritionalRequirementsFromFile(
     // Utiliser la fonction d'importation commune
     ImportUtils.importNutritionalRequirementsFromJson(jsonContent)
   } catch (e: Exception) {
-    println("💥 Erreur lors de la lecture du fichier: ${e.message}")
     e.printStackTrace()
     emptyList()
   }
@@ -40,7 +36,6 @@ fun importNutritionalRequirementsFromFile(
 /** Teste l'importation d'un fichier de références nutritionnelles */
 fun testNutritionalRequirementImportFromFile(filePath: String): String {
   return try {
-    println("🧪 Test d'importation du fichier: $filePath")
     val file = File(filePath)
 
     if (!file.exists()) {
@@ -158,30 +153,23 @@ fun saveSampleNutritionalRequirementFile(filePath: String): Boolean {
     val file = File(filePath)
     file.parentFile?.mkdirs()
     file.writeText(createSampleNutritionalRequirementJson(), Charsets.UTF_8)
-    println("✅ Fichier d'exemple créé: $filePath")
     true
   } catch (e: Exception) {
-    println("❌ Erreur lors de la création du fichier d'exemple: ${e.message}")
     false
   }
 }
 
 /** Fonction principale de démonstration Peut être appelée pour tester l'importateur */
 fun demonstrateNutritionalRequirementImport() {
-  println("🚀 Démonstration de l'importateur de références nutritionnelles")
   println("=".repeat(60))
 
   // Créer un fichier d'exemple
   val sampleFilePath = "sample_nutritional_requirements.vbnr.json"
 
-  println("\n1. Création d'un fichier d'exemple...")
   if (saveSampleNutritionalRequirementFile(sampleFilePath)) {
 
-    println("\n2. Test de l'importation...")
     val testResult = testNutritionalRequirementImportFromFile(sampleFilePath)
-    println(testResult)
 
-    println("\n3. Importation réelle...")
     val references = importNutritionalRequirementsFromFile(sampleFilePath)
 
     if (references.isNotEmpty()) {
@@ -190,15 +178,12 @@ fun demonstrateNutritionalRequirementImport() {
         println("  • ${ref.nom} (${ref.espece} - ${ref.stadePhysio})")
         println("    - Nutriments MIN: ${ref.getRefMapMin().size}")
         println("    - Nutriments MAX: ${ref.getRefMapMax().size}")
-        println("    - Équations: ${ref.equationsNut.size}")
         if (ref.equationBEE != null) println("    - Équation BEE: ${ref.equationBEE!!.name}")
       }
     } else {
-      println("❌ Aucune référence importée")
     }
 
     // Nettoyer le fichier d'exemple
     File(sampleFilePath).delete()
-    println("\n✨ Démonstration terminée")
   }
 }

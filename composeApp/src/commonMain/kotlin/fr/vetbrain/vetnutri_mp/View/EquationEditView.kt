@@ -62,7 +62,6 @@ fun EquationEditView(
 
     // Effet pour charger l'équation à l'initialisation si un ID est fourni
     LaunchedEffect(equationId) {
-        println("DEBUG EquationEditView: Initialisation avec equationId=$equationId")
         viewModel.clearOperationMessage()
 
         if (equationId?.isEmpty() == true || equationId == null) {
@@ -75,9 +74,6 @@ fun EquationEditView(
     // Effet pour surveiller les messages d'opération
     LaunchedEffect(operationMessage, saveSuccessful) {
         val message = operationMessage
-        println(
-                "DEBUG EquationEditView: Nouveau message: $message, saveSuccessful: $saveSuccessful"
-        )
 
         if (message != null) {
             if (saveSuccessful) {
@@ -470,7 +466,6 @@ private fun EquationEditTab(
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
             Button(
                     onClick = {
-                        println("DEBUG EquationEditView: Bouton de sauvegarde cliqué")
                         viewModel.saveCurrentEquation()
                         // Ne pas naviguer ici - la navigation se fera via LaunchedEffect si
                         // succès
@@ -546,8 +541,6 @@ private fun EquationTestTab(
 
     // Debug
     LaunchedEffect(variablesInExpression, unrecognizedVariables) {
-        println("DEBUG: Variables détectées dans le script: $variablesInExpression")
-        println("DEBUG: Variables non reconnues dans le script: $unrecognizedVariables")
     }
 
     // Initialiser les valeurs par défaut pour les variables reconnues

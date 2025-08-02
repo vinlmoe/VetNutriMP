@@ -336,7 +336,6 @@ private fun WideScreenLayout(
                                         RationsView(
                                                 viewModel = viewModel,
                                                 showSnackbar = { message ->
-                                                        println("Snackbar: $message")
                                                 }
                                         )
                                 }
@@ -537,9 +536,6 @@ private fun NarrowScreenLayout(
                                                         RationsView(
                                                                 viewModel = viewModel,
                                                                 showSnackbar = { message ->
-                                                                        println(
-                                                                                "Snackbar: $message"
-                                                                        )
                                                                 }
                                                         )
                                                 }

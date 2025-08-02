@@ -140,15 +140,11 @@ class AnimalDetailViewModel(
      */
     fun loadAvailableFoods() {
         _isLoadingFoods.value = true
-        println("AnimalDetailViewModel: Démarrage de l'observation des aliments")
 
         // S'abonner au Flow réactif des aliments pour des mises à jour automatiques
         // Utiliser onEach + launchIn pour lancer l'observation en arrière-plan
         AlimentRepository.observeAllAliments()
                 .onEach { aliments ->
-                    println(
-                            "AnimalDetailViewModel: Mise à jour automatique de la liste des aliments - ${aliments.size} aliments"
-                    )
 
                     // Convertir en version légère pour l'affichage (sans valMap pour les
                     // performances)
@@ -164,7 +160,6 @@ class AnimalDetailViewModel(
                     }
                 }
                 .catch { e ->
-                    println("Erreur lors de l'observation des aliments: ${e.message}")
                     e.printStackTrace()
                     _availableFoods.value = emptyList()
                     _isLoadingFoods.value = false
@@ -226,7 +221,6 @@ class AnimalDetailViewModel(
                 // Mettre à jour la ration dans la consultation
                 updateRationInConsultation(updatedRation)
             } catch (e: Exception) {
-                println("Erreur lors de l'ajout de l'aliment à la ration: ${e.message}")
                 e.printStackTrace()
             }
         }
@@ -234,7 +228,6 @@ class AnimalDetailViewModel(
 
     fun setAnimal(animal: AnimalEv) {
         viewModelScope.launch {
-            println("DEBUG_ALIMENTS: Début setAnimal pour ${animal.nom}")
 
             // Réinitialiser les états immédiatement pour éviter toute rémanence
             _selectedRation.value = null
@@ -257,23 +250,11 @@ class AnimalDetailViewModel(
             // Charger les consultations depuis la base de données
             try {
                 val consultations = consultationRepository.getConsultationsForAnimal(animal.uuid)
-                println(
-                        "DEBUG_ALIMENTS: ${consultations.size} consultations chargées pour ${animal.nom}"
-                )
 
                 // Pour chaque consultation, vérifiez combien de rations et d'aliments elle contient
                 consultations.forEachIndexed { i, c ->
-                    println(
-                            "DEBUG_ALIMENTS: Consultation $i (${c.date}) a ${c.rations.size} rations"
-                    )
                     c.rations.forEachIndexed { j, r ->
-                        println(
-                                "DEBUG_ALIMENTS: --Ration $j (${r.name}) a ${r.alimentMutableList.size} aliments"
-                        )
                         r.alimentMutableList.forEachIndexed { k, a ->
-                            println(
-                                    "DEBUG_ALIMENTS: ----Aliment $k: UUID=${a.uuid}, refAlimUnif=${a.refAlimUnif}, nom=${a.aliment?.nom ?: "ALIMENT NULL"}"
-                            )
                         }
                     }
                 }
@@ -283,31 +264,19 @@ class AnimalDetailViewModel(
                     _animal.update { currentAnimal ->
                         currentAnimal?.copy(consultations = consultations.toMutableList())
                     }
-                    println(
-                            "DEBUG_ALIMENTS: Animal mis à jour avec ${consultations.size} consultations"
-                    )
 
                     // Sélectionner automatiquement la consultation la plus récente
                     val mostRecentConsultation =
                             consultations.filter { it.date != null }.maxByOrNull { it.date!! }
                     if (mostRecentConsultation != null) {
-                        println(
-                                "DEBUG_ALIMENTS: Sélection automatique de la consultation la plus récente: ${mostRecentConsultation.date}"
-                        )
                         selectConsultation(mostRecentConsultation)
                     } else if (consultations.isNotEmpty()) {
                         // Si aucune consultation n'a de date, prendre la première
-                        println(
-                                "DEBUG_ALIMENTS: Aucune consultation avec date valide, sélection de la première consultation"
-                        )
                         selectConsultation(consultations.first())
                     }
                 } else {
                     // Si aucune consultation n'est chargée, conservons celles qui étaient déjà dans
                     // l'animal
-                    println(
-                            "DEBUG_ALIMENTS: Aucune consultation chargée, conservation des ${animal.consultations.size} consultations existantes"
-                    )
 
                     // Si l'animal a des consultations existantes, sélectionner la plus récente
                     if (animal.consultations.isNotEmpty()) {
@@ -316,30 +285,19 @@ class AnimalDetailViewModel(
                                     it.date!!
                                 }
                         if (mostRecentConsultation != null) {
-                            println(
-                                    "DEBUG_ALIMENTS: Sélection automatique de la consultation existante la plus récente: ${mostRecentConsultation.date}"
-                            )
                             selectConsultation(mostRecentConsultation)
                         } else {
                             // Si aucune consultation n'a de date, prendre la première
-                            println(
-                                    "DEBUG_ALIMENTS: Aucune consultation existante avec date valide, sélection de la première consultation"
-                            )
                             selectConsultation(animal.consultations.first())
                         }
                     }
                 }
 
-                println("DEBUG_ALIMENTS: Animal mis à jour avec les consultations")
             } catch (e: Exception) {
                 // Gérer les erreurs potentielles lors du chargement des consultations
-                println("DEBUG_ALIMENTS: Erreur lors du chargement des consultations: ${e.message}")
                 e.printStackTrace()
             }
 
-            println(
-                    "DEBUG_ALIMENTS: Fin setAnimal - toutes les données de l'animal précédent ont été réinitialisées"
-            )
         }
     }
 
@@ -353,17 +311,8 @@ class AnimalDetailViewModel(
             _selectedConsultation.value = fullConsultation
 
             // Afficher des détails de débogage pour s'assurer que les aliments sont bien chargés
-            println(
-                    "DEBUG selectConsultation - Consultation sélectionnée: ${fullConsultation?.date}, Rations: ${fullConsultation?.rations?.size}"
-            )
             fullConsultation?.rations?.forEachIndexed { index, ration ->
-                println(
-                        "DEBUG selectConsultation - Ration[$index]: ${ration.name}, Aliments: ${ration.alimentMutableList.size}"
-                )
                 ration.alimentMutableList.forEachIndexed { alimentIndex, aliment ->
-                    println(
-                            "DEBUG selectConsultation - Aliment[$alimentIndex]: UUID=${aliment.uuid}, refAlimUnif=${aliment.refAlimUnif}, aliment=${aliment.aliment?.nom ?: "null"}"
-                    )
                 }
             }
 
@@ -375,9 +324,6 @@ class AnimalDetailViewModel(
 
             // Calculer automatiquement les valeurs métaboliques pour la consultation sélectionnée
             fullConsultation?.let { consultation ->
-                println(
-                        "🔍 DEBUG: Déclenchement calculerValeursMetaboliques pour consultation ${consultation.uuid}"
-                )
                 calculerValeursMetaboliques(consultation)
             }
         }
@@ -390,12 +336,8 @@ class AnimalDetailViewModel(
      */
     fun selectRation(ration: Ration) {
         println("DEBUG_ALIMENTS: Début selectRation pour ration ${ration.uuid} (${ration.name})")
-        println("DEBUG_ALIMENTS: Ration a ${ration.alimentMutableList.size} aliments avant copie")
 
         ration.alimentMutableList.forEachIndexed { k, a ->
-            println(
-                    "DEBUG_ALIMENTS: --Avant copie - Aliment $k: UUID=${a.uuid}, refAlimUnif=${a.refAlimUnif}, nom=${a.aliment?.nom ?: "ALIMENT NULL"}"
-            )
         }
 
         // Créer une copie profonde de la ration, y compris sa liste d'aliments
@@ -405,20 +347,14 @@ class AnimalDetailViewModel(
                                 ration.alimentMutableList.map { it.copy() }.toMutableList()
                 )
 
-        println("DEBUG_ALIMENTS: Ration copiée a ${rationCopy.alimentMutableList.size} aliments")
         rationCopy.alimentMutableList.forEachIndexed { k, a ->
-            println(
-                    "DEBUG_ALIMENTS: --Après copie - Aliment $k: UUID=${a.uuid}, refAlimUnif=${a.refAlimUnif}, nom=${a.aliment?.nom ?: "ALIMENT NULL"}"
-            )
         }
 
         _selectedRation.value = rationCopy
-        println("DEBUG_ALIMENTS: Ration sélectionnée mise à jour")
 
         // Lancer l'analyse de la ration automatiquement
         analyserRationSelectionnee()
 
-        println("DEBUG_ALIMENTS: Fin selectRation")
     }
 
     /**
@@ -446,15 +382,10 @@ class AnimalDetailViewModel(
                 }
 
                 // Effectuer l'analyse en passant la consultation pour les variables supplémentaires
-                println("DEBUG: Lancement analyse avec consultation: ${consultationActuelle?.uuid}")
                 val resultat = rationAnalyzer.analyserRation(rationActuelle, consultationActuelle)
                 _rationAnalyseResultat.value = resultat
 
-                println(
-                        "Analyse de la ration terminée: ${resultat.ratios.size} ratios calculés, ${resultat.alertes.size} alertes générées"
-                )
             } catch (e: Exception) {
-                println("Erreur lors de l'analyse de la ration: ${e.message}")
                 e.printStackTrace()
 
                 // Créer un résultat avec une erreur
@@ -486,9 +417,7 @@ class AnimalDetailViewModel(
                 val resultat = rationAnalyzer.comparerRations(rationActuelle, autreRation)
                 _rationsComparaison.value = resultat
 
-                println("Comparaison des rations terminée: ${resultat.size} nutriments comparés")
             } catch (e: Exception) {
-                println("Erreur lors de la comparaison des rations: ${e.message}")
                 e.printStackTrace()
 
                 // Réinitialiser la comparaison en cas d'erreur
@@ -581,7 +510,6 @@ class AnimalDetailViewModel(
 
     /** Réinitialise la ration sélectionnée en mettant selectedRation à null */
     fun resetSelectedRation() {
-        println("DEBUG_ALIMENTS: Réinitialisation de la ration sélectionnée")
         _selectedRation.value = null
     }
 
@@ -616,35 +544,22 @@ class AnimalDetailViewModel(
             try {
                 // Assigner l'ID de l'animal à la consultation
                 val animalId = _animal.value?.uuid ?: return@launch
-                println("Tentative d'ajout d'une consultation pour l'animal avec ID: $animalId")
 
                 // Vérifier que l'animal existe dans la base de données
                 val animalExists = animalRepository.getAnimalById(animalId) != null
                 if (!animalExists) {
-                    println(
-                            "Erreur: Impossible d'ajouter une consultation car l'animal avec l'ID $animalId n'existe pas dans la base de données"
-                    )
                     return@launch
                 }
 
                 // Créer une copie de la consultation avec l'ID de l'animal
                 val consultationToSave = consultation.copy(idAnim = animalId)
-                println("UUID de la consultation à sauvegarder: ${consultationToSave.uuid}")
-                println("Date de la consultation à sauvegarder: ${consultationToSave.date}")
-                println(
-                        "Objet de la consultation à sauvegarder: ${consultationToSave.objectConsult}"
-                )
 
                 // Sauvegarder la consultation
                 consultationRepository.saveConsultation(consultationToSave)
-                println("Consultation sauvegardée avec succès")
 
                 // Rafraîchir les consultations depuis la base de données
                 val updatedConsultations =
                         consultationRepository.getConsultationsForAnimal(animalId)
-                println(
-                        "Nombre de consultations récupérées après sauvegarde: ${updatedConsultations.size}"
-                )
 
                 // Mettre à jour l'animal avec les consultations rafraîchies
                 _animal.update { currentAnimal ->
@@ -655,18 +570,13 @@ class AnimalDetailViewModel(
                 val savedConsultation =
                         consultationRepository.getConsultationById(consultationToSave.uuid)
                 if (savedConsultation != null) {
-                    println("Consultation récupérée depuis la base de données avec succès")
                     _selectedConsultation.value = savedConsultation
                 } else {
-                    println(
-                            "Erreur: Impossible de récupérer la consultation sauvegardée depuis la base de données"
-                    )
                 }
 
                 // Arrêter le mode édition
                 isEditingConsultation = false
             } catch (e: Exception) {
-                println("Erreur lors de l'ajout de la consultation: ${e.message}")
                 e.printStackTrace()
             }
         }
@@ -680,9 +590,6 @@ class AnimalDetailViewModel(
                 val animalExists = animalRepository.getAnimalById(animalId) != null
 
                 if (!animalExists) {
-                    println(
-                            "Erreur: Impossible de mettre à jour la consultation car l'animal avec l'ID $animalId n'existe pas dans la base de données"
-                    )
                     return@launch
                 }
 
@@ -700,7 +607,6 @@ class AnimalDetailViewModel(
                 // Mettre à jour la consultation sélectionnée
                 _selectedConsultation.value = consultation
             } catch (e: Exception) {
-                println("Erreur lors de la mise à jour de la consultation: ${e.message}")
                 e.printStackTrace()
             }
         }
@@ -715,52 +621,29 @@ class AnimalDetailViewModel(
         updateConsultation(updatedConsultation)
 
         // Log pour déboguer
-        println("DEBUG: Ration ajoutée avec UUID=${ration.uuid}, nom=${ration.name}")
-        println("DEBUG: La consultation a maintenant ${updatedRations.size} rations")
     }
 
     fun updateRationInConsultation(ration: Ration) {
-        println(
-                "DEBUG_ALIMENTS: Début updateRationInConsultation pour ration ${ration.uuid} (${ration.name})"
-        )
-        println(
-                "DEBUG_ALIMENTS: Ration à mettre à jour contient ${ration.alimentMutableList.size} aliments"
-        )
 
         ration.alimentMutableList.forEachIndexed { k, a ->
-            println(
-                    "DEBUG_ALIMENTS: --Ration à mettre à jour - Aliment $k: UUID=${a.uuid}, refAlimUnif=${a.refAlimUnif}, nom=${a.aliment?.nom ?: "ALIMENT NULL"}"
-            )
         }
 
         val consultation = _selectedConsultation.value?.copy() ?: return
-        println("DEBUG_ALIMENTS: Consultation actuelle: ${consultation.uuid}, ${consultation.date}")
-        println("DEBUG_ALIMENTS: Consultation contient ${consultation.rations.size} rations")
 
         val updatedRations = consultation.rations.toMutableList()
         val index = updatedRations.indexOfFirst { it.uuid == ration.uuid }
 
         if (index >= 0) {
-            println("DEBUG_ALIMENTS: Ration trouvée à l'index $index")
             updatedRations[index] = ration
             val updatedConsultation = consultation.copy(rations = updatedRations)
 
-            println("DEBUG_ALIMENTS: Mise à jour de la consultation avec la ration modifiée")
-            println(
-                    "DEBUG_ALIMENTS: Consultation mise à jour contient ${updatedConsultation.rations.size} rations"
-            )
 
             _selectedConsultation.value = updatedConsultation
 
-            println(
-                    "DEBUG_ALIMENTS: Sauvegarde des modifications dans la base de données via updateConsultation"
-            )
             updateConsultation(updatedConsultation)
         } else {
-            println("DEBUG_ALIMENTS: ERREUR - Ration non trouvée dans la consultation")
         }
 
-        println("DEBUG_ALIMENTS: Fin updateRationInConsultation")
     }
 
     fun removeRationFromConsultation(ration: Ration) {
@@ -782,8 +665,6 @@ class AnimalDetailViewModel(
         }
 
         // Log pour déboguer
-        println("DEBUG: Ration supprimée avec UUID=${ration.uuid}, nom=${ration.name}")
-        println("DEBUG: La consultation a maintenant ${updatedRations.size} rations")
     }
 
     fun deleteConsultation(consultation: ConsultationEv) {
@@ -806,16 +687,10 @@ class AnimalDetailViewModel(
 
     fun updateAnimal(updatedAnimal: AnimalEv) {
         viewModelScope.launch {
-            println(
-                    "DEBUG_DETAIL_VM: Début updateAnimal avec updatedAnimal.specieId=${updatedAnimal.specieId}, espece=${updatedAnimal.getEspece().label}"
-            )
 
             // Conserver l'UUID et les consultations de l'animal original
             val animalToUpdate =
                     _animal.value?.let { originalAnimal ->
-                        println(
-                                "DEBUG_DETAIL_VM: Animal original avec specieId=${originalAnimal.specieId}, espece=${originalAnimal.getEspece().label}"
-                        )
 
                         updatedAnimal.copy(
                                 uuid = originalAnimal.uuid,
@@ -824,17 +699,11 @@ class AnimalDetailViewModel(
                     }
                             ?: return@launch
 
-            println(
-                    "DEBUG_DETAIL_VM: Avant mise à jour en DB: animalToUpdate.specieId=${animalToUpdate.specieId}, espece=${animalToUpdate.getEspece().label}"
-            )
 
             animalRepository.updateAnimal(animalToUpdate)
 
             // Mettre à jour l'animal dans le ViewModel
             _animal.value = animalToUpdate
-            println(
-                    "DEBUG_DETAIL_VM: Animal mis à jour dans le ViewModel: specieId=${animalToUpdate.specieId}, espece=${animalToUpdate.getEspece().label}"
-            )
 
             // Arrêter le mode édition
             isEditingAnimal = false
@@ -874,7 +743,6 @@ class AnimalDetailViewModel(
                 isEditingAnimal = false
                 _showFullScreenEdit.value = false
             } catch (e: Exception) {
-                println("Erreur lors de la suppression de l'animal: ${e.message}")
                 e.printStackTrace()
                 return@launch
             }
@@ -951,8 +819,6 @@ class AnimalDetailViewModel(
             selectRation(newRation)
 
             // Log pour débogage
-            println("DEBUG: Ration créée avec UUID=${newRation.uuid}, nom=${newRation.name}")
-            println("DEBUG: La consultation a maintenant ${updatedRations.size} rations")
         }
     }
 
@@ -1059,7 +925,6 @@ class AnimalDetailViewModel(
             // Sauvegarder les modifications dans la base de données
             consultationRepository.saveConsultation(updatedConsultation)
 
-            println("DEBUG: Ration dupliquée avec succès, UUID=${duplicatedRation.uuid}")
         }
     }
 
@@ -1101,9 +966,7 @@ class AnimalDetailViewModel(
                 _isAnalyzing.value = true
                 val resultat = rationAnalyzer.analyserRation(ration, consultation)
                 _rationAnalyseResultat.value = resultat
-                println("Analyse de la ration ${ration.name} terminée")
             } catch (e: Exception) {
-                println("Erreur lors de l'analyse de la ration: ${e.message}")
                 e.printStackTrace()
             } finally {
                 _isAnalyzing.value = false
@@ -1123,9 +986,7 @@ class AnimalDetailViewModel(
                 _isAnalyzing.value = true
                 val comparaison = rationAnalyzer.comparerRations(ration1, ration2)
                 _rationsComparaison.value = comparaison
-                println("Comparaison entre ${ration1.name} et ${ration2.name} terminée")
             } catch (e: Exception) {
-                println("Erreur lors de la comparaison des rations: ${e.message}")
                 e.printStackTrace()
             } finally {
                 _isAnalyzing.value = false
@@ -1151,13 +1012,9 @@ class AnimalDetailViewModel(
                     // espèce
                     _availableReferences.value = references
 
-                    println(
-                            "Références chargées pour l'espèce: ${espece.label} - ${references.size} références trouvées"
-                    )
                     references.forEach { ref -> println("- ${ref.nom} (maladie: ${ref.maladie})") }
                 }
             } catch (e: Exception) {
-                println("Erreur lors du chargement des références: ${e.message}")
                 _availableReferences.value = emptyList()
             } finally {
                 _isLoadingReferences.value = false
@@ -1180,13 +1037,9 @@ class AnimalDetailViewModel(
                     if (consultation != null) {
                         consultation.referenceGeneraleId = referenceId
                         updateConsultation(consultation)
-                        println(
-                                "Référence générale définie pour la consultation $consultationId: $referenceId"
-                        )
                     }
                 }
             } catch (e: Exception) {
-                println("Erreur lors de la définition de la référence générale: ${e.message}")
             }
         }
     }
@@ -1206,13 +1059,9 @@ class AnimalDetailViewModel(
                     if (consultation != null) {
                         consultation.ajouterReferenceMaladie(referenceId)
                         updateConsultation(consultation)
-                        println(
-                                "Référence de maladie ajoutée à la consultation $consultationId: $referenceId"
-                        )
                     }
                 }
             } catch (e: Exception) {
-                println("Erreur lors de l'ajout de la référence de maladie: ${e.message}")
             }
         }
     }
@@ -1232,13 +1081,9 @@ class AnimalDetailViewModel(
                     if (consultation != null) {
                         consultation.supprimerReferenceMaladie(referenceId)
                         updateConsultation(consultation)
-                        println(
-                                "Référence de maladie supprimée de la consultation $consultationId: $referenceId"
-                        )
                     }
                 }
             } catch (e: Exception) {
-                println("Erreur lors de la suppression de la référence de maladie: ${e.message}")
             }
         }
     }
@@ -1278,7 +1123,6 @@ class AnimalDetailViewModel(
                     updateConsultation(updatedConsultation)
                 }
             } catch (e: Exception) {
-                println("Erreur lors de la mise à jour de la référence générale: ${e.message}")
             }
         }
     }
@@ -1297,7 +1141,6 @@ class AnimalDetailViewModel(
                     }
                 }
             } catch (e: Exception) {
-                println("Erreur lors de l'ajout de la référence de maladie: ${e.message}")
             }
         }
     }
@@ -1314,7 +1157,6 @@ class AnimalDetailViewModel(
                     updateConsultation(updatedConsultation)
                 }
             } catch (e: Exception) {
-                println("Erreur lors de la suppression de la référence de maladie: ${e.message}")
             }
         }
     }
@@ -1363,7 +1205,6 @@ class AnimalDetailViewModel(
                 // Recalculer les valeurs métaboliques après la sauvegarde
                 calculerValeursMetaboliques(consultation)
             } catch (e: Exception) {
-                println("Erreur lors de la sauvegarde de la consultation: ${e.message}")
             }
         }
     }
@@ -1376,22 +1217,15 @@ class AnimalDetailViewModel(
      * @param consultation La consultation pour laquelle calculer les valeurs
      */
     fun calculerValeursMetaboliques(consultation: ConsultationEv) {
-        println(
-                "🎯 DEBUG: calculerValeursMetaboliques APPELÉE pour consultation ${consultation.uuid}"
-        )
 
         viewModelScope.launch {
             try {
-                println(
-                        "🚀 DEBUG: Début calcul valeurs métaboliques pour consultation ${consultation.uuid}"
-                )
 
                 // 1. Charger la référence appropriée
                 val reference = obtenirReferenceActiveConsultation(consultation)
                 _referenceUtilisee.value = reference
 
                 if (reference == null) {
-                    println("❌ DEBUG: Aucune référence trouvée pour la consultation")
                     resetCalculsMetaboliques()
                     return@launch
                 }
@@ -1401,35 +1235,22 @@ class AnimalDetailViewModel(
                 // 2. Calculer le poids métabolique
                 val poidsMetabolique = calculerPoidsMetabolique(consultation, reference)
                 _poidsMetabolique.value = poidsMetabolique
-                println("📊 DEBUG: Poids métabolique calculé: $poidsMetabolique")
 
                 // 3. Calculer le BEE (Besoin Énergétique Standard)
-                println("📋 DEBUG: Début calcul BEE...")
                 val bee = calculerBesoinEnergetiqueStandard(consultation, reference)
                 _besoinEnergetiqueStandard.value = bee
-                println("⚡ DEBUG: BEE calculé et stocké: $bee")
 
                 if (bee == null) {
-                    println("❌ DEBUG: BEE est null - vérifier l'équation BEE de la référence")
                 }
 
                 // 4. Calculer le besoin énergétique total en multipliant le BEE avec tous les
                 // coefficients
-                println("📋 DEBUG: Début calcul besoin énergétique total...")
                 val besoinTotal = bee?.let { calculerBesoinEnergetiqueTotal(consultation, it) }
                 _besoinEnergetiqueTotal.value = besoinTotal
-                println("🎯 DEBUG: Besoin total calculé et stocké: $besoinTotal")
 
-                println(
-                        "🎯 DEBUG: Calculs terminés - PM: $poidsMetabolique, BEE: $bee, Total: $besoinTotal"
-                )
 
                 // Vérifier les valeurs dans les StateFlow
-                println(
-                        "📊 DEBUG: Vérification StateFlow - PM: ${_poidsMetabolique.value}, BEE: ${_besoinEnergetiqueStandard.value}, Total: ${_besoinEnergetiqueTotal.value}"
-                )
             } catch (e: Exception) {
-                println("💥 Erreur lors du calcul des valeurs métaboliques: ${e.message}")
                 e.printStackTrace()
                 resetCalculsMetaboliques()
             }
@@ -1446,13 +1267,9 @@ class AnimalDetailViewModel(
             val equationBW = reference.equationBW
 
             if (equationBW == null || equationBW.equationScript.isEmpty()) {
-                println("DEBUG: Aucune équation BW définie pour la référence ${reference.nom}")
                 return null
             }
 
-            println(
-                    "DEBUG: Calcul poids métabolique avec équation: ${equationBW.name} - ${equationBW.equationScript}"
-            )
 
             // Créer la map des variables incluant BW et les variables supplémentaires
             val variables = mutableMapOf<String, Double>()
@@ -1463,7 +1280,6 @@ class AnimalDetailViewModel(
                 suppVar.variable?.let { varKind ->
                     val valeur = suppVar.varue?.toDouble() ?: 0.0
                     variables[varKind.variable] = valeur
-                    println("DEBUG: Variable supplémentaire pour BW: ${varKind.variable} = $valeur")
                 }
             }
 
@@ -1476,10 +1292,8 @@ class AnimalDetailViewModel(
 
             val resultat = ExpressionEvaluator.evaluer(equationBW.equationScript, variables)
 
-            println("DEBUG: Poids métabolique calculé: $resultat kg^0.75")
             return resultat
         } catch (e: Exception) {
-            println("ERROR: Erreur lors du calcul du poids métabolique: ${e.message}")
             return null
         }
     }
@@ -1494,7 +1308,6 @@ class AnimalDetailViewModel(
             val equationBEE = reference.equationBEE
 
             if (equationBEE == null || equationBEE.equationScript.isEmpty()) {
-                println("DEBUG: Aucune équation BEE définie pour la référence ${reference.nom}")
                 return null
             }
 
@@ -1507,36 +1320,23 @@ class AnimalDetailViewModel(
                             is Int -> poids.toDouble()
                             is String -> poids.toDouble()
                             else -> {
-                                println("ERROR: Type de poids non supporté: ${poids::class}")
                                 return null
                             }
                         }
                     } catch (e: NumberFormatException) {
-                        println("ERROR: Conversion du poids impossible: $poids")
                         return null
                     }
 
-            println(
-                    "DEBUG: Calcul BEE avec équation: ${equationBEE.name} - ${equationBEE.equationScript}"
-            )
 
             // Créer la map des variables incluant BW et les variables supplémentaires
             val variables = mutableMapOf<String, Double>()
             variables["BW"] = poidsDouble
-            println("🔍 DEBUG BEE: Équation à évaluer: ${equationBEE.equationScript}")
-            println("🔍 DEBUG BEE: Variables de base - BW = $poidsDouble")
 
             // Ajouter les variables supplémentaires de la consultation
-            println(
-                    "🔍 DEBUG BEE: Nombre de variables supplémentaires: ${consultation.suppVarp.size}"
-            )
             consultation.suppVarp.forEach { suppVar ->
                 suppVar.variable?.let { varKind ->
                     val valeur = suppVar.varue?.toDouble() ?: 0.0
                     variables[varKind.variable] = valeur
-                    println(
-                            "🔍 DEBUG BEE: Variable supplémentaire ajoutée: ${varKind.variable} = $valeur"
-                    )
                 }
             }
 
@@ -1544,26 +1344,20 @@ class AnimalDetailViewModel(
             mapperVariablesEquation(variables)
 
             // Ajouter des valeurs par défaut pour les variables manquantes courantes
-            println("🔍 DEBUG BEE: Variables avant ajout par défaut: ${variables.keys}")
             val variablesManquantes =
                     ajouterVariablesParDefaut(variables, equationBEE.equationScript)
             if (variablesManquantes.isNotEmpty()) {
-                println("WARNING: Variables manquantes dans l'équation: $variablesManquantes")
                 // Ne pas arrêter l'exécution, mais logger pour le debugging
             }
-            println("🔍 DEBUG BEE: Variables finales avant évaluation: $variables")
 
             val resultat = ExpressionEvaluator.evaluer(equationBEE.equationScript, variables)
 
             if (resultat == null) {
-                println("ERROR: Échec de l'évaluation de l'équation BEE")
                 return null
             }
 
-            println("DEBUG: BEE calculé: $resultat kcal/jour")
             return resultat
         } catch (e: Exception) {
-            println("ERROR: Erreur lors du calcul du BEE: ${e.message}")
             e.printStackTrace() // Ajout pour debugging
             return null
         }
@@ -1585,10 +1379,6 @@ class AnimalDetailViewModel(
         // Calcul du besoin total
         val besoinTotal = bee * k1 * k2 * k3 * k4 * k5 * coefficientAjustement
 
-        println(
-                "DEBUG: Calcul besoin total - BEE: $bee, K1: $k1, K2: $k2, K3: $k3, K4: $k4, K5: $k5, Coeff: $coefficientAjustement"
-        )
-        println("DEBUG: Besoin énergétique total calculé: $besoinTotal kcal/jour")
 
         return besoinTotal
     }
@@ -1604,7 +1394,6 @@ class AnimalDetailViewModel(
             consultation.referenceGeneraleId?.let { referenceId ->
                 val reference = databaseReferenceEvRepository.getReferenceEvById(referenceId)
                 if (reference != null) {
-                    println("DEBUG: Référence générale trouvée: ${reference.nom}")
                     return reference
                 }
             }
@@ -1613,15 +1402,12 @@ class AnimalDetailViewModel(
             consultation.referencesMaladies.firstOrNull()?.let { referenceId ->
                 val reference = databaseReferenceEvRepository.getReferenceEvById(referenceId)
                 if (reference != null) {
-                    println("DEBUG: Référence de maladie trouvée: ${reference.nom}")
                     return reference
                 }
             }
 
-            println("DEBUG: Aucune référence trouvée pour la consultation")
             null
         } catch (e: Exception) {
-            println("Erreur lors de la récupération de la référence: ${e.message}")
             null
         }
     }
@@ -1655,7 +1441,6 @@ class AnimalDetailViewModel(
     ): List<String> {
         // Extraire toutes les variables utilisées dans l'équation
         val variablesUtilisees = ExpressionEvaluator.extraireVariables(equationScript)
-        println("🔍 DEBUG: Variables extraites de l'équation: $variablesUtilisees")
 
         // Valeurs par défaut pour les variables courantes
         val valeursParDefaut =
@@ -1679,17 +1464,10 @@ class AnimalDetailViewModel(
             if (!variables.containsKey(variable)) {
                 if (valeursParDefaut.containsKey(variable)) {
                     variables[variable] = valeursParDefaut[variable]!!
-                    println(
-                            "🎯 DEBUG: Variable par défaut ajoutée: $variable = ${valeursParDefaut[variable]}"
-                    )
                 } else {
-                    println("⚠️ DEBUG: Variable $variable non trouvée dans les valeurs par défaut!")
                     variablesManquantes.add(variable)
                 }
             } else {
-                println(
-                        "✅ DEBUG: Variable $variable déjà présente avec valeur: ${variables[variable]}"
-                )
             }
         }
 
@@ -1726,11 +1504,9 @@ class AnimalDetailViewModel(
                         // Recalculer les valeurs métaboliques
                         calculerValeursMetaboliques(consultationMiseAJour)
 
-                        println("Coefficient d'ajustement mis à jour: $nouveauCoefficient")
                     }
                 }
             } catch (e: Exception) {
-                println("Erreur lors de la mise à jour du coefficient d'ajustement: ${e.message}")
             }
         }
     }
@@ -1776,7 +1552,6 @@ class AnimalDetailViewModel(
                                                     k5Id = description
                                             )
                                     else -> {
-                                        println("Type de coefficient non reconnu: $coefficientType")
                                         return@launch
                                     }
                                 }
@@ -1786,15 +1561,9 @@ class AnimalDetailViewModel(
                         // Recalculer les valeurs métaboliques
                         calculerValeursMetaboliques(consultationMiseAJour)
 
-                        println(
-                                "Coefficient $coefficientType mis à jour: $nouveauCoefficient (description: $description)"
-                        )
                     }
                 }
             } catch (e: Exception) {
-                println(
-                        "Erreur lors de la mise à jour du coefficient $coefficientType: ${e.message}"
-                )
             }
         }
     }
@@ -1826,15 +1595,9 @@ class AnimalDetailViewModel(
      * @param weight Le poids en kg
      */
     fun addWeight(date: LocalDate, weight: Float) {
-        println("ADDWEIGHT CALLED")
-        println("ADDWEIGHT CALLED")
-        println("ADDWEIGHT CALLED")
         viewModelScope.launch {
             try {
                 val animalActuel = _animal.value
-                println(
-                        "DEBUG_ADDWEIGHT: Animal actuel: ${animalActuel?.nom}, UUID: ${animalActuel?.uuid}"
-                )
                 if (animalActuel != null) {
                     // Créer un nouveau WeightDate
                     val newWeight =
@@ -1852,9 +1615,6 @@ class AnimalDetailViewModel(
 
                     // Mettre à jour l'animal dans le ViewModel
                     _animal.update { updatedAnimal }
-                    println(
-                            "DEBUG_ADDWEIGHT: Animal mis à jour dans le ViewModel, nb poids: ${updatedAnimal.weightHistory.size}"
-                    )
 
                     // Mettre à jour la consultation sélectionnée si elle existe
                     _selectedConsultation.value?.let { currentConsultation ->
@@ -1870,13 +1630,8 @@ class AnimalDetailViewModel(
                     // Désactiver le mode d'ajout
                     isAddingWeight = false
 
-                    println("Poids ajouté avec succès: ${weight}kg le ${date}")
-                    println(
-                            "DEBUG_ADDWEIGHT: Fin addWeight - total poids dans l'animal: ${updatedAnimal.weightHistory.size}"
-                    )
                 }
             } catch (e: Exception) {
-                println("Erreur lors de l'ajout du poids: ${e.message}")
             }
         }
     }
@@ -1914,10 +1669,8 @@ class AnimalDetailViewModel(
                         }
                     }
 
-                    println("Poids supprimé avec succès")
                 }
             } catch (e: Exception) {
-                println("Erreur lors de la suppression du poids: ${e.message}")
             }
         }
     }

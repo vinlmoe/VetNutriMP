@@ -43,7 +43,6 @@ fun SpeciesPreferencesView(
                         preferencesRepository.loadPreferences()
                         currentPreferences = preferencesRepository.preferences
                 } catch (e: Exception) {
-                        println("Erreur lors du chargement des préférences: ${e.message}")
                         currentPreferences = fr.vetbrain.vetnutri_mp.Data.PreferencesApplication()
                 } finally {
                         isLoading = false
@@ -175,16 +174,10 @@ fun SpeciesPreferencesView(
                                                                                                                                                 currentPreferences =
                                                                                                                                                         updatedPrefs
 
-                                                                                                                                                println(
-                                                                                                                                                        "DEBUG: Expression mise à jour pour ${species.label}: ${type.displayName}"
-                                                                                                                                                )
                                                                                                                                         }
                                                                                                                         } catch (
                                                                                                                                 e:
                                                                                                                                         Exception) {
-                                                                                                                                println(
-                                                                                                                                        "Erreur lors de la sauvegarde: ${e.message}"
-                                                                                                                                )
                                                                                                                         } finally {
                                                                                                                                 isSaving =
                                                                                                                                         false
@@ -301,13 +294,7 @@ fun SpeciesPreferencesView(
                                                                                 updatedPrefs
                                                                         )
                                                                 currentPreferences = updatedPrefs
-                                                                println(
-                                                                        "DEBUG: Nutriments mis à jour pour ${species.label}"
-                                                                )
                                                         } catch (e: Exception) {
-                                                                println(
-                                                                        "Erreur lors de la sauvegarde des nutriments: ${e.message}"
-                                                                )
                                                         } finally {
                                                                 isSaving = false
                                                         }

@@ -217,7 +217,6 @@ class DatabaseEquationRepository(
                 equationDao.insertEquation(equation5.toEntity())
                 equationDao.insertEquation(equation6.toEntity())
 
-                println("DEBUG: Équations d'exemple ajoutées à la base de données")
             }
 
             // Charger les équations initiales
@@ -252,49 +251,31 @@ class DatabaseEquationRepository(
 
     @OptIn(ExperimentalUuidApi::class)
     override suspend fun saveEquation(equation: Equation) {
-        println("DEBUG DatabaseEquationRepository: Début de saveEquation - UUID: ${equation.uuid}")
-        println("DEBUG DatabaseEquationRepository: Nom: ${equation.name}")
-        println("DEBUG DatabaseEquationRepository: Type: ${equation.kind.name}")
-        println("DEBUG DatabaseEquationRepository: Script: ${equation.equationScript}")
-        println("DEBUG DatabaseEquationRepository: Bib UUID: ${equation.bib.uuid}")
 
         try {
             // Si l'UUID est vide, créer une nouvelle équation avec un UUID généré
             val equationToSave =
                     if (equation.uuid.isEmpty()) {
-                        println(
-                                "DEBUG DatabaseEquationRepository: UUID vide, génération d'un nouvel UUID"
-                        )
                         equation.copy(uuid = kotlin.uuid.Uuid.random().toString())
                     } else {
                         equation
                     }
 
-            println("DEBUG DatabaseEquationRepository: UUID final: ${equationToSave.uuid}")
 
             val entity = equationToSave.toEntity()
-            println("DEBUG DatabaseEquationRepository: Entité convertie avec succès")
-            println("DEBUG DatabaseEquationRepository: Entity bibRef: ${entity.bibRef}")
 
             // Vérifier si l'équation existe déjà
             val existingEquation = equationDao.getEquationById(equationToSave.uuid)
             if (existingEquation != null) {
                 // Équation existante : utiliser updateEquation
-                println("DEBUG DatabaseEquationRepository: Équation existante trouvée, mise à jour")
                 equationDao.updateEquation(entity)
-                println("DEBUG DatabaseEquationRepository: Équation mise à jour avec succès")
             } else {
                 // Nouvelle équation : utiliser insertEquation
-                println("DEBUG DatabaseEquationRepository: Nouvelle équation, insertion")
                 equationDao.insertEquation(entity)
-                println("DEBUG DatabaseEquationRepository: Équation insérée avec succès")
             }
 
             loadEquations()
         } catch (e: Exception) {
-            println(
-                    "DEBUG DatabaseEquationRepository: Erreur lors de la sauvegarde de l'équation: ${e.message}"
-            )
             e.printStackTrace()
             throw e
         }
@@ -314,22 +295,16 @@ class DatabaseEquationRepository(
 
         return try {
             // Obtenir le nombre total d'équations avant suppression
-            println("DEBUG DatabaseEquationRepository: Récupération de toutes les équations...")
             val allEquations = getAllEquations()
             val count = allEquations.size
-            println("DEBUG DatabaseEquationRepository: $count équations trouvées dans la base")
 
             if (count > 0) {
-                println("DEBUG DatabaseEquationRepository: Suppression de toutes les équations...")
                 // Supprimer toutes les équations
                 equationDao.deleteAllEquations()
-                println("DEBUG DatabaseEquationRepository: Suppression terminée")
             }
 
-            println("DEBUG DatabaseEquationRepository: $count équations supprimées avec succès")
             count
         } catch (e: Exception) {
-            println("DEBUG DatabaseEquationRepository: ERREUR lors de la suppression: ${e.message}")
             e.printStackTrace()
             throw e
         }

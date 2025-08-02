@@ -196,7 +196,6 @@ fun analyserValeursNutritionnellesRationSelective(
  * @param ration La ration à analyser
  */
 fun exempleUtilisationAnalyseRation(ration: Ration) {
-    println("=== Analyse nutritionnelle de la ration: ${ration.name} ===")
 
     val valeursNutritionnelles = analyserValeursNutritionnellesRation(ration)
 
@@ -207,10 +206,8 @@ fun exempleUtilisationAnalyseRation(ration: Ration) {
     nutrimentsImportants.forEach { labelNutriment ->
         val valeur = valeursNutritionnelles[labelNutriment]
         if (valeur != null) {
-            println("\n--- $labelNutriment ---")
             println("Valeur totale: ${String.format("%.2f", valeur.valeur)} ${valeur.unite.label}")
             println("Complet: ${if (valeur.complete) "Oui" else "Non"}")
-            println("Répartition: ${valeur.description}")
         }
     }
 
@@ -219,12 +216,6 @@ fun exempleUtilisationAnalyseRation(ration: Ration) {
     val nutrimentsAvecValeur = valeursNutritionnelles.values.count { it.valeur > 0 }
     val totalNutriments = valeursNutritionnelles.size
 
-    println("\n=== Statistiques générales ===")
-    println("Nutriments avec données complètes: $nutrimentsComplets/$totalNutriments")
-    println("Nutriments avec au moins une valeur: $nutrimentsAvecValeur/$totalNutriments")
-    println(
-            "Pourcentage de complétude: ${String.format("%.1f", (nutrimentsComplets.toDouble() / totalNutriments) * 100)}%"
-    )
 }
 
 /**
@@ -233,7 +224,6 @@ fun exempleUtilisationAnalyseRation(ration: Ration) {
  * @param ration La ration à analyser
  */
 fun exempleUtilisationAnalyseRationSelective(ration: Ration) {
-    println("=== Analyse nutritionnelle sélective de la ration: ${ration.name} ===")
 
     // Exemple de préférences utilisateur : seulement les nutriments principaux et quelques
     // vitamines
@@ -258,25 +248,11 @@ fun exempleUtilisationAnalyseRationSelective(ration: Ration) {
             analyserValeursNutritionnellesRationSelective(ration, preferencesUtilisateur)
 
     // Afficher les résultats
-    println(
-            "Nutriments analysés selon les préférences (${valeursNutritionnellesSelectives.size} nutriments):"
-    )
     valeursNutritionnellesSelectives.forEach { (label, valeur) ->
-        println(
-                "- $label: ${String.format("%.2f", valeur.valeur)} ${valeur.unite.label} " +
-                        "(Complet: ${if (valeur.complete) "Oui" else "Non"})"
-        )
     }
 
     // Comparaison avec l'analyse complète
     val valeursNutritionnellesCompletes = analyserValeursNutritionnellesRation(ration)
-    println("\nComparaison:")
-    println("- Analyse complète: ${valeursNutritionnellesCompletes.size} nutriments")
-    println("- Analyse sélective: ${valeursNutritionnellesSelectives.size} nutriments")
-    println(
-            "- Réduction: ${String.format("%.1f", 
-        (1.0 - valeursNutritionnellesSelectives.size.toDouble() / valeursNutritionnellesCompletes.size) * 100)}%"
-    )
 }
 
 /**

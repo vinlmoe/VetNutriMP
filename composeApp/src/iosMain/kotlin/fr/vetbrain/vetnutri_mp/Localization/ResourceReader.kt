@@ -40,7 +40,6 @@ actual open class ResourceReader actual constructor() {
                 null
             }
         } catch (e: Exception) {
-            println("ERROR ResourceReader: Impossible de lire le fichier $filename: ${e.message}")
             null
         }
     }
@@ -59,9 +58,6 @@ actual open class ResourceReader actual constructor() {
 
             nsString.writeToFile(filePath, true, NSUTF8StringEncoding, null)
         } catch (e: Exception) {
-            println(
-                    "ERROR ResourceReader: Impossible d'écrire dans le fichier $filename: ${e.message}"
-            )
             false
         }
     }

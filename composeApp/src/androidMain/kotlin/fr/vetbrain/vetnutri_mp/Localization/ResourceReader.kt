@@ -16,9 +16,6 @@ actual open class ResourceReader actual constructor() {
             try {
                 file.readText()
             } catch (e: Exception) {
-                println(
-                        "ERROR ResourceReader: Impossible de lire le fichier $filename: ${e.message}"
-                )
                 null
             }
         } else {
@@ -35,9 +32,6 @@ actual open class ResourceReader actual constructor() {
             file.writeText(content)
             true
         } catch (e: Exception) {
-            println(
-                    "ERROR ResourceReader: Impossible d'écrire dans le fichier $filename: ${e.message}"
-            )
             false
         }
     }

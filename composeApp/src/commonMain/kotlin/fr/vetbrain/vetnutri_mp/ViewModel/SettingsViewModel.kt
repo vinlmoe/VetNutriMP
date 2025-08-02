@@ -270,9 +270,6 @@ class SettingsViewModel(
                         errorCount = result.errorCount,
                         nonResolvedNutrients = result.nonResolvedNutrientsCount
                 )
-        println(
-                "Importation terminée. ${result.importedCount} aliments importés, ${result.updatedCount} mis à jour, ${result.deletedCount} supprimés."
-        )
         return result
     }
 
@@ -282,7 +279,6 @@ class SettingsViewModel(
      */
     suspend fun clearAllReferences(): Int {
         println("DEBUG SettingsViewModel: clearAllReferences() appelée")
-        println("DEBUG SettingsViewModel: referenceEvRepository = $referenceEvRepository")
 
         return if (referenceEvRepository != null) {
             println("DEBUG SettingsViewModel: Repository non null, appel de clearAllReferences()")
@@ -290,7 +286,6 @@ class SettingsViewModel(
             println("DEBUG SettingsViewModel: clearAllReferences() a retourné: $result")
             result
         } else {
-            println("DEBUG SettingsViewModel: ERREUR - referenceEvRepository est NULL!")
             0
         }
     }
@@ -301,7 +296,6 @@ class SettingsViewModel(
      */
     suspend fun clearAllEquations(): Int {
         println("DEBUG SettingsViewModel: clearAllEquations() appelée")
-        println("DEBUG SettingsViewModel: equationRepository = $equationRepository")
 
         return if (equationRepository != null) {
             println("DEBUG SettingsViewModel: Repository non null, appel de clearAllEquations()")
@@ -309,7 +303,6 @@ class SettingsViewModel(
             println("DEBUG SettingsViewModel: clearAllEquations() a retourné: $result")
             result
         } else {
-            println("DEBUG SettingsViewModel: ERREUR - equationRepository est NULL!")
             0
         }
     }
@@ -320,7 +313,6 @@ class SettingsViewModel(
      */
     suspend fun clearAllBiblioRefs(): Int {
         println("DEBUG SettingsViewModel: clearAllBiblioRefs() appelée")
-        println("DEBUG SettingsViewModel: biblioRefRepository = $biblioRefRepository")
 
         return if (biblioRefRepository != null) {
             println("DEBUG SettingsViewModel: Repository non null, appel de clearAllBiblioRefs()")
@@ -328,7 +320,6 @@ class SettingsViewModel(
             println("DEBUG SettingsViewModel: clearAllBiblioRefs() a retourné: $result")
             result
         } else {
-            println("DEBUG SettingsViewModel: ERREUR - biblioRefRepository est NULL!")
             0
         }
     }

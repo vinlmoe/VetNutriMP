@@ -329,9 +329,6 @@ object Mappers {
                         }
                 } else {
                         // Si pas de JSON, utiliser les entités directement
-                        println(
-                                "DEBUG Mappers: Pas de especesJson, utilisation des entités directes: ${especes.size} espèces"
-                        )
                         especesList.addAll(
                                 especes
                                         .map {
@@ -341,9 +338,6 @@ object Mappers {
                                                         // nettoyage et la conversion
                                                         val espece = Espece.getFromString(it.espece)
                                                         if (espece != null) {
-                                                                println(
-                                                                        "DEBUG Mappers: Espèce trouvée dans les entités: ${espece.name}"
-                                                                )
                                                                 espece.name
                                                         } else {
                                                                 // Nettoyer quand même avant
@@ -354,9 +348,6 @@ object Mappers {
                                                                                 .replace("]", "")
                                                                                 .replace("\"", "")
                                                                                 .trim()
-                                                                println(
-                                                                        "DEBUG Mappers: Espèce non reconnue dans les entités: $cleaned"
-                                                                )
                                                                 if (cleaned.isNotEmpty()) cleaned
                                                                 else null
                                                         }
@@ -368,9 +359,6 @@ object Mappers {
                                                                         .replace("]", "")
                                                                         .replace("\"", "")
                                                                         .trim()
-                                                        println(
-                                                                "DEBUG Mappers: Erreur lors de la conversion de l'espèce ${it.espece}: ${e.message}"
-                                                        )
                                                         if (cleaned.isNotEmpty()) cleaned else null
                                                 }
                                         }
@@ -378,19 +366,13 @@ object Mappers {
                         )
                 }
 
-                println(
-                        "DEBUG Mappers: Espèces extraites pour l'aliment ${this.uuid}: $especesList"
-                )
 
                 val indicatList = mutableListOf<AlimIndic>()
 
                 // Ajouter des logs de débogage pour comprendre le contenu de indicationsJson
-                println("DEBUG Mappers: Extraction des indications pour l'aliment ${this.uuid}")
-                println("DEBUG Mappers: indicationsJson = ${this.indicationsJson}")
 
                 if (!this.indicationsJson.isNullOrEmpty()) {
                         val indicationsStringList = this.indicationsJson.split(",")
-                        println("DEBUG Mappers: indicationsStringList = $indicationsStringList")
 
                         indicationsStringList.forEach { indic ->
                                 try {
@@ -401,20 +383,11 @@ object Mappers {
                                                         indic.trim().uppercase() == "AUTRE"
                                         ) {
                                                 indicatList.add(alimIndic)
-                                                println(
-                                                        "DEBUG Mappers: Indication reconnue: $indic -> ${alimIndic.name}"
-                                                )
                                         }
                                 } catch (e: Exception) {
-                                        println(
-                                                "DEBUG Mappers: Erreur lors du traitement de l'indication $indic: ${e.message}"
-                                        )
                                 }
                         }
                 } else {
-                        println(
-                                "DEBUG Mappers: Pas de indicationsJson, utilisation des entités directes: ${indications.size} indications"
-                        )
                         indicatList.addAll(
                                 indications.mapNotNull { entity ->
                                         try {
@@ -423,24 +396,15 @@ object Mappers {
                                                                 entity.indication
                                                         )
                                                 if (indication != null) {
-                                                        println(
-                                                                "DEBUG Mappers: Indication trouvée dans les entités: ${indication.name}"
-                                                        )
                                                 }
                                                 indication
                                         } catch (e: Exception) {
-                                                println(
-                                                        "DEBUG Mappers: Erreur lors de la conversion de l'indication ${entity.indication}: ${e.message}"
-                                                )
                                                 null
                                         }
                                 }
                         )
                 }
 
-                println(
-                        "DEBUG Mappers: Indications extraites pour l'aliment ${this.uuid}: ${indicatList.map { it.name }}"
-                )
 
                 return AlimentEv(
                         uuid = this.uuid,
@@ -630,19 +594,8 @@ object Mappers {
 
         /** Extensions pour la conversion entre Equation et EquationEntity */
         fun Equation.toEntity(): EquationEntity {
-                println(
-                        "DEBUG Mappers: Conversion de Equation en EquationEntity - UUID: ${this.uuid}"
-                )
-                println("DEBUG Mappers: Nom: ${this.name}")
-                println("DEBUG Mappers: Description: ${this.description}")
-                println("DEBUG Mappers: Script: ${this.equationScript}")
-                println("DEBUG Mappers: Type: ${this.kind.name}")
-                println("DEBUG Mappers: Espèce: ${this.specie?.name}")
-                println("DEBUG Mappers: Bib UUID: ${this.bib.uuid}")
-                println("DEBUG Mappers: Bib firstAuthor: ${this.bib.firstAuthor}")
 
                 val bibRef = if (this.bib.uuid.isNotEmpty()) this.bib.uuid else null
-                println("DEBUG Mappers: bibRef final: $bibRef")
 
                 return EquationEntity(
                         uuid = this.uuid,
@@ -658,16 +611,6 @@ object Mappers {
         }
 
         fun EquationEntity.toDomain(biblioRef: BiblioRef? = null): Equation {
-                println(
-                        "DEBUG Mappers: Conversion de EquationEntity en Equation - UUID: ${this.uuid}"
-                )
-                println("DEBUG Mappers: Nom: ${this.name}")
-                println("DEBUG Mappers: Description: ${this.description}")
-                println("DEBUG Mappers: Script: ${this.equationScript}")
-                println("DEBUG Mappers: Kind: ${this.kind}")
-                println("DEBUG Mappers: Specie: ${this.specie}")
-                println("DEBUG Mappers: BibRef ID: ${this.bibRef}")
-                println("DEBUG Mappers: BiblioRef fourni: ${biblioRef?.uuid}")
 
                 return Equation(
                         uuid = this.uuid,

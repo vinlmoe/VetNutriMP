@@ -69,7 +69,6 @@ class AnimalDetailViewModelDatabaseTest : BaseTest() {
                 runTest(testDispatcher) {
                         // Given
                         val animal = AnimalEv.createTestAnimal()
-                        println("Test: Animal créé avec UUID=${animal.uuid}")
 
                         val consultation =
                                 ConsultationEv(
@@ -77,43 +76,23 @@ class AnimalDetailViewModelDatabaseTest : BaseTest() {
                                         date = LocalDate(2024, 1, 1),
                                         objectConsult = "Test consultation"
                                 )
-                        println(
-                                "Test: Consultation créée avec UUID=${consultation.uuid}, pour animal=${consultation.idAnim}"
-                        )
 
                         animal.consultations.add(consultation)
-                        println(
-                                "Test: Consultation ajoutée à l'animal, nombre de consultations=${animal.consultations.size}"
-                        )
 
                         // When - Sauvegarde de l'animal avec sa consultation
                         animalRepository.saveAnimal(animal)
-                        println("Test: Animal sauvegardé")
 
                         // Récupérer les consultations directement du DAO pour vérifier
                         val consultationsFromDao =
                                 testAnimalDao.getConsultationsForAnimal(animal.uuid)
-                        println(
-                                "Test: Consultations récupérées du DAO: ${consultationsFromDao.size}"
-                        )
                         consultationsFromDao.forEach {
-                                println(
-                                        "Test: DAO consultation: UUID=${it.uuid}, idAnim=${it.idAnim}, objectConsult=${it.objectConsult}"
-                                )
                         }
 
                         // Au lieu d'utiliser setAnimal directement, récupérons l'animal du
                         // repository
                         val savedAnimal = animalRepository.getAnimalById(animal.uuid)
-                        println("Test: Animal récupéré du repository: ${savedAnimal != null}")
                         if (savedAnimal != null) {
-                                println(
-                                        "Test: Animal récupéré UUID=${savedAnimal.uuid}, nombre de consultations=${savedAnimal.consultations.size}"
-                                )
                                 savedAnimal.consultations.forEach {
-                                        println(
-                                                "Test: Consultation récupérée: UUID=${it.uuid}, objectConsult=${it.objectConsult}"
-                                        )
                                 }
                         }
 
@@ -126,13 +105,7 @@ class AnimalDetailViewModelDatabaseTest : BaseTest() {
                         // Then
                         val animalValue = viewModel.animal.value
                         assertNotNull(animalValue, "L'animal ne devrait pas être null")
-                        println(
-                                "Test: Animal dans le ViewModel: UUID=${animalValue?.uuid}, nombre de consultations=${animalValue?.consultations?.size}"
-                        )
                         animalValue?.consultations?.forEach {
-                                println(
-                                        "Test: ViewModel consultation: UUID=${it.uuid}, objectConsult=${it.objectConsult}"
-                                )
                         }
 
                         assertEquals(

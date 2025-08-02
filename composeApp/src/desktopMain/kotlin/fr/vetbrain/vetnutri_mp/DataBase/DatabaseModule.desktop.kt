@@ -9,7 +9,6 @@ class DesktopDatabaseModule : DatabaseModule {
 
     override fun initializeDatabase() {
         // Initialisation de la base de données desktop (probablement SQLite)
-        println("Desktop database initialization - not yet fully implemented")
     }
 
     override fun getDatabase(): Any? {
@@ -18,7 +17,6 @@ class DesktopDatabaseModule : DatabaseModule {
 
     override fun closeDatabase() {
         database = null
-        println("Desktop database closure - not yet fully implemented")
     }
 }
 

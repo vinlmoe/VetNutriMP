@@ -44,7 +44,6 @@ fun ReferenceEvEquationView(
         modifier: Modifier = Modifier,
         isInTabView: Boolean = false
 ) {
-        println("DEBUG: Displaying ReferenceEvEquationView for reference ID: $referenceId")
 
         val currentReferenceEv by
                 viewModel.currentReferenceEv.collectAsState(initial = ReferenceEv())
@@ -54,29 +53,13 @@ fun ReferenceEvEquationView(
         val equationLoading by equationViewModel.isLoading.collectAsState(initial = false)
         val scope = rememberCoroutineScope()
 
-        println(
-                "DEBUG: ReferenceEvEquationView - loadingReferenceEv: $isLoading, loadingEquations: $equationLoading"
-        )
-        println(
-                "DEBUG: ReferenceEvEquationView - availableEquations from equationViewModel: ${equations.size}, from referenceEvViewModel: ${availableEquations.size}"
-        )
-        println(
-                "DEBUG: ReferenceEvEquationView - associatedEquations: ${currentReferenceEv.equationsNut.size}"
-        )
-        println(
-                "DEBUG: Current reference: ${currentReferenceEv.uuid}, name: ${currentReferenceEv.nom}"
-        )
 
         // Combinons les deux sources d'équations pour avoir plus de chances d'en avoir
         val combinedEquations =
                 remember(equations, availableEquations) {
-                        println(
-                                "DEBUG: Combining equations from both sources. EquationViewModel: ${equations.size}, ReferenceViewModel: ${availableEquations.size}"
-                        )
                         (equations + availableEquations).distinctBy { it.uuid }
                 }
 
-        println("DEBUG: Combined equations count: ${combinedEquations.size}")
 
         // État pour la confirmation de suppression
         val (showDeleteConfirm, setShowDeleteConfirm) = remember { mutableStateOf(false) }
@@ -85,10 +68,6 @@ fun ReferenceEvEquationView(
 
         // Charger les équations associées à la référence au chargement
         LaunchedEffect(referenceId) {
-                println(
-                        "DEBUG: LaunchedEffect triggered in ReferenceEvEquationView with referenceId: $referenceId"
-                )
-                println("DEBUG: Loading reference and equations...")
                 viewModel.loadReferenceEvById(referenceId)
                 equationViewModel.loadEquations()
                 viewModel.loadEquations()
@@ -96,28 +75,10 @@ fun ReferenceEvEquationView(
 
         // Logs de débogage pour l'état de chargement et les données
         LaunchedEffect(isLoading, equationLoading, currentReferenceEv, equations) {
-                println(
-                        "DEBUG: Loading states - Reference: $isLoading, Equations: $equationLoading"
-                )
-                println(
-                        "DEBUG: Current reference: ${currentReferenceEv.nom}, ID: ${currentReferenceEv.uuid}"
-                )
-                println("DEBUG: Available equations count: ${equations.size}")
-                println(
-                        "DEBUG: Associated nutritional equations count: ${currentReferenceEv.equationsNut.size}"
-                )
-                println(
-                        "DEBUG: Current equations - BW: ${currentReferenceEv.equationBW?.uuid}, BEE: ${currentReferenceEv.equationBEE?.uuid}"
-                )
-                println(
-                        "DEBUG: Current equations - DEcom: ${currentReferenceEv.equationDEcom?.uuid}, DEraw: ${currentReferenceEv.equationDEraw?.uuid}"
-                )
         }
 
         // Nous utiliserons une approche plus directe lors de l'affichage
-        println("DEBUG: Associated equation IDs count: ${currentReferenceEv.equationsNut.size}")
         currentReferenceEv.equationsNut.forEach { equation ->
-                println("DEBUG: Associated equation: ${equation.name}, UUID: ${equation.uuid}")
         }
 
         // Définir le contenu principal
@@ -129,7 +90,6 @@ fun ReferenceEvEquationView(
                                         .padding(horizontal = AppSizes.paddingMedium)
                 ) {
                         if (isLoading || equationLoading) {
-                                println("DEBUG: Showing loading indicator")
                                 // Indicateur de chargement au centre
                                 CircularProgressIndicator(
                                         modifier = Modifier.align(Alignment.Center),
@@ -137,18 +97,6 @@ fun ReferenceEvEquationView(
                                 )
                         } else {
                                 // Afficher l'interface que des équations soient disponibles ou non
-                                println(
-                                        "DEBUG: Rendering UI with ${combinedEquations.size} combined equations"
-                                )
-                                println(
-                                        "DEBUG: Reference equations: BW=${currentReferenceEv.equationBW?.name}, BEE=${currentReferenceEv.equationBEE?.name}"
-                                )
-                                println(
-                                        "DEBUG: Reference equations: DEcom=${currentReferenceEv.equationDEcom?.name}, DEraw=${currentReferenceEv.equationDEraw?.name}"
-                                )
-                                println(
-                                        "DEBUG: Associated nutrition equations: ${currentReferenceEv.equationsNut.size}"
-                                )
 
                                 // Section des équations principales et liste des équations
                                 // additionnelles
@@ -246,9 +194,6 @@ fun ReferenceEvEquationView(
                                                                                 combinedEquations,
                                                                         onEquationSelected = {
                                                                                 equation ->
-                                                                                println(
-                                                                                        "DEBUG: Updating BW equation to: ${equation?.name}, ID: ${equation?.uuid}"
-                                                                                )
                                                                                 viewModel
                                                                                         .updateReferenceEquation(
                                                                                                 "BW",
@@ -277,9 +222,6 @@ fun ReferenceEvEquationView(
                                                                                 combinedEquations,
                                                                         onEquationSelected = {
                                                                                 equation ->
-                                                                                println(
-                                                                                        "DEBUG: Updating BEE equation to: ${equation?.name}, ID: ${equation?.uuid}"
-                                                                                )
                                                                                 viewModel
                                                                                         .updateReferenceEquation(
                                                                                                 "BEE",
@@ -308,9 +250,6 @@ fun ReferenceEvEquationView(
                                                                                 combinedEquations,
                                                                         onEquationSelected = {
                                                                                 equation ->
-                                                                                println(
-                                                                                        "DEBUG: Updating DEcom equation to: ${equation?.name}, ID: ${equation?.uuid}"
-                                                                                )
                                                                                 viewModel
                                                                                         .updateReferenceEquation(
                                                                                                 "DEcom",
@@ -339,9 +278,6 @@ fun ReferenceEvEquationView(
                                                                                 combinedEquations,
                                                                         onEquationSelected = {
                                                                                 equation ->
-                                                                                println(
-                                                                                        "DEBUG: Updating DEraw equation to: ${equation?.name}, ID: ${equation?.uuid}"
-                                                                                )
                                                                                 viewModel
                                                                                         .updateReferenceEquation(
                                                                                                 "DEraw",
@@ -438,25 +374,13 @@ fun ReferenceEvEquationView(
                                                                                 )
                                                                 )
 
-                                                                println(
-                                                                        "DEBUG: Rendering associated nutrition equations section"
-                                                                )
-                                                                println(
-                                                                        "DEBUG: Current reference equationsNut size: ${currentReferenceEv.equationsNut.size}"
-                                                                )
                                                                 currentReferenceEv.equationsNut
                                                                         .forEach { equation ->
-                                                                                println(
-                                                                                        "DEBUG: Processing associated equation: ${equation.name}, ID: ${equation.uuid}"
-                                                                                )
                                                                         }
 
                                                                 if (currentReferenceEv.equationsNut
                                                                                 .isEmpty()
                                                                 ) {
-                                                                        println(
-                                                                                "DEBUG: No associated nutrition equations to display"
-                                                                        )
                                                                         Text(
                                                                                 "Aucune équation nutritionnelle associée",
                                                                                 style =
@@ -465,9 +389,6 @@ fun ReferenceEvEquationView(
                                                                                                 .body2
                                                                         )
                                                                 } else {
-                                                                        println(
-                                                                                "DEBUG: Found ${currentReferenceEv.equationsNut.size} associated equations to display"
-                                                                        )
 
                                                                         // Afficher directement les
                                                                         // équations associées
@@ -475,9 +396,6 @@ fun ReferenceEvEquationView(
                                                                                 .equationsNut
                                                                                 .forEach { equation
                                                                                         ->
-                                                                                        println(
-                                                                                                "DEBUG: Displaying associated equation: ${equation.name}, UUID: ${equation.uuid}"
-                                                                                        )
                                                                                         Row(
                                                                                                 modifier =
                                                                                                         Modifier.fillMaxWidth(),
@@ -498,9 +416,6 @@ fun ReferenceEvEquationView(
                                                                                                 )
                                                                                                 IconButton(
                                                                                                         onClick = {
-                                                                                                                println(
-                                                                                                                        "DEBUG: Removing associated equation: ${equation.name}, UUID: ${equation.uuid}"
-                                                                                                                )
                                                                                                                 viewModel
                                                                                                                         .toggleNutritionEquation(
                                                                                                                                 equation
@@ -644,17 +559,11 @@ fun ReferenceEvEquationView(
                                                         EquationItem(
                                                                 equation = equation,
                                                                 onEdit = {
-                                                                        println(
-                                                                                "DEBUG: Edit equation requested: ${equation.name}, UUID: ${equation.uuid}"
-                                                                        )
                                                                         onEditEquation(
                                                                                 equation.uuid
                                                                         )
                                                                 },
                                                                 onDelete = {
-                                                                        println(
-                                                                                "DEBUG: Delete equation requested: ${equation.name}, UUID: ${equation.uuid}"
-                                                                        )
                                                                         setEquationToDelete(
                                                                                 equation
                                                                         )
@@ -665,12 +574,6 @@ fun ReferenceEvEquationView(
                                                                         // référence en tant
                                                                         // qu'équation
                                                                         // nutritionnelle
-                                                                        println(
-                                                                                "DEBUG: Toggle association requested for equation: ${equation.name}, UUID: ${equation.uuid}"
-                                                                        )
-                                                                        println(
-                                                                                "DEBUG: Current equationsNut contains ${currentReferenceEv.equationsNut.size} items"
-                                                                        )
                                                                         val isAssociated =
                                                                                 currentReferenceEv
                                                                                         .equationsNut
@@ -678,9 +581,6 @@ fun ReferenceEvEquationView(
                                                                                                 it.uuid ==
                                                                                                         equation.uuid
                                                                                         }
-                                                                        println(
-                                                                                "DEBUG: Equation is currently associated: $isAssociated"
-                                                                        )
                                                                         viewModel
                                                                                 .toggleNutritionEquation(
                                                                                         equation
@@ -755,16 +655,9 @@ private fun EquationDropdown(
         onEquationSelected: (Equation?) -> Unit,
         isLoading: Boolean
 ) {
-        println(
-                "DEBUG: EquationDropdown component for $label - Selected equation: ${selectedEquation?.name ?: "none"}, ID: ${selectedEquation?.uuid ?: "none"}"
-        )
-        println("DEBUG: EquationDropdown has ${availableEquations.size} available equations")
 
         // Logging individual equations for debugging
         availableEquations.forEach { equation ->
-                println(
-                        "DEBUG: Available equation in dropdown: ${equation.name}, ID: ${equation.uuid}"
-                )
         }
 
         var expanded by remember { mutableStateOf(false) }
@@ -793,7 +686,6 @@ private fun EquationDropdown(
                         // Option pour ne sélectionner aucune équation
                         DropdownMenuItem(
                                 onClick = {
-                                        println("DEBUG: Selected 'None' option for $label")
                                         onEquationSelected(null)
                                         expanded = false
                                 }
@@ -803,9 +695,6 @@ private fun EquationDropdown(
                         availableEquations.forEach { equation ->
                                 DropdownMenuItem(
                                         onClick = {
-                                                println(
-                                                        "DEBUG: Selected equation for $label: ${equation.name}, ID: ${equation.uuid}"
-                                                )
                                                 onEquationSelected(equation)
                                                 expanded = false
                                         }

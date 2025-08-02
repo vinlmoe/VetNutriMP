@@ -321,9 +321,6 @@ fun AnimalEditView(
 
                                                 // Log de débogage pour vérifier les informations de
                                                 // l'animal
-                                                println(
-                                                        "DEBUG_EDIT_VIEW: Animal mis à jour avec nom=${updatedAnimal.nom}, specieId=${updatedAnimal.specieId}, espece=${selectedEspece.label}"
-                                                )
 
                                                 onSave(updatedAnimal)
                                         },

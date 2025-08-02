@@ -40,17 +40,13 @@ class PreferencesRepository(private val preferencesStorage: PreferencesStorage) 
     suspend fun loadPreferences() {
         try {
             val jsonString = preferencesStorage.getString(PREFERENCES_KEY, "{}")
-            println("DEBUG: JSON récupéré: $jsonString")
             if (jsonString.isNotBlank() && jsonString != "{}") {
                 // Essayer de parser le JSON manuellement
                 _preferences = parsePreferencesFromJson(jsonString)
-                println("DEBUG: Préférences chargées depuis le stockage")
             } else {
                 _preferences = PreferencesApplication()
-                println("DEBUG: Préférences par défaut utilisées")
             }
         } catch (e: Exception) {
-            println("DEBUG: Erreur lors du chargement: ${e.message}")
             // En cas d'erreur, utiliser les préférences par défaut
             _preferences = PreferencesApplication()
         }
@@ -62,9 +58,7 @@ class PreferencesRepository(private val preferencesStorage: PreferencesStorage) 
             val jsonString = serializePreferencesToJson(preferences)
             preferencesStorage.saveString(PREFERENCES_KEY, jsonString)
             _preferences = preferences
-            println("DEBUG: Préférences sauvegardées dans le stockage")
         } catch (e: Exception) {
-            println("DEBUG: Erreur lors de la sauvegarde: ${e.message}")
             // Même en cas d'erreur de sauvegarde, on met à jour en mémoire
             _preferences = preferences
         }
@@ -106,9 +100,6 @@ class PreferencesRepository(private val preferencesStorage: PreferencesStorage) 
         preferences.preferencesParEspece.forEach { (speciesName, prefs) ->
             val nutrientsJson = serializeNutrientsMap(prefs.nutrimentsSelectionnes)
             // Utiliser directement l'ID de l'enum
-            println(
-                    "DEBUG SAVE: Sauvegarde $speciesName avec expressionId=${prefs.typeExpressionBesoinId} (${TypeExpressionBesoin.getById(prefs.typeExpressionBesoinId).displayName})"
-            )
             speciesEntries.add(
                     "\"$speciesName\":{\"expressionId\":${prefs.typeExpressionBesoinId},\"nutrients\":$nutrientsJson}"
             )
@@ -117,7 +108,6 @@ class PreferencesRepository(private val preferencesStorage: PreferencesStorage) 
 
         sb.append("}}")
         val result = sb.toString()
-        println("DEBUG SAVE: JSON généré: $result")
         return result
     }
 
@@ -158,7 +148,6 @@ class PreferencesRepository(private val preferencesStorage: PreferencesStorage) 
 
                     if (speciesMatch != null) {
                         val speciesData = speciesMatch.groupValues[1]
-                        println("DEBUG: Données trouvées pour $speciesName: $speciesData")
 
                         // Extraire l'expression
                         val expressionPattern = "\"expressionId\":([0-9]+)"
@@ -167,16 +156,10 @@ class PreferencesRepository(private val preferencesStorage: PreferencesStorage) 
                                 expressionMatch?.groupValues?.get(1)?.toIntOrNull()
                                         ?: TypeExpressionBesoin.DEFAULT.id
 
-                        println(
-                                "DEBUG LOAD: Expression ID trouvée pour $speciesName: $expressionId (${TypeExpressionBesoin.getById(expressionId).displayName})"
-                        )
 
                         // Extraire les nutriments
                         val nutrients = parseNutrientsFromJson(speciesData)
 
-                        println(
-                                "DEBUG: ${nutrients.size} catégories de nutriments trouvées pour $speciesName"
-                        )
 
                         preferencesMap[speciesName] =
                                 fr.vetbrain.vetnutri_mp.Data.PreferencesEspece(
@@ -184,21 +167,13 @@ class PreferencesRepository(private val preferencesStorage: PreferencesStorage) 
                                         typeExpressionBesoinId = expressionId,
                                         nutrimentsSelectionnes = nutrients
                                 )
-                        println(
-                                "DEBUG LOAD: Préférences créées pour $speciesName avec expression ID: $expressionId"
-                        )
                     } else {
-                        println("DEBUG: Aucune donnée trouvée pour $speciesName dans le JSON")
-                        println(
-                                "DEBUG: Espèce $speciesName - utilisation des préférences par défaut"
-                        )
                     }
                 }
             }
 
             return PreferencesApplication(preferencesParEspece = preferencesMap)
         } catch (e: Exception) {
-            println("DEBUG: Erreur de parsing JSON: ${e.message}")
             return PreferencesApplication()
         }
     }
@@ -228,9 +203,7 @@ class PreferencesRepository(private val preferencesStorage: PreferencesStorage) 
                 }
             }
 
-            println("DEBUG: Nutriments parsés: ${result.mapValues { it.value.size }}")
         } catch (e: Exception) {
-            println("DEBUG: Erreur parsing nutriments: ${e.message}")
             // Retourner une map vide en cas d'erreur
             return mapOf(
                     "BASE" to emptyList(),
@@ -256,10 +229,8 @@ class PreferencesRepository(private val preferencesStorage: PreferencesStorage) 
         return try {
             val nouvellesPreferences = parsePreferencesFromJson(preferencesJson)
             savePreferences(nouvellesPreferences)
-            println("DEBUG: Préférences importées avec succès")
             true
         } catch (e: Exception) {
-            println("ERROR: Erreur lors de l'import des préférences: ${e.message}")
             false
         }
     }

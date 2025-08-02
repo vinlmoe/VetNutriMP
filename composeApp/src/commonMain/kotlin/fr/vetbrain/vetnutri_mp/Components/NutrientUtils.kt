@@ -16,9 +16,6 @@ fun calculerValeursNutritionnelles(
 ): Map<Nutrient, Float> {
     val resultat = mutableMapOf<Nutrient, Float>()
 
-    println(
-            "Calcul des valeurs nutritionnelles pour ${alimentsRation.size} aliments et ${nutriments.size} nutriments"
-    )
 
     // Initialiser tous les nutriments à 0
     nutriments.forEach { nutriment -> resultat[nutriment] = 0f }
@@ -31,15 +28,9 @@ fun calculerValeursNutritionnelles(
             // pas exister
             val aliment = alimentRation.aliment
             if (aliment == null) {
-                println("Aliment #$index: NULL - Ignoré")
                 return@forEachIndexed
             }
 
-            println(
-                    "Traitement de l'aliment #$index: ${aliment.nom ?: "Sans nom"} (${aliment.uuid})"
-            )
-            println("  - Quantité: ${alimentRation.quantity}g")
-            println("  - valMap contient ${aliment.valMap.size} nutriments")
 
             // Accès direct aux valeurs nutritionnelles dans valMap
             nutriments.forEach { nutriment ->
@@ -54,9 +45,6 @@ fun calculerValeursNutritionnelles(
                     val nouvelleValeur = valeurCourante + contributionNutriment
                     resultat[nutriment] = nouvelleValeur
 
-                    println(
-                            "  - Nutriment ${nutriment.label} trouvé dans valMap: $valeurNutritive -> contribution: $contributionNutriment"
-                    )
                 } else {
                     // Vérifier si le nutriment existe avec une clé similaire
                     // (insensible à la casse)
@@ -74,9 +62,6 @@ fun calculerValeursNutritionnelles(
                             val nouvelleValeur = valeurCourante + contributionNutriment
                             resultat[nutriment] = nouvelleValeur
 
-                            println(
-                                    "  - Nutriment ${nutriment.label} trouvé via ${nutrimentTrouve.label}: $valeurNutritiveAlt -> contribution: $contributionNutriment"
-                            )
                         }
                     }
                 }
@@ -92,9 +77,6 @@ fun calculerValeursNutritionnelles(
                                         }
                             }
             ) {
-                println(
-                        "  - Utilisation de getNutrient() comme fallback pour les nutriments manquants"
-                )
 
                 // Accès direct aux propriétés nutritionnelles
                 // Pour chaque nutriment demandé
@@ -103,9 +85,6 @@ fun calculerValeursNutritionnelles(
                     // pour cet aliment
                     val valeurExistante = resultat[nutriment]
                     if (valeurExistante != null && valeurExistante > 0f) {
-                        println(
-                                "  - Nutriment ${nutriment.label} déjà traité, valeur actuelle: $valeurExistante"
-                        )
                         return@forEach
                     }
 
@@ -127,9 +106,6 @@ fun calculerValeursNutritionnelles(
                         val nouvelleValeur = valeurCourante + contributionNutriment
                         resultat[nutriment] = nouvelleValeur
 
-                        println(
-                                "  - Nutriment ${nutriment.label} obtenu via getNutrient(): $valeurNutriment -> contribution: $contributionNutriment"
-                        )
                     } else {
                         println("  - Nutriment ${nutriment.label} non trouvé via getNutrient()")
                     }
@@ -137,18 +113,13 @@ fun calculerValeursNutritionnelles(
             }
         } catch (e: Exception) {
             // Ignorer les erreurs et continuer avec les autres aliments
-            println(
-                    "Erreur lors du calcul des valeurs nutritionnelles pour l'aliment #$index: ${e.message}"
-            )
             e.printStackTrace()
         }
     }
 
     // Afficher un résumé des résultats
-    println("Résultats du calcul des valeurs nutritionnelles:")
     nutriments.forEach { nutriment ->
         val valeur = resultat[nutriment] ?: 0f
-        println("  - ${nutriment.label}: $valeur ${nutriment.unite}")
     }
 
     return resultat

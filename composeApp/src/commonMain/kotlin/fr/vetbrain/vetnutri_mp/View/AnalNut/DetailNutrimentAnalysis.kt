@@ -99,9 +99,6 @@ private fun calculerAffichageNutriment(
         // Si pas de type d'expression défini, affichage par défaut
         val typeExpression = typeExpressionBesoin ?: TypeExpressionBesoin.DEFAULT
 
-        println(
-                "DEBUG CALCUL: TypeExpression utilisé: ${typeExpression.displayName} -> UnitReqEnum: ${typeExpression.unitReqEnum.label}"
-        )
 
         return when (typeExpression) {
                 TypeExpressionBesoin.PAR_KG -> {
@@ -188,24 +185,12 @@ fun NutrientDetailDialog(
 
         LaunchedEffect(espece) {
                 try {
-                        println(
-                                "DEBUG DETAIL DIALOG: Chargement des préférences pour ${espece.label}"
-                        )
                         // IMPORTANT: Charger les préférences depuis le stockage avant de les
                         // utiliser
                         preferencesRepo.loadPreferences()
                         val preferences = preferencesRepo.getPreferencesForSpecies(espece)
                         typeExpressionBesoin = preferences.getTypeExpressionBesoinEnum()
-                        println(
-                                "DEBUG DETAIL DIALOG: Type d'expression trouvé: ${typeExpressionBesoin.displayName} (ID: ${typeExpressionBesoin.id})"
-                        )
-                        println(
-                                "DEBUG DETAIL DIALOG: UnitReqEnum correspondant: ${typeExpressionBesoin.unitReqEnum.label}"
-                        )
                 } catch (e: Exception) {
-                        println(
-                                "DEBUG DETAIL DIALOG: Erreur lors du chargement des préférences: ${e.message}"
-                        )
                         typeExpressionBesoin = TypeExpressionBesoin.DEFAULT
                 }
         }
@@ -253,12 +238,6 @@ fun NutrientDetailDialog(
 
                                                 // Apport selon le type d'expression choisi
                                                 // (priorité - en gras)
-                                                println(
-                                                        "DEBUG DETAIL DIALOG: Calcul pour ${nom} avec type ${typeExpressionBesoin.displayName}"
-                                                )
-                                                println(
-                                                        "DEBUG DETAIL DIALOG: BEE = $besoinEnergetiqueEntretien, Poids = $poidsAnimal, PoidsMetab = $poidsMetabolique"
-                                                )
                                                 val (valeurFormatee, uniteAffichage) =
                                                         calculerAffichageNutriment(
                                                                 valeurNutritionnelle,
@@ -267,9 +246,6 @@ fun NutrientDetailDialog(
                                                                 poidsAnimal,
                                                                 besoinEnergetiqueEntretien
                                                         )
-                                                println(
-                                                        "DEBUG DETAIL DIALOG: Résultat calculé: $valeurFormatee $uniteAffichage"
-                                                )
 
                                                 Text(
                                                         text =

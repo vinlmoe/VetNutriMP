@@ -86,8 +86,6 @@ fun FoodEditView(
 
         // Mettre à jour les états locaux lorsque l'aliment change
         LaunchedEffect(aliment) {
-                println("DEBUG FoodEditView: Mise à jour des champs avec aliment: ${aliment.nom}")
-                println("DEBUG FoodEditView: Espèces dans l'aliment: ${aliment.especes}")
 
                 nomState.value = aliment.nom ?: ""
                 brandState.value = aliment.brand ?: ""
@@ -110,13 +108,7 @@ fun FoodEditView(
                         val espece = Espece.getFromString(especeStr)
                         if (espece != null) {
                                 matchedEspeces.add(espece)
-                                println(
-                                        "DEBUG FoodEditView: Espèce trouvée pour $especeStr: ${espece.name}"
-                                )
                         } else {
-                                println(
-                                        "DEBUG FoodEditView: Aucune espèce trouvée pour: $especeStr"
-                                )
                         }
                 }
 
@@ -216,14 +208,8 @@ fun FoodEditView(
                                                                         fr.vetbrain.vetnutri_mp.Data.NutrientQuantity>()
 
                                                         // Log pour débugger
-                                                        println(
-                                                                "DEBUG FoodEditView: Nutriments avant traitement: ${nutrientValues.size}"
-                                                        )
                                                         nutrientValues.forEach { (nutrient, value)
                                                                 ->
-                                                                println(
-                                                                        "DEBUG FoodEditView: Nutriment ${nutrient.label} = '$value'"
-                                                                )
                                                         }
 
                                                         // Traiter chaque valeur nutritionnelle
@@ -260,14 +246,8 @@ fun FoodEditView(
                                                         }
 
                                                         // Log pour débugger
-                                                        println(
-                                                                "DEBUG FoodEditView: Nutriments après traitement: ${processedNutrientValues.size}"
-                                                        )
                                                         processedNutrientValues.forEach {
                                                                 (nutrient, quantity) ->
-                                                                println(
-                                                                        "DEBUG FoodEditView: Nutriment traité ${nutrient.label} = ${quantity.value}"
-                                                                )
                                                         }
 
                                                         val updatedAliment =
@@ -345,31 +325,13 @@ fun FoodEditView(
                                                                         rationUUID =
                                                                                 aliment.rationUUID
                                                                 )
-                                                        println(
-                                                                "DEBUG FoodEditView: Avant saveAliment - UUID: ${updatedAliment.uuid}"
-                                                        )
-                                                        println(
-                                                                "DEBUG FoodEditView: Tentative de sauvegarde de l'aliment: ${updatedAliment.nom}"
-                                                        )
-                                                        println(
-                                                                "DEBUG FoodEditView: Nombre de nutriments: ${updatedAliment.valMap.size}"
-                                                        )
                                                         try {
                                                                 viewModel.saveAliment(
                                                                         updatedAliment
                                                                 )
-                                                                println(
-                                                                        "DEBUG FoodEditView: Sauvegarde réussie"
-                                                                )
                                                                 showSuccessMessage = true
-                                                                println(
-                                                                        "DEBUG FoodEditView: Navigation vers la liste des aliments après sauvegarde réussie"
-                                                                )
                                                                 onNavigateBack()
                                                         } catch (e: Exception) {
-                                                                println(
-                                                                        "DEBUG FoodEditView: ERREUR lors de la sauvegarde: ${e.message}"
-                                                                )
                                                                 e.printStackTrace()
                                                                 errorMessage =
                                                                         "Erreur lors de la sauvegarde: ${e.message}"

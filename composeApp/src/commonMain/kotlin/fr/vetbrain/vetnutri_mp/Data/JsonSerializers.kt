@@ -26,7 +26,6 @@ object LocalDateSerializer : KSerializer<LocalDate> {
         return try {
             LocalDate.parse(dateString)
         } catch (e: Exception) {
-            println("Erreur lors du parsing de la date '$dateString': ${e.message}")
             LocalDate(2023, 1, 1) // Valeur par défaut en cas d'erreur
         }
     }
@@ -47,7 +46,6 @@ object GroupAlimSerializer : KSerializer<GroupAlim> {
             GroupAlim.valueOf(groupString)
         } catch (e: Exception) {
             // Valeur par défaut ou gestion d'erreur
-            println("GroupAlim non trouvé: $groupString, utilisation de la valeur par défaut")
             GroupAlim.values().firstOrNull()
                     ?: throw IllegalArgumentException("GroupAlim non trouvé: $groupString")
         }
@@ -69,7 +67,6 @@ object FoodKindSerializer : KSerializer<FoodKind> {
             FoodKind.valueOf(foodKindString)
         } catch (e: Exception) {
             // Valeur par défaut ou gestion d'erreur
-            println("FoodKind non trouvé: $foodKindString, utilisation de la valeur par défaut")
             FoodKind.values().firstOrNull()
                     ?: throw IllegalArgumentException("FoodKind non trouvé: $foodKindString")
         }
@@ -102,16 +99,10 @@ object EspeceSerializer : KSerializer<Espece> {
                     if (especeByLabel != null) {
                         especeByLabel
                     } else {
-                        println(
-                                "Espèce non reconnue: '$especeString', utilisation de CHIEN par défaut"
-                        )
                         Espece.CHIEN
                     }
                 }
             } catch (e2: Exception) {
-                println(
-                        "Erreur lors de la désérialisation de l'espèce '$especeString': ${e2.message}"
-                )
                 Espece.CHIEN // Valeur par défaut
             }
         }
@@ -133,7 +124,6 @@ object UnitReqEnumSerializer : KSerializer<UnitReqEnum> {
             UnitReqEnum.valueOf(unitReqString)
         } catch (e: Exception) {
             // Valeur par défaut ou gestion d'erreur
-            println("UnitReqEnum non trouvé: $unitReqString, utilisation de la valeur par défaut")
             UnitReqEnum.values().firstOrNull()
                     ?: throw IllegalArgumentException("UnitReqEnum non trouvé: $unitReqString")
         }

@@ -60,7 +60,6 @@ fun ReferenceEvTabsView(
 
     // Charger la référence et les équations lorsque l'onglet change
     LaunchedEffect(selectedTabIndex, referenceEvId) {
-        println("DEBUG: TabsView - Onglet sélectionné changé: $selectedTabIndex")
 
         // Toujours charger la référence
         referenceEvViewModel.loadReferenceEvById(referenceEvId)
@@ -70,7 +69,6 @@ fun ReferenceEvTabsView(
 
         // Charger les équations si l'onglet Équations est sélectionné
         if (selectedTabIndex == 1) {
-            println("DEBUG: TabsView - Chargement des équations pour l'onglet Équations")
             equationViewModel.loadEquations()
             referenceEvViewModel.loadEquations()
         }
@@ -110,8 +108,6 @@ fun ReferenceEvTabsView(
                 }
                 1 -> {
                     // Onglet Équations
-                    println("DEBUG: TabsView - Affichage de l'onglet Équations")
-                    println("DEBUG: TabsView - ReferenceId: $referenceEvId")
 
                     // Nouveau composant pour les équations qui utilise EquationViewModel
                     PersonnalizedEquationView(
@@ -164,11 +160,7 @@ fun PersonnalizedEquationView(equationViewModel: EquationViewModel, modifier: Mo
 
     // Débogage pour vérifier si les équations sont chargées
     LaunchedEffect(Unit) {
-        println(
-                "DEBUG PersonnalizedEquationView: Nombre d'équations disponibles: ${equations.size}"
-        )
         if (equations.isEmpty()) {
-            println("DEBUG PersonnalizedEquationView: Aucune équation disponible, rechargement...")
             equationViewModel.loadEquations()
         }
     }
@@ -182,7 +174,6 @@ fun PersonnalizedEquationView(equationViewModel: EquationViewModel, modifier: Mo
                         equationViewModel.equationBW.collectAsState(initial = null).value,
                 onEquationSelected = { equation ->
                     equationViewModel.setEquationBW(equation)
-                    println("DEBUG: Équation BW sélectionnée: ${equation?.name ?: "Aucune"}")
                 }
         )
 
@@ -196,7 +187,6 @@ fun PersonnalizedEquationView(equationViewModel: EquationViewModel, modifier: Mo
                         equationViewModel.equationBEE.collectAsState(initial = null).value,
                 onEquationSelected = { equation ->
                     equationViewModel.setEquationBEE(equation)
-                    println("DEBUG: Équation BEE sélectionnée: ${equation?.name ?: "Aucune"}")
                 }
         )
 
@@ -210,7 +200,6 @@ fun PersonnalizedEquationView(equationViewModel: EquationViewModel, modifier: Mo
                         equationViewModel.equationME.collectAsState(initial = null).value,
                 onEquationSelected = { equation ->
                     equationViewModel.setEquationME(equation)
-                    println("DEBUG: Équation ME sélectionnée: ${equation?.name ?: "Aucune"}")
                 }
         )
 
@@ -224,7 +213,6 @@ fun PersonnalizedEquationView(equationViewModel: EquationViewModel, modifier: Mo
                         equationViewModel.equationDEcom.collectAsState(initial = null).value,
                 onEquationSelected = { equation ->
                     equationViewModel.setEquationDEcom(equation)
-                    println("DEBUG: Équation DEcom sélectionnée: ${equation?.name ?: "Aucune"}")
                 }
         )
 
@@ -238,7 +226,6 @@ fun PersonnalizedEquationView(equationViewModel: EquationViewModel, modifier: Mo
                         equationViewModel.equationDEraw.collectAsState(initial = null).value,
                 onEquationSelected = { equation ->
                     equationViewModel.setEquationDEraw(equation)
-                    println("DEBUG: Équation DEraw sélectionnée: ${equation?.name ?: "Aucune"}")
                 }
         )
     }
@@ -256,9 +243,7 @@ fun EquationDropdown(
 
     // Débogage pour vérifier les équations disponibles
     LaunchedEffect(equations) {
-        println("DEBUG EquationDropdown $label: ${equations.size} équations disponibles")
         equations.forEachIndexed { index, equation ->
-            println("DEBUG EquationDropdown $label: Équation $index: ${equation.name}")
         }
     }
 

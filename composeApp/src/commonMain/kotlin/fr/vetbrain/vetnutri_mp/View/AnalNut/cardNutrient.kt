@@ -55,13 +55,7 @@ fun AnalyseNutritionnelleCard(
                 try {
                     val preferences = repo.getPreferencesForSpecies(animalData.getEspece())
                     typeExpressionBesoin = preferences.getTypeExpressionBesoinEnum()
-                    println(
-                            "DEBUG EXPRESSION: Type d'expression trouvé pour ${animalData.getEspece().label}: ${typeExpressionBesoin?.displayName}"
-                    )
                 } catch (e: Exception) {
-                    println(
-                            "DEBUG EXPRESSION: Erreur lors du chargement des préférences: ${e.message}"
-                    )
                     typeExpressionBesoin = TypeExpressionBesoin.DEFAULT
                 }
             }

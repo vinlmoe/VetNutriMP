@@ -10,7 +10,6 @@ actual open class ResourceReader actual constructor() {
             val classLoader = this::class.java.classLoader
             val resourceStream = classLoader.getResourceAsStream(name)
             if (resourceStream != null) {
-                println("DEBUG ResourceReader: Ressource trouvée via classloader: $name")
                 return resourceStream.bufferedReader().use { it.readText() }
             }
 
@@ -18,7 +17,6 @@ actual open class ResourceReader actual constructor() {
             val relativePath = "composeApp/src/commonMain/resources/$name"
             val relativeFile = File(relativePath)
             if (relativeFile.exists()) {
-                println("DEBUG ResourceReader: Ressource trouvée via chemin relatif: $relativePath")
                 return relativeFile.readText()
             }
 
@@ -26,7 +24,6 @@ actual open class ResourceReader actual constructor() {
             val parentPath = "../composeApp/src/commonMain/resources/$name"
             val parentFile = File(parentPath)
             if (parentFile.exists()) {
-                println("DEBUG ResourceReader: Ressource trouvée via chemin parent: $parentPath")
                 return parentFile.readText()
             }
 
@@ -34,24 +31,14 @@ actual open class ResourceReader actual constructor() {
             val originalPath = "src/commonMain/resources/$name"
             val originalFile = File(originalPath)
             if (originalFile.exists()) {
-                println(
-                        "DEBUG ResourceReader: Ressource trouvée via chemin original: $originalPath"
-                )
                 return originalFile.readText()
             }
 
             // Aucune méthode n'a fonctionné
             val currentDir = System.getProperty("user.dir")
-            println("DEBUG ResourceReader: Répertoire de travail actuel: $currentDir")
-            println("DEBUG ResourceReader: Tentatives de chemins:")
-            println("  - Classloader: $name")
-            println("  - Relatif: $relativePath")
-            println("  - Parent: $parentPath")
-            println("  - Original: $originalPath")
 
             throw IllegalStateException("Resource not found: $name")
         } catch (e: Exception) {
-            println("ERROR ResourceReader: Failed to read resource $name: ${e.message}")
             throw IllegalStateException("Failed to read resource $name: ${e.message}", e)
         }
     }
@@ -69,9 +56,6 @@ actual open class ResourceReader actual constructor() {
             try {
                 file.readText()
             } catch (e: Exception) {
-                println(
-                        "ERROR ResourceReader: Impossible de lire le fichier $filename: ${e.message}"
-                )
                 null
             }
         } else {
@@ -92,9 +76,6 @@ actual open class ResourceReader actual constructor() {
             file.writeText(content)
             true
         } catch (e: Exception) {
-            println(
-                    "ERROR ResourceReader: Impossible d'écrire dans le fichier $filename: ${e.message}"
-            )
             false
         }
     }

@@ -23,7 +23,6 @@ class DatabaseReferenceEvRepository(
             val entities = referenceEvDao.getAllReferenceEv()
             entities.map { convertEntityToReferenceEv(it) }
         } catch (e: Exception) {
-            println("DEBUG DatabaseReferenceEvRepository: Erreur lors du chargement: ${e.message}")
             emptyList()
         }
     }
@@ -33,9 +32,6 @@ class DatabaseReferenceEvRepository(
             val entity = referenceEvDao.getReferenceEvById(id)
             entity?.let { convertEntityToReferenceEv(it) }
         } catch (e: Exception) {
-            println(
-                    "DEBUG DatabaseReferenceEvRepository: Erreur lors du chargement par ID: ${e.message}"
-            )
             null
         }
     }
@@ -55,14 +51,8 @@ class DatabaseReferenceEvRepository(
             // 4. Sauvegarder les nutriments
             saveNutrients(referenceEv)
 
-            println(
-                    "DEBUG DatabaseReferenceEvRepository: ReferenceEv ${referenceEv.nom} sauvegardée avec succès"
-            )
             return referenceEv.uuid
         } catch (e: Exception) {
-            println(
-                    "DEBUG DatabaseReferenceEvRepository: Erreur lors de la sauvegarde: ${e.message}"
-            )
             throw e
         }
     }
@@ -83,13 +73,7 @@ class DatabaseReferenceEvRepository(
             saveCoefficients(referenceEv)
             saveNutrients(referenceEv)
 
-            println(
-                    "DEBUG DatabaseReferenceEvRepository: ReferenceEv ${referenceEv.nom} mise à jour avec succès"
-            )
         } catch (e: Exception) {
-            println(
-                    "DEBUG DatabaseReferenceEvRepository: Erreur lors de la mise à jour: ${e.message}"
-            )
             throw e
         }
     }
@@ -97,11 +81,7 @@ class DatabaseReferenceEvRepository(
     suspend fun deleteReferenceEv(id: String) {
         try {
             referenceEvDao.deleteReferenceEvById(id)
-            println("DEBUG DatabaseReferenceEvRepository: ReferenceEv supprimée avec succès")
         } catch (e: Exception) {
-            println(
-                    "DEBUG DatabaseReferenceEvRepository: Erreur lors de la suppression: ${e.message}"
-            )
             throw e
         }
     }
@@ -174,7 +154,6 @@ class DatabaseReferenceEvRepository(
             saveReferenceEv(reference)
             true
         } catch (e: Exception) {
-            println("DEBUG DatabaseReferenceEvRepository: Erreur lors de la création: ${e.message}")
             false
         }
     }
@@ -184,9 +163,6 @@ class DatabaseReferenceEvRepository(
             updateReferenceEv(reference)
             true
         } catch (e: Exception) {
-            println(
-                    "DEBUG DatabaseReferenceEvRepository: Erreur lors de la mise à jour: ${e.message}"
-            )
             false
         }
     }
@@ -196,9 +172,6 @@ class DatabaseReferenceEvRepository(
             deleteReferenceEv(id)
             true
         } catch (e: Exception) {
-            println(
-                    "DEBUG DatabaseReferenceEvRepository: Erreur lors de la suppression: ${e.message}"
-            )
             false
         }
     }
@@ -212,47 +185,24 @@ class DatabaseReferenceEvRepository(
 
         return try {
             // Obtenir le nombre total de références avant suppression
-            println("DEBUG DatabaseReferenceEvRepository: Récupération de toutes les références...")
             val allReferences = getAllReferenceEv()
             val count = allReferences.size
-            println("DEBUG DatabaseReferenceEvRepository: $count références trouvées dans la base")
 
             if (count > 0) {
-                println(
-                        "DEBUG DatabaseReferenceEvRepository: Suppression des relations équations..."
-                )
                 referenceEvDao.deleteAllEquationRelations()
-                println("DEBUG DatabaseReferenceEvRepository: Relations équations supprimées")
 
-                println("DEBUG DatabaseReferenceEvRepository: Suppression des coefficients...")
                 referenceEvDao.deleteAllCoefficients()
-                println("DEBUG DatabaseReferenceEvRepository: Coefficients supprimés")
 
-                println("DEBUG DatabaseReferenceEvRepository: Suppression des nutriments...")
                 referenceEvDao.deleteAllNutrients()
-                println("DEBUG DatabaseReferenceEvRepository: Nutriments supprimés")
 
-                println(
-                        "DEBUG DatabaseReferenceEvRepository: Suppression des références principales..."
-                )
                 // Supprimer toutes les références
                 allReferences.forEach { reference ->
-                    println(
-                            "DEBUG DatabaseReferenceEvRepository: Suppression de la référence: ${reference.uuid}"
-                    )
                     deleteReferenceEv(reference.uuid)
                 }
-                println(
-                        "DEBUG DatabaseReferenceEvRepository: Toutes les références principales supprimées"
-                )
             }
 
-            println("DEBUG DatabaseReferenceEvRepository: $count références supprimées avec succès")
             count
         } catch (e: Exception) {
-            println(
-                    "DEBUG DatabaseReferenceEvRepository: ERREUR lors de la suppression: ${e.message}"
-            )
             e.printStackTrace()
             throw e
         }
@@ -270,7 +220,6 @@ class DatabaseReferenceEvRepository(
                 false
             }
         } catch (e: Exception) {
-            println("DEBUG DatabaseReferenceEvRepository: Erreur updateEquationBW: ${e.message}")
             false
         }
     }
@@ -286,7 +235,6 @@ class DatabaseReferenceEvRepository(
                 false
             }
         } catch (e: Exception) {
-            println("DEBUG DatabaseReferenceEvRepository: Erreur updateEquationBEE: ${e.message}")
             false
         }
     }
@@ -302,7 +250,6 @@ class DatabaseReferenceEvRepository(
                 false
             }
         } catch (e: Exception) {
-            println("DEBUG DatabaseReferenceEvRepository: Erreur updateEquationDEcom: ${e.message}")
             false
         }
     }
@@ -318,7 +265,6 @@ class DatabaseReferenceEvRepository(
                 false
             }
         } catch (e: Exception) {
-            println("DEBUG DatabaseReferenceEvRepository: Erreur updateEquationDEraw: ${e.message}")
             false
         }
     }
@@ -334,7 +280,6 @@ class DatabaseReferenceEvRepository(
                 false
             }
         } catch (e: Exception) {
-            println("DEBUG DatabaseReferenceEvRepository: Erreur updateEquationME: ${e.message}")
             false
         }
     }
@@ -396,9 +341,6 @@ class DatabaseReferenceEvRepository(
 
         relations.forEach { relation -> referenceEvDao.insertEquationRelation(relation) }
 
-        println(
-                "DEBUG DatabaseReferenceEvRepository: ${relations.size} relations d'équations sauvegardées"
-        )
     }
 
     private suspend fun saveCoefficients(referenceEv: ReferenceEv) {
@@ -472,9 +414,6 @@ class DatabaseReferenceEvRepository(
 
         coefficients.forEach { coefficient -> referenceEvDao.insertCoefficient(coefficient) }
 
-        println(
-                "DEBUG DatabaseReferenceEvRepository: ${coefficients.size} coefficients sauvegardés"
-        )
     }
 
     private suspend fun saveNutrients(referenceEv: ReferenceEv) {
@@ -546,7 +485,6 @@ class DatabaseReferenceEvRepository(
 
         nutrients.forEach { nutrient -> referenceEvDao.insertNutrient(nutrient) }
 
-        println("DEBUG DatabaseReferenceEvRepository: ${nutrients.size} nutriments sauvegardés")
     }
 
     // Méthodes privées pour charger les relations
@@ -568,9 +506,6 @@ class DatabaseReferenceEvRepository(
             }
         }
 
-        println(
-                "DEBUG DatabaseReferenceEvRepository: ${equationRelations.size} équations chargées pour ${referenceEv.uuid}"
-        )
     }
 
     private suspend fun loadCoefficientsForReference(referenceEv: ReferenceEv) {
@@ -660,9 +595,6 @@ class DatabaseReferenceEvRepository(
             }
         }
 
-        println(
-                "DEBUG DatabaseReferenceEvRepository: ${coefficients.size} coefficients chargés pour ${referenceEv.uuid}"
-        )
     }
 
     private suspend fun loadNutrientsForReference(referenceEv: ReferenceEv) {
@@ -752,9 +684,6 @@ class DatabaseReferenceEvRepository(
             }
         }
 
-        println(
-                "DEBUG DatabaseReferenceEvRepository: ${nutrients.size} nutriments chargés pour ${referenceEv.uuid}"
-        )
     }
 
     // Méthodes utilitaires pour les conversions
@@ -824,9 +753,6 @@ class DatabaseReferenceEvRepository(
                         it.label == label
                     }
         } catch (e: Exception) {
-            println(
-                    "DEBUG DatabaseReferenceEvRepository: Erreur lors de la recherche du nutriment $label: ${e.message}"
-            )
             null
         }
     }

@@ -64,9 +64,6 @@ fun AlimentEvJson.toData(): AlimentEv {
     val especesConverties = convertirEspecesEnLabels(this.Especes, this.espece)
 
     // Vérifier si le JSON contient des valeurs de nutriments
-    println(
-            "DEBUG JsonMappers - AlimentEvJson.toData - ${this.nom} (${this.UUID}) - valMap dans JSON: ${this.valMap.size} valeurs"
-    )
 
     // Améliorer la conversion des nutriments
     val nutrientMap = mutableMapOf<Nutrient, NutrientQuantity>()
@@ -77,7 +74,6 @@ fun AlimentEvJson.toData(): AlimentEv {
             val nutrientKey = nutrientQuantity.nut
             val value = nutrientQuantity.value
 
-            println("  • Traitement de nutriment: $nutrientKey avec valeur: $value")
 
             val nutrient = AllNutrientResolver(nutrientKey)
             if (nutrient != null) {
@@ -91,15 +87,9 @@ fun AlimentEvJson.toData(): AlimentEv {
                 if (nutrientAfterClean != null) {
                     nutrientMap[nutrientAfterClean] =
                             NutrientQuantity(value, nutrientAfterClean.label)
-                    println(
-                            "  • $nutrientKey -> ${nutrientAfterClean.label}: $value (Résolu après nettoyage)"
-                    )
                 }
             }
         }
-        println(
-                "Résultat de la conversion: ${nutrientMap.size} nutriments mappés pour ${this.nom} (${this.UUID})"
-        )
     } else {
         println("Aucun nutriment à convertir pour ${this.nom} (${this.UUID})")
     }
@@ -141,9 +131,6 @@ fun AlimentEvJson.toData(): AlimentEv {
             )
 
     // Vérifier l'objet après conversion
-    println(
-            "DEBUG JsonMappers - AlimentEv après conversion - ${alimentEv.nom} (${alimentEv.uuid}) - valMap: ${alimentEv.valMap.size} valeurs"
-    )
 
     return alimentEv
 }
@@ -285,9 +272,6 @@ fun AnimalEvJson.toData(): AnimalEv {
                     else -> emptyList()
                 }
             } catch (e: Exception) {
-                println(
-                        "Erreur lors de la conversion des consultations pour ${this.nom}: ${e.message}"
-                )
                 emptyList()
             }
 
@@ -302,9 +286,6 @@ fun AnimalEvJson.toData(): AnimalEv {
                         val especeEnum = Espece.getEnumFromInt(especeId)
                         especeEnum.label
                     } catch (e: Exception) {
-                        println(
-                                "Erreur lors de la conversion de l'ID d'espèce $especeStr: ${e.message}"
-                        )
                         // Fallback au label CHIEN
                         Espece.CHIEN.label
                     }
@@ -319,17 +300,11 @@ fun AnimalEvJson.toData(): AnimalEv {
                         if (especeByLabel != null) {
                             especeByLabel.label
                         } else {
-                            println(
-                                    "Espèce non reconnue: '$especeStr', utilisation de CHIEN par défaut"
-                            )
                             Espece.CHIEN.label
                         }
                     }
                 }
             } catch (e: Exception) {
-                println(
-                        "Erreur lors de la détermination de l'espèce pour ${this.nom}: ${e.message}"
-                )
                 // Valeur par défaut en cas d'erreur
                 Espece.CHIEN.label
             }
@@ -349,9 +324,6 @@ fun AnimalEvJson.toData(): AnimalEv {
                     try {
                         this.listWeight.map { it.toData() }.toMutableList()
                     } catch (e: Exception) {
-                        println(
-                                "Erreur lors de la conversion de l'historique de poids pour ${this.nom}: ${e.message}"
-                        )
                         mutableListOf()
                     },
             consultations = consultationsList.toMutableList()

@@ -83,7 +83,6 @@ fun App(appDatabase: AppDatabase) {
                 val existingRef = repo.getBiblioRefById(defaultUuid)
 
                 if (existingRef == null) {
-                    println("🔧 Création de la référence bibliographique par défaut au démarrage")
                     val defaultRef =
                             fr.vetbrain.vetnutri_mp.Data.BiblioRef(
                                     uuid = defaultUuid,
@@ -95,12 +94,9 @@ fun App(appDatabase: AppDatabase) {
                                     consistent = 1
                             )
                     repo.insertBiblioRef(defaultRef)
-                    println("✅ Référence par défaut créée avec succès: $defaultUuid")
                 } else {
-                    println("✅ Référence par défaut existe déjà: $defaultUuid")
                 }
             } catch (e: Exception) {
-                println("❌ Erreur lors de la création de la référence par défaut: ${e.message}")
                 e.printStackTrace()
             }
         }
@@ -229,7 +225,6 @@ fun App(appDatabase: AppDatabase) {
             animalListViewModel.loadAnimals()
         } else if (currentScreen == Screen.FoodList) {
             // Toujours recharger explicitement la liste des aliments quand on affiche la liste
-            println("DEBUG App: Rechargement des aliments lors du changement d'écran vers FoodList")
             foodListViewModel.loadFoods()
         } else if (currentScreen == Screen.EquationList) {
             // Recharger la liste des équations
@@ -243,9 +238,6 @@ fun App(appDatabase: AppDatabase) {
         // non-null)
         if (selectedFoodUuid == null && currentScreen == Screen.FoodList) {
             // Recharger explicitement la liste des aliments
-            println(
-                    "DEBUG App: Rechargement des aliments après édition (selectedFoodUuid devient null)"
-            )
             foodListViewModel.loadFoods()
         }
     }
@@ -266,37 +258,27 @@ fun App(appDatabase: AppDatabase) {
     runBlocking {
         // --- ALIMENTS ---
         val currentFoodCount = foodRepository.getAllFoods().size
-        println("DEBUG App: [PRE-THEME] currentFoodCount = $currentFoodCount")
         if (currentFoodCount == 0) {
             try {
-                println("DEBUG App: [PRE-THEME] Import automatique des aliments")
                 val json = ResourceReader().readResource("data/vetfood.json")
                 if (json.isNotEmpty()) {
                     val result = settingsViewModel.importFoodsFromJson(json)
-                    println("DEBUG App: [PRE-THEME] Import aliments terminé: $result")
                 } else {
-                    println("DEBUG App: [PRE-THEME] ERREUR: vetfood.json vide ou non trouvé")
                 }
             } catch (e: Exception) {
-                println("DEBUG App: [PRE-THEME] ERREUR import aliments: ${e.message}")
             }
         }
 
         // --- REFERENCES ---
         val currentReferenceCount = databaseReferenceEvRepository.getAllReferenceEv().size
-        println("DEBUG App: [PRE-THEME] currentReferenceCount = $currentReferenceCount")
         if (currentReferenceCount == 0) {
             try {
-                println("DEBUG App: [PRE-THEME] Import automatique des références")
                 val jsonRef = ResourceReader().readResource("data/references.json")
                 if (jsonRef.isNotEmpty()) {
                     val result = importViewModel.importNutritionalRequirementsFromJson(jsonRef)
-                    println("DEBUG App: [PRE-THEME] Import références terminé: $result")
                 } else {
-                    println("DEBUG App: [PRE-THEME] ERREUR: references.json vide ou non trouvé")
                 }
             } catch (e: Exception) {
-                println("DEBUG App: [PRE-THEME] ERREUR import références: ${e.message}")
             }
         }
     }
@@ -521,9 +503,6 @@ fun App(appDatabase: AppDatabase) {
                         )
                     }
                     Screen.ReferenceEvTabs -> {
-                        println(
-                                "DEBUG: App - Affichage de la vue ReferenceEvTabs avec menu latéral"
-                        )
                         NewReferenceEvEditView(
                                 viewModel = newReferenceEvViewModel,
                                 referenceId = selectedReferenceEvId,

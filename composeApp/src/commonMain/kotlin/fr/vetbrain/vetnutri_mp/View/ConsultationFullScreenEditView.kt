@@ -512,38 +512,13 @@ fun ConsultationFullScreenEditView(
                                                 extraireVariablesRequises(
                                                         referenceGeneraleSelectionnee
                                                 )
-                                        println(
-                                                "DEBUG: Variables requises pour ${referenceGeneraleSelectionnee?.nom}: $variables"
-                                        )
                                         variables
                                 }
 
                         // Debug des équations disponibles
                         LaunchedEffect(referenceGeneraleSelectionnee) {
                                 referenceGeneraleSelectionnee?.let { ref ->
-                                        println("DEBUG: Référence sélectionnée: ${ref.nom}")
-                                        println(
-                                                "DEBUG: EquationBW: ${ref.equationBW?.name} - Script: '${ref.equationBW?.equationScript}'"
-                                        )
-                                        println(
-                                                "DEBUG: EquationBEE: ${ref.equationBEE?.name} - Script: '${ref.equationBEE?.equationScript}'"
-                                        )
-                                        println(
-                                                "DEBUG: EquationDEcom: ${ref.equationDEcom?.name} - Script: '${ref.equationDEcom?.equationScript}'"
-                                        )
-                                        println(
-                                                "DEBUG: EquationDEraw: ${ref.equationDEraw?.name} - Script: '${ref.equationDEraw?.equationScript}'"
-                                        )
-                                        println(
-                                                "DEBUG: EquationME: ${ref.equationME?.name} - Script: '${ref.equationME?.equationScript}'"
-                                        )
-                                        println(
-                                                "DEBUG: EquationsNut count: ${ref.equationsNut.size}"
-                                        )
                                         ref.equationsNut.forEachIndexed { index, eq ->
-                                                println(
-                                                        "DEBUG: EquationNut[$index]: ${eq.name} - Script: '${eq.equationScript}'"
-                                                )
                                         }
                                 }
                         }
@@ -1409,7 +1384,6 @@ private fun extraireVariablesRequises(
                                         script
                                 )
                         scriptVariables.addAll(variables)
-                        println("DEBUG: Variables trouvées dans equationBW '$script': $variables")
                 }
         }
 
@@ -1420,7 +1394,6 @@ private fun extraireVariablesRequises(
                                         script
                                 )
                         scriptVariables.addAll(variables)
-                        println("DEBUG: Variables trouvées dans equationBEE '$script': $variables")
                 }
         }
 
@@ -1431,9 +1404,6 @@ private fun extraireVariablesRequises(
                                         script
                                 )
                         scriptVariables.addAll(variables)
-                        println(
-                                "DEBUG: Variables trouvées dans equationDEcom '$script': $variables"
-                        )
                 }
         }
 
@@ -1444,9 +1414,6 @@ private fun extraireVariablesRequises(
                                         script
                                 )
                         scriptVariables.addAll(variables)
-                        println(
-                                "DEBUG: Variables trouvées dans equationDEraw '$script': $variables"
-                        )
                 }
         }
 
@@ -1457,7 +1424,6 @@ private fun extraireVariablesRequises(
                                         script
                                 )
                         scriptVariables.addAll(variables)
-                        println("DEBUG: Variables trouvées dans equationME '$script': $variables")
                 }
         }
 
@@ -1469,9 +1435,6 @@ private fun extraireVariablesRequises(
                                         equation.equationScript
                                 )
                         scriptVariables.addAll(variables)
-                        println(
-                                "DEBUG: Variables trouvées dans equationNut '${equation.equationScript}': $variables"
-                        )
                 }
         }
 
@@ -1483,20 +1446,13 @@ private fun extraireVariablesRequises(
                         }
                 if (variableKind != null) {
                         variablesRequises.add(variableKind)
-                        println(
-                                "DEBUG: Variable '$variableName' mappée vers VariableKind: ${variableKind.label}"
-                        )
                 } else {
-                        println("DEBUG: Variable '$variableName' non reconnue comme VariableKind")
                 }
         }
 
         // Exclure BW (Body Weight) car c'est le poids qui est déjà saisi
         variablesRequises.remove(fr.vetbrain.vetnutri_mp.Enumer.VariableKind.BW)
 
-        println(
-                "DEBUG: Variables VariableKind finales extraites: ${variablesRequises.map { it.variable }}"
-        )
         return variablesRequises.toList().sortedBy { it.label }
 }
 
