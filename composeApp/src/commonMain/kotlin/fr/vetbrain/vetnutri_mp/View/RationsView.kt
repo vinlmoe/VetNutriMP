@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -47,6 +48,7 @@ import fr.vetbrain.vetnutri_mp.Utils.PreferencesStorage
 import fr.vetbrain.vetnutri_mp.Utils.TextUtils
 import fr.vetbrain.vetnutri_mp.Utils.createPreferencesStorage
 import fr.vetbrain.vetnutri_mp.View.AnalNut.AnalyseNutritionnelleCard
+import fr.vetbrain.vetnutri_mp.View.AnalNut.MultiNutrientAdjustmentDialog
 import fr.vetbrain.vetnutri_mp.View.AnalNut.NutrientDetailDialog
 import fr.vetbrain.vetnutri_mp.View.AnalNut.SectionBilanEnergetique
 import fr.vetbrain.vetnutri_mp.View.AnalNut.SectionCoefficients
@@ -270,6 +272,13 @@ fun RationsView(
         var selectedNutrimentData by remember {
                 mutableStateOf<Triple<String, ValeurNutritionnelle, Ration>?>(null)
         }
+
+        // État pour le dialog d'ajustement multi-nutriments
+        var showMultiNutrientAdjustmentDialog by remember { mutableStateOf(false) }
+
+        // État pour le dialog de confirmation de suppression de ration
+        var showDeleteRationDialog by remember { mutableStateOf(false) }
+        var rationToDelete by remember { mutableStateOf<Ration?>(null) }
 
         // Afficher la vue d'ajout d'aliment si nécessaire
         if (showAddAlimentView && rationForAddAliment != null) {
@@ -514,28 +523,28 @@ fun RationsView(
                                                                                                 VetNutriColors
                                                                                                         .Primary
                                                                                 )
-                                                                                IconButton(
-                                                                                        onClick = {
-                                                                                                rationToEdit =
-                                                                                                        null
-                                                                                                showRationEditDialog =
-                                                                                                        true
-                                                                                        },
-                                                                                        modifier =
-                                                                                                Modifier.size(
-                                                                                                        AppSizes.iconSizeMedium
-                                                                                                )
-                                                                                ) {
-                                                                                        Icon(
+                                                                                Icon(
+                                                                                        imageVector =
                                                                                                 Icons.Filled
                                                                                                         .Add,
-                                                                                                contentDescription =
-                                                                                                        "Ajouter une ration",
-                                                                                                tint =
-                                                                                                        VetNutriColors
-                                                                                                                .Primary
-                                                                                        )
-                                                                                }
+                                                                                        contentDescription =
+                                                                                                "Ajouter une ration",
+                                                                                        tint =
+                                                                                                VetNutriColors
+                                                                                                        .Primary,
+                                                                                        modifier =
+                                                                                                Modifier.size(
+                                                                                                                AppSizes.iconSizeXSmall
+                                                                                                        )
+                                                                                                        .clickable(
+                                                                                                                onClick = {
+                                                                                                                        rationToEdit =
+                                                                                                                                null
+                                                                                                                        showRationEditDialog =
+                                                                                                                                true
+                                                                                                                }
+                                                                                                        )
+                                                                                )
                                                                         }
                                                                         Divider()
                                                                         if (selectedConsultation
@@ -592,13 +601,10 @@ fun RationsView(
                                                                                                                         )
                                                                                                                 },
                                                                                                                 onDelete = {
-                                                                                                                        viewModel
-                                                                                                                                .removeRationFromConsultation(
-                                                                                                                                        ration
-                                                                                                                                )
-                                                                                                                        showSnackbar(
-                                                                                                                                "Ration supprimée"
-                                                                                                                        )
+                                                                                                                        rationToDelete =
+                                                                                                                                ration
+                                                                                                                        showDeleteRationDialog =
+                                                                                                                                true
                                                                                                                 }
                                                                                                         )
                                                                                                 }
@@ -670,131 +676,190 @@ fun RationsView(
                                                                                                 selectedRation
                                                                                         val beTotal =
                                                                                                 besoinEnergetiqueTotal
-                                                                                        IconButton(
-                                                                                                onClick = {
+                                                                                        Icon(
+                                                                                                imageVector =
+                                                                                                        Icons.Filled
+                                                                                                                .Tune,
+                                                                                                contentDescription =
+                                                                                                        "Ajuster la ration",
+                                                                                                tint =
                                                                                                         if (ration !=
                                                                                                                         null &&
                                                                                                                         beTotal !=
                                                                                                                                 null &&
                                                                                                                         beTotal >
-                                                                                                                                0
-                                                                                                        ) {
-                                                                                                                val energieApportee =
-                                                                                                                        ration.alimentMutableList
-                                                                                                                                .sumOf {
-                                                                                                                                        alimentRation
-                                                                                                                                        ->
-                                                                                                                                        val densiteEnergetique =
-                                                                                                                                                referenceUtilisee
-                                                                                                                                                        ?.let {
-                                                                                                                                                                ref
-                                                                                                                                                                ->
-                                                                                                                                                                calculerDensiteEnergetique(
-                                                                                                                                                                        alimentRation,
-                                                                                                                                                                        ref
-                                                                                                                                                                )
-                                                                                                                                                        }
-                                                                                                                                                        ?: 0.0
-                                                                                                                                        (densiteEnergetique *
-                                                                                                                                                alimentRation
-                                                                                                                                                        .quantite) /
-                                                                                                                                                100.0
-                                                                                                                                }
-                                                                                                                if (energieApportee >
-                                                                                                                                0
-                                                                                                                ) {
-                                                                                                                        val ratio =
-                                                                                                                                beTotal /
-                                                                                                                                        energieApportee
-                                                                                                                        val alimentsAjustes =
-                                                                                                                                ration.alimentMutableList
-                                                                                                                                        .map {
-                                                                                                                                                alimentRation
-                                                                                                                                                ->
-                                                                                                                                                alimentRation
-                                                                                                                                                        .copy(
-                                                                                                                                                                quantite =
-                                                                                                                                                                        (alimentRation
-                                                                                                                                                                                        .quantite *
-                                                                                                                                                                                        ratio)
-                                                                                                                                                                                .toFloat()
-                                                                                                                                                        )
-                                                                                                                                        }
-                                                                                                                        coroutineScope
-                                                                                                                                .launch {
-                                                                                                                                        viewModel
-                                                                                                                                                .updateRationAliments(
-                                                                                                                                                        ration,
-                                                                                                                                                        alimentsAjustes
-                                                                                                                                                )
-                                                                                                                                        showSnackbar(
-                                                                                                                                                "Ration ajustée pour couvrir 100% du besoin énergétique total"
-                                                                                                                                        )
-                                                                                                                                }
-                                                                                                                } else {
-                                                                                                                        showSnackbar(
-                                                                                                                                "Impossible d'ajuster : apport énergétique nul"
-                                                                                                                        )
-                                                                                                                }
-                                                                                                        }
-                                                                                                },
-                                                                                                enabled =
-                                                                                                        ration !=
-                                                                                                                null &&
-                                                                                                                beTotal !=
-                                                                                                                        null &&
-                                                                                                                beTotal >
-                                                                                                                        0 &&
-                                                                                                                (ration.alimentMutableList
-                                                                                                                        .isNotEmpty())
-                                                                                        ) {
-                                                                                                Icon(
-                                                                                                        imageVector =
-                                                                                                                Icons.Filled
-                                                                                                                        .Tune,
-                                                                                                        contentDescription =
-                                                                                                                "Ajuster la ration",
-                                                                                                        tint =
+                                                                                                                                0 &&
+                                                                                                                        (ration.alimentMutableList
+                                                                                                                                .isNotEmpty())
+                                                                                                        )
                                                                                                                 VetNutriColors
                                                                                                                         .Primary
-                                                                                                )
-                                                                                        }
+                                                                                                        else
+                                                                                                                VetNutriColors
+                                                                                                                        .Primary
+                                                                                                                        .copy(
+                                                                                                                                alpha =
+                                                                                                                                        0.5f
+                                                                                                                        ),
+                                                                                                modifier =
+                                                                                                        Modifier.size(
+                                                                                                                        AppSizes.iconSizeXSmall
+                                                                                                                )
+                                                                                                                .clickable(
+                                                                                                                        enabled =
+                                                                                                                                ration !=
+                                                                                                                                        null &&
+                                                                                                                                        beTotal !=
+                                                                                                                                                null &&
+                                                                                                                                        beTotal >
+                                                                                                                                                0 &&
+                                                                                                                                        (ration.alimentMutableList
+                                                                                                                                                .isNotEmpty()),
+                                                                                                                        onClick = {
+                                                                                                                                if (ration !=
+                                                                                                                                                null &&
+                                                                                                                                                beTotal !=
+                                                                                                                                                        null &&
+                                                                                                                                                beTotal >
+                                                                                                                                                        0
+                                                                                                                                ) {
+                                                                                                                                        val energieApportee =
+                                                                                                                                                ration.alimentMutableList
+                                                                                                                                                        .sumOf {
+                                                                                                                                                                alimentRation
+                                                                                                                                                                ->
+                                                                                                                                                                val densiteEnergetique =
+                                                                                                                                                                        referenceUtilisee
+                                                                                                                                                                                ?.let {
+                                                                                                                                                                                        ref
+                                                                                                                                                                                        ->
+                                                                                                                                                                                        calculerDensiteEnergetique(
+                                                                                                                                                                                                alimentRation,
+                                                                                                                                                                                                ref
+                                                                                                                                                                                        )
+                                                                                                                                                                                }
+                                                                                                                                                                                ?: 0.0
+                                                                                                                                                                (densiteEnergetique *
+                                                                                                                                                                        alimentRation
+                                                                                                                                                                                .quantite) /
+                                                                                                                                                                        100.0
+                                                                                                                                                        }
+                                                                                                                                        if (energieApportee >
+                                                                                                                                                        0
+                                                                                                                                        ) {
+                                                                                                                                                val ratio =
+                                                                                                                                                        beTotal /
+                                                                                                                                                                energieApportee
+                                                                                                                                                val alimentsAjustes =
+                                                                                                                                                        ration.alimentMutableList
+                                                                                                                                                                .map {
+                                                                                                                                                                        alimentRation
+                                                                                                                                                                        ->
+                                                                                                                                                                        alimentRation
+                                                                                                                                                                                .copy(
+                                                                                                                                                                                        quantite =
+                                                                                                                                                                                                (alimentRation
+                                                                                                                                                                                                                .quantite *
+                                                                                                                                                                                                                ratio)
+                                                                                                                                                                                                        .toFloat()
+                                                                                                                                                                                )
+                                                                                                                                                                }
+                                                                                                                                                coroutineScope
+                                                                                                                                                        .launch {
+                                                                                                                                                                viewModel
+                                                                                                                                                                        .updateRationAliments(
+                                                                                                                                                                                ration,
+                                                                                                                                                                                alimentsAjustes
+                                                                                                                                                                        )
+                                                                                                                                                                showSnackbar(
+                                                                                                                                                                        "Ration ajustée pour couvrir 100% du besoin énergétique total"
+                                                                                                                                                                )
+                                                                                                                                                        }
+                                                                                                                                        } else {
+                                                                                                                                                showSnackbar(
+                                                                                                                                                        "Impossible d'ajuster : apport énergétique nul"
+                                                                                                                                                )
+                                                                                                                                        }
+                                                                                                                                }
+                                                                                                                        }
+                                                                                                                )
+                                                                                        )
+                                                                                        // Bouton
+                                                                                        // pour
+                                                                                        // l'ajustement
+                                                                                        // multi-nutriments
+                                                                                        Icon(
+                                                                                                imageVector =
+                                                                                                        Icons.Filled
+                                                                                                                .Settings,
+                                                                                                contentDescription =
+                                                                                                        "Ajustement multi-nutriments",
+                                                                                                tint =
+                                                                                                        if (selectedRation
+                                                                                                                        ?.alimentMutableList
+                                                                                                                        ?.isNotEmpty() ==
+                                                                                                                        true
+                                                                                                        )
+                                                                                                                VetNutriColors
+                                                                                                                        .Primary
+                                                                                                        else
+                                                                                                                VetNutriColors
+                                                                                                                        .Primary
+                                                                                                                        .copy(
+                                                                                                                                alpha =
+                                                                                                                                        0.5f
+                                                                                                                        ),
+                                                                                                modifier =
+                                                                                                        Modifier.size(
+                                                                                                                        AppSizes.iconSizeXSmall
+                                                                                                                )
+                                                                                                                .clickable(
+                                                                                                                        enabled =
+                                                                                                                                selectedRation
+                                                                                                                                        ?.alimentMutableList
+                                                                                                                                        ?.isNotEmpty() ==
+                                                                                                                                        true,
+                                                                                                                        onClick = {
+                                                                                                                                showMultiNutrientAdjustmentDialog =
+                                                                                                                                        true
+                                                                                                                        }
+                                                                                                                )
+                                                                                        )
                                                                                         // Bouton
                                                                                         // pour
                                                                                         // ajouter
                                                                                         // un
                                                                                         // aliment
-                                                                                        IconButton(
-                                                                                                onClick = {
-                                                                                                        if (selectedRation !=
-                                                                                                                        null
-                                                                                                        ) {
-                                                                                                                rationForAddAliment =
-                                                                                                                        selectedRation
-                                                                                                                showAddAlimentView =
-                                                                                                                        true
-                                                                                                        } else {
-                                                                                                                showSnackbar(
-                                                                                                                        "Sélectionnez d'abord une ration"
-                                                                                                                )
-                                                                                                        }
-                                                                                                },
+                                                                                        Icon(
+                                                                                                imageVector =
+                                                                                                        Icons.Filled
+                                                                                                                .Add,
+                                                                                                contentDescription =
+                                                                                                        "Ajouter un aliment",
+                                                                                                tint =
+                                                                                                        VetNutriColors
+                                                                                                                .Primary,
                                                                                                 modifier =
                                                                                                         Modifier.size(
-                                                                                                                AppSizes.iconSizeMedium
-                                                                                                        )
-                                                                                        ) {
-                                                                                                Icon(
-                                                                                                        imageVector =
-                                                                                                                Icons.Filled
-                                                                                                                        .Add,
-                                                                                                        contentDescription =
-                                                                                                                "Ajouter un aliment",
-                                                                                                        tint =
-                                                                                                                VetNutriColors
-                                                                                                                        .Primary
-                                                                                                )
-                                                                                        }
+                                                                                                                        AppSizes.iconSizeXSmall
+                                                                                                                )
+                                                                                                                .clickable(
+                                                                                                                        onClick = {
+                                                                                                                                if (selectedRation !=
+                                                                                                                                                null
+                                                                                                                                ) {
+                                                                                                                                        rationForAddAliment =
+                                                                                                                                                selectedRation
+                                                                                                                                        showAddAlimentView =
+                                                                                                                                                true
+                                                                                                                                } else {
+                                                                                                                                        showSnackbar(
+                                                                                                                                                "Sélectionnez d'abord une ration"
+                                                                                                                                        )
+                                                                                                                                }
+                                                                                                                        }
+                                                                                                                )
+                                                                                        )
                                                                                 }
                                                                         }
                                                                         Divider()
@@ -1179,28 +1244,28 @@ fun RationsView(
                                                                         // Bouton pour
                                                                         // ajouter une
                                                                         // nouvelle ration
-                                                                        IconButton(
-                                                                                onClick = {
-                                                                                        rationToEdit =
-                                                                                                null // Nouvelle ration
-                                                                                        showRationEditDialog =
-                                                                                                true
-                                                                                },
-                                                                                modifier =
-                                                                                        Modifier.size(
-                                                                                                AppSizes.iconSizeMedium
-                                                                                        )
-                                                                        ) {
-                                                                                Icon(
+                                                                        Icon(
+                                                                                imageVector =
                                                                                         Icons.Filled
                                                                                                 .Add,
-                                                                                        contentDescription =
-                                                                                                "Ajouter une ration",
-                                                                                        tint =
-                                                                                                VetNutriColors
-                                                                                                        .Primary
-                                                                                )
-                                                                        }
+                                                                                contentDescription =
+                                                                                        "Ajouter une ration",
+                                                                                tint =
+                                                                                        VetNutriColors
+                                                                                                .Primary,
+                                                                                modifier =
+                                                                                        Modifier.size(
+                                                                                                        AppSizes.iconSizeXSmall
+                                                                                                )
+                                                                                                .clickable(
+                                                                                                        onClick = {
+                                                                                                                rationToEdit =
+                                                                                                                        null // Nouvelle ration
+                                                                                                                showRationEditDialog =
+                                                                                                                        true
+                                                                                                        }
+                                                                                                )
+                                                                        )
                                                                 }
 
                                                                 Divider()
@@ -1262,11 +1327,10 @@ fun RationsView(
                                                                                                         )
                                                                                                 },
                                                                                                 onDelete = {
-                                                                                                        // Temporairement commenté jusqu'à l'implémentation de cette méthode
-                                                                                                        showSnackbar(
-                                                                                                                "Suppression de ration non implémentée"
-                                                                                                        )
-                                                                                                        // viewModel.deleteRation(ration)
+                                                                                                        rationToDelete =
+                                                                                                                ration
+                                                                                                        showDeleteRationDialog =
+                                                                                                                true
                                                                                                 }
                                                                                         )
                                                                                 }
@@ -1342,132 +1406,183 @@ fun RationsView(
                                                                                         selectedRation
                                                                                 val beTotal =
                                                                                         besoinEnergetiqueTotal
-                                                                                IconButton(
-                                                                                        onClick = {
+                                                                                Icon(
+                                                                                        imageVector =
+                                                                                                Icons.Filled
+                                                                                                        .Tune,
+                                                                                        contentDescription =
+                                                                                                "Ajuster la ration",
+                                                                                        tint =
                                                                                                 if (ration !=
                                                                                                                 null &&
                                                                                                                 beTotal !=
                                                                                                                         null &&
                                                                                                                 beTotal >
-                                                                                                                        0
-                                                                                                ) {
-                                                                                                        val energieApportee =
-                                                                                                                ration.alimentMutableList
-                                                                                                                        .sumOf {
-                                                                                                                                alimentRation
-                                                                                                                                ->
-                                                                                                                                val densiteEnergetique =
-                                                                                                                                        referenceUtilisee
-                                                                                                                                                ?.let {
-                                                                                                                                                        ref
-                                                                                                                                                        ->
-                                                                                                                                                        calculerDensiteEnergetique(
-                                                                                                                                                                alimentRation,
-                                                                                                                                                                ref
-                                                                                                                                                        )
-                                                                                                                                                }
-                                                                                                                                                ?: 0.0
-                                                                                                                                (densiteEnergetique *
-                                                                                                                                        alimentRation
-                                                                                                                                                .quantite) /
-                                                                                                                                        100.0
-                                                                                                                        }
-                                                                                                        if (energieApportee >
-                                                                                                                        0
-                                                                                                        ) {
-                                                                                                                val ratio =
-                                                                                                                        beTotal /
-                                                                                                                                energieApportee
-                                                                                                                val alimentsAjustes =
-                                                                                                                        ration.alimentMutableList
-                                                                                                                                .map {
-                                                                                                                                        alimentRation
-                                                                                                                                        ->
-                                                                                                                                        alimentRation
-                                                                                                                                                .copy(
-                                                                                                                                                        quantite =
-                                                                                                                                                                (alimentRation
-                                                                                                                                                                                .quantite *
-                                                                                                                                                                                ratio)
-                                                                                                                                                                        .toFloat()
-                                                                                                                                                )
-                                                                                                                                }
-                                                                                                                coroutineScope
-                                                                                                                        .launch {
-                                                                                                                                viewModel
-                                                                                                                                        .updateRationAliments(
-                                                                                                                                                ration,
-                                                                                                                                                alimentsAjustes
-                                                                                                                                        )
-                                                                                                                                showSnackbar(
-                                                                                                                                        "Ration ajustée pour couvrir 100% du besoin énergétique total"
-                                                                                                                                )
-                                                                                                                        }
-                                                                                                        } else {
-                                                                                                                showSnackbar(
-                                                                                                                        "Impossible d'ajuster : apport énergétique nul"
-                                                                                                                )
-                                                                                                        }
-                                                                                                }
-                                                                                        },
-                                                                                        enabled =
-                                                                                                ration !=
-                                                                                                        null &&
-                                                                                                        beTotal !=
-                                                                                                                null &&
-                                                                                                        beTotal >
-                                                                                                                0 &&
-                                                                                                        (ration.alimentMutableList
-                                                                                                                .isNotEmpty()),
-                                                                                ) {
-                                                                                        Icon(
-                                                                                                imageVector =
-                                                                                                        Icons.Filled
-                                                                                                                .Tune,
-                                                                                                contentDescription =
-                                                                                                        "Ajuster la ration",
-                                                                                                tint =
+                                                                                                                        0 &&
+                                                                                                                (ration.alimentMutableList
+                                                                                                                        .isNotEmpty())
+                                                                                                )
                                                                                                         VetNutriColors
                                                                                                                 .Primary
-                                                                                        )
-                                                                                }
+                                                                                                else
+                                                                                                        VetNutriColors
+                                                                                                                .Primary
+                                                                                                                .copy(
+                                                                                                                        alpha =
+                                                                                                                                0.5f
+                                                                                                                ),
+                                                                                        modifier =
+                                                                                                Modifier.size(
+                                                                                                                AppSizes.iconSizeXSmall
+                                                                                                        )
+                                                                                                        .clickable(
+                                                                                                                enabled =
+                                                                                                                        ration !=
+                                                                                                                                null &&
+                                                                                                                                beTotal !=
+                                                                                                                                        null &&
+                                                                                                                                beTotal >
+                                                                                                                                        0 &&
+                                                                                                                                (ration.alimentMutableList
+                                                                                                                                        .isNotEmpty()),
+                                                                                                                onClick = {
+                                                                                                                        if (ration !=
+                                                                                                                                        null &&
+                                                                                                                                        beTotal !=
+                                                                                                                                                null &&
+                                                                                                                                        beTotal >
+                                                                                                                                                0
+                                                                                                                        ) {
+                                                                                                                                val energieApportee =
+                                                                                                                                        ration.alimentMutableList
+                                                                                                                                                .sumOf {
+                                                                                                                                                        alimentRation
+                                                                                                                                                        ->
+                                                                                                                                                        val densiteEnergetique =
+                                                                                                                                                                referenceUtilisee
+                                                                                                                                                                        ?.let {
+                                                                                                                                                                                ref
+                                                                                                                                                                                ->
+                                                                                                                                                                                calculerDensiteEnergetique(
+                                                                                                                                                                                        alimentRation,
+                                                                                                                                                                                        ref
+                                                                                                                                                                                )
+                                                                                                                                                                        }
+                                                                                                                                                                        ?: 0.0
+                                                                                                                                                        (densiteEnergetique *
+                                                                                                                                                                alimentRation
+                                                                                                                                                                        .quantite) /
+                                                                                                                                                                100.0
+                                                                                                                                                }
+                                                                                                                                if (energieApportee >
+                                                                                                                                                0
+                                                                                                                                ) {
+                                                                                                                                        val ratio =
+                                                                                                                                                beTotal /
+                                                                                                                                                        energieApportee
+                                                                                                                                        val alimentsAjustes =
+                                                                                                                                                ration.alimentMutableList
+                                                                                                                                                        .map {
+                                                                                                                                                                alimentRation
+                                                                                                                                                                ->
+                                                                                                                                                                alimentRation
+                                                                                                                                                                        .copy(
+                                                                                                                                                                                quantite =
+                                                                                                                                                                                        (alimentRation
+                                                                                                                                                                                                        .quantite *
+                                                                                                                                                                                                        ratio)
+                                                                                                                                                                                                .toFloat()
+                                                                                                                                                                        )
+                                                                                                                                                        }
+                                                                                                                                        coroutineScope
+                                                                                                                                                .launch {
+                                                                                                                                                        viewModel
+                                                                                                                                                                .updateRationAliments(
+                                                                                                                                                                        ration,
+                                                                                                                                                                        alimentsAjustes
+                                                                                                                                                                )
+                                                                                                                                                        showSnackbar(
+                                                                                                                                                                "Ration ajustée pour couvrir 100% du besoin énergétique total"
+                                                                                                                                                        )
+                                                                                                                                                }
+                                                                                                                                } else {
+                                                                                                                                        showSnackbar(
+                                                                                                                                                "Impossible d'ajuster : apport énergétique nul"
+                                                                                                                                        )
+                                                                                                                                }
+                                                                                                                        }
+                                                                                                                }
+                                                                                                        )
+                                                                                )
+                                                                                // Bouton
+                                                                                // pour
+                                                                                // l'ajustement
+                                                                                // multi-nutriments
+                                                                                Icon(
+                                                                                        imageVector =
+                                                                                                Icons.Filled
+                                                                                                        .Settings,
+                                                                                        contentDescription =
+                                                                                                "Ajustement multi-nutriments",
+                                                                                        tint =
+                                                                                                VetNutriColors
+                                                                                                        .Primary,
+                                                                                        modifier =
+                                                                                                Modifier.size(
+                                                                                                                AppSizes.iconSizeXSmall
+                                                                                                        )
+                                                                                                        .clickable(
+                                                                                                                onClick = {
+                                                                                                                        // Vérifier que la ration existe avant d'afficher le dialogue
+                                                                                                                        if (selectedRation !=
+                                                                                                                                        null
+                                                                                                                        ) {
+                                                                                                                                showMultiNutrientAdjustmentDialog =
+                                                                                                                                        true
+                                                                                                                        } else {
+                                                                                                                                showSnackbar(
+                                                                                                                                        "Sélectionnez d'abord une ration"
+                                                                                                                                )
+                                                                                                                        }
+                                                                                                                }
+                                                                                                        )
+                                                                                )
                                                                                 // Bouton
                                                                                 // pour
                                                                                 // ajouter
                                                                                 // un
                                                                                 // aliment
-                                                                                IconButton(
-                                                                                        onClick = {
-                                                                                                // Vérifier que la ration existe avant d'afficher le dialogue
-                                                                                                if (selectedRation !=
-                                                                                                                null
-                                                                                                ) {
-                                                                                                        rationForAddAliment =
-                                                                                                                selectedRation
-                                                                                                        showAddAlimentView =
-                                                                                                                true
-                                                                                                } else {
-                                                                                                        showSnackbar(
-                                                                                                                "Sélectionnez d'abord une ration"
-                                                                                                        )
-                                                                                                }
-                                                                                        },
+                                                                                Icon(
+                                                                                        imageVector =
+                                                                                                Icons.Filled
+                                                                                                        .Add,
+                                                                                        contentDescription =
+                                                                                                "Ajouter un aliment",
+                                                                                        tint =
+                                                                                                VetNutriColors
+                                                                                                        .Primary,
                                                                                         modifier =
                                                                                                 Modifier.size(
-                                                                                                        AppSizes.iconSizeMedium
-                                                                                                )
-                                                                                ) {
-                                                                                        Icon(
-                                                                                                imageVector =
-                                                                                                        Icons.Filled
-                                                                                                                .Add,
-                                                                                                contentDescription =
-                                                                                                        "Ajouter un aliment",
-                                                                                                tint =
-                                                                                                        VetNutriColors
-                                                                                                                .Primary
-                                                                                        )
-                                                                                }
+                                                                                                                AppSizes.iconSizeXSmall
+                                                                                                        )
+                                                                                                        .clickable(
+                                                                                                                onClick = {
+                                                                                                                        // Vérifier que la ration existe avant d'afficher le dialogue
+                                                                                                                        if (selectedRation !=
+                                                                                                                                        null
+                                                                                                                        ) {
+                                                                                                                                rationForAddAliment =
+                                                                                                                                        selectedRation
+                                                                                                                                showAddAlimentView =
+                                                                                                                                        true
+                                                                                                                        } else {
+                                                                                                                                showSnackbar(
+                                                                                                                                        "Sélectionnez d'abord une ration"
+                                                                                                                                )
+                                                                                                                        }
+                                                                                                                }
+                                                                                                        )
+                                                                                )
                                                                         }
                                                                 }
 
@@ -1816,6 +1931,74 @@ fun RationsView(
                                 }
                         )
                 }
+
+                // Dialog d'ajustement multi-nutriments
+                if (showMultiNutrientAdjustmentDialog) {
+                        MultiNutrientAdjustmentDialog(
+                                ration = selectedRation,
+                                onDismiss = { showMultiNutrientAdjustmentDialog = false },
+                                onApplyAdjustment = { adjustmentData ->
+                                        // TODO: Implémenter la logique d'ajustement
+                                        // multi-nutriments
+                                        // Pour l'instant, on affiche juste un message
+                                        showSnackbar(
+                                                "Ajustement multi-nutriments - Fonctionnalité en cours de développement"
+                                        )
+                                }
+                        )
+                }
+
+                // Dialog de confirmation de suppression de ration
+                if (showDeleteRationDialog && rationToDelete != null) {
+                        AlertDialog(
+                                onDismissRequest = {
+                                        showDeleteRationDialog = false
+                                        rationToDelete = null
+                                },
+                                title = {
+                                        Text(
+                                                "Confirmer la suppression",
+                                                style = MaterialTheme.typography.h6,
+                                                color = VetNutriColors.Error
+                                        )
+                                },
+                                text = {
+                                        Text(
+                                                "Êtes-vous sûr de vouloir supprimer la ration '${rationToDelete!!.name}' ?\n\nCette action est irréversible.",
+                                                style = MaterialTheme.typography.body1
+                                        )
+                                },
+                                confirmButton = {
+                                        Button(
+                                                onClick = {
+                                                        viewModel.removeRationFromConsultation(
+                                                                rationToDelete!!
+                                                        )
+                                                        showSnackbar(
+                                                                "Ration '${rationToDelete!!.name}' supprimée"
+                                                        )
+                                                        showDeleteRationDialog = false
+                                                        rationToDelete = null
+                                                },
+                                                colors =
+                                                        ButtonDefaults.buttonColors(
+                                                                backgroundColor =
+                                                                        VetNutriColors.Error,
+                                                                contentColor =
+                                                                        VetNutriColors.OnError
+                                                        )
+                                        ) { Text("Supprimer") }
+                                },
+                                dismissButton = {
+                                        TextButton(
+                                                onClick = {
+                                                        showDeleteRationDialog = false
+                                                        rationToDelete = null
+                                                }
+                                        ) { Text("Annuler") }
+                                }
+                        )
+                }
         }
 }
 
@@ -1909,6 +2092,31 @@ fun RationEditDialog(ration: Ration?, onDismiss: () -> Unit, onSave: (Ration) ->
                                         modifier = Modifier.fillMaxWidth(),
                                         maxLines = 3,
                                         singleLine = false
+                                )
+
+                                // Coefficient de la ration
+                                OutlinedTextField(
+                                        value =
+                                                String.format("%.2f", editedRation.coef)
+                                                        .replace('.', ','),
+                                        onValueChange = { newValue ->
+                                                // Accepter seulement les nombres positifs
+                                                val normalizedValue = newValue.replace(',', '.')
+                                                val coefficient = normalizedValue.toFloatOrNull()
+                                                if (coefficient != null && coefficient > 0) {
+                                                        editedRation =
+                                                                editedRation.copy(
+                                                                        coef = coefficient
+                                                                )
+                                                }
+                                        },
+                                        label = { Text("Coefficient de la ration") },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        keyboardOptions =
+                                                KeyboardOptions(
+                                                        keyboardType = KeyboardType.Decimal
+                                                ),
+                                        placeholder = { Text("Ex: 1,0 ou 1.0") }
                                 )
                         }
                 },

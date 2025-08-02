@@ -13,6 +13,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Data.AlimentRation
+import fr.vetbrain.vetnutri_mp.Enumer.FoodKind
+import fr.vetbrain.vetnutri_mp.Enumer.NutrientMain
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 
@@ -53,11 +55,66 @@ fun AlimentItem(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                         ) {
-                                Text(
-                                        text = aliment.aliment?.nom ?: "Aliment sans nom",
-                                        style = MaterialTheme.typography.body2, // taille réduite
-                                        fontWeight = FontWeight.Medium
-                                )
+                                Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                                text = aliment.aliment?.nom ?: "Aliment sans nom",
+                                                style =
+                                                        MaterialTheme.typography
+                                                                .body2, // taille réduite
+                                                fontWeight = FontWeight.Medium
+                                        )
+
+                                        // Informations supplémentaires sous le nom
+                                        aliment.aliment?.let { alim ->
+                                                val typeAliment = alim.typeAliment
+                                                val marque = alim.brand
+                                                val humidite =
+                                                        alim.getNutrient(NutrientMain.HUMIDITE)
+
+                                                Row(
+                                                        horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingXSmall)
+                                                ) {
+                                                        // Afficher la marque si c'est un aliment complet ou
+                                                        // complémentaire
+                                                        if ((typeAliment == FoodKind.COMPLET ||
+                                                                        typeAliment ==
+                                                                                FoodKind.COMPLEMENTAIRE) &&
+                                                                        !marque.isNullOrBlank()
+                                                        ) {
+                                                                Text(
+                                                                        text = marque,
+                                                                        style =
+                                                                                MaterialTheme.typography
+                                                                                        .caption,
+                                                                        color =
+                                                                                MaterialTheme.colors
+                                                                                        .onSurface.copy(
+                                                                                        alpha = 0.7f
+                                                                                )
+                                                                )
+                                                        }
+
+                                                        // Afficher l'état humide/sec basé sur l'humidité
+                                                        humidite?.let { hum ->
+                                                                val etatHumidite =
+                                                                        if (hum > 15f) "Humide" else "Sec"
+                                                                Text(
+                                                                        text = etatHumidite,
+                                                                        style =
+                                                                                MaterialTheme.typography
+                                                                                        .caption,
+                                                                        color =
+                                                                                if (hum > 15f)
+                                                                                        VetNutriColors
+                                                                                                .Primary
+                                                                                else
+                                                                                        VetNutriColors
+                                                                                                .Secondary
+                                                                )
+                                                        }
+                                                }
+                                        }
+                                }
 
                                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                                         IconButton(

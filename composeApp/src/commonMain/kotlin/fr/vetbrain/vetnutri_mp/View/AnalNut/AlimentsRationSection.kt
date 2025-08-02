@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View.AnalNut
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -33,6 +35,7 @@ import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
  * @param onDeleteAliment Callback pour supprimer un aliment.
  * @param onAddAliment Callback pour ajouter un aliment.
  * @param onAjusterRation Callback pour ajuster automatiquement la ration.
+ * @param onMultiNutrientAdjustment Callback pour l'ajustement multi-nutriments.
  */
 @Composable
 fun SectionAlimentsRation(
@@ -42,6 +45,7 @@ fun SectionAlimentsRation(
         onDeleteAliment: (Int) -> Unit,
         onAddAliment: () -> Unit,
         onAjusterRation: () -> Unit,
+        onMultiNutrientAdjustment: () -> Unit,
         modifier: Modifier = Modifier
 ) {
     val (editingIndex, setEditingIndex) = remember { mutableStateOf<Int?>(null) }
@@ -52,37 +56,61 @@ fun SectionAlimentsRation(
                 verticalArrangement = Arrangement.spacedBy(AppSizes.paddingXSmall)
         ) {
             Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingXSmall)
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                         text = "Aliments de la ration",
                         style = MaterialTheme.typography.subtitle2,
-                        color = VetNutriColors.Primary,
-                        modifier = Modifier.weight(1f)
+                        color = VetNutriColors.Primary
                 )
-                IconButton(
-                        onClick = onAjusterRation,
-                        enabled =
-                                ration != null &&
-                                        referenceUtilisee != null &&
-                                        (ration?.alimentMutableList?.isNotEmpty() == true),
-                        modifier = Modifier.size(AppSizes.iconSizeMedium)
-                ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingXSmall)) {
                     Icon(
                             imageVector = Icons.Filled.Tune,
                             contentDescription = "Ajuster la ration",
-                            tint = VetNutriColors.Primary
+                            tint =
+                                    if (ration != null &&
+                                                    referenceUtilisee != null &&
+                                                    (ration?.alimentMutableList?.isNotEmpty() ==
+                                                            true)
+                                    )
+                                            VetNutriColors.Primary
+                                    else VetNutriColors.Primary.copy(alpha = 0.5f),
+                            modifier =
+                                    Modifier.size(AppSizes.iconSizeXSmall)
+                                            .clickable(
+                                                    enabled =
+                                                            ration != null &&
+                                                                    referenceUtilisee != null &&
+                                                                    (ration?.alimentMutableList
+                                                                            ?.isNotEmpty() == true),
+                                                    onClick = onAjusterRation
+                                            )
                     )
-                }
-                IconButton(
-                        onClick = onAddAliment,
-                        modifier = Modifier.size(AppSizes.iconSizeMedium)
-                ) {
+                    Icon(
+                            imageVector = Icons.Filled.Settings,
+                            contentDescription = "Ajustement multi-nutriments",
+                            tint =
+                                    if (ration?.alimentMutableList?.isNotEmpty() == true)
+                                            VetNutriColors.Primary
+                                    else VetNutriColors.Primary.copy(alpha = 0.5f),
+                            modifier =
+                                    Modifier.size(AppSizes.iconSizeXSmall)
+                                            .clickable(
+                                                    enabled =
+                                                            ration?.alimentMutableList
+                                                                    ?.isNotEmpty() == true,
+                                                    onClick = onMultiNutrientAdjustment
+                                            )
+                    )
                     Icon(
                             imageVector = Icons.Filled.Add,
                             contentDescription = "Ajouter un aliment",
-                            tint = VetNutriColors.Primary
+                            tint = VetNutriColors.Primary,
+                            modifier =
+                                    Modifier.size(AppSizes.iconSizeXSmall)
+                                            .clickable(onClick = onAddAliment)
                     )
                 }
             }
