@@ -88,7 +88,6 @@ class InMemoryAnimalRepository : AnimalRepository {
                     importedCount++
                 }
             } catch (e: Exception) {
-                println("Erreur lors de l'importation de l'animal ${animalJson.nom}: ${e.message}")
                 errorCount++
             }
         }

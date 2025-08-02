@@ -52,9 +52,7 @@ class DatabaseFoodRepository(
         try {
             val foods = getAllFoods()
             _foodsFlow.value = foods
-            println("DatabaseFoodRepository: Flow mis à jour avec ${foods.size} aliments")
         } catch (e: Exception) {
-            println("Erreur lors du rafraîchissement du Flow des aliments: ${e.message}")
             e.printStackTrace()
         }
     }
@@ -92,15 +90,9 @@ class DatabaseFoodRepository(
      */
     override suspend fun getAllFoods(): List<AlimentEv> {
         return withContext(AppDispatchers.IO) {
-            println(
-                    "DEBUG DatabaseFoodRepository: Récupération de tous les aliments depuis la base de données"
-            )
 
             // Récupérer tous les aliments de la base de données
             val foodEntities = foodDao.getAllFoods()
-            println(
-                    "DEBUG DatabaseFoodRepository: ${foodEntities.size} entités d'aliments récupérées"
-            )
 
             // Transformer chaque entité en modèle de domaine avec ses valeurs nutritionnelles
             val result =
@@ -114,7 +106,6 @@ class DatabaseFoodRepository(
                         foodEntity.toAlimentEv(nutrientValues = nutrientValues)
                     }
 
-            println("DEBUG DatabaseFoodRepository: ${result.size} aliments transformés avec succès")
             return@withContext result
         }
     }
@@ -128,22 +119,13 @@ class DatabaseFoodRepository(
      */
     override suspend fun getAllFoodsLight(): List<AlimentEvLight> {
         return withContext(AppDispatchers.IO) {
-            println(
-                    "DEBUG DatabaseFoodRepository: Récupération de tous les aliments en version légère"
-            )
 
             // Récupérer tous les aliments de la base de données
             val foodEntities = foodDao.getAllFoods()
-            println(
-                    "DEBUG DatabaseFoodRepository: ${foodEntities.size} entités d'aliments récupérées pour la version légère"
-            )
 
             // Transformer chaque entité en modèle de domaine léger sans les valeurs nutritionnelles
             val result = foodEntities.map { foodEntity -> foodEntity.toAlimentEvLight() }
 
-            println(
-                    "DEBUG DatabaseFoodRepository: ${result.size} aliments légers transformés avec succès"
-            )
             return@withContext result
         }
     }
@@ -191,21 +173,16 @@ class DatabaseFoodRepository(
             val nonResolvedNutrients = mutableMapOf<String, Int>()
             val importErrors = mutableListOf<String>()
 
-            println("Début de l'importation de ${foods.size} aliments")
 
             // Récupérer la liste des UUIDs des aliments existants pour vérification rapide
             val existingFoodUUIDs = foodDao.getAllFoods().map { it.uuid }.toSet()
-            println("${existingFoodUUIDs.size} aliments existants en base de données")
 
             // Traiter chaque aliment
             foods.forEachIndexed { index, food ->
                 try {
-                    println("\n===== TRAITEMENT DE L'ALIMENT ${index + 1}/${foods.size} =====")
-                    println("UUID: ${food.UUID}, Nom: ${food.nom}")
 
                     if (food.UUID.isNullOrBlank()) {
                         val errorMsg = "Erreur: UUID vide pour l'aliment ${food.nom}"
-                        println(errorMsg)
                         importErrors.add(errorMsg)
                         errorCount++
                         return@forEachIndexed
@@ -236,28 +213,16 @@ class DatabaseFoodRepository(
                                                             .replace("\"", "")
                                                             .trim()
 
-                                            println(
-                                                    "Chaîne d'espèce nettoyée: $especeStr -> $cleanedEspece"
-                                            )
 
                                             // Essayer plusieurs stratégies pour reconnaître
                                             // l'espèce
                                             val espece = Espece.getFromString(cleanedEspece)
                                             if (espece != null) {
-                                                println(
-                                                        "Espèce reconnue: $cleanedEspece -> ${espece.name}"
-                                                )
                                                 espece.name
                                             } else {
-                                                println(
-                                                        "Espèce non reconnue, conservation du texte original: $cleanedEspece"
-                                                )
                                                 cleanedEspece
                                             }
                                         } catch (e: Exception) {
-                                            println(
-                                                    "Erreur lors de la conversion de l'espèce $especeStr: ${e.message}"
-                                            )
                                             e.printStackTrace()
                                             especeStr // En cas d'erreur, conserver la chaîne
                                             // originale
@@ -276,27 +241,15 @@ class DatabaseFoodRepository(
                                                             .replace("\"", "")
                                                             .trim()
 
-                                            println(
-                                                    "Chaîne d'indication nettoyée: $indicStr -> $cleanedIndic"
-                                            )
 
                                             // Essayer de reconnaître l'indication
                                             val indication = AlimIndic.getFromString(cleanedIndic)
                                             if (indication != null) {
-                                                println(
-                                                        "Indication reconnue: $cleanedIndic -> ${indication.name}"
-                                                )
                                                 indication.name
                                             } else {
-                                                println(
-                                                        "Indication non reconnue, conservation du texte original: $cleanedIndic"
-                                                )
                                                 cleanedIndic
                                             }
                                         } catch (e: Exception) {
-                                            println(
-                                                    "Erreur lors de la conversion de l'indication $indicStr: ${e.message}"
-                                            )
                                             e.printStackTrace()
                                             indicStr.toString() // En cas d'erreur, conserver la
                                             // chaîne originale
@@ -316,9 +269,6 @@ class DatabaseFoodRepository(
                                                     try {
                                                         GroupAlim.valueOf(food.group ?: "").ordinal
                                                     } catch (e: Exception) {
-                                                        println(
-                                                                "Erreur lors de la conversion du groupe: ${e.message}"
-                                                        )
                                                         0
                                                     },
                                             typeAlim =
@@ -326,9 +276,6 @@ class DatabaseFoodRepository(
                                                         FoodKind.valueOf(food.foodKind ?: "")
                                                                 .ordinal
                                                     } catch (e: Exception) {
-                                                        println(
-                                                                "Erreur lors de la conversion du type: ${e.message}"
-                                                        )
                                                         0
                                                     },
                                             ingredients = food.ingredients ?: "",
@@ -354,7 +301,6 @@ class DatabaseFoodRepository(
 
                             // Insérer l'aliment
                             foodDao.insert(foodEntity)
-                            println("Aliment inséré avec succès: ${foodEntity.nameDef}")
 
                             // Traiter les valeurs nutritionnelles
                             processNutrientValues(food, nonResolvedNutrients)
@@ -362,9 +308,6 @@ class DatabaseFoodRepository(
                             importCount++
                         } catch (e: Exception) {
                             errorCount++
-                            println(
-                                    "Erreur lors de la création de l'aliment ${food.nom} (${food.UUID}): ${e.message}"
-                            )
                             e.printStackTrace()
 
                             importErrors.add(
@@ -373,7 +316,6 @@ class DatabaseFoodRepository(
 
                             // Essayer de créer un aliment minimal en cas d'erreur
                             try {
-                                println("Tentative d'insertion d'un aliment minimal...")
                                 val minimalFood =
                                         FoodEntity(
                                                 uuid = food.UUID,
@@ -403,18 +345,13 @@ class DatabaseFoodRepository(
 
                                 foodDao.insert(minimalFood)
                                 importCount++
-                                println("Aliment minimal inséré avec succès pour ${food.nom}")
                             } catch (e2: Exception) {
-                                println("Échec de l'insertion de l'aliment minimal: ${e2.message}")
                                 e2.printStackTrace()
                             }
                         }
                     } else {
                         // L'aliment existe déjà, le mettre à jour
                         try {
-                            println(
-                                    "Mise à jour de l'aliment existant: ${existingFood.nameDef} (${existingFood.uuid})"
-                            )
                             updateCount++
 
                             // Préserver la référence à la ration si elle existe
@@ -432,28 +369,16 @@ class DatabaseFoodRepository(
                                                             .replace("\"", "")
                                                             .trim()
 
-                                            println(
-                                                    "Chaîne d'espèce nettoyée (mise à jour): $especeStr -> $cleanedEspece"
-                                            )
 
                                             // Essayer plusieurs stratégies pour reconnaître
                                             // l'espèce
                                             val espece = Espece.getFromString(cleanedEspece)
                                             if (espece != null) {
-                                                println(
-                                                        "Espèce reconnue (mise à jour): $cleanedEspece -> ${espece.name}"
-                                                )
                                                 espece.name
                                             } else {
-                                                println(
-                                                        "Espèce non reconnue (mise à jour), conservation du texte original: $cleanedEspece"
-                                                )
                                                 cleanedEspece
                                             }
                                         } catch (e: Exception) {
-                                            println(
-                                                    "Erreur lors de la conversion de l'espèce $especeStr (mise à jour): ${e.message}"
-                                            )
                                             e.printStackTrace()
                                             especeStr // En cas d'erreur, conserver la chaîne
                                             // originale
@@ -472,27 +397,15 @@ class DatabaseFoodRepository(
                                                             .replace("\"", "")
                                                             .trim()
 
-                                            println(
-                                                    "Chaîne d'indication nettoyée (mise à jour): $indicStr -> $cleanedIndic"
-                                            )
 
                                             // Essayer de reconnaître l'indication
                                             val indication = AlimIndic.getFromString(cleanedIndic)
                                             if (indication != null) {
-                                                println(
-                                                        "Indication reconnue (mise à jour): $cleanedIndic -> ${indication.name}"
-                                                )
                                                 indication.name
                                             } else {
-                                                println(
-                                                        "Indication non reconnue (mise à jour), conservation du texte original: $cleanedIndic"
-                                                )
                                                 cleanedIndic
                                             }
                                         } catch (e: Exception) {
-                                            println(
-                                                    "Erreur lors de la conversion de l'indication $indicStr (mise à jour): ${e.message}"
-                                            )
                                             e.printStackTrace()
                                             indicStr.toString() // En cas d'erreur, conserver la
                                             // chaîne originale
@@ -519,12 +432,10 @@ class DatabaseFoodRepository(
 
                             try {
                                 foodDao.update(updatedFood)
-                                println("Aliment mis à jour avec succès: ${updatedFood.nameDef}")
 
                                 // Traiter les valeurs nutritionnelles
                                 processNutrientValues(food, nonResolvedNutrients)
                             } catch (e: Exception) {
-                                println("Erreur lors de la mise à jour de l'aliment: ${e.message}")
                                 e.printStackTrace()
                                 importErrors.add(
                                         "Erreur lors de la mise à jour de l'aliment ${food.nom} (${food.UUID}): ${e.message}"
@@ -532,9 +443,6 @@ class DatabaseFoodRepository(
                                 errorCount++
                             }
                         } catch (e: Exception) {
-                            println(
-                                    "Erreur lors du traitement de mise à jour de l'aliment ${food.nom} (${food.UUID}): ${e.message}"
-                            )
                             e.printStackTrace()
                             importErrors.add(
                                     "Erreur lors du traitement de mise à jour de l'aliment ${food.nom} (${food.UUID}): ${e.message}"
@@ -547,30 +455,21 @@ class DatabaseFoodRepository(
                     errorCount++
                     val errorMsg =
                             "Erreur générale lors du traitement de l'aliment ${food.nom} (${food.UUID}): ${e.message}"
-                    println(errorMsg)
                     importErrors.add(errorMsg)
                     e.printStackTrace()
                 }
             }
 
-            println("\n===== RÉSULTATS DE L'IMPORTATION =====")
-            println("Aliments importés: $importCount")
-            println("Aliments mis à jour: $updateCount")
-            println("Erreurs: $errorCount")
 
             // Afficher en détail les erreurs si nécessaire
             if (errorCount > 0) {
-                println("\n===== DÉTAIL DES ERREURS =====")
                 importErrors.forEachIndexed { index, error ->
-                    println("Erreur ${index + 1}: $error")
                 }
             }
 
             // Afficher les nutriments non résolus
             if (nonResolvedNutrients.isNotEmpty()) {
-                println("\n===== NUTRIMENTS NON RÉSOLUS =====")
                 nonResolvedNutrients.forEach { (nutrient, count) ->
-                    println("$nutrient: $count occurrences")
                 }
             }
 
@@ -607,33 +506,19 @@ class DatabaseFoodRepository(
         // Supprimer d'abord toutes les valeurs nutritionnelles existantes
         try {
             if (nutrientValueDao != null) {
-                println(
-                        "Suppression des valeurs nutritionnelles existantes pour ${food.nom} (${food.UUID})"
-                )
                 nutrientValueDao.deleteAllNutrientValuesForAliment(food.UUID)
-                println("Valeurs nutritionnelles existantes supprimées avec succès")
             } else {
-                println(
-                        "ATTENTION: nutrientValueDao est null, impossible de supprimer ou insérer les valeurs nutritionnelles"
-                )
                 return
             }
         } catch (e: Exception) {
-            println(
-                    "ERREUR lors de la suppression des valeurs nutritionnelles pour ${food.nom} (${food.UUID}): ${e.message}"
-            )
             e.printStackTrace()
             // Continuer malgré l'erreur pour tenter l'insertion
         }
 
         println("\n===== TRAITEMENT DES NUTRIMENTS POUR ${food.nom} (${food.UUID}) =====")
-        println("Nombre de nutriments à traiter: ${food.valMap.size}")
 
         // Vérifier si la carte des valeurs nutritionnelles est vide
         if (food.valMap.isEmpty()) {
-            println(
-                    "ATTENTION: Aucune valeur nutritionnelle à traiter pour ${food.nom} (${food.UUID})"
-            )
             return
         }
 
@@ -656,7 +541,6 @@ class DatabaseFoodRepository(
 
                 if (nutrient != null) {
                     resolvedCount++
-                    println("✓ Nutriment résolu: $nutrientKey -> ${nutrient.label} = $value")
                     try {
                         nutrientValues.add(
                                 NutrientValueEntity(
@@ -666,9 +550,6 @@ class DatabaseFoodRepository(
                                 )
                         )
                     } catch (e: Exception) {
-                        println(
-                                "ERREUR lors de la création de l'entité NutrientValueEntity: ${e.message}"
-                        )
                         e.printStackTrace()
                     }
                 } else {
@@ -754,9 +635,6 @@ class DatabaseFoodRepository(
                     if (specialCaseResolved != null) {
                         nutrient = specialCaseResolved
                         resolvedCount++
-                        println(
-                                "✓ Nutriment résolu par cas spécial: $nutrientKey -> ${nutrient.label} = $value"
-                        )
                         try {
                             nutrientValues.add(
                                     NutrientValueEntity(
@@ -766,53 +644,32 @@ class DatabaseFoodRepository(
                                     )
                             )
                         } catch (e: Exception) {
-                            println(
-                                    "ERREUR lors de la création de l'entité NutrientValueEntity pour cas spécial: ${e.message}"
-                            )
                             e.printStackTrace()
                         }
                     } else {
                         nonResolvedCount++
                         nonResolvedNutrients[nutrientKey] =
                                 (nonResolvedNutrients[nutrientKey] ?: 0) + 1
-                        println("✗ Nutriment NON résolu: $nutrientKey = $value")
                     }
                 }
             } catch (e: Exception) {
-                println("ERREUR lors du traitement de la valeur nutritionnelle $key: ${e.message}")
                 e.printStackTrace()
             }
         }
 
-        println("Résultats du traitement des nutriments:")
-        println("- ${resolvedCount} nutriments résolus")
-        println("- ${nonResolvedCount} nutriments non résolus")
 
         // Insérer toutes les valeurs nutritionnelles
         if (nutrientValues.isNotEmpty()) {
             try {
                 if (nutrientValueDao != null) {
-                    println(
-                            "Tentative d'insertion de ${nutrientValues.size} valeurs nutritionnelles pour ${food.nom} (${food.UUID})"
-                    )
                     nutrientValueDao.insertNutrientValues(nutrientValues)
-                    println(
-                            "${nutrientValues.size} valeurs nutritionnelles insérées avec succès pour ${food.nom} (${food.UUID})"
-                    )
                 } else {
-                    println(
-                            "ATTENTION: nutrientValueDao est null, ${nutrientValues.size} valeurs nutritionnelles prêtes mais non insérées"
-                    )
                 }
             } catch (e: Exception) {
-                println(
-                        "ERREUR lors de l'insertion des valeurs nutritionnelles pour ${food.nom} (${food.UUID}): ${e.message}"
-                )
                 e.printStackTrace()
 
                 // Tenter d'insérer les valeurs une par une en cas d'erreur sur l'insertion en bloc
                 if (nutrientValueDao != null) {
-                    println("Tentative d'insertion des valeurs nutritionnelles une par une...")
                     var successCount = 0
                     nutrientValues.forEach { nutrientValue ->
                         try {
@@ -822,20 +679,13 @@ class DatabaseFoodRepository(
                             nutrientValueDao.insertNutrientValues(listOf(nutrientValue))
                             successCount++
                         } catch (innerE: Exception) {
-                            println(
-                                    "ERREUR lors de l'insertion de la valeur nutritionnelle ${nutrientValue.nutrientLabel}: ${innerE.message}"
-                            )
                         }
                     }
-                    println(
-                            "$successCount/${nutrientValues.size} valeurs nutritionnelles insérées individuellement avec succès"
-                    )
                 }
             }
         } else {
             println("Aucune valeur nutritionnelle à insérer pour ${food.nom} (${food.UUID})")
         }
-        println("===== FIN DU TRAITEMENT DES NUTRIMENTS =====\n")
     }
     // FIN ZONE PROTÉGÉE
 
@@ -849,16 +699,10 @@ class DatabaseFoodRepository(
                 // Convertir en FoodEntity et insérer
                 val foodEntity = food.toFoodEntity().copy(RefRation = null)
                 foodDao.insert(foodEntity)
-                println(
-                        "DEBUG DatabaseFoodRepository: Aliment inséré avec succès: ${foodEntity.nameDef}"
-                )
 
                 // Ajout d'un espèce par défaut "AUTRE" si la liste est vide pour éviter l'erreur de
                 // clé étrangère
                 if (food.especes.isEmpty()) {
-                    println(
-                            "DEBUG DatabaseFoodRepository: Aucune espèce spécifiée, l'insertion d'espèce sera ignorée"
-                    )
                     // Pas d'insertion d'espèce, on évite l'erreur de clé étrangère
                 } else {
                     // Insérer les espèces associées si disponibles
@@ -871,9 +715,6 @@ class DatabaseFoodRepository(
                             }
                     if (especeEntities.isNotEmpty()) {
                         foodDao.insertEspeces(especeEntities)
-                        println(
-                                "DEBUG DatabaseFoodRepository: ${especeEntities.size} espèces insérées"
-                        )
                     }
                 }
 
@@ -881,19 +722,12 @@ class DatabaseFoodRepository(
                 val nutrientValues = food.valMap.toNutrientValueEntities(food.uuid)
                 if (nutrientValueDao != null && nutrientValues.isNotEmpty()) {
                     nutrientValueDao.insertNutrientValues(nutrientValues)
-                    println(
-                            "DEBUG DatabaseFoodRepository: ${nutrientValues.size} valeurs nutritionnelles insérées"
-                    )
                 }
 
-                println("DEBUG DatabaseFoodRepository: Insertion de l'aliment terminée avec succès")
 
                 // Mettre à jour le Flow pour notifier les observateurs
                 refreshFoodsFlow()
             } catch (e: Exception) {
-                println(
-                        "DEBUG DatabaseFoodRepository: ERREUR lors de l'insertion de l'aliment: ${e.message}"
-                )
                 e.printStackTrace()
                 throw e
             }
@@ -914,9 +748,6 @@ class DatabaseFoodRepository(
                     try {
                         foodDao.getEspecesForAliment(uuid)
                     } catch (e: Exception) {
-                        println(
-                                "DEBUG DatabaseFoodRepository: Erreur lors de la récupération des espèces: ${e.message}"
-                        )
                         emptyList()
                     }
 
@@ -966,48 +797,28 @@ class DatabaseFoodRepository(
                 // Vérifier que l'aliment existe
                 val existingFood = foodDao.getFoodById(food.uuid)
                 if (existingFood == null) {
-                    println(
-                            "DEBUG DatabaseFoodRepository: ERREUR - Aliment non trouvé dans la base de données: ${food.uuid}"
-                    )
                     throw Exception("Aliment non trouvé dans la base de données: ${food.uuid}")
                 }
 
-                println("DEBUG DatabaseFoodRepository: Aliment trouvé, conversion en FoodEntity")
 
                 // Au lieu de modifier toute l'entité, on garde la référence à la ration de
                 // l'existant pour éviter les problèmes de clé étrangère
                 val foodEntity = food.toFoodEntity().copy(RefRation = existingFood.RefRation)
-                println(
-                        "DEBUG DatabaseFoodRepository: Conversion réussie, mise à jour de l'entité principale"
-                )
 
                 try {
                     // Mettre à jour l'entité principale
                     foodDao.update(foodEntity)
-                    println(
-                            "DEBUG DatabaseFoodRepository: Entité principale mise à jour avec succès"
-                    )
                 } catch (e: Exception) {
-                    println(
-                            "DEBUG DatabaseFoodRepository: Erreur lors de la mise à jour de l'entité principale: ${e.message}"
-                    )
 
                     // Plan B: si la mise à jour échoue, on essaie de mettre à jour sans la
                     // référence à la ration
-                    println(
-                            "DEBUG DatabaseFoodRepository: Tentative de mise à jour sans référence à la ration"
-                    )
                     val updatedEntity = foodEntity.copy(RefRation = null)
                     foodDao.update(updatedEntity)
-                    println(
-                            "DEBUG DatabaseFoodRepository: Entité principale mise à jour sans référence à la ration"
-                    )
                 }
 
                 // Supprimer les anciennes espèces
                 try {
                     foodDao.deleteEspecesForAliment(food.uuid)
-                    println("DEBUG DatabaseFoodRepository: Anciennes espèces supprimées")
 
                     // Ajouter les nouvelles espèces si disponibles
                     if (food.especes.isNotEmpty()) {
@@ -1019,76 +830,39 @@ class DatabaseFoodRepository(
                                     )
                                 }
                         foodDao.insertEspeces(especeEntities)
-                        println(
-                                "DEBUG DatabaseFoodRepository: ${especeEntities.size} nouvelles espèces ajoutées"
-                        )
                     } else {
-                        println("DEBUG DatabaseFoodRepository: Aucune espèce à ajouter")
                     }
                 } catch (e: Exception) {
-                    println(
-                            "DEBUG DatabaseFoodRepository: Erreur lors de la mise à jour des espèces: ${e.message}"
-                    )
                     e.printStackTrace()
                 }
 
                 // Supprimer toutes les anciennes valeurs nutritionnelles quelle que soit la
                 // situation
-                println(
-                        "DEBUG DatabaseFoodRepository: Suppression des anciennes valeurs nutritionnelles"
-                )
                 if (nutrientValueDao != null) {
                     nutrientValueDao.deleteAllNutrientValuesForAliment(food.uuid)
-                    println(
-                            "DEBUG DatabaseFoodRepository: Anciennes valeurs nutritionnelles supprimées avec succès"
-                    )
                 } else {
-                    println(
-                            "DEBUG DatabaseFoodRepository: AVERTISSEMENT - nutrientValueDao est null, impossible de supprimer les valeurs nutritionnelles"
-                    )
                 }
 
                 // Seulement si des valeurs nutritionnelles existent et que le DAO existe, les
                 // ajouter
-                println(
-                        "DEBUG DatabaseFoodRepository: Conversion des valeurs nutritionnelles en entités"
-                )
                 val nutrientValues = food.valMap.toNutrientValueEntities(food.uuid)
 
                 // Insérer les nouvelles valeurs nutritionnelles
                 if (nutrientValueDao != null && nutrientValues.isNotEmpty()) {
-                    println(
-                            "DEBUG DatabaseFoodRepository: Insertion de ${nutrientValues.size} valeurs nutritionnelles"
-                    )
                     try {
                         nutrientValueDao.insertNutrientValues(nutrientValues)
-                        println(
-                                "DEBUG DatabaseFoodRepository: Valeurs nutritionnelles insérées avec succès"
-                        )
                     } catch (e: Exception) {
-                        println(
-                                "DEBUG DatabaseFoodRepository: ERREUR lors de l'insertion des valeurs nutritionnelles: ${e.message}"
-                        )
                         e.printStackTrace()
                         throw e
                     }
                 } else {
-                    println(
-                            "DEBUG DatabaseFoodRepository: Aucune valeur nutritionnelle à insérer ou nutrientValueDao est null"
-                    )
                 }
 
-                println(
-                        "DEBUG DatabaseFoodRepository: Mise à jour de l'aliment terminée avec succès"
-                )
 
                 // Mettre à jour le Flow pour notifier les observateurs
                 refreshFoodsFlow()
                 return@withContext
             } catch (e: Exception) {
-                println(
-                        "DEBUG DatabaseFoodRepository: ERREUR globale lors de la mise à jour de l'aliment: ${e.message}"
-                )
                 e.printStackTrace()
                 throw e
             }
@@ -1116,7 +890,6 @@ class DatabaseFoodRepository(
             // Supprimer tous les aliments
             foodDao.deleteAllFoods()
 
-            println("$count aliments ont été supprimés de la base de données")
 
             return@withContext count
         }
@@ -1145,9 +918,6 @@ class DatabaseFoodRepository(
                 println("Aliment ${food.name} (${food.uuid}) associé à la ration $rationId")
                 return@withContext true
             } catch (e: Exception) {
-                println(
-                        "Erreur lors de l'association de l'aliment $foodId à la ration $rationId: ${e.message}"
-                )
                 return@withContext false
             }
         }

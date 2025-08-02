@@ -43,7 +43,6 @@ fun main(args: Array<String> = emptyArray()) {
                 "import-ani" -> {
                     if (args.size > 1) {
                         val fileName = args[1]
-                        println("Importation des animaux depuis le fichier: $fileName")
 
                         // Convertir en chemin absolu si nécessaire
                         val file = File(fileName)
@@ -52,49 +51,31 @@ fun main(args: Array<String> = emptyArray()) {
                                 else File(System.getProperty("user.dir"), fileName)
 
                         if (!absoluteFile.exists()) {
-                            println("Erreur: Le fichier ${absoluteFile.absolutePath} n'existe pas.")
                             return@runBlocking
                         }
 
-                        println("Lecture du fichier: ${absoluteFile.absolutePath}")
                         val jsonContent = absoluteFile.readText()
                         val importResult = ImportUtils.importAnimalsFromJson(jsonContent)
 
                         if (importResult.animals.isNotEmpty()) {
                             // Traiter d'abord les aliments des rations si présents
                             if (importResult.foods.isNotEmpty()) {
-                                println(
-                                        "Importation de ${importResult.foods.size} aliments extraits des rations..."
-                                )
                                 val importedFoodsCount =
                                         foodRepository.importFoods(importResult.foods)
-                                println("${importedFoodsCount} aliments importés avec succès")
                             }
 
                             // Importer les animaux
                             val importedCount = animalRepository.importAnimals(importResult.animals)
-                            println("${importedCount} animaux importés avec succès.")
                         } else {
-                            println("Aucun animal trouvé dans le fichier.")
-                            println(
-                                    "Vérifiez que vous utilisez le bon format de fichier et la commande appropriée."
-                            )
-                            println("- Pour importer des animaux : import-ani <fichier>")
-                            println("- Pour importer des aliments : import-food <fichier>")
-                            println(
-                                    "- Pour importer des références nutritionnelles : import-ref <fichier>"
-                            )
                         }
                         return@runBlocking
                     } else {
-                        println("Erreur: Nom de fichier manquant pour l'importation des animaux.")
                         return@runBlocking
                     }
                 }
                 "import-food" -> {
                     if (args.size > 1) {
                         val fileName = args[1]
-                        println("Importation des aliments depuis le fichier: $fileName")
 
                         // Convertir en chemin absolu si nécessaire
                         val file = File(fileName)
@@ -103,40 +84,24 @@ fun main(args: Array<String> = emptyArray()) {
                                 else File(System.getProperty("user.dir"), fileName)
 
                         if (!absoluteFile.exists()) {
-                            println("Erreur: Le fichier ${absoluteFile.absolutePath} n'existe pas.")
                             return@runBlocking
                         }
 
-                        println("Lecture du fichier: ${absoluteFile.absolutePath}")
                         val jsonContent = absoluteFile.readText()
                         val foodsJson = ImportUtils.importFoodsFromJson(jsonContent)
 
                         if (foodsJson.isNotEmpty()) {
                             val importedCount = foodRepository.importFoods(foodsJson)
-                            println("${importedCount} aliments importés avec succès.")
                         } else {
-                            println("Aucun aliment trouvé dans le fichier.")
-                            println(
-                                    "Vérifiez que vous utilisez le bon format de fichier et la commande appropriée."
-                            )
-                            println("- Pour importer des aliments : import-food <fichier>")
-                            println("- Pour importer des animaux : import-ani <fichier>")
-                            println(
-                                    "- Pour importer des références nutritionnelles : import-ref <fichier>"
-                            )
                         }
                         return@runBlocking
                     } else {
-                        println("Erreur: Nom de fichier manquant pour l'importation des aliments.")
                         return@runBlocking
                     }
                 }
                 "import-ref" -> {
                     if (args.size > 1) {
                         val fileName = args[1]
-                        println(
-                                "Importation des références nutritionnelles depuis le fichier: $fileName"
-                        )
 
                         // Convertir en chemin absolu si nécessaire
                         val file = File(fileName)
@@ -145,7 +110,6 @@ fun main(args: Array<String> = emptyArray()) {
                                 else File(System.getProperty("user.dir"), fileName)
 
                         if (!absoluteFile.exists()) {
-                            println("Erreur: Le fichier $fileName n'existe pas.")
                             return@runBlocking
                         }
 
@@ -163,30 +127,19 @@ fun main(args: Array<String> = emptyArray()) {
                                             )
 
                             println("\n" + "=".repeat(70))
-                            println("📋 RÉSULTATS D'IMPORTATION :")
-                            println("  • Références importées: ${references.size}")
                             references.forEachIndexed { index, ref ->
-                                println(
-                                        "    ${index + 1}. ${ref.nom} (${ref.espece}) - ${ref.stadePhysio}"
-                                )
                             }
 
                             // Afficher le rapport des résolutions problématiques
                             println("\n" + ImportUtils.genererRapportResolutionsProblematiques())
                         } catch (e: Exception) {
-                            println("Erreur lors de l'importation: ${e.message}")
                             e.printStackTrace()
                         }
                     } else {
-                        println("Usage: ./gradlew run --args=\"import-ref <fichier.vbnr.json>\"")
                     }
                     return@runBlocking
                 }
                 else -> {
-                    println("Commande non reconnue: ${args[0]}")
-                    println(
-                            "Commandes disponibles: import-ani <fichier>, import-food <fichier>, import-ref <fichier>"
-                    )
                     return@runBlocking
                 }
             }
@@ -203,7 +156,6 @@ fun main(args: Array<String> = emptyArray()) {
                 if (importResult.animals.isNotEmpty()) {
                     runBlocking {
                         val importedCount = animalRepository.importAnimals(importResult.animals)
-                        println("$importedCount animaux importés avec succès.")
                     }
                 }
             }
@@ -231,12 +183,10 @@ actual fun importAnimalsFromFile(viewModel: AnimalListViewModel) {
         val selectedFile = fileChooser.selectedFile
         try {
             val jsonContent = selectedFile.readText()
-            println("Fichier JSON sélectionné. Taille du contenu: ${jsonContent.length} caractères")
 
             // Lancer l'importation dans un thread séparé
             GlobalScope.launch { viewModel.importAnimalsFromJson(jsonContent) }
         } catch (e: Exception) {
-            println("Erreur lors de la lecture du fichier JSON: ${e.message}")
             e.printStackTrace()
         }
     }
@@ -265,32 +215,23 @@ actual fun importFoodsFromFile(viewModel: SettingsViewModel) {
     val result = fileChooser.showOpenDialog(null)
     if (result == JFileChooser.APPROVE_OPTION) {
         val selectedFile = fileChooser.selectedFile
-        println("Fichier sélectionné: ${selectedFile.absolutePath}")
 
         try {
             val jsonContent = selectedFile.readText()
-            println("Fichier JSON sélectionné. Taille du contenu: ${jsonContent.length} caractères")
 
             // Utiliser ImportUtils pour importer les aliments, qui détectera automatiquement
             // le format (standard ou Oza2)
             val foodsJson = ImportUtils.importFoodsFromJson(jsonContent)
 
             if (foodsJson.isNotEmpty()) {
-                println("${foodsJson.size} aliments trouvés dans le fichier JSON")
 
                 // Lancer l'importation dans un thread séparé
                 GlobalScope.launch {
-                    println("Début de l'importation dans la base de données...")
                     val importResult = viewModel.importFoodsFromList(foodsJson)
-                    println(
-                            "Importation terminée. ${importResult.importedCount} aliments importés, ${importResult.updatedCount} mis à jour, ${importResult.errorCount} erreurs."
-                    )
                 }
             } else {
-                println("Aucun aliment trouvé dans le fichier JSON")
             }
         } catch (e: Exception) {
-            println("Erreur lors de la lecture ou du traitement du fichier JSON: ${e.message}")
             e.printStackTrace()
         }
     }

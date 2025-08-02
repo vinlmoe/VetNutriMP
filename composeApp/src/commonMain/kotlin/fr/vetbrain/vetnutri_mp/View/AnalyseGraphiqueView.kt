@@ -162,16 +162,11 @@ private fun AddWeightForm(viewModel: AnimalDetailViewModel) {
 
                                 Button(
                                         onClick = {
-                                                println("BOUTON CLIQUE - DEBUT")
                                                 val weight = weightText.toFloatOrNull()
-                                                println("WEIGHT PARSED: $weight")
                                                 if (weight != null && weight > 0) {
-                                                        println("CALLING viewModel.addWeight")
                                                         viewModel.addWeight(selectedDate, weight)
-                                                        println("APRES CALL viewModel.addWeight")
                                                         weightText = ""
                                                 }
-                                                println("BOUTON CLIQUE - FIN")
                                         },
                                         enabled =
                                                 weightText.toFloatOrNull() != null &&

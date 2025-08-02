@@ -148,9 +148,6 @@ fun CreateAnimalView(
                                         viewModel.updateAnimal(
                                                 animal.copy().apply { specieId = it.label }
                                         )
-                                        println(
-                                                "DEBUG_CREATE_VIEW: Espèce sélectionnée - name=${it.name}, label=${it.label}, id=${it.id}"
-                                        )
                                 }
                         },
                         modifier = Modifier.fillMaxWidth()
@@ -207,9 +204,6 @@ fun CreateAnimalView(
 
                         Button(
                                 onClick = {
-                                        println(
-                                                "DEBUG_CREATE_VIEW: Tentative de sauvegarde d'animal - nom=${animal.nom}, specieId=${animal.specieId}, espece=${animal.getEspece().label}"
-                                        )
                                         viewModel.saveAnimal()
 
                                         onNavigateBack()

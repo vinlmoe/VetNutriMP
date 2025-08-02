@@ -540,22 +540,14 @@ fun ReferenceEvEquationsTab(viewModel: NewReferenceEvViewModel) {
 
         // Effet pour charger les équations au chargement de l'onglet
         LaunchedEffect(Unit) {
-                println("DEBUG: ReferenceEvEquationsTab - Chargement des équations")
                 viewModel.loadEquations()
         }
 
         // Débogage: Affichage des informations sur les équations disponibles
         LaunchedEffect(availableEquations) {
-                println("DEBUG: Nombre d'équations disponibles: ${availableEquations.size}")
                 println("DEBUG: Équations BW (MW): ${bwEquations.size}")
                 println("DEBUG: Équations BEE (ENERGYNEED): ${beeEquations.size}")
-                println(
-                        "DEBUG: Équations Energy Density (ENERGYDENSITY): ${energyDensityEquations.size}"
-                )
                 availableEquations.forEachIndexed { index, equation ->
-                        println(
-                                "DEBUG: Équation $index - Nom: ${equation.name}, UUID: ${equation.uuid}, Kind: ${equation.kind}, Script: ${equation.equationScript}"
-                        )
                 }
         }
 
@@ -1887,9 +1879,6 @@ fun NutrientEditDialog(
                                                 }
                                         }
 
-                                        println(
-                                                "UnitEnum traités - Min: ${if (minValue.isBlank()) "supprimé" else selectedUnitEnumMin.displayName}, Max: ${if (maxValue.isBlank()) "supprimé" else selectedUnitEnumMax.displayName}, OptMin: ${if (optMinValue.isBlank()) "supprimé" else selectedUnitEnumOptMin.displayName}, OptMax: ${if (optMaxValue.isBlank()) "supprimé" else selectedUnitEnumOptMax.displayName}"
-                                        )
 
                                         onDismiss()
                                 }

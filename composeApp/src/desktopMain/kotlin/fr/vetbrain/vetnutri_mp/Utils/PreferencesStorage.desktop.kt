@@ -22,7 +22,6 @@ actual class PreferencesStorage {
                 preferencesFile.inputStream().use { input -> properties.load(input) }
             }
         } catch (e: Exception) {
-            println("Erreur lors du chargement des préférences: ${e.message}")
         }
     }
 
@@ -34,7 +33,6 @@ actual class PreferencesStorage {
                     properties.store(output, "VetNutri Preferences")
                 }
             } catch (e: Exception) {
-                println("Erreur lors de la sauvegarde des préférences: ${e.message}")
             }
         }
     }

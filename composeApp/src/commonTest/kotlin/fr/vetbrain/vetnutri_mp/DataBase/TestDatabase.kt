@@ -83,9 +83,6 @@ class TestAnimalDao : AnimalDao {
             aliments[aliment.refRation] = currentAliments + aliment
         }
 
-        println(
-                "Inséré: AlimentRation avec ID=${aliment.uuid}, référençant l'aliment ${aliment.refAlimUnif}"
-        )
     }
 
     override suspend fun insertSupplementalVariable(
@@ -208,9 +205,6 @@ class TestConsultationDao : ConsultationDao {
             aliments[aliment.refRation] = currentAliments + aliment
         }
 
-        println(
-                "Inséré: AlimentRation avec ID=${aliment.uuid}, référençant l'aliment ${aliment.refAlimUnif}"
-        )
     }
 
     override suspend fun deleteRationsForConsultation(consultationId: String) {
@@ -434,7 +428,6 @@ class TestFoodRepository(
         // Supprimer tous les aliments
         foodDao.deleteAllFoods()
 
-        println("$count aliments ont été supprimés de la base de données")
         return count
     }
 }

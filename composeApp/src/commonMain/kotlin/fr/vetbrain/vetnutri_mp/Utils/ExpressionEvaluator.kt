@@ -18,7 +18,6 @@ object ExpressionEvaluator {
             // Utiliser le nouveau parser mathématique
             ExpressionMathematique.evaluer(expression, variables)
         } catch (e: Exception) {
-            println("Erreur lors de l'évaluation de l'expression '$expression': ${e.message}")
             null
         }
     }

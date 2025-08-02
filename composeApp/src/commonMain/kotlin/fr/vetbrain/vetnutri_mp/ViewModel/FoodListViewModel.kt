@@ -64,17 +64,10 @@ class FoodListViewModel(private val foodRepository: DatabaseFoodRepository) {
         /** Charge la liste des aliments depuis le repository */
         fun loadFoods() {
                 viewModelScope.launch {
-                        println("DEBUG FoodListViewModel: Début du chargement des aliments")
                         val allFoods = foodRepository.getAllFoods()
-                        println(
-                                "DEBUG FoodListViewModel: ${allFoods.size} aliments récupérés de la base de données"
-                        )
 
                         // Filtrer les aliments selon les critères actuels
                         val filteredFoods = filterFoods(allFoods)
-                        println(
-                                "DEBUG FoodListViewModel: ${filteredFoods.size} aliments après filtrage"
-                        )
 
                         // Mettre à jour l'état
                         _foods.value = filteredFoods
@@ -82,9 +75,6 @@ class FoodListViewModel(private val foodRepository: DatabaseFoodRepository) {
                         // Mettre à jour les listes de valeurs disponibles pour les filtres
                         updateAvailableFilterValues(allFoods)
 
-                        println(
-                                "DEBUG FoodListViewModel: Chargement des aliments terminé avec succès"
-                        )
                 }
         }
 

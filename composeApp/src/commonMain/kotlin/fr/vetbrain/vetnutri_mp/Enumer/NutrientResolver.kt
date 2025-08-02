@@ -18,7 +18,6 @@ object NutrientResolver {
         // Nettoyage plus approfondi du label
         val cleanedLabel = normalizeLabel(label)
 
-        println("Résolution du nutriment: original='$label', normalisé='$cleanedLabel'")
 
         // Traitement de cas spéciaux pour éviter les confusions connues ou gérer des alias
         when (cleanedLabel) {
@@ -27,14 +26,12 @@ object NutrientResolver {
                 val nutrient =
                         NutrientLipid.entries.find { it.label.equals("CHOLES", ignoreCase = true) }
                 if (nutrient != null) {
-                    println("  → Cas spécial: CHOL résolu comme NutrientLipid.${nutrient.label}")
                     return nutrient
                 }
                 // Ensuite essayer comme chlore
                 val nutrientCHL =
                         NutrientMin.entries.find { it.label.equals("CHL", ignoreCase = true) }
                 if (nutrientCHL != null) {
-                    println("  → Cas spécial: CHOL résolu comme NutrientMin.${nutrientCHL.label}")
                     return nutrientCHL
                 }
             }
@@ -45,16 +42,12 @@ object NutrientResolver {
                             it.label.equals(cleanedLabel, ignoreCase = true)
                         }
                 if (nutrientExact != null) {
-                    println("  → Résolu comme NutrientMain: ${nutrientExact.label}")
                     return nutrientExact
                 }
 
                 // Si échec, essayer avec FIBRTOT (sans le E)
                 val nutrient =
                         NutrientMain.entries.find { it.label.equals("FIBRTOT", ignoreCase = true) }
-                println(
-                        "  → Résolu comme NutrientMain: ${nutrient?.label} (corrigé depuis FIBRETOT)"
-                )
                 return nutrient
             }
             "FIBRESOL" -> {
@@ -64,16 +57,12 @@ object NutrientResolver {
                             it.label.equals(cleanedLabel, ignoreCase = true)
                         }
                 if (nutrientExact != null) {
-                    println("  → Résolu comme NutrientMain: ${nutrientExact.label}")
                     return nutrientExact
                 }
 
                 // Si échec, essayer avec FIBRSOL (sans le E)
                 val nutrient =
                         NutrientMain.entries.find { it.label.equals("FIBRSOL", ignoreCase = true) }
-                println(
-                        "  → Résolu comme NutrientMain: ${nutrient?.label} (corrigé depuis FIBRESOL)"
-                )
                 return nutrient
             }
         }
@@ -84,7 +73,6 @@ object NutrientResolver {
         val nutrientMain =
                 NutrientMain.entries.find { it.label.equals(cleanedLabel, ignoreCase = true) }
         if (nutrientMain != null) {
-            println("  → Résolu comme NutrientMain: ${nutrientMain.label}")
             return nutrientMain
         }
 
@@ -92,7 +80,6 @@ object NutrientResolver {
         val nutrientMacro =
                 NutrientMacro.entries.find { it.label.equals(cleanedLabel, ignoreCase = true) }
         if (nutrientMacro != null) {
-            println("  → Résolu comme NutrientMacro: ${nutrientMacro.label}")
             return nutrientMacro
         }
 
@@ -100,7 +87,6 @@ object NutrientResolver {
         val nutrientMin =
                 NutrientMin.entries.find { it.label.equals(cleanedLabel, ignoreCase = true) }
         if (nutrientMin != null) {
-            println("  → Résolu comme NutrientMin: ${nutrientMin.label}")
             return nutrientMin
         }
 
@@ -108,7 +94,6 @@ object NutrientResolver {
         val nutrientLipid =
                 NutrientLipid.entries.find { it.label.equals(cleanedLabel, ignoreCase = true) }
         if (nutrientLipid != null) {
-            println("  → Résolu comme NutrientLipid: ${nutrientLipid.label}")
             return nutrientLipid
         }
 
@@ -121,7 +106,6 @@ object NutrientResolver {
                             }
                 }
         if (nutrientVitam != null) {
-            println("  → Résolu comme NutrientVitam: ${nutrientVitam.label}")
             return nutrientVitam
         }
 
@@ -129,14 +113,12 @@ object NutrientResolver {
         val nutrientOther =
                 NutrientOther.entries.find { it.label.equals(cleanedLabel, ignoreCase = true) }
         if (nutrientOther != null) {
-            println("  → Résolu comme NutrientOther: ${nutrientOther.label}")
             return nutrientOther
         }
 
         // Vérifier dans AAEnum (insensible à la casse)
         val aaEnum = AAEnum.entries.find { it.label.equals(cleanedLabel, ignoreCase = true) }
         if (aaEnum != null) {
-            println("  → Résolu comme AAEnum: ${aaEnum.label}")
             return aaEnum
         }
 
@@ -144,7 +126,6 @@ object NutrientResolver {
         val nutrientEnergy =
                 NutrientEnergy.entries.find { it.label.equals(cleanedLabel, ignoreCase = true) }
         if (nutrientEnergy != null) {
-            println("  → Résolu comme NutrientEnergy: ${nutrientEnergy.label}")
             return nutrientEnergy
         }
 
@@ -152,21 +133,16 @@ object NutrientResolver {
         val nutrientAnalysis =
                 NutrientAnalysis.entries.find { it.label.equals(cleanedLabel, ignoreCase = true) }
         if (nutrientAnalysis != null) {
-            println("  → Résolu comme NutrientAnalysis: ${nutrientAnalysis.label}")
             return nutrientAnalysis
         }
 
         // Si aucun nutriment n'a été trouvé avec une correspondance exacte, essayer une recherche
         // plus flexible
-        println(
-                "  × Aucune correspondance exacte trouvée pour '$cleanedLabel', essai de correspondance partielle..."
-        )
 
         // Essayer de trouver une correspondance avec une distance de Levenshtein (similarité de
         // chaîne)
         val fuzzyMatch = findBestFuzzyMatch(cleanedLabel)
         if (fuzzyMatch != null) {
-            println("  → Résolu par correspondance approximative: ${fuzzyMatch.label}")
             return fuzzyMatch
         }
 
@@ -189,18 +165,10 @@ object NutrientResolver {
                 }
 
         if (matchingNutrient != null) {
-            println("  → Résolu par correspondance partielle: ${matchingNutrient.label}")
             return matchingNutrient
         }
 
         // Aucun nutriment trouvé
-        println("  × Non résolu. Labels disponibles dans les énumérations:")
-        println("    - NutrientMain: ${NutrientMain.entries.map { it.label }}")
-        println("    - NutrientVitam: ${NutrientVitam.entries.map { it.label }}")
-        println("    - NutrientMacro: ${NutrientMacro.entries.map { it.label }}")
-        println("    - NutrientMin: ${NutrientMin.entries.map { it.label }}")
-        println("    - NutrientLipid: ${NutrientLipid.entries.map { it.label }}")
-        println("    - NutrientOther: ${NutrientOther.entries.map { it.label }}")
 
         return null
     }
@@ -547,9 +515,6 @@ object NutrientResolver {
         // On ne retourne une correspondance que si la similarité est suffisamment élevée
         // (seuil arbitraire de 0.7)
         return if (bestMatch != null && bestMatch.second >= 0.7) {
-            println(
-                    "  → Correspondance approximative trouvée pour '$label': ${bestMatch.first.label} avec similarité ${bestMatch.second}"
-            )
             bestMatch.first
         } else {
             null

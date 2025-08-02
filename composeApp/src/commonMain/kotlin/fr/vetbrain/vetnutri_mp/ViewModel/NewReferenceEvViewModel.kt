@@ -186,17 +186,14 @@ class NewReferenceEvViewModel(
             try {
                 val repo = equationRepository
                 if (repo == null) {
-                    println("Aucun repository d'équations disponible")
                     _equations.value = emptyList()
                     _availableEquations.value = emptyList()
                 } else {
                     val equations = repo.getAllEquations()
                     _equations.value = equations
                     _availableEquations.value = equations
-                    println("Nombre d'équations disponibles: ${equations.size}")
                 }
             } catch (e: Exception) {
-                println("Erreur lors du chargement des équations: ${e.message}")
                 _equations.value = emptyList()
                 _availableEquations.value = emptyList()
             } finally {
@@ -212,17 +209,12 @@ class NewReferenceEvViewModel(
                 biblioRefRepository?.let { repo ->
                     repo.getAllBiblioRefs().collect { biblioRefs ->
                         _availableBiblioRefs.value = biblioRefs
-                        println(
-                                "Nombre de références bibliographiques chargées: ${biblioRefs.size}"
-                        )
                     }
                 }
                         ?: run {
-                            println("Aucun repository de références bibliographiques disponible")
                             _availableBiblioRefs.value = emptyList()
                         }
             } catch (e: Exception) {
-                println("Erreur lors du chargement des références bibliographiques: ${e.message}")
                 _availableBiblioRefs.value = emptyList()
             }
         }
@@ -376,7 +368,6 @@ class NewReferenceEvViewModel(
                 // Pas de mise à jour de _operationSuccess pour éviter la navigation automatique
             } catch (e: Exception) {
                 // Log silencieux de l'erreur
-                println("DEBUG: Erreur lors de la sauvegarde silencieuse: ${e.message}")
             }
         }
     }
@@ -627,7 +618,6 @@ class NewReferenceEvViewModel(
                 val loadedEquation = repo.getEquationById(equation.uuid)
                 if (loadedEquation != null) {
                     reference.equationBW = loadedEquation
-                    println("DEBUG: Équation BW chargée: ${loadedEquation.name}")
                 }
             }
 
@@ -635,7 +625,6 @@ class NewReferenceEvViewModel(
                 val loadedEquation = repo.getEquationById(equation.uuid)
                 if (loadedEquation != null) {
                     reference.equationBEE = loadedEquation
-                    println("DEBUG: Équation BEE chargée: ${loadedEquation.name}")
                 }
             }
 
@@ -643,7 +632,6 @@ class NewReferenceEvViewModel(
                 val loadedEquation = repo.getEquationById(equation.uuid)
                 if (loadedEquation != null) {
                     reference.equationDEcom = loadedEquation
-                    println("DEBUG: Équation DEcom chargée: ${loadedEquation.name}")
                 }
             }
 
@@ -651,16 +639,12 @@ class NewReferenceEvViewModel(
                 val loadedEquation = repo.getEquationById(equation.uuid)
                 if (loadedEquation != null) {
                     reference.equationDEraw = loadedEquation
-                    println("DEBUG: Équation DEraw chargée: ${loadedEquation.name}")
                 }
             }
 
             // Mettre à jour la référence avec les équations chargées
             _currentReference.value = reference
         } catch (e: Exception) {
-            println(
-                    "DEBUG: Erreur lors du chargement des équations pour la référence: ${e.message}"
-            )
         }
     }
 

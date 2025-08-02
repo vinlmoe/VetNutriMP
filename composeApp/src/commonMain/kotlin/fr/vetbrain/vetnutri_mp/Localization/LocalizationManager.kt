@@ -32,7 +32,6 @@ object LocalizationManager {
             val jsonString = resourceReader.readResource(resourceName)
             strings = Json.decodeFromString<LocalizedStrings>(jsonString)
         } catch (e: Exception) {
-            println("Error loading strings for locale $currentLocale: ${e.message}")
             if (currentLocale != "fr") {
                 currentLocale = "fr"
                 loadStrings()

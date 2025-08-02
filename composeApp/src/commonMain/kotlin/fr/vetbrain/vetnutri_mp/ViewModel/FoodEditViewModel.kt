@@ -91,16 +91,13 @@ class FoodEditViewModel(
             }
         }
 
-        println("DEBUG FoodEditViewModel: ${_allNutrients.size} nutriments chargés")
     }
 
     private fun loadAliment(uuid: String) {
         coroutineScope.launch {
             try {
-                println("DEBUG FoodEditViewModel: Chargement de l'aliment avec UUID: $uuid")
                 val aliment = alimentRepository.getAlimentByUUID(uuid)
                 if (aliment != null) {
-                    println("DEBUG FoodEditViewModel: Aliment trouvé: ${aliment.nom}")
                     _alimentState.value = aliment
 
                     // S'assurer que la liste des nutriments est chargée
@@ -118,10 +115,8 @@ class FoodEditViewModel(
                         }
                     }
                 } else {
-                    println("DEBUG FoodEditViewModel: Aucun aliment trouvé pour UUID: $uuid")
                 }
             } catch (e: Exception) {
-                println("Erreur lors du chargement de l'aliment: ${e.message}")
                 e.printStackTrace()
             }
         }
@@ -137,43 +132,28 @@ class FoodEditViewModel(
 
     suspend fun saveAliment(aliment: AlimentEv) {
         try {
-            println("DEBUG FoodEditViewModel: Début saveAliment - UUID: ${aliment.uuid}")
-            println("DEBUG FoodEditViewModel: Enregistrement de l'aliment: ${aliment.nom}")
-            println("DEBUG FoodEditViewModel: Nombre de nutriments: ${aliment.valMap.size}")
 
             // Vérifier si c'est un nouvel aliment ou une mise à jour
             val existingAliment =
                     try {
                         alimentRepository.getAlimentByUUID(aliment.uuid)
                     } catch (e: Exception) {
-                        println(
-                                "DEBUG FoodEditViewModel: Erreur lors de la recherche de l'aliment existant: ${e.message}"
-                        )
                         null
                     }
 
             if (existingAliment != null) {
-                println("DEBUG FoodEditViewModel: Aliment existant trouvé, mise à jour")
             } else {
-                println("DEBUG FoodEditViewModel: Nouvel aliment, création")
             }
 
             aliment.valMap.forEach { (nutrient, quantity) ->
-                println("DEBUG FoodEditViewModel: Nutriment ${nutrient.label} = ${quantity.value}")
             }
 
             // Sauvegarder l'aliment
-            println("DEBUG FoodEditViewModel: Appel à alimentRepository.saveAliment")
             alimentRepository.saveAliment(aliment)
-            println("DEBUG FoodEditViewModel: saveAliment terminé avec succès")
 
             // Mettre à jour l'état local
             _alimentState.value = aliment
-            println("DEBUG FoodEditViewModel: État local mis à jour")
         } catch (e: Exception) {
-            println(
-                    "DEBUG FoodEditViewModel: ERREUR lors de l'enregistrement de l'aliment: ${e.message}"
-            )
             e.printStackTrace()
             throw e // Relancer l'exception pour que la vue puisse la gérer
         }

@@ -1078,16 +1078,10 @@ fun SettingsView(
                         confirmButton = {
                                 Button(
                                         onClick = {
-                                                println(
-                                                        "DEBUG SettingsView: Bouton 'Vider les références' cliqué"
-                                                )
                                                 isReferenceDeleteDialogVisible = false
                                                 isProcessing = true
                                                 coroutineScope.launch {
                                                         try {
-                                                                println(
-                                                                        "DEBUG SettingsView: Appel de viewModel.clearAllReferences()"
-                                                                )
                                                                 // Suppression robuste : même si une
                                                                 // référence est corrompue,
                                                                 // continuer
@@ -1097,9 +1091,6 @@ fun SettingsView(
                                                                                 viewModel
                                                                                         .clearAllReferences()
                                                                 } catch (e: Exception) {
-                                                                        println(
-                                                                                "DEBUG SettingsView: ERREUR suppression références: ${e.message}"
-                                                                        )
                                                                 }
                                                                 var eqCount = 0
                                                                 try {
@@ -1107,9 +1098,6 @@ fun SettingsView(
                                                                                 viewModel
                                                                                         .clearAllEquations()
                                                                 } catch (e: Exception) {
-                                                                        println(
-                                                                                "DEBUG SettingsView: ERREUR suppression équations: ${e.message}"
-                                                                        )
                                                                 }
                                                                 var bibCount = 0
                                                                 try {
@@ -1117,16 +1105,10 @@ fun SettingsView(
                                                                                 viewModel
                                                                                         .clearAllBiblioRefs()
                                                                 } catch (e: Exception) {
-                                                                        println(
-                                                                                "DEBUG SettingsView: ERREUR suppression biblioRefs: ${e.message}"
-                                                                        )
                                                                 }
                                                                 resultMessage =
                                                                         "$refCount références nutritionnelles, $eqCount équations et $bibCount bibliographies ont été supprimées avec succès."
                                                         } catch (e: Exception) {
-                                                                println(
-                                                                        "DEBUG SettingsView: ERREUR globale dans clearAllReferences(): ${e.message}"
-                                                                )
                                                                 e.printStackTrace()
                                                                 resultMessage =
                                                                         "Erreur lors de la suppression : ${e.message}"
@@ -1163,28 +1145,16 @@ fun SettingsView(
                         confirmButton = {
                                 Button(
                                         onClick = {
-                                                println(
-                                                        "DEBUG SettingsView: Bouton 'Vider les équations' cliqué"
-                                                )
                                                 isEquationDeleteDialogVisible = false
                                                 isProcessing = true
                                                 coroutineScope.launch {
                                                         try {
-                                                                println(
-                                                                        "DEBUG SettingsView: Appel de viewModel.clearAllEquations()"
-                                                                )
                                                                 val count =
                                                                         viewModel
                                                                                 .clearAllEquations()
-                                                                println(
-                                                                        "DEBUG SettingsView: clearAllEquations() a retourné: $count"
-                                                                )
                                                                 resultMessage =
                                                                         "$count équations ont été supprimées avec succès."
                                                         } catch (e: Exception) {
-                                                                println(
-                                                                        "DEBUG SettingsView: ERREUR dans clearAllEquations(): ${e.message}"
-                                                                )
                                                                 e.printStackTrace()
                                                                 resultMessage =
                                                                         "Erreur lors de la suppression : ${e.message}"
@@ -1221,28 +1191,16 @@ fun SettingsView(
                         confirmButton = {
                                 Button(
                                         onClick = {
-                                                println(
-                                                        "DEBUG SettingsView: Bouton 'Vider les bibliographies' cliqué"
-                                                )
                                                 isBiblioDeleteDialogVisible = false
                                                 isProcessing = true
                                                 coroutineScope.launch {
                                                         try {
-                                                                println(
-                                                                        "DEBUG SettingsView: Appel de viewModel.clearAllBiblioRefs()"
-                                                                )
                                                                 val count =
                                                                         viewModel
                                                                                 .clearAllBiblioRefs()
-                                                                println(
-                                                                        "DEBUG SettingsView: clearAllBiblioRefs() a retourné: $count"
-                                                                )
                                                                 resultMessage =
                                                                         "$count références bibliographiques ont été supprimées avec succès."
                                                         } catch (e: Exception) {
-                                                                println(
-                                                                        "DEBUG SettingsView: ERREUR dans clearAllBiblioRefs(): ${e.message}"
-                                                                )
                                                                 e.printStackTrace()
                                                                 resultMessage =
                                                                         "Erreur lors de la suppression : ${e.message}"
@@ -1465,7 +1423,6 @@ private fun PreferencesSection(
                         // Utiliser la fonction helper createPreferencesStorage
                         fr.vetbrain.vetnutri_mp.Utils.createPreferencesStorage()
                 } catch (e: Exception) {
-                        println("Erreur lors de la création de PreferencesStorage: ${e.message}")
                         null
                 }
         }
@@ -1509,9 +1466,7 @@ private fun PreferencesContentWithPersistence(
                         preferencesRepository.loadPreferences()
                         currentPreferences = preferencesRepository.preferences
                         preferencesLoaded = true
-                        println("DEBUG: Préférences chargées avec succès")
                 } catch (e: Exception) {
-                        println("Erreur lors du chargement des préférences: ${e.message}")
                         // Utiliser des préférences par défaut
                         currentPreferences = fr.vetbrain.vetnutri_mp.Data.PreferencesApplication()
                         preferencesLoaded = true
@@ -1719,15 +1674,9 @@ private fun SpeciesPreferenceCardWithPersistence(
                                                                                                                 updatedPrefs
                                                                                                         )
 
-                                                                                                        println(
-                                                                                                                "DEBUG: Préférence sauvegardée pour ${species.label}: ${type.displayName}"
-                                                                                                        )
                                                                                                 } catch (
                                                                                                         e:
                                                                                                                 Exception) {
-                                                                                                        println(
-                                                                                                                "Erreur lors de la sauvegarde: ${e.message}"
-                                                                                                        )
                                                                                                 } finally {
                                                                                                         isSaving =
                                                                                                                 false
@@ -1817,9 +1766,6 @@ private fun PreferencesContentSimplified(modifier: Modifier = Modifier) {
                                         onExpressionTypeChanged = { newType ->
                                                 speciesExpressionTypes[espece] = newType
                                                 // TODO: Sauvegarder dans PreferencesStorage
-                                                println(
-                                                        "Préférence mise à jour pour ${espece.label}: ${newType.displayName}"
-                                                )
                                         }
                                 )
                         }

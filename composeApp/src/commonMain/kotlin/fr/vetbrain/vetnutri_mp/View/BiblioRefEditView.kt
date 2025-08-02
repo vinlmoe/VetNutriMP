@@ -47,9 +47,7 @@ fun BiblioRefEditView(
 
                 if (biblioRefId != null && biblioRefId.isNotBlank()) {
                         viewModel.loadBiblioRefById(biblioRefId)
-                        println("DEBUG BiblioRefEditView: Chargement de la référence $biblioRefId")
                 } else {
-                        println("DEBUG BiblioRefEditView: Création d'une nouvelle référence")
                 }
         }
 

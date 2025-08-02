@@ -45,34 +45,18 @@ class AlimentRepository(private val dataSource: FoodRepository) {
     }
 
     suspend fun saveAliment(aliment: AlimentEv) {
-        println("DEBUG AlimentRepository: Début saveAliment - UUID: ${aliment.uuid}")
-        println("DEBUG AlimentRepository: Sauvegarde de l'aliment: ${aliment.nom}")
-        println("DEBUG AlimentRepository: Nombre de nutriments: ${aliment.valMap.size}")
 
         aliment.valMap.forEach { (nutrient, quantity) ->
-            println("DEBUG AlimentRepository: Nutriment ${nutrient.label} = ${quantity.value}")
         }
 
         try {
             val existingFood = dataSource.getFood(aliment.uuid)
             if (existingFood != null) {
-                println(
-                        "DEBUG AlimentRepository: Aliment existant trouvé, mise à jour: ${existingFood.nom}"
-                )
-                println("DEBUG AlimentRepository: Appel à updateFood")
                 dataSource.updateFood(aliment)
-                println("DEBUG AlimentRepository: updateFood terminé avec succès")
             } else {
-                println(
-                        "DEBUG AlimentRepository: Aliment non trouvé, insertion d'un nouvel aliment"
-                )
-                println("DEBUG AlimentRepository: Appel à insertFood")
                 dataSource.insertFood(aliment)
-                println("DEBUG AlimentRepository: insertFood terminé avec succès")
             }
-            println("DEBUG AlimentRepository: Sauvegarde terminée avec succès")
         } catch (e: Exception) {
-            println("DEBUG AlimentRepository: ERREUR lors de la sauvegarde: ${e.message}")
             e.printStackTrace()
             throw e // Relancer l'exception pour que la vue puisse la gérer
         }

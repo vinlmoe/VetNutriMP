@@ -175,9 +175,6 @@ class AnimalListViewModel(private val animalRepository: AnimalRepository) : View
 
                     // Importer d'abord les aliments extraits des rations s'il y en a
                     if (importResult.foods.isNotEmpty()) {
-                        println(
-                                "Importation de ${importResult.foods.size} aliments extraits des rations..."
-                        )
                         try {
                             // Obtenir le repository des aliments
                             val foodRepository = animalRepository.getFoodRepository()
@@ -185,25 +182,17 @@ class AnimalListViewModel(private val animalRepository: AnimalRepository) : View
                                 try {
                                     foodImportResult =
                                             foodRepository.importFoods(importResult.foods)
-                                    println(
-                                            "${foodImportResult.importedCount} aliments importés, ${foodImportResult.updatedCount} mis à jour"
-                                    )
                                     foodsImported =
                                             foodImportResult.importedCount +
                                                     foodImportResult.updatedCount > 0
                                 } catch (e: Exception) {
-                                    println(
-                                            "Erreur lors de l'importation des aliments: ${e.message}"
-                                    )
                                     e.printStackTrace()
                                     // Continuer l'importation des animaux même si l'importation des
                                     // aliments échoue
                                 }
                             } else {
-                                println("Impossible d'obtenir le repository des aliments")
                             }
                         } catch (e: Exception) {
-                            println("Erreur lors de l'importation des aliments: ${e.message}")
                             e.printStackTrace()
                         }
                     }
@@ -218,31 +207,23 @@ class AnimalListViewModel(private val animalRepository: AnimalRepository) : View
                                                 importResult.importedCount +
                                                         importResult.updatedCount
                                         )
-                                println(
-                                        "${importResult.importedCount} animaux importés, ${importResult.updatedCount} mis à jour, et leurs aliments importés avec succès"
-                                )
                             } else {
                                 _importResult.value =
                                         ImportResult.Success(
                                                 importResult.importedCount +
                                                         importResult.updatedCount
                                         )
-                                println(
-                                        "${importResult.importedCount} animaux importés, ${importResult.updatedCount} mis à jour (sans aliments)"
-                                )
                             }
                             loadAnimals() // Actualiser la liste après l'importation
                         } else {
                             _importResult.value =
                                     ImportResult.Error("Échec de l'importation des animaux")
-                            println("Échec de l'importation des animaux")
                         }
                     } catch (e: Exception) {
                         _importResult.value =
                                 ImportResult.Error(
                                         "Erreur lors de l'importation des animaux: ${e.message}"
                                 )
-                        println("Erreur lors de l'importation des animaux: ${e.message}")
                         e.printStackTrace()
                     }
                 } else {
@@ -251,7 +232,6 @@ class AnimalListViewModel(private val animalRepository: AnimalRepository) : View
                 }
             } catch (e: Exception) {
                 _importResult.value = ImportResult.Error(e.message ?: "Erreur inconnue")
-                println("Erreur lors du traitement du JSON: ${e.message}")
                 e.printStackTrace()
             }
         }

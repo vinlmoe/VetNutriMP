@@ -40,11 +40,7 @@ class RationAnalyzer {
         println("Analyse de la ration: ${ration.name} (${ration.uuid})")
 
         if (consultation != null) {
-            println(
-                    "DEBUG: Analyse avec consultation - Variables supplémentaires: ${consultation.suppVarp.size}"
-            )
             consultation.suppVarp.forEach { variable ->
-                println("DEBUG: Variable ${variable.variable?.variable} = ${variable.varue}")
             }
         }
 

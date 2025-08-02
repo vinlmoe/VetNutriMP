@@ -38,15 +38,11 @@ fun BiblioRefListView(
     LaunchedEffect(Unit) { viewModel.refreshBiblioRefs() }
 
     LaunchedEffect(biblioRefs) {
-        println("DEBUG BiblioRefListView: Liste mise à jour - ${biblioRefs.size} références")
     }
 
     LaunchedEffect(Unit) {
         // Si la liste est vide, on peut ajouter des références de test (pour développement)
         if (biblioRefs.isEmpty()) {
-            println(
-                    "DEBUG BiblioRefListView: Liste vide, possibilité d'ajouter des données de test"
-            )
         }
     }
 

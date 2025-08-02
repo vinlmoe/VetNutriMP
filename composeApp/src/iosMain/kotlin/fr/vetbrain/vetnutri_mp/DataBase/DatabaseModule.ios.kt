@@ -9,7 +9,6 @@ class IOSDatabaseModule : DatabaseModule {
 
     override fun initializeDatabase() {
         // Initialisation de la base de données iOS (SQLite ou autre)
-        println("iOS database initialization - not yet fully implemented")
     }
 
     override fun getDatabase(): Any? {
@@ -18,7 +17,6 @@ class IOSDatabaseModule : DatabaseModule {
 
     override fun closeDatabase() {
         database = null
-        println("iOS database closure - not yet fully implemented")
     }
 }
 

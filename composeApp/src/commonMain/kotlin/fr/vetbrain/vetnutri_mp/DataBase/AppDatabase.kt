@@ -83,16 +83,8 @@ fun getRoomDatabase(builder: RoomDatabase.Builder<AppDatabase>): AppDatabase {
                 .fallbackToDestructiveMigrationOnDowngrade(dropAllTables = false)
                 .build()
     } catch (e: Exception) {
-        println("🚨 ERREUR: Impossible d'ouvrir la base de données: ${e.message}")
-        println("📋 Causes possibles:")
-        println("   - Corruption du fichier de base de données")
-        println("   - Migration de version impossible")
-        println("   - Contraintes de clés étrangères violées")
-        println("   - Permissions insuffisantes")
 
         // ⚠️ En dernier recours seulement, avec avertissement explicite
-        println("⚠️  ATTENTION: Recréation de la base de données en dernier recours")
-        println("⚠️  DONNÉES PERDUES! Implémentez une stratégie de sauvegarde.")
 
         builder.fallbackToDestructiveMigration(true)
                 .setDriver(BundledSQLiteDriver())
@@ -109,14 +101,12 @@ fun getRoomDatabase(builder: RoomDatabase.Builder<AppDatabase>): AppDatabase {
  */
 fun createDatabaseBackup(database: AppDatabase): Boolean {
     return try {
-        println("📦 Création d'une sauvegarde de la base de données...")
         // TODO: Implémenter l'export JSON des données critiques
         // - Exporter tous les animaux avec leurs consultations
         // - Exporter les rations personnalisées
         // - Exporter les références nutritionnelles custom
         true
     } catch (e: Exception) {
-        println("❌ Erreur lors de la sauvegarde: ${e.message}")
         false
     }
 }
@@ -130,7 +120,6 @@ fun createDatabaseBackup(database: AppDatabase): Boolean {
 fun createMigration17to18(): Migration {
     return object : Migration(17, 18) {
         override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
-            println("🔄 Migration 17 → 18 en cours...")
             println("🔵 Test de montée de version sécurisée (Room KMP)")
 
             try {
@@ -141,20 +130,16 @@ fun createMigration17to18(): Migration {
                 connection.prepare("SELECT COUNT(*) FROM ANIMALS").use { statement ->
                     if (statement.step()) {
                         val animalCount = statement.getInt(0)
-                        println("✅ Vérification: $animalCount animaux toujours présents")
                     }
                 }
 
                 connection.prepare("SELECT COUNT(*) FROM FOOD").use { statement ->
                     if (statement.step()) {
                         val foodCount = statement.getInt(0)
-                        println("✅ Vérification: $foodCount aliments toujours présents")
                     }
                 }
 
-                println("✅ Migration 17 → 18 réussie avec préservation des données!")
             } catch (e: Exception) {
-                println("❌ Erreur migration 17 → 18: ${e.message}")
                 throw e
             }
         }
@@ -170,8 +155,6 @@ fun createMigration17to18(): Migration {
 fun createMigration18to19(): Migration {
     return object : Migration(18, 19) {
         override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
-            println("🔄 Migration 18 → 19 en cours...")
-            println("🔵 Test migration Room KMP avec préservation des données")
 
             try {
                 // Cette migration ne fait aucune modification de structure
@@ -181,36 +164,28 @@ fun createMigration18to19(): Migration {
                 connection.prepare("SELECT COUNT(*) FROM ANIMALS").use { statement ->
                     if (statement.step()) {
                         val animalCount = statement.getInt(0)
-                        println("✅ Vérification: $animalCount animaux toujours présents")
                     }
                 }
 
                 connection.prepare("SELECT COUNT(*) FROM FOOD").use { statement ->
                     if (statement.step()) {
                         val foodCount = statement.getInt(0)
-                        println("✅ Vérification: $foodCount aliments toujours présents")
                     }
                 }
 
                 connection.prepare("SELECT COUNT(*) FROM CONSULTATIONS").use { statement ->
                     if (statement.step()) {
                         val consultationCount = statement.getInt(0)
-                        println(
-                                "✅ Vérification: $consultationCount consultations toujours présentes"
-                        )
                     }
                 }
 
                 connection.prepare("SELECT COUNT(*) FROM RATIONS").use { statement ->
                     if (statement.step()) {
                         val rationCount = statement.getInt(0)
-                        println("✅ Vérification: $rationCount rations toujours présentes")
                     }
                 }
 
-                println("✅ Migration 18 → 19 réussie avec préservation complète des données!")
             } catch (e: Exception) {
-                println("❌ Erreur migration 18 → 19: ${e.message}")
                 throw e
             }
         }

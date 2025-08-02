@@ -64,13 +64,9 @@ class NutrientRefViewModel(
                 val nutrients = loadNutrientsFromReference(reference)
                 _nutrientRefs.value = nutrients
 
-                println(
-                        "DEBUG NutrientRefViewModel: ${nutrients.size} nutriments chargés depuis la référence ${reference.uuid}"
-                )
             } catch (e: Exception) {
                 _error.value =
                         "Erreur lors du chargement des nutriments: ${e.message ?: "Erreur inconnue"}"
-                println("DEBUG NutrientRefViewModel: Erreur lors du chargement: ${e.message}")
             } finally {
                 _loading.value = false
             }
@@ -96,13 +92,9 @@ class NutrientRefViewModel(
                 val otherNutrients = _nutrientRefs.value.filter { it.nutrientType != nutrientType }
                 _nutrientRefs.value = otherNutrients + nutrients
 
-                println(
-                        "DEBUG NutrientRefViewModel: ${nutrients.size} nutriments de type $nutrientType chargés"
-                )
             } catch (e: Exception) {
                 _error.value =
                         "Erreur lors du chargement des nutriments: ${e.message ?: "Erreur inconnue"}"
-                println("DEBUG NutrientRefViewModel: Erreur lors du chargement: ${e.message}")
             } finally {
                 _loading.value = false
             }
@@ -129,15 +121,9 @@ class NutrientRefViewModel(
                 // Recharger les nutriments
                 loadNutrientsForType(nutrientType)
 
-                println(
-                        "DEBUG NutrientRefViewModel: Nutriments de type $nutrientType réinitialisés"
-                )
             } catch (e: Exception) {
                 _error.value =
                         "Erreur lors de la réinitialisation: ${e.message ?: "Erreur inconnue"}"
-                println(
-                        "DEBUG NutrientRefViewModel: Erreur lors de la réinitialisation: ${e.message}"
-                )
             } finally {
                 _loading.value = false
             }
@@ -162,15 +148,10 @@ class NutrientRefViewModel(
                 // Sauvegarder la référence mise à jour dans la base de données
                 referenceEvRepository.updateReferenceEv(reference)
 
-                println(
-                        "DEBUG NutrientRefViewModel: ${nutrientsToSave.size} nutriments de type $nutrientType sauvegardés"
-                )
                 nutrientsToSave.forEach {
-                    println("DEBUG NutrientRefViewModel: - ${it.name}: ${it.value} ${it.unitReq}")
                 }
             } catch (e: Exception) {
                 _error.value = "Erreur lors de la sauvegarde: ${e.message ?: "Erreur inconnue"}"
-                println("DEBUG NutrientRefViewModel: Erreur lors de la sauvegarde: ${e.message}")
             } finally {
                 _loading.value = false
             }
@@ -225,24 +206,14 @@ class NutrientRefViewModel(
     fun loadAvailableBiblioRefs() {
         scope.launch {
             try {
-                println("DEBUG NutrientRefViewModel: Chargement des références bibliographiques...")
 
                 // Charger les vraies données depuis le repository
                 biblioRefRepository.getAllBiblioRefs().collect { biblioRefs ->
                     _availableBiblioRefs.value = biblioRefs
-                    println(
-                            "DEBUG NutrientRefViewModel: ${biblioRefs.size} références bibliographiques chargées"
-                    )
                     biblioRefs.forEach { biblio ->
-                        println(
-                                "DEBUG NutrientRefViewModel: - ${biblio.firstAuthor} (${biblio.year})"
-                        )
                     }
                 }
             } catch (e: Exception) {
-                println(
-                        "DEBUG NutrientRefViewModel: Erreur lors du chargement des références bibliographiques: ${e.message}"
-                )
                 _error.value =
                         "Erreur lors du chargement des références bibliographiques: ${e.message}"
 
@@ -266,9 +237,6 @@ class NutrientRefViewModel(
                                 )
                         )
                 _availableBiblioRefs.value = fallbackBiblioRefs
-                println(
-                        "DEBUG NutrientRefViewModel: Utilisation des données de test (${fallbackBiblioRefs.size} références)"
-                )
             }
         }
     }
@@ -377,14 +345,8 @@ class NutrientRefViewModel(
                             nutrientRef.biblioRef ?: BiblioRef()
                     )
 
-                    println(
-                            "DEBUG NutrientRefViewModel: Nutriment sauvegardé - ${nutrientRef.name}: ${nutrientRef.value}"
-                    )
                 }
             } catch (e: Exception) {
-                println(
-                        "DEBUG NutrientRefViewModel: Erreur lors de la sauvegarde du nutriment ${nutrientRef.name}: ${e.message}"
-                )
             }
         }
     }

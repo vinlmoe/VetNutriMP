@@ -80,63 +80,46 @@ class LocalAlimentDataSource(
         var imported = 0
         var errors = 0
 
-        println("===== DÉBUT IMPORTATION ALIMENTS =====")
-        println("Nombre d'aliments à importer: ${foods.size}")
 
         foods.forEach { foodJson ->
             try {
                 // Déboguer la valMap avant conversion
                 println("\nALIMENT: ${foodJson.nom} (${foodJson.UUID})")
-                println("ValMap dans JSON: ${foodJson.valMap.size} nutriments")
                 if (foodJson.valMap.isNotEmpty()) {
-                    println("Premiers 5 nutriments dans JSON:")
                     foodJson.valMap.entries.take(5).forEach { (key, value) ->
-                        println("  • $key: $value")
                     }
                 } else {
-                    println("Aucun nutriment dans le JSON!")
                 }
 
                 // Utiliser la fonction d'extension toData() définie dans JsonMappers.kt
                 val alimentEv = foodJson.toData()
 
                 // Déboguer la carte des nutriments après conversion
-                println("ValMap après conversion: ${alimentEv.valMap.size} nutriments")
                 if (alimentEv.valMap.isNotEmpty()) {
-                    println("Premiers 5 nutriments après conversion:")
                     alimentEv.valMap.entries.take(5).forEach { (nutrient, value) ->
-                        println("  • ${nutrient.label}: $value")
                     }
                 } else {
-                    println("Aucun nutriment après conversion!")
                 }
 
                 // Vérifier si l'aliment existe déjà
                 val existingFood = getFood(alimentEv.uuid)
                 if (existingFood != null) {
                     // Mettre à jour l'aliment existant
-                    println("Mise à jour de l'aliment existant: ${alimentEv.nom}")
                     updateFood(alimentEv)
                     updated++
                 } else {
                     // Insérer un nouvel aliment
-                    println("Insertion d'un nouvel aliment: ${alimentEv.nom}")
                     insertFood(alimentEv)
                     imported++
                 }
                 count++
             } catch (e: Exception) {
-                println("Erreur lors de l'importation de l'aliment ${foodJson.nom}: ${e.message}")
                 e.printStackTrace()
                 errors++
             }
         }
 
         refreshFoodsFlow()
-        println("===== FIN IMPORTATION ALIMENTS =====")
-        println(
-                "$count aliments traités ($imported importés, $updated mis à jour, $errors erreurs)"
-        )
 
         val totalFoods = getAllFoods().size
 
@@ -248,7 +231,6 @@ class LocalAlimentDataSource(
 
         refreshFoodsFlow()
 
-        println("$count aliments ont été supprimés de la base de données")
         return count
     }
 }

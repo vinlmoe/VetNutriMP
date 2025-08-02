@@ -219,10 +219,8 @@ class EquationViewModel(
                     }
                 }
 
-                println("Nombre d'équations chargées: ${equationsList.size}")
             } catch (e: Exception) {
                 _operationMessage.value = "Erreur lors du chargement des équations: ${e.message}"
-                println("Erreur lors du chargement des équations: ${e.message}")
                 e.printStackTrace()
             } finally {
                 _isLoading.value = false
@@ -243,7 +241,6 @@ class EquationViewModel(
                     biblioRepository.getAllBiblioRefs().collect { refs -> _biblioRefs.value = refs }
                 }
             } catch (e: Exception) {
-                println("Erreur lors du chargement des références biblio: ${e.message}")
             }
         }
     }
@@ -324,10 +321,6 @@ class EquationViewModel(
             }
         }
 
-        println(
-                "DEBUG: Variables détectées dans le script: ${detectedVariables.map { it.variable }}"
-        )
-        println("DEBUG: Variables non reconnues dans le script: $unrecognizedVars")
 
         // Mettre à jour la liste des variables de l'équation
         val currentValue = _currentEquation.value
@@ -472,7 +465,6 @@ class EquationViewModel(
 
     /** Sauvegarde l'équation courante, retourne true si succès, false sinon */
     fun saveCurrentEquation(): Boolean {
-        println("DEBUG: Tentative de sauvegarde de l'équation")
 
         val equation = _currentEquation.value
 
@@ -500,7 +492,6 @@ class EquationViewModel(
 
         // Valider la cohérence de l'équation
         val isConsistent = validerCoherenceEquation(equation.equationScript)
-        println("DEBUG: Validation de l'équation - consistent: $isConsistent")
 
         // Mettre à jour le champ consistent de l'équation
         val equationToSave = equation.copy(consistent = isConsistent)
@@ -517,10 +508,8 @@ class EquationViewModel(
                         } else {
                             "Équation sauvegardée avec des variables non reconnues"
                         }
-                println("DEBUG: Équation sauvegardée avec succès")
             } catch (e: Exception) {
                 _operationMessage.value = "Erreur lors de la sauvegarde: ${e.message}"
-                println("DEBUG: Erreur lors de la sauvegarde - ${e.message}")
                 _saveSuccessful.value = false
             } finally {
                 _isLoading.value = false
@@ -552,9 +541,6 @@ class EquationViewModel(
                             val forbiddenVars =
                                     variablesInExpression.filter { it in setOf("BE", "BEE") }
                             if (forbiddenVars.isNotEmpty()) {
-                                println(
-                                        "DEBUG: Référence circulaire détectée - Variables interdites dans une équation ENERGYNEED: $forbiddenVars"
-                                )
                                 _operationMessage.value =
                                         "Erreur: Une équation de besoin énergétique ne peut pas utiliser les variables BE ou BEE (référence circulaire)"
                                 true
@@ -564,9 +550,6 @@ class EquationViewModel(
                             // Interdire MW dans les équations de poids métabolique
                             val forbiddenVars = variablesInExpression.filter { it == "MW" }
                             if (forbiddenVars.isNotEmpty()) {
-                                println(
-                                        "DEBUG: Référence circulaire détectée - Variable MW interdite dans une équation MW"
-                                )
                                 _operationMessage.value =
                                         "Erreur: Une équation de poids métabolique ne peut pas utiliser la variable MW (référence circulaire)"
                                 true
@@ -589,7 +572,6 @@ class EquationViewModel(
                     }
 
             if (unrecognizedVariables.isNotEmpty()) {
-                println("DEBUG: Variables non reconnues trouvées: $unrecognizedVariables")
                 return false
             }
 
@@ -622,10 +604,8 @@ class EquationViewModel(
             val result = ExpressionEvaluator.evaluer(script, testVariables)
             val isEvaluable = result != null && !result.isNaN() && result.isFinite()
 
-            println("DEBUG: Test d'évaluation - résultat: $result, évaluable: $isEvaluable")
             return isEvaluable
         } catch (e: Exception) {
-            println("DEBUG: Erreur lors de la validation de l'équation: ${e.message}")
             return false
         }
     }

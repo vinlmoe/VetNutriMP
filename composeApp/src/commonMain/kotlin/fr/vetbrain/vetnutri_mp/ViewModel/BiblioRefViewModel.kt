@@ -51,17 +51,12 @@ class BiblioRefViewModel(private val repository: BiblioRefRepository) {
     fun refreshBiblioRefs() {
         viewModelScope.launch {
             try {
-                println("DEBUG BiblioRefViewModel: Rafraîchissement forcé des références")
                 // Utilisation d'une collecte avec timeout pour éviter de bloquer indéfiniment
                 kotlinx.coroutines.withTimeoutOrNull(2000) {
                     repository.getAllBiblioRefs().collect { refs ->
-                        println(
-                                "DEBUG BiblioRefViewModel: ${refs.size} références récupérées lors du rafraîchissement"
-                        )
                     }
                 }
             } catch (e: Exception) {
-                println("DEBUG BiblioRefViewModel: Erreur lors du rafraîchissement: ${e.message}")
             }
         }
     }
@@ -86,16 +81,12 @@ class BiblioRefViewModel(private val repository: BiblioRefRepository) {
                 // Vérifier la validité
                 validateForm()
 
-                println(
-                        "DEBUG BiblioRefViewModel: Référence chargée avec succès: ${biblioRef.firstAuthor}, ${biblioRef.year}"
-                )
             } else {
                 _operationMessage.value = "Référence non trouvée (ID: $biblioRefId)"
                 println("DEBUG BiblioRefViewModel: Référence non trouvée (ID: $biblioRefId)")
             }
         } catch (e: Exception) {
             _operationMessage.value = "Erreur lors du chargement: ${e.message}"
-            println("DEBUG BiblioRefViewModel: Erreur lors du chargement: ${e.message}")
             e.printStackTrace()
         } finally {
             _actionInProgress.value = false
@@ -160,7 +151,6 @@ class BiblioRefViewModel(private val repository: BiblioRefRepository) {
     /** Sauvegarde la référence bibliographique actuelle */
     fun saveBiblioRef() {
         if (!isValid.value) {
-            println("DEBUG: Formulaire non valide, sauvegarde abandonnée")
             return
         }
 
@@ -194,9 +184,6 @@ class BiblioRefViewModel(private val repository: BiblioRefRepository) {
                 }
 
         // Log pour le débogage
-        println(
-                "DEBUG: Tentative de sauvegarde: ${biblioRefToSave.firstAuthor}, ${biblioRefToSave.year}, UUID: ${biblioRefToSave.uuid}"
-        )
 
         viewModelScope.launch {
             try {
@@ -209,10 +196,8 @@ class BiblioRefViewModel(private val repository: BiblioRefRepository) {
 
                 if (isNewReference) {
                     _operationMessage.value = "Référence ajoutée avec succès"
-                    println("DEBUG: Référence ajoutée: ${biblioRefToSave.firstAuthor}")
                 } else {
                     _operationMessage.value = "Référence mise à jour avec succès"
-                    println("DEBUG: Référence mise à jour: ${biblioRefToSave.firstAuthor}")
                 }
 
                 // Forcer le rafraîchissement des références pour mettre à jour la liste
@@ -222,7 +207,6 @@ class BiblioRefViewModel(private val repository: BiblioRefRepository) {
                 initForEdit()
             } catch (e: Exception) {
                 _operationMessage.value = "Erreur: ${e.message}"
-                println("DEBUG: Erreur lors de la sauvegarde: ${e.message}")
                 e.printStackTrace()
             } finally {
                 _actionInProgress.value = false
@@ -245,7 +229,6 @@ class BiblioRefViewModel(private val repository: BiblioRefRepository) {
                 }
             } catch (e: Exception) {
                 _operationMessage.value = "Erreur: ${e.message}"
-                println("DEBUG: Erreur lors de la suppression: ${e.message}")
                 e.printStackTrace()
             } finally {
                 _actionInProgress.value = false
