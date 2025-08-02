@@ -13,6 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -20,8 +21,8 @@ import fr.vetbrain.vetnutri_mp.Components.AppDatePicker
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailViewModel
+import io.github.koalaplot.core.*
 import io.github.koalaplot.core.line.LinePlot
-import io.github.koalaplot.core.style.LineStyle
 import io.github.koalaplot.core.util.ExperimentalKoalaPlotApi
 import io.github.koalaplot.core.xygraph.*
 import kotlinx.datetime.Clock
@@ -354,6 +355,28 @@ private fun EvolutionPoidsChart(viewModel: AnimalDetailViewModel) {
                                 }
 
                         val xAxisTitle = if (useYears) "Âge (années)" else "Âge (mois)"
+
+                        // Calculer les marges pour les axes
+                        val minX = donneesPoids.minOfOrNull { it.x } ?: 0f
+                        val maxX = donneesPoids.maxOfOrNull { it.x } ?: if (useYears) 10f else 24f
+                        val xMargin = (maxX - minX) * 0.05f
+                        val xRange =
+                                if (minX == maxX) (minX - 1f)..(maxX + 1f)
+                                else (minX - xMargin)..(maxX + xMargin)
+
+                        val minY = donneesPoids.minOfOrNull { it.y } ?: 0f
+                        val maxY = donneesPoids.maxOfOrNull { it.y } ?: 50f
+                        val yMargin = (maxY - minY) * 0.05f
+                        val yRange =
+                                if (minY == maxY) (minY - 1f)..(maxY + 1f)
+                                else (minY - yMargin)..(maxY + yMargin)
+
+                        // Ajuster dynamiquement l'incrément des graduations
+                        val xTickIncrement =
+                                if ((xRange.endInclusive - xRange.start) > 10)
+                                        (if (useYears) 1f else 3f)
+                                else 1f
+
                         GraphCard(
                                 titre = "Évolution du poids corporel",
                                 sousTitre = "Poids en kg selon l'âge"
@@ -361,48 +384,21 @@ private fun EvolutionPoidsChart(viewModel: AnimalDetailViewModel) {
                                 XYGraph(
                                         xAxisModel =
                                                 FloatLinearAxisModel(
-                                                        range =
-                                                                donneesPoids
-                                                                        .minOfOrNull { it.x }
-                                                                        ?.let {
-                                                                                it..donneesPoids
-                                                                                                .maxOfOrNull {
-                                                                                                        it.x
-                                                                                                }!!
-                                                                        }
-                                                                        ?: if (useYears) 0f..10f
-                                                                        else 0f..24f,
-                                                        minimumMajorTickIncrement =
-                                                                if (useYears) 1f else 3f
+                                                        range = xRange,
+                                                        minimumMajorTickIncrement = xTickIncrement
                                                 ),
-                                        yAxisModel =
-                                                FloatLinearAxisModel(
-                                                        range =
-                                                                donneesPoids
-                                                                        .minOfOrNull { it.y }
-                                                                        ?.let {
-                                                                                it..donneesPoids
-                                                                                                .maxOfOrNull {
-                                                                                                        it.y
-                                                                                                }!!
-                                                                        }
-                                                                        ?: 0f..50f,
-                                                        minimumMajorTickIncrement = 5f
-                                                ),
+                                        yAxisModel = FloatLinearAxisModel(range = yRange),
                                         modifier = Modifier.height(250.dp)
                                 ) {
                                         LinePlot(
                                                 data = donneesPoids,
-                                                lineStyle =
-                                                        LineStyle(
-                                                                brush =
-                                                                        androidx.compose.ui.graphics
-                                                                                .SolidColor(
-                                                                                        VetNutriColors
-                                                                                                .Primary
-                                                                                ),
-                                                                strokeWidth = 2.dp
+                                                symbol = { point ->
+                                                        Symbol(
+                                                                fillBrush = SolidColor(Color.Blue),
+                                                                outlineBrush =
+                                                                        SolidColor(Color.Black)
                                                         )
+                                                }
                                         )
                                 }
                         }
