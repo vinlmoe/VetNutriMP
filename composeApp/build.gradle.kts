@@ -169,4 +169,3 @@ dependencies {
 }
 
 room { schemaDirectory("$projectDir/schemas") }
-
