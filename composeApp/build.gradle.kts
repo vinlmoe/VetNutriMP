@@ -111,8 +111,8 @@ android {
         applicationId = "fr.vetbrain.vetnutri_mp"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 4
-        versionName = "1.0.4"
+        versionCode = 5
+        versionName = "1.0.5"
 
         // Configuration de Room
 
@@ -123,7 +123,9 @@ android {
             // excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
-    buildTypes { getByName("release") { isMinifyEnabled = false } }
+    buildTypes { getByName("release") { isMinifyEnabled = false
+        versionNameSuffix = rootProject.extra["releaseVersionNameSuffix"] as String
+    } }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
