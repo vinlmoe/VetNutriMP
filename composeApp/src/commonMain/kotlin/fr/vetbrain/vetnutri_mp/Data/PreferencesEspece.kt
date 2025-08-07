@@ -10,11 +10,13 @@ import fr.vetbrain.vetnutri_mp.Enumer.TypeExpressionBesoin
  * @param typeExpressionBesoinId ID du type d'expression des besoins (voir TypeExpressionBesoin.id)
  * @param nutrimentsSelectionnes Map des catégories de nutriments vers les listes de nutriments
  * sélectionnés
+ * @param equationsComplementaires Map des nutriments vers les UUIDs des équations complémentaires
  */
 data class PreferencesEspece(
         val espece: String = Espece.CHIEN.name,
         val typeExpressionBesoinId: Int = TypeExpressionBesoin.DEFAULT.id,
-        val nutrimentsSelectionnes: Map<String, List<Int>> = getDefaultNutrients()
+        val nutrimentsSelectionnes: Map<String, List<Int>> = getDefaultNutrients(),
+        val equationsComplementaires: Map<String, String> = emptyMap() // nutriment -> equation UUID
 ) {
     /** Obtient l'énumération TypeExpressionBesoin correspondante */
     fun getTypeExpressionBesoinEnum(): TypeExpressionBesoin {
@@ -80,6 +82,55 @@ data class PreferencesEspece(
         return copy(nutrimentsSelectionnes = newMap)
     }
 
+    /** Obtient l'équation complémentaire pour un nutriment */
+    fun getEquationComplementaire(nutriment: String): String? {
+        return equationsComplementaires[nutriment]
+    }
+
+    /** Définit l'équation complémentaire pour un nutriment */
+    fun setEquationComplementaire(nutriment: String, equationUuid: String): PreferencesEspece {
+        val newMap = equationsComplementaires.toMutableMap()
+        newMap[nutriment] = equationUuid
+        return copy(equationsComplementaires = newMap)
+    }
+
+    /** Supprime l'équation complémentaire pour un nutriment */
+    fun removeEquationComplementaire(nutriment: String): PreferencesEspece {
+        val newMap = equationsComplementaires.toMutableMap()
+        newMap.remove(nutriment)
+        return copy(equationsComplementaires = newMap)
+    }
+
+    /** Vérifie si un nutriment a une équation complémentaire */
+    fun hasEquationComplementaire(nutriment: String): Boolean {
+        return equationsComplementaires.containsKey(nutriment)
+    }
+
+    /** Vérifie si une équation est sélectionnée (par UUID) */
+    fun isEquationSelected(equationUuid: String): Boolean {
+        return equationsComplementaires.values.contains(equationUuid)
+    }
+
+    /** Ajoute une équation (par UUID) */
+    fun addEquation(equationUuid: String): PreferencesEspece {
+        val newMap = equationsComplementaires.toMutableMap()
+        // Utiliser l'UUID comme clé pour éviter les doublons
+        newMap[equationUuid] = equationUuid
+        return copy(equationsComplementaires = newMap)
+    }
+
+    /** Retire une équation (par UUID) */
+    fun removeEquation(equationUuid: String): PreferencesEspece {
+        val newMap = equationsComplementaires.toMutableMap()
+        newMap.remove(equationUuid)
+        return copy(equationsComplementaires = newMap)
+    }
+
+    /** Obtient la liste des UUIDs d'équations sélectionnées */
+    fun getSelectedEquationUuids(): List<String> {
+        return equationsComplementaires.keys.toList()
+    }
+
     companion object {
         /** Crée des préférences par défaut pour une espèce */
         fun createDefault(espece: Espece): PreferencesEspece {
@@ -123,4 +174,3 @@ data class PreferencesApplication(
         return copy(preferencesParEspece = nouvellesPreferences)
     }
 }
- 

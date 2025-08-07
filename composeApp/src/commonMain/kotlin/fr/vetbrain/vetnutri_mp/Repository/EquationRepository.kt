@@ -113,7 +113,13 @@ class DatabaseEquationRepository(
         // Ajouter quelques équations d'exemple si la base est vide
         runBlocking {
             val equations = equationDao.getAllEquations()
-            if (equations.isEmpty()) {
+            // Vérifier si nos équations de test existent déjà
+            val hasTestEquations =
+                    equations.any {
+                        it.uuid in listOf("equation-7", "equation-8", "equation-9", "equation-10")
+                    }
+
+            if (equations.isEmpty() || !hasTestEquations) {
                 // Récupérer une référence bibliographique existante ou créer une référence par
                 // défaut
                 val biblioRefFromDb = biblioRefDao.getAllBiblioRefs().firstOrNull()?.toDomain()
@@ -209,6 +215,62 @@ class DatabaseEquationRepository(
                                 consistent = true
                         )
 
+                // Équation 7 : Vitamine A complémentaire pour chien (global)
+                val equation7 =
+                        Equation(
+                                uuid = "equation-7",
+                                name = "Vitamine A complémentaire",
+                                description = "Calcul de la vitamine A complémentaire pour chien",
+                                equationScript = "BEE * 0.001",
+                                bib = biblioRef,
+                                specie = Espece.CHIEN,
+                                kind = EquationKind.COMPLEMENTARY_NUTRIENT,
+                                nutrient = fr.vetbrain.vetnutri_mp.Enumer.NutrientVitam.VITA,
+                                consistent = true
+                        )
+
+                // Équation 8 : Calcium complémentaire pour chien (global)
+                val equation8 =
+                        Equation(
+                                uuid = "equation-8",
+                                name = "Calcium complémentaire",
+                                description = "Calcul du calcium complémentaire pour chien",
+                                equationScript = "BW * 0.02",
+                                bib = biblioRef,
+                                specie = Espece.CHIEN,
+                                kind = EquationKind.COMPLEMENTARY_NUTRIENT,
+                                nutrient = fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro.CAL,
+                                consistent = true
+                        )
+
+                // Équation 9 : Vitamine D complémentaire pour chat (spécifique)
+                val equation9 =
+                        Equation(
+                                uuid = "equation-9",
+                                name = "Vitamine D complémentaire chat",
+                                description = "Calcul de la vitamine D complémentaire pour chat",
+                                equationScript = "BEE * 0.0005",
+                                bib = biblioRef,
+                                specie = Espece.CHAT,
+                                kind = EquationKind.COMPLEMENTARY_NUTRIENT,
+                                nutrient = fr.vetbrain.vetnutri_mp.Enumer.NutrientVitam.VITD,
+                                consistent = true
+                        )
+
+                // Équation 10 : Phosphore complémentaire pour chat (spécifique)
+                val equation10 =
+                        Equation(
+                                uuid = "equation-10",
+                                name = "Phosphore complémentaire chat",
+                                description = "Calcul du phosphore complémentaire pour chat",
+                                equationScript = "BW * 0.015",
+                                bib = biblioRef,
+                                specie = Espece.CHAT,
+                                kind = EquationKind.COMPLEMENTARY_NUTRIENT,
+                                nutrient = fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro.PHOS,
+                                consistent = true
+                        )
+
                 // Sauvegarder les équations
                 equationDao.insertEquation(equation1.toEntity())
                 equationDao.insertEquation(equation2.toEntity())
@@ -216,7 +278,10 @@ class DatabaseEquationRepository(
                 equationDao.insertEquation(equation4.toEntity())
                 equationDao.insertEquation(equation5.toEntity())
                 equationDao.insertEquation(equation6.toEntity())
-
+                equationDao.insertEquation(equation7.toEntity())
+                equationDao.insertEquation(equation8.toEntity())
+                equationDao.insertEquation(equation9.toEntity())
+                equationDao.insertEquation(equation10.toEntity())
             }
 
             // Charger les équations initiales
@@ -260,7 +325,6 @@ class DatabaseEquationRepository(
                     } else {
                         equation
                     }
-
 
             val entity = equationToSave.toEntity()
 

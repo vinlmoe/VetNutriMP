@@ -454,7 +454,8 @@ data class EquationEntity(
         val kind: String,
         val consistent: Boolean,
         val bibRef: String?,
-        val variables: String // Stocké en JSON
+        val variables: String, // Stocké en JSON
+        val nutrient: String? // Label du nutriment associé
 )
 
 @Serializable

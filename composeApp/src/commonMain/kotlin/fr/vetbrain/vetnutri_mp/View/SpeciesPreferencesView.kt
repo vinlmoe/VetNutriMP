@@ -27,6 +27,7 @@ import kotlinx.coroutines.launch
 fun SpeciesPreferencesView(
         species: Espece,
         preferencesRepository: PreferencesRepository,
+        equationRepository: fr.vetbrain.vetnutri_mp.Repository.EquationRepository,
         modifier: Modifier = Modifier
 ) {
         var currentPreferences by remember {
@@ -173,12 +174,10 @@ fun SpeciesPreferencesView(
                                                                                                                                                         )
                                                                                                                                                 currentPreferences =
                                                                                                                                                         updatedPrefs
-
                                                                                                                                         }
                                                                                                                         } catch (
                                                                                                                                 e:
-                                                                                                                                        Exception) {
-                                                                                                                        } finally {
+                                                                                                                                        Exception) {} finally {
                                                                                                                                 isSaving =
                                                                                                                                         false
                                                                                                                         }
@@ -294,13 +293,128 @@ fun SpeciesPreferencesView(
                                                                                 updatedPrefs
                                                                         )
                                                                 currentPreferences = updatedPrefs
-                                                        } catch (e: Exception) {
-                                                        } finally {
+                                                        } catch (e: Exception) {} finally {
                                                                 isSaving = false
                                                         }
                                                 }
                                         }
                                 )
+                        }
+
+                        item {
+                                // Section Équations pour nutriments complémentaires
+                                Card(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        backgroundColor = Color.White,
+                                        elevation = 2.dp
+                                ) {
+                                        Column(modifier = Modifier.padding(16.dp)) {
+                                                Row(
+                                                        verticalAlignment =
+                                                                Alignment.CenterVertically
+                                                ) {
+                                                        Icon(
+                                                                imageVector = Icons.Default.Info,
+                                                                contentDescription =
+                                                                        "Équations complémentaires",
+                                                                tint = VetNutriColors.Primary
+                                                        )
+                                                        Spacer(modifier = Modifier.width(8.dp))
+                                                        Text(
+                                                                text =
+                                                                        "Équations de nutriments complémentaires",
+                                                                style = MaterialTheme.typography.h6,
+                                                                fontWeight = FontWeight.Bold
+                                                        )
+                                                }
+
+                                                Spacer(modifier = Modifier.height(16.dp))
+
+                                                Text(
+                                                        text =
+                                                                "Sélectionnez les équations pour calculer les nutriments complémentaires pour cette espèce",
+                                                        style = MaterialTheme.typography.body2,
+                                                        color = Color.Gray
+                                                )
+
+                                                Spacer(modifier = Modifier.height(16.dp))
+
+                                                ComplementaryNutrientEquationsSection(
+                                                        species = species,
+                                                        currentPreferences = currentPreferences,
+                                                        equationRepository = equationRepository,
+                                                        isSaving = isSaving,
+                                                        onEquationSelectionChanged = { updatedPrefs
+                                                                ->
+                                                                scope.launch {
+                                                                        try {
+                                                                                isSaving = true
+                                                                                println(
+                                                                                        "🔍 PERSISTANCE: Début sauvegarde - isSaving = true"
+                                                                                )
+
+                                                                                val speciesPrefsToSave =
+                                                                                        updatedPrefs
+                                                                                                .getPreferencesEspece(
+                                                                                                        species
+                                                                                                )
+                                                                                println(
+                                                                                        "🔍 PERSISTANCE: Préférences à sauvegarder pour $species: ${speciesPrefsToSave.equationsComplementaires}"
+                                                                                )
+
+                                                                                preferencesRepository
+                                                                                        .savePreferences(
+                                                                                                updatedPrefs
+                                                                                        )
+                                                                                println(
+                                                                                        "🔍 PERSISTANCE: Sauvegarde repository terminée"
+                                                                                )
+
+                                                                                // Recharger les
+                                                                                // préférences
+                                                                                // depuis le
+                                                                                // repository pour
+                                                                                // s'assurer de la
+                                                                                // cohérence
+                                                                                preferencesRepository
+                                                                                        .loadPreferences()
+                                                                                val reloadedPrefs =
+                                                                                        preferencesRepository
+                                                                                                .preferences
+
+                                                                                currentPreferences =
+                                                                                        reloadedPrefs
+                                                                                println(
+                                                                                        "🔍 PERSISTANCE: currentPreferences rechargées depuis le repository"
+                                                                                )
+
+                                                                                // Vérifier que les
+                                                                                // préférences sont
+                                                                                // bien mises à jour
+                                                                                val verificationPrefs =
+                                                                                        currentPreferences
+                                                                                                ?.getPreferencesEspece(
+                                                                                                        species
+                                                                                                )
+                                                                                println(
+                                                                                        "🔍 PERSISTANCE: Vérification après sauvegarde: ${verificationPrefs?.equationsComplementaires}"
+                                                                                )
+                                                                        } catch (e: Exception) {
+                                                                                println(
+                                                                                        "❌ PERSISTANCE: Erreur lors de la sauvegarde: ${e.message}"
+                                                                                )
+                                                                                e.printStackTrace()
+                                                                        } finally {
+                                                                                isSaving = false
+                                                                                println(
+                                                                                        "🔍 PERSISTANCE: Fin sauvegarde - isSaving = false"
+                                                                                )
+                                                                        }
+                                                                }
+                                                        }
+                                                )
+                                        }
+                                }
                         }
 
                         item {
@@ -344,6 +458,159 @@ fun SpeciesPreferencesView(
                         }
                 }
         }
+}
+
+/** Section pour la gestion des équations complémentaires spécifiques à une espèce */
+@Composable
+private fun ComplementaryNutrientEquationsSection(
+        species: fr.vetbrain.vetnutri_mp.Enumer.Espece,
+        currentPreferences: fr.vetbrain.vetnutri_mp.Data.PreferencesApplication?,
+        equationRepository: fr.vetbrain.vetnutri_mp.Repository.EquationRepository,
+        isSaving: Boolean,
+        onEquationSelectionChanged: (fr.vetbrain.vetnutri_mp.Data.PreferencesApplication) -> Unit
+) {
+        var allEquations by remember {
+                mutableStateOf<List<fr.vetbrain.vetnutri_mp.Data.Equation>>(emptyList())
+        }
+
+        // Charger seulement les équations de nutriments complémentaires pour cette espèce ou
+        // globales (CH)
+        LaunchedEffect(Unit) {
+                val allEquationsFromRepo = equationRepository.getAllEquations()
+                println("🔍 PERSISTANCE: ${allEquationsFromRepo.size} équations totales chargées")
+
+                allEquations =
+                        allEquationsFromRepo.filter { equation ->
+                                val isComplementary =
+                                        equation.kind ==
+                                                fr.vetbrain.vetnutri_mp.Enumer.EquationKind
+                                                        .COMPLEMENTARY_NUTRIENT
+                                val isCorrectSpecies =
+                                        equation.specie == species ||
+                                                equation.specie ==
+                                                        fr.vetbrain.vetnutri_mp.Enumer.Espece.CHIEN
+
+                                isComplementary && isCorrectSpecies
+                        }
+
+                println(
+                        "🔍 PERSISTANCE: ${allEquations.size} équations COMPLEMENTARY_NUTRIENT trouvées pour $species"
+                )
+                allEquations.forEach { eq ->
+                        println("  - ${eq.name} (${eq.uuid}) - nutrient: ${eq.nutrient?.label}")
+                }
+
+                // Vérifier les préférences actuelles
+                currentPreferences?.getPreferencesEspece(species)?.let { prefs ->
+                        val selectedUuids = prefs.getSelectedEquationUuids()
+                        println(
+                                "🔍 PERSISTANCE: ${selectedUuids.size} équations sélectionnées dans les préférences: $selectedUuids"
+                        )
+                        val map = prefs.equationsComplementaires
+                        println("🔍 PERSISTANCE: Map complete: $map")
+                }
+        }
+
+        Column(modifier = Modifier.fillMaxWidth()) {
+                // Liste de toutes les équations avec checkboxes
+                allEquations.forEach { equation ->
+                        val speciesPrefs = currentPreferences?.getPreferencesEspece(species)
+                        val isSelected = speciesPrefs?.isEquationSelected(equation.uuid) == true
+
+                        println(
+                                "🔍 PERSISTANCE: Affichage équation ${equation.name} (${equation.uuid}) - isSelected: $isSelected"
+                        )
+
+                        Row(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                        ) {
+                                Checkbox(
+                                        checked = isSelected,
+                                        onCheckedChange = { checked ->
+                                                println(
+                                                        "🔍 PERSISTANCE: Checkbox changée pour ${equation.name} - nouvelle valeur: $checked"
+                                                )
+
+                                                currentPreferences?.let { prefs ->
+                                                        println(
+                                                                "🔍 PERSISTANCE: Préférences actuelles trouvées"
+                                                        )
+                                                        val currentSpeciesPrefs =
+                                                                prefs.getPreferencesEspece(species)
+                                                        println(
+                                                                "🔍 PERSISTANCE: Préférences espèce $species avant modification: ${currentSpeciesPrefs.equationsComplementaires}"
+                                                        )
+
+                                                        val updatedSpeciesPrefs =
+                                                                if (checked) {
+                                                                        println(
+                                                                                "🔍 PERSISTANCE: Ajout de l'équation ${equation.uuid}"
+                                                                        )
+                                                                        currentSpeciesPrefs
+                                                                                .addEquation(
+                                                                                        equation.uuid
+                                                                                )
+                                                                } else {
+                                                                        println(
+                                                                                "🔍 PERSISTANCE: Suppression de l'équation ${equation.uuid}"
+                                                                        )
+                                                                        currentSpeciesPrefs
+                                                                                .removeEquation(
+                                                                                        equation.uuid
+                                                                                )
+                                                                }
+
+                                                        println(
+                                                                "🔍 PERSISTANCE: Préférences espèce après modification: ${updatedSpeciesPrefs.equationsComplementaires}"
+                                                        )
+
+                                                        val updatedPrefs =
+                                                                prefs.updatePreferencesEspece(
+                                                                        updatedSpeciesPrefs
+                                                                )
+
+                                                        println(
+                                                                "🔍 PERSISTANCE: Appel de onEquationSelectionChanged"
+                                                        )
+                                                        onEquationSelectionChanged(updatedPrefs)
+                                                }
+                                        },
+                                        enabled = !isSaving
+                                )
+
+                                Spacer(modifier = Modifier.width(8.dp))
+
+                                Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                                text = equation.name,
+                                                style = MaterialTheme.typography.body1,
+                                                fontWeight =
+                                                        if (isSelected) FontWeight.Bold
+                                                        else FontWeight.Normal,
+                                                color =
+                                                        if (isSelected) VetNutriColors.Primary
+                                                        else Color.Black
+                                        )
+
+                                        // Afficher le nutriment concerné entre parenthèses
+                                        val nutrientName = getNutrientNameForEquation(equation)
+                                        if (nutrientName != null) {
+                                                Text(
+                                                        text = "($nutrientName)",
+                                                        style = MaterialTheme.typography.body2,
+                                                        color = Color.Gray
+                                                )
+                                        }
+                                }
+                        }
+                }
+        }
+}
+
+/** Retourne le nom du nutriment concerné par une équation */
+private fun getNutrientNameForEquation(equation: fr.vetbrain.vetnutri_mp.Data.Equation): String? {
+        return equation.nutrient?.label
 }
 
 @Composable
@@ -502,4 +769,3 @@ private fun NutrientCategoryCard(
                 }
         }
 }
- 

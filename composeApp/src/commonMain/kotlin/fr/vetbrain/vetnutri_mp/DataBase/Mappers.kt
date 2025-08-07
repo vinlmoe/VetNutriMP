@@ -284,11 +284,11 @@ object Mappers {
                 val especesList = mutableListOf<String>()
 
                 // Ajouter des logs de débogage pour comprendre le contenu de especesJson
-                
+
                 if (!this.especesJson.isNullOrEmpty()) {
                         // Extraire la liste des espèces du JSON
                         val especesStringList = this.especesJson.split(",")
-                      
+
                         // Essayer de convertir chaque espèce en énumération
                         especesStringList.forEach { especeStr ->
                                 try {
@@ -296,12 +296,12 @@ object Mappers {
                                         // la conversion
                                         val espece = Espece.getFromString(especeStr)
                                         if (espece != null) {
-                                              
+
                                                 especesList.add(
                                                         espece.name
                                                 ) // Utiliser le nom de l'énumération
                                         } else {
-                                               
+
                                                 // Si l'espèce n'est pas vide, l'ajouter à la liste
                                                 val cleanedEspece =
                                                         especeStr
@@ -314,7 +314,7 @@ object Mappers {
                                                 }
                                         }
                                 } catch (e: Exception) {
-                                        
+
                                         // Nettoyer quand même en cas d'erreur
                                         val cleanedEspece =
                                                 especeStr
@@ -366,7 +366,6 @@ object Mappers {
                         )
                 }
 
-
                 val indicatList = mutableListOf<AlimIndic>()
 
                 // Ajouter des logs de débogage pour comprendre le contenu de indicationsJson
@@ -384,8 +383,7 @@ object Mappers {
                                         ) {
                                                 indicatList.add(alimIndic)
                                         }
-                                } catch (e: Exception) {
-                                }
+                                } catch (e: Exception) {}
                         }
                 } else {
                         indicatList.addAll(
@@ -395,8 +393,7 @@ object Mappers {
                                                         AlimIndic.entries.getOrNull(
                                                                 entity.indication
                                                         )
-                                                if (indication != null) {
-                                                }
+                                                if (indication != null) {}
                                                 indication
                                         } catch (e: Exception) {
                                                 null
@@ -404,7 +401,6 @@ object Mappers {
                                 }
                         )
                 }
-
 
                 return AlimentEv(
                         uuid = this.uuid,
@@ -602,15 +598,19 @@ object Mappers {
                         name = this.name,
                         description = this.description,
                         equationScript = this.equationScript,
-                        kind = this.kind.name,
                         specie = this.specie?.name,
+                        kind = this.kind.name,
+                        consistent = this.consistent,
                         bibRef = bibRef,
                         variables = "",
-                        consistent = this.consistent
+                        nutrient = this.nutrient?.label
                 )
         }
 
         fun EquationEntity.toDomain(biblioRef: BiblioRef? = null): Equation {
+                
+                // Résoudre le nutriment à partir de son label
+                val nutrient = this.nutrient?.let { NutrientResolver.AllNutrientResolver(it) }
 
                 return Equation(
                         uuid = this.uuid,
@@ -619,6 +619,7 @@ object Mappers {
                         equationScript = this.equationScript ?: "",
                         kind = EquationKind.valueOf(this.kind ?: EquationKind.ENERGYNEED.name),
                         specie = this.specie?.let { Espece.valueOf(it) },
+                        nutrient = nutrient,
                         bib = biblioRef ?: BiblioRef(),
                         consistent = this.consistent,
                         variables = mutableListOf()

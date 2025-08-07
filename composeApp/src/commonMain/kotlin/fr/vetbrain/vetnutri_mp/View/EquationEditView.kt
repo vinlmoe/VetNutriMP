@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
@@ -16,7 +15,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Components.DropdownField
 import fr.vetbrain.vetnutri_mp.Components.TopBarSimple
@@ -209,6 +207,9 @@ private fun EquationEditTab(
                                         EquationType.INDICATOR
                                 fr.vetbrain.vetnutri_mp.Enumer.EquationKind.NEED ->
                                         EquationType.NEED
+                                fr.vetbrain.vetnutri_mp.Enumer.EquationKind
+                                        .COMPLEMENTARY_NUTRIENT ->
+                                        EquationType.COMPLEMENTARY_NUTRIENT
                             }
                         },
                 options = EquationType.values().toList(),
@@ -234,14 +235,27 @@ private fun EquationEditTab(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Facteur de correction (si besoin)
-        OutlinedTextField(
-                value = currentEquation.correctionFactor.toString(),
-                onValueChange = { viewModel.updateCorrectionFactor(it.toDoubleOrNull() ?: 1.0) },
-                label = { Text("Facteur de correction") },
-                modifier = Modifier.fillMaxWidth(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
-        )
+        // Sélection du nutriment (pour les types NEED et COMPLEMENTARY_NUTRIENT)
+        if (viewModel.isNutrientRequired()) {
+            val allNutrients = viewModel.getAllNutrients()
+            val currentNutrient = currentEquation.nutrient
+
+            // Trouver le nutriment correspondant dans la liste par label
+            val selectedNutrient =
+                    if (currentNutrient != null) {
+                        allNutrients.find { it.label == currentNutrient.label }
+                    } else null
+
+            DropdownField(
+                    label = "Nutriment associé",
+                    selectedValue = selectedNutrient,
+                    options = listOf(null) + allNutrients,
+                    onValueChange = { viewModel.updateNutrient(it) },
+                    valueToString = { nutrient -> nutrient?.label ?: "Aucun nutriment sélectionné" }
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+        }
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -333,6 +347,10 @@ private fun EquationEditTab(
                     fr.vetbrain.vetnutri_mp.Enumer.NutrientOther.entries.map {
                         "${it.label} - ${it.label}" to it.label
                     }
+            val nutrientsAnalysis =
+                    fr.vetbrain.vetnutri_mp.Enumer.NutrientAnalysis.entries.map {
+                        "${it.label} - ${it.label}" to it.label
+                    }
             val acideAmines =
                     fr.vetbrain.vetnutri_mp.Enumer.AAEnum.entries.map {
                         "${it.label} - ${it.label}" to it.label
@@ -360,6 +378,7 @@ private fun EquationEditTab(
                             nutrientsMin +
                             nutrientsOther +
                             acideAmines +
+                            nutrientsAnalysis +
                             systemVariables)
                     .sortedBy { it.first }
         }
@@ -540,8 +559,7 @@ private fun EquationTestTab(
             }
 
     // Debug
-    LaunchedEffect(variablesInExpression, unrecognizedVariables) {
-    }
+    LaunchedEffect(variablesInExpression, unrecognizedVariables) {}
 
     // Initialiser les valeurs par défaut pour les variables reconnues
     LaunchedEffect(variablesInExpression, unrecognizedVariables) {

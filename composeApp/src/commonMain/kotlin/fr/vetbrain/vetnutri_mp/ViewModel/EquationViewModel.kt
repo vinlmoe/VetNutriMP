@@ -11,10 +11,12 @@ import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toDomain
 import fr.vetbrain.vetnutri_mp.Enumer.AAEnum
 import fr.vetbrain.vetnutri_mp.Enumer.EquationKind
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
+import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientLipid
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientMain
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientMin
+import fr.vetbrain.vetnutri_mp.Enumer.NutrientAnalysis
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientVitam
 import fr.vetbrain.vetnutri_mp.Enumer.VariableKind
@@ -218,7 +220,6 @@ class EquationViewModel(
                                 }
                     }
                 }
-
             } catch (e: Exception) {
                 _operationMessage.value = "Erreur lors du chargement des équations: ${e.message}"
                 e.printStackTrace()
@@ -240,8 +241,7 @@ class EquationViewModel(
                     // Utiliser le repository si le DAO n'est pas disponible
                     biblioRepository.getAllBiblioRefs().collect { refs -> _biblioRefs.value = refs }
                 }
-            } catch (e: Exception) {
-            }
+            } catch (e: Exception) {}
         }
     }
 
@@ -321,7 +321,6 @@ class EquationViewModel(
             }
         }
 
-
         // Mettre à jour la liste des variables de l'équation
         val currentValue = _currentEquation.value
         _currentEquation.value = currentValue.copy(variables = detectedVariables.toMutableList())
@@ -355,6 +354,7 @@ class EquationViewModel(
             EquationKind.MW -> TypeEquationValidation.BESOIN_ENERGETIQUE
             EquationKind.NEED -> TypeEquationValidation.BESOIN_NUTRITIONNEL
             EquationKind.ENERGYDENSITY -> TypeEquationValidation.DENSITE_ENERGETIQUE
+            EquationKind.COMPLEMENTARY_NUTRIENT -> TypeEquationValidation.DENSITE_ENERGETIQUE
             else -> TypeEquationValidation.GENERALE
         }
     }
@@ -430,6 +430,40 @@ class EquationViewModel(
     fun updateSpecie(specie: Espece?) {
         val currentValue = _currentEquation.value
         _currentEquation.value = currentValue.copy(specie = specie)
+    }
+
+    /**
+     * Met à jour le nutriment associé à l'équation (pour les types NEED et COMPLEMENTARY_NUTRIENT)
+     */
+    fun updateNutrient(nutrient: Nutrient?) {
+        val currentValue = _currentEquation.value
+        _currentEquation.value = currentValue.copy(nutrient = nutrient)
+    }
+
+    /** Vérifie si le type d'équation actuel nécessite un nutriment */
+    fun isNutrientRequired(): Boolean {
+        val currentValue = _currentEquation.value
+        return currentValue.kind == EquationKind.NEED ||
+                currentValue.kind == EquationKind.COMPLEMENTARY_NUTRIENT
+    }
+
+    /** Obtient la liste de tous les nutriments disponibles */
+    fun getAllNutrients(): List<Nutrient> {
+        val nutrientsMain = NutrientMain.entries.toList()
+        val nutrientsLipides = NutrientLipid.entries.toList()
+        val nutrientsVitamines = NutrientVitam.entries.toList()
+        val nutrientsMacro = NutrientMacro.entries.toList()
+        val nutrientsMin = NutrientMin.entries.toList()
+        val acideAmines = AAEnum.entries.toList()
+        val nutrientAnalysis = NutrientAnalysis.entries.toList()
+
+        return nutrientsMain +
+                nutrientsLipides +
+                nutrientsVitamines +
+                nutrientsMacro +
+                nutrientsMin +
+                nutrientAnalysis +
+                acideAmines
     }
 
     /** Ajoute une variable à l'équation */

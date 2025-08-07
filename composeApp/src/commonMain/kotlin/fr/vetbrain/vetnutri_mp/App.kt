@@ -94,8 +94,7 @@ fun App(appDatabase: AppDatabase) {
                                     consistent = 1
                             )
                     repo.insertBiblioRef(defaultRef)
-                } else {
-                }
+                } else {}
             } catch (e: Exception) {
                 e.printStackTrace()
             }
@@ -263,10 +262,8 @@ fun App(appDatabase: AppDatabase) {
                 val json = ResourceReader().readResource("data/vetfood.json")
                 if (json.isNotEmpty()) {
                     val result = settingsViewModel.importFoodsFromJson(json)
-                } else {
-                }
-            } catch (e: Exception) {
-            }
+                } else {}
+            } catch (e: Exception) {}
         }
 
         // --- REFERENCES ---
@@ -276,10 +273,8 @@ fun App(appDatabase: AppDatabase) {
                 val jsonRef = ResourceReader().readResource("data/references.json")
                 if (jsonRef.isNotEmpty()) {
                     val result = importViewModel.importNutritionalRequirementsFromJson(jsonRef)
-                } else {
-                }
-            } catch (e: Exception) {
-            }
+                } else {}
+            } catch (e: Exception) {}
         }
     }
 
@@ -603,6 +598,7 @@ fun App(appDatabase: AppDatabase) {
                                 fr.vetbrain.vetnutri_mp.View.SpeciesPreferencesView(
                                         species = species,
                                         preferencesRepository = preferencesRepository,
+                                        equationRepository = equationRepository,
                                         modifier = Modifier.padding(paddingValues)
                                 )
                             }

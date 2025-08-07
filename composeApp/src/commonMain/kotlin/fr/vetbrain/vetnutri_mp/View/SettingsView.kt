@@ -1,12 +1,11 @@
 package fr.vetbrain.vetnutri_mp.View
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -15,7 +14,6 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.runtime.*
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -140,13 +138,6 @@ fun SettingsDrawer(
                 )
 
                 SettingsSectionItem(
-                        section = SettingsSection.NUTRIMENTS,
-                        isSelected = currentSection == SettingsSection.NUTRIMENTS,
-                        onSelected = onSectionSelected,
-                        icon = Icons.Default.List
-                )
-
-                SettingsSectionItem(
                         section = SettingsSection.PREFERENCES,
                         isSelected = currentSection == SettingsSection.PREFERENCES,
                         onSelected = onSectionSelected,
@@ -248,14 +239,6 @@ fun SettingsView(
         var currentSection by remember { mutableStateOf(SettingsSection.INTERFACE) }
         val isDrawerOpen by viewModel.isDrawerOpen.collectAsState()
 
-        // États pour les listes de nutriments
-        val selectedMainNutrients by viewModel.selectedMainNutrients.collectAsState()
-        val selectedMinerals by viewModel.selectedMinerals.collectAsState()
-        val selectedVitamins by viewModel.selectedVitamins.collectAsState()
-        val selectedLipids by viewModel.selectedLipids.collectAsState()
-        val selectedAminoAcids by viewModel.selectedAminoAcids.collectAsState()
-        val selectedOtherNutrients by viewModel.selectedOtherNutrients.collectAsState()
-
         // Observer le message d'importation des références nutritionnelles
         val nutritionalRequirementMessage by remember {
                 derivedStateOf { importViewModel.nutritionalRequirementImportResultMessage }
@@ -275,26 +258,6 @@ fun SettingsView(
                                 showImportDialog = true
                         }
                 }
-        }
-
-        // État pour la catégorie de nutriments en cours d'édition
-        var editingCategory by remember { mutableStateOf(MainNutrientEnum.BASE) }
-
-        // Liste des catégories de nutriments à afficher dans les onglets
-        val nutrientCategories = remember {
-                listOf(
-                        MainNutrientEnum.BASE,
-                        MainNutrientEnum.MIN,
-                        MainNutrientEnum.VITAM,
-                        MainNutrientEnum.LIPID,
-                        MainNutrientEnum.AMA,
-                        MainNutrientEnum.OTHER
-                )
-        }
-
-        // Fonction pour obtenir l'index de l'onglet correspondant à la catégorie
-        val getTabIndex = { category: MainNutrientEnum ->
-                nutrientCategories.indexOf(category).coerceIn(0, nutrientCategories.size - 1)
         }
 
         // État pour le drawer
@@ -423,241 +386,6 @@ fun SettingsView(
                                                                                 AppSizes.buttonHeight
                                                                         )
                                                         ) { Text("+") }
-                                                }
-                                        }
-                                }
-                                SettingsSection.NUTRIMENTS -> {
-                                        // Section pour les nutriments à afficher et leur ordre
-                                        Section(title = "Configuration des nutriments") {
-                                                Text(
-                                                        "Sélectionnez les nutriments à afficher",
-                                                        style = MaterialTheme.typography.body2,
-                                                        color = Color.Gray,
-                                                        modifier = Modifier.padding(bottom = 16.dp)
-                                                )
-
-                                                // Sélection de la catégorie
-                                                Text(
-                                                        "Catégorie de nutriments",
-                                                        style = MaterialTheme.typography.subtitle1,
-                                                        fontWeight = FontWeight.Medium
-                                                )
-
-                                                // Onglets pour les catégories de nutriments
-                                                ScrollableTabRow(
-                                                        selectedTabIndex =
-                                                                getTabIndex(editingCategory),
-                                                        backgroundColor = Color.Transparent,
-                                                        contentColor = VetNutriColors.Primary,
-                                                        edgePadding = 0.dp,
-                                                        modifier = Modifier.padding(vertical = 8.dp)
-                                                ) {
-                                                        // Créer un onglet pour chaque catégorie de
-                                                        // nutriments définie
-                                                        nutrientCategories.forEach { category ->
-                                                                Tab(
-                                                                        selected =
-                                                                                editingCategory ==
-                                                                                        category,
-                                                                        onClick = {
-                                                                                editingCategory =
-                                                                                        category
-                                                                        },
-                                                                        text = {
-                                                                                Text(
-                                                                                        when (category
-                                                                                        ) {
-                                                                                                MainNutrientEnum
-                                                                                                        .BASE ->
-                                                                                                        "Principaux"
-                                                                                                MainNutrientEnum
-                                                                                                        .MIN ->
-                                                                                                        "Minéraux"
-                                                                                                MainNutrientEnum
-                                                                                                        .VITAM ->
-                                                                                                        "Vitamines"
-                                                                                                MainNutrientEnum
-                                                                                                        .LIPID ->
-                                                                                                        "Lipides"
-                                                                                                MainNutrientEnum
-                                                                                                        .AMA ->
-                                                                                                        "Acides Aminés"
-                                                                                                MainNutrientEnum
-                                                                                                        .OTHER ->
-                                                                                                        "Autres"
-                                                                                                else ->
-                                                                                                        category.label
-                                                                                        }
-                                                                                )
-                                                                        }
-                                                                )
-                                                        }
-                                                }
-
-                                                Spacer(modifier = Modifier.height(16.dp))
-
-                                                // Affichage des nutriments de la catégorie
-                                                // sélectionnée
-                                                Text(
-                                                        "Cochez les nutriments à afficher",
-                                                        style = MaterialTheme.typography.body2,
-                                                        color = Color.Gray,
-                                                        modifier = Modifier.padding(bottom = 8.dp)
-                                                )
-
-                                                // Liste des nutriments avec checkboxes
-                                                when (editingCategory) {
-                                                        MainNutrientEnum.BASE -> {
-                                                                val nutrients = remember {
-                                                                        mutableStateListOf<
-                                                                                        NutrientMain>()
-                                                                                .apply {
-                                                                                        addAll(
-                                                                                                selectedMainNutrients
-                                                                                        )
-                                                                                }
-                                                                }
-                                                                NutrientCheckboxList(
-                                                                        nutrients = nutrients,
-                                                                        getAllNutrients = {
-                                                                                NutrientMain.entries
-                                                                                        .toList()
-                                                                        },
-                                                                        onNutrientsUpdated = {
-                                                                                viewModel
-                                                                                        .updateMainNutrients(
-                                                                                                it
-                                                                                        )
-                                                                        }
-                                                                )
-                                                        }
-                                                        MainNutrientEnum.MIN -> {
-                                                                val nutrients = remember {
-                                                                        mutableStateListOf<
-                                                                                        NutrientMin>()
-                                                                                .apply {
-                                                                                        addAll(
-                                                                                                selectedMinerals
-                                                                                        )
-                                                                                }
-                                                                }
-                                                                NutrientCheckboxList(
-                                                                        nutrients = nutrients,
-                                                                        getAllNutrients = {
-                                                                                NutrientMin.entries
-                                                                                        .toList()
-                                                                        },
-                                                                        onNutrientsUpdated = {
-                                                                                viewModel
-                                                                                        .updateMinerals(
-                                                                                                it
-                                                                                        )
-                                                                        }
-                                                                )
-                                                        }
-                                                        MainNutrientEnum.VITAM -> {
-                                                                val nutrients = remember {
-                                                                        mutableStateListOf<
-                                                                                        NutrientVitam>()
-                                                                                .apply {
-                                                                                        addAll(
-                                                                                                selectedVitamins
-                                                                                        )
-                                                                                }
-                                                                }
-                                                                NutrientCheckboxList(
-                                                                        nutrients = nutrients,
-                                                                        getAllNutrients = {
-                                                                                NutrientVitam
-                                                                                        .entries
-                                                                                        .toList()
-                                                                        },
-                                                                        onNutrientsUpdated = {
-                                                                                viewModel
-                                                                                        .updateVitamins(
-                                                                                                it
-                                                                                        )
-                                                                        }
-                                                                )
-                                                        }
-                                                        MainNutrientEnum.LIPID -> {
-                                                                val nutrients = remember {
-                                                                        mutableStateListOf<
-                                                                                        NutrientLipid>()
-                                                                                .apply {
-                                                                                        addAll(
-                                                                                                selectedLipids
-                                                                                        )
-                                                                                }
-                                                                }
-                                                                NutrientCheckboxList(
-                                                                        nutrients = nutrients,
-                                                                        getAllNutrients = {
-                                                                                NutrientLipid
-                                                                                        .entries
-                                                                                        .toList()
-                                                                        },
-                                                                        onNutrientsUpdated = {
-                                                                                viewModel
-                                                                                        .updateLipids(
-                                                                                                it
-                                                                                        )
-                                                                        }
-                                                                )
-                                                        }
-                                                        MainNutrientEnum.AMA -> {
-                                                                val nutrients = remember {
-                                                                        mutableStateListOf<AAEnum>()
-                                                                                .apply {
-                                                                                        addAll(
-                                                                                                selectedAminoAcids
-                                                                                        )
-                                                                                }
-                                                                }
-                                                                NutrientCheckboxList(
-                                                                        nutrients = nutrients,
-                                                                        getAllNutrients = {
-                                                                                AAEnum.entries
-                                                                                        .toList()
-                                                                        },
-                                                                        onNutrientsUpdated = {
-                                                                                viewModel
-                                                                                        .updateAminoAcids(
-                                                                                                it
-                                                                                        )
-                                                                        }
-                                                                )
-                                                        }
-                                                        MainNutrientEnum.OTHER -> {
-                                                                val nutrients = remember {
-                                                                        mutableStateListOf<
-                                                                                        NutrientOther>()
-                                                                                .apply {
-                                                                                        addAll(
-                                                                                                selectedOtherNutrients
-                                                                                        )
-                                                                                }
-                                                                }
-                                                                NutrientCheckboxList(
-                                                                        nutrients = nutrients,
-                                                                        getAllNutrients = {
-                                                                                NutrientOther
-                                                                                        .entries
-                                                                                        .toList()
-                                                                        },
-                                                                        onNutrientsUpdated = {
-                                                                                viewModel
-                                                                                        .updateOtherNutrients(
-                                                                                                it
-                                                                                        )
-                                                                        }
-                                                                )
-                                                        }
-                                                        else -> {
-                                                                Text(
-                                                                        "Catégorie de nutriments non prise en charge"
-                                                                )
-                                                        }
                                                 }
                                         }
                                 }
@@ -1090,22 +818,19 @@ fun SettingsView(
                                                                         refCount =
                                                                                 viewModel
                                                                                         .clearAllReferences()
-                                                                } catch (e: Exception) {
-                                                                }
+                                                                } catch (e: Exception) {}
                                                                 var eqCount = 0
                                                                 try {
                                                                         eqCount =
                                                                                 viewModel
                                                                                         .clearAllEquations()
-                                                                } catch (e: Exception) {
-                                                                }
+                                                                } catch (e: Exception) {}
                                                                 var bibCount = 0
                                                                 try {
                                                                         bibCount =
                                                                                 viewModel
                                                                                         .clearAllBiblioRefs()
-                                                                } catch (e: Exception) {
-                                                                }
+                                                                } catch (e: Exception) {}
                                                                 resultMessage =
                                                                         "$refCount références nutritionnelles, $eqCount équations et $bibCount bibliographies ont été supprimées avec succès."
                                                         } catch (e: Exception) {
@@ -1279,133 +1004,9 @@ fun SettingsView(
         }
 }
 
-/** Composant de liste de nutriments avec checkboxes */
-@Composable
-fun <T : Nutrient> NutrientCheckboxList(
-        nutrients: SnapshotStateList<T>,
-        getAllNutrients: () -> List<T>,
-        onNutrientsUpdated: (List<T>) -> Unit
-) {
-        // Créer une map des éléments actifs (cochés)
-        val activeItems =
-                remember(nutrients) {
-                        val map = mutableStateMapOf<T, Boolean>()
-                        getAllNutrients().forEach { nutrient ->
-                                map[nutrient] = nutrients.contains(nutrient)
-                        }
-                        map
-                }
-
-        // Fonction pour mettre à jour la liste et notifier le ViewModel
-        fun updateList(newList: List<T>) {
-                // Mettre à jour la liste originale
-                nutrients.clear()
-                nutrients.addAll(newList)
-
-                // Notifier le ViewModel immédiatement pour sauvegarder les changements
-                onNutrientsUpdated(newList)
-        }
-
-        // Ajouter un titre pour indiquer clairement la présence de la liste
-        Column(modifier = Modifier.fillMaxWidth()) {
-                Text(
-                        "Liste des nutriments disponibles (${getAllNutrients().size})",
-                        style = MaterialTheme.typography.subtitle2,
-                        fontWeight = FontWeight.Bold,
-                        color = VetNutriColors.Primary,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                )
-
-                Column(
-                        modifier =
-                                Modifier.fillMaxWidth()
-                                        .height(400.dp)
-                                        .border(
-                                                2.dp,
-                                                VetNutriColors.Primary,
-                                                RoundedCornerShape(8.dp)
-                                        )
-                                        .verticalScroll(rememberScrollState())
-                                        .padding(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                        // Afficher tous les nutriments disponibles avec des cases à cocher
-                        getAllNutrients().forEachIndexed { index, nutrient ->
-                                val isChecked = activeItems[nutrient] ?: false
-                                val backgroundColor =
-                                        if (index % 2 == 0) Color.White else Color(0xFFF5F5F5)
-
-                                Card(
-                                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                                        elevation = 2.dp,
-                                        backgroundColor = backgroundColor
-                                ) {
-                                        Row(
-                                                modifier =
-                                                        Modifier.fillMaxWidth()
-                                                                .padding(
-                                                                        horizontal = 16.dp,
-                                                                        vertical = 12.dp
-                                                                ),
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                horizontalArrangement = Arrangement.SpaceBetween
-                                        ) {
-                                                // Checkbox pour activer/désactiver le nutriment
-                                                Checkbox(
-                                                        checked = isChecked,
-                                                        onCheckedChange = { isChecked ->
-                                                                activeItems[nutrient] = isChecked
-
-                                                                // Mettre à jour la liste des
-                                                                // nutriments actifs
-                                                                val activeList =
-                                                                        getAllNutrients().filter {
-                                                                                activeItems[it] ==
-                                                                                        true
-                                                                        }
-
-                                                                // Utiliser la fonction de mise à
-                                                                // jour commune
-                                                                updateList(activeList)
-                                                        },
-                                                        colors =
-                                                                CheckboxDefaults.colors(
-                                                                        checkedColor =
-                                                                                VetNutriColors
-                                                                                        .Primary,
-                                                                        uncheckedColor = Color.Gray
-                                                                )
-                                                )
-
-                                                // Nom du nutriment avec un style plus visible
-                                                Text(
-                                                        text = getNutrientDisplayName(nutrient),
-                                                        style = MaterialTheme.typography.body1,
-                                                        fontWeight =
-                                                                if (isChecked) FontWeight.Bold
-                                                                else FontWeight.Normal,
-                                                        color =
-                                                                if (isChecked)
-                                                                        VetNutriColors.Primary
-                                                                else Color.Black,
-                                                        modifier = Modifier.weight(1f)
-                                                )
-                                        }
-                                }
-                        }
-                }
-        }
-}
-
-/** Obtient le nom d'affichage d'un nutriment selon son type */
-fun getNutrientDisplayName(nutrient: Nutrient): String {
-        return nutrient.label
-}
-
 /** Sections disponibles dans les paramètres */
 enum class SettingsSection(val title: String) {
         INTERFACE("Interface"),
-        NUTRIMENTS("Nutriments"),
         PREFERENCES("Préférences"),
         IMPORTATION("Importation"),
         ADMINISTRATION("Administration")
@@ -1506,10 +1107,15 @@ private fun PreferencesContentWithPersistence(
                         )
 
                         // Afficher les préférences pour chaque espèce (sauf CH qui est "ALL")
-                        fr.vetbrain.vetnutri_mp.Enumer.Espece.valuesExcept(
-                                        fr.vetbrain.vetnutri_mp.Enumer.Espece.CH
-                                )
-                                .forEach { espece ->
+                        LazyColumn(
+                                modifier = Modifier.height(300.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                                items(
+                                        fr.vetbrain.vetnutri_mp.Enumer.Espece.valuesExcept(
+                                                fr.vetbrain.vetnutri_mp.Enumer.Espece.CH
+                                        )
+                                ) { espece ->
                                         SpeciesPreferenceCardWithPersistence(
                                                 species = espece,
                                                 preferencesRepository = preferencesRepository,
@@ -1520,6 +1126,7 @@ private fun PreferencesContentWithPersistence(
                                                 onSpeciesClick = onSpeciesClick
                                         )
                                 }
+                        }
 
                         // Informations sur la persistance
                         Card(
@@ -1673,11 +1280,9 @@ private fun SpeciesPreferenceCardWithPersistence(
                                                                                                         onPreferencesChanged(
                                                                                                                 updatedPrefs
                                                                                                         )
-
                                                                                                 } catch (
                                                                                                         e:
-                                                                                                                Exception) {
-                                                                                                } finally {
+                                                                                                                Exception) {} finally {
                                                                                                         isSaving =
                                                                                                                 false
                                                                                                 }

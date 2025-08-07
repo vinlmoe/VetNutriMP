@@ -16,7 +16,8 @@ enum class EquationType(
     ENERGYDENSITY("energyDensityDesc", "energyDensity", 1, "Densité énergétique"),
     MW("metabolicWeightDesc", "metabolicWeight", 2, "Poids métabolique"),
     INDICATOR("indicatorDesc", "indicator", 3, "Indicateur"),
-    NEED("NeedDesc", "NeedEq", 4, "Besoin nutritionnel");
+    NEED("NeedDesc", "NeedEq", 4, "Besoin nutritionnel"),
+    COMPLEMENTARY_NUTRIENT("complementaryNutrientDesc", "complementaryNutrient", 5, "Nutriment complémentaire");
 
     companion object {
         fun getById(id: Int) = values().find { it.uuid == id } ?: ENERGYNEED
@@ -30,6 +31,7 @@ enum class EquationType(
             MW -> EquationKind.MW
             INDICATOR -> EquationKind.INDICATOR
             NEED -> EquationKind.NEED
+            COMPLEMENTARY_NUTRIENT -> EquationKind.COMPLEMENTARY_NUTRIENT
         }
     }
 
