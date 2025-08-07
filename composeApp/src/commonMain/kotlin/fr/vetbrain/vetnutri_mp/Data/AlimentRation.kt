@@ -3,7 +3,6 @@ package fr.vetbrain.vetnutri_mp.Data
 import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
 import fr.vetbrain.vetnutri_mp.Utils.genUUID
 import kotlin.uuid.ExperimentalUuidApi
-import kotlin.uuid.Uuid
 
 @OptIn(ExperimentalUuidApi::class)
 data class AlimentRation(
@@ -35,6 +34,42 @@ data class AlimentRation(
         fun getNutrient(nutrient: Nutrient): Float? {
                 // Déléguer à l'aliment sous-jacent s'il existe
                 return aliment?.getNutrient(nutrient)
+        }
+
+        /**
+         * Obtient la valeur d'un nutriment dans cet aliment, en utilisant une équation
+         * complémentaire si nécessaire
+         *
+         * @param nutrient Le nutriment à rechercher
+         * @param preferences Les préférences de l'espèce (pour les équations complémentaires)
+         * @param equationRepository Le repository des équations (pour les équations
+         * complémentaires)
+         * @return La valeur du nutriment ou null si non trouvé et pas d'équation complémentaire
+         */
+        suspend fun getNutrientWithComplementary(
+                nutrient: Nutrient,
+                preferences: fr.vetbrain.vetnutri_mp.Data.PreferencesEspece? = null,
+                equationRepository: fr.vetbrain.vetnutri_mp.Repository.EquationRepository? = null
+        ): Float? {
+                // D'abord, essayer d'obtenir la valeur directement
+                val valeurDirecte = getNutrient(nutrient)
+                if (valeurDirecte != null && valeurDirecte > 0f) {
+                        return valeurDirecte
+                }
+
+                // Si pas de valeur directe et qu'on a les dépendances pour les équations
+                // complémentaires
+                if (preferences != null && equationRepository != null) {
+                        return fr.vetbrain.vetnutri_mp.Utils.ComplementaryNutrientCalculator
+                                .calculerNutrimentComplementaire(
+                                        nutrient,
+                                        this,
+                                        preferences,
+                                        equationRepository
+                                )
+                }
+
+                return null
         }
 
         /**

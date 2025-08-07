@@ -160,6 +160,17 @@ data class ReferenceEv(
         }
 
         /**
+         * Récupère la référence complète (Nut4Ref) pour un nutriment et un niveau donnés
+         *
+         * @param nutrient Le nutriment concerné
+         * @param niveauRef Le niveau de référence
+         * @return Le Nut4Ref correspondant ou null si non trouvé
+         */
+        fun obtenirNutrimentRef(nutrient: Nutrient, niveauRef: Reflevel): Nut4Ref? {
+                return obtenirMap(niveauRef)[nutrient]
+        }
+
+        /**
          * Récupère l'UnitEnum d'un nutriment pour un niveau de référence donné
          *
          * @param nutrient Le nutriment concerné

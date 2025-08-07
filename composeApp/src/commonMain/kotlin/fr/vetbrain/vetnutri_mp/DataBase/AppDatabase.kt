@@ -33,7 +33,7 @@ import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
                         ReferenceEvEquationEntity::class,
                         ReferenceEvCoefficientEntity::class,
                         ReferenceEvNutrientEntity::class],
-        version = 19,
+        version = 20,
         exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -74,7 +74,9 @@ fun getRoomDatabase(builder: RoomDatabase.Builder<AppDatabase>): AppDatabase {
                         // Migration 17→18 : Test de montée de version sécurisée
                         createMigration17to18(),
                         // Migration 18→19 : Test de notre système Room KMP
-                        createMigration18to19()
+                        createMigration18to19(),
+                        // Migration 19→20 : Ajout du champ nutrient à la table EQUATIONS
+                        createMigration19to20()
                 )
                 .setDriver(BundledSQLiteDriver())
                 .setQueryCoroutineContext(AppDispatchers.IO)
@@ -138,7 +140,6 @@ fun createMigration17to18(): Migration {
                         val foodCount = statement.getInt(0)
                     }
                 }
-
             } catch (e: Exception) {
                 throw e
             }
@@ -184,8 +185,34 @@ fun createMigration18to19(): Migration {
                         val rationCount = statement.getInt(0)
                     }
                 }
-
             } catch (e: Exception) {
+                throw e
+            }
+        }
+    }
+}
+
+/**
+ * Migration sécurisée de la version 19 à 20
+ *
+ * Cette migration ajoute le champ nutrient à la table EQUATIONS pour supporter les équations de
+ * type NEED et COMPLEMENTARY_NUTRIENT.
+ */
+fun createMigration19to20(): Migration {
+    return object : Migration(19, 20) {
+        override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
+            println("🔵 Migration 19→20 : Ajout du champ nutrient à la table EQUATIONS")
+
+            try {
+                // Ajouter la colonne nutrient à la table EQUATIONS
+                connection.prepare("ALTER TABLE EQUATIONS ADD COLUMN nutrient TEXT").use { statement
+                    ->
+                    statement.step()
+                }
+
+                println("✅ Migration 19→20 terminée avec succès")
+            } catch (e: Exception) {
+                println("❌ Erreur lors de la migration 19→20 : ${e.message}")
                 throw e
             }
         }

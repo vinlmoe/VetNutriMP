@@ -15,6 +15,21 @@ class PreferencesRepository(private val preferencesStorage: PreferencesStorage) 
         private const val PREFERENCES_KEY = "app_preferences"
     }
 
+    // Trouve la position de la '}' correspondante à l'accolade ouvrante à openIndex
+    private fun findMatchingClosingBrace(text: String, openIndex: Int): Int {
+        var depth = 0
+        for (i in openIndex until text.length) {
+            when (text[i]) {
+                '{' -> depth++
+                '}' -> {
+                    depth--
+                    if (depth == 0) return i
+                }
+            }
+        }
+        return -1
+    }
+
     // État des préférences
     private var _preferences = PreferencesApplication()
     val preferences: PreferencesApplication
@@ -40,12 +55,14 @@ class PreferencesRepository(private val preferencesStorage: PreferencesStorage) 
     suspend fun loadPreferences() {
         try {
             val jsonString = preferencesStorage.getString(PREFERENCES_KEY, "{}")
+            println("🔍 PERSISTANCE Repo: loadPreferences() brut=\n$jsonString")
             if (jsonString.isNotBlank() && jsonString != "{}") {
                 // Essayer de parser le JSON manuellement
                 _preferences = parsePreferencesFromJson(jsonString)
             } else {
                 _preferences = PreferencesApplication()
             }
+            println("🔍 PERSISTANCE Repo: loadPreferences() -> ${_preferences}")
         } catch (e: Exception) {
             // En cas d'erreur, utiliser les préférences par défaut
             _preferences = PreferencesApplication()
@@ -56,6 +73,7 @@ class PreferencesRepository(private val preferencesStorage: PreferencesStorage) 
     suspend fun savePreferences(preferences: PreferencesApplication) {
         try {
             val jsonString = serializePreferencesToJson(preferences)
+            println("🔍 PERSISTANCE Repo: savePreferences() json=\n$jsonString")
             preferencesStorage.saveString(PREFERENCES_KEY, jsonString)
             _preferences = preferences
         } catch (e: Exception) {
@@ -99,9 +117,10 @@ class PreferencesRepository(private val preferencesStorage: PreferencesStorage) 
         val speciesEntries = mutableListOf<String>()
         preferences.preferencesParEspece.forEach { (speciesName, prefs) ->
             val nutrientsJson = serializeNutrientsMap(prefs.nutrimentsSelectionnes)
+            val equationsJson = serializeEquationsList(prefs.equationsComplementaires)
             // Utiliser directement l'ID de l'enum
             speciesEntries.add(
-                    "\"$speciesName\":{\"expressionId\":${prefs.typeExpressionBesoinId},\"nutrients\":$nutrientsJson}"
+                    "\"$speciesName\":{\"expressionId\":${prefs.typeExpressionBesoinId},\"nutrients\":$nutrientsJson,\"equations\":$equationsJson}"
             )
         }
         sb.append(speciesEntries.joinToString(","))
@@ -142,12 +161,14 @@ class PreferencesRepository(private val preferencesStorage: PreferencesStorage) 
                 // dans l'enum)
                 val species = fr.vetbrain.vetnutri_mp.Enumer.Espece.valuesExcept().map { it.name }
                 species.forEach { speciesName ->
-                    // Chercher les données de cette espèce dans le JSON
-                    val speciesPattern = "\"$speciesName\":\\{([^}]+)\\}"
-                    val speciesMatch = Regex(speciesPattern).find(speciesJson)
-
-                    if (speciesMatch != null) {
-                        val speciesData = speciesMatch.groupValues[1]
+                    // Extraire l'objet JSON complet pour l'espèce via comptage d'accolades
+                    val key = "\"$speciesName\":{"
+                    val objStart = speciesJson.indexOf(key)
+                    if (objStart != -1) {
+                        val braceOpenIndex = objStart + key.length - 1 // position de '{'
+                        val objEnd = findMatchingClosingBrace(speciesJson, braceOpenIndex)
+                        if (objEnd > braceOpenIndex) {
+                            val speciesData = speciesJson.substring(braceOpenIndex + 1, objEnd)
 
                         // Extraire l'expression
                         val expressionPattern = "\"expressionId\":([0-9]+)"
@@ -160,13 +181,18 @@ class PreferencesRepository(private val preferencesStorage: PreferencesStorage) 
                         // Extraire les nutriments
                         val nutrients = parseNutrientsFromJson(speciesData)
 
+                        // Extraire les équations complémentaires
+                        val equations = parseEquationsFromJson(speciesData)
+
 
                         preferencesMap[speciesName] =
                                 fr.vetbrain.vetnutri_mp.Data.PreferencesEspece(
                                         espece = speciesName,
                                         typeExpressionBesoinId = expressionId,
-                                        nutrimentsSelectionnes = nutrients
+                                        nutrimentsSelectionnes = nutrients,
+                                        equationsComplementaires = equations
                                 )
+                        }
                     } else {
                     }
                 }
@@ -217,6 +243,34 @@ class PreferencesRepository(private val preferencesStorage: PreferencesStorage) 
             )
         }
         return result
+    }
+
+    /** Sérialise la liste des UUID d'équations (on stocke une liste simple) */
+    private fun serializeEquationsList(equations: Map<String, String>): String {
+        val uuids = equations.keys.toList()
+        val listStr = uuids.joinToString(separator = ",", prefix = "[", postfix = "]") { "\"$it\"" }
+        return listStr
+    }
+
+    /** Parse la liste des UUID d'équations depuis JSON, renvoie une map uuid->uuid */
+    private fun parseEquationsFromJson(speciesDataJson: String): Map<String, String> {
+        return try {
+            val pattern = "\"equations\":\\[([^]]*)\\]"
+            val match = Regex(pattern).find(speciesDataJson)
+            if (match != null) {
+                val inside = match.groupValues[1]
+                val items = if (inside.isBlank()) emptyList() else inside.split(",")
+                val uuids = items.mapNotNull { raw ->
+                    val t = raw.trim().trim('"')
+                    if (t.isBlank()) null else t
+                }
+                uuids.associateWith { it }
+            } else {
+                emptyMap()
+            }
+        } catch (e: Exception) {
+            emptyMap()
+        }
     }
 
     /** Exporte les préférences au format JSON */

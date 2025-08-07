@@ -15,176 +15,449 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import fr.vetbrain.vetnutri_mp.Data.Equation
 import fr.vetbrain.vetnutri_mp.Data.PreferencesEspece
+import fr.vetbrain.vetnutri_mp.Enumer.EquationKind
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
+import fr.vetbrain.vetnutri_mp.Enumer.MainNutrientEnum
+import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
+import fr.vetbrain.vetnutri_mp.Enumer.NutrientAnalysis
+import fr.vetbrain.vetnutri_mp.Enumer.NutrientLipid
+import fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro
+import fr.vetbrain.vetnutri_mp.Enumer.NutrientMain
+import fr.vetbrain.vetnutri_mp.Enumer.NutrientMin
+import fr.vetbrain.vetnutri_mp.Enumer.NutrientOther
+import fr.vetbrain.vetnutri_mp.Enumer.NutrientVitam
+import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Repository.PreferencesRepository
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 
 /** Vue des préférences de l'application */
 @Composable
-fun PreferencesView(preferencesRepository: PreferencesRepository, modifier: Modifier = Modifier) {
-    var selectedSpecies by remember { mutableStateOf<Espece?>(null) }
-    var availableSpecies by remember { mutableStateOf<List<Espece>>(emptyList()) }
-    var currentPreferences by remember { mutableStateOf<PreferencesEspece?>(null) }
+fun PreferencesView(
+        preferencesRepository: PreferencesRepository,
+        equationRepository: EquationRepository,
+        modifier: Modifier = Modifier
+) {
+        var selectedSpecies by remember { mutableStateOf<Espece?>(null) }
+        var availableSpecies by remember { mutableStateOf<List<Espece>>(emptyList()) }
+        var currentPreferences by remember { mutableStateOf<PreferencesEspece?>(null) }
+        var complementaryEquations by remember { mutableStateOf<List<Equation>>(emptyList()) }
+        var selectedNutrients by remember { mutableStateOf<Set<String>>(emptySet()) }
 
-    // Charger les données au démarrage
-    LaunchedEffect(Unit) {
-        preferencesRepository.loadPreferences()
-        availableSpecies = preferencesRepository.getAvailableSpecies()
-        if (availableSpecies.isNotEmpty()) {
-            selectedSpecies = availableSpecies.first()
-            currentPreferences = preferencesRepository.getPreferencesForSpecies(selectedSpecies!!)
-        }
-    }
+        // Charger les données au démarrage
+        LaunchedEffect(Unit) {
+                preferencesRepository.loadPreferences()
+                availableSpecies = preferencesRepository.getAvailableSpecies()
 
-    Column(modifier = modifier.fillMaxSize().padding(16.dp)) {
-        // En-tête
-        Text(
-                text = "Préférences",
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 16.dp)
-        )
-
-        // Sélecteur d'espèce
-        Card(
-                modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-                backgroundColor = VetNutriColors.Surface
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                        text = "Espèce sélectionnée",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                )
-
-                // Dropdown pour sélectionner l'espèce
-                var expanded by remember { mutableStateOf(false) }
-
-                Box {
-                    OutlinedTextField(
-                            value = selectedSpecies?.label ?: "",
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text("Choisir une espèce") },
-                            modifier = Modifier.fillMaxWidth().clickable { expanded = true },
-                            colors =
-                                    TextFieldDefaults.outlinedTextFieldColors(
-                                            focusedBorderColor = VetNutriColors.Primary,
-                                            unfocusedBorderColor = Color.Gray
-                                    )
-                    )
-
-                    DropdownMenu(
-                            expanded = expanded,
-                            onDismissRequest = { expanded = false },
-                            modifier =
-                                    Modifier.background(VetNutriColors.Surface)
-                                            .border(1.dp, Color.Gray, RoundedCornerShape(4.dp))
-                    ) {
-                        availableSpecies.forEach { species ->
-                            DropdownMenuItem(
-                                    onClick = {
-                                        selectedSpecies = species
-                                        expanded = false
-                                        // Charger les préférences pour cette espèce
-                                        // currentPreferences =
-                                        // preferencesRepository.getPreferencesForSpecies(species)
-                                    }
-                            ) { Text(species.label) }
+                // Charger les équations complémentaires
+                complementaryEquations =
+                        equationRepository.getAllEquations().filter {
+                                it.kind == EquationKind.COMPLEMENTARY_NUTRIENT
                         }
-                    }
+
+                if (availableSpecies.isNotEmpty()) {
+                        selectedSpecies = availableSpecies.first()
+                        currentPreferences =
+                                preferencesRepository.getPreferencesForSpecies(selectedSpecies!!)
                 }
-            }
         }
 
-        // Liste des espèces disponibles
-        Card(
-                modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-                backgroundColor = VetNutriColors.Surface
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = modifier.fillMaxSize().padding(16.dp)) {
+                // En-tête
                 Text(
-                        text = "Espèces disponibles",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier.padding(bottom = 8.dp)
+                        text = "Préférencese",
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 16.dp)
                 )
 
-                LazyColumn {
-                    items(availableSpecies) { species ->
-                        Row(
-                                modifier =
-                                        Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable {
-                                            selectedSpecies = species
-                                            // currentPreferences =
-                                            // preferencesRepository.getPreferencesForSpecies(species)
-                                        },
-                                verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(text = species.label, modifier = Modifier.weight(1f))
-
-                            if (selectedSpecies == species) {
+                // Sélecteur d'espèce
+                Card(
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                        backgroundColor = VetNutriColors.Surface
+                ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
                                 Text(
-                                        text = "✓",
-                                        color = VetNutriColors.Primary,
-                                        fontWeight = FontWeight.Bold
+                                        text = "Espèce sélectionnée youpla",
+                                        fontSize = 18.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        modifier = Modifier.padding(bottom = 8.dp)
                                 )
-                            }
+
+                                // Dropdown pour sélectionner l'espèce
+                                var expanded by remember { mutableStateOf(false) }
+
+                                Box {
+                                        OutlinedTextField(
+                                                value = selectedSpecies?.label ?: "",
+                                                onValueChange = {},
+                                                readOnly = true,
+                                                label = { Text("Choisir une espèce") },
+                                                modifier =
+                                                        Modifier.fillMaxWidth().clickable {
+                                                                expanded = true
+                                                        },
+                                                colors =
+                                                        TextFieldDefaults.outlinedTextFieldColors(
+                                                                focusedBorderColor =
+                                                                        VetNutriColors.Primary,
+                                                                unfocusedBorderColor = Color.Gray
+                                                        )
+                                        )
+
+                                        DropdownMenu(
+                                                expanded = expanded,
+                                                onDismissRequest = { expanded = false },
+                                                modifier =
+                                                        Modifier.background(VetNutriColors.Surface)
+                                                                .border(
+                                                                        1.dp,
+                                                                        Color.Gray,
+                                                                        RoundedCornerShape(4.dp)
+                                                                )
+                                        ) {
+                                                availableSpecies.forEach { species ->
+                                                        DropdownMenuItem(
+                                                                onClick = {
+                                                                        selectedSpecies = species
+                                                                        expanded = false
+                                                                        // Charger les préférences
+                                                                        // pour cette espèce
+                                                                        // currentPreferences =
+                                                                        // preferencesRepository.getPreferencesForSpecies(species)
+                                                                }
+                                                        ) { Text(species.label) }
+                                                }
+                                        }
+                                }
                         }
-                    }
                 }
-            }
-        }
 
-        // Préférences actuelles
-        currentPreferences?.let { preferences ->
-            Card(
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-                    backgroundColor = VetNutriColors.Surface
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                            text = "Préférences pour ${preferences.getEspeceEnum().label}",
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Medium,
-                            modifier = Modifier.padding(bottom = 8.dp)
-                    )
+                // Liste des espèces disponibles
+                Card(
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                        backgroundColor = VetNutriColors.Surface
+                ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                                Text(
+                                        text = "Espèces disponibles",
+                                        fontSize = 18.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        modifier = Modifier.padding(bottom = 8.dp)
+                                )
 
-                    Text(
-                            text =
-                                    "Expression des besoins: ${preferences.getTypeExpressionBesoinEnum().displayName}",
-                            modifier = Modifier.padding(bottom = 4.dp)
-                    )
+                                LazyColumn(modifier = Modifier.height(120.dp)) {
+                                        items(availableSpecies) { species ->
+                                                Row(
+                                                        modifier =
+                                                                Modifier.fillMaxWidth()
+                                                                        .padding(vertical = 4.dp)
+                                                                        .clickable {
+                                                                                selectedSpecies =
+                                                                                        species
+                                                                                // currentPreferences =
+                                                                                // preferencesRepository.getPreferencesForSpecies(species)
+                                                                        },
+                                                        verticalAlignment =
+                                                                Alignment.CenterVertically
+                                                ) {
+                                                        Text(
+                                                                text = species.label,
+                                                                modifier = Modifier.weight(1f)
+                                                        )
 
-                    val selectedNutrientsCount =
-                            preferences.nutrimentsSelectionnes.values.sumOf { it.size }
-                    Text(
-                            text = "Nutriments sélectionnés: $selectedNutrientsCount",
-                            modifier = Modifier.padding(bottom = 4.dp)
-                    )
+                                                        if (selectedSpecies == species) {
+                                                                Text(
+                                                                        text = "✓",
+                                                                        color =
+                                                                                VetNutriColors
+                                                                                        .Primary,
+                                                                        fontWeight = FontWeight.Bold
+                                                                )
+                                                        }
+                                                }
+                                        }
+                                }
+                        }
                 }
-            }
-        }
 
-        // Boutons d'action
-        Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly
-        ) {
-            Button(
-                    onClick = {
-                        // Sauvegarder les préférences
-                    },
-                    colors = ButtonDefaults.buttonColors(backgroundColor = VetNutriColors.Primary)
-            ) { Text("Sauvegarder") }
+                // Préférences actuelles
+                currentPreferences?.let { preferences ->
+                        Card(
+                                modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                                backgroundColor = VetNutriColors.Surface
+                        ) {
+                                Column(modifier = Modifier.padding(16.dp)) {
+                                        Text(
+                                                text =
+                                                        "Préférenceses pour ${preferences.getEspeceEnum().label}",
+                                                fontSize = 18.sp,
+                                                fontWeight = FontWeight.Medium,
+                                                modifier = Modifier.padding(bottom = 8.dp)
+                                        )
 
-            OutlinedButton(
-                    onClick = {
-                        // Réinitialiser les préférences
-                    }
-            ) { Text("Réinitialiser") }
+                                        Text(
+                                                text =
+                                                        "Expression des besoins: ${preferences.getTypeExpressionBesoinEnum().displayName}",
+                                                modifier = Modifier.padding(bottom = 4.dp)
+                                        )
+
+                                        val selectedNutrientsCount =
+                                                preferences.nutrimentsSelectionnes.values.sumOf {
+                                                        it.size
+                                                }
+                                        Text(
+                                                text =
+                                                        "Nutriments sélectionnés: $selectedNutrientsCount",
+                                                modifier = Modifier.padding(bottom = 4.dp)
+                                        )
+                                }
+                        }
+                }
+
+                // Section des équations complémentaires
+                Card(
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                        backgroundColor = VetNutriColors.Surface
+                ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                                Text(
+                                        text = "Équations pour nutriments complémentaires",
+                                        fontSize = 18.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        modifier = Modifier.padding(bottom = 8.dp)
+                                )
+
+                                if (complementaryEquations.isEmpty()) {
+                                        Text(
+                                                text = "Aucune équation complémentaire disponible",
+                                                color = Color.Gray,
+                                                modifier = Modifier.padding(bottom = 8.dp)
+                                        )
+                                } else {
+                                        // Liste des nutriments avec leurs équations associées
+                                        LazyColumn {
+                                                items(
+                                                        getNutrientsWithComplementaryEquations(
+                                                                complementaryEquations
+                                                        )
+                                                ) { nutrient ->
+                                                        val currentEquation =
+                                                                currentPreferences
+                                                                        ?.getEquationComplementaire(
+                                                                                nutrient.label
+                                                                        )
+                                                        val selectedEquation =
+                                                                complementaryEquations.find {
+                                                                        it.uuid == currentEquation
+                                                                }
+
+                                                        Row(
+                                                                modifier =
+                                                                        Modifier.fillMaxWidth()
+                                                                                .padding(
+                                                                                        vertical =
+                                                                                                4.dp
+                                                                                ),
+                                                                verticalAlignment =
+                                                                        Alignment.CenterVertically
+                                                        ) {
+                                                                Text(
+                                                                        text = nutrient.label,
+                                                                        modifier =
+                                                                                Modifier.weight(1f),
+                                                                        fontWeight =
+                                                                                FontWeight.Medium
+                                                                )
+
+                                                                // Dropdown pour sélectionner
+                                                                // l'équation
+                                                                var expanded by remember {
+                                                                        mutableStateOf(false)
+                                                                }
+
+                                                                Box {
+                                                                        OutlinedTextField(
+                                                                                value =
+                                                                                        selectedEquation
+                                                                                                ?.name
+                                                                                                ?: "Aucune équation",
+                                                                                onValueChange = {},
+                                                                                readOnly = true,
+                                                                                label = {
+                                                                                        Text(
+                                                                                                "Équation"
+                                                                                        )
+                                                                                },
+                                                                                modifier =
+                                                                                        Modifier.width(
+                                                                                                        200.dp
+                                                                                                )
+                                                                                                .clickable {
+                                                                                                        expanded =
+                                                                                                                true
+                                                                                                },
+                                                                                colors =
+                                                                                        TextFieldDefaults
+                                                                                                .outlinedTextFieldColors(
+                                                                                                        focusedBorderColor =
+                                                                                                                VetNutriColors
+                                                                                                                        .Primary,
+                                                                                                        unfocusedBorderColor =
+                                                                                                                Color.Gray
+                                                                                                )
+                                                                        )
+
+                                                                        DropdownMenu(
+                                                                                expanded = expanded,
+                                                                                onDismissRequest = {
+                                                                                        expanded =
+                                                                                                false
+                                                                                },
+                                                                                modifier =
+                                                                                        Modifier.background(
+                                                                                                        VetNutriColors
+                                                                                                                .Surface
+                                                                                                )
+                                                                                                .border(
+                                                                                                        1.dp,
+                                                                                                        Color.Gray,
+                                                                                                        RoundedCornerShape(
+                                                                                                                4.dp
+                                                                                                        )
+                                                                                                )
+                                                                        ) {
+                                                                                // Option "Aucune
+                                                                                // équation"
+                                                                                DropdownMenuItem(
+                                                                                        onClick = {
+                                                                                                currentPreferences =
+                                                                                                        currentPreferences
+                                                                                                                ?.removeEquationComplementaire(
+                                                                                                                        nutrient.label
+                                                                                                                )
+                                                                                                expanded =
+                                                                                                        false
+                                                                                        }
+                                                                                ) {
+                                                                                        Text(
+                                                                                                "Aucune équation"
+                                                                                        )
+                                                                                }
+
+                                                                                // Options des
+                                                                                // équations
+                                                                                // disponibles
+                                                                                complementaryEquations
+                                                                                        .forEach {
+                                                                                                equation
+                                                                                                ->
+                                                                                                DropdownMenuItem(
+                                                                                                        onClick = {
+                                                                                                                currentPreferences =
+                                                                                                                        currentPreferences
+                                                                                                                                ?.setEquationComplementaire(
+                                                                                                                                        nutrient.label,
+                                                                                                                                        equation.uuid
+                                                                                                                                )
+                                                                                                                expanded =
+                                                                                                                        false
+                                                                                                        }
+                                                                                                ) {
+                                                                                                        Text(
+                                                                                                                equation.name
+                                                                                                        )
+                                                                                                }
+                                                                                        }
+                                                                        }
+                                                                }
+                                                        }
+                                                }
+                                        }
+                                }
+                        }
+                }
+
+                // Boutons d'action
+                Row(
+                        modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                        Button(
+                                onClick = {
+                                        // Sauvegarder les préférences
+                                },
+                                colors =
+                                        ButtonDefaults.buttonColors(
+                                                backgroundColor = VetNutriColors.Primary
+                                        )
+                        ) { Text("Sauvegarder") }
+
+                        OutlinedButton(
+                                onClick = {
+                                        // Réinitialiser les préférences
+                                }
+                        ) { Text("Réinitialiser") }
+                }
         }
-    }
+}
+
+/** Retourne tous les nutriments disponibles dans l'application */
+private fun getAllNutrients(): List<Nutrient> {
+        val allNutrients = mutableListOf<Nutrient>()
+
+        // Ajouter les nutriments principaux
+        allNutrients.addAll(NutrientMain.entries)
+
+        // Ajouter les nutriments minéraux
+        allNutrients.addAll(NutrientMin.entries)
+
+        // Ajouter les nutriments macro
+        allNutrients.addAll(NutrientMacro.entries)
+
+        // Ajouter les vitamines
+        allNutrients.addAll(NutrientVitam.entries)
+
+        // Ajouter les acides aminés
+        allNutrients.addAll(NutrientAnalysis.entries)
+
+        // Ajouter les acides gras
+        allNutrients.addAll(NutrientLipid.entries)
+
+        // Ajouter les autres nutriments
+        allNutrients.addAll(NutrientOther.entries)
+
+        return allNutrients
+}
+
+/**
+ * Retourne les nutriments qui ont des équations complémentaires disponibles
+ * @param complementaryEquations Liste des équations complémentaires disponibles
+ * @return Liste des nutriments qui peuvent être calculés avec des équations complémentaires
+ */
+private fun getNutrientsWithComplementaryEquations(
+        complementaryEquations: List<Equation>
+): List<Nutrient> {
+        // Pour l'instant, on retourne tous les nutriments car on ne peut pas déterminer
+        // automatiquement quels nutriments ont des équations complémentaires
+        // Dans une version future, on pourrait analyser les équations pour déterminer
+        // quels nutriments elles calculent
+
+        // Pour l'exemple, on va filtrer pour ne montrer que certains nutriments
+        // qui sont typiquement calculés avec des équations complémentaires
+        val allNutrients = getAllNutrients()
+
+        // Filtrer pour ne montrer que les nutriments qui sont souvent calculés
+        // avec des équations complémentaires (vitamines, minéraux, etc.)
+        return allNutrients.filter { nutrient ->
+                when (nutrient.getMNE()) {
+                        MainNutrientEnum.VITAM -> true // Les vitamines sont souvent calculées
+                        MainNutrientEnum.MIN -> true // Les minéraux aussi
+                        MainNutrientEnum.ANA -> true // Les acides aminés
+                        MainNutrientEnum.LIPID -> true // Les acides gras
+                        else -> false // Les autres nutriments sont généralement disponibles
+                // directement
+                }
+        }
 }
