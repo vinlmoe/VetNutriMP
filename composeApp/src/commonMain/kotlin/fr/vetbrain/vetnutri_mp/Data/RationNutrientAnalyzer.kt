@@ -10,7 +10,9 @@ import fr.vetbrain.vetnutri_mp.Enumer.NutrientMain
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientMin
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientOther
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientVitam
+import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Utils.NutrientUtils
+import kotlinx.coroutines.runBlocking
 
 /**
  * Fonction qui analyse une ration et retourne une Map de tous les nutriments avec en clés le label
@@ -35,6 +37,86 @@ fun analyserValeursNutritionnellesRation(ration: Ration): Map<String, ValeurNutr
 }
 
 /**
+ * Variante qui intègre les équations complémentaires par ingrédient via
+ * getNutrientWithComplementary
+ */
+fun analyserValeursNutritionnellesRationAvecEquations(
+        ration: Ration,
+        preferencesEspece: PreferencesEspece,
+        equationRepository: EquationRepository
+): Map<String, ValeurNutritionnelle> {
+    val resultat = mutableMapOf<String, ValeurNutritionnelle>()
+    val tousLesNutriments = obtenirTousLesNutriments()
+
+    tousLesNutriments.forEach { nutriment ->
+        var valeurTotale = 0.0
+        val contributrionsIngredients = mutableListOf<String>()
+        var tousLesIngredientsOntUneValeur = true
+        var auMoinsUnIngredientAUneValeur = false
+
+        ration.alimentMutableList.forEach { alimentRation ->
+            val nomIngredient = alimentRation.aliment?.nom ?: "Ingrédient inconnu"
+            val quantiteIngredient = alimentRation.quantite
+
+            // Utiliser la logique unifiée: valeur table > 0 sinon équation complémentaire
+            // (évite que 0.0 bloque l'utilisation de l'équation)
+            val valeurPour100g: Float? = runBlocking {
+                alimentRation.getNutrientWithComplementary(
+                        nutrient = nutriment,
+                        preferences = preferencesEspece,
+                        equationRepository = equationRepository
+                )
+            }
+
+            if (valeurPour100g != null) {
+                val contributionIngredient = (valeurPour100g * quantiteIngredient) / 100.0
+                valeurTotale += contributionIngredient
+                auMoinsUnIngredientAUneValeur = true
+                contributrionsIngredients.add("$nomIngredient:$contributionIngredient")
+            } else {
+                tousLesIngredientsOntUneValeur = false
+                contributrionsIngredients.add("$nomIngredient:NA")
+            }
+        }
+
+        val description =
+                if (auMoinsUnIngredientAUneValeur && valeurTotale > 0) {
+                    contributrionsIngredients
+                            .map { contrib ->
+                                val parts = contrib.split(":")
+                                val nom = parts[0]
+                                val valeur = parts[1]
+
+                                if (valeur == "NA") {
+                                    "$nom: NA"
+                                } else {
+                                    val valeurAbs = valeur.toDouble()
+                                    val pourcentage =
+                                            ((valeurAbs / valeurTotale) * 100).let {
+                                                String.format("%.1f", it)
+                                            }
+                                    "$nom: ${String.format("%.2f", valeurAbs)} (${pourcentage}%)"
+                                }
+                            }
+                            .joinToString(", ")
+                } else {
+                    "Aucune valeur disponible pour ce nutriment"
+                }
+
+        resultat[nutriment.label] =
+                ValeurNutritionnelle(
+                        nutriment = nutriment,
+                        unite = nutriment.ue,
+                        valeur = valeurTotale,
+                        description = description,
+                        complete = tousLesIngredientsOntUneValeur && auMoinsUnIngredientAUneValeur
+                )
+    }
+
+    return resultat
+}
+
+/**
  * Calcule la valeur d'un nutriment spécifique dans une ration
  *
  * @param ration La ration à analyser
@@ -45,6 +127,7 @@ private fun calculerValeurNutrimentDansRation(
         ration: Ration,
         nutriment: Nutrient
 ): ValeurNutritionnelle {
+    // Pas de dérivation automatique: les analyses (CAP, KNA, ...) ne sont pas calculées ici.
     var valeurTotale = 0.0
     val contributrionsIngredients = mutableListOf<String>()
     var tousLesIngredientsOntUneValeur = true
@@ -87,11 +170,12 @@ private fun calculerValeurNutrimentDansRation(
                             if (valeur == "NA") {
                                 "$nom: NA"
                             } else {
+                                val valeurAbs = valeur.toDouble()
                                 val pourcentage =
-                                        ((valeur.toDouble() / valeurTotale) * 100).let {
+                                        ((valeurAbs / valeurTotale) * 100).let {
                                             String.format("%.1f", it)
                                         }
-                                "$nom: $pourcentage%"
+                                "$nom: ${String.format("%.2f", valeurAbs)} (${pourcentage}%)"
                             }
                         }
                         .joinToString(", ")
@@ -174,7 +258,9 @@ fun obtenirNutrimentsSelonPreferencesParNom(nutrimentsSelectionnes: List<String>
  */
 fun analyserValeursNutritionnellesRationSelective(
         ration: Ration,
-        nutrimentsSelectionnes: List<String>
+        nutrimentsSelectionnes: List<String>,
+        preferencesEspece: PreferencesEspece? = null,
+        equationRepository: EquationRepository? = null
 ): Map<String, ValeurNutritionnelle> {
     val resultat = mutableMapOf<String, ValeurNutritionnelle>()
 
@@ -183,8 +269,72 @@ fun analyserValeursNutritionnellesRationSelective(
 
     // Pour chaque nutriment sélectionné, calculer sa valeur dans la ration
     nutrimentsAAnalyser.forEach { nutriment ->
-        val valeurNutritionnelle = calculerValeurNutrimentDansRation(ration, nutriment)
-        resultat[nutriment.label] = valeurNutritionnelle
+        if (preferencesEspece != null && equationRepository != null) {
+            // Version intégrant les équations complémentaires par ingrédient
+            var valeurTotale = 0.0
+            val contributrionsIngredients = mutableListOf<String>()
+            var tousLesIngredientsOntUneValeur = true
+            var auMoinsUnIngredientAUneValeur = false
+
+            ration.alimentMutableList.forEach { alimentRation ->
+                val nomIngredient = alimentRation.aliment?.nom ?: "Ingrédient inconnu"
+                val quantiteIngredient = alimentRation.quantite
+
+                val valeurPour100g: Float? = runBlocking {
+                    alimentRation.getNutrientWithComplementary(
+                            nutrient = nutriment,
+                            preferences = preferencesEspece,
+                            equationRepository = equationRepository
+                    )
+                }
+
+                if (valeurPour100g != null) {
+                    val contributionIngredient = (valeurPour100g * quantiteIngredient) / 100.0
+                    valeurTotale += contributionIngredient
+                    auMoinsUnIngredientAUneValeur = true
+                    contributrionsIngredients.add("$nomIngredient:$contributionIngredient")
+                } else {
+                    tousLesIngredientsOntUneValeur = false
+                    contributrionsIngredients.add("$nomIngredient:NA")
+                }
+            }
+
+            val description =
+                    if (auMoinsUnIngredientAUneValeur && valeurTotale > 0) {
+                        contributrionsIngredients
+                                .map { contrib ->
+                                    val parts = contrib.split(":")
+                                    val nom = parts[0]
+                                    val valeur = parts[1]
+
+                                    if (valeur == "NA") {
+                                        "$nom: NA"
+                                    } else {
+                                        val pourcentage =
+                                                ((valeur.toDouble() / valeurTotale) * 100).let {
+                                                    String.format("%.1f", it)
+                                                }
+                                        "$nom: $pourcentage%"
+                                    }
+                                }
+                                .joinToString(", ")
+                    } else {
+                        "Aucune valeur disponible pour ce nutriment"
+                    }
+
+            resultat[nutriment.label] =
+                    ValeurNutritionnelle(
+                            nutriment = nutriment,
+                            unite = nutriment.ue,
+                            valeur = valeurTotale,
+                            description = description,
+                            complete =
+                                    tousLesIngredientsOntUneValeur && auMoinsUnIngredientAUneValeur
+                    )
+        } else {
+            val valeurNutritionnelle = calculerValeurNutrimentDansRation(ration, nutriment)
+            resultat[nutriment.label] = valeurNutritionnelle
+        }
     }
 
     return resultat
@@ -215,7 +365,6 @@ fun exempleUtilisationAnalyseRation(ration: Ration) {
     val nutrimentsComplets = valeursNutritionnelles.values.count { it.complete }
     val nutrimentsAvecValeur = valeursNutritionnelles.values.count { it.valeur > 0 }
     val totalNutriments = valeursNutritionnelles.size
-
 }
 
 /**
@@ -248,8 +397,7 @@ fun exempleUtilisationAnalyseRationSelective(ration: Ration) {
             analyserValeursNutritionnellesRationSelective(ration, preferencesUtilisateur)
 
     // Afficher les résultats
-    valeursNutritionnellesSelectives.forEach { (label, valeur) ->
-    }
+    valeursNutritionnellesSelectives.forEach { (label, valeur) -> }
 
     // Comparaison avec l'analyse complète
     val valeursNutritionnellesCompletes = analyserValeursNutritionnellesRation(ration)

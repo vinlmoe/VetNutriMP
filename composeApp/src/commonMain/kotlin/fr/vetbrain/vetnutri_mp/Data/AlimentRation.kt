@@ -60,6 +60,71 @@ data class AlimentRation(
                 // Si pas de valeur directe et qu'on a les dépendances pour les équations
                 // complémentaires
                 if (preferences != null && equationRepository != null) {
+                        // 1) Essayer via mapping direct nutriment -> uuid (anciens prefs)
+                        val eqUuidDirect = preferences.getEquationComplementaire(nutrient.label)
+                        if (eqUuidDirect != null) {
+                                val eq = equationRepository.getEquationById(eqUuidDirect)
+                                if (eq != null) {
+                                        val res =
+                                                fr.vetbrain.vetnutri_mp.Utils.EquationEvaluator
+                                                        .evaluerBesoinNutritionnelPourAliment(
+                                                                expression = eq.equationScript,
+                                                                aliment = this
+                                                        )
+                                        if (res != null) return res.toFloat()
+                                }
+                        }
+
+                        // 2) Sinon, utiliser la sélection actuelle (liste d'UUID) et filtrer par
+                        // nutriment/espèce
+                        val selectedUuids = preferences.getSelectedEquationUuids()
+                        if (selectedUuids.isNotEmpty()) {
+                                var accum: Double? = null
+                                val especePref =
+                                        try {
+                                                fr.vetbrain.vetnutri_mp.Enumer.Espece.valueOf(
+                                                        preferences.espece
+                                                )
+                                        } catch (e: Exception) {
+                                                null
+                                        }
+                                selectedUuids.forEach { uuid ->
+                                        val eq = equationRepository.getEquationById(uuid)
+                                        if (eq != null) {
+                                                val kindOk =
+                                                        eq.kind ==
+                                                                fr.vetbrain.vetnutri_mp.Enumer
+                                                                        .EquationKind
+                                                                        .COMPLEMENTARY_NUTRIENT
+                                                val nutrientOk =
+                                                        eq.nutrient == nutrient ||
+                                                                eq.nutrient?.label == nutrient.label
+                                                val specieOk =
+                                                        especePref == null ||
+                                                                eq.specie == especePref ||
+                                                                eq.specie ==
+                                                                        fr.vetbrain.vetnutri_mp
+                                                                                .Enumer.Espece.CH
+                                                if (kindOk && nutrientOk && specieOk) {
+                                                        val res =
+                                                                fr.vetbrain.vetnutri_mp.Utils
+                                                                        .EquationEvaluator
+                                                                        .evaluerBesoinNutritionnelPourAliment(
+                                                                                expression =
+                                                                                        eq.equationScript,
+                                                                                aliment = this
+                                                                        )
+                                                                        ?: 0.0
+                                                        accum =
+                                                                if (eq.ratio) res
+                                                                else (accum ?: 0.0) + res
+                                                }
+                                        }
+                                }
+                                if (accum != null) return accum.toFloat()
+                        }
+
+                        // 3) Fallback: calculateur existant (micro-ration)
                         return fr.vetbrain.vetnutri_mp.Utils.ComplementaryNutrientCalculator
                                 .calculerNutrimentComplementaire(
                                         nutrient,

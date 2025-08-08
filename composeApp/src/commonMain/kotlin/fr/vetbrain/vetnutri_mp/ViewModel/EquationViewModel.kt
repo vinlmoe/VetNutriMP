@@ -12,11 +12,11 @@ import fr.vetbrain.vetnutri_mp.Enumer.AAEnum
 import fr.vetbrain.vetnutri_mp.Enumer.EquationKind
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
+import fr.vetbrain.vetnutri_mp.Enumer.NutrientAnalysis
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientLipid
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientMain
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientMin
-import fr.vetbrain.vetnutri_mp.Enumer.NutrientAnalysis
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientVitam
 import fr.vetbrain.vetnutri_mp.Enumer.VariableKind
@@ -294,6 +294,12 @@ class EquationViewModel(
 
         // Analyser le script pour détecter automatiquement les variables utilisées
         analyzeScriptForVariables(script)
+    }
+
+    /** Met à jour le flag ratio de l'équation */
+    fun updateRatio(ratio: Boolean) {
+        val currentValue = _currentEquation.value
+        _currentEquation.value = currentValue.copy(ratio = ratio)
     }
 
     /** Analyse le script pour détecter et gérer automatiquement les variables */
@@ -657,6 +663,28 @@ class EquationViewModel(
                 _operationMessage.value = "Équation supprimée avec succès"
                 _saveSuccessful.value = true
                 _currentEquation.value = Equation()
+                loadEquations()
+            } catch (e: Exception) {
+                _operationMessage.value = "Erreur lors de la suppression: ${e.message}"
+                _saveSuccessful.value = false
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    /** Supprime une équation par son identifiant */
+    fun deleteEquationById(equationId: String) {
+        if (equationId.isEmpty()) {
+            return
+        }
+
+        coroutineScope.launch {
+            _isLoading.value = true
+            try {
+                equationRepository.deleteEquation(equationId)
+                _operationMessage.value = "Équation supprimée avec succès"
+                _saveSuccessful.value = true
                 loadEquations()
             } catch (e: Exception) {
                 _operationMessage.value = "Erreur lors de la suppression: ${e.message}"

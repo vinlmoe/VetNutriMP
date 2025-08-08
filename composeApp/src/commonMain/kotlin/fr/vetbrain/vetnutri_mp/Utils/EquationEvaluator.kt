@@ -93,16 +93,33 @@ object EquationEvaluator {
             }
         }
 
-        // Nutriments de la ration
-        for (nutrient in NutrientMain.entries) {
-            variables[nutrient.label] = ration.getNutrient(nutrient)?.toDouble() ?: 0.0
+        // Nutriments de la ration (tous nutriments utiles pour ratios)
+        NutrientMain.entries.forEach { nutrient ->
+            val v = ration.getNutrient(nutrient)?.toDouble() ?: 0.0
+            variables[nutrient.label] = v
+            // Log léger pour diagnostiquer en cas de pb d'équations
+            // println("EQDBG var ${nutrient.label}=$v")
+        }
+        NutrientLipid.entries.forEach { nutrient ->
+            val v = ration.getNutrient(nutrient)?.toDouble() ?: 0.0
+            variables[nutrient.label] = v
+        }
+        NutrientVitam.entries.forEach { nutrient ->
+            val v = ration.getNutrient(nutrient)?.toDouble() ?: 0.0
+            variables[nutrient.label] = v
+        }
+        NutrientMacro.entries.forEach { nutrient ->
+            val v = ration.getNutrient(nutrient)?.toDouble() ?: 0.0
+            variables[nutrient.label] = v
+        }
+        NutrientMin.entries.forEach { nutrient ->
+            val v = ration.getNutrient(nutrient)?.toDouble() ?: 0.0
+            variables[nutrient.label] = v
         }
 
-        for (nutrient in NutrientLipid.entries) {
-            variables[nutrient.label] = ration.getNutrient(nutrient)?.toDouble() ?: 0.0
-        }
-
-        return ExpressionMathematique.evaluer(expression, variables)
+        val res = ExpressionMathematique.evaluer(expression, variables)
+        // println("EQDBG eval '${expression}' => ${res}")
+        return res
     }
 
     /**
@@ -118,6 +135,56 @@ object EquationEvaluator {
         // Ajouter tous les nutriments de l'aliment
         for (nutrient in NutrientMain.entries) {
             variables[nutrient.label] = aliment.getNutrient(nutrient)?.toDouble() ?: 0.0
+        }
+
+        return ExpressionMathematique.evaluer(expression, variables)
+    }
+
+    /**
+     * Évalue une équation de besoin/composition directement pour un aliment unique Utilise les
+     * nutriments disponibles dans l'aliment comme variables (CAL, PHOS, etc.). Les variables de
+     * base (BW, BEE, MW) peuvent être passées pour les équations qui en dépendent.
+     */
+    fun evaluerBesoinNutritionnelPourAliment(
+            expression: String,
+            poidsCorps: Float = 0f,
+            besoinEnergetique: Float = 0f,
+            poidsMetabolique: Float = 0f,
+            variablesSupp: List<SupplementalvariableP> = emptyList(),
+            aliment: AlimentRation
+    ): Double? {
+        val variables = mutableMapOf<String, Double>()
+
+        // Variables de base
+        variables["BW"] = poidsCorps.toDouble()
+        variables["BEE"] = besoinEnergetique.toDouble()
+        variables["MW"] = poidsMetabolique.toDouble()
+
+        // Variables supplémentaires
+        for (variable in variablesSupp) {
+            variable.variable?.let { varKind ->
+                variables[varKind.variable] = variable.varue?.toDouble() ?: 0.0
+            }
+        }
+
+        // Injecter les nutriments de l'aliment comme variables
+        aliment.aliment?.let { alim ->
+            // Nutriments principaux et autres familles
+            NutrientMain.entries.forEach { n ->
+                variables[n.label] = alim.getNutrient(n)?.toDouble() ?: 0.0
+            }
+            NutrientLipid.entries.forEach { n ->
+                variables[n.label] = alim.getNutrient(n)?.toDouble() ?: 0.0
+            }
+            NutrientVitam.entries.forEach { n ->
+                variables[n.label] = alim.getNutrient(n)?.toDouble() ?: 0.0
+            }
+            NutrientMacro.entries.forEach { n ->
+                variables[n.label] = alim.getNutrient(n)?.toDouble() ?: 0.0
+            }
+            NutrientMin.entries.forEach { n ->
+                variables[n.label] = alim.getNutrient(n)?.toDouble() ?: 0.0
+            }
         }
 
         return ExpressionMathematique.evaluer(expression, variables)

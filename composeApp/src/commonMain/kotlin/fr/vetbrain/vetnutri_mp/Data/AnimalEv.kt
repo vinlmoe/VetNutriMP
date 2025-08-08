@@ -3,23 +3,21 @@ package fr.vetbrain.vetnutri_mp.Data
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.Sex
 import fr.vetbrain.vetnutri_mp.Utils.genUUID
-import kotlin.uuid.ExperimentalUuidApi
-import kotlin.uuid.Uuid
 import kotlinx.datetime.LocalDate
 
 data class AnimalEv(
-    var uuid: String = genUUID(),
-    var nom: String = "",
-    var dead: Boolean = false,
-    var id: String? = null,
-    var sexId: Int = Sex.MALE_ENTIER.id,
-    var specieId: String = Espece.CHIEN.label,
-    var ownerName: String = "",
-    var birthdate: LocalDate? = null,
-    var race: String = "",
-    var summary: String = "",
-    var consultations: MutableList<ConsultationEv> = mutableListOf(),
-    var weightHistory: MutableList<WeightDate> = mutableListOf()
+        var uuid: String = genUUID(),
+        var nom: String = "",
+        var dead: Boolean = false,
+        var id: String? = null,
+        var sexId: Int = Sex.MALE_ENTIER.id,
+        var specieId: String = Espece.CHIEN.label,
+        var ownerName: String = "",
+        var birthdate: LocalDate? = null,
+        var race: String = "",
+        var summary: String = "",
+        var consultations: MutableList<ConsultationEv> = mutableListOf(),
+        var weightHistory: MutableList<WeightDate> = mutableListOf()
 ) {
     fun getSex(): Sex {
         return Sex.values().firstOrNull { it.id == sexId } ?: Sex.MALE_ENTIER
@@ -54,6 +52,24 @@ data class AnimalEv(
 
     fun setEspece(espece: Espece) {
         this.specieId = espece.label
+    }
+
+    /** Retourne le BEE de la consultation active si disponible */
+    fun getBEE(): Double? {
+        val consult = consultations.lastOrNull()
+        return consult?.let { c ->
+            // Approximations: utiliser coefficientAjustement comme proxy si pas de calcul dédié
+            val poids = c.weight?.toDouble()
+            if (poids != null) {
+                fr.vetbrain.vetnutri_mp.Utils.EquationEvaluator.calculerBesoinEnergetiqueBase(
+                                poids.toFloat()
+                        )
+                        .also {
+                            return it
+                        }
+            }
+            null
+        }
     }
 
     companion object {

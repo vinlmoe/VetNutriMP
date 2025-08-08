@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Components.ConfirmDialog
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
+import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Theme.AppIcons
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
@@ -42,7 +43,8 @@ fun AnimalDetailView(
         settingsViewModel: SettingsViewModel,
         onNavigateBack: () -> Unit,
         onOpenSettings: () -> Unit = {},
-        modifier: Modifier = Modifier
+        modifier: Modifier = Modifier,
+        equationRepository: EquationRepository
 ) {
         val animal by viewModel.animal.collectAsState()
         val currentSection by viewModel.currentSection.collectAsState()
@@ -146,7 +148,8 @@ fun AnimalDetailView(
                                                 showDeleteConfirmation = true
                                         },
                                         showConsultationDetail = showConsultationDetail,
-                                        onShowConsultationDetail = { showConsultationDetail = it }
+                                        onShowConsultationDetail = { showConsultationDetail = it },
+                                        equationRepository = equationRepository
                                 )
                         } else {
                                 // Layout pour écrans étroits avec drawer
@@ -165,7 +168,8 @@ fun AnimalDetailView(
                                         showConsultationDetail = showConsultationDetail,
                                         onShowConsultationDetail = { showConsultationDetail = it },
                                         drawerState = drawerState,
-                                        scope = scope
+                                        scope = scope,
+                                        equationRepository = equationRepository
                                 )
                         }
 
@@ -225,7 +229,8 @@ private fun WideScreenLayout(
         onIsEditingChange: (Boolean) -> Unit,
         onShowDeleteConfirmation: () -> Unit,
         showConsultationDetail: Boolean,
-        onShowConsultationDetail: (Boolean) -> Unit
+        onShowConsultationDetail: (Boolean) -> Unit,
+        equationRepository: EquationRepository
 ) {
         Row(modifier = Modifier.fillMaxSize()) {
                 // Sidebar
@@ -335,8 +340,8 @@ private fun WideScreenLayout(
                                 AnimalDetailSection.RATIONS -> {
                                         RationsView(
                                                 viewModel = viewModel,
-                                                showSnackbar = { message ->
-                                                }
+                                                showSnackbar = { message -> },
+                                                equationRepository = equationRepository
                                         )
                                 }
                                 AnimalDetailSection.GRAPHIQUE -> {
@@ -365,7 +370,8 @@ private fun NarrowScreenLayout(
         showConsultationDetail: Boolean,
         onShowConsultationDetail: (Boolean) -> Unit,
         drawerState: DrawerState,
-        scope: CoroutineScope
+        scope: CoroutineScope,
+        equationRepository: EquationRepository
 ) {
         ModalDrawer(
                 drawerState = drawerState,
@@ -535,8 +541,9 @@ private fun NarrowScreenLayout(
                                                 AnimalDetailSection.RATIONS -> {
                                                         RationsView(
                                                                 viewModel = viewModel,
-                                                                showSnackbar = { message ->
-                                                                }
+                                                                showSnackbar = { message -> },
+                                                                equationRepository =
+                                                                        equationRepository
                                                         )
                                                 }
                                                 AnimalDetailSection.GRAPHIQUE -> {

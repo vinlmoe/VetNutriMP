@@ -488,7 +488,7 @@ private fun ComplementaryNutrientEquationsSection(
                                 val isCorrectSpecies =
                                         equation.specie == species ||
                                                 equation.specie ==
-                                                        fr.vetbrain.vetnutri_mp.Enumer.Espece.CHIEN
+                                                        fr.vetbrain.vetnutri_mp.Enumer.Espece.CH
 
                                 isComplementary && isCorrectSpecies
                         }
@@ -529,7 +529,7 @@ private fun ComplementaryNutrientEquationsSection(
                                         checked = isSelected,
                                         onCheckedChange = { checked ->
                                                 println(
-                                                        "🔍 PERSISTANCE: Checkbox changée pour ${equation.name} - nouvelle valeur: $checked"
+                                                        "EQDBG PREF species=${species.name} equation=${equation.uuid} (${equation.name}) checked=$checked"
                                                 )
 
                                                 currentPreferences?.let { prefs ->
@@ -545,7 +545,7 @@ private fun ComplementaryNutrientEquationsSection(
                                                         val updatedSpeciesPrefs =
                                                                 if (checked) {
                                                                         println(
-                                                                                "🔍 PERSISTANCE: Ajout de l'équation ${equation.uuid}"
+                                                                                "EQDBG PREF add uuid=${equation.uuid} for species=${species.name}"
                                                                         )
                                                                         currentSpeciesPrefs
                                                                                 .addEquation(
@@ -553,7 +553,7 @@ private fun ComplementaryNutrientEquationsSection(
                                                                                 )
                                                                 } else {
                                                                         println(
-                                                                                "🔍 PERSISTANCE: Suppression de l'équation ${equation.uuid}"
+                                                                                "EQDBG PREF remove uuid=${equation.uuid} for species=${species.name}"
                                                                         )
                                                                         currentSpeciesPrefs
                                                                                 .removeEquation(
@@ -571,7 +571,7 @@ private fun ComplementaryNutrientEquationsSection(
                                                                 )
 
                                                         println(
-                                                                "🔍 PERSISTANCE: Appel de onEquationSelectionChanged"
+                                                                "EQDBG PREF call onEquationSelectionChanged for species=${species.name}"
                                                         )
                                                         onEquationSelectionChanged(updatedPrefs)
                                                 }

@@ -603,12 +603,13 @@ object Mappers {
                         consistent = this.consistent,
                         bibRef = bibRef,
                         variables = "",
-                        nutrient = this.nutrient?.label
+                        nutrient = this.nutrient?.label,
+                        ratio = this.ratio
                 )
         }
 
         fun EquationEntity.toDomain(biblioRef: BiblioRef? = null): Equation {
-                
+
                 // Résoudre le nutriment à partir de son label
                 val nutrient = this.nutrient?.let { NutrientResolver.AllNutrientResolver(it) }
 
@@ -622,6 +623,7 @@ object Mappers {
                         nutrient = nutrient,
                         bib = biblioRef ?: BiblioRef(),
                         consistent = this.consistent,
+                        ratio = this.ratio,
                         variables = mutableListOf()
                 )
         }

@@ -168,9 +168,10 @@ fun EquationListView(
                 confirmButton = {
                     Button(
                             onClick = {
-                                equationToDelete?.let {
-                                    viewModel.loadEquation(it.uuid)
-                                    onEditEquation(it.uuid)
+                                equationToDelete?.let { eq ->
+                                    if (eq.uuid.isNotEmpty()) {
+                                        viewModel.deleteEquationById(eq.uuid)
+                                    }
                                 }
                                 showDeleteConfirmation = false
                                 equationToDelete = null

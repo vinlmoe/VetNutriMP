@@ -37,6 +37,7 @@ import fr.vetbrain.vetnutri_mp.Data.*
 import fr.vetbrain.vetnutri_mp.Data.ValeurNutritionnelle
 import fr.vetbrain.vetnutri_mp.Data.convertirPreferencesVersLabelsNutriments
 import fr.vetbrain.vetnutri_mp.Enumer.*
+import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Repository.PreferencesRepository
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
@@ -156,7 +157,8 @@ private fun LocalInfoRow(label: String, value: String) {
 fun RationsView(
         viewModel: AnimalDetailViewModel,
         showSnackbar: (String) -> Unit,
-        modifier: Modifier = Modifier
+        modifier: Modifier = Modifier,
+        equationRepository: EquationRepository
 ) {
         val animal by viewModel.animal.collectAsState()
         val selectedConsultation by viewModel.selectedConsultation.collectAsState()
@@ -779,6 +781,8 @@ fun RationsView(
                                                                         animal = animal,
                                                                         preferencesRepository =
                                                                                 preferencesRepository,
+                                                                        equationRepository =
+                                                                                equationRepository,
                                                                         isLargeView = !isCompact
                                                                 )
                                                         }
@@ -1139,6 +1143,8 @@ fun RationsView(
                                                                 animal = animal,
                                                                 preferencesRepository =
                                                                         preferencesRepository,
+                                                                equationRepository =
+                                                                        equationRepository,
                                                                 isLargeView = true
                                                         )
                                                 } else {
@@ -1271,6 +1277,7 @@ fun RationsView(
                                 poidsAnimal = selectedConsultation?.weight?.toDouble(),
                                 espece = animal?.getEspece() ?: Espece.CHIEN,
                                 preferencesStorage = preferencesStorage,
+                                equationRepository = equationRepository,
                                 onDismiss = {
                                         showNutrimentDetailDialog = false
                                         selectedNutrimentData = null

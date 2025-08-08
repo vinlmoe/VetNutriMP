@@ -268,6 +268,18 @@ private fun EquationEditTab(
                 leadingIcon = { Icon(Icons.Default.Code, contentDescription = null) }
         )
 
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Case à cocher: Equation de type ratio (utilise les nutriments de la ration)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Checkbox(
+                    checked = currentEquation.ratio,
+                    onCheckedChange = { checked -> viewModel.updateRatio(checked) }
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Équation de type ratio (utiliser les nutriments de la ration)")
+        }
+
         // Légende des codes couleur
         Row(
                 modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
