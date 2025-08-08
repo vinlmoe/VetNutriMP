@@ -28,6 +28,7 @@ data class Equation(
         var consistent: Boolean = true,
         var variables: MutableList<VariableKind> = mutableListOf(),
         var correctionFactor: Double = 1.0,
+        var ratio: Boolean = false,
         var creationDate: Long = instantNow().toEpochMilliseconds(),
         var lastUpdate: Long = instantNow().toEpochMilliseconds()
 ) {
@@ -89,6 +90,7 @@ data class Equation(
                 this.consistent = equation.consistent
                 this.variables.clear()
                 this.variables.addAll(equation.variables)
+                this.ratio = equation.ratio
                 this.creationDate = equation.creationDate
                 this.lastUpdate = equation.lastUpdate
         }

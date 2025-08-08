@@ -33,7 +33,7 @@ import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
                         ReferenceEvEquationEntity::class,
                         ReferenceEvCoefficientEntity::class,
                         ReferenceEvNutrientEntity::class],
-        version = 20,
+        version = 21,
         exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -76,7 +76,9 @@ fun getRoomDatabase(builder: RoomDatabase.Builder<AppDatabase>): AppDatabase {
                         // Migration 18→19 : Test de notre système Room KMP
                         createMigration18to19(),
                         // Migration 19→20 : Ajout du champ nutrient à la table EQUATIONS
-                        createMigration19to20()
+                        createMigration19to20(),
+                        // Migration 20→21 : Ajout du champ ratio à la table EQUATIONS
+                        createMigration20to21()
                 )
                 .setDriver(BundledSQLiteDriver())
                 .setQueryCoroutineContext(AppDispatchers.IO)
@@ -213,6 +215,25 @@ fun createMigration19to20(): Migration {
                 println("✅ Migration 19→20 terminée avec succès")
             } catch (e: Exception) {
                 println("❌ Erreur lors de la migration 19→20 : ${e.message}")
+                throw e
+            }
+        }
+    }
+}
+
+/** Migration 20 → 21 : Ajout du champ ratio (BOOLEAN) à la table EQUATIONS */
+fun createMigration20to21(): Migration {
+    return object : Migration(20, 21) {
+        override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
+            println("🔵 Migration 20→21 : Ajout du champ ratio à la table EQUATIONS")
+            try {
+                connection.prepare(
+                                "ALTER TABLE EQUATIONS ADD COLUMN ratio INTEGER NOT NULL DEFAULT 0"
+                        )
+                        .use { statement -> statement.step() }
+                println("✅ Migration 20→21 terminée avec succès")
+            } catch (e: Exception) {
+                println("❌ Erreur lors de la migration 20→21 : ${e.message}")
                 throw e
             }
         }

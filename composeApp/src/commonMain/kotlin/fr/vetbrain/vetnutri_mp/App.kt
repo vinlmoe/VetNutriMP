@@ -362,7 +362,8 @@ fun App(appDatabase: AppDatabase) {
                                     settingsViewModel = settingsViewModel,
                                     onNavigateBack = { currentScreen = Screen.List },
                                     onOpenSettings = { currentScreen = Screen.Settings },
-                                    modifier = Modifier.fillMaxWidth().weight(1f)
+                                    modifier = Modifier.fillMaxWidth().weight(1f),
+                                    equationRepository = equationRepository
                             )
                         }
                     }

@@ -226,7 +226,8 @@ class DatabaseEquationRepository(
                                 specie = Espece.CHIEN,
                                 kind = EquationKind.COMPLEMENTARY_NUTRIENT,
                                 nutrient = fr.vetbrain.vetnutri_mp.Enumer.NutrientVitam.VITA,
-                                consistent = true
+                                consistent = true,
+                                ratio = false
                         )
 
                 // Équation 8 : Calcium complémentaire pour chien (global)
@@ -240,7 +241,8 @@ class DatabaseEquationRepository(
                                 specie = Espece.CHIEN,
                                 kind = EquationKind.COMPLEMENTARY_NUTRIENT,
                                 nutrient = fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro.CAL,
-                                consistent = true
+                                consistent = true,
+                                ratio = false
                         )
 
                 // Équation 9 : Vitamine D complémentaire pour chat (spécifique)
@@ -254,7 +256,8 @@ class DatabaseEquationRepository(
                                 specie = Espece.CHAT,
                                 kind = EquationKind.COMPLEMENTARY_NUTRIENT,
                                 nutrient = fr.vetbrain.vetnutri_mp.Enumer.NutrientVitam.VITD,
-                                consistent = true
+                                consistent = true,
+                                ratio = false
                         )
 
                 // Équation 10 : Phosphore complémentaire pour chat (spécifique)
@@ -268,7 +271,8 @@ class DatabaseEquationRepository(
                                 specie = Espece.CHAT,
                                 kind = EquationKind.COMPLEMENTARY_NUTRIENT,
                                 nutrient = fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro.PHOS,
-                                consistent = true
+                                consistent = true,
+                                ratio = true
                         )
 
                 // Sauvegarder les équations

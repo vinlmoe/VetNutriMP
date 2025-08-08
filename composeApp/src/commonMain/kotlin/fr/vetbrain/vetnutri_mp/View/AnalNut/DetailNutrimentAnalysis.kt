@@ -9,6 +9,7 @@ import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -28,6 +29,7 @@ import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
 import fr.vetbrain.vetnutri_mp.Enumer.Reflevel
 import fr.vetbrain.vetnutri_mp.Enumer.TypeExpressionBesoin
 import fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum
+import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Repository.PreferencesRepository
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
@@ -98,7 +100,6 @@ private fun calculerAffichageNutriment(
 
         // Si pas de type d'expression défini, affichage par défaut
         val typeExpression = typeExpressionBesoin ?: TypeExpressionBesoin.DEFAULT
-
 
         return when (typeExpression) {
                 TypeExpressionBesoin.PAR_KG -> {
@@ -177,6 +178,7 @@ fun NutrientDetailDialog(
         poidsAnimal: Double?,
         espece: Espece,
         preferencesStorage: PreferencesStorage,
+        equationRepository: EquationRepository? = null,
         onDismiss: () -> Unit
 ) {
         // Récupération des préférences de l'espèce
@@ -239,13 +241,29 @@ fun NutrientDetailDialog(
                                                 // Apport selon le type d'expression choisi
                                                 // (priorité - en gras)
                                                 val (valeurFormatee, uniteAffichage) =
-                                                        calculerAffichageNutriment(
-                                                                valeurNutritionnelle,
-                                                                typeExpressionBesoin,
-                                                                poidsMetabolique,
-                                                                poidsAnimal,
-                                                                besoinEnergetiqueEntretien
-                                                        )
+                                                        if (valeurNutritionnelle.nutriment is
+                                                                        fr.vetbrain.vetnutri_mp.Enumer.NutrientAnalysis &&
+                                                                        valeurNutritionnelle.unite
+                                                                                .displayName
+                                                                                .isBlank()
+                                                        ) {
+                                                                Pair(
+                                                                        String.format(
+                                                                                "%.2f",
+                                                                                valeurNutritionnelle
+                                                                                        .valeur
+                                                                        ),
+                                                                        ""
+                                                                )
+                                                        } else {
+                                                                calculerAffichageNutriment(
+                                                                        valeurNutritionnelle,
+                                                                        typeExpressionBesoin,
+                                                                        poidsMetabolique,
+                                                                        poidsAnimal,
+                                                                        besoinEnergetiqueEntretien
+                                                                )
+                                                        }
 
                                                 Text(
                                                         text =
@@ -257,16 +275,24 @@ fun NutrientDetailDialog(
 
                                                 // Apport absolu total avec flèche (comme les
                                                 // références)
-                                                Text(
-                                                        text =
-                                                                "→ ${String.format("%.2f", valeurNutritionnelle.valeur)} ${valeurNutritionnelle.unite.displayName}/jour",
-                                                        style = MaterialTheme.typography.body2,
-                                                        fontWeight = FontWeight.Medium,
-                                                        color =
-                                                                VetNutriColors.Primary.copy(
-                                                                        alpha = 0.8f
-                                                                )
-                                                )
+                                                if (!(valeurNutritionnelle.nutriment is
+                                                                fr.vetbrain.vetnutri_mp.Enumer.NutrientAnalysis &&
+                                                                valeurNutritionnelle.unite
+                                                                        .displayName.isBlank())
+                                                ) {
+                                                        Text(
+                                                                text =
+                                                                        "→ ${String.format("%.2f", valeurNutritionnelle.valeur)} ${valeurNutritionnelle.unite.displayName}/jour",
+                                                                style =
+                                                                        MaterialTheme.typography
+                                                                                .body2,
+                                                                fontWeight = FontWeight.Medium,
+                                                                color =
+                                                                        VetNutriColors.Primary.copy(
+                                                                                alpha = 0.8f
+                                                                        )
+                                                        )
+                                                }
 
                                                 // Statut de complétude
                                                 val isComplete = valeurNutritionnelle.complete
@@ -365,22 +391,33 @@ fun NutrientDetailDialog(
                                                                 )
                                                                 // Convertir l'apport vers l'unité
                                                                 // des préférences
+                                                                val isAnalysisNoUnit =
+                                                                        (nutrient is
+                                                                                fr.vetbrain.vetnutri_mp.Enumer.NutrientAnalysis &&
+                                                                                nutrient.unite
+                                                                                        .isBlank())
                                                                 val apportConverti =
-                                                                        convertirVersUnitePreferences(
+                                                                        if (isAnalysisNoUnit) {
                                                                                 valeurNutritionnelle
                                                                                         .valeur
-                                                                                        .toFloat(),
-                                                                                UnitReqEnum
-                                                                                        .ABSOLUTE, // L'apport est en valeur absolue (g/jour)
-                                                                                typeExpressionBesoin
-                                                                                        .unitReqEnum,
-                                                                                besoinEnergetiqueEntretien,
-                                                                                poidsAnimal,
-                                                                                poidsMetabolique
-                                                                        )
-                                                                                ?: valeurNutritionnelle
-                                                                                        .valeur
                                                                                         .toFloat()
+                                                                        } else {
+                                                                                convertirVersUnitePreferences(
+                                                                                        valeurNutritionnelle
+                                                                                                .valeur
+                                                                                                .toFloat(),
+                                                                                        UnitReqEnum
+                                                                                                .ABSOLUTE, // L'apport est en valeur absolue (g/jour)
+                                                                                        typeExpressionBesoin
+                                                                                                .unitReqEnum,
+                                                                                        besoinEnergetiqueEntretien,
+                                                                                        poidsAnimal,
+                                                                                        poidsMetabolique
+                                                                                )
+                                                                                        ?: valeurNutritionnelle
+                                                                                                .valeur
+                                                                                                .toFloat()
+                                                                        }
 
                                                                 ReferenceBulletGraph(
                                                                         valeurApport =
@@ -445,13 +482,17 @@ fun NutrientDetailDialog(
                                                                                 // selon l'unité de
                                                                                 // référence
                                                                                 val besoinAbsolu =
-                                                                                        calculerBesoinAbsolu(
-                                                                                                valeurRef,
-                                                                                                uniteRef,
-                                                                                                besoinEnergetiqueEntretien,
-                                                                                                poidsAnimal,
-                                                                                                poidsMetabolique
+                                                                                        if (isAnalysisNoUnit
                                                                                         )
+                                                                                                null
+                                                                                        else
+                                                                                                calculerBesoinAbsolu(
+                                                                                                        valeurRef,
+                                                                                                        uniteRef,
+                                                                                                        besoinEnergetiqueEntretien,
+                                                                                                        poidsAnimal,
+                                                                                                        poidsMetabolique
+                                                                                                )
 
                                                                                 // Déterminer la
                                                                                 // couleur selon la
@@ -491,10 +532,17 @@ fun NutrientDetailDialog(
                                                                                                                 Alignment
                                                                                                                         .End
                                                                                                 ) {
-                                                                                                        // Valeur de référence avec son unité
+                                                                                                        // Valeur de référence avec son unité (sans unité pour analyses sans unité)
                                                                                                         Text(
                                                                                                                 text =
-                                                                                                                        "${String.format("%.2f", valeurRef)} ${uniteRef.label}",
+                                                                                                                        if (isAnalysisNoUnit
+                                                                                                                        )
+                                                                                                                                String.format(
+                                                                                                                                        "%.2f",
+                                                                                                                                        valeurRef
+                                                                                                                                )
+                                                                                                                        else
+                                                                                                                                "${String.format("%.2f", valeurRef)} ${uniteRef.label}",
                                                                                                                 style =
                                                                                                                         MaterialTheme
                                                                                                                                 .typography
@@ -503,10 +551,11 @@ fun NutrientDetailDialog(
                                                                                                                         couleurConformite
                                                                                                         )
 
-                                                                                                        // Expression selon les préférences (si différente de la référence)
-                                                                                                        if (typeExpressionBesoin
-                                                                                                                        .unitReqEnum !=
-                                                                                                                        uniteRef
+                                                                                                        // Expression selon les préférences (si différente de la référence) - pas pour analyses sans unité
+                                                                                                        if (!isAnalysisNoUnit &&
+                                                                                                                        typeExpressionBesoin
+                                                                                                                                .unitReqEnum !=
+                                                                                                                                uniteRef
                                                                                                         ) {
                                                                                                                 // Créer une ValeurNutritionnelle temporaire pour la conversion
                                                                                                                 val valeurTemp =
@@ -628,39 +677,104 @@ fun NutrientDetailDialog(
                                 )
 
                                 // Calculer et trier les contributions
+                                // Préparer les équations complémentaires sélectionnées pour ce
+                                // nutriment
+                                val selectedEquationUuids =
+                                        try {
+                                                preferencesRepo
+                                                        .preferences
+                                                        .getPreferencesEspece(espece)
+                                                        .getSelectedEquationUuids()
+                                        } catch (e: Exception) {
+                                                emptyList()
+                                        }
+                                val allEquations =
+                                        try {
+                                                kotlinx.coroutines.runBlocking {
+                                                        equationRepository?.getAllEquations()
+                                                                ?: emptyList()
+                                                }
+                                        } catch (e: Exception) {
+                                                emptyList()
+                                        }
+                                val applicableEquations =
+                                        allEquations.filter { eq ->
+                                                val kindOk =
+                                                        eq.kind ==
+                                                                EquationKind.COMPLEMENTARY_NUTRIENT
+                                                val specieOk =
+                                                        eq.specie == espece ||
+                                                                eq.specie == Espece.CH
+                                                val nutrientOk =
+                                                        (eq.nutrient ==
+                                                                valeurNutritionnelle.nutriment) ||
+                                                                (eq.nutrient?.label ==
+                                                                        valeurNutritionnelle
+                                                                                .nutriment
+                                                                                .label)
+                                                (eq.uuid in selectedEquationUuids) &&
+                                                        kindOk &&
+                                                        specieOk &&
+                                                        nutrientOk
+                                        }
+                                println(
+                                        "EQDBG-ING applicableEquations=${applicableEquations.map{it.uuid}} for nutrient=${valeurNutritionnelle.nutriment.label} specie=${espece.name}"
+                                )
+
                                 val contributionsTriees =
                                         ration.alimentMutableList
                                                 .map { alimentRation ->
                                                         val quantite = alimentRation.quantite
                                                         val nutrient: Nutrient =
                                                                 valeurNutritionnelle.nutriment
-                                                        val valeurAliment =
-                                                                alimentRation
-                                                                        .aliment
-                                                                        ?.getNutrient(nutrient)
-                                                                        ?.toDouble()
-                                                        val contributionAbsolue =
-                                                                if (valeurAliment != null) {
-                                                                        (valeurAliment *
+
+                                                        val prefsEspece =
+                                                                try {
+                                                                        preferencesRepo.preferences
+                                                                                .getPreferencesEspece(
+                                                                                        espece
+                                                                                )
+                                                                } catch (e: Exception) {
+                                                                        null
+                                                                }
+                                                        val valeurPour100g: Double? =
+                                                                try {
+                                                                        kotlinx.coroutines
+                                                                                .runBlocking {
+                                                                                        alimentRation
+                                                                                                .getNutrientWithComplementary(
+                                                                                                        nutrient =
+                                                                                                                nutrient,
+                                                                                                        preferences =
+                                                                                                                prefsEspece,
+                                                                                                        equationRepository =
+                                                                                                                equationRepository
+                                                                                                )
+                                                                                }
+                                                                                ?.toDouble()
+                                                                } catch (e: Exception) {
+                                                                        null
+                                                                }
+                                                        val contributionCalculee =
+                                                                if (valeurPour100g != null) {
+                                                                        (valeurPour100g *
                                                                                 quantite.toDouble()) /
                                                                                 100.0
-                                                                } else {
-                                                                        0.0
-                                                                }
+                                                                } else 0.0
+
                                                         val contributionPourcentage =
                                                                 if (valeurNutritionnelle.valeur > 0
                                                                 ) {
-                                                                        (contributionAbsolue /
+                                                                        (contributionCalculee /
                                                                                 valeurNutritionnelle
                                                                                         .valeur
                                                                                         .toDouble()) *
                                                                                 100.0
-                                                                } else {
-                                                                        0.0
-                                                                }
+                                                                } else 0.0
+
                                                         Triple(
                                                                 alimentRation,
-                                                                contributionAbsolue,
+                                                                contributionCalculee,
                                                                 contributionPourcentage
                                                         )
                                                 }
@@ -682,6 +796,31 @@ fun NutrientDetailDialog(
                                                         valeurNutritionnelle.nutriment
                                                 val valeurAliment =
                                                         alimentRation.aliment?.getNutrient(nutrient)
+                                                val prefsEspeceItem =
+                                                        try {
+                                                                preferencesRepo.preferences
+                                                                        .getPreferencesEspece(
+                                                                                espece
+                                                                        )
+                                                        } catch (e: Exception) {
+                                                                null
+                                                        }
+                                                val valeurPour100gItem: Float? =
+                                                        try {
+                                                                kotlinx.coroutines.runBlocking {
+                                                                        alimentRation
+                                                                                .getNutrientWithComplementary(
+                                                                                        nutrient =
+                                                                                                nutrient,
+                                                                                        preferences =
+                                                                                                prefsEspeceItem,
+                                                                                        equationRepository =
+                                                                                                equationRepository
+                                                                                )
+                                                                }
+                                                        } catch (e: Exception) {
+                                                                null
+                                                        }
 
                                                 Card(
                                                         modifier = Modifier.fillMaxWidth(),
@@ -725,9 +864,37 @@ fun NutrientDetailDialog(
                                                                                         )
                                                                         )
 
-                                                                        // Icône d'état basée sur la
-                                                                        // disponibilité des données
-                                                                        if (valeurAliment == null) {
+                                                                        // Icône d'état:
+                                                                        // calculatrice orange si
+                                                                        // équations utilisées,
+                                                                        // sinon avertissement si
+                                                                        // valeur table manquante
+                                                                        val hasEqForAliment =
+                                                                                (valeurAliment ==
+                                                                                        null ||
+                                                                                        valeurAliment <=
+                                                                                                0f) &&
+                                                                                        valeurPour100gItem !=
+                                                                                                null
+                                                                        if (hasEqForAliment) {
+                                                                                Icon(
+                                                                                        imageVector =
+                                                                                                Icons.Filled
+                                                                                                        .Info,
+                                                                                        contentDescription =
+                                                                                                "Valeur calculée",
+                                                                                        tint =
+                                                                                                Color(
+                                                                                                        0xFFFF9800
+                                                                                                ), // Orange
+                                                                                        modifier =
+                                                                                                Modifier.size(
+                                                                                                        16.dp
+                                                                                                )
+                                                                                )
+                                                                        } else if (valeurAliment ==
+                                                                                        null
+                                                                        ) {
                                                                                 Icon(
                                                                                         imageVector =
                                                                                                 Icons.Filled
@@ -785,17 +952,35 @@ fun NutrientDetailDialog(
                                                                                                         .Primary
                                                                                 )
 
-                                                                                // Valeur
-                                                                                // nutritionnelle
-                                                                                // pour 100g
+                                                                                // Valeur affichée
+                                                                                val isAnalysisNoUnit =
+                                                                                        nutrient is
+                                                                                                fr.vetbrain.vetnutri_mp.Enumer.NutrientAnalysis &&
+                                                                                                nutrient.unite
+                                                                                                        .isBlank()
                                                                                 Text(
                                                                                         text =
-                                                                                                if (valeurAliment !=
-                                                                                                                null
+                                                                                                if (isAnalysisNoUnit
                                                                                                 ) {
-                                                                                                        "Valeur (100g): ${String.format("%.2f", valeurAliment)} ${valeurNutritionnelle.unite.displayName}"
+                                                                                                        if (valeurPour100gItem !=
+                                                                                                                        null
+                                                                                                        ) {
+                                                                                                                "Valeur: ${String.format("%.2f", (valeurPour100gItem * quantite) / 100.0)}"
+                                                                                                        } else {
+                                                                                                                "Valeur: NA"
+                                                                                                        }
                                                                                                 } else {
-                                                                                                        "Valeur (100g): NA"
+                                                                                                        if (valeurAliment !=
+                                                                                                                        null
+                                                                                                        ) {
+                                                                                                                "Valeur (100g): ${String.format("%.2f", valeurAliment)} ${valeurNutritionnelle.unite.displayName}"
+                                                                                                        } else if (valeurPour100gItem !=
+                                                                                                                        null
+                                                                                                        ) {
+                                                                                                                "Valeur (100g): ${String.format("%.2f", valeurPour100gItem)} ${valeurNutritionnelle.unite.displayName}"
+                                                                                                        } else {
+                                                                                                                "Valeur (100g): NA"
+                                                                                                        }
                                                                                                 },
                                                                                         style =
                                                                                                 MaterialTheme
@@ -805,14 +990,8 @@ fun NutrientDetailDialog(
                                                                                                 FontWeight
                                                                                                         .Medium,
                                                                                         color =
-                                                                                                if (valeurAliment !=
-                                                                                                                null
-                                                                                                )
-                                                                                                        VetNutriColors
-                                                                                                                .Primary
-                                                                                                else
-                                                                                                        VetNutriColors
-                                                                                                                .Error
+                                                                                                VetNutriColors
+                                                                                                        .Primary
                                                                                 )
                                                                         }
 
@@ -824,16 +1003,13 @@ fun NutrientDetailDialog(
                                                                                         )
                                                                         ) {
                                                                                 // Contribution
-                                                                                // absolue
+                                                                                // (intègre les
+                                                                                // équations
+                                                                                // sélectionnées si
+                                                                                // présentes)
                                                                                 Text(
                                                                                         text =
-                                                                                                if (valeurAliment !=
-                                                                                                                null
-                                                                                                ) {
-                                                                                                        "Contribution: ${String.format("%.2f", contributionAbsolue)} ${valeurNutritionnelle.unite.displayName}"
-                                                                                                } else {
-                                                                                                        "Contribution: NA"
-                                                                                                },
+                                                                                                "Contribution: ${String.format("%.2f", contributionAbsolue)} ${valeurNutritionnelle.unite.displayName}",
                                                                                         style =
                                                                                                 MaterialTheme
                                                                                                         .typography
@@ -842,40 +1018,22 @@ fun NutrientDetailDialog(
                                                                                                 FontWeight
                                                                                                         .Medium,
                                                                                         color =
-                                                                                                if (valeurAliment !=
-                                                                                                                null
-                                                                                                )
-                                                                                                        VetNutriColors
-                                                                                                                .Secondary
-                                                                                                else
-                                                                                                        VetNutriColors
-                                                                                                                .Error
+                                                                                                VetNutriColors
+                                                                                                        .Secondary
                                                                                 )
 
                                                                                 // Pourcentage de
                                                                                 // contribution
                                                                                 Text(
                                                                                         text =
-                                                                                                if (valeurAliment !=
-                                                                                                                null
-                                                                                                ) {
-                                                                                                        "Part: ${String.format("%.1f", contributionPourcentage)}%"
-                                                                                                } else {
-                                                                                                        "Part: NA"
-                                                                                                },
+                                                                                                "Part: ${String.format("%.1f", contributionPourcentage)}%",
                                                                                         style =
                                                                                                 MaterialTheme
                                                                                                         .typography
                                                                                                         .body2,
                                                                                         color =
-                                                                                                if (valeurAliment !=
-                                                                                                                null
-                                                                                                )
-                                                                                                        VetNutriColors
-                                                                                                                .Secondary
-                                                                                                else
-                                                                                                        VetNutriColors
-                                                                                                                .Error
+                                                                                                VetNutriColors
+                                                                                                        .Secondary
                                                                                 )
                                                                         }
                                                                 }
@@ -892,7 +1050,7 @@ fun NutrientDetailDialog(
 
 @OptIn(ExperimentalKoalaPlotApi::class)
 @Composable
-private fun ReferenceBulletGraph(
+fun ReferenceBulletGraph(
         valeurApport: Float,
         reference: ReferenceEv,
         nutriment: Nutrient,
@@ -914,56 +1072,67 @@ private fun ReferenceBulletGraph(
         val maxUnit = reference.obtenirUniteNutriment(nutriment, Reflevel.MAX)
 
         // Conversion des valeurs de référence dans l'unité des préférences
+        val isAnalysisNoUnit =
+                nutriment is fr.vetbrain.vetnutri_mp.Enumer.NutrientAnalysis &&
+                        nutriment.unite.isBlank()
         val minRefConverti =
                 if (minRef > 0f) {
-                        convertirVersUnitePreferences(
-                                minRef,
-                                UnitReqEnum.getById(minUnit),
-                                typeExpressionBesoin.unitReqEnum,
-                                besoinEnergetiqueEntretien,
-                                poidsAnimal,
-                                poidsMetabolique
-                        )
-                                ?: minRef
+                        if (isAnalysisNoUnit) minRef
+                        else
+                                convertirVersUnitePreferences(
+                                        minRef,
+                                        UnitReqEnum.getById(minUnit),
+                                        typeExpressionBesoin.unitReqEnum,
+                                        besoinEnergetiqueEntretien,
+                                        poidsAnimal,
+                                        poidsMetabolique
+                                )
+                                        ?: minRef
                 } else null
 
         val optiminRefConverti =
                 if (optiminRef > 0f) {
-                        convertirVersUnitePreferences(
-                                optiminRef,
-                                UnitReqEnum.getById(optiminUnit),
-                                typeExpressionBesoin.unitReqEnum,
-                                besoinEnergetiqueEntretien,
-                                poidsAnimal,
-                                poidsMetabolique
-                        )
-                                ?: optiminRef
+                        if (isAnalysisNoUnit) optiminRef
+                        else
+                                convertirVersUnitePreferences(
+                                        optiminRef,
+                                        UnitReqEnum.getById(optiminUnit),
+                                        typeExpressionBesoin.unitReqEnum,
+                                        besoinEnergetiqueEntretien,
+                                        poidsAnimal,
+                                        poidsMetabolique
+                                )
+                                        ?: optiminRef
                 } else null
 
         val optimaxRefConverti =
                 if (optimaxRef > 0f) {
-                        convertirVersUnitePreferences(
-                                optimaxRef,
-                                UnitReqEnum.getById(optimaxUnit),
-                                typeExpressionBesoin.unitReqEnum,
-                                besoinEnergetiqueEntretien,
-                                poidsAnimal,
-                                poidsMetabolique
-                        )
-                                ?: optimaxRef
+                        if (isAnalysisNoUnit) optimaxRef
+                        else
+                                convertirVersUnitePreferences(
+                                        optimaxRef,
+                                        UnitReqEnum.getById(optimaxUnit),
+                                        typeExpressionBesoin.unitReqEnum,
+                                        besoinEnergetiqueEntretien,
+                                        poidsAnimal,
+                                        poidsMetabolique
+                                )
+                                        ?: optimaxRef
                 } else null
 
         val maxRefConverti =
                 if (maxRef > 0f) {
-                        convertirVersUnitePreferences(
-                                maxRef,
-                                UnitReqEnum.getById(maxUnit),
-                                typeExpressionBesoin.unitReqEnum,
-                                besoinEnergetiqueEntretien,
-                                poidsAnimal,
-                                poidsMetabolique
-                        )
-                                ?: maxRef
+                        if (isAnalysisNoUnit) maxRef
+                        else
+                                convertirVersUnitePreferences(
+                                        maxRef,
+                                        UnitReqEnum.getById(maxUnit),
+                                        typeExpressionBesoin.unitReqEnum,
+                                        besoinEnergetiqueEntretien,
+                                        poidsAnimal,
+                                        poidsMetabolique
+                                )
+                                        ?: maxRef
                 } else null
 
         val valeurs =

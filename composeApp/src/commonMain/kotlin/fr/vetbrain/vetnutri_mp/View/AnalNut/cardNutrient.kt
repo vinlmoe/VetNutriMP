@@ -3,6 +3,7 @@ package fr.vetbrain.vetnutri_mp.View.AnalNut
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -15,6 +16,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Data.*
 import fr.vetbrain.vetnutri_mp.Enumer.*
+import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Repository.PreferencesRepository
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
@@ -40,6 +42,7 @@ fun AnalyseNutritionnelleCard(
         // Nouveaux paramètres pour les préférences
         animal: AnimalEv? = null,
         preferencesRepository: PreferencesRepository? = null,
+        equationRepository: EquationRepository? = null,
         // Paramètre pour adapter la hauteur selon la vue (large ou compacte)
         isLargeView: Boolean = false
 ) {
@@ -63,14 +66,220 @@ fun AnalyseNutritionnelleCard(
                 ?: run { typeExpressionBesoin = TypeExpressionBesoin.DEFAULT }
     }
 
-    val valeursNutritionnelles =
+    val valeursNutritionnellesBase =
             if (afficherTousLesNutriments ||
                             nutrimentsSelectionnes == null ||
                             nutrimentsSelectionnes.isEmpty()
             ) {
-                analyserValeursNutritionnellesRation(ration)
+                // Intégrer les équations complémentaires par ingrédient si possible
+                val espece = animal?.getEspece()
+                if (espece != null && preferencesRepository != null && equationRepository != null) {
+                    val prefs = preferencesRepository.preferences.getPreferencesEspece(espece)
+                    fr.vetbrain.vetnutri_mp.Data.analyserValeursNutritionnellesRationAvecEquations(
+                            ration,
+                            prefs,
+                            equationRepository
+                    )
+                } else {
+                    analyserValeursNutritionnellesRation(ration)
+                }
             } else {
-                analyserValeursNutritionnellesRationSelective(ration, nutrimentsSelectionnes)
+                // Mode filtré: intégrer aussi les équations si disponibles
+                val espece = animal?.getEspece()
+                if (espece != null && preferencesRepository != null && equationRepository != null) {
+                    val prefs = preferencesRepository.preferences.getPreferencesEspece(espece)
+                    fr.vetbrain.vetnutri_mp.Data.analyserValeursNutritionnellesRationSelective(
+                            ration,
+                            nutrimentsSelectionnes,
+                            prefs,
+                            equationRepository
+                    )
+                } else {
+                    analyserValeursNutritionnellesRationSelective(ration, nutrimentsSelectionnes)
+                }
+            }
+
+    // Appliquer les équations complémentaires sélectionnées (si présentes)
+    val selectedEquationUuidsKey =
+            remember(animal, preferencesRepository) {
+                if (animal != null && preferencesRepository != null) {
+                    val espece = animal.getEspece()
+                    val prefs = preferencesRepository.preferences.getPreferencesEspece(espece)
+                    prefs.getSelectedEquationUuids().joinToString("|")
+                } else {
+                    ""
+                }
+            }
+    val valeursNutritionnelles =
+            remember(valeursNutritionnellesBase, animal, selectedEquationUuidsKey) {
+                val baseMap = valeursNutritionnellesBase.toMutableMap()
+                try {
+                    if (animal != null && preferencesRepository != null) {
+                        val espece = animal.getEspece()
+                        // Charger depuis le repository synchronisé en mémoire
+                        val prefs = preferencesRepository.preferences.getPreferencesEspece(espece)
+                        val selectedEquationUuids = prefs.getSelectedEquationUuids()
+                        println(
+                                "EQDBG selectedEquationUuids (" +
+                                        espece.name +
+                                        "): " +
+                                        selectedEquationUuids
+                        )
+                        if (selectedEquationUuids.isNotEmpty()) {
+                            val equationRepo = equationRepository
+
+                            // Préparer les variables globales pour l’évaluation (ration + animal)
+                            // Récupérées dans EquationEvaluator.evaluerBesoinNutritionnel côté
+                            // repository
+
+                            // Récupérer toutes les équations une fois et indexer par UUID pour
+                            // éviter
+                            // les incohérences de lookup
+                            val eqMap: Map<String, fr.vetbrain.vetnutri_mp.Data.Equation> =
+                                    try {
+                                        val all =
+                                                kotlinx.coroutines.runBlocking {
+                                                    equationRepo?.getAllEquations() ?: emptyList()
+                                                }
+                                        println(
+                                                "EQDBG repository loaded equations count=" +
+                                                        all.size
+                                        )
+                                        all.associateBy { it.uuid }
+                                    } catch (e: Exception) {
+                                        println(
+                                                "EQDBG failed to load all equations from repo: " + e
+                                        )
+                                        emptyMap()
+                                    }
+
+                            // Pour chaque équation sélectionnée, calculer sa contribution et
+                            // l’ajouter au nutriment correspondant
+                            selectedEquationUuids.forEach { eqId ->
+                                println("EQDBG fetching equation: " + eqId)
+                                val eq = eqMap[eqId]
+                                if (eq == null) {
+                                    println("EQDBG equation not found: " + eqId)
+                                }
+                                if (eq != null &&
+                                                eq.kind ==
+                                                        fr.vetbrain.vetnutri_mp.Enumer.EquationKind
+                                                                .COMPLEMENTARY_NUTRIENT &&
+                                                eq.nutrient != null
+                                ) {
+                                    println(
+                                            "EQDBG evaluating: name='" +
+                                                    eq.name +
+                                                    "' nutrient=" +
+                                                    eq.nutrient!!.label +
+                                                    " ratio=" +
+                                                    eq.ratio +
+                                                    " expr='" +
+                                                    eq.equationScript +
+                                                    "'"
+                                    )
+                                    val poids = animal.consultations.lastOrNull()?.weight ?: 0f
+                                    val bee = animal.getBEE()?.toFloat() ?: 0f
+                                    val mw =
+                                            if (poids > 0)
+                                                    fr.vetbrain.vetnutri_mp.Utils.EquationEvaluator
+                                                            .calculerPoidsMetabolique(poids)
+                                                            .toFloat()
+                                            else 0f
+                                    println(
+                                            "EQDBG inputs: BW=" +
+                                                    poids +
+                                                    " BEE=" +
+                                                    bee +
+                                                    " MW=" +
+                                                    mw
+                                    )
+                                    val valeur =
+                                            if (eq.ratio) {
+                                                fr.vetbrain.vetnutri_mp.Utils.EquationEvaluator
+                                                        .evaluerBesoinNutritionnel(
+                                                                expression = eq.equationScript,
+                                                                poidsCorps = poids,
+                                                                besoinEnergetique = bee,
+                                                                poidsMetabolique = mw,
+                                                                variablesSupp =
+                                                                        (animal.consultations
+                                                                                .lastOrNull()
+                                                                                ?.suppVarp
+                                                                                ?: mutableListOf()),
+                                                                ration = ration
+                                                        )
+                                                        ?: 0.0
+                                            } else 0.0
+                                    println("EQDBG result: value=" + valeur)
+                                    val nutrient = eq.nutrient!!
+                                    val label = nutrient.label
+                                    val existante = baseMap[label]
+
+                                    if (existante != null) {
+                                        if (eq.ratio) {
+                                            println(
+                                                    "EQDBG apply ratio: replace previous=" +
+                                                            existante.valeur +
+                                                            " by=" +
+                                                            valeur
+                                            )
+                                            baseMap[label] = existante.copy(valeur = valeur)
+                                        } else {
+                                            // Ne plus additionner au total ici (calcul déjà par
+                                            // aliment)
+                                            println(
+                                                    "EQDBG skip add at ration level (handled per-ingredient)"
+                                            )
+                                        }
+                                    } else {
+                                        println(
+                                                "EQDBG apply create: label=" +
+                                                        label +
+                                                        " value=" +
+                                                        valeur
+                                        )
+                                        if (eq.ratio) {
+                                            baseMap[label] =
+                                                    ValeurNutritionnelle(
+                                                            nutriment = nutrient,
+                                                            unite = nutrient.ue,
+                                                            valeur = valeur,
+                                                            description = "Calculé par équation",
+                                                            complete = true
+                                                    )
+                                        } else {
+                                            // Pas de création au niveau ration pour non-ratio
+                                            println(
+                                                    "EQDBG skip create at ration level for non-ratio"
+                                            )
+                                        }
+                                    }
+                                }
+                                if (eq != null && eq.nutrient == null) {
+                                    println("EQDBG skipped equation without nutrient: " + eq.uuid)
+                                }
+                                if (eq != null &&
+                                                eq.kind !=
+                                                        fr.vetbrain.vetnutri_mp.Enumer.EquationKind
+                                                                .COMPLEMENTARY_NUTRIENT
+                                ) {
+                                    println(
+                                            "EQDBG skipped equation kind " +
+                                                    eq.kind.name +
+                                                    " for uuid=" +
+                                                    eq.uuid
+                                    )
+                                }
+                            }
+                        } else {
+                            println("EQDBG no selected equations for " + espece.name)
+                        }
+                    }
+                } catch (e: Exception) {
+                    println("EQDBG exception during complementary equations apply: " + e)
+                }
+                baseMap
             }
 
     // Grouper les nutriments par catégorie
@@ -84,6 +293,7 @@ fun AnalyseNutritionnelleCard(
                 modifier = Modifier.fillMaxSize().padding(AppSizes.paddingSmall),
                 verticalArrangement = Arrangement.spacedBy(AppSizes.paddingXSmall)
         ) {
+            var afficherBullet by remember { mutableStateOf(false) }
             // En-tête avec titre et bouton toggle
             Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -126,6 +336,30 @@ fun AnalyseNutritionnelleCard(
                                 modifier = Modifier.size(24.dp)
                         )
                     }
+
+                    // Toggle d'affichage BulletGraph
+                    Text(
+                            text = if (afficherBullet) "Bullet" else "Cartes",
+                            style = MaterialTheme.typography.caption,
+                            color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                    )
+                    IconButton(
+                            onClick = { afficherBullet = !afficherBullet },
+                            modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                                imageVector =
+                                        if (afficherBullet) Icons.Filled.ToggleOn
+                                        else Icons.Filled.ToggleOff,
+                                contentDescription =
+                                        if (afficherBullet) "Afficher en cartes"
+                                        else "Afficher en bullet graphs",
+                                tint =
+                                        if (afficherBullet) VetNutriColors.Primary
+                                        else MaterialTheme.colors.onSurface.copy(alpha = 0.5f),
+                                modifier = Modifier.size(24.dp)
+                        )
+                    }
                 }
             }
 
@@ -158,41 +392,81 @@ fun AnalyseNutritionnelleCard(
                                 )
                             }
 
-                            // Grille des nutriments pour cette catégorie
-                            item {
-                                // Utiliser une Column avec des Rows pour éviter les problèmes de
-                                // LazyVerticalGrid imbriqués
-                                Column(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        verticalArrangement =
-                                                Arrangement.spacedBy(AppSizes.paddingXSmall)
-                                ) {
-                                    nutriments.chunked(3).forEach { rangeeNutriments ->
-                                        Row(
-                                                modifier = Modifier.fillMaxWidth(),
-                                                horizontalArrangement =
-                                                        Arrangement.spacedBy(AppSizes.paddingXSmall)
-                                        ) {
-                                            rangeeNutriments.forEach { (nom, valeur) ->
-                                                NutrimentCard(
-                                                        nom = nom,
-                                                        valeurNutritionnelle = valeur,
-                                                        poidsMetabolique = poidsMetabolique,
-                                                        referenceUtilisee = referenceUtilisee,
-                                                        besoinEnergetiqueEntretien =
-                                                                besoinEnergetiqueEntretien,
-                                                        poidsAnimal = poidsAnimal,
-                                                        modifier = Modifier.weight(1f),
-                                                        onClick = { onNutrimentClick(nom, valeur) },
-                                                        typeExpressionBesoin = typeExpressionBesoin
-                                                )
-                                            }
-                                            // Remplir l'espace restant s'il y a moins de 3 éléments
-                                            repeat(3 - rangeeNutriments.size) {
-                                                Spacer(modifier = Modifier.weight(1f))
+                            if (!afficherBullet) {
+                                // Grille des nutriments (cartes)
+                                item {
+                                    Column(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            verticalArrangement =
+                                                    Arrangement.spacedBy(AppSizes.paddingXSmall)
+                                    ) {
+                                        nutriments.chunked(3).forEach { rangeeNutriments ->
+                                            Row(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    horizontalArrangement =
+                                                            Arrangement.spacedBy(
+                                                                    AppSizes.paddingXSmall
+                                                            )
+                                            ) {
+                                                rangeeNutriments.forEach { (nom, valeur) ->
+                                                    NutrimentCard(
+                                                            nom = nom,
+                                                            valeurNutritionnelle = valeur,
+                                                            poidsMetabolique = poidsMetabolique,
+                                                            referenceUtilisee = referenceUtilisee,
+                                                            besoinEnergetiqueEntretien =
+                                                                    besoinEnergetiqueEntretien,
+                                                            poidsAnimal = poidsAnimal,
+                                                            modifier = Modifier.weight(1f),
+                                                            onClick = {
+                                                                onNutrimentClick(nom, valeur)
+                                                            },
+                                                            typeExpressionBesoin =
+                                                                    typeExpressionBesoin
+                                                    )
+                                                }
+                                                repeat(3 - rangeeNutriments.size) {
+                                                    Spacer(modifier = Modifier.weight(1f))
+                                                }
                                             }
                                         }
                                     }
+                                }
+                            } else {
+                                // Liste de bullet graphs, un par nutriment
+                                items(items = nutriments.filter { it.second.valeur > 0.0 }) { pair
+                                    ->
+                                    val nom = pair.first
+                                    val valeur = pair.second
+                                    val apport = valeur.valeur.toFloat()
+                                    val typeExpr =
+                                            typeExpressionBesoin ?: TypeExpressionBesoin.DEFAULT
+                                    if (referenceUtilisee != null) {
+                                        ReferenceBulletGraph(
+                                                valeurApport = apport,
+                                                reference = referenceUtilisee,
+                                                nutriment = valeur.nutriment,
+                                                typeExpressionBesoin = typeExpr,
+                                                poidsAnimal = poidsAnimal,
+                                                poidsMetabolique = poidsMetabolique,
+                                                besoinEnergetiqueEntretien =
+                                                        besoinEnergetiqueEntretien
+                                        )
+                                    } else {
+                                        Text(
+                                                text =
+                                                        "$nom: ${String.format("%.2f", apport)} ${valeur.unite.displayName}",
+                                                style = MaterialTheme.typography.caption,
+                                                color = MaterialTheme.colors.onSurface
+                                        )
+                                    }
+                                    Divider(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            color =
+                                                    MaterialTheme.colors.onSurface.copy(
+                                                            alpha = 0.05f
+                                                    )
+                                    )
                                 }
                             }
                         }
@@ -774,6 +1048,16 @@ private fun calculerAffichageNutriment(
 
     val valeurAbsolue = valeurNutritionnelle.valeur
     val uniteOriginale = valeurNutritionnelle.unite.displayName
+
+    // Cas spécial: nutriments d'analyse/ratio sans unité (ex: CAP, KNA, O6O3...)
+    // - Ne pas afficher d'unité
+    // - Ne pas appliquer de transformation UnitReqEnum
+    val isUnitEmpty = uniteOriginale.isBlank()
+    val isAnalysis =
+            valeurNutritionnelle.nutriment is fr.vetbrain.vetnutri_mp.Enumer.NutrientAnalysis
+    if (isAnalysis && isUnitEmpty) {
+        return Pair(String.format("%.2f", valeurAbsolue), "")
+    }
 
     // Si pas de type d'expression défini, affichage par défaut
     val typeExpression = typeExpressionBesoin ?: TypeExpressionBesoin.DEFAULT
