@@ -730,15 +730,34 @@ fun NutrientDetailDialog(
 
                                                         val prefsEspece =
                                                                 try {
-                                                                        preferencesRepo.preferences
-                                                                                .getPreferencesEspece(
-                                                                                        espece
-                                                                                )
+                                                                        kotlinx.coroutines
+                                                                                .runBlocking {
+                                                                                        preferencesRepo
+                                                                                                .loadPreferences()
+                                                                                        preferencesRepo
+                                                                                                .getPreferencesForSpecies(
+                                                                                                        espece
+                                                                                                )
+                                                                                }
                                                                 } catch (e: Exception) {
                                                                         null
                                                                 }
+                                                        if (prefsEspece == null) {
+                                                                println(
+                                                                        "EQDBG-ING detail: prefsEspece null for ${espece.name}"
+                                                                )
+                                                        } else {
+                                                                println(
+                                                                        "EQDBG-ING detail: prefs uuids=" +
+                                                                                prefsEspece
+                                                                                        .getSelectedEquationUuids()
+                                                                )
+                                                        }
                                                         val valeurPour100g: Double? =
                                                                 try {
+                                                                        println(
+                                                                                "EQDBG-ING detail: try getNutrientWithComplementary for food='${alimentRation.aliment?.nom}' nutr=${nutrient.label}"
+                                                                        )
                                                                         kotlinx.coroutines
                                                                                 .runBlocking {
                                                                                         alimentRation
@@ -753,6 +772,9 @@ fun NutrientDetailDialog(
                                                                                 }
                                                                                 ?.toDouble()
                                                                 } catch (e: Exception) {
+                                                                        println(
+                                                                                "EQDBG-ING detail: exception getNutrientWithComplementary ${e.message}"
+                                                                        )
                                                                         null
                                                                 }
                                                         val contributionCalculee =
@@ -761,6 +783,9 @@ fun NutrientDetailDialog(
                                                                                 quantite.toDouble()) /
                                                                                 100.0
                                                                 } else 0.0
+                                                        println(
+                                                                "EQDBG-ING detail: food='${alimentRation.aliment?.nom}' v100g=${valeurPour100g} contrib=${contributionCalculee}"
+                                                        )
 
                                                         val contributionPourcentage =
                                                                 if (valeurNutritionnelle.valeur > 0
@@ -798,15 +823,33 @@ fun NutrientDetailDialog(
                                                         alimentRation.aliment?.getNutrient(nutrient)
                                                 val prefsEspeceItem =
                                                         try {
-                                                                preferencesRepo.preferences
-                                                                        .getPreferencesEspece(
-                                                                                espece
-                                                                        )
+                                                                kotlinx.coroutines.runBlocking {
+                                                                        preferencesRepo
+                                                                                .loadPreferences()
+                                                                        preferencesRepo
+                                                                                .getPreferencesForSpecies(
+                                                                                        espece
+                                                                                )
+                                                                }
                                                         } catch (e: Exception) {
                                                                 null
                                                         }
+                                                if (prefsEspeceItem == null) {
+                                                        println(
+                                                                "EQDBG-ING detail(item): prefsEspece null for ${espece.name}"
+                                                        )
+                                                } else {
+                                                        println(
+                                                                "EQDBG-ING detail(item): prefs uuids=" +
+                                                                        prefsEspeceItem
+                                                                                .getSelectedEquationUuids()
+                                                        )
+                                                }
                                                 val valeurPour100gItem: Float? =
                                                         try {
+                                                                println(
+                                                                        "EQDBG-ING detail(item): try getNutrientWithComplementary food='${alimentRation.aliment?.nom}' nutr=${nutrient.label}"
+                                                                )
                                                                 kotlinx.coroutines.runBlocking {
                                                                         alimentRation
                                                                                 .getNutrientWithComplementary(
@@ -819,6 +862,9 @@ fun NutrientDetailDialog(
                                                                                 )
                                                                 }
                                                         } catch (e: Exception) {
+                                                                println(
+                                                                        "EQDBG-ING detail(item): exception ${e.message}"
+                                                                )
                                                                 null
                                                         }
 

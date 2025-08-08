@@ -78,6 +78,9 @@ data class AlimentRation(
                         // 2) Sinon, utiliser la sélection actuelle (liste d'UUID) et filtrer par
                         // nutriment/espèce
                         val selectedUuids = preferences.getSelectedEquationUuids()
+                        println(
+                                "EQDBG-ING getNutrientWithComplementary nutr=${nutrient.label} food='${aliment?.nom}' selectedUuids=${selectedUuids}"
+                        )
                         if (selectedUuids.isNotEmpty()) {
                                 var accum: Double? = null
                                 val especePref =
@@ -105,6 +108,11 @@ data class AlimentRation(
                                                                 eq.specie ==
                                                                         fr.vetbrain.vetnutri_mp
                                                                                 .Enumer.Espece.CH
+                                                if (!kindOk || !nutrientOk || !specieOk) {
+                                                        println(
+                                                                "EQDBG-ING skip eq=${eq.uuid} kindOk=${kindOk} nutrientOk=${nutrientOk} specieOk=${specieOk}"
+                                                        )
+                                                }
                                                 if (kindOk && nutrientOk && specieOk) {
                                                         val res =
                                                                 fr.vetbrain.vetnutri_mp.Utils
@@ -115,12 +123,16 @@ data class AlimentRation(
                                                                                 aliment = this
                                                                         )
                                                                         ?: 0.0
+                                                        println(
+                                                                "EQDBG-ING apply eq=${eq.uuid} ratio=${eq.ratio} res=${res}"
+                                                        )
                                                         accum =
                                                                 if (eq.ratio) res
                                                                 else (accum ?: 0.0) + res
                                                 }
                                         }
                                 }
+                                println("EQDBG-ING result accum=${accum}")
                                 if (accum != null) return accum.toFloat()
                         }
 
