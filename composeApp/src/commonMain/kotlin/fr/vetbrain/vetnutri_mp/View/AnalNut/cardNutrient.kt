@@ -442,16 +442,32 @@ fun AnalyseNutritionnelleCard(
                                     val typeExpr =
                                             typeExpressionBesoin ?: TypeExpressionBesoin.DEFAULT
                                     if (referenceUtilisee != null) {
-                                        ReferenceBulletGraph(
-                                                valeurApport = apport,
-                                                reference = referenceUtilisee,
-                                                nutriment = valeur.nutriment,
-                                                typeExpressionBesoin = typeExpr,
-                                                poidsAnimal = poidsAnimal,
-                                                poidsMetabolique = poidsMetabolique,
-                                                besoinEnergetiqueEntretien =
-                                                        besoinEnergetiqueEntretien
-                                        )
+                                        Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            Text(
+                                                    text = nom,
+                                                    style = MaterialTheme.typography.caption,
+                                                    color =
+                                                            MaterialTheme.colors.onSurface.copy(
+                                                                    alpha = 0.8f
+                                                            ),
+                                                    modifier = Modifier.width(140.dp)
+                                            )
+                                            Box(modifier = Modifier.weight(1f)) {
+                                                ReferenceBulletGraph(
+                                                        valeurApport = apport,
+                                                        reference = referenceUtilisee,
+                                                        nutriment = valeur.nutriment,
+                                                        typeExpressionBesoin = typeExpr,
+                                                        poidsAnimal = poidsAnimal,
+                                                        poidsMetabolique = poidsMetabolique,
+                                                        besoinEnergetiqueEntretien =
+                                                                besoinEnergetiqueEntretien
+                                                )
+                                            }
+                                        }
                                     } else {
                                         Text(
                                                 text =
