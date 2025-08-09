@@ -23,12 +23,12 @@ import kotlinx.serialization.json.Json
 
 /** ViewModel pour la gestion des paramètres de l'application */
 class SettingsViewModel(
-        private val animalRepository: AnimalRepository,
-        private val foodRepository: DatabaseFoodRepository,
+        internal val animalRepository: AnimalRepository,
+        internal val foodRepository: DatabaseFoodRepository,
         private val referenceEvRepository:
                 fr.vetbrain.vetnutri_mp.Repository.DatabaseReferenceEvRepository? =
                 null,
-        private val equationRepository: fr.vetbrain.vetnutri_mp.Repository.EquationRepository? =
+        internal val equationRepository: fr.vetbrain.vetnutri_mp.Repository.EquationRepository? =
                 null,
         private val biblioRefRepository: fr.vetbrain.vetnutri_mp.Repository.BiblioRefRepository? =
                 null

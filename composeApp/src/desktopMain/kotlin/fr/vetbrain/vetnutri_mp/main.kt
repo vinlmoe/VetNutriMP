@@ -11,6 +11,7 @@ import fr.vetbrain.vetnutri_mp.DataBase.getRoomDatabase
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationManager
 import fr.vetbrain.vetnutri_mp.Repository.DatabaseAnimalRepository
 import fr.vetbrain.vetnutri_mp.Repository.DatabaseFoodRepository
+import fr.vetbrain.vetnutri_mp.Utils.FileUtils
 import fr.vetbrain.vetnutri_mp.Utils.ImportUtils
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalListViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.ImportViewModel
@@ -66,8 +67,7 @@ fun main(args: Array<String> = emptyArray()) {
 
                             // Importer les animaux
                             val importedCount = animalRepository.importAnimals(importResult.animals)
-                        } else {
-                        }
+                        } else {}
                         return@runBlocking
                     } else {
                         return@runBlocking
@@ -92,8 +92,7 @@ fun main(args: Array<String> = emptyArray()) {
 
                         if (foodsJson.isNotEmpty()) {
                             val importedCount = foodRepository.importFoods(foodsJson)
-                        } else {
-                        }
+                        } else {}
                         return@runBlocking
                     } else {
                         return@runBlocking
@@ -127,16 +126,14 @@ fun main(args: Array<String> = emptyArray()) {
                                             )
 
                             println("\n" + "=".repeat(70))
-                            references.forEachIndexed { index, ref ->
-                            }
+                            references.forEachIndexed { index, ref -> }
 
                             // Afficher le rapport des résolutions problématiques
                             println("\n" + ImportUtils.genererRapportResolutionsProblematiques())
                         } catch (e: Exception) {
                             e.printStackTrace()
                         }
-                    } else {
-                    }
+                    } else {}
                     return@runBlocking
                 }
                 else -> {
@@ -229,8 +226,7 @@ actual fun importFoodsFromFile(viewModel: SettingsViewModel) {
                 GlobalScope.launch {
                     val importResult = viewModel.importFoodsFromList(foodsJson)
                 }
-            } else {
-            }
+            } else {}
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -339,4 +335,13 @@ actual fun importNutritionalRequirementsFromFile(viewModel: ImportViewModel) {
                 "❌ Importation annulée par l'utilisateur"
         )
     }
+}
+
+@Suppress("UNUSED_PARAMETER")
+actual fun exportJsonToFile(content: String, defaultFileName: String): Boolean {
+    return FileUtils.saveJsonFileDialog(content = content, defaultFileName = defaultFileName)
+}
+
+actual fun openJsonFileContent(): String? {
+    return FileUtils.openJsonFileDialog()
 }

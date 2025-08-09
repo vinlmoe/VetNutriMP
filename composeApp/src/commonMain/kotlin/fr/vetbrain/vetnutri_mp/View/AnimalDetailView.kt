@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Components.ConfirmDialog
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
+import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Theme.AppIcons
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
@@ -245,7 +246,7 @@ private fun WideScreenLayout(
                         Column(modifier = Modifier.fillMaxWidth()) {
                                 Text(text = animalDetails.nom, style = MaterialTheme.typography.h5)
                                 Text(
-                                        text = animalDetails.getEspece().label,
+                                        text = animalDetails.getEspece().translateEnum(),
                                         style = MaterialTheme.typography.subtitle1,
                                         color = Color.Gray
                                 )
@@ -390,7 +391,7 @@ private fun NarrowScreenLayout(
                                                 style = MaterialTheme.typography.h5
                                         )
                                         Text(
-                                                text = animalDetails.getEspece().label,
+                                                text = animalDetails.getEspece().translateEnum(),
                                                 style = MaterialTheme.typography.subtitle1,
                                                 color = Color.Gray
                                         )

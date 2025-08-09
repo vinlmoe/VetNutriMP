@@ -20,6 +20,7 @@ import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Animal
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.General
 import fr.vetbrain.vetnutri_mp.Localization.translate
+import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalListViewModel
 import kotlin.uuid.ExperimentalUuidApi
@@ -268,7 +269,7 @@ private fun AnimalCard(
                                         Text(text = animal.nom, style = MaterialTheme.typography.h6)
                                         Text(
                                                 text =
-                                                        "${Animal.SPECIES.translate()}: ${animal.getEspece().label}",
+                                                        "${Animal.SPECIES.translate()}: ${animal.getEspece().translateEnum()}",
                                                 style = MaterialTheme.typography.body1
                                         )
                                         if (animal.race.isNotEmpty()) {

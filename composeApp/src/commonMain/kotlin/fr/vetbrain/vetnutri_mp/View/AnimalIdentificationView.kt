@@ -14,6 +14,7 @@ import fr.vetbrain.vetnutri_mp.Data.AnimalEv
 import fr.vetbrain.vetnutri_mp.Enumer.Sex
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Animal
 import fr.vetbrain.vetnutri_mp.Localization.translate
+import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
@@ -72,7 +73,10 @@ fun AnimalIdentificationView(
             InfoRow(label = Animal.BREED.translate(), value = animal.race)
 
             // Sexe
-            InfoRow(label = Animal.SEX.translate(), value = Sex.getSimpleSex(animal.sexId))
+            InfoRow(
+                    label = Animal.SEX.translate(),
+                    value = Sex.fromId(animal.sexId).translateEnum()
+            )
 
             // Date de naissance et âge
             val birthdate = animal.birthdate

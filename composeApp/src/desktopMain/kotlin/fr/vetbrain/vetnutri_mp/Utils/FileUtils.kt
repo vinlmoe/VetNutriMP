@@ -14,7 +14,7 @@ object FileUtils {
     fun openJsonFileDialog(): String? {
         val fileChooser =
                 JFileChooser().apply {
-                    dialogTitle = "Importer des animaux"
+                    dialogTitle = "Importer un fichier JSON"
                     fileFilter = FileNameExtensionFilter("Fichiers JSON (*.json)", "json")
                 }
 
@@ -40,6 +40,38 @@ object FileUtils {
             File(path).readText()
         } catch (e: Exception) {
             null
+        }
+    }
+
+    /**
+     * Ouvre une boîte de dialogue pour enregistrer un contenu JSON dans un fichier
+     *
+     * @param content Contenu JSON à sauvegarder
+     * @param defaultFileName Nom de fichier suggéré
+     * @return true si la sauvegarde a réussi, false sinon
+     */
+    fun saveJsonFileDialog(content: String, defaultFileName: String): Boolean {
+        val fileChooser =
+                JFileChooser().apply {
+                    dialogTitle = "Exporter un fichier JSON"
+                    selectedFile = File(defaultFileName)
+                    fileFilter = FileNameExtensionFilter("Fichiers JSON (*.json)", "json")
+                }
+        return if (fileChooser.showSaveDialog(null) == JFileChooser.APPROVE_OPTION) {
+            try {
+                val file: File =
+                        if (fileChooser.selectedFile.path.endsWith(".json", ignoreCase = true)) {
+                            fileChooser.selectedFile
+                        } else {
+                            File(fileChooser.selectedFile.path + ".json")
+                        }
+                file.writeText(content)
+                true
+            } catch (e: Exception) {
+                false
+            }
+        } else {
+            false
         }
     }
 }

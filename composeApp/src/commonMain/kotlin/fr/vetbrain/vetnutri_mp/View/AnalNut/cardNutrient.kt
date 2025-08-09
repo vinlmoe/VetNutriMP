@@ -16,6 +16,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Data.*
 import fr.vetbrain.vetnutri_mp.Enumer.*
+import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Repository.PreferencesRepository
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
@@ -213,7 +214,7 @@ fun AnalyseNutritionnelleCard(
                                             } else 0.0
                                     println("EQDBG result: value=" + valeur)
                                     val nutrient = eq.nutrient!!
-                                    val label = nutrient.label
+                                    val label = nutrient.translateEnum()
                                     val existante = baseMap[label]
 
                                     if (existante != null) {

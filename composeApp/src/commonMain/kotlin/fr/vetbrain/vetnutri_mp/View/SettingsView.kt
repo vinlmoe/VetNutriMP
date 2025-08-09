@@ -22,10 +22,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Components.Section
 import fr.vetbrain.vetnutri_mp.Enumer.*
+import fr.vetbrain.vetnutri_mp.Repository.ExportImportRepository
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.ImportViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.SettingsViewModel
+import fr.vetbrain.vetnutri_mp.exportJsonToFile
+import fr.vetbrain.vetnutri_mp.openJsonFileContent
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 
@@ -516,6 +519,112 @@ fun SettingsView(
                                                         ) {
                                                                 Text(
                                                                         "Importer des animaux",
+                                                                        color = Color.White
+                                                                )
+                                                        }
+
+                                                        // Export (nouveau format API)
+                                                        Button(
+                                                                onClick = {
+                                                                        coroutineScope.launch {
+                                                                                try {
+                                                                                        val exportRepo =
+                                                                                                ExportImportRepository(
+                                                                                                        viewModel
+                                                                                                                .animalRepository,
+                                                                                                        viewModel
+                                                                                                                .foodRepository,
+                                                                                                        viewModel
+                                                                                                                .equationRepository
+                                                                                                )
+                                                                                        val json =
+                                                                                                exportRepo
+                                                                                                        .exportAll()
+                                                                                        val ok =
+                                                                                                exportJsonToFile(
+                                                                                                        content =
+                                                                                                                json,
+                                                                                                        defaultFileName =
+                                                                                                                "vetnutri_export.json"
+                                                                                                )
+                                                                                        if (ok) {
+                                                                                                resultMessage =
+                                                                                                        "✅ Export réussi"
+                                                                                        } else {
+                                                                                                resultMessage =
+                                                                                                        "❌ Export annulé ou échoué"
+                                                                                        }
+                                                                                } catch (
+                                                                                        e:
+                                                                                                Exception) {
+                                                                                        resultMessage =
+                                                                                                "❌ Erreur export: ${e.message}"
+                                                                                }
+                                                                        }
+                                                                },
+                                                                colors =
+                                                                        ButtonDefaults.buttonColors(
+                                                                                backgroundColor =
+                                                                                        VetNutriColors
+                                                                                                .Secondary
+                                                                        ),
+                                                                modifier = Modifier.fillMaxWidth()
+                                                        ) {
+                                                                Text(
+                                                                        "Exporter (nouveau format API)",
+                                                                        color = Color.White
+                                                                )
+                                                        }
+
+                                                        // Import (nouveau format API)
+                                                        Button(
+                                                                onClick = {
+                                                                        coroutineScope.launch {
+                                                                                try {
+                                                                                        val content =
+                                                                                                openJsonFileContent()
+                                                                                        if (content !=
+                                                                                                        null
+                                                                                        ) {
+                                                                                                val exportRepo =
+                                                                                                        ExportImportRepository(
+                                                                                                                viewModel
+                                                                                                                        .animalRepository,
+                                                                                                                viewModel
+                                                                                                                        .foodRepository,
+                                                                                                                viewModel
+                                                                                                                        .equationRepository
+                                                                                                        )
+                                                                                                val count =
+                                                                                                        exportRepo
+                                                                                                                .importAll(
+                                                                                                                        content
+                                                                                                                )
+                                                                                                resultMessage =
+                                                                                                        "✅ Import API: $count animaux"
+                                                                                                onAnimalListRefresh()
+                                                                                        } else {
+                                                                                                resultMessage =
+                                                                                                        "❌ Aucun fichier sélectionné"
+                                                                                        }
+                                                                                } catch (
+                                                                                        e:
+                                                                                                Exception) {
+                                                                                        resultMessage =
+                                                                                                "❌ Erreur import API: ${e.message}"
+                                                                                }
+                                                                        }
+                                                                },
+                                                                colors =
+                                                                        ButtonDefaults.buttonColors(
+                                                                                backgroundColor =
+                                                                                        VetNutriColors
+                                                                                                .Secondary
+                                                                        ),
+                                                                modifier = Modifier.fillMaxWidth()
+                                                        ) {
+                                                                Text(
+                                                                        "Importer (nouveau format API)",
                                                                         color = Color.White
                                                                 )
                                                         }

@@ -123,9 +123,12 @@ android {
             // excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
-    buildTypes { getByName("release") { isMinifyEnabled = false
-        versionNameSuffix = rootProject.extra["releaseVersionNameSuffix"] as String
-    } }
+    buildTypes {
+        getByName("release") {
+            isMinifyEnabled = false
+            versionNameSuffix = rootProject.extra["releaseVersionNameSuffix"] as String
+        }
+    }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
@@ -168,6 +171,9 @@ dependencies {
 
     // Reorderable - Drag and Drop pour Compose
     implementation("org.burnoutcrew.composereorderable:reorderable:0.9.6")
+}
+
+room { schemaDirectory("$projectDir/schemas") }
 }
 
 room { schemaDirectory("$projectDir/schemas") }
