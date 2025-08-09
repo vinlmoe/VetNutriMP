@@ -19,6 +19,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.TypeExpressionBesoin
+import fr.vetbrain.vetnutri_mp.Localization.translate
+import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Repository.PreferencesRepository
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import kotlinx.coroutines.launch
@@ -55,7 +57,7 @@ fun SpeciesPreferencesView(
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 CircularProgressIndicator(color = VetNutriColors.Primary)
                                 Spacer(modifier = Modifier.height(16.dp))
-                                Text("Chargement des préférences...")
+                                Text("preferences.title".translate() + "...")
                         }
                 }
         } else {
@@ -77,7 +79,7 @@ fun SpeciesPreferencesView(
                                         Column(modifier = Modifier.padding(16.dp)) {
                                                 Text(
                                                         text =
-                                                                "Configuration pour ${species.label}",
+                                                                "${"preferences.speciesTitle".translate()} ${species.translateEnum()}",
                                                         style = MaterialTheme.typography.h5,
                                                         fontWeight = FontWeight.Bold,
                                                         color = VetNutriColors.Primary
@@ -235,7 +237,7 @@ fun SpeciesPreferencesView(
                                                                         Text(
                                                                                 text =
                                                                                         type.unitReqEnum
-                                                                                                .label,
+                                                                                                .translateEnum(),
                                                                                 style =
                                                                                         MaterialTheme
                                                                                                 .typography
@@ -244,7 +246,7 @@ fun SpeciesPreferencesView(
                                                                         )
                                                                         Text(
                                                                                 text =
-                                                                                        "Unité: ${type.unitReqEnum.label}",
+                                                                                        "Unité: ${type.unitReqEnum.translateEnum()}",
                                                                                 style =
                                                                                         MaterialTheme
                                                                                                 .typography

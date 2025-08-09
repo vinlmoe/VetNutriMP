@@ -20,6 +20,7 @@ import fr.vetbrain.vetnutri_mp.Enumer.NutrientMin
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientVitam
 import fr.vetbrain.vetnutri_mp.Enumer.VariableKind
+import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Repository.BiblioRefRepository
 import fr.vetbrain.vetnutri_mp.Repository.DatabaseReferenceEvRepository
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
@@ -130,14 +131,14 @@ class EquationViewModel(
         // Vérifier si c'est une variable VariableKind
         val variableKind = VariableKind.entries.find { it.label == variable }
         if (variableKind != null) {
-            return "${variableKind.label} (${variableKind.dup})"
+            return "${variableKind.translateEnum()} (${variableKind.dup})"
         }
 
         // Vérifier si c'est un nutriment et obtenir son nom d'affichage
         val nutrientMain =
                 fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.entries.find { it.label == variable }
         if (nutrientMain != null) {
-            return "${nutrientMain.label} (${nutrientMain.nameToString()})"
+            return "${nutrientMain.translateEnum()} (${nutrientMain.nameToString()})"
         }
 
         // Pour les autres nutriments, utiliser le label comme nom d'affichage

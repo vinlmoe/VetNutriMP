@@ -16,6 +16,8 @@ import fr.vetbrain.vetnutri_mp.DataBase.AppDatabase
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationManager
 import fr.vetbrain.vetnutri_mp.Localization.ResourceReader
+import fr.vetbrain.vetnutri_mp.Localization.translate
+import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Repository.*
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriTheme
 import fr.vetbrain.vetnutri_mp.Utils.PlatformDispatcher
@@ -30,6 +32,11 @@ expect fun importAnimalsFromFile(viewModel: AnimalListViewModel)
 expect fun importFoodsFromFile(viewModel: SettingsViewModel)
 
 expect fun importNutritionalRequirementsFromFile(viewModel: ImportViewModel)
+
+// Export/Import génériques pour le nouveau format API
+expect fun exportJsonToFile(content: String, defaultFileName: String): Boolean
+
+expect fun openJsonFileContent(): String?
 
 @Composable
 fun App(appDatabase: AppDatabase) {
@@ -591,7 +598,8 @@ fun App(appDatabase: AppDatabase) {
                             Scaffold(
                                     topBar = {
                                         TopBarSimple(
-                                                title = "Préférences ${species.label}",
+                                                title =
+                                                        "${"preferences.title".translate()} ${species.translateEnum()}",
                                                 onNavigateBack = { currentScreen = Screen.Settings }
                                         )
                                     }
@@ -619,16 +627,20 @@ fun App(appDatabase: AppDatabase) {
                             showImportResult = false
                             animalListViewModel.resetImportResult()
                         },
-                        title = { Text("Résultat de l'importation") },
+                        title = { Text("dialog.resultImportAnimals.title".translate()) },
                         text = {
                             when (importResult) {
                                 is AnimalListViewModel.ImportResult.Success -> {
                                     Text(
-                                            "${importResult.count} animaux ont été importés avec succès."
+                                            "${importResult.count} " +
+                                                    "dialog.resultImportAnimals.success".translate()
                                     )
                                 }
                                 is AnimalListViewModel.ImportResult.Error -> {
-                                    Text("Erreur lors de l'importation : ${importResult.message}")
+                                    Text(
+                                            "dialog.resultImportAnimals.error".translate() +
+                                                    " ${importResult.message}"
+                                    )
                                 }
                             }
                         },

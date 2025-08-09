@@ -21,6 +21,9 @@ import fr.vetbrain.vetnutri_mp.Components.TopBarSimple
 import fr.vetbrain.vetnutri_mp.Enumer.EquationKind
 import fr.vetbrain.vetnutri_mp.Enumer.EquationType
 import fr.vetbrain.vetnutri_mp.Enumer.VariableKind
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Animal
+import fr.vetbrain.vetnutri_mp.Localization.translate
+import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.ExpressionEvaluator
 import fr.vetbrain.vetnutri_mp.ViewModel.EquationViewModel
@@ -221,14 +224,14 @@ private fun EquationEditTab(
 
         // Espèce d'application (dropdown)
         DropdownField(
-                label = "Espèce d'application",
+                label = Animal.SPECIES.translate(),
                 selectedValue = currentEquation.specie ?: fr.vetbrain.vetnutri_mp.Enumer.Espece.CH,
                 options = fr.vetbrain.vetnutri_mp.Enumer.Espece.entries,
                 onValueChange = { viewModel.updateSpecie(it) },
                 valueToString = { espece ->
                     when (espece) {
-                        fr.vetbrain.vetnutri_mp.Enumer.Espece.CH -> "ALL (Toutes espèces)"
-                        else -> "${espece.label} (${espece.name})"
+                        fr.vetbrain.vetnutri_mp.Enumer.Espece.CH -> "enum.Espece.ALL".translate()
+                        else -> "${espece.translateEnum()} (${espece.name})"
                     }
                 }
         )
@@ -251,7 +254,7 @@ private fun EquationEditTab(
                     selectedValue = selectedNutrient,
                     options = listOf(null) + allNutrients,
                     onValueChange = { viewModel.updateNutrient(it) },
-                    valueToString = { nutrient -> nutrient?.label ?: "Aucun nutriment sélectionné" }
+                    valueToString = { nutrient -> nutrient?.translateEnum() ?: "Aucun nutriment sélectionné" }
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -334,38 +337,38 @@ private fun EquationEditTab(
         // Obtenir toutes les variables disponibles
         val allAvailableVariables = remember {
             val variableKindList =
-                    VariableKind.entries.map { "${it.variable} - ${it.label}" to it.variable }
+                    VariableKind.entries.map { "${it.variable} - ${it.translateEnum()}" to it.variable }
             val nutrientsMain =
                     fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.entries.map {
-                        "${it.label} - ${it.nameToString()}" to it.label
+                        "${it.translateEnum()} - ${it.nameToString()}" to it.label
                     }
             val nutrientsLipides =
                     fr.vetbrain.vetnutri_mp.Enumer.NutrientLipid.entries.map {
-                        "${it.label} - ${it.label}" to it.label
+                        "${it.translateEnum()} - ${it.label}" to it.label
                     }
             val nutrientsVitamines =
                     fr.vetbrain.vetnutri_mp.Enumer.NutrientVitam.entries.map {
-                        "${it.label} - ${it.label}" to it.label
+                        "${it.translateEnum()} - ${it.label}" to it.label
                     }
             val nutrientsMacro =
                     fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro.entries.map {
-                        "${it.label} - ${it.label}" to it.label
+                        "${it.translateEnum()} - ${it.label}" to it.label
                     }
             val nutrientsMin =
                     fr.vetbrain.vetnutri_mp.Enumer.NutrientMin.entries.map {
-                        "${it.label} - ${it.label}" to it.label
+                        "${it.translateEnum()} - ${it.label}" to it.label
                     }
             val nutrientsOther =
                     fr.vetbrain.vetnutri_mp.Enumer.NutrientOther.entries.map {
-                        "${it.label} - ${it.label}" to it.label
+                        "${it.translateEnum()} - ${it.label}" to it.label
                     }
             val nutrientsAnalysis =
                     fr.vetbrain.vetnutri_mp.Enumer.NutrientAnalysis.entries.map {
-                        "${it.label} - ${it.label}" to it.label
+                        "${it.translateEnum()} - ${it.label}" to it.label
                     }
             val acideAmines =
                     fr.vetbrain.vetnutri_mp.Enumer.AAEnum.entries.map {
-                        "${it.label} - ${it.label}" to it.label
+                        "${it.translateEnum()} - ${it.label}" to it.label
                     }
 
             // Variables système

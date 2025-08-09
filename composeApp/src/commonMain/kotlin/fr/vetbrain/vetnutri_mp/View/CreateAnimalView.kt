@@ -13,6 +13,7 @@ import fr.vetbrain.vetnutri_mp.Enumer.Sex
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Animal as AnimalKeys
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.General
 import fr.vetbrain.vetnutri_mp.Localization.translate
+import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.CreateAnimalViewModel
@@ -115,7 +116,7 @@ fun CreateAnimalView(
 
                 if (showDateError) {
                         Text(
-                                text = "Format de date invalide (YYYY-MM-DD)",
+                                text = "error.invalidValue".translate(),
                                 color = MaterialTheme.colors.error,
                                 style = MaterialTheme.typography.caption
                         )
@@ -135,7 +136,7 @@ fun CreateAnimalView(
                                 viewModel.updateAnimal(animal.copy(birthdate = today))
                                 showDateError = false
                         }
-                ) { Text("Aujourd'hui") }
+                ) { Text("general.today".translate()) }
 
                 ComboBox(
                         items = Espece.values().toList(),
@@ -150,7 +151,8 @@ fun CreateAnimalView(
                                         )
                                 }
                         },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        itemLabelProvider = { it.translateEnum() }
                 )
 
                 Row(
@@ -167,7 +169,7 @@ fun CreateAnimalView(
                                         }
                                 )
                                 Text(
-                                        text = sexe.label,
+                                        text = sexe.translateEnum(),
                                         modifier = Modifier.align(Alignment.CenterVertically)
                                 )
                         }

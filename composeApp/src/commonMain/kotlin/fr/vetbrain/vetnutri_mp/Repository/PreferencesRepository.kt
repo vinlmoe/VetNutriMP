@@ -6,6 +6,7 @@ import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.TypeExpressionBesoin
 import fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum
 import fr.vetbrain.vetnutri_mp.Enumer.UnitType
+import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Utils.PreferencesStorage
 
 /** Repository pour la gestion des préférences de l'application */
@@ -104,7 +105,7 @@ class PreferencesRepository(private val preferencesStorage: PreferencesStorage) 
 
     /** Obtient les noms d'affichage des espèces */
     fun getSpeciesDisplayNames(): List<String> {
-        return getAvailableSpecies().map { it.label }
+        return getAvailableSpecies().map { species -> species.translateEnum() }
     }
 
     /** Sérialise les préférences en JSON simple */
@@ -170,31 +171,28 @@ class PreferencesRepository(private val preferencesStorage: PreferencesStorage) 
                         if (objEnd > braceOpenIndex) {
                             val speciesData = speciesJson.substring(braceOpenIndex + 1, objEnd)
 
-                        // Extraire l'expression
-                        val expressionPattern = "\"expressionId\":([0-9]+)"
-                        val expressionMatch = Regex(expressionPattern).find(speciesData)
-                        val expressionId =
-                                expressionMatch?.groupValues?.get(1)?.toIntOrNull()
-                                        ?: TypeExpressionBesoin.DEFAULT.id
+                            // Extraire l'expression
+                            val expressionPattern = "\"expressionId\":([0-9]+)"
+                            val expressionMatch = Regex(expressionPattern).find(speciesData)
+                            val expressionId =
+                                    expressionMatch?.groupValues?.get(1)?.toIntOrNull()
+                                            ?: TypeExpressionBesoin.DEFAULT.id
 
+                            // Extraire les nutriments
+                            val nutrients = parseNutrientsFromJson(speciesData)
 
-                        // Extraire les nutriments
-                        val nutrients = parseNutrientsFromJson(speciesData)
+                            // Extraire les équations complémentaires
+                            val equations = parseEquationsFromJson(speciesData)
 
-                        // Extraire les équations complémentaires
-                        val equations = parseEquationsFromJson(speciesData)
-
-
-                        preferencesMap[speciesName] =
-                                fr.vetbrain.vetnutri_mp.Data.PreferencesEspece(
-                                        espece = speciesName,
-                                        typeExpressionBesoinId = expressionId,
-                                        nutrimentsSelectionnes = nutrients,
-                                        equationsComplementaires = equations
-                                )
+                            preferencesMap[speciesName] =
+                                    fr.vetbrain.vetnutri_mp.Data.PreferencesEspece(
+                                            espece = speciesName,
+                                            typeExpressionBesoinId = expressionId,
+                                            nutrimentsSelectionnes = nutrients,
+                                            equationsComplementaires = equations
+                                    )
                         }
-                    } else {
-                    }
+                    } else {}
                 }
             }
 
@@ -228,7 +226,6 @@ class PreferencesRepository(private val preferencesStorage: PreferencesStorage) 
                     result[category] = emptyList()
                 }
             }
-
         } catch (e: Exception) {
             // Retourner une map vide en cas d'erreur
             return mapOf(
@@ -260,10 +257,11 @@ class PreferencesRepository(private val preferencesStorage: PreferencesStorage) 
             if (match != null) {
                 val inside = match.groupValues[1]
                 val items = if (inside.isBlank()) emptyList() else inside.split(",")
-                val uuids = items.mapNotNull { raw ->
-                    val t = raw.trim().trim('"')
-                    if (t.isBlank()) null else t
-                }
+                val uuids =
+                        items.mapNotNull { raw ->
+                            val t = raw.trim().trim('"')
+                            if (t.isBlank()) null else t
+                        }
                 uuids.associateWith { it }
             } else {
                 emptyMap()
@@ -289,4 +287,3 @@ class PreferencesRepository(private val preferencesStorage: PreferencesStorage) 
         }
     }
 }
- 
