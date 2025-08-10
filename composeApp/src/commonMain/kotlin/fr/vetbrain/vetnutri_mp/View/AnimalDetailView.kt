@@ -394,6 +394,9 @@ private fun WideScreenLayout(
                                                         mutableStateOf(false)
                                                 }
                                                 var previewHtml by remember { mutableStateOf("") }
+                                                var additionalText by remember {
+                                                        mutableStateOf("")
+                                                }
                                                 Row(
                                                         horizontalArrangement =
                                                                 Arrangement.spacedBy(
@@ -415,7 +418,9 @@ private fun WideScreenLayout(
                                                                                                         reference =
                                                                                                                 referenceUtilisee,
                                                                                                         title =
-                                                                                                                "Analyse de ration"
+                                                                                                                "Analyse de ration",
+                                                                                                        additionalText =
+                                                                                                                additionalText
                                                                                                 )
                                                                                         )
                                                                         showPreview = true
@@ -442,7 +447,9 @@ private fun WideScreenLayout(
                                                                                                                         "Veiller à l'hydratation"
                                                                                                                 ),
                                                                                                         title =
-                                                                                                                "Ordonnance nutritionnelle"
+                                                                                                                "Ordonnance nutritionnelle",
+                                                                                                        additionalText =
+                                                                                                                additionalText
                                                                                                 )
                                                                                         )
                                                                         showPreview = true
@@ -450,11 +457,17 @@ private fun WideScreenLayout(
                                                         ) { Text("Exporter ordonnance PDF") }
                                                 }
 
-                                                // Aperçu HTML (optionnel)
-                                                Divider()
-                                                Text(
-                                                        "Aperçu HTML (pour vérification)",
-                                                        style = MaterialTheme.typography.subtitle2
+                                                // Texte additionnel
+                                                OutlinedTextField(
+                                                        value = additionalText,
+                                                        onValueChange = { additionalText = it },
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        label = {
+                                                                Text(
+                                                                        "Texte additionnel (apparaît en fin de document)"
+                                                                )
+                                                        },
+                                                        maxLines = 6
                                                 )
                                                 HtmlPreviewDialog(
                                                         html = previewHtml,
@@ -483,7 +496,9 @@ private fun WideScreenLayout(
                                                                                                         "Veiller à l'hydratation"
                                                                                                 ),
                                                                                         title =
-                                                                                                "Ordonnance nutritionnelle"
+                                                                                                "Ordonnance nutritionnelle",
+                                                                                        additionalText =
+                                                                                                additionalText
                                                                                 ),
                                                                                 defaultFileName =
                                                                                         "ordonnance.pdf"
@@ -500,7 +515,9 @@ private fun WideScreenLayout(
                                                                                         reference =
                                                                                                 referenceUtilisee,
                                                                                         title =
-                                                                                                "Analyse de ration"
+                                                                                                "Analyse de ration",
+                                                                                        additionalText =
+                                                                                                additionalText
                                                                                 ),
                                                                                 defaultFileName =
                                                                                         "analyse_ration.pdf"

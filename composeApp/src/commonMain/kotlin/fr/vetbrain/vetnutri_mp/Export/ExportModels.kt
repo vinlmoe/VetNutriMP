@@ -14,6 +14,6 @@ data class ExportData(
         val ration: Ration?,
         val reference: ReferenceEv?,
         val conseils: List<String> = emptyList(),
-        val title: String = ""
+        val title: String = "",
+        val additionalText: String = ""
 )
-
