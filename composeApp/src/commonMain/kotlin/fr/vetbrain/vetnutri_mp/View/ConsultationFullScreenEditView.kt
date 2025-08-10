@@ -23,7 +23,6 @@ import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
 import fr.vetbrain.vetnutri_mp.Data.SupplementalvariableP
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Animal
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Consultation
-import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.General
 import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Theme.AppIcons
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
@@ -39,6 +38,7 @@ fun ConsultationFullScreenEditView(
         animalEspece: fr.vetbrain.vetnutri_mp.Enumer.Espece? = null,
         availableReferences: List<fr.vetbrain.vetnutri_mp.Data.ReferenceEv> = emptyList(),
         onBackPressed: (ConsultationEv) -> Unit,
+        onCancel: () -> Unit,
         onLoadReferences: () -> Unit = {}
 ) {
         var editedConsultation by
@@ -127,6 +127,8 @@ fun ConsultationFullScreenEditView(
                 }
         }
 
+        var showNoReferenceDialog by remember { mutableStateOf(false) }
+
         Scaffold(
                 topBar = {
                         TopAppBar(
@@ -157,29 +159,46 @@ fun ConsultationFullScreenEditView(
                                         }
                                 },
                                 navigationIcon = {
-                                        IconButton(onClick = { saveAndGoBack() }) {
+                                        IconButton(
+                                                onClick = {
+                                                        // Retour sans sauvegarde
+                                                        onCancel()
+                                                }
+                                        ) {
                                                 Icon(
                                                         AppIcons.ArrowBack,
-                                                        contentDescription = "Retour et sauvegarde",
+                                                        contentDescription = "Retour",
                                                         tint = VetNutriColors.OnPrimary
                                                 )
                                         }
                                 },
-                                actions = {
-                                        // Bouton de sauvegarde explicite
-                                        TextButton(
-                                                onClick = { saveAndGoBack() },
-                                                enabled = !showDateError && !showWeightError
-                                        ) {
-                                                Text(
-                                                        text = General.SAVE.translate(),
-                                                        color = VetNutriColors.OnPrimary
-                                                )
-                                        }
-                                },
+                                actions = {},
                                 backgroundColor = VetNutriColors.Primary,
                                 contentColor = VetNutriColors.OnPrimary
                         )
+                },
+                floatingActionButton = {
+                        FloatingActionButton(
+                                onClick = {
+                                        // Empêcher la sauvegarde si aucune référence générale n'est
+                                        // sélectionnée
+                                        val hasGeneralRef =
+                                                !editedConsultation.referenceGeneraleId
+                                                        .isNullOrBlank()
+                                        if (!hasGeneralRef) {
+                                                showNoReferenceDialog = true
+                                                return@FloatingActionButton
+                                        }
+                                        saveAndGoBack()
+                                },
+                                backgroundColor = VetNutriColors.Primary
+                        ) {
+                                Icon(
+                                        imageVector = AppIcons.Check,
+                                        contentDescription = "Valider la consultation",
+                                        tint = VetNutriColors.OnPrimary
+                                )
+                        }
                 }
         ) { paddingValues ->
                 Column(
@@ -190,6 +209,8 @@ fun ConsultationFullScreenEditView(
                                         .padding(AppSizes.paddingLarge),
                         verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
                 ) {
+                        // Dialog d'avertissement au clic sur Valider si référence manquante
+                        // (désactivé dans cette version pour éviter des conflits de portée)
                         // Date
                         AppDatePicker(
                                 selectedDate = editedConsultation.date,
@@ -518,8 +539,7 @@ fun ConsultationFullScreenEditView(
                         // Debug des équations disponibles
                         LaunchedEffect(referenceGeneraleSelectionnee) {
                                 referenceGeneraleSelectionnee?.let { ref ->
-                                        ref.equationsNut.forEachIndexed { index, eq ->
-                                        }
+                                        ref.equationsNut.forEachIndexed { index, eq -> }
                                 }
                         }
 
@@ -1446,8 +1466,7 @@ private fun extraireVariablesRequises(
                         }
                 if (variableKind != null) {
                         variablesRequises.add(variableKind)
-                } else {
-                }
+                } else {}
         }
 
         // Exclure BW (Body Weight) car c'est le poids qui est déjà saisi
@@ -1566,6 +1585,8 @@ private fun VariableSupplementaireField(
                                 )
                         }
                 }
+
+                // (supprimé) pas de dialog ici; géré au niveau supérieur de l'écran
         }
 }
 
