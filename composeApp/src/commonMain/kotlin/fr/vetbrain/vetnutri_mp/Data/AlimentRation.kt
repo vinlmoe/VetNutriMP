@@ -49,7 +49,8 @@ data class AlimentRation(
         suspend fun getNutrientWithComplementary(
                 nutrient: Nutrient,
                 preferences: fr.vetbrain.vetnutri_mp.Data.PreferencesEspece? = null,
-                equationRepository: fr.vetbrain.vetnutri_mp.Repository.EquationRepository? = null
+                equationRepository: fr.vetbrain.vetnutri_mp.Repository.EquationRepository? = null,
+                referenceEv: ReferenceEv? = null
         ): Float? {
                 // D'abord, essayer d'obtenir la valeur directement
                 val valeurDirecte = getNutrient(nutrient)
@@ -59,9 +60,9 @@ data class AlimentRation(
 
                 // Si pas de valeur directe et qu'on a les dépendances pour les équations
                 // complémentaires
-                if (preferences != null && equationRepository != null) {
+                if ((preferences != null || referenceEv != null) && equationRepository != null) {
                         // 1) Essayer via mapping direct nutriment -> uuid (anciens prefs)
-                        val eqUuidDirect = preferences.getEquationComplementaire(nutrient.label)
+                        val eqUuidDirect = preferences?.getEquationComplementaire(nutrient.label)
                         if (eqUuidDirect != null) {
                                 val eq = equationRepository.getEquationById(eqUuidDirect)
                                 if (eq != null) {
@@ -76,8 +77,17 @@ data class AlimentRation(
                         }
 
                         // 2) Sinon, utiliser la sélection actuelle (liste d'UUID) et filtrer par
-                        // nutriment/espèce
-                        val selectedUuids = preferences.getSelectedEquationUuids()
+                        // nutriment/espèce. On combine ReferenceEv (si fournie) et Préférences.
+                        val selectedUuids =
+                                buildList {
+                                                referenceEv?.equationsNut?.let { list ->
+                                                        addAll(list.map { it.uuid })
+                                                }
+                                                preferences?.getSelectedEquationUuids()?.let {
+                                                        addAll(it)
+                                                }
+                                        }
+                                        .distinct()
                         println(
                                 "EQDBG-ING getNutrientWithComplementary nutr=${nutrient.label} food='${aliment?.nom}' selectedUuids=${selectedUuids}"
                         )
@@ -85,9 +95,11 @@ data class AlimentRation(
                                 var accum: Double? = null
                                 val especePref =
                                         try {
-                                                fr.vetbrain.vetnutri_mp.Enumer.Espece.valueOf(
-                                                        preferences.espece
-                                                )
+                                                referenceEv?.espece
+                                                        ?: preferences?.let {
+                                                                fr.vetbrain.vetnutri_mp.Enumer
+                                                                        .Espece.valueOf(it.espece)
+                                                        }
                                         } catch (e: Exception) {
                                                 null
                                         }
@@ -133,17 +145,21 @@ data class AlimentRation(
                                         }
                                 }
                                 println("EQDBG-ING result accum=${accum}")
+                                // Si ratio: la dernière valeur res est la valeur par 100g
+                                // Si somme: accum contient la somme des contributions par 100g
                                 if (accum != null) return accum.toFloat()
                         }
 
                         // 3) Fallback: calculateur existant (micro-ration)
-                        return fr.vetbrain.vetnutri_mp.Utils.ComplementaryNutrientCalculator
-                                .calculerNutrimentComplementaire(
-                                        nutrient,
-                                        this,
-                                        preferences,
-                                        equationRepository
-                                )
+                        return if (preferences != null) {
+                                fr.vetbrain.vetnutri_mp.Utils.ComplementaryNutrientCalculator
+                                        .calculerNutrimentComplementaire(
+                                                nutrient,
+                                                this,
+                                                preferences,
+                                                equationRepository
+                                        )
+                        } else null
                 }
 
                 return null

@@ -18,6 +18,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Components.ConfirmDialog
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
+import fr.vetbrain.vetnutri_mp.Export.DocumentType
+import fr.vetbrain.vetnutri_mp.Export.ExportData
+import fr.vetbrain.vetnutri_mp.Export.HtmlDocumentBuilder
+import fr.vetbrain.vetnutri_mp.Export.PdfExporter
 import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Theme.AppIcons
@@ -123,6 +127,11 @@ fun AnimalDetailView(
                                 section = AnimalDetailSection.GRAPHIQUE,
                                 title = "Graphique",
                                 icon = AppIcons.Analytics
+                        ),
+                        MenuOption(
+                                section = AnimalDetailSection.EXPORT,
+                                title = "Export",
+                                icon = Icons.Default.Settings
                         )
                 )
 
@@ -351,6 +360,119 @@ private fun WideScreenLayout(
                                                 modifier = Modifier.fillMaxSize()
                                         )
                                 }
+                                AnimalDetailSection.EXPORT -> {
+                                        val selectedConsultation by
+                                                viewModel.selectedConsultation.collectAsState()
+                                        val selectedRation by
+                                                viewModel.selectedRation.collectAsState()
+                                        val referenceUtilisee by
+                                                viewModel.referenceUtilisee.collectAsState()
+                                        Column(
+                                                modifier =
+                                                        Modifier.fillMaxSize()
+                                                                .padding(AppSizes.paddingMedium),
+                                                verticalArrangement =
+                                                        Arrangement.spacedBy(AppSizes.paddingMedium)
+                                        ) {
+                                                Text(
+                                                        "Export des documents",
+                                                        style = MaterialTheme.typography.h6,
+                                                        color = VetNutriColors.Primary
+                                                )
+                                                Text(
+                                                        text =
+                                                                if (selectedRation != null)
+                                                                        "Ration sélectionnée: ${selectedRation!!.name}"
+                                                                else "Aucune ration sélectionnée",
+                                                        color =
+                                                                MaterialTheme.colors.onSurface.copy(
+                                                                        alpha = 0.7f
+                                                                )
+                                                )
+                                                Row(
+                                                        horizontalArrangement =
+                                                                Arrangement.spacedBy(
+                                                                        AppSizes.paddingSmall
+                                                                )
+                                                ) {
+                                                        Button(
+                                                                onClick = {
+                                                                        val ok =
+                                                                                PdfExporter
+                                                                                        .exportDocument(
+                                                                                                documentType =
+                                                                                                        DocumentType
+                                                                                                                .RATION_ANALYSIS,
+                                                                                                data =
+                                                                                                        ExportData(
+                                                                                                                animal =
+                                                                                                                        animalDetails,
+                                                                                                                ration =
+                                                                                                                        selectedRation,
+                                                                                                                reference =
+                                                                                                                        referenceUtilisee,
+                                                                                                                title =
+                                                                                                                        "Analyse de ration"
+                                                                                                        ),
+                                                                                                defaultFileName =
+                                                                                                        "analyse_ration.pdf"
+                                                                                        )
+                                                                }
+                                                        ) { Text("Exporter analyse PDF") }
+
+                                                        Button(
+                                                                onClick = {
+                                                                        val ok =
+                                                                                PdfExporter
+                                                                                        .exportDocument(
+                                                                                                documentType =
+                                                                                                        DocumentType
+                                                                                                                .PRESCRIPTION,
+                                                                                                data =
+                                                                                                        ExportData(
+                                                                                                                animal =
+                                                                                                                        animalDetails,
+                                                                                                                ration =
+                                                                                                                        selectedRation,
+                                                                                                                reference =
+                                                                                                                        null,
+                                                                                                                conseils =
+                                                                                                                        listOf(
+                                                                                                                                "Fractionner la ration en 2-3 repas",
+                                                                                                                                "Veiller à l'hydratation"
+                                                                                                                        ),
+                                                                                                                title =
+                                                                                                                        "Ordonnance nutritionnelle"
+                                                                                                        ),
+                                                                                                defaultFileName =
+                                                                                                        "ordonnance.pdf"
+                                                                                        )
+                                                                }
+                                                        ) { Text("Exporter ordonnance PDF") }
+                                                }
+
+                                                // Aperçu HTML (optionnel)
+                                                Divider()
+                                                Text(
+                                                        "Aperçu HTML (pour vérification)",
+                                                        style = MaterialTheme.typography.subtitle2
+                                                )
+                                                val html =
+                                                        HtmlDocumentBuilder.buildHtml(
+                                                                DocumentType.RATION_ANALYSIS,
+                                                                ExportData(
+                                                                        animalDetails,
+                                                                        selectedRation,
+                                                                        referenceUtilisee
+                                                                )
+                                                        )
+                                                Text(
+                                                        html.take(500) +
+                                                                if (html.length > 500) "…" else "",
+                                                        style = MaterialTheme.typography.caption
+                                                )
+                                        }
+                                }
                         }
                 }
         }
@@ -552,6 +674,125 @@ private fun NarrowScreenLayout(
                                                                 viewModel = viewModel,
                                                                 modifier = Modifier.fillMaxSize()
                                                         )
+                                                }
+                                                AnimalDetailSection.EXPORT -> {
+                                                        val selectedConsultation by
+                                                                viewModel.selectedConsultation
+                                                                        .collectAsState()
+                                                        val selectedRation by
+                                                                viewModel.selectedRation
+                                                                        .collectAsState()
+                                                        val referenceUtilisee by
+                                                                viewModel.referenceUtilisee
+                                                                        .collectAsState()
+                                                        Column(
+                                                                modifier =
+                                                                        Modifier.fillMaxSize()
+                                                                                .padding(
+                                                                                        AppSizes.paddingMedium
+                                                                                ),
+                                                                verticalArrangement =
+                                                                        Arrangement.spacedBy(
+                                                                                AppSizes.paddingMedium
+                                                                        )
+                                                        ) {
+                                                                Text(
+                                                                        "Export des documents",
+                                                                        style =
+                                                                                MaterialTheme
+                                                                                        .typography
+                                                                                        .h6,
+                                                                        color =
+                                                                                VetNutriColors
+                                                                                        .Primary
+                                                                )
+                                                                Text(
+                                                                        text =
+                                                                                if (selectedRation !=
+                                                                                                null
+                                                                                )
+                                                                                        "Ration sélectionnée: ${selectedRation!!.name}"
+                                                                                else
+                                                                                        "Aucune ration sélectionnée",
+                                                                        color =
+                                                                                MaterialTheme.colors
+                                                                                        .onSurface
+                                                                                        .copy(
+                                                                                                alpha =
+                                                                                                        0.7f
+                                                                                        )
+                                                                )
+                                                                Row(
+                                                                        horizontalArrangement =
+                                                                                Arrangement
+                                                                                        .spacedBy(
+                                                                                                AppSizes.paddingSmall
+                                                                                        )
+                                                                ) {
+                                                                        Button(
+                                                                                onClick = {
+                                                                                        val ok =
+                                                                                                PdfExporter
+                                                                                                        .exportDocument(
+                                                                                                                documentType =
+                                                                                                                        DocumentType
+                                                                                                                                .RATION_ANALYSIS,
+                                                                                                                data =
+                                                                                                                        ExportData(
+                                                                                                                                animal =
+                                                                                                                                        animalDetails,
+                                                                                                                                ration =
+                                                                                                                                        selectedRation,
+                                                                                                                                reference =
+                                                                                                                                        referenceUtilisee,
+                                                                                                                                title =
+                                                                                                                                        "Analyse de ration"
+                                                                                                                        ),
+                                                                                                                defaultFileName =
+                                                                                                                        "analyse_ration.pdf"
+                                                                                                        )
+                                                                                }
+                                                                        ) {
+                                                                                Text(
+                                                                                        "Exporter analyse PDF"
+                                                                                )
+                                                                        }
+
+                                                                        Button(
+                                                                                onClick = {
+                                                                                        val ok =
+                                                                                                PdfExporter
+                                                                                                        .exportDocument(
+                                                                                                                documentType =
+                                                                                                                        DocumentType
+                                                                                                                                .PRESCRIPTION,
+                                                                                                                data =
+                                                                                                                        ExportData(
+                                                                                                                                animal =
+                                                                                                                                        animalDetails,
+                                                                                                                                ration =
+                                                                                                                                        selectedRation,
+                                                                                                                                reference =
+                                                                                                                                        null,
+                                                                                                                                conseils =
+                                                                                                                                        listOf(
+                                                                                                                                                "Fractionner la ration en 2-3 repas",
+                                                                                                                                                "Veiller à l'hydratation"
+                                                                                                                                        ),
+                                                                                                                                title =
+                                                                                                                                        "Ordonnance nutritionnelle"
+                                                                                                                        ),
+                                                                                                                defaultFileName =
+                                                                                                                        "ordonnance.pdf"
+                                                                                                        )
+                                                                                }
+                                                                        ) {
+                                                                                Text(
+                                                                                        "Exporter ordonnance PDF"
+                                                                                )
+                                                                        }
+                                                                }
+                                                        }
                                                 }
                                         }
                                 }

@@ -43,7 +43,8 @@ fun analyserValeursNutritionnellesRation(ration: Ration): Map<String, ValeurNutr
 fun analyserValeursNutritionnellesRationAvecEquations(
         ration: Ration,
         preferencesEspece: PreferencesEspece,
-        equationRepository: EquationRepository
+        equationRepository: EquationRepository,
+        referenceEv: ReferenceEv? = null
 ): Map<String, ValeurNutritionnelle> {
     val resultat = mutableMapOf<String, ValeurNutritionnelle>()
     val tousLesNutriments = obtenirTousLesNutriments()
@@ -64,7 +65,8 @@ fun analyserValeursNutritionnellesRationAvecEquations(
                 alimentRation.getNutrientWithComplementary(
                         nutrient = nutriment,
                         preferences = preferencesEspece,
-                        equationRepository = equationRepository
+                        equationRepository = equationRepository,
+                        referenceEv = referenceEv
                 )
             }
 
@@ -260,7 +262,8 @@ fun analyserValeursNutritionnellesRationSelective(
         ration: Ration,
         nutrimentsSelectionnes: List<String>,
         preferencesEspece: PreferencesEspece? = null,
-        equationRepository: EquationRepository? = null
+        equationRepository: EquationRepository? = null,
+        referenceEv: ReferenceEv? = null
 ): Map<String, ValeurNutritionnelle> {
     val resultat = mutableMapOf<String, ValeurNutritionnelle>()
 
@@ -269,7 +272,7 @@ fun analyserValeursNutritionnellesRationSelective(
 
     // Pour chaque nutriment sélectionné, calculer sa valeur dans la ration
     nutrimentsAAnalyser.forEach { nutriment ->
-        if (preferencesEspece != null && equationRepository != null) {
+        if (equationRepository != null) {
             // Version intégrant les équations complémentaires par ingrédient
             var valeurTotale = 0.0
             val contributrionsIngredients = mutableListOf<String>()
@@ -284,7 +287,8 @@ fun analyserValeursNutritionnellesRationSelective(
                     alimentRation.getNutrientWithComplementary(
                             nutrient = nutriment,
                             preferences = preferencesEspece,
-                            equationRepository = equationRepository
+                            equationRepository = equationRepository,
+                            referenceEv = referenceEv
                     )
                 }
 

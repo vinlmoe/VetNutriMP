@@ -29,6 +29,28 @@ object FileUtils {
         }
     }
 
+    /** Sauvegarde un contenu binaire via une boîte de dialogue. */
+    fun saveBinaryFileDialog(bytes: ByteArray, defaultFileName: String = "document.pdf"): Boolean {
+        val fileChooser =
+                JFileChooser().apply {
+                    dialogTitle = "Enregistrer un fichier"
+                    selectedFile = java.io.File(defaultFileName)
+                }
+        val userSelection = fileChooser.showSaveDialog(null)
+        return if (userSelection == JFileChooser.APPROVE_OPTION) {
+            return try {
+                val file = fileChooser.selectedFile
+                java.nio.file.Files.write(file.toPath(), bytes)
+                true
+            } catch (e: Exception) {
+                e.printStackTrace()
+                false
+            }
+        } else {
+            false
+        }
+    }
+
     /**
      * Lit le contenu d'un fichier JSON à partir d'un chemin spécifié
      *

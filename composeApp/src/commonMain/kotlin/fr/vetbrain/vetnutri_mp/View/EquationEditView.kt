@@ -254,7 +254,9 @@ private fun EquationEditTab(
                     selectedValue = selectedNutrient,
                     options = listOf(null) + allNutrients,
                     onValueChange = { viewModel.updateNutrient(it) },
-                    valueToString = { nutrient -> nutrient?.translateEnum() ?: "Aucun nutriment sélectionné" }
+                    valueToString = { nutrient ->
+                        nutrient?.translateEnum() ?: "Aucun nutriment sélectionné"
+                    }
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -337,7 +339,9 @@ private fun EquationEditTab(
         // Obtenir toutes les variables disponibles
         val allAvailableVariables = remember {
             val variableKindList =
-                    VariableKind.entries.map { "${it.variable} - ${it.translateEnum()}" to it.variable }
+                    VariableKind.entries.map {
+                        "${it.variable} - ${it.translateEnum()}" to it.variable
+                    }
             val nutrientsMain =
                     fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.entries.map {
                         "${it.translateEnum()} - ${it.nameToString()}" to it.label

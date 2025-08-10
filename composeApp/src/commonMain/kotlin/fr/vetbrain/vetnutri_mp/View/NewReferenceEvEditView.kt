@@ -113,7 +113,7 @@ fun NewReferenceEvEditView(
         }
 
         // Définir les onglets
-        val tabs = listOf("Informations", "Nutriments", "Équations", "Coefficients")
+        val tabs = listOf("Informations", "Nutriments", "Équations", "Complémentaires", "Coefficients")
 
         Scaffold(
                 topBar = {
@@ -176,7 +176,8 @@ fun NewReferenceEvEditView(
                                         0 -> ReferenceEvInfoTab(viewModel, currentReference)
                                         1 -> ReferenceEvNutrientsTab(viewModel, currentReference)
                                         2 -> ReferenceEvEquationsTab(viewModel)
-                                        3 -> ReferenceEvCoefficientsTab(viewModel, currentReference)
+                                        3 -> ReferenceEvComplementaryTab(viewModel)
+                                        4 -> ReferenceEvCoefficientsTab(viewModel, currentReference)
                                 }
                         }
                 }
@@ -826,6 +827,65 @@ fun ReferenceEvEquationsTab(viewModel: NewReferenceEvViewModel) {
                 }
 
                 // Bouton de sauvegarde des équations
+        }
+}
+
+/**
+ * Onglet pour la sélection des équations de nutriments complémentaires.
+ * Filtre par espèce de la référence et inclut les équations de l'espèce générique CH.
+ */
+@Composable
+fun ReferenceEvComplementaryTab(viewModel: NewReferenceEvViewModel) {
+        val currentReference by viewModel.currentReference.collectAsState()
+        val complementary = remember(currentReference) { viewModel.getComplementaryEquationsForCurrent() }
+        val selectedUuids = remember(currentReference) { currentReference.equationsNut.map { it.uuid }.toSet() }
+
+        Column(modifier = Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                        text = "Équations de nutriments complémentaires",
+                        style = MaterialTheme.typography.h6,
+                        fontWeight = FontWeight.Bold
+                )
+
+                if (complementary.isEmpty()) {
+                        Text(
+                                text = "Aucune équation complémentaire disponible pour ${currentReference.espece.label}.",
+                                style = MaterialTheme.typography.body2,
+                                color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                        )
+                } else {
+                        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxSize()) {
+                                items(complementary) { eq ->
+                                        Card(modifier = Modifier.fillMaxWidth(), elevation = 2.dp) {
+                                                Row(
+                                                        modifier = Modifier.fillMaxWidth().padding(12.dp),
+                                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                                        verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                        Column(modifier = Modifier.weight(1f)) {
+                                                                Text(eq.name, style = MaterialTheme.typography.subtitle1, fontWeight = FontWeight.Medium)
+                                                                val nutrientLabel = eq.nutrient?.label ?: "?"
+                                                                val especeLabel = eq.specie?.label ?: "Toutes espèces"
+                                                                Text(
+                                                                        text = "Nutriment: $nutrientLabel · Espèce: $especeLabel",
+                                                                        style = MaterialTheme.typography.caption,
+                                                                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                                                                )
+                                                        }
+                                                        val isSelected = selectedUuids.contains(eq.uuid)
+                                                        Button(
+                                                                onClick = { viewModel.toggleComplementaryEquation(eq) },
+                                                                colors = ButtonDefaults.buttonColors(
+                                                                        backgroundColor = if (isSelected) MaterialTheme.colors.primary else MaterialTheme.colors.surface
+                                                                )
+                                                        ) {
+                                                                Text(if (isSelected) "Retirer" else "Associer")
+                                                        }
+                                                }
+                                        }
+                                }
+                        }
+                }
         }
 }
 
