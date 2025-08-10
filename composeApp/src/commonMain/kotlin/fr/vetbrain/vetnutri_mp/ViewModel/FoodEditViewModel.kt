@@ -90,7 +90,6 @@ class FoodEditViewModel(
                 _allNutrients.add(nutrient)
             }
         }
-
     }
 
     private fun loadAliment(uuid: String) {
@@ -114,8 +113,7 @@ class FoodEditViewModel(
                             _allNutrients.add(nutrient)
                         }
                     }
-                } else {
-                }
+                } else {}
             } catch (e: Exception) {
                 e.printStackTrace()
             }
@@ -141,12 +139,9 @@ class FoodEditViewModel(
                         null
                     }
 
-            if (existingAliment != null) {
-            } else {
-            }
+            if (existingAliment != null) {} else {}
 
-            aliment.valMap.forEach { (nutrient, quantity) ->
-            }
+            aliment.valMap.forEach { (nutrient, quantity) -> }
 
             // Sauvegarder l'aliment
             alimentRepository.saveAliment(aliment)

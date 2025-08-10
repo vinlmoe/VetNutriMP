@@ -202,6 +202,11 @@ class SettingsViewModel(
         fr.vetbrain.vetnutri_mp.importFoodsFromFile(this)
     }
 
+    /** Interface pour importer via le nouveau format API depuis l'UI (Desktop prioritaire) */
+    fun importApiFromFileUI() {
+        fr.vetbrain.vetnutri_mp.importApiFromFile(this)
+    }
+
     /**
      * Interface pour importer des références nutritionnelles depuis l'UI Cette méthode est un point
      * d'entrée pour l'importation via l'UI

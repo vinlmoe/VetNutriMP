@@ -239,109 +239,198 @@ actual fun importFoodsFromFile(viewModel: SettingsViewModel) {
  */
 @OptIn(DelicateCoroutinesApi::class)
 actual fun importNutritionalRequirementsFromFile(viewModel: ImportViewModel) {
-    val fileChooser = JFileChooser()
-    fileChooser.dialogTitle = "Sélectionner un fichier de références nutritionnelles (.vbnr.json)"
-    fileChooser.fileFilter =
-            object : javax.swing.filechooser.FileFilter() {
-                override fun accept(f: File): Boolean {
-                    return f.isDirectory ||
-                            f.name.lowercase().endsWith(".vbnr.json") ||
-                            f.name.lowercase().endsWith(".json")
+    // Ouvrir le sélecteur de fichier sur l’EDT Swing
+    var selectedFile: File? = null
+    if (javax.swing.SwingUtilities.isEventDispatchThread()) {
+        val chooser =
+                JFileChooser().apply {
+                    dialogTitle =
+                            "Sélectionner un fichier de références nutritionnelles (.vbnr.json)"
+                    fileFilter =
+                            object : javax.swing.filechooser.FileFilter() {
+                                override fun accept(f: File): Boolean {
+                                    return f.isDirectory ||
+                                            f.name.lowercase().endsWith(".vbnr.json") ||
+                                            f.name.lowercase().endsWith(".json")
+                                }
+                                override fun getDescription(): String =
+                                        "Fichiers de références nutritionnelles (.vbnr.json, .json)"
+                            }
                 }
-
-                override fun getDescription(): String {
-                    return "Fichiers de références nutritionnelles (.vbnr.json, .json)"
-                }
-            }
-
-    val result = fileChooser.showOpenDialog(null)
-    if (result == JFileChooser.APPROVE_OPTION) {
-        val selectedFile = fileChooser.selectedFile
-
-        // Mettre à jour le message de statut immédiatement
-        viewModel.updateNutritionalRequirementImportResultMessage(
-                "🔄 Lecture du fichier en cours..."
-        )
-
-        // Lancer l'importation dans un thread séparé avec sauvegarde automatique
-        GlobalScope.launch {
-            try {
-                // Vider les résolutions problématiques précédentes
-                ImportUtils.clearResolutionsProblematiques()
-
-                // Lire le contenu du fichier
-                val jsonContent = selectedFile.readText()
-                viewModel.updateNutritionalRequirementImportResultMessage(
-                        "🔄 Importation en cours avec sauvegarde automatique..."
-                )
-
-                // Utiliser la nouvelle fonction avec sauvegarde automatique
-                val references =
-                        ImportUtils.importNutritionalRequirementsFromJson(
-                                jsonContent = jsonContent,
-                                databaseReferenceEvRepository =
-                                        viewModel.databaseReferenceEvRepository,
-                                equationRepository = viewModel.equationRepository,
-                                biblioRefRepository = viewModel.biblioRefRepository,
-                                sauvegarderEnBase = true // Activer la sauvegarde automatique
-                        )
-
-                if (references.isNotEmpty()) {
-                    // Générer un rapport de résolutions problématiques
-                    val rapportResolutions = ImportUtils.genererRapportResolutionsProblematiques()
-                    val messageSucces = StringBuilder()
-
-                    messageSucces.append(
-                            "✅ ${references.size} références nutritionnelles importées avec succès\n"
-                    )
-                    messageSucces.append(
-                            "💾 Données sauvegardées automatiquement en base de données\n\n"
-                    )
-
-                    // Ajouter le détail des références
-                    messageSucces.append("📋 Références importées:\n")
-                    references.forEachIndexed { index, ref ->
-                        messageSucces.append(
-                                "  ${index + 1}. ${ref.nom} (${ref.espece} - ${ref.stadePhysio})"
-                        )
-                        if (ref.maladie) {
-                            messageSucces.append(" - Maladie")
-                        }
-                        messageSucces.append("\n")
-                    }
-
-                    // Ajouter le rapport des résolutions si nécessaire
-                    if (rapportResolutions.isNotEmpty()) {
-                        messageSucces.append("\n⚠️ Résolutions de nutriments:\n")
-                        messageSucces.append(rapportResolutions)
-                    }
-
-                    viewModel.updateNutritionalRequirementImportResultMessage(
-                            messageSucces.toString()
-                    )
-                } else {
-                    viewModel.updateNutritionalRequirementImportResultMessage(
-                            "❌ Aucune référence nutritionnelle trouvée dans le fichier"
-                    )
-                }
-            } catch (e: Exception) {
-                val messageErreur = "❌ Erreur lors de l'importation: ${e.message}"
-                viewModel.updateNutritionalRequirementImportResultMessage(messageErreur)
-                println("Erreur détaillée: ${e.stackTraceToString()}")
-            }
-        }
+        if (chooser.showOpenDialog(null) == JFileChooser.APPROVE_OPTION)
+                selectedFile = chooser.selectedFile
     } else {
+        javax.swing.SwingUtilities.invokeAndWait {
+            val chooser =
+                    JFileChooser().apply {
+                        dialogTitle =
+                                "Sélectionner un fichier de références nutritionnelles (.vbnr.json)"
+                        fileFilter =
+                                object : javax.swing.filechooser.FileFilter() {
+                                    override fun accept(f: File): Boolean {
+                                        return f.isDirectory ||
+                                                f.name.lowercase().endsWith(".vbnr.json") ||
+                                                f.name.lowercase().endsWith(".json")
+                                    }
+                                    override fun getDescription(): String =
+                                            "Fichiers de références nutritionnelles (.vbnr.json, .json)"
+                                }
+                    }
+            if (chooser.showOpenDialog(null) == JFileChooser.APPROVE_OPTION)
+                    selectedFile = chooser.selectedFile
+        }
+    }
+
+    if (selectedFile == null) {
         viewModel.updateNutritionalRequirementImportResultMessage(
                 "❌ Importation annulée par l'utilisateur"
         )
+        return
+    }
+
+    viewModel.updateNutritionalRequirementImportResultMessage("🔄 Lecture du fichier en cours...")
+
+    // Import/parse/sauvegarde sur IO pour ne pas bloquer l’UI
+    GlobalScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+        try {
+            ImportUtils.clearResolutionsProblematiques()
+            val jsonContent = selectedFile!!.readText()
+            viewModel.updateNutritionalRequirementImportResultMessage(
+                    "🔄 Importation en cours avec sauvegarde automatique..."
+            )
+
+            val references =
+                    ImportUtils.importNutritionalRequirementsFromJson(
+                            jsonContent = jsonContent,
+                            databaseReferenceEvRepository = viewModel.databaseReferenceEvRepository,
+                            equationRepository = viewModel.equationRepository,
+                            biblioRefRepository = viewModel.biblioRefRepository,
+                            sauvegarderEnBase = true
+                    )
+
+            if (references.isNotEmpty()) {
+                val rapportResolutions = ImportUtils.genererRapportResolutionsProblematiques()
+                val messageSucces = buildString {
+                    append(
+                            "✅ ${references.size} références nutritionnelles importées avec succès\n"
+                    )
+                    append("💾 Données sauvegardées automatiquement en base de données\n\n")
+                    append("📋 Références importées:\n")
+                    references.forEachIndexed { index, ref ->
+                        append("  ${index + 1}. ${ref.nom} (${ref.espece} - ${ref.stadePhysio})")
+                        if (ref.maladie) append(" - Maladie")
+                        append("\n")
+                    }
+                    if (rapportResolutions.isNotEmpty()) {
+                        append("\n⚠️ Résolutions de nutriments:\n")
+                        append(rapportResolutions)
+                    }
+                }
+                viewModel.updateNutritionalRequirementImportResultMessage(messageSucces)
+            } else {
+                viewModel.updateNutritionalRequirementImportResultMessage(
+                        "❌ Aucune référence nutritionnelle trouvée dans le fichier"
+                )
+            }
+        } catch (e: Exception) {
+            viewModel.updateNutritionalRequirementImportResultMessage(
+                    "❌ Erreur lors de l'importation: ${e.message}"
+            )
+            println("Erreur détaillée: ${e.stackTraceToString()}")
+        }
+    }
+}
+
+/** Importe des données au nouveau format API (enveloppe) depuis un fichier – Desktop. */
+actual fun importApiFromFile(viewModel: SettingsViewModel) {
+    var selectedFile: File? = null
+    if (javax.swing.SwingUtilities.isEventDispatchThread()) {
+        val chooser =
+                JFileChooser().apply {
+                    dialogTitle = "Sélectionner un fichier d'export API (.json)"
+                    fileFilter =
+                            object : javax.swing.filechooser.FileFilter() {
+                                override fun accept(f: File): Boolean {
+                                    return f.isDirectory || f.name.lowercase().endsWith(".json")
+                                }
+                                override fun getDescription(): String = "Fichiers JSON (.json)"
+                            }
+                }
+        if (chooser.showOpenDialog(null) == JFileChooser.APPROVE_OPTION)
+                selectedFile = chooser.selectedFile
+    } else {
+        javax.swing.SwingUtilities.invokeAndWait {
+            val chooser =
+                    JFileChooser().apply {
+                        dialogTitle = "Sélectionner un fichier d'export API (.json)"
+                        fileFilter =
+                                object : javax.swing.filechooser.FileFilter() {
+                                    override fun accept(f: File): Boolean {
+                                        return f.isDirectory || f.name.lowercase().endsWith(".json")
+                                    }
+                                    override fun getDescription(): String = "Fichiers JSON (.json)"
+                                }
+                    }
+            if (chooser.showOpenDialog(null) == JFileChooser.APPROVE_OPTION)
+                    selectedFile = chooser.selectedFile
+        }
+    }
+
+    if (selectedFile == null) {
+        viewModel.setImportResult(SettingsViewModel.ImportResult.Error("❌ Import API annulé"))
+        return
+    }
+
+    kotlinx.coroutines.GlobalScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+        try {
+            val content = selectedFile!!.readText()
+            val exportRepo =
+                    fr.vetbrain.vetnutri_mp.Repository.ExportImportRepository(
+                            viewModel.animalRepository,
+                            viewModel.foodRepository,
+                            viewModel.equationRepository
+                    )
+            val count = exportRepo.importAll(content)
+            viewModel.setImportResult(
+                    SettingsViewModel.ImportResult.Success(count = count, importedCount = count)
+            )
+        } catch (e: Exception) {
+            viewModel.setImportResult(
+                    SettingsViewModel.ImportResult.Error("Erreur import API: ${e.message}")
+            )
+        }
     }
 }
 
 @Suppress("UNUSED_PARAMETER")
 actual fun exportJsonToFile(content: String, defaultFileName: String): Boolean {
-    return FileUtils.saveJsonFileDialog(content = content, defaultFileName = defaultFileName)
+    var resultat: Boolean = false
+    if (javax.swing.SwingUtilities.isEventDispatchThread()) {
+        resultat =
+                fr.vetbrain.vetnutri_mp.Utils.FileUtils.saveJsonFileDialog(
+                        content = content,
+                        defaultFileName = defaultFileName
+                )
+    } else {
+        javax.swing.SwingUtilities.invokeAndWait {
+            resultat =
+                    fr.vetbrain.vetnutri_mp.Utils.FileUtils.saveJsonFileDialog(
+                            content = content,
+                            defaultFileName = defaultFileName
+                    )
+        }
+    }
+    return resultat
 }
 
 actual fun openJsonFileContent(): String? {
-    return FileUtils.openJsonFileDialog()
+    var contenu: String? = null
+    if (javax.swing.SwingUtilities.isEventDispatchThread()) {
+        contenu = fr.vetbrain.vetnutri_mp.Utils.FileUtils.openJsonFileDialog()
+    } else {
+        javax.swing.SwingUtilities.invokeAndWait {
+            contenu = fr.vetbrain.vetnutri_mp.Utils.FileUtils.openJsonFileDialog()
+        }
+    }
+    return contenu
 }

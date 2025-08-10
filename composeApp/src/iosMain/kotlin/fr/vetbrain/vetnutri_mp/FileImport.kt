@@ -24,3 +24,12 @@ actual fun importFoodsFromFile(viewModel: SettingsViewModel) {
             )
     )
 }
+
+/** Import API (nouveau format) – iOS stub */
+actual fun importApiFromFile(viewModel: SettingsViewModel) {
+    viewModel.setImportResult(
+            SettingsViewModel.ImportResult.Error(
+                    "L'import API n'est pas encore implémenté sur iOS."
+            )
+    )
+}

@@ -74,7 +74,6 @@ class FoodListViewModel(private val foodRepository: DatabaseFoodRepository) {
 
                         // Mettre à jour les listes de valeurs disponibles pour les filtres
                         updateAvailableFilterValues(allFoods)
-
                 }
         }
 

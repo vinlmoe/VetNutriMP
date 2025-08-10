@@ -33,6 +33,9 @@ expect fun importFoodsFromFile(viewModel: SettingsViewModel)
 
 expect fun importNutritionalRequirementsFromFile(viewModel: ImportViewModel)
 
+// Import (nouveau format API) depuis un fichier – implémenté par plateforme
+expect fun importApiFromFile(viewModel: SettingsViewModel)
+
 // Export/Import génériques pour le nouveau format API
 expect fun exportJsonToFile(content: String, defaultFileName: String): Boolean
 
