@@ -835,10 +835,19 @@ fun ReferenceEvEquationsTab(viewModel: NewReferenceEvViewModel) {
 @Composable
 fun ReferenceEvComplementaryTab(viewModel: NewReferenceEvViewModel) {
         val currentReference by viewModel.currentReference.collectAsState()
+        val forceUpdate by viewModel.forceUpdate.collectAsState()
         val complementary =
-                remember(currentReference) { viewModel.getComplementaryEquationsForCurrent() }
+                remember(currentReference, forceUpdate) {
+                        viewModel.getComplementaryEquationsForCurrent()
+                }
         val selectedUuids =
-                remember(currentReference) { currentReference.equationsNut.map { it.uuid }.toSet() }
+                remember(currentReference, forceUpdate) {
+                        currentReference.equationsNut.map { it.uuid }.toSet()
+                }
+
+        // État local optimiste pour un retour visuel immédiat au clic
+        var selectedUuidsState by
+                remember(currentReference, forceUpdate) { mutableStateOf(selectedUuids) }
 
         Column(
                 modifier = Modifier.fillMaxSize().padding(16.dp),
@@ -905,9 +914,17 @@ fun ReferenceEvComplementaryTab(viewModel: NewReferenceEvViewModel) {
                                                                 )
                                                         }
                                                         val isSelected =
-                                                                selectedUuids.contains(eq.uuid)
+                                                                selectedUuidsState.contains(eq.uuid)
                                                         Button(
                                                                 onClick = {
+                                                                        // Mise à jour optimiste
+                                                                        selectedUuidsState =
+                                                                                if (isSelected)
+                                                                                        selectedUuidsState -
+                                                                                                eq.uuid
+                                                                                else
+                                                                                        selectedUuidsState +
+                                                                                                eq.uuid
                                                                         viewModel
                                                                                 .toggleComplementaryEquation(
                                                                                         eq
