@@ -124,8 +124,7 @@ data class RationItemApi(
         val density: Double? = null
 )
 
-@Serializable
-data class SupplementalVariableApi(val variable: String, val value: Float)
+@Serializable data class SupplementalVariableApi(val variable: String, val value: Float)
 
 @Serializable
 data class EquationApi(
