@@ -1,34 +1,92 @@
 package fr.vetbrain.vetnutri_mp.Export
 
 import platform.CoreGraphics.CGRectMake
+import platform.Foundation.NSArray
+import platform.Foundation.NSData
 import platform.Foundation.NSMutableData
+import platform.Foundation.NSString
+import platform.Foundation.NSTemporaryDirectory
+import platform.Foundation.NSURL
+import platform.Foundation.NSValue
+import platform.Foundation.create
+import platform.Foundation.writeToFile
+import platform.UIKit.UIActivityViewController
+import platform.UIKit.UIApplication
 import platform.UIKit.UIGraphicsBeginPDFContextToData
 import platform.UIKit.UIGraphicsBeginPDFPage
 import platform.UIKit.UIGraphicsEndPDFContext
-import platform.UIKit.UIGraphicsGetCurrentContext
+import platform.UIKit.UIGraphicsGetPDFContextBounds
+import platform.UIKit.UIMarkupTextPrintFormatter
+import platform.UIKit.UIPrintPageRenderer
+import platform.UIKit.UIViewController
 
 actual object PdfExporter {
+    private const val a4Width: Double = 595.0
+    private const val a4Height: Double = 842.0
+    private const val margin: Double = 20.0
+
     actual fun exportDocument(
             documentType: DocumentType,
             data: ExportData,
             defaultFileName: String
     ): Boolean {
-        // Implémentation simple: créer un PDF avec le HTML comme texte brut rendu par WKWebView est
-        // non-trivial sans impression.
-        // Ici on génère un PDF minimal indiquant que l’export sera branché via
-        // UIActivityViewController côté app iOS.
+        val html: String = HtmlDocumentBuilder.buildHtml(documentType, data)
+        val pdfBytes: NSData? = genererPdfDepuisHtml(html)
+        if (pdfBytes == null) return false
+        val nomFichier: String = if (defaultFileName.isBlank()) "document.pdf" else defaultFileName
+        val cheminTemp: String = NSTemporaryDirectory().plus(nomFichier)
+        val ecrit: Boolean = (pdfBytes as NSMutableData).writeToFile(cheminTemp, true)
+        if (!ecrit) return false
+        val url: NSURL = NSURL.fileURLWithPath(path = cheminTemp)
+        val controleur: UIViewController? = obtenirTopViewController()
+        if (controleur == null) return true
+        val activites: UIActivityViewController =
+                UIActivityViewController(
+                        activityItems = listOf(url) as NSArray,
+                        applicationActivities = null
+                )
+        controleur.presentViewController(activites, animated = true, completion = null)
+        return true
+    }
+
+    private fun genererPdfDepuisHtml(html: String): NSData? {
         return try {
-            val pdfData = NSMutableData()
-            UIGraphicsBeginPDFContextToData(pdfData, CGRectMake(0.0, 0.0, 595.0, 842.0), null)
-            UIGraphicsBeginPDFPage()
-            val ctx = UIGraphicsGetCurrentContext()
-            // Option minimale: rien dessiner, on renverra faux pour indiquer à l’UI d’utiliser un
-            // partage HTML → impression.
+            val formatteur: UIMarkupTextPrintFormatter =
+                    UIMarkupTextPrintFormatter(markupText = html)
+            val renderer: UIPrintPageRenderer = UIPrintPageRenderer()
+            renderer.addPrintFormatter(formatteur, startingAtPageAt = 0)
+            val pageRect = CGRectMake(0.0, 0.0, a4Width, a4Height)
+            val printableRect =
+                    CGRectMake(margin, margin, a4Width - 2 * margin, a4Height - 2 * margin)
+            renderer.setValue(
+                    NSValue.valueWithCGRect(pageRect),
+                    forKey = NSString.create(string = "paperRect")
+            )
+            renderer.setValue(
+                    NSValue.valueWithCGRect(printableRect),
+                    forKey = NSString.create(string = "printableRect")
+            )
+            val data: NSMutableData = NSMutableData()
+            UIGraphicsBeginPDFContextToData(data, pageRect, null)
+            val pages: Int = renderer.numberOfPages
+            var i: Int = 0
+            while (i < pages) {
+                UIGraphicsBeginPDFPage()
+                renderer.drawPageAtIndex(i.toLong(), inRect = UIGraphicsGetPDFContextBounds())
+                i += 1
+            }
             UIGraphicsEndPDFContext()
-            true
+            data
         } catch (t: Throwable) {
-            false
+            null
         }
     }
-}
 
+    private fun obtenirTopViewController(): UIViewController? {
+        var controleur: UIViewController? =
+                UIApplication.sharedApplication.keyWindow?.rootViewController
+        while (controleur?.presentedViewController != null) controleur =
+                controleur?.presentedViewController
+        return controleur
+    }
+}
