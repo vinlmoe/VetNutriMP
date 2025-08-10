@@ -29,6 +29,7 @@ import fr.vetbrain.vetnutri_mp.Utils.EquationEvaluator
 import fr.vetbrain.vetnutri_mp.Utils.ExpressionEvaluator
 import fr.vetbrain.vetnutri_mp.Utils.ResultatValidation
 import fr.vetbrain.vetnutri_mp.Utils.TypeEquationValidation
+import fr.vetbrain.vetnutri_mp.Utils.genUUID
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -243,6 +244,20 @@ class EquationViewModel(
                     biblioRepository.getAllBiblioRefs().collect { refs -> _biblioRefs.value = refs }
                 }
             } catch (e: Exception) {}
+        }
+    }
+
+    /** Duplique une équation (tous les champs conservés, nouvel UUID) et l'enregistre */
+    fun duplicateEquation(source: Equation) {
+        coroutineScope.launch(AppDispatchers.IO) {
+            try {
+                val duplicated = source.copy(uuid = genUUID(), name = source.name + " (Duplicate)")
+                equationRepository.saveEquation(duplicated)
+                loadEquations()
+                _operationMessage.value = "Équation dupliquée"
+            } catch (e: Exception) {
+                _operationMessage.value = "Erreur lors de la duplication: ${e.message}"
+            }
         }
     }
 

@@ -37,13 +37,11 @@ fun BiblioRefListView(
     // est affichée
     LaunchedEffect(Unit) { viewModel.refreshBiblioRefs() }
 
-    LaunchedEffect(biblioRefs) {
-    }
+    LaunchedEffect(biblioRefs) {}
 
     LaunchedEffect(Unit) {
         // Si la liste est vide, on peut ajouter des références de test (pour développement)
-        if (biblioRefs.isEmpty()) {
-        }
+        if (biblioRefs.isEmpty()) {}
     }
 
     // Filtrage des références en fonction de la recherche
@@ -134,7 +132,19 @@ fun BiblioRefListView(
                         BiblioRefCard(
                                 biblioRef = biblioRef,
                                 onDelete = { refToDelete = biblioRef },
-                                onEdit = { onEditBiblioRef(biblioRef.uuid) }
+                                onEdit = { onEditBiblioRef(biblioRef.uuid) },
+                                onDuplicate = {
+                                    coroutineScope.launch {
+                                        // Dupliquer la biblio (sans l'uuid)
+                                        val duplicated =
+                                                biblioRef.copy(
+                                                        uuid =
+                                                                fr.vetbrain.vetnutri_mp.Utils
+                                                                        .genUUID()
+                                                )
+                                        viewModel.saveBiblioRefDuplicated(duplicated)
+                                    }
+                                }
                         )
                     }
                 }
@@ -163,6 +173,7 @@ private fun BiblioRefCard(
         biblioRef: BiblioRef,
         onDelete: () -> Unit,
         onEdit: () -> Unit,
+        onDuplicate: () -> Unit,
         modifier: Modifier = Modifier
 ) {
     Card(
@@ -204,6 +215,14 @@ private fun BiblioRefCard(
                         Icon(
                                 imageVector = AppIcons.Edit,
                                 contentDescription = "Modifier",
+                                tint = VetNutriColors.Primary
+                        )
+                    }
+
+                    IconButton(onClick = onDuplicate) {
+                        Icon(
+                                imageVector = AppIcons.ContentCopy,
+                                contentDescription = "Dupliquer",
                                 tint = VetNutriColors.Primary
                         )
                     }

@@ -94,126 +94,126 @@ data class EquationApi(
 
 /** Mappers domaine -> API */
 fun AnimalEv.toApi(): AnimalApi {
-    return AnimalApi(
-            uuid = uuid,
-            name = nom,
-            isDead = dead,
-            externalId = id,
-            sexId = sexId,
-            specieId = specieId,
-            ownerName = ownerName,
-            birthdate = birthdate,
-            breed = race,
-            summary = summary,
-            weights = weightHistory.map { it.toApi() },
-            consultations = consultations.map { it.toApi() }
-    )
+        return AnimalApi(
+                uuid = uuid,
+                name = nom,
+                isDead = dead,
+                externalId = id,
+                sexId = sexId,
+                specieId = specieId,
+                ownerName = ownerName,
+                birthdate = birthdate,
+                breed = race,
+                summary = summary,
+                weights = weightHistory.map { it.toApi() },
+                consultations = consultations.map { it.toApi() }
+        )
 }
 
 fun WeightDate.toApi(): WeightEntryApi {
-    return WeightEntryApi(uuid = uuid, date = date, valueKg = value)
+        return WeightEntryApi(uuid = uuid, date = date, valueKg = value)
 }
 
 fun ConsultationEv.toApi(): ConsultationApi {
-    return ConsultationApi(
-            uuid = uuid,
-            date = date,
-            objective = objectConsult,
-            observation = observation,
-            report = cRendu,
-            weightKg = weight,
-            idealWeightKg = idealWeight,
-            waterMl = water,
-            bodyFatPercent = bodyFat,
-            bcs = BCS,
-            mcs = MCS
-    )
+        return ConsultationApi(
+                uuid = uuid,
+                date = date,
+                objective = objectConsult,
+                observation = observation,
+                report = cRendu,
+                weightKg = weight,
+                idealWeightKg = idealWeight,
+                waterMl = water,
+                bodyFatPercent = bodyFat,
+                bcs = BCS,
+                mcs = MCS
+        )
 }
 
 /** Mappers API -> domaine */
 fun AnimalApi.toDomain(): AnimalEv {
-    return AnimalEv(
-            uuid = uuid,
-            nom = name,
-            dead = isDead,
-            id = externalId,
-            sexId = sexId,
-            specieId = specieId,
-            ownerName = ownerName,
-            birthdate = birthdate,
-            race = breed,
-            summary = summary,
-            consultations = consultations.map { it.toDomain() }.toMutableList(),
-            weightHistory = weights.map { it.toDomain() }.toMutableList()
-    )
+        return AnimalEv(
+                uuid = uuid,
+                nom = name,
+                dead = isDead,
+                id = externalId,
+                sexId = sexId,
+                specieId = specieId,
+                ownerName = ownerName,
+                birthdate = birthdate,
+                race = breed,
+                summary = summary,
+                consultations = consultations.map { it.toDomain() }.toMutableList(),
+                weightHistory = weights.map { it.toDomain() }.toMutableList()
+        )
 }
 
 // Mappeurs Foods
 fun AlimentEv.toApi(): FoodApi {
-    return FoodApi(
-            uuid = uuid,
-            name = nom,
-            group = group?.name,
-            kind = typeAliment?.name,
-            brand = brand,
-            price = price,
-            species = especes,
-            indications = indicat.map { it.name },
-            nutrients = valMap.mapKeys { it.key.label }.mapValues { it.value.value }
-    )
+        return FoodApi(
+                uuid = uuid,
+                name = nom,
+                group = group?.name,
+                kind = typeAliment?.name,
+                brand = brand,
+                price = price,
+                species = especes,
+                indications = indicat.map { it.name },
+                nutrients = valMap.mapKeys { it.key.label }.mapValues { it.value.value }
+        )
 }
 
 // Rations (simplifié: on sérialise ce qui est disponible depuis le domaine)
 fun Ration.toApi(): RationApi {
-    return RationApi(
-            uuid = uuid,
-            consultationId = idConsult,
-            name = name,
-            isCurrent = actual,
-            items =
-                    alimentMutableList.mapNotNull { item ->
-                        val foodId: String? = item.aliment?.uuid
-                        if (foodId != null)
-                                RationItemApi(
-                                        foodId = foodId,
-                                        quantity = item.quantite,
-                                        proportion = item.proportion
-                                )
-                        else null
-                    }
-    )
+        return RationApi(
+                uuid = uuid,
+                consultationId = idConsult,
+                name = name,
+                isCurrent = actual,
+                items =
+                        alimentMutableList.mapNotNull { item ->
+                                val foodId: String? = item.aliment?.uuid
+                                if (foodId != null)
+                                        RationItemApi(
+                                                foodId = foodId,
+                                                quantity = item.quantite,
+                                                proportion = item.proportion
+                                        )
+                                else null
+                        }
+        )
 }
 
 // Equations
 fun Equation.toApi(): EquationApi {
-    return EquationApi(
-            uuid = uuid,
-            name = name,
-            specie = specie?.name,
-            kind = kind.name,
-            nutrient = nutrient?.label,
-            script = equationScript,
-            variables = variables.map { it.variable },
-            ratio = ratio
-    )
+        return EquationApi(
+                uuid = uuid,
+                name = name,
+                specie = specie?.name,
+                kind = kind.name,
+                nutrient = nutrient?.label,
+                script = equationScript,
+                variables = variables.map { it.variable },
+                ratio = ratio
+        )
 }
 
 fun WeightEntryApi.toDomain(): WeightDate {
-    return WeightDate(uuid = uuid, refAnimal = "", date = date, value = valueKg)
+        return WeightDate(uuid = uuid, refAnimal = "", date = date, value = valueKg)
 }
 
 fun ConsultationApi.toDomain(): ConsultationEv {
-    return ConsultationEv(
-            uuid = uuid,
-            date = date,
-            objectConsult = objective,
-            observation = observation,
-            cRendu = report,
-            weight = weightKg,
-            idealWeight = idealWeightKg,
-            water = waterMl,
-            bodyFat = bodyFatPercent,
-            BCS = bcs,
-            MCS = mcs
-    )
+        return ConsultationEv(
+                uuid = uuid,
+                date = date,
+                objectConsult = objective,
+                observation = observation,
+                cRendu = report,
+                weight = weightKg,
+                idealWeight = idealWeightKg,
+                water = waterMl,
+                bodyFat = bodyFatPercent,
+                BCS = bcs,
+                MCS = mcs
+        )
 }
