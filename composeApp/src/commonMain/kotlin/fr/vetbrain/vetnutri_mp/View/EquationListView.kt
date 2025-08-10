@@ -60,6 +60,8 @@ fun EquationListView(
                 }
             }
 
+    // Dé duplication, la carte reçoit désormais un callback onDuplicate directement
+
     Scaffold(
             floatingActionButton = {
                 FloatingActionButton(
@@ -133,7 +135,8 @@ fun EquationListView(
                                 onDelete = {
                                     equationToDelete = equation
                                     showDeleteConfirmation = true
-                                }
+                                },
+                                onDuplicate = { viewModel.duplicateEquation(equation) }
                         )
                     }
                 }
@@ -200,6 +203,7 @@ private fun EquationCard(
         equation: Equation,
         onEdit: () -> Unit,
         onDelete: () -> Unit,
+        onDuplicate: () -> Unit,
         modifier: Modifier = Modifier
 ) {
     Card(
@@ -295,6 +299,15 @@ private fun EquationCard(
                         Icon(
                                 imageVector = AppIcons.Edit,
                                 contentDescription = "Modifier",
+                                tint = VetNutriColors.Primary
+                        )
+                    }
+
+                    // Dupliquer intégralement (sauf UUID)
+                    IconButton(onClick = onDuplicate) {
+                        Icon(
+                                imageVector = AppIcons.ContentCopy,
+                                contentDescription = "Dupliquer",
                                 tint = VetNutriColors.Primary
                         )
                     }

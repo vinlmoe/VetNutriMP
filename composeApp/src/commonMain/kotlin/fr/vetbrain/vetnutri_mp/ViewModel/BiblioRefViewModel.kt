@@ -53,11 +53,9 @@ class BiblioRefViewModel(private val repository: BiblioRefRepository) {
             try {
                 // Utilisation d'une collecte avec timeout pour éviter de bloquer indéfiniment
                 kotlinx.coroutines.withTimeoutOrNull(2000) {
-                    repository.getAllBiblioRefs().collect { refs ->
-                    }
+                    repository.getAllBiblioRefs().collect { refs -> }
                 }
-            } catch (e: Exception) {
-            }
+            } catch (e: Exception) {}
         }
     }
 
@@ -80,7 +78,6 @@ class BiblioRefViewModel(private val repository: BiblioRefRepository) {
 
                 // Vérifier la validité
                 validateForm()
-
             } else {
                 _operationMessage.value = "Référence non trouvée (ID: $biblioRefId)"
                 println("DEBUG BiblioRefViewModel: Référence non trouvée (ID: $biblioRefId)")
@@ -210,6 +207,20 @@ class BiblioRefViewModel(private val repository: BiblioRefRepository) {
                 e.printStackTrace()
             } finally {
                 _actionInProgress.value = false
+            }
+        }
+    }
+
+    /** Sauvegarde directe d'une référence déjà construite (utile pour duplication) */
+    fun saveBiblioRefDuplicated(biblioRef: BiblioRef) {
+        viewModelScope.launch {
+            try {
+                val toSave = biblioRef.copy(firstAuthor = biblioRef.firstAuthor + " (Duplicate)")
+                repository.insertBiblioRef(toSave)
+                refreshBiblioRefs()
+                _operationMessage.value = "Référence dupliquée avec succès"
+            } catch (e: Exception) {
+                _operationMessage.value = "Erreur: ${e.message}"
             }
         }
     }

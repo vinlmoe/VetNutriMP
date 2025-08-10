@@ -216,6 +216,26 @@ class ReferenceEvViewModel(
         }
     }
 
+    /** Duplique une référence en base (copie intégrale sans conserver l'UUID) */
+    suspend fun duplicateReference(source: ReferenceEv) {
+        _loading.value = true
+        try {
+            // Créer une copie avec un nouvel UUID
+            val duplicated =
+                    source.copy(
+                            uuid = fr.vetbrain.vetnutri_mp.Utils.genUUID(),
+                            nom = source.nom + " (Duplicate)"
+                    )
+            repository.create(duplicated)
+            loadAllReferences()
+            _operationMessage.value = "Référence dupliquée avec succès"
+        } catch (e: Exception) {
+            _error.value = "Erreur lors de la duplication: ${e.message ?: "Erreur inconnue"}"
+        } finally {
+            _loading.value = false
+        }
+    }
+
     /** Obtient une référence par son identifiant */
     suspend fun getReferenceById(referenceId: String): ReferenceEv? {
         return try {
@@ -423,7 +443,6 @@ class ReferenceEvViewModel(
                             null
                         }
 
-
                 // Mise à jour de l'équation selon son type
                 when (type) {
                     "BW" -> updatedReference.equationBW = selectedEquation ?: Equation()
@@ -431,7 +450,6 @@ class ReferenceEvViewModel(
                     "DEcom" -> updatedReference.equationDEcom = selectedEquation ?: Equation()
                     "DEraw" -> updatedReference.equationDEraw = selectedEquation ?: Equation()
                 }
-
 
                 // Mise à jour dans la base de données
                 val result = repository.update(updatedReference)
@@ -456,8 +474,7 @@ class ReferenceEvViewModel(
         val currentRef = _currentReferenceEv.value
 
         // Afficher les équations actuellement associées
-        currentRef.equationsNut.forEach { equationItem ->
-        }
+        currentRef.equationsNut.forEach { equationItem -> }
 
         scope.launch {
             _actionInProgress.value = true
@@ -484,7 +501,6 @@ class ReferenceEvViewModel(
                     newList.add(equation)
                     updatedReference.equationsNut = newList
                 }
-
 
                 // Mise à jour dans la base de données
                 val result = repository.update(updatedReference)
@@ -550,8 +566,7 @@ class ReferenceEvViewModel(
                 }
 
                 // Vérification des équations associées à la référence courante
-                _currentReferenceEv.value.equationsNut.forEach { equation ->
-                }
+                _currentReferenceEv.value.equationsNut.forEach { equation -> }
 
                 // Vérification des équations principales
             } catch (e: Exception) {

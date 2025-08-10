@@ -6,6 +6,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Analytics
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Done
@@ -31,7 +32,7 @@ object AppIcons {
     val ArrowDropUp: ImageVector = Icons.Default.MoreVert
     val Check: ImageVector = Icons.Default.Check
     val Close: ImageVector = Icons.Default.Close
-    val ContentCopy: ImageVector = Icons.Default.Add // Utiliser Add comme fallback temporaire
+    val ContentCopy: ImageVector = Icons.Default.ContentCopy
     val DateRange: ImageVector = Icons.Default.DateRange
     val Delete: ImageVector = Icons.Default.Delete
     val Edit: ImageVector = Icons.Default.Edit

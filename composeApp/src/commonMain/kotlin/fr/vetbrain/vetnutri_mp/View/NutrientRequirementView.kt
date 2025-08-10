@@ -134,7 +134,12 @@ fun NutrientRequirementView(
                         ReferenceNutrientCard(
                                 reference = reference,
                                 onEdit = { onEditReference(reference.uuid) },
-                                onDelete = { refToDelete = reference }
+                                onDelete = { refToDelete = reference },
+                                onDuplicate = {
+                                    coroutineScope.launch {
+                                        viewModel.duplicateReference(reference)
+                                    }
+                                }
                         )
                     }
                 }
@@ -176,6 +181,7 @@ private fun ReferenceNutrientCard(
         reference: ReferenceEv,
         onEdit: () -> Unit,
         onDelete: () -> Unit,
+        onDuplicate: () -> Unit,
         modifier: Modifier = Modifier
 ) {
     Card(modifier = modifier.fillMaxWidth().clickable { onEdit() }, elevation = 4.dp) {
@@ -222,6 +228,14 @@ private fun ReferenceNutrientCard(
                         Icon(
                                 imageVector = AppIcons.Edit,
                                 contentDescription = "Éditer la référence",
+                                tint = VetNutriColors.Primary
+                        )
+                    }
+
+                    IconButton(onClick = onDuplicate) {
+                        Icon(
+                                imageVector = AppIcons.ContentCopy,
+                                contentDescription = "Dupliquer la référence",
                                 tint = VetNutriColors.Primary
                         )
                     }
