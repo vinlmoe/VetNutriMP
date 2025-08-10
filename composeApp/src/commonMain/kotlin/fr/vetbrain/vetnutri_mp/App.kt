@@ -127,11 +127,12 @@ fun App(appDatabase: AppDatabase) {
     val createAnimalViewModel = remember { CreateAnimalViewModel(animalRepository) }
     val settingsViewModel = remember {
         SettingsViewModel(
-                animalRepository,
-                foodRepository,
-                databaseReferenceEvRepository,
-                equationRepository,
-                biblioRefRepository
+                animalRepository = animalRepository,
+                foodRepository = foodRepository,
+                referenceEvRepository = databaseReferenceEvRepository,
+                equationRepository = equationRepository,
+                biblioRefRepository = biblioRefRepository,
+                consultationRepository = consultationRepository
         )
     }
     val foodListViewModel = remember { FoodListViewModel(foodRepository) }

@@ -70,7 +70,8 @@ expect object AppDatabaseConstructor : RoomDatabaseConstructor<AppDatabase> {
 fun getRoomDatabase(builder: RoomDatabase.Builder<AppDatabase>): AppDatabase {
     return try {
         // ✅ Configuration sécurisée avec migrations explicites
-        builder.addMigrations(
+        builder.setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
+                .addMigrations(
                         // Migration 17→18 : Test de montée de version sécurisée
                         createMigration17to18(),
                         // Migration 18→19 : Test de notre système Room KMP
@@ -90,7 +91,8 @@ fun getRoomDatabase(builder: RoomDatabase.Builder<AppDatabase>): AppDatabase {
 
         // ⚠️ En dernier recours seulement, avec avertissement explicite
 
-        builder.fallbackToDestructiveMigration(true)
+        builder.setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
+                .fallbackToDestructiveMigration(true)
                 .setDriver(BundledSQLiteDriver())
                 .setQueryCoroutineContext(AppDispatchers.IO)
                 .build()

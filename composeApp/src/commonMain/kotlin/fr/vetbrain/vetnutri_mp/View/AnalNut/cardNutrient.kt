@@ -185,7 +185,7 @@ fun AnalyseNutritionnelleCard(
                                     val valeur =
                                             if (eq.ratio) {
                                                 fr.vetbrain.vetnutri_mp.Utils.EquationEvaluator
-                                                        .evaluerBesoinNutritionnel(
+                                                        .evaluerBesoinNutritionnelAvecComplementairesBlocking(
                                                                 expression = eq.equationScript,
                                                                 poidsCorps = poids,
                                                                 besoinEnergetique = bee,
@@ -195,7 +195,25 @@ fun AnalyseNutritionnelleCard(
                                                                                 ?.lastOrNull()
                                                                                 ?.suppVarp
                                                                                 ?: mutableListOf()),
-                                                                ration = ration
+                                                                ration = ration,
+                                                                preferences =
+                                                                        (kotlinx.coroutines
+                                                                                .runBlocking {
+                                                                                    preferencesRepository
+                                                                                            ?.getPreferencesForSpecies(
+                                                                                                    ration.getEspece()
+                                                                                            )
+                                                                                }
+                                                                                ?: fr.vetbrain
+                                                                                        .vetnutri_mp
+                                                                                        .Data
+                                                                                        .PreferencesEspece
+                                                                                        .createDefault(
+                                                                                                ration.getEspece()
+                                                                                        )),
+                                                                equationRepository =
+                                                                        equationRepository!!,
+                                                                referenceEv = referenceUtilisee
                                                         )
                                                         ?: 0.0
                                             } else 0.0

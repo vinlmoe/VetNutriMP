@@ -68,19 +68,15 @@ fun AlimentEvJson.toData(): AlimentEv {
     // Améliorer la conversion des nutriments
     val nutrientMap = mutableMapOf<Nutrient, NutrientQuantity>()
     if (this.valMap.isNotEmpty()) {
-        println("Conversion des nutriments pour ${this.nom} (${this.UUID}):")
         this.valMap.forEach { (key, nutrientQuantity) ->
             // Récupérer le nom du nutriment et sa valeur
             val nutrientKey = nutrientQuantity.nut
             val value = nutrientQuantity.value
 
-
             val nutrient = AllNutrientResolver(nutrientKey)
             if (nutrient != null) {
                 nutrientMap[nutrient] = NutrientQuantity(value, nutrient.label)
-                println("  • $nutrientKey -> ${nutrient.label}: $value (Résolu avec succès)")
             } else {
-                println("  • $nutrientKey: $value (Non résolu)")
                 // Essayer de nettoyer la clé pour trouver une correspondance
                 val cleanedKey = nutrientKey.trim().replace("_", " ")
                 val nutrientAfterClean = AllNutrientResolver(cleanedKey)
@@ -90,8 +86,6 @@ fun AlimentEvJson.toData(): AlimentEv {
                 }
             }
         }
-    } else {
-        println("Aucun nutriment à convertir pour ${this.nom} (${this.UUID})")
     }
 
     // Créer l'objet AlimentEv

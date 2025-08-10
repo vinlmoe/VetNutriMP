@@ -70,7 +70,11 @@ data class AlimentRation(
                                                 fr.vetbrain.vetnutri_mp.Utils.EquationEvaluator
                                                         .evaluerBesoinNutritionnelPourAliment(
                                                                 expression = eq.equationScript,
-                                                                aliment = this
+                                                                aliment = this,
+                                                                preferences = preferences,
+                                                                equationRepository =
+                                                                        equationRepository,
+                                                                referenceEv = referenceEv
                                                         )
                                         if (res != null) return res.toFloat()
                                 }
@@ -132,7 +136,13 @@ data class AlimentRation(
                                                                         .evaluerBesoinNutritionnelPourAliment(
                                                                                 expression =
                                                                                         eq.equationScript,
-                                                                                aliment = this
+                                                                                aliment = this,
+                                                                                preferences =
+                                                                                        preferences,
+                                                                                equationRepository =
+                                                                                        equationRepository,
+                                                                                referenceEv =
+                                                                                        referenceEv
                                                                         )
                                                                         ?: 0.0
                                                         println(
