@@ -28,7 +28,6 @@ import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.ImportViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.SettingsViewModel
 import fr.vetbrain.vetnutri_mp.exportJsonToFile
-import fr.vetbrain.vetnutri_mp.openJsonFileContent
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 
@@ -711,44 +710,12 @@ fun SettingsView(
                                                                 )
                                                         }
 
-                                                        // Import (nouveau format API)
+                                                        // Import (nouveau format API) – aligné sur
+                                                        // import animaux
                                                         Button(
                                                                 onClick = {
-                                                                        coroutineScope.launch {
-                                                                                try {
-                                                                                        val content =
-                                                                                                openJsonFileContent()
-                                                                                        if (content !=
-                                                                                                        null
-                                                                                        ) {
-                                                                                                val exportRepo =
-                                                                                                        ExportImportRepository(
-                                                                                                                viewModel
-                                                                                                                        .animalRepository,
-                                                                                                                viewModel
-                                                                                                                        .foodRepository,
-                                                                                                                viewModel
-                                                                                                                        .equationRepository
-                                                                                                        )
-                                                                                                val count =
-                                                                                                        exportRepo
-                                                                                                                .importAll(
-                                                                                                                        content
-                                                                                                                )
-                                                                                                resultMessage =
-                                                                                                        "✅ Import API: $count animaux"
-                                                                                                onAnimalListRefresh()
-                                                                                        } else {
-                                                                                                resultMessage =
-                                                                                                        "❌ Aucun fichier sélectionné"
-                                                                                        }
-                                                                                } catch (
-                                                                                        e:
-                                                                                                Exception) {
-                                                                                        resultMessage =
-                                                                                                "❌ Erreur import API: ${e.message}"
-                                                                                }
-                                                                        }
+                                                                        viewModel
+                                                                                .importApiFromFileUI()
                                                                 },
                                                                 colors =
                                                                         ButtonDefaults.buttonColors(

@@ -173,7 +173,6 @@ class DatabaseFoodRepository(
             val nonResolvedNutrients = mutableMapOf<String, Int>()
             val importErrors = mutableListOf<String>()
 
-
             // Récupérer la liste des UUIDs des aliments existants pour vérification rapide
             val existingFoodUUIDs = foodDao.getAllFoods().map { it.uuid }.toSet()
 
@@ -213,7 +212,6 @@ class DatabaseFoodRepository(
                                                             .replace("\"", "")
                                                             .trim()
 
-
                                             // Essayer plusieurs stratégies pour reconnaître
                                             // l'espèce
                                             val espece = Espece.getFromString(cleanedEspece)
@@ -240,7 +238,6 @@ class DatabaseFoodRepository(
                                                             .replace("]", "")
                                                             .replace("\"", "")
                                                             .trim()
-
 
                                             // Essayer de reconnaître l'indication
                                             val indication = AlimIndic.getFromString(cleanedIndic)
@@ -369,7 +366,6 @@ class DatabaseFoodRepository(
                                                             .replace("\"", "")
                                                             .trim()
 
-
                                             // Essayer plusieurs stratégies pour reconnaître
                                             // l'espèce
                                             val espece = Espece.getFromString(cleanedEspece)
@@ -396,7 +392,6 @@ class DatabaseFoodRepository(
                                                             .replace("]", "")
                                                             .replace("\"", "")
                                                             .trim()
-
 
                                             // Essayer de reconnaître l'indication
                                             val indication = AlimIndic.getFromString(cleanedIndic)
@@ -460,17 +455,14 @@ class DatabaseFoodRepository(
                 }
             }
 
-
             // Afficher en détail les erreurs si nécessaire
             if (errorCount > 0) {
-                importErrors.forEachIndexed { index, error ->
-                }
+                importErrors.forEachIndexed { index, error -> }
             }
 
             // Afficher les nutriments non résolus
             if (nonResolvedNutrients.isNotEmpty()) {
-                nonResolvedNutrients.forEach { (nutrient, count) ->
-                }
+                nonResolvedNutrients.forEach { (nutrient, count) -> }
             }
 
             return@withContext FoodImportResult(
@@ -657,14 +649,12 @@ class DatabaseFoodRepository(
             }
         }
 
-
         // Insérer toutes les valeurs nutritionnelles
         if (nutrientValues.isNotEmpty()) {
             try {
                 if (nutrientValueDao != null) {
                     nutrientValueDao.insertNutrientValues(nutrientValues)
-                } else {
-                }
+                } else {}
             } catch (e: Exception) {
                 e.printStackTrace()
 
@@ -678,8 +668,7 @@ class DatabaseFoodRepository(
                             // au lieu de insertNutrientValue qui n'existe pas
                             nutrientValueDao.insertNutrientValues(listOf(nutrientValue))
                             successCount++
-                        } catch (innerE: Exception) {
-                        }
+                        } catch (innerE: Exception) {}
                     }
                 }
             }
@@ -723,7 +712,6 @@ class DatabaseFoodRepository(
                 if (nutrientValueDao != null && nutrientValues.isNotEmpty()) {
                     nutrientValueDao.insertNutrientValues(nutrientValues)
                 }
-
 
                 // Mettre à jour le Flow pour notifier les observateurs
                 refreshFoodsFlow()
@@ -800,7 +788,6 @@ class DatabaseFoodRepository(
                     throw Exception("Aliment non trouvé dans la base de données: ${food.uuid}")
                 }
 
-
                 // Au lieu de modifier toute l'entité, on garde la référence à la ration de
                 // l'existant pour éviter les problèmes de clé étrangère
                 val foodEntity = food.toFoodEntity().copy(RefRation = existingFood.RefRation)
@@ -830,8 +817,7 @@ class DatabaseFoodRepository(
                                     )
                                 }
                         foodDao.insertEspeces(especeEntities)
-                    } else {
-                    }
+                    } else {}
                 } catch (e: Exception) {
                     e.printStackTrace()
                 }
@@ -840,8 +826,7 @@ class DatabaseFoodRepository(
                 // situation
                 if (nutrientValueDao != null) {
                     nutrientValueDao.deleteAllNutrientValuesForAliment(food.uuid)
-                } else {
-                }
+                } else {}
 
                 // Seulement si des valeurs nutritionnelles existent et que le DAO existe, les
                 // ajouter
@@ -855,9 +840,7 @@ class DatabaseFoodRepository(
                         e.printStackTrace()
                         throw e
                     }
-                } else {
-                }
-
+                } else {}
 
                 // Mettre à jour le Flow pour notifier les observateurs
                 refreshFoodsFlow()
@@ -889,7 +872,6 @@ class DatabaseFoodRepository(
 
             // Supprimer tous les aliments
             foodDao.deleteAllFoods()
-
 
             return@withContext count
         }

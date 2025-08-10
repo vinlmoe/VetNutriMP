@@ -37,6 +37,15 @@ actual fun importFoodsFromFile(viewModel: SettingsViewModel) {
     )
 }
 
+/** Import API (nouveau format) – Android stub */
+actual fun importApiFromFile(viewModel: SettingsViewModel) {
+    viewModel.setImportResult(
+            SettingsViewModel.ImportResult.Error(
+                    "L'import API n'est pas encore implémenté sur Android."
+            )
+    )
+}
+
 /** Fonction utilitaire pour lire le contenu d'un fichier à partir d'un URI. */
 suspend fun readFileContent(uri: Uri): String =
         withContext(AppDispatchers.IO) {
