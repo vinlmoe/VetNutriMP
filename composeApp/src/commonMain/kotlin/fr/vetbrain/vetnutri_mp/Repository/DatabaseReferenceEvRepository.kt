@@ -72,7 +72,6 @@ class DatabaseReferenceEvRepository(
             saveEquationRelations(referenceEv)
             saveCoefficients(referenceEv)
             saveNutrients(referenceEv)
-
         } catch (e: Exception) {
             throw e
         }
@@ -196,9 +195,7 @@ class DatabaseReferenceEvRepository(
                 referenceEvDao.deleteAllNutrients()
 
                 // Supprimer toutes les références
-                allReferences.forEach { reference ->
-                    deleteReferenceEv(reference.uuid)
-                }
+                allReferences.forEach { reference -> deleteReferenceEv(reference.uuid) }
             }
 
             count
@@ -339,8 +336,21 @@ class DatabaseReferenceEvRepository(
             )
         }
 
-        relations.forEach { relation -> referenceEvDao.insertEquationRelation(relation) }
+        // Équations nutritionnelles additionnelles (complémentaires, etc.)
+        // Nous utilisons equationType = uuid de l'équation pour permettre plusieurs lignes
+        if (referenceEv.equationsNut.isNotEmpty()) {
+            referenceEv.equationsNut.forEach { equation ->
+                relations.add(
+                        ReferenceEvEquationEntity(
+                                referenceEvId = referenceEv.uuid,
+                                equationId = equation.uuid,
+                                equationType = equation.uuid
+                        )
+                )
+            }
+        }
 
+        relations.forEach { relation -> referenceEvDao.insertEquationRelation(relation) }
     }
 
     private suspend fun saveCoefficients(referenceEv: ReferenceEv) {
@@ -413,7 +423,6 @@ class DatabaseReferenceEvRepository(
         }
 
         coefficients.forEach { coefficient -> referenceEvDao.insertCoefficient(coefficient) }
-
     }
 
     private suspend fun saveNutrients(referenceEv: ReferenceEv) {
@@ -484,7 +493,6 @@ class DatabaseReferenceEvRepository(
         }
 
         nutrients.forEach { nutrient -> referenceEvDao.insertNutrient(nutrient) }
-
     }
 
     // Méthodes privées pour charger les relations
@@ -502,10 +510,16 @@ class DatabaseReferenceEvRepository(
                     "DEcom" -> referenceEv.equationDEcom = equationObj
                     "DEraw" -> referenceEv.equationDEraw = equationObj
                     "ME" -> referenceEv.equationME = equationObj
+                    else -> {
+                        // Toute autre valeur d'equationType est considérée comme équation
+                        // nutritionnelle associée
+                        if (referenceEv.equationsNut.none { it.uuid == equationObj.uuid }) {
+                            referenceEv.equationsNut.add(equationObj)
+                        }
+                    }
                 }
             }
         }
-
     }
 
     private suspend fun loadCoefficientsForReference(referenceEv: ReferenceEv) {
@@ -594,7 +608,6 @@ class DatabaseReferenceEvRepository(
                         )
             }
         }
-
     }
 
     private suspend fun loadNutrientsForReference(referenceEv: ReferenceEv) {
@@ -683,7 +696,6 @@ class DatabaseReferenceEvRepository(
                 }
             }
         }
-
     }
 
     // Méthodes utilitaires pour les conversions

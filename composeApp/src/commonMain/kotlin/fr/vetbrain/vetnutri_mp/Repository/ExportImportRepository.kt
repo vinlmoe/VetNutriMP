@@ -23,12 +23,61 @@ class ExportImportRepository(
         explicitNulls = false
     }
 
+    data class ExportSelectionOptions(
+            val includeAnimals: Boolean = true,
+            val includeFoods: Boolean = true,
+            val includeRations: Boolean = false,
+            val includeEquations: Boolean = true,
+            val animalIds: Set<String> = emptySet(),
+            val foodIds: Set<String> = emptySet()
+    )
+
     /** Exporte l’ensemble des données (animaux, aliments, rations, équations) au format API. */
     suspend fun exportAll(): String {
         val animals = animalRepository.getAllAnimals().map { it.toApi() }
         val foods = foodRepository?.getAllFoods()?.map { it.toApi() } ?: emptyList()
         val rations = emptyList<RationApi>()
         val equations = equationRepository?.getAllEquations()?.map { it.toApi() } ?: emptyList()
+        val envelope =
+                ApiEnvelope(
+                        version = "1.0.0",
+                        generatedAtEpochMs = Clock.System.now().toEpochMilliseconds(),
+                        animals = animals,
+                        foods = foods,
+                        rations = rations,
+                        equations = equations
+                )
+        return jsonPretty.encodeToString(envelope)
+    }
+
+    /** Export avec filtres et sélections par type/identifiants. */
+    suspend fun exportWithSelection(options: ExportSelectionOptions): String {
+        val allAnimals =
+                if (options.includeAnimals) animalRepository.getAllAnimals() else emptyList()
+        val animals: List<AnimalApi> =
+                allAnimals
+                        .asSequence()
+                        .filter {
+                            options.animalIds.isEmpty() || options.animalIds.contains(it.uuid)
+                        }
+                        .map { it.toApi() }
+                        .toList()
+
+        val allFoods =
+                if (options.includeFoods) (foodRepository?.getAllFoods() ?: emptyList())
+                else emptyList()
+        val foods: List<FoodApi> =
+                allFoods.asSequence()
+                        .filter { options.foodIds.isEmpty() || options.foodIds.contains(it.uuid) }
+                        .map { it.toApi() }
+                        .toList()
+
+        val rations = if (options.includeRations) emptyList<RationApi>() else emptyList()
+        val equations =
+                if (options.includeEquations)
+                        (equationRepository?.getAllEquations()?.map { it.toApi() } ?: emptyList())
+                else emptyList()
+
         val envelope =
                 ApiEnvelope(
                         version = "1.0.0",

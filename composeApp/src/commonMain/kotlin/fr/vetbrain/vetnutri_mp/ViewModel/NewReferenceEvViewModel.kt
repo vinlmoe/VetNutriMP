@@ -211,9 +211,7 @@ class NewReferenceEvViewModel(
                         _availableBiblioRefs.value = biblioRefs
                     }
                 }
-                        ?: run {
-                            _availableBiblioRefs.value = emptyList()
-                        }
+                        ?: run { _availableBiblioRefs.value = emptyList() }
             } catch (e: Exception) {
                 _availableBiblioRefs.value = emptyList()
             }
@@ -598,6 +596,60 @@ class NewReferenceEvViewModel(
         }
     }
 
+    /**
+     * Retourne les équations de type nutriment complémentaire filtrées par espèce de la référence
+     * et incluant celles définies pour l'espèce générique CH.
+     */
+    fun getComplementaryEquationsForCurrent(): List<Equation> {
+        val all: List<Equation> = _availableEquations.value
+        val specie: Espece = _currentReference.value.espece
+        return all.filter {
+            it.kind == fr.vetbrain.vetnutri_mp.Enumer.EquationKind.COMPLEMENTARY_NUTRIENT &&
+                    (it.specie == specie || it.specie == Espece.CH)
+        }
+    }
+
+    /** Indique si une équation complémentaire est déjà sélectionnée sur la référence. */
+    fun isComplementaryEquationSelected(equation: Equation): Boolean {
+        return _currentReference.value.equationsNut.any { it.uuid == equation.uuid }
+    }
+
+    /** Ajoute/retire une équation complémentaire à la référence et persiste. */
+    fun toggleComplementaryEquation(equation: Equation) {
+        coroutineScope.launch {
+            try {
+                val current = _currentReference.value
+                val already = current.equationsNut.any { it.uuid == equation.uuid }
+                if (already) {
+                    current.equationsNut =
+                            ArrayList(current.equationsNut.filter { it.uuid != equation.uuid })
+                } else {
+                    val newList = ArrayList(current.equationsNut)
+                    newList.add(equation)
+                    current.equationsNut = newList
+                }
+                val ok: Boolean = repository.update(current)
+                if (ok) {
+                    // Recharge depuis la base pour obtenir une nouvelle instance et déclencher la
+                    // recomposition
+                    val reloaded = repository.getById(current.uuid)
+                    if (reloaded != null) {
+                        _currentReference.value = reloaded
+                    } else {
+                        // À défaut, force un tick de mise à jour
+                        _currentReference.value = current
+                        _forceUpdate.value = System.currentTimeMillis()
+                    }
+                } else {
+                    _errorMessage.value =
+                            "Erreur lors de la mise à jour des équations complémentaires"
+                }
+            } catch (e: Exception) {
+                _errorMessage.value = "Erreur: ${e.message}"
+            }
+        }
+    }
+
     /** Efface les messages d'erreur */
     fun clearErrorMessage() {
         _errorMessage.value = null
@@ -644,8 +696,7 @@ class NewReferenceEvViewModel(
 
             // Mettre à jour la référence avec les équations chargées
             _currentReference.value = reference
-        } catch (e: Exception) {
-        }
+        } catch (e: Exception) {}
     }
 
     // ==================== MÉTHODES POUR LA GESTION DES COEFFICIENTS ====================

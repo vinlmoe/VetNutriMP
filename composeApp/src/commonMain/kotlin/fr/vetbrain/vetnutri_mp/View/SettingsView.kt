@@ -408,6 +408,127 @@ fun SettingsView(
                                                         verticalArrangement =
                                                                 Arrangement.spacedBy(8.dp)
                                                 ) {
+                                                        // Sélection export avancée
+                                                        var includeAnimals by remember {
+                                                                mutableStateOf(true)
+                                                        }
+                                                        var includeFoods by remember {
+                                                                mutableStateOf(true)
+                                                        }
+                                                        var includeEquations by remember {
+                                                                mutableStateOf(true)
+                                                        }
+                                                        var selectedAnimalIds by remember {
+                                                                mutableStateOf(setOf<String>())
+                                                        }
+                                                        var selectedFoodIds by remember {
+                                                                mutableStateOf(setOf<String>())
+                                                        }
+
+                                                        // Bouton: choisir animaux à exporter (ouvre
+                                                        // un simple sélecteur basique)
+                                                        OutlinedButton(
+                                                                onClick = {
+                                                                        coroutineScope.launch {
+                                                                                try {
+                                                                                        val animals =
+                                                                                                viewModel
+                                                                                                        .animalRepository
+                                                                                                        .getAllAnimals()
+                                                                                        // Simple
+                                                                                        // sélection: toggle tout si vide
+                                                                                        selectedAnimalIds =
+                                                                                                if (selectedAnimalIds
+                                                                                                                .isEmpty()
+                                                                                                )
+                                                                                                        animals
+                                                                                                                .map {
+                                                                                                                        it.uuid
+                                                                                                                }
+                                                                                                                .toSet()
+                                                                                                else
+                                                                                                        emptySet()
+                                                                                } catch (
+                                                                                        e:
+                                                                                                Exception) {}
+                                                                        }
+                                                                }
+                                                        ) {
+                                                                Text(
+                                                                        "Sélectionner animaux (toggle tout)"
+                                                                )
+                                                        }
+
+                                                        // Bouton: choisir aliments à exporter
+                                                        // (toggle tout)
+                                                        OutlinedButton(
+                                                                onClick = {
+                                                                        coroutineScope.launch {
+                                                                                try {
+                                                                                        val foods =
+                                                                                                viewModel
+                                                                                                        .foodRepository
+                                                                                                        .getAllFoods()
+                                                                                        selectedFoodIds =
+                                                                                                if (selectedFoodIds
+                                                                                                                .isEmpty()
+                                                                                                )
+                                                                                                        foods
+                                                                                                                .map {
+                                                                                                                        it.uuid
+                                                                                                                }
+                                                                                                                .toSet()
+                                                                                                else
+                                                                                                        emptySet()
+                                                                                } catch (
+                                                                                        e:
+                                                                                                Exception) {}
+                                                                        }
+                                                                }
+                                                        ) {
+                                                                Text(
+                                                                        "Sélectionner aliments (toggle tout)"
+                                                                )
+                                                        }
+
+                                                        // Cases à cocher d’inclusion
+                                                        Row(
+                                                                verticalAlignment =
+                                                                        Alignment.CenterVertically
+                                                        ) {
+                                                                Checkbox(
+                                                                        checked = includeAnimals,
+                                                                        onCheckedChange = {
+                                                                                includeAnimals = it
+                                                                        }
+                                                                )
+                                                                Text("Inclure animaux")
+                                                        }
+                                                        Row(
+                                                                verticalAlignment =
+                                                                        Alignment.CenterVertically
+                                                        ) {
+                                                                Checkbox(
+                                                                        checked = includeFoods,
+                                                                        onCheckedChange = {
+                                                                                includeFoods = it
+                                                                        }
+                                                                )
+                                                                Text("Inclure aliments")
+                                                        }
+                                                        Row(
+                                                                verticalAlignment =
+                                                                        Alignment.CenterVertically
+                                                        ) {
+                                                                Checkbox(
+                                                                        checked = includeEquations,
+                                                                        onCheckedChange = {
+                                                                                includeEquations =
+                                                                                        it
+                                                                        }
+                                                                )
+                                                                Text("Inclure équations")
+                                                        }
                                                         // Affichage du message de résultat
                                                         // d'importation des références
                                                         // nutritionnelles
@@ -539,7 +660,21 @@ fun SettingsView(
                                                                                                 )
                                                                                         val json =
                                                                                                 exportRepo
-                                                                                                        .exportAll()
+                                                                                                        .exportWithSelection(
+                                                                                                                ExportImportRepository
+                                                                                                                        .ExportSelectionOptions(
+                                                                                                                                includeAnimals =
+                                                                                                                                        includeAnimals,
+                                                                                                                                includeFoods =
+                                                                                                                                        includeFoods,
+                                                                                                                                includeEquations =
+                                                                                                                                        includeEquations,
+                                                                                                                                animalIds =
+                                                                                                                                        selectedAnimalIds,
+                                                                                                                                foodIds =
+                                                                                                                                        selectedFoodIds
+                                                                                                                        )
+                                                                                                        )
                                                                                         val ok =
                                                                                                 exportJsonToFile(
                                                                                                         content =

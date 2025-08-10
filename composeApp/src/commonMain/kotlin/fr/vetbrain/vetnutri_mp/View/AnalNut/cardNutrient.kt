@@ -72,28 +72,26 @@ fun AnalyseNutritionnelleCard(
                             nutrimentsSelectionnes == null ||
                             nutrimentsSelectionnes.isEmpty()
             ) {
-                // Intégrer les équations complémentaires par ingrédient si possible
-                val espece = animal?.getEspece()
-                if (espece != null && preferencesRepository != null && equationRepository != null) {
-                    val prefs = preferencesRepository.preferences.getPreferencesEspece(espece)
+                // Utiliser les équations complémentaires depuis la ReferenceEv si disponible
+                if (referenceUtilisee != null && equationRepository != null) {
                     fr.vetbrain.vetnutri_mp.Data.analyserValeursNutritionnellesRationAvecEquations(
-                            ration,
-                            prefs,
-                            equationRepository
+                            ration = ration,
+                            preferencesEspece = PreferencesEspece(),
+                            equationRepository = equationRepository,
+                            referenceEv = referenceUtilisee
                     )
                 } else {
                     analyserValeursNutritionnellesRation(ration)
                 }
             } else {
-                // Mode filtré: intégrer aussi les équations si disponibles
-                val espece = animal?.getEspece()
-                if (espece != null && preferencesRepository != null && equationRepository != null) {
-                    val prefs = preferencesRepository.preferences.getPreferencesEspece(espece)
+                // Mode filtré: intégrer aussi les équations si disponibles via la ReferenceEv
+                if (referenceUtilisee != null && equationRepository != null) {
                     fr.vetbrain.vetnutri_mp.Data.analyserValeursNutritionnellesRationSelective(
-                            ration,
-                            nutrimentsSelectionnes,
-                            prefs,
-                            equationRepository
+                            ration = ration,
+                            nutrimentsSelectionnes = nutrimentsSelectionnes,
+                            preferencesEspece = null,
+                            equationRepository = equationRepository,
+                            referenceEv = referenceUtilisee
                     )
                 } else {
                     analyserValeursNutritionnellesRationSelective(ration, nutrimentsSelectionnes)
@@ -102,28 +100,17 @@ fun AnalyseNutritionnelleCard(
 
     // Appliquer les équations complémentaires sélectionnées (si présentes)
     val selectedEquationUuidsKey =
-            remember(animal, preferencesRepository) {
-                if (animal != null && preferencesRepository != null) {
-                    val espece = animal.getEspece()
-                    val prefs = preferencesRepository.preferences.getPreferencesEspece(espece)
-                    prefs.getSelectedEquationUuids().joinToString("|")
-                } else {
-                    ""
-                }
+            remember(referenceUtilisee) {
+                referenceUtilisee?.equationsNut?.joinToString("|") { it.uuid } ?: ""
             }
     val valeursNutritionnelles =
-            remember(valeursNutritionnellesBase, animal, selectedEquationUuidsKey) {
+            remember(valeursNutritionnellesBase, referenceUtilisee, selectedEquationUuidsKey) {
                 val baseMap = valeursNutritionnellesBase.toMutableMap()
                 try {
-                    if (animal != null && preferencesRepository != null) {
-                        val espece = animal.getEspece()
-                        // Charger depuis le repository synchronisé en mémoire
-                        val prefs = preferencesRepository.preferences.getPreferencesEspece(espece)
-                        val selectedEquationUuids = prefs.getSelectedEquationUuids()
+                    if (referenceUtilisee != null) {
+                        val selectedEquationUuids = referenceUtilisee.equationsNut.map { it.uuid }
                         println(
-                                "EQDBG selectedEquationUuids (" +
-                                        espece.name +
-                                        "): " +
+                                "EQDBG selectedEquationUuids (ReferenceEv): " +
                                         selectedEquationUuids
                         )
                         if (selectedEquationUuids.isNotEmpty()) {
@@ -179,8 +166,8 @@ fun AnalyseNutritionnelleCard(
                                                     eq.equationScript +
                                                     "'"
                                     )
-                                    val poids = animal.consultations.lastOrNull()?.weight ?: 0f
-                                    val bee = animal.getBEE()?.toFloat() ?: 0f
+                                    val poids = (animal?.consultations?.lastOrNull()?.weight ?: 0f)
+                                    val bee = (animal?.getBEE()?.toFloat() ?: 0f)
                                     val mw =
                                             if (poids > 0)
                                                     fr.vetbrain.vetnutri_mp.Utils.EquationEvaluator
@@ -204,8 +191,8 @@ fun AnalyseNutritionnelleCard(
                                                                 besoinEnergetique = bee,
                                                                 poidsMetabolique = mw,
                                                                 variablesSupp =
-                                                                        (animal.consultations
-                                                                                .lastOrNull()
+                                                                        (animal?.consultations
+                                                                                ?.lastOrNull()
                                                                                 ?.suppVarp
                                                                                 ?: mutableListOf()),
                                                                 ration = ration
@@ -274,7 +261,8 @@ fun AnalyseNutritionnelleCard(
                                 }
                             }
                         } else {
-                            println("EQDBG no selected equations for " + espece.name)
+                            val specieName = referenceUtilisee?.espece?.name ?: "?"
+                            println("EQDBG no selected equations for " + specieName)
                         }
                     }
                 } catch (e: Exception) {

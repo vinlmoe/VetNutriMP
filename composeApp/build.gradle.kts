@@ -78,6 +78,8 @@ kotlin {
                 implementation(libs.androidx.sqlite.sqlite.framework3)
                 implementation(libs.androidx.sqlite.sqlite.ktx)*/
                 implementation(libs.compose.ui.test.manifest)
+                implementation("com.openhtmltopdf:openhtmltopdf-core:1.0.10")
+                implementation("com.openhtmltopdf:openhtmltopdf-pdfbox:1.0.10")
             }
         }
         commonTest.dependencies {
@@ -171,9 +173,6 @@ dependencies {
 
     // Reorderable - Drag and Drop pour Compose
     implementation("org.burnoutcrew.composereorderable:reorderable:0.9.6")
-}
-
-room { schemaDirectory("$projectDir/schemas") }
 }
 
 room { schemaDirectory("$projectDir/schemas") }

@@ -332,7 +332,7 @@ fun NutrientDetailDialog(
                                 }
 
                                 // Section des références nutritionnelles
-                                referenceUtilisee?.let { reference ->
+                                referenceUtilisee?.let { ref ->
                                         val nutrient: Nutrient = valeurNutritionnelle.nutriment
                                         val hasReferenceValues =
                                                 listOf(
@@ -342,7 +342,7 @@ fun NutrientDetailDialog(
                                                                 Reflevel.OPTIMAX
                                                         )
                                                         .any { level: Reflevel ->
-                                                                reference.contientNutriment(
+                                                                ref.contientNutriment(
                                                                         nutrient,
                                                                         level
                                                                 )
@@ -369,7 +369,7 @@ fun NutrientDetailDialog(
                                                         ) {
                                                                 Text(
                                                                         text =
-                                                                                "Références nutritionnelles - ${reference.nom}",
+                                                                                "Références nutritionnelles - ${ref.nom}",
                                                                         style =
                                                                                 MaterialTheme
                                                                                         .typography
@@ -422,7 +422,7 @@ fun NutrientDetailDialog(
                                                                 ReferenceBulletGraph(
                                                                         valeurApport =
                                                                                 apportConverti,
-                                                                        reference = reference,
+                                                                        reference = ref,
                                                                         nutriment = nutrient,
                                                                         typeExpressionBesoin =
                                                                                 typeExpressionBesoin,
@@ -449,33 +449,29 @@ fun NutrientDetailDialog(
 
                                                                 refLevels.forEach {
                                                                         (level, levelName) ->
-                                                                        if (reference
-                                                                                        .contientNutriment(
+                                                                        if (ref.contientNutriment(
+                                                                                        nutrient,
+                                                                                        level
+                                                                                )
+                                                                        ) {
+                                                                                val valeurRef =
+                                                                                        ref.obtenirNutriment(
                                                                                                 nutrient,
                                                                                                 level
                                                                                         )
-                                                                        ) {
-                                                                                val valeurRef =
-                                                                                        reference
-                                                                                                .obtenirNutriment(
-                                                                                                        nutrient,
-                                                                                                        level
-                                                                                                )
                                                                                 val uniteRef =
                                                                                         UnitReqEnum
                                                                                                 .getById(
-                                                                                                        reference
-                                                                                                                .obtenirUniteNutriment(
-                                                                                                                        nutrient,
-                                                                                                                        level
-                                                                                                                )
+                                                                                                        ref.obtenirUniteNutriment(
+                                                                                                                nutrient,
+                                                                                                                level
+                                                                                                        )
                                                                                                 )
                                                                                 val biblioRef =
-                                                                                        reference
-                                                                                                .obtenirBiblioNutriment(
-                                                                                                        nutrient,
-                                                                                                        level
-                                                                                                )
+                                                                                        ref.obtenirBiblioNutriment(
+                                                                                                nutrient,
+                                                                                                level
+                                                                                        )
 
                                                                                 // Calculer le
                                                                                 // besoin absolu
@@ -680,14 +676,8 @@ fun NutrientDetailDialog(
                                 // Préparer les équations complémentaires sélectionnées pour ce
                                 // nutriment
                                 val selectedEquationUuids =
-                                        try {
-                                                preferencesRepo
-                                                        .preferences
-                                                        .getPreferencesEspece(espece)
-                                                        .getSelectedEquationUuids()
-                                        } catch (e: Exception) {
-                                                emptyList()
-                                        }
+                                        referenceUtilisee?.equationsNut?.map { it.uuid }
+                                                ?: emptyList()
                                 val allEquations =
                                         try {
                                                 kotlinx.coroutines.runBlocking {
@@ -721,6 +711,10 @@ fun NutrientDetailDialog(
                                         "EQDBG-ING applicableEquations=${applicableEquations.map{it.uuid}} for nutrient=${valeurNutritionnelle.nutriment.label} specie=${espece.name}"
                                 )
 
+                                val isRatioNutrient =
+                                        valeurNutritionnelle.unite ==
+                                                fr.vetbrain.vetnutri_mp.Enumer.UnitEnum.NO ||
+                                                valeurNutritionnelle.unite.label == "RATIO"
                                 val contributionsTriees =
                                         ration.alimentMutableList
                                                 .map { alimentRation ->
@@ -728,31 +722,6 @@ fun NutrientDetailDialog(
                                                         val nutrient: Nutrient =
                                                                 valeurNutritionnelle.nutriment
 
-                                                        val prefsEspece =
-                                                                try {
-                                                                        kotlinx.coroutines
-                                                                                .runBlocking {
-                                                                                        preferencesRepo
-                                                                                                .loadPreferences()
-                                                                                        preferencesRepo
-                                                                                                .getPreferencesForSpecies(
-                                                                                                        espece
-                                                                                                )
-                                                                                }
-                                                                } catch (e: Exception) {
-                                                                        null
-                                                                }
-                                                        if (prefsEspece == null) {
-                                                                println(
-                                                                        "EQDBG-ING detail: prefsEspece null for ${espece.name}"
-                                                                )
-                                                        } else {
-                                                                println(
-                                                                        "EQDBG-ING detail: prefs uuids=" +
-                                                                                prefsEspece
-                                                                                        .getSelectedEquationUuids()
-                                                                )
-                                                        }
                                                         val valeurPour100g: Double? =
                                                                 try {
                                                                         println(
@@ -765,9 +734,11 @@ fun NutrientDetailDialog(
                                                                                                         nutrient =
                                                                                                                 nutrient,
                                                                                                         preferences =
-                                                                                                                prefsEspece,
+                                                                                                                null,
                                                                                                         equationRepository =
-                                                                                                                equationRepository
+                                                                                                                equationRepository,
+                                                                                                        referenceEv =
+                                                                                                                referenceUtilisee
                                                                                                 )
                                                                                 }
                                                                                 ?.toDouble()
@@ -779,16 +750,21 @@ fun NutrientDetailDialog(
                                                                 }
                                                         val contributionCalculee =
                                                                 if (valeurPour100g != null) {
-                                                                        (valeurPour100g *
-                                                                                quantite.toDouble()) /
-                                                                                100.0
+                                                                        if (isRatioNutrient)
+                                                                                valeurPour100g
+                                                                        else
+                                                                                (valeurPour100g *
+                                                                                        quantite.toDouble()) /
+                                                                                        100.0
                                                                 } else 0.0
                                                         println(
                                                                 "EQDBG-ING detail: food='${alimentRation.aliment?.nom}' v100g=${valeurPour100g} contrib=${contributionCalculee}"
                                                         )
 
                                                         val contributionPourcentage =
-                                                                if (valeurNutritionnelle.valeur > 0
+                                                                if (!isRatioNutrient &&
+                                                                                valeurNutritionnelle
+                                                                                        .valeur > 0
                                                                 ) {
                                                                         (contributionCalculee /
                                                                                 valeurNutritionnelle
@@ -856,9 +832,11 @@ fun NutrientDetailDialog(
                                                                                         nutrient =
                                                                                                 nutrient,
                                                                                         preferences =
-                                                                                                prefsEspeceItem,
+                                                                                                null,
                                                                                         equationRepository =
-                                                                                                equationRepository
+                                                                                                equationRepository,
+                                                                                        referenceEv =
+                                                                                                referenceUtilisee
                                                                                 )
                                                                 }
                                                         } catch (e: Exception) {
@@ -1011,7 +989,7 @@ fun NutrientDetailDialog(
                                                                                                         if (valeurPour100gItem !=
                                                                                                                         null
                                                                                                         ) {
-                                                                                                                "Valeur: ${String.format("%.2f", (valeurPour100gItem * quantite) / 100.0)}"
+                                                                                                                "Valeur: ${String.format("%.2f", (valeurPour100gItem) )}"
                                                                                                         } else {
                                                                                                                 "Valeur: NA"
                                                                                                         }
