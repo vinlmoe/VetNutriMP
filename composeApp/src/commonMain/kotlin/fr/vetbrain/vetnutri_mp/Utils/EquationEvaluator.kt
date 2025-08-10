@@ -1,15 +1,20 @@
 package fr.vetbrain.vetnutri_mp.Utils
 
 import fr.vetbrain.vetnutri_mp.Data.AlimentRation
+import fr.vetbrain.vetnutri_mp.Data.Equation
+import fr.vetbrain.vetnutri_mp.Data.PreferencesEspece
 import fr.vetbrain.vetnutri_mp.Data.Ration
+import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
 import fr.vetbrain.vetnutri_mp.Data.SupplementalvariableP
 import fr.vetbrain.vetnutri_mp.Enumer.AAEnum
+import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientLipid
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientMain
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientMin
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientVitam
 import fr.vetbrain.vetnutri_mp.Enumer.VariableKind
+import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 
 /**
  * Évaluateur spécialisé pour les équations vétérinaires Facilite l'utilisation du parser
@@ -123,6 +128,82 @@ object EquationEvaluator {
     }
 
     /**
+     * Évalue une équation de besoin nutritionnel en tenant compte des nutriments complémentaires.
+     * Utilise le calcul complémentaire pour chaque aliment de la ration si la valeur est absente.
+     */
+    suspend fun evaluerBesoinNutritionnelAvecComplementaires(
+            expression: String,
+            poidsCorps: Float,
+            besoinEnergetique: Float,
+            poidsMetabolique: Float,
+            variablesSupp: List<SupplementalvariableP> = emptyList(),
+            ration: Ration,
+            preferences: PreferencesEspece,
+            equationRepository: EquationRepository,
+            referenceEv: ReferenceEv? = null
+    ): Double? {
+        val variables: MutableMap<String, Double> = mutableMapOf()
+        variables["BW"] = poidsCorps.toDouble()
+        variables["BEE"] = besoinEnergetique.toDouble()
+        variables["MW"] = poidsMetabolique.toDouble()
+        for (variable in variablesSupp) {
+            variable.variable?.let { varKind ->
+                variables[varKind.variable] = variable.varue?.toDouble() ?: 0.0
+            }
+        }
+        suspend fun sommeRation(nutriment: Nutrient): Double {
+            var total: Double = 0.0
+            for (aliment in ration.alimentMutableList) {
+                val valeur: Float? =
+                        aliment.getNutrientWithComplementary(
+                                nutrient = nutriment,
+                                preferences = preferences,
+                                equationRepository = equationRepository,
+                                referenceEv = referenceEv
+                        )
+                if (valeur != null) total += (valeur * aliment.quantite / 100f).toDouble()
+            }
+            return total
+        }
+        for (n in NutrientMain.entries) variables[n.label] = sommeRation(n)
+        for (n in NutrientLipid.entries) variables[n.label] = sommeRation(n)
+        for (n in NutrientVitam.entries) variables[n.label] = sommeRation(n)
+        for (n in NutrientMacro.entries) variables[n.label] = sommeRation(n)
+        for (n in NutrientMin.entries) variables[n.label] = sommeRation(n)
+        return ExpressionMathematique.evaluer(expression, variables)
+    }
+
+    /**
+     * Wrapper non-suspend pour utiliser l'évaluation avec compléments depuis un contexte non
+     * coroutine (UI existante). Bloque le thread courant pendant l'évaluation.
+     */
+    fun evaluerBesoinNutritionnelAvecComplementairesBlocking(
+            expression: String,
+            poidsCorps: Float,
+            besoinEnergetique: Float,
+            poidsMetabolique: Float,
+            variablesSupp: List<SupplementalvariableP> = emptyList(),
+            ration: Ration,
+            preferences: PreferencesEspece,
+            equationRepository: EquationRepository,
+            referenceEv: ReferenceEv? = null
+    ): Double? {
+        return kotlinx.coroutines.runBlocking {
+            evaluerBesoinNutritionnelAvecComplementaires(
+                    expression = expression,
+                    poidsCorps = poidsCorps,
+                    besoinEnergetique = besoinEnergetique,
+                    poidsMetabolique = poidsMetabolique,
+                    variablesSupp = variablesSupp,
+                    ration = ration,
+                    preferences = preferences,
+                    equationRepository = equationRepository,
+                    referenceEv = referenceEv
+            )
+        }
+    }
+
+    /**
      * Évalue une équation de densité énergétique pour un aliment
      *
      * @param expression L'expression mathématique à évaluer
@@ -141,17 +222,160 @@ object EquationEvaluator {
     }
 
     /**
+     * Variante suspendue: calcule la densité énergétique en utilisant aussi les nutriments
+     * complémentaires si nécessaires.
+     */
+    suspend fun evaluerDensiteEnergetiqueAvecComplementaires(
+            expression: String,
+            aliment: AlimentRation,
+            preferences: PreferencesEspece,
+            equationRepository: EquationRepository,
+            referenceEv: ReferenceEv? = null
+    ): Double? {
+        val variables = mutableMapOf<String, Double>()
+        suspend fun valueOf(n: Nutrient): Double {
+            return aliment.getNutrientWithComplementary(
+                            nutrient = n,
+                            preferences = preferences,
+                            equationRepository = equationRepository,
+                            referenceEv = referenceEv
+                    )
+                    ?.toDouble()
+                    ?: 0.0
+        }
+        for (n in NutrientMain.entries) variables[n.label] = valueOf(n)
+        return ExpressionMathematique.evaluer(expression, variables)
+    }
+
+    /** Liste toutes les équations disponibles dans une `ReferenceEv`. */
+    fun listerEquationsReference(referenceEv: ReferenceEv): List<Equation> {
+        return referenceEv.obtenirToutesEquations()
+    }
+
+    /**
+     * Évalue une équation issue d'une `ReferenceEv` avec un dictionnaire de variables prêt à
+     * l'emploi.
+     */
+    fun evaluerEquationReference(equation: Equation, variables: Map<String, Double>): Double? {
+        return ExpressionMathematique.evaluer(equation.equationScript, variables)
+    }
+
+    /**
+     * Calcule l'énergie pour 100 g d'un aliment en utilisant l'équation adaptée au type d'aliment.
+     * - COMPLET: utilise l'équation commerciale (si disponible dans ReferenceEv, sinon fallback
+     * générique)
+     * - COMPLEMENTAIRE ou autres: utilise l'autre équation (générique) Les variables de nutriments
+     * sont alimentées avec les nutriments complémentaires.
+     */
+    suspend fun calculerEnergiePour100g(
+            aliment: fr.vetbrain.vetnutri_mp.Data.AlimentRation,
+            preferences: PreferencesEspece,
+            equationRepository: EquationRepository,
+            referenceEv: ReferenceEv? = null
+    ): Double {
+        // Construire variables de nutriments pour l'aliment (avec compléments)
+        val variables = mutableMapOf<String, Double>()
+        suspend fun nv(n: Nutrient): Double {
+            return aliment.getNutrientWithComplementary(
+                            nutrient = n,
+                            preferences = preferences,
+                            equationRepository = equationRepository,
+                            referenceEv = referenceEv
+                    )
+                    ?.toDouble()
+                    ?: 0.0
+        }
+        for (n in NutrientMain.entries) variables[n.label] = nv(n)
+        for (n in NutrientLipid.entries) variables[n.label] = nv(n)
+        for (n in NutrientVitam.entries) variables[n.label] = nv(n)
+        for (n in NutrientMacro.entries) variables[n.label] = nv(n)
+        for (n in NutrientMin.entries) variables[n.label] = nv(n)
+
+        // Choisir explicitement l'équation ReferenceEv: DEcom pour COMPLET/COMPLEMENTAIRE, DEraw
+        // sinon
+        val kind = aliment.aliment?.typeAliment
+        val eq: Equation? =
+                when (kind) {
+                    fr.vetbrain.vetnutri_mp.Enumer.FoodKind.COMPLET,
+                    fr.vetbrain.vetnutri_mp.Enumer.FoodKind.COMPLEMENTAIRE ->
+                            referenceEv?.equationDEcom
+                    else -> referenceEv?.equationDEraw
+                }
+                        ?: run {
+                            // Fallback générique si ReferenceEv n'a pas l'équation attendue
+                            val ratioWanted =
+                                    (kind == fr.vetbrain.vetnutri_mp.Enumer.FoodKind.COMPLET ||
+                                            kind ==
+                                                    fr.vetbrain.vetnutri_mp.Enumer.FoodKind
+                                                            .COMPLEMENTAIRE)
+                            equationRepository.getAllEquations().firstOrNull {
+                                it.nutrient == NutrientMain.ENERGIE && it.ratio == ratioWanted
+                            }
+                        }
+        val res =
+                if (eq != null) ExpressionMathematique.evaluer(eq.equationScript, variables)
+                else null
+        return if (res == null || res.isNaN() || res.isInfinite()) 0.0 else res
+    }
+
+    /**
+     * Calcule l'apport énergétique total d'une ration en sommant l'énergie de chaque ingrédient
+     * calculée pour 100 g puis pondérée par la quantité (g/100g).
+     */
+    suspend fun calculerApportEnergetiqueRation(
+            ration: fr.vetbrain.vetnutri_mp.Data.Ration,
+            preferences: PreferencesEspece,
+            equationRepository: EquationRepository,
+            referenceEv: ReferenceEv? = null
+    ): Double {
+        var total = 0.0
+        for (ing in ration.alimentMutableList) {
+            val kcal100 =
+                    calculerEnergiePour100g(
+                            aliment = ing,
+                            preferences = preferences,
+                            equationRepository = equationRepository,
+                            referenceEv = referenceEv
+                    )
+            total += kcal100 * (ing.quantite / 100.0)
+        }
+        return total
+    }
+
+    /** Construit un jeu de variables de base pour les équations de `ReferenceEv`. */
+    fun construireVariablesPourReference(
+            poidsCorps: Float,
+            besoinEnergetique: Float? = null,
+            poidsMetabolique: Float? = null,
+            variablesSupp: List<SupplementalvariableP> = emptyList()
+    ): MutableMap<String, Double> {
+        val variables: MutableMap<String, Double> = mutableMapOf()
+        variables["BW"] = poidsCorps.toDouble()
+        if (besoinEnergetique != null) variables["BEE"] = besoinEnergetique.toDouble()
+        if (poidsMetabolique != null) variables["MW"] = poidsMetabolique.toDouble()
+        for (variable in variablesSupp) {
+            variable.variable?.let { varKind ->
+                variables[varKind.variable] = variable.varue?.toDouble() ?: 0.0
+            }
+        }
+        return variables
+    }
+
+    /**
      * Évalue une équation de besoin/composition directement pour un aliment unique Utilise les
      * nutriments disponibles dans l'aliment comme variables (CAL, PHOS, etc.). Les variables de
      * base (BW, BEE, MW) peuvent être passées pour les équations qui en dépendent.
      */
-    fun evaluerBesoinNutritionnelPourAliment(
+    suspend fun evaluerBesoinNutritionnelPourAliment(
             expression: String,
             poidsCorps: Float = 0f,
             besoinEnergetique: Float = 0f,
             poidsMetabolique: Float = 0f,
             variablesSupp: List<SupplementalvariableP> = emptyList(),
-            aliment: AlimentRation
+            aliment: AlimentRation,
+            preferences: PreferencesEspece? = null,
+            equationRepository: EquationRepository? = null,
+            referenceEv: ReferenceEv? = null
     ): Double? {
         val variables = mutableMapOf<String, Double>()
 
@@ -167,26 +391,63 @@ object EquationEvaluator {
             }
         }
 
-        // Injecter les nutriments de l'aliment comme variables
+        // Injecter les nutriments de l'aliment comme variables (directs uniquement ici pour éviter
+        // toute récursivité au sein des équations complémentaires)
         aliment.aliment?.let { alim ->
-            // Nutriments principaux et autres familles
-            NutrientMain.entries.forEach { n ->
-                variables[n.label] = alim.getNutrient(n)?.toDouble() ?: 0.0
-            }
-            NutrientLipid.entries.forEach { n ->
-                variables[n.label] = alim.getNutrient(n)?.toDouble() ?: 0.0
-            }
-            NutrientVitam.entries.forEach { n ->
-                variables[n.label] = alim.getNutrient(n)?.toDouble() ?: 0.0
-            }
-            NutrientMacro.entries.forEach { n ->
-                variables[n.label] = alim.getNutrient(n)?.toDouble() ?: 0.0
-            }
-            NutrientMin.entries.forEach { n ->
-                variables[n.label] = alim.getNutrient(n)?.toDouble() ?: 0.0
-            }
+            for (n in NutrientMain.entries) variables[n.label] =
+                    alim.getNutrient(n)?.toDouble() ?: 0.0
+            for (n in NutrientLipid.entries) variables[n.label] =
+                    alim.getNutrient(n)?.toDouble() ?: 0.0
+            for (n in NutrientVitam.entries) variables[n.label] =
+                    alim.getNutrient(n)?.toDouble() ?: 0.0
+            for (n in NutrientMacro.entries) variables[n.label] =
+                    alim.getNutrient(n)?.toDouble() ?: 0.0
+            for (n in NutrientMin.entries) variables[n.label] =
+                    alim.getNutrient(n)?.toDouble() ?: 0.0
         }
 
+        val r = ExpressionMathematique.evaluer(expression, variables)
+        return if (r == null || r.isNaN() || r.isInfinite()) null else r
+    }
+
+    /** Variante suspendue utilisant les nutriments complémentaires pour un aliment unique. */
+    suspend fun evaluerBesoinNutritionnelPourAlimentAvecComplementaires(
+            expression: String,
+            poidsCorps: Float = 0f,
+            besoinEnergetique: Float = 0f,
+            poidsMetabolique: Float = 0f,
+            variablesSupp: List<SupplementalvariableP> = emptyList(),
+            aliment: AlimentRation,
+            preferences: PreferencesEspece,
+            equationRepository: EquationRepository,
+            referenceEv: ReferenceEv? = null
+    ): Double? {
+        val variables = mutableMapOf<String, Double>()
+        variables["BW"] = poidsCorps.toDouble()
+        variables["BEE"] = besoinEnergetique.toDouble()
+        variables["MW"] = poidsMetabolique.toDouble()
+        for (variable in variablesSupp) {
+            variable.variable?.let { varKind ->
+                variables[varKind.variable] = variable.varue?.toDouble() ?: 0.0
+            }
+        }
+        suspend fun valueOf(n: Nutrient): Double {
+            val v =
+                    aliment.getNutrientWithComplementary(
+                                    nutrient = n,
+                                    preferences = preferences,
+                                    equationRepository = equationRepository,
+                                    referenceEv = referenceEv
+                            )
+                            ?.toDouble()
+                            ?: 0.0
+            return v
+        }
+        for (n in NutrientMain.entries) variables[n.label] = valueOf(n)
+        for (n in NutrientLipid.entries) variables[n.label] = valueOf(n)
+        for (n in NutrientVitam.entries) variables[n.label] = valueOf(n)
+        for (n in NutrientMacro.entries) variables[n.label] = valueOf(n)
+        for (n in NutrientMin.entries) variables[n.label] = valueOf(n)
         return ExpressionMathematique.evaluer(expression, variables)
     }
 

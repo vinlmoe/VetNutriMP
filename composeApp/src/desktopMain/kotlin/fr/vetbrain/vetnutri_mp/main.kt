@@ -381,24 +381,47 @@ actual fun importApiFromFile(viewModel: SettingsViewModel) {
         return
     }
 
+    viewModel.startApiImport()
     kotlinx.coroutines.GlobalScope.launch(kotlinx.coroutines.Dispatchers.IO) {
         try {
             val content = selectedFile!!.readText()
             val exportRepo =
                     fr.vetbrain.vetnutri_mp.Repository.ExportImportRepository(
-                            viewModel.animalRepository,
-                            viewModel.foodRepository,
-                            viewModel.equationRepository
+                            animalRepository = viewModel.animalRepository,
+                            foodRepository = viewModel.foodRepository,
+                            equationRepository = viewModel.equationRepository,
+                            referenceRepository = viewModel.referenceEvRepository,
+                            biblioRepository = viewModel.biblioRefRepository,
+                            consultationRepository = viewModel.consultationRepository
                     )
-            val count = exportRepo.importAll(content)
+            // Découper l'import en étapes et mettre à jour la progression/logs via callbacks simples
+            viewModel.appendApiImportLog("Lecture du fichier terminée")
+            val counts = exportRepo.importAll(
+                apiJson = content,
+                listener = fr.vetbrain.vetnutri_mp.Repository.ExportImportRepository.ImportProgressListener(
+                    onProgress = { p -> viewModel.updateApiImportProgress(p) },
+                    onLog = { msg -> viewModel.appendApiImportLog(msg) }
+                )
+            )
+            viewModel.updateApiImportProgress(1f)
+            val total = counts.animals + counts.foods + counts.equations + counts.references
+            viewModel.appendApiImportLog("Import terminé → animals=${counts.animals}, foods=${counts.foods}, equations=${counts.equations}, refs=${counts.references}")
             viewModel.setImportResult(
-                    SettingsViewModel.ImportResult.Success(count = count, importedCount = count)
+                    SettingsViewModel.ImportResult.Success(
+                            count = total,
+                            importedCount = counts.animals + counts.foods,
+                            updatedCount = 0,
+                            deletedCount = 0,
+                            errorCount = 0,
+                            nonResolvedNutrients = 0
+                    )
             )
         } catch (e: Exception) {
+            viewModel.appendApiImportLog("Erreur: ${e.message}")
             viewModel.setImportResult(
                     SettingsViewModel.ImportResult.Error("Erreur import API: ${e.message}")
             )
-        }
+        } finally { viewModel.finishApiImport() }
     }
 }
 

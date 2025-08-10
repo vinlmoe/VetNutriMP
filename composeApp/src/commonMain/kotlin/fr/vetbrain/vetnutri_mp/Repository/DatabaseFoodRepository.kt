@@ -42,6 +42,16 @@ class DatabaseFoodRepository(
     private val _foodsFlow = MutableStateFlow<List<AlimentEv>>(emptyList())
     private val coroutineScope = CoroutineScope(AppDispatchers.Main)
 
+    // Mode batch pour désactiver les refresh coûteux à chaque insert/update
+    @Volatile private var isBatchMode: Boolean = false
+    fun beginBatch() {
+        isBatchMode = true
+    }
+    fun endBatch() {
+        isBatchMode = false
+        coroutineScope.launch { refreshFoodsFlow() }
+    }
+
     init {
         // Initialiser le flow au démarrage
         coroutineScope.launch { refreshFoodsFlow() }
@@ -63,7 +73,9 @@ class DatabaseFoodRepository(
      */
     override suspend fun insert(food: AlimentEv) {
         withContext(AppDispatchers.IO) { foodDao.insert(food.toFoodEntity()) }
-        refreshFoodsFlow()
+        if (!isBatchMode) {
+            refreshFoodsFlow()
+        }
     }
 
     /**
@@ -72,7 +84,9 @@ class DatabaseFoodRepository(
      */
     override suspend fun update(food: AlimentEv) {
         withContext(AppDispatchers.IO) { foodDao.update(food.toFoodEntity()) }
-        refreshFoodsFlow()
+        if (!isBatchMode) {
+            refreshFoodsFlow()
+        }
     }
 
     /**
@@ -81,7 +95,9 @@ class DatabaseFoodRepository(
      */
     override suspend fun delete(food: AlimentEv) {
         withContext(AppDispatchers.IO) { foodDao.delete(food.toFoodEntity()) }
-        refreshFoodsFlow()
+        if (!isBatchMode) {
+            refreshFoodsFlow()
+        }
     }
 
     /**
@@ -108,6 +124,11 @@ class DatabaseFoodRepository(
 
             return@withContext result
         }
+    }
+
+    /** Récupère uniquement les UUID de tous les aliments (optimisé pour des jeux volumineux). */
+    suspend fun getAllFoodIds(): Set<String> {
+        return withContext(AppDispatchers.IO) { foodDao.getAllFoodIds().toSet() }
     }
 
     /**
@@ -167,112 +188,201 @@ class DatabaseFoodRepository(
     // incluant la vérification des aliments existants et la conversion des données.
     override suspend fun importFoods(foods: List<AlimentEvJson>): FoodImportResult {
         return withContext(AppDispatchers.IO) {
-            var importCount = 0
-            var updateCount = 0
-            var errorCount = 0
-            val nonResolvedNutrients = mutableMapOf<String, Int>()
-            val importErrors = mutableListOf<String>()
-
-            // Récupérer la liste des UUIDs des aliments existants pour vérification rapide
-            val existingFoodUUIDs = foodDao.getAllFoods().map { it.uuid }.toSet()
-
-            // Traiter chaque aliment
-            foods.forEachIndexed { index, food ->
-                try {
-
-                    if (food.UUID.isNullOrBlank()) {
-                        val errorMsg = "Erreur: UUID vide pour l'aliment ${food.nom}"
-                        importErrors.add(errorMsg)
-                        errorCount++
-                        return@forEachIndexed
-                    }
-
-                    // Vérifier si l'aliment existe déjà
-                    val existingFood =
-                            if (existingFoodUUIDs.contains(food.UUID)) {
-                                foodDao.getFoodById(food.UUID)
-                            } else {
-                                null
-                            }
-
-                    if (existingFood == null) {
-                        // L'aliment n'existe pas, l'insérer
-                        println("Création d'un nouvel aliment: ${food.nom} (${food.UUID})")
-
+            var importCount: Int = 0
+            var updateCount: Int = 0
+            var errorCount: Int = 0
+            val nonResolvedNutrients: MutableMap<String, Int> = mutableMapOf()
+            val importErrors: MutableList<String> = mutableListOf()
+            try {
+                beginBatch()
+                val existingFoodUUIDs: Set<String> =
                         try {
-                            // Convertir les espèces
-                            val especes =
-                                    food.Especes.map { especeStr ->
-                                        try {
-                                            // Nettoyer la chaîne d'espèce
-                                            val cleanedEspece =
-                                                    especeStr
-                                                            .replace("[", "")
-                                                            .replace("]", "")
-                                                            .replace("\"", "")
-                                                            .trim()
-
-                                            // Essayer plusieurs stratégies pour reconnaître
-                                            // l'espèce
-                                            val espece = Espece.getFromString(cleanedEspece)
-                                            if (espece != null) {
-                                                espece.name
-                                            } else {
-                                                cleanedEspece
-                                            }
-                                        } catch (e: Exception) {
-                                            e.printStackTrace()
-                                            especeStr // En cas d'erreur, conserver la chaîne
-                                            // originale
+                            foodDao.getAllFoodIds().toSet()
+                        } catch (_: Exception) {
+                            emptySet()
+                        }
+                val newEntities: MutableList<FoodEntity> = mutableListOf()
+                val updateEntities: MutableList<FoodEntity> = mutableListOf()
+                val updateIds: MutableList<String> = mutableListOf()
+                val allNutrientValues: MutableList<NutrientValueEntity> = mutableListOf()
+                fun nettoyerChaineBruteBrackets(valeur: String): String {
+                    return valeur.replace("[", "").replace("]", "").replace("\"", "").trim()
+                }
+                fun convertirEspecesList(list: List<String>): List<String> {
+                    return list.map { especeStr ->
+                        try {
+                            val cleanedEspece: String = nettoyerChaineBruteBrackets(especeStr)
+                            val espece: Espece? = Espece.getFromString(cleanedEspece)
+                            if (espece != null) espece.name else cleanedEspece
+                        } catch (_: Exception) {
+                            especeStr
+                        }
+                    }
+                }
+                fun convertirIndicationsList(list: List<String>): List<String> {
+                    return list.map { indicStr ->
+                        try {
+                            val cleanedIndic: String = nettoyerChaineBruteBrackets(indicStr)
+                            val indication: AlimIndic? = AlimIndic.getFromString(cleanedIndic)
+                            indication?.name ?: cleanedIndic
+                        } catch (_: Exception) {
+                            indicStr
+                        }
+                    }
+                }
+                fun resoudreCont(rawInput: String?): String {
+                    return try {
+                        val raw: String = (rawInput ?: "NO").trim()
+                        when {
+                            raw.equals("YES", ignoreCase = true) ->
+                                    fr.vetbrain.vetnutri_mp.Enumer.ContEnum.CAN.name
+                            fr.vetbrain.vetnutri_mp.Enumer.ContEnum.entries.any {
+                                it.name == raw.uppercase()
+                            } -> raw.uppercase()
+                            else -> fr.vetbrain.vetnutri_mp.Enumer.ContEnum.NO.name
+                        }
+                    } catch (_: Exception) {
+                        fr.vetbrain.vetnutri_mp.Enumer.ContEnum.NO.name
+                    }
+                }
+                fun genererNutrientValues(food: AlimentEvJson): List<NutrientValueEntity> {
+                    if (food.valMap.isEmpty()) return emptyList()
+                    val result: MutableList<NutrientValueEntity> = mutableListOf()
+                    food.valMap.forEach { (key, nutrientQuantity) ->
+                        try {
+                            val nutrientKey: String? = nutrientQuantity.nut
+                            val value: Float = nutrientQuantity.value
+                            if (nutrientKey.isNullOrBlank()) return@forEach
+                            var nutrient =
+                                    fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver
+                                            .AllNutrientResolver(nutrientKey)
+                            if (nutrient == null) {
+                                val special =
+                                        when {
+                                            nutrientKey.contains("HUMID", true) ||
+                                                    nutrientKey.contains("WATER", true) ||
+                                                    nutrientKey.contains("EAU", true) ->
+                                                    NutrientMain.entries.find { n ->
+                                                        n.label.equals("humidité", true)
+                                                    }
+                                            nutrientKey.contains("PROT", true) ||
+                                                    nutrientKey.contains("PROTEIN", true) ||
+                                                    nutrientKey.contains("MAT", true) ->
+                                                    NutrientMain.entries.find { n ->
+                                                        n.label.equals("protéine", true)
+                                                    }
+                                            nutrientKey.contains("LIP", true) ||
+                                                    nutrientKey.contains("FAT", true) ||
+                                                    nutrientKey.contains("MG", true) ->
+                                                    NutrientMain.entries.find { n ->
+                                                        n.label.equals("lipide", true)
+                                                    }
+                                            nutrientKey.contains("GLUC", true) ||
+                                                    nutrientKey.contains("CARB", true) ||
+                                                    nutrientKey.contains("CHO", true) ->
+                                                    NutrientMain.entries.find { n ->
+                                                        n.label.equals("glucide", true)
+                                                    }
+                                            nutrientKey.contains("CEND", true) ||
+                                                    nutrientKey.contains("ASH", true) ||
+                                                    nutrientKey.contains("MM", true) ->
+                                                    NutrientMain.entries.find { n ->
+                                                        n.label.equals("cendre", true)
+                                                    }
+                                            nutrientKey.contains("VIT", true) &&
+                                                    nutrientKey.contains("A", true) ->
+                                                    NutrientVitam.entries.find { n ->
+                                                        n.label.equals("VITA", true)
+                                                    }
+                                            nutrientKey.contains("VIT", true) &&
+                                                    nutrientKey.contains("C", true) ->
+                                                    NutrientVitam.entries.find { n ->
+                                                        n.label.equals("VITC", true)
+                                                    }
+                                            nutrientKey.contains("VIT", true) &&
+                                                    nutrientKey.contains("E", true) ->
+                                                    NutrientVitam.entries.find { n ->
+                                                        n.label.equals("VITE", true)
+                                                    }
+                                            nutrientKey.contains("VIT", true) &&
+                                                    nutrientKey.contains("D", true) ->
+                                                    NutrientVitam.entries.find { n ->
+                                                        n.label.equals("VITD", true)
+                                                    }
+                                            nutrientKey.contains("VIT", true) &&
+                                                    nutrientKey.contains("B1", true) ->
+                                                    NutrientVitam.entries.find { n ->
+                                                        n.label.equals("VITB1", true)
+                                                    }
+                                            nutrientKey.contains("CHOL", true) ||
+                                                    nutrientKey.contains("CHOLEST", true) ->
+                                                    NutrientLipid.entries.find { n ->
+                                                        n.label.equals("CHOLES", true)
+                                                    }
+                                            nutrientKey.contains("OMEG", true) &&
+                                                    (nutrientKey.contains("3", true) ||
+                                                            nutrientKey.contains("TROIS", true)) ->
+                                                    NutrientLipid.entries.find { n ->
+                                                        n.label.equals("O3", true)
+                                                    }
+                                            nutrientKey.contains("OMEG", true) &&
+                                                    (nutrientKey.contains("6", true) ||
+                                                            nutrientKey.contains("SIX", true)) ->
+                                                    NutrientLipid.entries.find { n ->
+                                                        n.label.equals("O6", true)
+                                                    }
+                                            else -> null
                                         }
-                                    }
-
-                            // Convertir les indications
-                            val indications =
-                                    food.indication.map { indicStr ->
-                                        try {
-                                            // Nettoyer la chaîne d'indication
-                                            val cleanedIndic =
-                                                    indicStr.toString()
-                                                            .replace("[", "")
-                                                            .replace("]", "")
-                                                            .replace("\"", "")
-                                                            .trim()
-
-                                            // Essayer de reconnaître l'indication
-                                            val indication = AlimIndic.getFromString(cleanedIndic)
-                                            if (indication != null) {
-                                                indication.name
-                                            } else {
-                                                cleanedIndic
-                                            }
-                                        } catch (e: Exception) {
-                                            e.printStackTrace()
-                                            indicStr.toString() // En cas d'erreur, conserver la
-                                            // chaîne originale
-                                        }
-                                    }
-
-                            // Convertir en JSON
-                            val especesJson = json.encodeToString(especes)
-                            val indicationsJson = json.encodeToString(indications)
-
-                            // Créer l'entité
-                            val foodEntity =
+                                if (special != null) nutrient = special
+                                else {
+                                    nonResolvedNutrients[nutrientKey] =
+                                            (nonResolvedNutrients[nutrientKey] ?: 0) + 1
+                                }
+                            }
+                            if (nutrient != null) {
+                                result.add(
+                                        NutrientValueEntity(
+                                                refAliment = food.UUID,
+                                                nutrientLabel = nutrient.label,
+                                                value = value
+                                        )
+                                )
+                            }
+                        } catch (_: Exception) {}
+                    }
+                    return result
+                }
+                // Prétraiter les entités
+                foods.forEach { food ->
+                    try {
+                        if (food.UUID.isNullOrBlank()) {
+                            importErrors.add("Erreur: UUID vide pour l'aliment ${food.nom}")
+                            errorCount++
+                            return@forEach
+                        }
+                        val especes: List<String> = convertirEspecesList(food.Especes)
+                        val indications: List<String> = convertirIndicationsList(food.indication)
+                        val especesJson: String = json.encodeToString(especes)
+                        val indicationsJson: String = json.encodeToString(indications)
+                        val belongs: Boolean = existingFoodUUIDs.contains(food.UUID)
+                        val contName: String = resoudreCont(if (belongs) null else food.cont)
+                        val quantityPres: Float = food.quantInt ?: 0f
+                        if (!belongs) {
+                            val entity: FoodEntity =
                                     FoodEntity(
                                             uuid = food.UUID,
                                             nameDef = food.nom ?: "",
                                             groupAlim =
                                                     try {
                                                         GroupAlim.valueOf(food.group ?: "").ordinal
-                                                    } catch (e: Exception) {
+                                                    } catch (_: Exception) {
                                                         0
                                                     },
                                             typeAlim =
                                                     try {
                                                         FoodKind.valueOf(food.foodKind ?: "")
                                                                 .ordinal
-                                                    } catch (e: Exception) {
+                                                    } catch (_: Exception) {
                                                         0
                                                     },
                                             ingredients = food.ingredients ?: "",
@@ -281,11 +391,18 @@ class DatabaseFoodRepository(
                                             brand = food.marque ?: "",
                                             gamme = food.gamme ?: "",
                                             unitPres = 0,
-                                            quantityPres = food.quantInt ?: 0f,
+                                            quantityPres = quantityPres,
                                             version = 1,
                                             date = "",
-                                            cont = food.cont ?: "NO",
-                                            consistent = if (food.cont == "YES") 1 else 0,
+                                            cont = contName,
+                                            consistent =
+                                                    if (contName !=
+                                                                    fr.vetbrain.vetnutri_mp.Enumer
+                                                                            .ContEnum.NO
+                                                                            .name
+                                                    )
+                                                            1
+                                                    else 0,
                                             deprecated = if (food.deprecated == true) 1 else 0,
                                             DataB = food.DataB ?: "",
                                             RefRation = null,
@@ -295,182 +412,142 @@ class DatabaseFoodRepository(
                                             especesJson = especesJson,
                                             indicationsJson = indicationsJson
                                     )
-
-                            // Insérer l'aliment
-                            foodDao.insert(foodEntity)
-
-                            // Traiter les valeurs nutritionnelles
-                            processNutrientValues(food, nonResolvedNutrients)
-
+                            newEntities.add(entity)
+                            allNutrientValues.addAll(genererNutrientValues(food))
                             importCount++
-                        } catch (e: Exception) {
-                            errorCount++
-                            e.printStackTrace()
-
-                            importErrors.add(
-                                    "Erreur lors de la création de l'aliment ${food.nom} (${food.UUID}): ${e.message}"
-                            )
-
-                            // Essayer de créer un aliment minimal en cas d'erreur
-                            try {
-                                val minimalFood =
-                                        FoodEntity(
-                                                uuid = food.UUID,
-                                                nameDef = food.nom ?: "",
-                                                groupAlim = 0,
-                                                typeAlim = 0,
-                                                ingredients = "",
-                                                price = 0.0,
-                                                categPrice = "",
-                                                brand = "",
-                                                gamme = "",
-                                                unitPres = 0,
-                                                quantityPres = 0f,
-                                                version = 1,
-                                                date = "",
-                                                cont = "",
-                                                consistent = 0,
-                                                deprecated = 0,
-                                                DataB = "",
-                                                RefRation = null,
-                                                RefAlimUnif = null,
-                                                especesJson = "[]",
-                                                indicationsJson = "[]",
-                                                name = food.nom,
-                                                quantite = 0f
-                                        )
-
-                                foodDao.insert(minimalFood)
-                                importCount++
-                            } catch (e2: Exception) {
-                                e2.printStackTrace()
-                            }
+                        } else {
+                            updateIds.add(food.UUID)
+                            // On résoudra RefRation et les champs conservés après avoir fetch tous
+                            // les existants
                         }
-                    } else {
-                        // L'aliment existe déjà, le mettre à jour
-                        try {
-                            updateCount++
-
-                            // Préserver la référence à la ration si elle existe
-                            val existingRationRef = existingFood.RefRation
-
-                            // Convertir les espèces
-                            val especes =
-                                    food.Especes.map { especeStr ->
-                                        try {
-                                            // Nettoyer la chaîne d'espèce
-                                            val cleanedEspece =
-                                                    especeStr
-                                                            .replace("[", "")
-                                                            .replace("]", "")
-                                                            .replace("\"", "")
-                                                            .trim()
-
-                                            // Essayer plusieurs stratégies pour reconnaître
-                                            // l'espèce
-                                            val espece = Espece.getFromString(cleanedEspece)
-                                            if (espece != null) {
-                                                espece.name
-                                            } else {
-                                                cleanedEspece
-                                            }
-                                        } catch (e: Exception) {
-                                            e.printStackTrace()
-                                            especeStr // En cas d'erreur, conserver la chaîne
-                                            // originale
-                                        }
-                                    }
-
-                            // Convertir les indications
-                            val indications =
-                                    food.indication.map { indicStr ->
-                                        try {
-                                            // Nettoyer la chaîne d'indication
-                                            val cleanedIndic =
-                                                    indicStr.toString()
-                                                            .replace("[", "")
-                                                            .replace("]", "")
-                                                            .replace("\"", "")
-                                                            .trim()
-
-                                            // Essayer de reconnaître l'indication
-                                            val indication = AlimIndic.getFromString(cleanedIndic)
-                                            if (indication != null) {
-                                                indication.name
-                                            } else {
-                                                cleanedIndic
-                                            }
-                                        } catch (e: Exception) {
-                                            e.printStackTrace()
-                                            indicStr.toString() // En cas d'erreur, conserver la
-                                            // chaîne originale
-                                        }
-                                    }
-
-                            // Convertir en JSON
-                            val especesJson = json.encodeToString(especes)
-                            val indicationsJson = json.encodeToString(indications)
-
-                            // Mettre à jour l'aliment
-                            val updatedFood =
-                                    existingFood.copy(
-                                            nameDef = food.nom ?: existingFood.nameDef,
-                                            ingredients = food.ingredients
-                                                            ?: existingFood.ingredients,
-                                            price = food.prix ?: existingFood.price,
-                                            brand = food.marque ?: existingFood.brand,
-                                            gamme = food.gamme ?: existingFood.gamme,
-                                            especesJson = especesJson,
-                                            indicationsJson = indicationsJson,
-                                            RefRation = existingRationRef
-                                    )
-
+                    } catch (e: Exception) {
+                        errorCount++
+                        importErrors.add(
+                                "Erreur générale lors du prétraitement de l'aliment ${food.nom} (${food.UUID}): ${e.message}"
+                        )
+                    }
+                }
+                if (updateIds.isNotEmpty()) {
+                    val existants: Map<String, FoodEntity> =
                             try {
-                                foodDao.update(updatedFood)
-
-                                // Traiter les valeurs nutritionnelles
-                                processNutrientValues(food, nonResolvedNutrients)
-                            } catch (e: Exception) {
-                                e.printStackTrace()
-                                importErrors.add(
-                                        "Erreur lors de la mise à jour de l'aliment ${food.nom} (${food.UUID}): ${e.message}"
-                                )
-                                errorCount++
+                                foodDao.getFoodsByIds(updateIds).associateBy { it.uuid }
+                            } catch (_: Exception) {
+                                emptyMap()
                             }
-                        } catch (e: Exception) {
-                            e.printStackTrace()
-                            importErrors.add(
-                                    "Erreur lors du traitement de mise à jour de l'aliment ${food.nom} (${food.UUID}): ${e.message}"
-                            )
-                            errorCount++
+                    foods.forEach { food ->
+                        if (food.UUID != null && existants.containsKey(food.UUID)) {
+                            try {
+                                val existing: FoodEntity = existants[food.UUID]!!
+                                val especes: List<String> = convertirEspecesList(food.Especes)
+                                val indications: List<String> =
+                                        convertirIndicationsList(food.indication)
+                                val especesJson: String = json.encodeToString(especes)
+                                val indicationsJson: String = json.encodeToString(indications)
+                                val contName: String =
+                                        try {
+                                            val raw: String =
+                                                    (food.cont ?: existing.cont ?: "NO").trim()
+                                            when {
+                                                raw.equals("YES", true) ->
+                                                        fr.vetbrain.vetnutri_mp.Enumer.ContEnum.CAN
+                                                                .name
+                                                fr.vetbrain.vetnutri_mp.Enumer.ContEnum.entries
+                                                        .any { it.name == raw.uppercase() } ->
+                                                        raw.uppercase()
+                                                else ->
+                                                        fr.vetbrain.vetnutri_mp.Enumer.ContEnum.NO
+                                                                .name
+                                            }
+                                        } catch (_: Exception) {
+                                            existing.cont
+                                                    ?: fr.vetbrain.vetnutri_mp.Enumer.ContEnum.NO
+                                                            .name
+                                        }
+                                val quantityPres: Float =
+                                        food.quantInt ?: existing.quantityPres ?: 0f
+                                val updated: FoodEntity =
+                                        existing.copy(
+                                                nameDef = food.nom ?: existing.nameDef,
+                                                ingredients = food.ingredients
+                                                                ?: existing.ingredients,
+                                                price = food.prix ?: existing.price,
+                                                brand = food.marque ?: existing.brand,
+                                                gamme = food.gamme ?: existing.gamme,
+                                                categPrice = food.categoriePrix
+                                                                ?: existing.categPrice,
+                                                deprecated =
+                                                        if (food.deprecated == true) 1
+                                                        else existing.deprecated,
+                                                DataB = food.DataB ?: existing.DataB,
+                                                cont = contName,
+                                                quantityPres = quantityPres,
+                                                especesJson = especesJson,
+                                                indicationsJson = indicationsJson,
+                                                RefRation = existing.RefRation
+                                        )
+                                updateEntities.add(updated)
+                                allNutrientValues.addAll(genererNutrientValues(food))
+                                updateCount++
+                            } catch (e: Exception) {
+                                errorCount++
+                                importErrors.add(
+                                        "Erreur lors de la préparation update ${food.nom} (${food.UUID}): ${e.message}"
+                                )
+                            }
                         }
                     }
-                } catch (e: Exception) {
-                    // Gérer les erreurs générale par aliment
-                    errorCount++
-                    val errorMsg =
-                            "Erreur générale lors du traitement de l'aliment ${food.nom} (${food.UUID}): ${e.message}"
-                    importErrors.add(errorMsg)
-                    e.printStackTrace()
                 }
+                if (newEntities.isNotEmpty()) {
+                    try {
+                        newEntities.chunked(500).forEach { batch -> foodDao.insertFoods(batch) }
+                    } catch (e: Exception) {
+                        errorCount += newEntities.size
+                    }
+                }
+                if (updateEntities.isNotEmpty()) {
+                    try {
+                        updateEntities.chunked(500).forEach { batch -> foodDao.updateFoods(batch) }
+                    } catch (e: Exception) {
+                        errorCount += updateEntities.size
+                    }
+                }
+                if (updateIds.isNotEmpty()) {
+                    try {
+                        updateIds.chunked(500).forEach { part ->
+                            nutrientValueDao?.deleteAllForAliments(part)
+                        }
+                    } catch (_: Exception) {}
+                }
+                if (allNutrientValues.isNotEmpty() && nutrientValueDao != null) {
+                    try {
+                        allNutrientValues.chunked(1000).forEach { chunk ->
+                            nutrientValueDao.insertNutrientValues(chunk)
+                        }
+                    } catch (e: Exception) {
+                        // Fallback insertion une par une
+                        var ok: Int = 0
+                        allNutrientValues.forEach { nv ->
+                            try {
+                                nutrientValueDao.insertNutrientValues(listOf(nv))
+                                ok++
+                            } catch (_: Exception) {}
+                        }
+                    }
+                }
+            } finally {
+                endBatch()
             }
-
-            // Afficher en détail les erreurs si nécessaire
-            if (errorCount > 0) {
-                importErrors.forEachIndexed { index, error -> }
-            }
-
-            // Afficher les nutriments non résolus
-            if (nonResolvedNutrients.isNotEmpty()) {
-                nonResolvedNutrients.forEach { (nutrient, count) -> }
-            }
-
             return@withContext FoodImportResult(
                     importedCount = importCount,
                     updatedCount = updateCount,
                     errorCount = errorCount,
                     deletedCount = 0,
-                    totalCount = foodDao.getAllFoods().size,
+                    totalCount =
+                            try {
+                                foodDao.getAllFoods().size
+                            } catch (_: Exception) {
+                                0
+                            },
                     nonResolvedNutrientsCount = nonResolvedNutrients.size,
                     nonResolvedNutrients = nonResolvedNutrients.keys.toList()
             )

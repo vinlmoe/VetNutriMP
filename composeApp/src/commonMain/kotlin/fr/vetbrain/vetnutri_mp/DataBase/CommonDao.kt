@@ -115,6 +115,17 @@ interface FoodDao {
 
         @Query("DELETE FROM FOOD") suspend fun deleteAllFoods()
 
+        // Optimisations pour import en lot
+        @Query("SELECT uuid FROM FOOD") suspend fun getAllFoodIds(): List<String>
+
+        @Insert(onConflict = OnConflictStrategy.REPLACE)
+        suspend fun insertFoods(foods: List<FoodEntity>)
+
+        @Update suspend fun updateFoods(foods: List<FoodEntity>)
+
+        @Query("SELECT * FROM FOOD WHERE uuid IN (:uuids)")
+        suspend fun getFoodsByIds(uuids: List<String>): List<FoodEntity>
+
         @Insert(onConflict = OnConflictStrategy.REPLACE)
         suspend fun insertIndications(indications: List<IndicationAlimentEntity>)
 
@@ -146,6 +157,9 @@ interface NutrientValueDao {
 
         @Query("DELETE FROM NUTRIENT_VALUES WHERE refAliment = :alimentUuid")
         suspend fun deleteAllNutrientValuesForAliment(alimentUuid: String)
+
+        @Query("DELETE FROM NUTRIENT_VALUES WHERE refAliment IN (:alimentUuids)")
+        suspend fun deleteAllForAliments(alimentUuids: List<String>)
 }
 
 /** DAO pour accéder aux références bibliographiques dans la base de données */

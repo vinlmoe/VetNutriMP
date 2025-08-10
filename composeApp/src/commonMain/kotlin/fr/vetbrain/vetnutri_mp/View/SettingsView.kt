@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+// Import délégué via SettingsViewModel.importApiFromFileUI()
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -650,12 +651,21 @@ fun SettingsView(
                                                                                 try {
                                                                                         val exportRepo =
                                                                                                 ExportImportRepository(
-                                                                                                        viewModel
-                                                                                                                .animalRepository,
-                                                                                                        viewModel
-                                                                                                                .foodRepository,
-                                                                                                        viewModel
-                                                                                                                .equationRepository
+                                                                                                        animalRepository =
+                                                                                                                viewModel
+                                                                                                                        .animalRepository,
+                                                                                                        foodRepository =
+                                                                                                                viewModel
+                                                                                                                        .foodRepository,
+                                                                                                        equationRepository =
+                                                                                                                viewModel
+                                                                                                                        .equationRepository,
+                                                                                                        referenceRepository =
+                                                                                                                viewModel
+                                                                                                                        .referenceEvRepository,
+                                                                                                        biblioRepository =
+                                                                                                                viewModel
+                                                                                                                        .biblioRefRepository
                                                                                                 )
                                                                                         val json =
                                                                                                 exportRepo
@@ -728,6 +738,165 @@ fun SettingsView(
                                                                 Text(
                                                                         "Importer (nouveau format API)",
                                                                         color = Color.White
+                                                                )
+                                                        }
+
+                                                        // Dialog de résultat pour l'import API
+                                                        val apiImportResult =
+                                                                viewModel.importResult
+                                                                        .collectAsState()
+                                                                        .value
+                                                        val apiImporting =
+                                                                viewModel.isApiImporting
+                                                                        .collectAsState()
+                                                                        .value
+                                                        val apiProgress =
+                                                                viewModel.apiImportProgress
+                                                                        .collectAsState()
+                                                                        .value
+                                                        val apiLogs =
+                                                                viewModel.apiImportLogs
+                                                                        .collectAsState()
+                                                                        .value
+                                                        if (apiImporting) {
+                                                                AlertDialog(
+                                                                        onDismissRequest = {},
+                                                                        title = {
+                                                                                Text(
+                                                                                        "Import API en cours…"
+                                                                                )
+                                                                        },
+                                                                        text = {
+                                                                                Column(
+                                                                                        verticalArrangement =
+                                                                                                Arrangement
+                                                                                                        .spacedBy(
+                                                                                                                8.dp
+                                                                                                        )
+                                                                                ) {
+                                                                                        LinearProgressIndicator(
+                                                                                                progress =
+                                                                                                        apiProgress
+                                                                                        )
+                                                                                        Box(
+                                                                                                modifier =
+                                                                                                        Modifier.fillMaxWidth()
+                                                                                                                .height(
+                                                                                                                        120.dp
+                                                                                                                )
+                                                                                                                .background(
+                                                                                                                        Color(
+                                                                                                                                0xFFF5F5F5
+                                                                                                                        )
+                                                                                                                )
+                                                                                        ) {
+                                                                                                // Affichage simple des logs (limités)
+                                                                                                Column(
+                                                                                                        modifier =
+                                                                                                                Modifier.padding(
+                                                                                                                        8.dp
+                                                                                                                )
+                                                                                                ) {
+                                                                                                        apiLogs.takeLast(
+                                                                                                                        10
+                                                                                                                )
+                                                                                                                .forEach {
+                                                                                                                        line
+                                                                                                                        ->
+                                                                                                                        Text(
+                                                                                                                                line
+                                                                                                                        )
+                                                                                                                }
+                                                                                                }
+                                                                                        }
+                                                                                }
+                                                                        },
+                                                                        confirmButton = {}
+                                                                )
+                                                        }
+                                                        var showApiImportDialog by remember {
+                                                                mutableStateOf(false)
+                                                        }
+                                                        LaunchedEffect(apiImportResult) {
+                                                                if (apiImportResult != null)
+                                                                        showApiImportDialog = true
+                                                        }
+                                                        if (showApiImportDialog) {
+                                                                AlertDialog(
+                                                                        onDismissRequest = {
+                                                                                showApiImportDialog =
+                                                                                        false
+                                                                                viewModel
+                                                                                        .resetImportResult()
+                                                                        },
+                                                                        title = {
+                                                                                Text(
+                                                                                        "Résultat de l'import API"
+                                                                                )
+                                                                        },
+                                                                        text = {
+                                                                                when (val r =
+                                                                                                apiImportResult
+                                                                                ) {
+                                                                                        is SettingsViewModel.ImportResult.Success -> {
+                                                                                                Column {
+                                                                                                        Text(
+                                                                                                                "Total pris en compte: ${r.count}"
+                                                                                                        )
+                                                                                                        Text(
+                                                                                                                "Importés: ${r.importedCount}"
+                                                                                                        )
+                                                                                                        if (r.updatedCount >
+                                                                                                                        0
+                                                                                                        )
+                                                                                                                Text(
+                                                                                                                        "Mises à jour: ${r.updatedCount}"
+                                                                                                                )
+                                                                                                        if (r.deletedCount >
+                                                                                                                        0
+                                                                                                        )
+                                                                                                                Text(
+                                                                                                                        "Supprimés: ${r.deletedCount}"
+                                                                                                                )
+                                                                                                        if (r.errorCount >
+                                                                                                                        0
+                                                                                                        )
+                                                                                                                Text(
+                                                                                                                        "Erreurs: ${r.errorCount}",
+                                                                                                                        color =
+                                                                                                                                MaterialTheme
+                                                                                                                                        .colors
+                                                                                                                                        .error
+                                                                                                                )
+                                                                                                }
+                                                                                        }
+                                                                                        is SettingsViewModel.ImportResult.Error -> {
+                                                                                                Text(
+                                                                                                        "Erreur: ${r.message}",
+                                                                                                        color =
+                                                                                                                MaterialTheme
+                                                                                                                        .colors
+                                                                                                                        .error
+                                                                                                )
+                                                                                        }
+                                                                                        null ->
+                                                                                                Text(
+                                                                                                        "Aucun résultat."
+                                                                                                )
+                                                                                }
+                                                                        },
+                                                                        confirmButton = {
+                                                                                Button(
+                                                                                        onClick = {
+                                                                                                showApiImportDialog =
+                                                                                                        false
+                                                                                                viewModel
+                                                                                                        .resetImportResult()
+                                                                                                // rafraîchit la liste des animaux si l'import a concerné des animaux
+                                                                                                onAnimalListRefresh()
+                                                                                        }
+                                                                                ) { Text("OK") }
+                                                                        }
                                                                 )
                                                         }
 

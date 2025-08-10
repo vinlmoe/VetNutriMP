@@ -25,12 +25,15 @@ import kotlinx.serialization.json.Json
 class SettingsViewModel(
         internal val animalRepository: AnimalRepository,
         internal val foodRepository: DatabaseFoodRepository,
-        private val referenceEvRepository:
+        internal val referenceEvRepository:
                 fr.vetbrain.vetnutri_mp.Repository.DatabaseReferenceEvRepository? =
                 null,
         internal val equationRepository: fr.vetbrain.vetnutri_mp.Repository.EquationRepository? =
                 null,
-        private val biblioRefRepository: fr.vetbrain.vetnutri_mp.Repository.BiblioRefRepository? =
+        internal val biblioRefRepository: fr.vetbrain.vetnutri_mp.Repository.BiblioRefRepository? =
+                null,
+        internal val consultationRepository:
+                fr.vetbrain.vetnutri_mp.Repository.ConsultationRepository? =
                 null
 ) {
     private val _uiScale = MutableStateFlow(1f)
@@ -39,6 +42,16 @@ class SettingsViewModel(
     // Résultat de l'importation
     private val _importResult = MutableStateFlow<ImportResult?>(null)
     val importResult: StateFlow<ImportResult?> = _importResult.asStateFlow()
+
+    // État import API (progression + logs)
+    private val _isApiImporting = MutableStateFlow(false)
+    val isApiImporting: StateFlow<Boolean> = _isApiImporting.asStateFlow()
+
+    private val _apiImportProgress = MutableStateFlow(0f)
+    val apiImportProgress: StateFlow<Float> = _apiImportProgress.asStateFlow()
+
+    private val _apiImportLogs = MutableStateFlow<List<String>>(emptyList())
+    val apiImportLogs: StateFlow<List<String>> = _apiImportLogs.asStateFlow()
 
     // Message de résultat pour les références nutritionnelles
     private val _nutritionalRequirementMessage = MutableStateFlow<String?>(null)
@@ -179,6 +192,26 @@ class SettingsViewModel(
     /** Définit le résultat de l'importation */
     fun setImportResult(result: ImportResult) {
         _importResult.value = result
+    }
+
+    // Contrats de suivi pour import API
+    fun startApiImport() {
+        _isApiImporting.value = true
+        _apiImportProgress.value = 0f
+        _apiImportLogs.value = emptyList()
+    }
+
+    fun updateApiImportProgress(progress: Float) {
+        _apiImportProgress.value = progress.coerceIn(0f, 1f)
+    }
+
+    fun appendApiImportLog(message: String) {
+        val newLogs = (_apiImportLogs.value + message).takeLast(200)
+        _apiImportLogs.value = newLogs
+    }
+
+    fun finishApiImport() {
+        _isApiImporting.value = false
     }
 
     /**

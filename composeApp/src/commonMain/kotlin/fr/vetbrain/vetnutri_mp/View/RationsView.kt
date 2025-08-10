@@ -41,7 +41,7 @@ import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Repository.PreferencesRepository
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
-import fr.vetbrain.vetnutri_mp.Utils.ExpressionMathematique
+import fr.vetbrain.vetnutri_mp.Utils.EquationEvaluator
 import fr.vetbrain.vetnutri_mp.Utils.PreferencesStorage
 import fr.vetbrain.vetnutri_mp.Utils.TextUtils
 import fr.vetbrain.vetnutri_mp.Utils.createPreferencesStorage
@@ -58,77 +58,8 @@ import kotlinx.coroutines.launch
 // Constante pour l'exposant formaté
 private const val EXPOSANT_075 = "⁰·⁷⁵"
 
-/**
- * Calcule la densité énergétique d'un aliment selon les formules de la référence
- * @param aliment L'aliment pour lequel calculer la densité énergétique
- * @param reference La référence contenant les équations DE commerciale et brute
- * @return La densité énergétique en kcal/100g
- */
-private fun calculerDensiteEnergetique(
-        alimentRation: AlimentRation,
-        reference: ReferenceEv
-): Double {
-        try {
-                val aliment = alimentRation.aliment ?: return 0.0
-
-                // Déterminer si l'aliment est commercial (complet/complémentaire) ou brut
-                val estCommercial =
-                        aliment.indicat.any { indication ->
-                                indication.name == "COMP" || indication.name == "COMPL"
-                        }
-
-                // Choisir l'équation appropriée
-                val equation =
-                        if (estCommercial) {
-                                reference.equationDEcom
-                        } else {
-                                reference.equationDEraw
-                        }
-
-                if (equation == null || equation.equationScript.isEmpty()) {
-                        return 0.0
-                }
-
-                // Créer les variables pour l'évaluation
-                val variables = mutableMapOf<String, Double>()
-
-                // Ajouter les nutriments principaux nécessaires aux formules
-                aliment.valMap.forEach { (nutrient, quantity) ->
-                        when (nutrient.label.uppercase()) {
-                                "PROTEINE", "PB" -> {
-                                        variables["PB"] = quantity.value.toDouble()
-                                        variables["PROT"] =
-                                                quantity.value
-                                                        .toDouble() // Alias pour compatibilité
-                                        variables["PROTEINE"] = quantity.value.toDouble()
-                                        // équations
-                                }
-                                "LIPIDE" -> {
-                                        variables["LIPIDE"] = quantity.value.toDouble()
-                                        variables["LIP"] =
-                                                quantity.value
-                                                        .toDouble() // Alias pour compatibilité
-                                        // équations
-                                }
-                                "ENA" -> variables["ENA"] = quantity.value.toDouble()
-                                "CENDRE" -> variables["CENDRE"] = quantity.value.toDouble()
-                        }
-                }
-
-                // Vérifier que les nutriments essentiels sont présents
-
-                // Évaluer l'équation
-                val resultat =
-                        fr.vetbrain.vetnutri_mp.Utils.ExpressionMathematique.evaluer(
-                                equation.equationScript,
-                                variables
-                        )
-
-                return resultat ?: 0.0
-        } catch (e: Exception) {
-                return 0.0
-        }
-}
+// Suppression du calcul local de DE : on utilisera EquationEvaluator avec nutriments
+// complémentaires
 
 // Fonction locale InfoRow pour éviter les problèmes d'import
 @Composable
@@ -170,24 +101,8 @@ fun RationsView(
         val besoinEnergetiqueTotal by viewModel.besoinEnergetiqueTotal.collectAsState()
         val referenceUtilisee by viewModel.referenceUtilisee.collectAsState()
 
-        // Calcul de l'énergie totale apportée par la ration sélectionnée
-        val energieApportee =
-                remember(selectedRation, referenceUtilisee) {
-                        selectedRation?.let { ration ->
-                                referenceUtilisee?.let { reference ->
-                                        ration.alimentMutableList.sumOf { aliment ->
-                                                val densiteEnergetique =
-                                                        calculerDensiteEnergetique(
-                                                                aliment,
-                                                                reference
-                                                        )
-                                                (densiteEnergetique * aliment.quantite) / 100.0
-                                        }
-                                }
-                                        ?: 0.0
-                        }
-                                ?: 0.0
-                }
+        // L'énergie apportée sera calculée plus bas après chargement des préférences
+        var energieApportee by remember { mutableStateOf(0.0) }
 
         // Calcul du pourcentage de couverture avec le besoin énergétique total
         val pourcentageCouverture =
@@ -225,6 +140,31 @@ fun RationsView(
                 preferencesApplication?.preferencesParEspece?.forEach { (espece, prefs) ->
                         prefs.nutrimentsSelectionnes.forEach { (categorie, nutriments) -> }
                 }
+        }
+
+        // Calcul de l'énergie totale apportée par la ration sélectionnée (avec nutriments
+        // complémentaires)
+        val energieKey = listOf(selectedRation, referenceUtilisee, preferencesApplication, animal)
+        LaunchedEffect(energieKey) {
+                val rationActuelle = selectedRation
+                val reference = referenceUtilisee
+                val prefsApp = preferencesApplication
+                val animalActuel = animal
+                energieApportee =
+                        if (rationActuelle != null &&
+                                        reference != null &&
+                                        prefsApp != null &&
+                                        animalActuel != null
+                        ) {
+                                val prefsEspece =
+                                        prefsApp.getPreferencesEspece(animalActuel.getEspece())
+                                EquationEvaluator.calculerApportEnergetiqueRation(
+                                        ration = rationActuelle,
+                                        preferences = prefsEspece,
+                                        equationRepository = equationRepository,
+                                        referenceEv = reference
+                                )
+                        } else 0.0
         }
 
         // États pour les dialogues et navigation
