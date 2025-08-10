@@ -52,6 +52,143 @@ class DatabaseFoodRepository(
         coroutineScope.launch { refreshFoodsFlow() }
     }
 
+    /**
+     * Importe/mettre à jour en LOT une liste d'aliments du domaine. Optimisé: résolution existence
+     * par Set d'UUID, insert/update par lots, suppression groupée des nutriments puis insertion
+     * groupée.
+     */
+    suspend fun importFoodsDomain(aliments: List<AlimentEv>): FoodImportResult {
+        return withContext(AppDispatchers.IO) {
+            var importCount: Int = 0
+            var updateCount: Int = 0
+            var errorCount: Int = 0
+            val nonResolvedNutrients: MutableMap<String, Int> = mutableMapOf()
+            try {
+                beginBatch()
+                val existingFoodUUIDs: Set<String> =
+                        try {
+                            foodDao.getAllFoodIds().toSet()
+                        } catch (_: Exception) {
+                            emptySet()
+                        }
+                val newEntities: MutableList<FoodEntity> = mutableListOf()
+                val updateEntities: MutableList<FoodEntity> = mutableListOf()
+                val updateIds: MutableList<String> = mutableListOf()
+                val allNutrientValues: MutableList<NutrientValueEntity> = mutableListOf()
+
+                // Pré-traiter insert vs update
+                aliments.forEach { aliment ->
+                    try {
+                        if (aliment.uuid.isBlank()) {
+                            errorCount++
+                            return@forEach
+                        }
+                        val belongs: Boolean = existingFoodUUIDs.contains(aliment.uuid)
+                        if (!belongs) {
+                            val entity: FoodEntity = aliment.toFoodEntity().copy(RefRation = null)
+                            newEntities.add(entity)
+                            // Générer les nutriments depuis la map domaine
+                            allNutrientValues.addAll(
+                                    aliment.valMap.toNutrientValueEntities(aliment.uuid)
+                            )
+                            importCount++
+                        } else {
+                            updateIds.add(aliment.uuid)
+                        }
+                    } catch (_: Exception) {
+                        errorCount++
+                    }
+                }
+
+                // Préparer les updates en se basant sur l'état existant
+                if (updateIds.isNotEmpty()) {
+                    val existants: Map<String, FoodEntity> =
+                            try {
+                                foodDao.getFoodsByIds(updateIds).associateBy { it.uuid }
+                            } catch (_: Exception) {
+                                emptyMap()
+                            }
+                    aliments.forEach { aliment ->
+                        val id: String = aliment.uuid
+                        if (existants.containsKey(id)) {
+                            try {
+                                val existing: FoodEntity = existants[id]!!
+                                val updated: FoodEntity =
+                                        aliment.toFoodEntity().copy(RefRation = existing.RefRation)
+                                updateEntities.add(updated)
+                                allNutrientValues.addAll(
+                                        aliment.valMap.toNutrientValueEntities(aliment.uuid)
+                                )
+                                updateCount++
+                            } catch (_: Exception) {
+                                errorCount++
+                            }
+                        }
+                    }
+                }
+
+                // Inserts/updates en lots
+                if (newEntities.isNotEmpty()) {
+                    try {
+                        newEntities.chunked(500).forEach { batch -> foodDao.insertFoods(batch) }
+                    } catch (_: Exception) {
+                        errorCount += newEntities.size
+                    }
+                }
+                if (updateEntities.isNotEmpty()) {
+                    try {
+                        updateEntities.chunked(500).forEach { batch -> foodDao.updateFoods(batch) }
+                    } catch (_: Exception) {
+                        errorCount += updateEntities.size
+                    }
+                }
+
+                // Nettoyer et réinsérer les nutriments pour tous les aliments traités
+                val allIds: List<String> = buildList {
+                    addAll(newEntities.map { it.uuid })
+                    addAll(updateEntities.map { it.uuid })
+                }
+                if (allIds.isNotEmpty()) {
+                    try {
+                        allIds.chunked(500).forEach { part ->
+                            nutrientValueDao?.deleteAllForAliments(part)
+                        }
+                    } catch (_: Exception) {}
+                }
+                if (allNutrientValues.isNotEmpty() && nutrientValueDao != null) {
+                    try {
+                        allNutrientValues.chunked(1000).forEach { chunk ->
+                            nutrientValueDao.insertNutrientValues(chunk)
+                        }
+                    } catch (_: Exception) {
+                        // Fallback insertion élément par élément
+                        allNutrientValues.forEach { nv ->
+                            try {
+                                nutrientValueDao.insertNutrientValues(listOf(nv))
+                            } catch (_: Exception) {}
+                        }
+                    }
+                }
+            } finally {
+                endBatch()
+            }
+            return@withContext FoodImportResult(
+                    importedCount = importCount,
+                    updatedCount = updateCount,
+                    errorCount = errorCount,
+                    deletedCount = 0,
+                    totalCount =
+                            try {
+                                foodDao.getAllFoods().size
+                            } catch (_: Exception) {
+                                0
+                            },
+                    nonResolvedNutrientsCount = nonResolvedNutrients.size,
+                    nonResolvedNutrients = nonResolvedNutrients.keys.toList()
+            )
+        }
+    }
+
     init {
         // Initialiser le flow au démarrage
         coroutineScope.launch { refreshFoodsFlow() }

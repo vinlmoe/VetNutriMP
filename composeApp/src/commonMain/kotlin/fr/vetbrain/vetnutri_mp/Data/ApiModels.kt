@@ -54,7 +54,27 @@ data class ConsultationApi(
         val waterMl: Float? = null,
         val bodyFatPercent: Float? = null,
         val bcs: Int? = null,
-        val mcs: Int? = null
+        val mcs: Int? = null,
+        val methodAnalysis: String = "",
+        val k1Id: String? = null,
+        val k1Value: Float? = null,
+        val k2Id: String? = null,
+        val k2Value: Float? = null,
+        val k3Id: String? = null,
+        val k3Value: Float? = null,
+        val k4Id: String? = null,
+        val k4Value: Float? = null,
+        val k5Id: String? = null,
+        val k5Value: Float? = null,
+        val nLittle: Int? = null,
+        val pAdult: Float? = null,
+        val coefGes: Int? = null,
+        val coefLact: Int? = null,
+        val referenceGeneraleId: String? = null,
+        val diseaseReferences: List<String> = emptyList(),
+        val coefficientAjustement: Double = 1.0,
+        val supplementalVariables: List<SupplementalVariableApi> = emptyList(),
+        val rations: List<RationApi> = emptyList()
 )
 
 @Serializable
@@ -65,6 +85,15 @@ data class FoodApi(
         val kind: String? = null,
         val brand: String? = null,
         val price: Double? = null,
+        val categoryPrice: String? = null,
+        val ingredients: String? = null,
+        val gamme: String? = null,
+        val presentation: String? = null,
+        val presentationQuantity: Float? = null,
+        val deprecated: Boolean? = null,
+        val dataB: String? = null,
+        val consistent: Boolean? = null,
+        val rationId: String? = null,
         val species: List<String> = emptyList(),
         val indications: List<String> = emptyList(),
         val nutrients: Map<String, Float> = emptyMap()
@@ -75,12 +104,28 @@ data class RationApi(
         val uuid: String,
         val consultationId: String,
         val name: String,
+        val coef: Float,
         val isCurrent: Boolean,
+        val number: Int,
+        val specie: String?,
+        val isRecipe: Boolean,
+        val description: String,
         val items: List<RationItemApi>
 )
 
 @Serializable
-data class RationItemApi(val foodId: String, val quantity: Float, val proportion: Float)
+data class RationItemApi(
+        val uuid: String,
+        val foodId: String,
+        val quantity: Float,
+        val proportion: Float,
+        val weight: Float? = null,
+        val category: Int? = null,
+        val density: Double? = null
+)
+
+@Serializable
+data class SupplementalVariableApi(val variable: String, val value: Float)
 
 @Serializable
 data class EquationApi(
@@ -168,10 +213,39 @@ fun FoodApi.toDomain(): AlimentEv {
                 AlimentEv(
                         uuid = uuid,
                         nom = name,
-                        brand = brand,
+                        group =
+                                group?.let {
+                                        runCatching {
+                                                        fr.vetbrain.vetnutri_mp.Enumer.GroupAlim
+                                                                .valueOf(it)
+                                                }
+                                                .getOrNull()
+                                },
+                        typeAliment =
+                                kind?.let {
+                                        runCatching {
+                                                        fr.vetbrain.vetnutri_mp.Enumer.FoodKind
+                                                                .valueOf(it)
+                                                }
+                                                .getOrNull()
+                                },
+                        ingredients = ingredients,
                         price = price,
+                        categPrice = categoryPrice,
+                        brand = brand,
+                        gamme = gamme,
+                        cont =
+                                presentation?.let {
+                                        fr.vetbrain.vetnutri_mp.Enumer.ContEnum.getByName(
+                                                if (it == "YES") "CAN" else it
+                                        )
+                                },
+                        quantInt = presentationQuantity,
+                        deprecated = deprecated ?: false,
+                        dataB = dataB,
                         especes = normalizedSpecies,
-                        indicat = normalizedIndics
+                        indicat = normalizedIndics,
+                        rationUUID = rationId
                 )
         nutrients.forEach { (label, value) ->
                 fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver.AllNutrientResolver(label)?.let {
@@ -255,7 +329,32 @@ fun ConsultationEv.toApi(): ConsultationApi {
                 waterMl = water,
                 bodyFatPercent = bodyFat,
                 bcs = BCS,
-                mcs = MCS
+                mcs = MCS,
+                methodAnalysis = methodAnalysis,
+                k1Id = k1Id,
+                k1Value = k1Value,
+                k2Id = k2Id,
+                k2Value = k2Value,
+                k3Id = k3Id,
+                k3Value = k3Value,
+                k4Id = k4Id,
+                k4Value = k4Value,
+                k5Id = k5Id,
+                k5Value = k5Value,
+                nLittle = nLittle,
+                pAdult = pAdult,
+                coefGes = coefGes,
+                coefLact = coefLact,
+                referenceGeneraleId = referenceGeneraleId,
+                diseaseReferences = referencesMaladies,
+                coefficientAjustement = coefficientAjustement,
+                supplementalVariables =
+                        suppVarp.mapNotNull { sv ->
+                                sv.variable?.name?.let { vn ->
+                                        SupplementalVariableApi(vn, sv.varue ?: 0f)
+                                }
+                        },
+                rations = rations.map { it.toApi() }
         )
 }
 
@@ -286,6 +385,15 @@ fun AlimentEv.toApi(): FoodApi {
                 kind = typeAliment?.name,
                 brand = brand,
                 price = price,
+                categoryPrice = categPrice,
+                ingredients = ingredients,
+                gamme = gamme,
+                presentation = cont?.name,
+                presentationQuantity = quantInt,
+                deprecated = deprecated,
+                dataB = dataB,
+                consistent = consistent,
+                rationId = rationUUID,
                 species = especes,
                 indications = indicat.map { it.name },
                 nutrients = valMap.mapKeys { it.key.label }.mapValues { it.value.value }
@@ -298,15 +406,24 @@ fun Ration.toApi(): RationApi {
                 uuid = uuid,
                 consultationId = idConsult,
                 name = name,
+                coef = coef,
                 isCurrent = actual,
+                number = number,
+                specie = espece,
+                isRecipe = recette,
+                description = description,
                 items =
                         alimentMutableList.mapNotNull { item ->
                                 val foodId: String? = item.aliment?.uuid
                                 if (foodId != null)
                                         RationItemApi(
+                                                uuid = item.uuid,
                                                 foodId = foodId,
                                                 quantity = item.quantite,
-                                                proportion = item.proportion
+                                                proportion = item.proportion,
+                                                weight = item.weight,
+                                                category = item.category,
+                                                density = item.densiteEnergetique
                                         )
                                 else null
                         }
@@ -450,6 +567,85 @@ fun ConsultationApi.toDomain(): ConsultationEv {
                 water = waterMl,
                 bodyFat = bodyFatPercent,
                 BCS = bcs,
-                MCS = mcs
+                MCS = mcs,
+                methodAnalysis = methodAnalysis,
+                k1Id = k1Id,
+                k1Value = k1Value,
+                k2Id = k2Id,
+                k2Value = k2Value,
+                k3Id = k3Id,
+                k3Value = k3Value,
+                k4Id = k4Id,
+                k4Value = k4Value,
+                k5Id = k5Id,
+                k5Value = k5Value,
+                nLittle = nLittle,
+                pAdult = pAdult,
+                coefGes = coefGes,
+                coefLact = coefLact,
+                suppVarp =
+                        supplementalVariables
+                                .mapNotNull { api ->
+                                        runCatching {
+                                                        SupplementalvariableP(
+                                                                variable =
+                                                                        fr.vetbrain.vetnutri_mp
+                                                                                .Enumer.VariableKind
+                                                                                .valueOf(
+                                                                                        api.variable
+                                                                                ),
+                                                                varue = api.value
+                                                        )
+                                                }
+                                                .getOrNull()
+                                }
+                                .toMutableList(),
+                rations =
+                        rations
+                                .map { rApi ->
+                                        Ration(
+                                                uuid = rApi.uuid,
+                                                idConsult = rApi.consultationId,
+                                                name = rApi.name,
+                                                coef = rApi.coef,
+                                                actual = rApi.isCurrent,
+                                                number = rApi.number,
+                                                espece = rApi.specie,
+                                                recette = rApi.isRecipe,
+                                                description = rApi.description,
+                                                alimentMutableList =
+                                                        rApi.items
+                                                                .map { itApi ->
+                                                                        AlimentRation(
+                                                                                uuid = itApi.uuid,
+                                                                                uuidUnif =
+                                                                                        itApi.foodId,
+                                                                                quantite =
+                                                                                        itApi.quantity,
+                                                                                proportion =
+                                                                                        itApi.proportion,
+                                                                                aliment = null,
+                                                                                weight =
+                                                                                        itApi.weight
+                                                                                                ?: 1f,
+                                                                                category =
+                                                                                        itApi.category
+                                                                                                ?: 0,
+                                                                                densiteEnergetique =
+                                                                                        itApi.density
+                                                                                                ?: 0.0,
+                                                                                refAlimUnif =
+                                                                                        itApi.foodId,
+                                                                                refRation =
+                                                                                        rApi.uuid
+                                                                        )
+                                                                }
+                                                                .toMutableList()
+                                        )
+                                }
+                                .toMutableList(),
+                referenceGeneraleId = referenceGeneraleId,
+                referencesMaladies = diseaseReferences.toMutableList(),
+                coefficientAjustement = coefficientAjustement
         )
 }

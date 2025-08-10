@@ -40,11 +40,27 @@ class ExportImportRepository(
         /** Exporte l’ensemble des données (animaux, aliments, rations, équations) au format API. */
         suspend fun exportAll(): String {
                 val domainAnimals = animalRepository.getAllAnimals()
-                val animals: List<AnimalApi> = domainAnimals.map { it.toApi() }
+                // Charger les consultations/rations pour chaque animal pour un export complet
+                val animalsWithConsultations: List<fr.vetbrain.vetnutri_mp.Data.AnimalEv> =
+                        if (consultationRepository != null) {
+                                domainAnimals.map { animal ->
+                                        val cons =
+                                                try {
+                                                        consultationRepository
+                                                                .getConsultationsForAnimal(
+                                                                        animal.uuid
+                                                                )
+                                                } catch (_: Exception) {
+                                                        emptyList()
+                                                }
+                                        animal.copy(consultations = cons.toMutableList())
+                                }
+                        } else domainAnimals
+                val animals: List<AnimalApi> = animalsWithConsultations.map { it.toApi() }
                 val foods = foodRepository?.getAllFoods()?.map { it.toApi() } ?: emptyList()
                 // Rassembler toutes les rations depuis les consultations (depuis le domaine)
                 val rations: List<RationApi> =
-                        domainAnimals
+                        animalsWithConsultations
                                 .asSequence()
                                 .flatMap { animal: fr.vetbrain.vetnutri_mp.Data.AnimalEv ->
                                         animal.consultations.asSequence().flatMap {
@@ -91,8 +107,24 @@ class ExportImportRepository(
                 val allDomainAnimals =
                         if (options.includeAnimals) animalRepository.getAllAnimals()
                         else emptyList()
+                // Charger les consultations/rations sur les animaux retenus
+                val allDomainAnimalsWithConsultations: List<fr.vetbrain.vetnutri_mp.Data.AnimalEv> =
+                        if (consultationRepository != null) {
+                                allDomainAnimals.map { animal ->
+                                        val cons =
+                                                try {
+                                                        consultationRepository
+                                                                .getConsultationsForAnimal(
+                                                                        animal.uuid
+                                                                )
+                                                } catch (_: Exception) {
+                                                        emptyList()
+                                                }
+                                        animal.copy(consultations = cons.toMutableList())
+                                }
+                        } else allDomainAnimals
                 val filteredDomainAnimals =
-                        allDomainAnimals
+                        allDomainAnimalsWithConsultations
                                 .asSequence()
                                 .filter { domainAnimal ->
                                         options.animalIds.isEmpty() ||
@@ -206,40 +238,42 @@ class ExportImportRepository(
                 if (envelope.foods.isNotEmpty() && foodRepository != null) {
 
                         listener?.onLog("Import des aliments (${envelope.foods.size})…")
-                        // Activer le mode batch pour éviter les refresh à chaque insert/update
-                        if (foodRepository is DatabaseFoodRepository) foodRepository.beginBatch()
-
-                        // Charger un set léger des UUID existants pour éviter le coût de chargement complet
-                        val existingFoodIds: Set<String> = try {
-                                if (foodRepository is DatabaseFoodRepository) {
-                                        foodRepository.getAllFoodIds()
-                                } else {
-                                        foodRepository.getAllFoodsLight().map { it.uuid }.toSet()
-                                }
-                        } catch (e: Exception) {
-                                // Fallback minimaliste
-                                try { foodRepository.getAllFoodsLight().map { it.uuid }.toSet() }
-                                catch (_: Exception) { emptySet() }
-                        }
-
-                        for (api in envelope.foods) {
+                        if (foodRepository is DatabaseFoodRepository) {
                                 try {
-                                        val aliment = api.toDomain()
-                                        if (existingFoodIds.contains(aliment.uuid)) {
-                                                foodRepository.updateFood(aliment)
-                                        } else {
-                                                foodRepository.insertFood(aliment)
-                                        }
-                                        foodsImported++
-                                        advance()
+                                        val aliments = envelope.foods.map { it.toDomain() }
+                                        val res = foodRepository.importFoodsDomain(aliments)
+                                        foodsImported += res.importedCount + res.updatedCount
+                                        // Avancer d'un coup pour tous les aliments
+                                        advance(envelope.foods.size)
+                                        listener?.onLog(
+                                                "Aliments importés=${res.importedCount}, mis à jour=${res.updatedCount}, erreurs=${res.errorCount}"
+                                        )
                                 } catch (e: Exception) {
-                                        listener?.onLog("Erreur aliment ${api.uuid}: ${e.message}")
-                                        advance()
+                                        listener?.onLog("Erreur import bulk aliments: ${e.message}")
+                                }
+                        } else {
+                                // Fallback: insertion/MAJ unitaire si repo non-DB
+                                // Activer le mode batch si disponible (noop sinon)
+                                for (api in envelope.foods) {
+                                        try {
+                                                val aliment = api.toDomain()
+                                                // Sans accès rapide aux IDs, on tente update puis
+                                                // insert
+                                                try {
+                                                        foodRepository.updateFood(aliment)
+                                                } catch (_: Exception) {
+                                                        foodRepository.insertFood(aliment)
+                                                }
+                                                foodsImported++
+                                        } catch (e: Exception) {
+                                                listener?.onLog(
+                                                        "Erreur aliment ${api.uuid}: ${e.message}"
+                                                )
+                                        } finally {
+                                                advance()
+                                        }
                                 }
                         }
-
-                        listener?.onLog("Aliments importés/MAJ=$foodsImported")
-                        if (foodRepository is DatabaseFoodRepository) foodRepository.endBatch()
                 }
 
                 // 2) Équations
@@ -290,16 +324,23 @@ class ExportImportRepository(
                 // 4) Animaux + consultations/rations
                 if (envelope.animals.isNotEmpty())
                         listener?.onLog("Import des animaux (${envelope.animals.size})…")
-                // Préparer un set d'UUID d'aliments pour limiter les accès DB répétés lors des rations
+                // Préparer un set d'UUID d'aliments pour limiter les accès DB répétés lors des
+                // rations
                 var existingFoodIdsForRations: MutableSet<String> = mutableSetOf()
                 if (foodRepository != null) {
-                        existingFoodIdsForRations = try {
-                                if (foodRepository is DatabaseFoodRepository) {
-                                        foodRepository.getAllFoodIds().toMutableSet()
-                                } else {
-                                        foodRepository.getAllFoodsLight().map { it.uuid }.toMutableSet()
+                        existingFoodIdsForRations =
+                                try {
+                                        if (foodRepository is DatabaseFoodRepository) {
+                                                foodRepository.getAllFoodIds().toMutableSet()
+                                        } else {
+                                                foodRepository
+                                                        .getAllFoodsLight()
+                                                        .map { it.uuid }
+                                                        .toMutableSet()
+                                        }
+                                } catch (_: Exception) {
+                                        mutableSetOf()
                                 }
-                        } catch (_: Exception) { mutableSetOf() }
                 }
 
                 for (animalApi in envelope.animals) {
@@ -314,29 +355,58 @@ class ExportImportRepository(
                                                 consult.rations.forEach { ration ->
                                                         ration.alimentMutableList.forEach { ar ->
                                                                 val foodId: String? = ar.refAlimUnif
-                                                                if (foodId != null && foodRepository != null) {
-                                                                        // Éviter l'appel DB si l'UUID est déjà connu
-                                                                        val existsLocally: Boolean = existingFoodIdsForRations.contains(foodId)
+                                                                if (foodId != null &&
+                                                                                foodRepository !=
+                                                                                        null
+                                                                ) {
+                                                                        // Éviter l'appel DB si
+                                                                        // l'UUID est déjà connu
+                                                                        val existsLocally: Boolean =
+                                                                                existingFoodIdsForRations
+                                                                                        .contains(
+                                                                                                foodId
+                                                                                        )
                                                                         if (!existsLocally) {
-                                                                                // Insérer un placeholder rapide
-                                                                                val nameGuess: String =
-                                                                                        ar.aliment?.nom
-                                                                                                ?: ar.aliment?.ingredients
-                                                                                                ?: "Aliment importé ${foodId}"
+                                                                                // Insérer un
+                                                                                // placeholder
+                                                                                // rapide
+                                                                                val nameGuess:
+                                                                                        String =
+                                                                                        ar.aliment
+                                                                                                ?.nom
+                                                                                                ?: ar.aliment
+                                                                                                        ?.ingredients
+                                                                                                        ?: "Aliment importé ${foodId}"
                                                                                 val placeholder =
                                                                                         AlimentEv(
-                                                                                                uuid = foodId,
-                                                                                                nom = nameGuess,
-                                                                                                brand = ar.aliment?.brand,
-                                                                                                price = ar.aliment?.price,
-                                                                                                especes = mutableListOf(),
-                                                                                                indicat = mutableListOf()
+                                                                                                uuid =
+                                                                                                        foodId,
+                                                                                                nom =
+                                                                                                        nameGuess,
+                                                                                                brand =
+                                                                                                        ar.aliment
+                                                                                                                ?.brand,
+                                                                                                price =
+                                                                                                        ar.aliment
+                                                                                                                ?.price,
+                                                                                                especes =
+                                                                                                        mutableListOf(),
+                                                                                                indicat =
+                                                                                                        mutableListOf()
                                                                                         )
                                                                                 try {
-                                                                                        foodRepository.insertFood(placeholder)
-                                                                                        existingFoodIdsForRations.add(foodId)
+                                                                                        foodRepository
+                                                                                                .insertFood(
+                                                                                                        placeholder
+                                                                                                )
+                                                                                        existingFoodIdsForRations
+                                                                                                .add(
+                                                                                                        foodId
+                                                                                                )
                                                                                         foodsImported++
-                                                                                } catch (_: Exception) { }
+                                                                                } catch (
+                                                                                        _:
+                                                                                                Exception) {}
                                                                         }
                                                                 }
                                                         }
@@ -376,7 +446,9 @@ class ExportImportRepository(
                                         try {
                                                 (biblioRepository.getAllBiblioRefs().first())
                                                         .associateBy { it.uuid }
-                                        } catch (_: Exception) { emptyMap() }
+                                        } catch (_: Exception) {
+                                                emptyMap()
+                                        }
                                 } else emptyMap()
                         for (refApi in envelope.references) {
                                 try {
