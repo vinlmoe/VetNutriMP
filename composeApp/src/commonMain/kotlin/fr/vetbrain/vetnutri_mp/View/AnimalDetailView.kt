@@ -21,6 +21,7 @@ import fr.vetbrain.vetnutri_mp.Data.AnimalEv
 import fr.vetbrain.vetnutri_mp.Export.DocumentType
 import fr.vetbrain.vetnutri_mp.Export.ExportData
 import fr.vetbrain.vetnutri_mp.Export.HtmlDocumentBuilder
+import fr.vetbrain.vetnutri_mp.Export.HtmlPreviewDialog
 import fr.vetbrain.vetnutri_mp.Export.PdfExporter
 import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
@@ -389,6 +390,10 @@ private fun WideScreenLayout(
                                                                         alpha = 0.7f
                                                                 )
                                                 )
+                                                var showPreview by remember {
+                                                        mutableStateOf(false)
+                                                }
+                                                var previewHtml by remember { mutableStateOf("") }
                                                 Row(
                                                         horizontalArrangement =
                                                                 Arrangement.spacedBy(
@@ -397,56 +402,50 @@ private fun WideScreenLayout(
                                                 ) {
                                                         Button(
                                                                 onClick = {
-                                                                        val ok =
-                                                                                PdfExporter
-                                                                                        .exportDocument(
-                                                                                                documentType =
-                                                                                                        DocumentType
-                                                                                                                .RATION_ANALYSIS,
-                                                                                                data =
-                                                                                                        ExportData(
-                                                                                                                animal =
-                                                                                                                        animalDetails,
-                                                                                                                ration =
-                                                                                                                        selectedRation,
-                                                                                                                reference =
-                                                                                                                        referenceUtilisee,
-                                                                                                                title =
-                                                                                                                        "Analyse de ration"
-                                                                                                        ),
-                                                                                                defaultFileName =
-                                                                                                        "analyse_ration.pdf"
+                                                                        previewHtml =
+                                                                                HtmlDocumentBuilder
+                                                                                        .buildHtml(
+                                                                                                DocumentType
+                                                                                                        .RATION_ANALYSIS,
+                                                                                                ExportData(
+                                                                                                        animal =
+                                                                                                                animalDetails,
+                                                                                                        ration =
+                                                                                                                selectedRation,
+                                                                                                        reference =
+                                                                                                                referenceUtilisee,
+                                                                                                        title =
+                                                                                                                "Analyse de ration"
+                                                                                                )
                                                                                         )
+                                                                        showPreview = true
                                                                 }
                                                         ) { Text("Exporter analyse PDF") }
 
                                                         Button(
                                                                 onClick = {
-                                                                        val ok =
-                                                                                PdfExporter
-                                                                                        .exportDocument(
-                                                                                                documentType =
-                                                                                                        DocumentType
-                                                                                                                .PRESCRIPTION,
-                                                                                                data =
-                                                                                                        ExportData(
-                                                                                                                animal =
-                                                                                                                        animalDetails,
-                                                                                                                ration =
-                                                                                                                        selectedRation,
-                                                                                                                reference =
-                                                                                                                        null,
-                                                                                                                conseils =
-                                                                                                                        listOf(
-                                                                                                                                "Fractionner la ration en 2-3 repas",
-                                                                                                                                "Veiller à l'hydratation"
-                                                                                                                        ),
-                                                                                                                title =
-                                                                                                                        "Ordonnance nutritionnelle"
-                                                                                                        ),
-                                                                                                defaultFileName =
-                                                                                                        "ordonnance.pdf"
+                                                                        previewHtml =
+                                                                                HtmlDocumentBuilder
+                                                                                        .buildHtml(
+                                                                                                DocumentType
+                                                                                                        .PRESCRIPTION,
+                                                                                                ExportData(
+                                                                                                        animal =
+                                                                                                                animalDetails,
+                                                                                                        ration =
+                                                                                                                selectedRation,
+                                                                                                        reference =
+                                                                                                                null,
+                                                                                                        conseils =
+                                                                                                                listOf(
+                                                                                                                        "Fractionner la ration en 2-3 repas",
+                                                                                                                        "Veiller à l'hydratation"
+                                                                                                                ),
+                                                                                                        title =
+                                                                                                                "Ordonnance nutritionnelle"
+                                                                                                )
                                                                                         )
+                                                                        showPreview = true
                                                                 }
                                                         ) { Text("Exporter ordonnance PDF") }
                                                 }
@@ -457,19 +456,59 @@ private fun WideScreenLayout(
                                                         "Aperçu HTML (pour vérification)",
                                                         style = MaterialTheme.typography.subtitle2
                                                 )
-                                                val html =
-                                                        HtmlDocumentBuilder.buildHtml(
-                                                                DocumentType.RATION_ANALYSIS,
-                                                                ExportData(
-                                                                        animalDetails,
-                                                                        selectedRation,
-                                                                        referenceUtilisee
-                                                                )
-                                                        )
-                                                Text(
-                                                        html.take(500) +
-                                                                if (html.length > 500) "…" else "",
-                                                        style = MaterialTheme.typography.caption
+                                                HtmlPreviewDialog(
+                                                        html = previewHtml,
+                                                        isVisible = showPreview,
+                                                        onConfirmExport = {
+                                                                // Décider du type à partir du
+                                                                // contenu titre
+                                                                val isPrescription =
+                                                                        previewHtml.contains(
+                                                                                "Ordonnance nutritionnelle"
+                                                                        )
+                                                                if (isPrescription) {
+                                                                        PdfExporter.exportDocument(
+                                                                                DocumentType
+                                                                                        .PRESCRIPTION,
+                                                                                ExportData(
+                                                                                        animal =
+                                                                                                animalDetails,
+                                                                                        ration =
+                                                                                                selectedRation,
+                                                                                        reference =
+                                                                                                null,
+                                                                                        conseils =
+                                                                                                listOf(
+                                                                                                        "Fractionner la ration en 2-3 repas",
+                                                                                                        "Veiller à l'hydratation"
+                                                                                                ),
+                                                                                        title =
+                                                                                                "Ordonnance nutritionnelle"
+                                                                                ),
+                                                                                defaultFileName =
+                                                                                        "ordonnance.pdf"
+                                                                        )
+                                                                } else {
+                                                                        PdfExporter.exportDocument(
+                                                                                DocumentType
+                                                                                        .RATION_ANALYSIS,
+                                                                                ExportData(
+                                                                                        animal =
+                                                                                                animalDetails,
+                                                                                        ration =
+                                                                                                selectedRation,
+                                                                                        reference =
+                                                                                                referenceUtilisee,
+                                                                                        title =
+                                                                                                "Analyse de ration"
+                                                                                ),
+                                                                                defaultFileName =
+                                                                                        "analyse_ration.pdf"
+                                                                        )
+                                                                }
+                                                                showPreview = false
+                                                        },
+                                                        onDismiss = { showPreview = false }
                                                 )
                                         }
                                 }
