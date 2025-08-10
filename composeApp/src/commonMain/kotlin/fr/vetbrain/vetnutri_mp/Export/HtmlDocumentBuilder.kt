@@ -9,9 +9,21 @@ object HtmlDocumentBuilder {
     fun buildHtml(documentType: DocumentType, data: ExportData): String {
         return when (documentType) {
             DocumentType.RATION_ANALYSIS ->
-                    buildRationAnalysisHtml(data.animal, data.ration, data.reference, data.title)
+                    buildRationAnalysisHtml(
+                            data.animal,
+                            data.ration,
+                            data.reference,
+                            data.title,
+                            data.additionalText
+                    )
             DocumentType.PRESCRIPTION ->
-                    buildPrescriptionHtml(data.animal, data.ration, data.conseils, data.title)
+                    buildPrescriptionHtml(
+                            data.animal,
+                            data.ration,
+                            data.conseils,
+                            data.title,
+                            data.additionalText
+                    )
         }
     }
 
@@ -103,12 +115,14 @@ object HtmlDocumentBuilder {
             animal: AnimalEv?,
             ration: Ration?,
             reference: ReferenceEv?,
-            title: String
+            title: String,
+            additionalText: String
     ): String {
         return buildHeader(if (title.isNotBlank()) title else "Analyse de ration") +
                 buildAnimalBlock(animal) +
                 buildRationBlock(ration) +
                 buildReferencesBlock(reference) +
+                buildAdditionalTextBlock(additionalText) +
                 buildFooter()
     }
 
@@ -116,13 +130,29 @@ object HtmlDocumentBuilder {
             animal: AnimalEv?,
             ration: Ration?,
             conseils: List<String>,
-            title: String
+            title: String,
+            additionalText: String
     ): String {
         return buildHeader(if (title.isNotBlank()) title else "Ordonnance nutritionnelle") +
                 buildAnimalBlock(animal) +
                 buildRationBlock(ration) +
                 buildConseilsBlock(conseils) +
+                buildAdditionalTextBlock(additionalText) +
                 buildFooter()
     }
-}
 
+    private fun buildAdditionalTextBlock(text: String): String {
+        if (text.isBlank()) return ""
+        val escaped =
+                text.replace("&", "&amp;")
+                        .replace("<", "&lt;")
+                        .replace(">", "&gt;")
+                        .replace("\n", "<br/>")
+        return """
+            <div class='section'>
+                <h2>Notes</h2>
+                <div class='small'>${escaped}</div>
+            </div>
+        """.trimIndent()
+    }
+}
