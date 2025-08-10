@@ -6,7 +6,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -405,6 +407,11 @@ fun SettingsView(
                                         // Section pour l'importation des données
                                         Section(title = "Importation des données") {
                                                 Column(
+                                                        modifier =
+                                                                Modifier.fillMaxWidth()
+                                                                        .verticalScroll(
+                                                                                rememberScrollState()
+                                                                        ),
                                                         verticalArrangement =
                                                                 Arrangement.spacedBy(8.dp)
                                                 ) {
@@ -416,6 +423,9 @@ fun SettingsView(
                                                                 mutableStateOf(true)
                                                         }
                                                         var includeEquations by remember {
+                                                                mutableStateOf(true)
+                                                        }
+                                                        var includeRations by remember {
                                                                 mutableStateOf(true)
                                                         }
                                                         var selectedAnimalIds by remember {
@@ -528,6 +538,18 @@ fun SettingsView(
                                                                         }
                                                                 )
                                                                 Text("Inclure équations")
+                                                        }
+                                                        Row(
+                                                                verticalAlignment =
+                                                                        Alignment.CenterVertically
+                                                        ) {
+                                                                Checkbox(
+                                                                        checked = includeRations,
+                                                                        onCheckedChange = {
+                                                                                includeRations = it
+                                                                        }
+                                                                )
+                                                                Text("Inclure rations (sommaire)")
                                                         }
                                                         // Affichage du message de résultat
                                                         // d'importation des références
@@ -665,7 +687,10 @@ fun SettingsView(
                                                                                                                         .referenceEvRepository,
                                                                                                         biblioRepository =
                                                                                                                 viewModel
-                                                                                                                        .biblioRefRepository
+                                                                                                                        .biblioRefRepository,
+                                                                                                        consultationRepository =
+                                                                                                                viewModel
+                                                                                                                        .consultationRepository
                                                                                                 )
                                                                                         val json =
                                                                                                 exportRepo
@@ -676,6 +701,8 @@ fun SettingsView(
                                                                                                                                         includeAnimals,
                                                                                                                                 includeFoods =
                                                                                                                                         includeFoods,
+                                                                                                                                includeRations =
+                                                                                                                                        includeRations,
                                                                                                                                 includeEquations =
                                                                                                                                         includeEquations,
                                                                                                                                 animalIds =
