@@ -53,6 +53,7 @@ fun ConsultationsView(
     // Affichage conditionnel : vue plein écran ou vue normale
     if (showFullScreenEdit) {
         val availableReferences by viewModel.availableReferences.collectAsState()
+        var showNoReferenceDialog by remember { mutableStateOf(false) }
 
         ConsultationFullScreenEditView(
                 consultation = selectedConsultation,
@@ -60,8 +61,31 @@ fun ConsultationsView(
                 animalEspece = animal?.getEspece(),
                 availableReferences = availableReferences,
                 onBackPressed = { consultation -> viewModel.saveFromFullScreen(consultation) },
+                onCancel = {
+                    // Annuler la création si la consultation venait d'être créée (uuid vide)
+                    if (selectedConsultation?.uuid?.isEmpty() == true) {
+                        viewModel.stopEditingConsultation()
+                    }
+                    viewModel.closeFullScreenEdit()
+                },
                 onLoadReferences = { viewModel.chargerReferencesDisponibles() }
         )
+
+        // Dialog uniquement après clic sur Valider: on le pilote ici via la sélection
+        if (showNoReferenceDialog) {
+            AlertDialog(
+                    onDismissRequest = { showNoReferenceDialog = false },
+                    title = { Text("Référence générale manquante") },
+                    text = {
+                        Text(
+                                "Veuillez sélectionner une référence générale avant de valider la consultation."
+                        )
+                    },
+                    confirmButton = {
+                        TextButton(onClick = { showNoReferenceDialog = false }) { Text("OK") }
+                    }
+            )
+        }
     } else {
         // Vue normale avec layout en colonnes
         ConsultationsMainView(
@@ -130,131 +154,130 @@ private fun ConsultationsMainView(
         )
     }
 
-    Row(modifier = modifier.fillMaxSize()) {
-        // Liste des consultations
-        Column(
-                modifier = Modifier.weight(0.4f).fillMaxHeight().padding(AppSizes.paddingMedium),
-                verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
-        ) {
-            Button(
-                    onClick = { viewModel.createNewConsultationFullScreen() },
-                    colors =
-                            ButtonDefaults.buttonColors(
-                                    backgroundColor = VetNutriColors.Primary,
-                                    contentColor = VetNutriColors.OnPrimary
-                            ),
-                    modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                        horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall),
-                        verticalAlignment = Alignment.CenterVertically
+    Scaffold(
+            floatingActionButton = {
+                FloatingActionButton(
+                        onClick = { viewModel.createNewConsultationFullScreen() },
+                        backgroundColor = VetNutriColors.Primary
                 ) {
                     Icon(
-                            AppIcons.Add,
+                            imageVector = AppIcons.Add,
                             contentDescription = "Ajouter une consultation",
-                            modifier = Modifier.size(AppSizes.iconSizeSmall)
+                            tint = VetNutriColors.OnPrimary
                     )
-                    Text(text = "Nouvelle consultation")
                 }
             }
+    ) { paddingValues ->
+        Row(modifier = modifier.fillMaxSize().padding(paddingValues)) {
+            // Liste des consultations
+            Column(
+                    modifier =
+                            Modifier.weight(0.4f).fillMaxHeight().padding(AppSizes.paddingMedium),
+                    verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
+            ) {
+                // FAB remplace le bouton d'ajout; laisser l'espace entête
 
-            Divider(
-                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.12f),
-                    thickness = AppSizes.dividerHeight
-            )
+                Divider(
+                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.12f),
+                        thickness = AppSizes.dividerHeight
+                )
 
-            Text(
-                    text = "Consultations",
-                    style = MaterialTheme.typography.h6,
-                    color = VetNutriColors.Primary
-            )
+                Text(
+                        text = "Consultations",
+                        style = MaterialTheme.typography.h6,
+                        color = VetNutriColors.Primary
+                )
 
-            animal?.let { animalDetails ->
-                if (animalDetails.consultations.isEmpty()) {
-                    Box(
-                            modifier = Modifier.fillMaxWidth().weight(1f),
-                            contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                                text = "Aucune consultation",
-                                style = MaterialTheme.typography.body1,
-                                color = Color.Gray
-                        )
-                    }
-                } else {
-                    // Déterminer si la suppression est autorisée (plus d'une consultation)
-                    val canDeleteConsultation = animalDetails.consultations.size > 1
-
-                    LazyColumn(
-                            modifier = Modifier.fillMaxWidth().weight(1f),
-                            verticalArrangement = Arrangement.spacedBy(AppSizes.cardSpacing)
-                    ) {
-                        items(sortedConsultations) { consultation ->
-                            ConsultationCard(
-                                    consultation = consultation,
-                                    isSelected = selectedConsultation?.uuid == consultation.uuid,
-                                    onEdit = { viewModel.editConsultationFullScreen(consultation) },
-                                    onDelete = {
-                                        onConsultationToDelete(consultation)
-                                        onShowDeleteConfirmation(true)
-                                    },
-                                    isDeleteEnabled = canDeleteConsultation,
-                                    onClick = {
-                                        viewModel.selectConsultation(consultation)
-                                        onShowConsultationDetail(true)
-                                    }
+                animal?.let { animalDetails ->
+                    if (animalDetails.consultations.isEmpty()) {
+                        Box(
+                                modifier = Modifier.fillMaxWidth().weight(1f),
+                                contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                    text = "Aucune consultation",
+                                    style = MaterialTheme.typography.body1,
+                                    color = Color.Gray
                             )
+                        }
+                    } else {
+                        // Déterminer si la suppression est autorisée (plus d'une consultation)
+                        val canDeleteConsultation = animalDetails.consultations.size > 1
+
+                        LazyColumn(
+                                modifier = Modifier.fillMaxWidth().weight(1f),
+                                verticalArrangement = Arrangement.spacedBy(AppSizes.cardSpacing)
+                        ) {
+                            items(sortedConsultations) { consultation ->
+                                ConsultationCard(
+                                        consultation = consultation,
+                                        isSelected =
+                                                selectedConsultation?.uuid == consultation.uuid,
+                                        onEdit = {
+                                            viewModel.editConsultationFullScreen(consultation)
+                                        },
+                                        onDelete = {
+                                            onConsultationToDelete(consultation)
+                                            onShowDeleteConfirmation(true)
+                                        },
+                                        isDeleteEnabled = canDeleteConsultation,
+                                        onClick = {
+                                            viewModel.selectConsultation(consultation)
+                                            onShowConsultationDetail(true)
+                                        }
+                                )
+                            }
                         }
                     }
                 }
             }
-        }
 
-        // Séparateur vertical
-        Divider(
-                modifier = Modifier.fillMaxHeight().width(AppSizes.dividerWidth),
-                color = MaterialTheme.colors.onSurface.copy(alpha = 0.12f)
-        )
-
-        // Détail de la consultation
-        if (showConsultationDetail) {
-            Box(modifier = Modifier.weight(0.6f).fillMaxHeight()) {
-                selectedConsultation?.let { consultation ->
-                    val availableReferences by viewModel.availableReferences.collectAsState()
-
-                    // Charger les références au démarrage
-                    LaunchedEffect(Unit) { viewModel.chargerReferencesDisponibles() }
-
-                    AppConsultationDetailView(
-                            consultation = consultation,
-                            availableReferences = availableReferences,
-                            onDismiss = {
-                                if (isEditingConsultation && consultation.uuid.isEmpty()) {
-                                    // Si on annule l'ajout d'une nouvelle consultation
-                                    viewModel.stopEditingConsultation()
-                                }
-                                onShowConsultationDetail(false)
-                            },
-                            onSave = { updatedConsultation ->
-                                if (isEditingConsultation && consultation.uuid.isEmpty()) {
-                                    // Nouvelle consultation
-                                    viewModel.addConsultation(updatedConsultation)
-                                } else {
-                                    // Mise à jour d'une consultation existante
-                                    viewModel.updateConsultation(updatedConsultation)
-                                }
-                                viewModel.stopEditingConsultation()
-                                onShowConsultationDetail(false)
-                            }
-                    )
-                }
-            }
-        } else {
-            // Message indiquant de sélectionner une consultation
-            CenteredMessage(
-                    message = "Sélectionnez une consultation pour afficher les détails",
-                    modifier = Modifier.weight(0.6f).fillMaxHeight()
+            // Séparateur vertical
+            Divider(
+                    modifier = Modifier.fillMaxHeight().width(AppSizes.dividerWidth),
+                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.12f)
             )
+
+            // Détail de la consultation
+            if (showConsultationDetail) {
+                Box(modifier = Modifier.weight(0.6f).fillMaxHeight()) {
+                    selectedConsultation?.let { consultation ->
+                        val availableReferences by viewModel.availableReferences.collectAsState()
+
+                        // Charger les références au démarrage
+                        LaunchedEffect(Unit) { viewModel.chargerReferencesDisponibles() }
+
+                        AppConsultationDetailView(
+                                consultation = consultation,
+                                availableReferences = availableReferences,
+                                onDismiss = {
+                                    if (isEditingConsultation && consultation.uuid.isEmpty()) {
+                                        // Si on annule l'ajout d'une nouvelle consultation
+                                        viewModel.stopEditingConsultation()
+                                    }
+                                    onShowConsultationDetail(false)
+                                },
+                                onSave = { updatedConsultation ->
+                                    if (isEditingConsultation && consultation.uuid.isEmpty()) {
+                                        // Nouvelle consultation
+                                        viewModel.addConsultation(updatedConsultation)
+                                    } else {
+                                        // Mise à jour d'une consultation existante
+                                        viewModel.updateConsultation(updatedConsultation)
+                                    }
+                                    viewModel.stopEditingConsultation()
+                                    onShowConsultationDetail(false)
+                                }
+                        )
+                    }
+                }
+            } else {
+                // Message indiquant de sélectionner une consultation
+                CenteredMessage(
+                        message = "Sélectionnez une consultation pour afficher les détails",
+                        modifier = Modifier.weight(0.6f).fillMaxHeight()
+                )
+            }
         }
     }
 }

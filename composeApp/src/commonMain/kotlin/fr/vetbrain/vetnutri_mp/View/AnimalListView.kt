@@ -21,6 +21,7 @@ import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Animal
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.General
 import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Localization.translateEnum
+import fr.vetbrain.vetnutri_mp.Theme.AppIcons
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalListViewModel
 import kotlin.uuid.ExperimentalUuidApi
@@ -44,150 +45,172 @@ fun AnimalListView(
 
         LaunchedEffect(Unit) { viewModel.loadAnimals() }
 
-        Column(
-                modifier = modifier.fillMaxSize().padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-                Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                        Button(
+        Scaffold(
+                floatingActionButton = {
+                        FloatingActionButton(
                                 onClick = onAddAnimal,
-                                colors =
-                                        ButtonDefaults.buttonColors(
-                                                backgroundColor = VetNutriColors.Primary,
-                                                contentColor = VetNutriColors.OnPrimary
-                                        )
-                        ) { Text(General.ADD.translate()) }
-
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Button(
-                                        onClick = onImportAnimals,
-                                        colors =
-                                                ButtonDefaults.buttonColors(
-                                                        backgroundColor = VetNutriColors.Secondary,
-                                                        contentColor = VetNutriColors.OnSecondary
-                                                )
-                                ) { Text(General.IMPORT.translate() + " " + "Animaux") }
-
-                                Button(
-                                        onClick = onImportFoods,
-                                        colors =
-                                                ButtonDefaults.buttonColors(
-                                                        backgroundColor = VetNutriColors.Secondary,
-                                                        contentColor = VetNutriColors.OnSecondary
-                                                )
-                                ) { Text(General.IMPORT.translate() + " " + "Aliments") }
-                        }
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Rangée de boutons pour les listes spéciales
-                Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                        // Bouton pour accéder à la liste des aliments
-                        Button(
-                                onClick = onShowFoodList,
-                                modifier = Modifier.weight(1f),
-                                colors =
-                                        ButtonDefaults.buttonColors(
-                                                backgroundColor = VetNutriColors.Primary,
-                                                contentColor = VetNutriColors.OnPrimary
-                                        )
-                        ) { Text("Liste des aliments") }
-
-                        // Bouton pour accéder aux données de calcul (remplace les deux boutons
-                        // précédents)
-                        Button(
-                                onClick = onShowCalculationTabs,
-                                modifier = Modifier.weight(1f),
-                                colors =
-                                        ButtonDefaults.buttonColors(
-                                                backgroundColor = VetNutriColors.Primary,
-                                                contentColor = VetNutriColors.OnPrimary
-                                        )
-                        ) { Text("Données de calcul") }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Filtres de recherche
-                Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                        // Champ de recherche
-                        OutlinedTextField(
-                                value = searchQuery,
-                                onValueChange = { viewModel.setSearchQuery(it) },
-                                modifier = Modifier.weight(2f),
-                                placeholder = {
-                                        Text(
-                                                "${General.SEARCH.translate()} (nom, propriétaire, race)"
-                                        )
-                                },
-                                leadingIcon = {
-                                        Icon(Icons.Default.Search, contentDescription = null)
-                                },
-                                trailingIcon = {
-                                        if (searchQuery.isNotEmpty()) {
-                                                IconButton(
-                                                        onClick = { viewModel.setSearchQuery("") }
-                                                ) {
-                                                        Icon(
-                                                                Icons.Default.Clear,
-                                                                contentDescription = null
-                                                        )
-                                                }
-                                        }
-                                },
-                                singleLine = true,
-                                colors =
-                                        TextFieldDefaults.outlinedTextFieldColors(
-                                                focusedBorderColor = VetNutriColors.Primary,
-                                                unfocusedBorderColor = Color.Gray
-                                        )
-                        )
-
-                        // Combobox pour filtrer par espèce
-                        EspeceDropdown(
-                                selectedEspece = selectedEspece,
-                                onEspeceSelected = { viewModel.setSelectedEspece(it) },
-                                availableEspeces = viewModel.availableEspeces,
-                                modifier = Modifier.weight(1f)
-                        )
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                if (animals.isEmpty()) {
-                        Box(
-                                modifier = Modifier.fillMaxSize(),
-                                contentAlignment = Alignment.Center
+                                backgroundColor = VetNutriColors.Primary
                         ) {
-                                Text(
-                                        text =
-                                                if (searchQuery.isEmpty() && selectedEspece == null)
-                                                        "Aucun animal trouvé"
-                                                else "Aucun résultat pour les filtres sélectionnés",
-                                        style = MaterialTheme.typography.body1
+                                Icon(
+                                        imageVector = AppIcons.Add,
+                                        contentDescription = "Ajouter un animal",
+                                        tint = VetNutriColors.OnPrimary
                                 )
                         }
-                } else {
-                        LazyColumn(
+                }
+        ) { paddingValues ->
+                Column(
+                        modifier = modifier.fillMaxSize().padding(paddingValues).padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                        Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                                horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                                items(animals) { animal ->
-                                        AnimalCard(
-                                                animal = animal,
-                                                onClick = { onSelectAnimal(animal) },
-                                                onDelete = { viewModel.deleteAnimal(animal) }
+                                // Boutons d'import
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        Button(
+                                                onClick = onImportAnimals,
+                                                colors =
+                                                        ButtonDefaults.buttonColors(
+                                                                backgroundColor =
+                                                                        VetNutriColors.Secondary,
+                                                                contentColor =
+                                                                        VetNutriColors.OnSecondary
+                                                        )
+                                        ) { Text(General.IMPORT.translate() + " " + "Animaux") }
+
+                                        Button(
+                                                onClick = onImportFoods,
+                                                colors =
+                                                        ButtonDefaults.buttonColors(
+                                                                backgroundColor =
+                                                                        VetNutriColors.Secondary,
+                                                                contentColor =
+                                                                        VetNutriColors.OnSecondary
+                                                        )
+                                        ) { Text(General.IMPORT.translate() + " " + "Aliments") }
+                                }
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // Rangée de boutons pour les listes spéciales
+                        Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                                // Bouton pour accéder à la liste des aliments
+                                Button(
+                                        onClick = onShowFoodList,
+                                        modifier = Modifier.weight(1f),
+                                        colors =
+                                                ButtonDefaults.buttonColors(
+                                                        backgroundColor = VetNutriColors.Primary,
+                                                        contentColor = VetNutriColors.OnPrimary
+                                                )
+                                ) { Text("Liste des aliments") }
+
+                                // Bouton pour accéder aux données de calcul (remplace les deux
+                                // boutons
+                                // précédents)
+                                Button(
+                                        onClick = onShowCalculationTabs,
+                                        modifier = Modifier.weight(1f),
+                                        colors =
+                                                ButtonDefaults.buttonColors(
+                                                        backgroundColor = VetNutriColors.Primary,
+                                                        contentColor = VetNutriColors.OnPrimary
+                                                )
+                                ) { Text("Données de calcul") }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Filtres de recherche
+                        Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                                // Champ de recherche
+                                OutlinedTextField(
+                                        value = searchQuery,
+                                        onValueChange = { viewModel.setSearchQuery(it) },
+                                        modifier = Modifier.weight(2f),
+                                        placeholder = {
+                                                Text(
+                                                        "${General.SEARCH.translate()} (nom, propriétaire, race)"
+                                                )
+                                        },
+                                        leadingIcon = {
+                                                Icon(
+                                                        Icons.Default.Search,
+                                                        contentDescription = null
+                                                )
+                                        },
+                                        trailingIcon = {
+                                                if (searchQuery.isNotEmpty()) {
+                                                        IconButton(
+                                                                onClick = {
+                                                                        viewModel.setSearchQuery("")
+                                                                }
+                                                        ) {
+                                                                Icon(
+                                                                        Icons.Default.Clear,
+                                                                        contentDescription = null
+                                                                )
+                                                        }
+                                                }
+                                        },
+                                        singleLine = true,
+                                        colors =
+                                                TextFieldDefaults.outlinedTextFieldColors(
+                                                        focusedBorderColor = VetNutriColors.Primary,
+                                                        unfocusedBorderColor = Color.Gray
+                                                )
+                                )
+
+                                // Combobox pour filtrer par espèce
+                                EspeceDropdown(
+                                        selectedEspece = selectedEspece,
+                                        onEspeceSelected = { viewModel.setSelectedEspece(it) },
+                                        availableEspeces = viewModel.availableEspeces,
+                                        modifier = Modifier.weight(1f)
+                                )
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        if (animals.isEmpty()) {
+                                Box(
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentAlignment = Alignment.Center
+                                ) {
+                                        Text(
+                                                text =
+                                                        if (searchQuery.isEmpty() &&
+                                                                        selectedEspece == null
+                                                        )
+                                                                "Aucun animal trouvé"
+                                                        else
+                                                                "Aucun résultat pour les filtres sélectionnés",
+                                                style = MaterialTheme.typography.body1
                                         )
+                                }
+                        } else {
+                                LazyColumn(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                        items(animals) { animal ->
+                                                AnimalCard(
+                                                        animal = animal,
+                                                        onClick = { onSelectAnimal(animal) },
+                                                        onDelete = {
+                                                                viewModel.deleteAnimal(animal)
+                                                        }
+                                                )
+                                        }
                                 }
                         }
                 }

@@ -47,8 +47,7 @@ fun BiblioRefEditView(
 
                 if (biblioRefId != null && biblioRefId.isNotBlank()) {
                         viewModel.loadBiblioRefById(biblioRefId)
-                } else {
-                }
+                } else {}
         }
 
         // Mode d'édition ou de création
