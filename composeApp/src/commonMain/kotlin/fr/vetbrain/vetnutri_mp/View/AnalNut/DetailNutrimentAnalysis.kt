@@ -201,10 +201,8 @@ fun NutrientDetailDialog(
                 onDismissRequest = onDismiss,
                 title = { DialogTitre(titre = "Détails : $nom", onDismiss = onDismiss) },
                 text = {
-                        Column(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
-                        ) {
+                        Column(modifier = Modifier.fillMaxWidth()) {
+
                                 // Titre et apport non scrollables
                                 RecapitulatifCard(
                                         valeurNutritionnelle = valeurNutritionnelle,
@@ -221,6 +219,7 @@ fun NutrientDetailDialog(
                                                 Arrangement.spacedBy(AppSizes.paddingMedium)
                                 ) {
                                         // Section des références nutritionnelles
+                                      
                                         referenceUtilisee?.let { ref ->
                                                 val nutrient: Nutrient =
                                                         valeurNutritionnelle.nutriment
@@ -237,7 +236,7 @@ fun NutrientDetailDialog(
                                                                                 level
                                                                         )
                                                                 }
-
+                                                        
                                                 if (hasReferenceValues) {
                                                         item {
                                                                 ReferenceCard(

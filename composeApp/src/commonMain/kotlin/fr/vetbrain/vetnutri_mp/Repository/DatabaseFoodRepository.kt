@@ -14,6 +14,7 @@ import fr.vetbrain.vetnutri_mp.DataBase.NutrientValueEntity
 import fr.vetbrain.vetnutri_mp.Enumer.AlimIndic
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.FoodKind
+import fr.vetbrain.vetnutri_mp.Enumer.FoodKindResolver
 import fr.vetbrain.vetnutri_mp.Enumer.GroupAlim
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientLipid
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientMain
@@ -516,12 +517,10 @@ class DatabaseFoodRepository(
                                                         0
                                                     },
                                             typeAlim =
-                                                    try {
-                                                        FoodKind.valueOf(food.foodKind ?: "")
-                                                                .ordinal
-                                                    } catch (_: Exception) {
-                                                        0
-                                                    },
+                                                    FoodKindResolver.resoudreFoodKindBrut(
+                                                                    food.foodKind
+                                                            )?.ordinal
+                                                            ?: 0,
                                             ingredients = food.ingredients ?: "",
                                             price = food.prix ?: 0.0,
                                             categPrice = food.categoriePrix ?: "",

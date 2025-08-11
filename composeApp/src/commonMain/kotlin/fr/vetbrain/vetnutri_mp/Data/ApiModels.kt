@@ -222,11 +222,8 @@ fun FoodApi.toDomain(): AlimentEv {
                                 },
                         typeAliment =
                                 kind?.let {
-                                        runCatching {
-                                                        fr.vetbrain.vetnutri_mp.Enumer.FoodKind
-                                                                .valueOf(it)
-                                                }
-                                                .getOrNull()
+                                        fr.vetbrain.vetnutri_mp.Enumer.FoodKindResolver
+                                                .resoudreFoodKindBrut(it)
                                 },
                         ingredients = ingredients,
                         price = price,

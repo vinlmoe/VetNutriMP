@@ -30,6 +30,7 @@ import fr.vetbrain.vetnutri_mp.Components.TopBar
 import fr.vetbrain.vetnutri_mp.Data.AlimentEv
 import fr.vetbrain.vetnutri_mp.Data.Ration
 import fr.vetbrain.vetnutri_mp.Enumer.*
+import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailViewModel
@@ -101,29 +102,45 @@ fun AddAlimentView(
                                                         ) == true
                                         }
 
-                                // Filtre par type d'aliment
+                                // Filtre par type d'aliment (ALL = pas de filtre)
                                 val matchesType =
-                                        selectedFoodType?.let { aliment.typeAliment == it } ?: true
+                                        when (val sel = selectedFoodType) {
+                                                null -> true
+                                                FoodKind.ALL -> true
+                                                else -> aliment.typeAliment == sel
+                                        }
 
-                                // Filtre par groupe d'aliment
+                                // Filtre par groupe d'aliment (ALL = pas de filtre)
                                 val matchesGroup =
-                                        selectedFoodGroup?.let { aliment.group == it } ?: true
+                                        when (val sel = selectedFoodGroup) {
+                                                null -> true
+                                                GroupAlim.ALL -> true
+                                                else -> aliment.group == sel
+                                        }
 
                                 // Filtre par espèce
                                 val matchesEspece =
-                                        selectedEspece?.let { espece ->
-                                                aliment.especes.any { it == espece.name }
+                                        when (val sel = selectedEspece) {
+                                                null -> true
+                                                Espece.CH -> true
+                                                else -> {
+                                                        val foodSpecies = aliment.getEspecesList()
+                                                        foodSpecies.isEmpty() ||
+                                                                foodSpecies.contains(Espece.CH) ||
+                                                                foodSpecies.contains(sel)
+                                                }
                                         }
-                                                ?: true
 
                                 // Filtre par indications
                                 val matchesIndications =
-                                        if (selectedIndications.isEmpty()) true
-                                        else {
+                                        if (selectedIndications.isEmpty() ||
+                                                        selectedIndications.contains(AlimIndic.ALL)
+                                        )
+                                                true
+                                        else
                                                 selectedIndications.any { indication ->
                                                         aliment.indicat.contains(indication)
                                                 }
-                                        }
 
                                 matchesSearch &&
                                         matchesType &&
@@ -367,7 +384,7 @@ fun AddAlimentView(
                                                                                         it
                                                                         },
                                                                         valueToString = {
-                                                                                it.label
+                                                                                it.translateEnum()
                                                                         },
                                                                         modifier =
                                                                                 Modifier.fillMaxWidth(),
@@ -390,7 +407,7 @@ fun AddAlimentView(
                                                                                         it
                                                                         },
                                                                         valueToString = {
-                                                                                it.label
+                                                                                it.translateEnum()
                                                                         },
                                                                         modifier =
                                                                                 Modifier.fillMaxWidth(),
@@ -420,7 +437,7 @@ fun AddAlimentView(
                                                                                 selectedEspece = it
                                                                         },
                                                                         valueToString = {
-                                                                                it.label
+                                                                                it.translateEnum()
                                                                         },
                                                                         modifier =
                                                                                 Modifier.fillMaxWidth(),
@@ -443,7 +460,7 @@ fun AddAlimentView(
                                                                                         it
                                                                         },
                                                                         valueToString = {
-                                                                                it.label
+                                                                                it.translateEnum()
                                                                         },
                                                                         modifier =
                                                                                 Modifier.fillMaxWidth(),
@@ -611,21 +628,70 @@ private fun AlimentListItem(aliment: AlimentEv, isSelected: Boolean, onClick: ()
                                 )
                         }
 
-                        // Afficher quelques infos clés
+                        // Afficher quelques infos clés (type et groupe) en ignorant les valeurs ALL
                         Row(horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)) {
-                                aliment.typeAliment?.let { type ->
+                                val typeText =
+                                        aliment.typeAliment
+                                                ?.takeIf { it != FoodKind.ALL }
+                                                ?.translateEnum()
+                                val groupText =
+                                        aliment.group
+                                                ?.takeIf { it != GroupAlim.ALL }
+                                                ?.translateEnum()
+                                typeText?.let {
                                         Text(
-                                                text = type.label,
+                                                text = it,
                                                 style = MaterialTheme.typography.caption,
                                                 color = VetNutriColors.Primary
                                         )
                                 }
-
-                                aliment.group?.let { group ->
+                                groupText?.let {
                                         Text(
-                                                text = group.label,
+                                                text = it,
                                                 style = MaterialTheme.typography.caption,
                                                 color = VetNutriColors.Primary
+                                        )
+                                }
+                        }
+
+                        // Espèces ciblées (hors ALL)
+                        run {
+                                val especeText =
+                                        aliment.getEspecesList()
+                                                .filter { it != Espece.CH }
+                                                .map { it.translateEnum() }
+                                                .take(3)
+                                                .joinToString(", ")
+                                if (especeText.isNotEmpty()) {
+                                        Text(
+                                                text = especeText,
+                                                style = MaterialTheme.typography.caption,
+                                                color =
+                                                        MaterialTheme.colors.onSurface.copy(
+                                                                alpha = 0.7f
+                                                        )
+                                        )
+                                }
+                        }
+
+                        // Indications principales (hors ALL/AUTRE)
+                        run {
+                                val indicText =
+                                        aliment.getIndications()
+                                                .filter {
+                                                        it != AlimIndic.ALL && it != AlimIndic.AUTRE
+                                                }
+                                                .map { it.translateEnum() }
+                                                .take(3)
+                                                .joinToString(", ")
+                                if (indicText.isNotEmpty()) {
+                                        Text(
+                                                text = indicText,
+                                                style = MaterialTheme.typography.caption,
+                                                color =
+                                                        MaterialTheme.colors.onSurface.copy(
+                                                                alpha = 0.7f
+                                                        )
                                         )
                                 }
                         }
@@ -671,16 +737,34 @@ private fun AlimentDetailsPanel(
                         DetailRow("Gamme", aliment.gamme!!)
                 }
 
-                aliment.typeAliment?.let { type -> DetailRow("Type", type.label) }
-
-                aliment.group?.let { group -> DetailRow("Groupe", group.label) }
-
-                if (aliment.especes.isNotEmpty()) {
-                        DetailRow("Espèces", aliment.especes.joinToString(", "))
+                aliment.typeAliment?.let { type ->
+                        val text: String = type.translateEnum()
+                        DetailRow("Type", text)
                 }
 
-                if (aliment.indicat.isNotEmpty()) {
-                        DetailRow("Indications", aliment.indicat.joinToString(", ") { it.label })
+                aliment.group?.let { group ->
+                        val text: String = group.translateEnum()
+                        DetailRow("Groupe", text)
+                }
+
+                run {
+                        val species: List<String> =
+                                aliment.getEspecesList().filter { it != Espece.CH }.map {
+                                        it.translateEnum()
+                                }
+                        if (species.isNotEmpty()) {
+                                DetailRow("Espèces", species.joinToString(", "))
+                        }
+                }
+
+                run {
+                        val indications: List<String> =
+                                aliment.getIndications()
+                                        .filter { it != AlimIndic.ALL && it != AlimIndic.AUTRE }
+                                        .map { it.translateEnum() }
+                        if (indications.isNotEmpty()) {
+                                DetailRow("Indications", indications.joinToString(", "))
+                        }
                 }
 
                 if (!aliment.ingredients.isNullOrEmpty()) {
