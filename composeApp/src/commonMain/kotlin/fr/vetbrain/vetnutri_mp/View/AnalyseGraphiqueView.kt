@@ -372,10 +372,12 @@ private fun EvolutionPoidsChart(viewModel: AnimalDetailViewModel) {
                                 else (minY - yMargin)..(maxY + yMargin)
 
                         // Ajuster dynamiquement l'incrément des graduations
+                        val xRangeWidth = (xRange.endInclusive - xRange.start).coerceAtLeast(0f)
                         val xTickIncrement =
-                                if ((xRange.endInclusive - xRange.start) > 10)
-                                        (if (useYears) 1f else 3f)
-                                else 1f
+                                if (xRangeWidth > 10f) (if (useYears) 1f else 3f) else 1f
+                        val safeTickIncrement = if (xRangeWidth > 0f) {
+                                xTickIncrement.coerceAtMost(xRangeWidth)
+                        } else 1f
 
                         GraphCard(
                                 titre = "Évolution du poids corporel",
@@ -385,7 +387,7 @@ private fun EvolutionPoidsChart(viewModel: AnimalDetailViewModel) {
                                         xAxisModel =
                                                 FloatLinearAxisModel(
                                                         range = xRange,
-                                                        minimumMajorTickIncrement = xTickIncrement
+                                                        minimumMajorTickIncrement = safeTickIncrement
                                                 ),
                                         yAxisModel = FloatLinearAxisModel(range = yRange),
                                         modifier = Modifier.height(250.dp)

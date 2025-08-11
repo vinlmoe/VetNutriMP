@@ -45,7 +45,9 @@ fun AnalyseNutritionnelleCard(
         preferencesRepository: PreferencesRepository? = null,
         equationRepository: EquationRepository? = null,
         // Paramètre pour adapter la hauteur selon la vue (large ou compacte)
-        isLargeView: Boolean = false
+        isLargeView: Boolean = false,
+        // Références de maladies pour le contrôle et les graphes
+        referencesMaladies: List<ReferenceEv> = emptyList()
 ) {
     // Etat pour basculer entre affichage filtré et complet
     var afficherTousLesNutriments by remember { mutableStateOf(false) }
@@ -471,7 +473,8 @@ fun AnalyseNutritionnelleCard(
                                                         poidsAnimal = poidsAnimal,
                                                         poidsMetabolique = poidsMetabolique,
                                                         besoinEnergetiqueEntretien =
-                                                                besoinEnergetiqueEntretien
+                                                                besoinEnergetiqueEntretien,
+                                                        referencesMaladies = referencesMaladies
                                                 )
                                             }
                                         }
@@ -801,7 +804,8 @@ private fun NutrimentCard(
         poidsAnimal: Double?,
         modifier: Modifier = Modifier,
         onClick: () -> Unit,
-        typeExpressionBesoin: TypeExpressionBesoin?
+        typeExpressionBesoin: TypeExpressionBesoin?,
+        referencesMaladies: List<ReferenceEv> = emptyList()
 ) {
     // Vérifier la conformité aux références
     val iconeConformite =
@@ -810,7 +814,8 @@ private fun NutrimentCard(
                     referenceUtilisee,
                     besoinEnergetiqueEntretien,
                     poidsAnimal,
-                    poidsMetabolique
+                    poidsMetabolique,
+                    referencesMaladies
             )
 
     Card(
@@ -929,7 +934,8 @@ private fun obtenirIconeConformite(
         referenceUtilisee: ReferenceEv?,
         besoinEnergetiqueEntretien: Double?,
         poidsAnimal: Double?,
-        poidsMetabolique: Double?
+        poidsMetabolique: Double?,
+        referencesMaladies: List<ReferenceEv> = emptyList()
 ): IconeConformite? {
 
     referenceUtilisee?.let { reference ->
@@ -1011,6 +1017,41 @@ private fun obtenirIconeConformite(
                     description = "Conforme : toutes les références sont respectées",
                     isCritical = false
             )
+        }
+    }
+
+    // Vérification des références de maladies (icône violette en cas de non-respect)
+    referencesMaladies.forEach { refMaladie ->
+        val nutrient = valeurNutritionnelle.nutriment
+        val apportAbsolu = valeurNutritionnelle.valeur
+        // Contrôle MIN/MAX maladie
+        listOf(Reflevel.MIN, Reflevel.MAX).forEach { level ->
+            if (refMaladie.contientNutriment(nutrient, level)) {
+                val valeurRef = refMaladie.obtenirNutriment(nutrient, level)
+                val uniteRef =
+                        UnitReqEnum.getById(refMaladie.obtenirUniteNutriment(nutrient, level))
+                val besoinAbsolu =
+                        calculerBesoinAbsoluLocal(
+                                valeurRef,
+                                uniteRef,
+                                besoinEnergetiqueEntretien,
+                                poidsAnimal,
+                                poidsMetabolique
+                        )
+                besoinAbsolu?.let { besoin ->
+                    val violation =
+                            (level == Reflevel.MIN && apportAbsolu < besoin) ||
+                                    (level == Reflevel.MAX && apportAbsolu > besoin)
+                    if (violation) {
+                        return IconeConformite(
+                                icone = Icons.Filled.Warning,
+                                couleur = Color(0xFF9C27B0), // Violet
+                                description = "Non conforme (réf. maladie)",
+                                isCritical = true
+                        )
+                    }
+                }
+            }
         }
     }
 

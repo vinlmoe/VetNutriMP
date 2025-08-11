@@ -179,6 +179,7 @@ fun NutrientDetailDialog(
         espece: Espece,
         preferencesStorage: PreferencesStorage,
         equationRepository: EquationRepository? = null,
+        referencesMaladies: List<ReferenceEv> = emptyList(),
         onDismiss: () -> Unit
 ) {
         // Récupération des préférences de l'espèce
@@ -430,11 +431,13 @@ fun NutrientDetailDialog(
                                                                         poidsMetabolique =
                                                                                 poidsMetabolique,
                                                                         besoinEnergetiqueEntretien =
-                                                                                besoinEnergetiqueEntretien
+                                                                                besoinEnergetiqueEntretien,
+                                                                        referencesMaladies =
+                                                                                referencesMaladies
                                                                 )
 
                                                                 // Afficher les valeurs de référence
-                                                                // disponibles
+                                                                // disponibles (générales)
                                                                 val refLevels =
                                                                         listOf(
                                                                                 Reflevel.MIN to
@@ -655,6 +658,327 @@ fun NutrientDetailDialog(
                                                                                                                 4.dp
                                                                                                         )
                                                                                         )
+                                                                                }
+                                                                        }
+                                                                        // (Affichage textuel des
+                                                                        // maladies supprimé pour
+                                                                        // éviter la répétition; les
+                                                                        // marqueurs sont intégrés
+                                                                        // au bullet)
+                                                                }
+                                                        }
+                                                }
+                                        }
+                                }
+
+                                // Section des références maladies (après les références générales)
+                                if (referencesMaladies.isNotEmpty()) {
+                                        println(
+                                                "DEBUG Detail: Références maladies affichées pour $nom -> ${referencesMaladies.joinToString { it.nom }}"
+                                        )
+                                        referencesMaladies.forEach { refMaladie ->
+                                                val nutrient: Nutrient =
+                                                        valeurNutritionnelle.nutriment
+                                                val hasReferenceValuesMaladie =
+                                                        listOf(
+                                                                        Reflevel.MIN,
+                                                                        Reflevel.MAX,
+                                                                        Reflevel.OPTIMIN,
+                                                                        Reflevel.OPTIMAX
+                                                                )
+                                                                .any { level: Reflevel ->
+                                                                        refMaladie
+                                                                                .contientNutriment(
+                                                                                        nutrient,
+                                                                                        level
+                                                                                )
+                                                                }
+                                                if (hasReferenceValuesMaladie) {
+                                                        Card(
+                                                                modifier = Modifier.fillMaxWidth(),
+                                                                elevation = AppSizes.elevationSmall,
+                                                                backgroundColor =
+                                                                        VetNutriColors.Secondary
+                                                                                .copy(alpha = 0.08f)
+                                                        ) {
+                                                                Column(
+                                                                        modifier =
+                                                                                Modifier.padding(
+                                                                                        AppSizes.paddingMedium
+                                                                                ),
+                                                                        verticalArrangement =
+                                                                                Arrangement
+                                                                                        .spacedBy(
+                                                                                                AppSizes.paddingSmall
+                                                                                        )
+                                                                ) {
+                                                                        Text(
+                                                                                text =
+                                                                                        "Références maladies - ${refMaladie.nom}",
+                                                                                style =
+                                                                                        MaterialTheme
+                                                                                                .typography
+                                                                                                .subtitle1,
+                                                                                fontWeight =
+                                                                                        FontWeight
+                                                                                                .Bold,
+                                                                                color =
+                                                                                        VetNutriColors
+                                                                                                .Secondary
+                                                                        )
+                                                                        // Graphique bullet avec
+                                                                        // superposition des valeurs
+                                                                        // maladies uniquement
+                                                                        val isAnalysisNoUnit =
+                                                                                (nutrient is
+                                                                                        fr.vetbrain.vetnutri_mp.Enumer.NutrientAnalysis &&
+                                                                                        nutrient.unite
+                                                                                                .isBlank())
+                                                                        val apportConvertiMaladie =
+                                                                                if (isAnalysisNoUnit
+                                                                                ) {
+                                                                                        valeurNutritionnelle
+                                                                                                .valeur
+                                                                                                .toFloat()
+                                                                                } else {
+                                                                                        convertirVersUnitePreferences(
+                                                                                                valeurNutritionnelle
+                                                                                                        .valeur
+                                                                                                        .toFloat(),
+                                                                                                UnitReqEnum
+                                                                                                        .ABSOLUTE,
+                                                                                                typeExpressionBesoin
+                                                                                                        .unitReqEnum,
+                                                                                                besoinEnergetiqueEntretien,
+                                                                                                poidsAnimal,
+                                                                                                poidsMetabolique
+                                                                                        )
+                                                                                                ?: valeurNutritionnelle
+                                                                                                        .valeur
+                                                                                                        .toFloat()
+                                                                                }
+                                                                        ReferenceBulletGraph(
+                                                                                valeurApport =
+                                                                                        apportConvertiMaladie,
+                                                                                reference =
+                                                                                        refMaladie,
+                                                                                nutriment =
+                                                                                        nutrient,
+                                                                                typeExpressionBesoin =
+                                                                                        typeExpressionBesoin,
+                                                                                poidsAnimal =
+                                                                                        poidsAnimal,
+                                                                                poidsMetabolique =
+                                                                                        poidsMetabolique,
+                                                                                besoinEnergetiqueEntretien =
+                                                                                        besoinEnergetiqueEntretien
+                                                                        )
+                                                                        val refLevelsMaladie =
+                                                                                listOf(
+                                                                                        Reflevel.MIN to
+                                                                                                "Minimum",
+                                                                                        Reflevel.OPTIMIN to
+                                                                                                "Optimal minimum",
+                                                                                        Reflevel.OPTIMAX to
+                                                                                                "Optimal maximum",
+                                                                                        Reflevel.MAX to
+                                                                                                "Maximum"
+                                                                                )
+                                                                        refLevelsMaladie.forEach {
+                                                                                (level, levelName)
+                                                                                ->
+                                                                                if (refMaladie
+                                                                                                .contientNutriment(
+                                                                                                        nutrient,
+                                                                                                        level
+                                                                                                )
+                                                                                ) {
+                                                                                        val valeurRef =
+                                                                                                refMaladie
+                                                                                                        .obtenirNutriment(
+                                                                                                                nutrient,
+                                                                                                                level
+                                                                                                        )
+                                                                                        val uniteRef =
+                                                                                                UnitReqEnum
+                                                                                                        .getById(
+                                                                                                                refMaladie
+                                                                                                                        .obtenirUniteNutriment(
+                                                                                                                                nutrient,
+                                                                                                                                level
+                                                                                                                        )
+                                                                                                        )
+                                                                                        val biblioRef =
+                                                                                                refMaladie
+                                                                                                        .obtenirBiblioNutriment(
+                                                                                                                nutrient,
+                                                                                                                level
+                                                                                                        )
+                                                                                        val besoinAbsolu =
+                                                                                                if (isAnalysisNoUnit
+                                                                                                )
+                                                                                                        null
+                                                                                                else
+                                                                                                        calculerBesoinAbsolu(
+                                                                                                                valeurRef,
+                                                                                                                uniteRef,
+                                                                                                                besoinEnergetiqueEntretien,
+                                                                                                                poidsAnimal,
+                                                                                                                poidsMetabolique
+                                                                                                        )
+                                                                                        val couleurConformite =
+                                                                                                obtenirCouleurConformite(
+                                                                                                        level,
+                                                                                                        valeurNutritionnelle
+                                                                                                                .valeur,
+                                                                                                        besoinAbsolu
+                                                                                                )
+                                                                                        Column(
+                                                                                                modifier =
+                                                                                                        Modifier.fillMaxWidth()
+                                                                                        ) {
+                                                                                                Row(
+                                                                                                        modifier =
+                                                                                                                Modifier.fillMaxWidth(),
+                                                                                                        horizontalArrangement =
+                                                                                                                Arrangement
+                                                                                                                        .SpaceBetween
+                                                                                                ) {
+                                                                                                        Text(
+                                                                                                                text =
+                                                                                                                        "$levelName:",
+                                                                                                                style =
+                                                                                                                        MaterialTheme
+                                                                                                                                .typography
+                                                                                                                                .body2,
+                                                                                                                fontWeight =
+                                                                                                                        FontWeight
+                                                                                                                                .Medium
+                                                                                                        )
+                                                                                                        Column(
+                                                                                                                horizontalAlignment =
+                                                                                                                        Alignment
+                                                                                                                                .End
+                                                                                                        ) {
+                                                                                                                Text(
+                                                                                                                        text =
+                                                                                                                                if (isAnalysisNoUnit
+                                                                                                                                )
+                                                                                                                                        String.format(
+                                                                                                                                                "%.2f",
+                                                                                                                                                valeurRef
+                                                                                                                                        )
+                                                                                                                                else
+                                                                                                                                        "${String.format("%.2f", valeurRef)} ${uniteRef.label}",
+                                                                                                                        style =
+                                                                                                                                MaterialTheme
+                                                                                                                                        .typography
+                                                                                                                                        .body2,
+                                                                                                                        color =
+                                                                                                                                couleurConformite
+                                                                                                                )
+                                                                                                                if (!isAnalysisNoUnit &&
+                                                                                                                                typeExpressionBesoin
+                                                                                                                                        .unitReqEnum !=
+                                                                                                                                        uniteRef
+                                                                                                                ) {
+                                                                                                                        val valeurTemp =
+                                                                                                                                ValeurNutritionnelle(
+                                                                                                                                        valeurNutritionnelle
+                                                                                                                                                .nutriment,
+                                                                                                                                        valeurNutritionnelle
+                                                                                                                                                .unite,
+                                                                                                                                        valeurRef
+                                                                                                                                                .toDouble(),
+                                                                                                                                        "Référence convertie",
+                                                                                                                                        true
+                                                                                                                                )
+                                                                                                                        val (
+                                                                                                                                valeurPref,
+                                                                                                                                unitePref) =
+                                                                                                                                calculerAffichageNutriment(
+                                                                                                                                        valeurTemp,
+                                                                                                                                        typeExpressionBesoin,
+                                                                                                                                        poidsMetabolique,
+                                                                                                                                        poidsAnimal,
+                                                                                                                                        besoinEnergetiqueEntretien
+                                                                                                                                )
+                                                                                                                        Text(
+                                                                                                                                text =
+                                                                                                                                        "→ $valeurPref $unitePref",
+                                                                                                                                style =
+                                                                                                                                        MaterialTheme
+                                                                                                                                                .typography
+                                                                                                                                                .caption,
+                                                                                                                                fontWeight =
+                                                                                                                                        FontWeight
+                                                                                                                                                .Bold,
+                                                                                                                                color =
+                                                                                                                                        couleurConformite
+                                                                                                                        )
+                                                                                                                }
+                                                                                                                besoinAbsolu
+                                                                                                                        ?.let {
+                                                                                                                                valeurAbsolue
+                                                                                                                                ->
+                                                                                                                                Text(
+                                                                                                                                        text =
+                                                                                                                                                "→ ${String.format("%.2f", valeurAbsolue)} ${valeurNutritionnelle.unite.displayName}/jour",
+                                                                                                                                        style =
+                                                                                                                                                MaterialTheme
+                                                                                                                                                        .typography
+                                                                                                                                                        .caption,
+                                                                                                                                        fontWeight =
+                                                                                                                                                FontWeight
+                                                                                                                                                        .Bold,
+                                                                                                                                        color =
+                                                                                                                                                couleurConformite
+                                                                                                                                )
+                                                                                                                        }
+                                                                                                                if (biblioRef
+                                                                                                                                .firstAuthor
+                                                                                                                                .isNotEmpty() ||
+                                                                                                                                biblioRef
+                                                                                                                                        .completeRef
+                                                                                                                                        .isNotEmpty()
+                                                                                                                ) {
+                                                                                                                        Text(
+                                                                                                                                text =
+                                                                                                                                        "Réf: ${biblioRef.firstAuthor} ${biblioRef.completeRef}".take(
+                                                                                                                                                30
+                                                                                                                                        ) +
+                                                                                                                                                if (biblioRef
+                                                                                                                                                                .firstAuthor
+                                                                                                                                                                .length +
+                                                                                                                                                                biblioRef
+                                                                                                                                                                        .completeRef
+                                                                                                                                                                        .length >
+                                                                                                                                                                30
+                                                                                                                                                )
+                                                                                                                                                        "..."
+                                                                                                                                                else
+                                                                                                                                                        "",
+                                                                                                                                style =
+                                                                                                                                        MaterialTheme
+                                                                                                                                                .typography
+                                                                                                                                                .caption,
+                                                                                                                                color =
+                                                                                                                                        couleurConformite
+                                                                                                                                                .copy(
+                                                                                                                                                        alpha =
+                                                                                                                                                                0.7f
+                                                                                                                                                )
+                                                                                                                        )
+                                                                                                                }
+                                                                                                        }
+                                                                                                }
+                                                                                                Spacer(
+                                                                                                        modifier =
+                                                                                                                Modifier.height(
+                                                                                                                        4.dp
+                                                                                                                )
+                                                                                                )
+                                                                                        }
                                                                                 }
                                                                         }
                                                                 }
@@ -1081,7 +1405,8 @@ fun ReferenceBulletGraph(
         typeExpressionBesoin: TypeExpressionBesoin,
         poidsAnimal: Double?,
         poidsMetabolique: Double?,
-        besoinEnergetiqueEntretien: Double?
+        besoinEnergetiqueEntretien: Double?,
+        referencesMaladies: List<ReferenceEv> = emptyList()
 ) {
         // Récupération des valeurs de référence avec leurs unités
         val minRef = reference.obtenirNutriment(nutriment, Reflevel.MIN)
@@ -1273,11 +1598,106 @@ fun ReferenceBulletGraph(
                                         }
                                 }
 
-                                // Lignes de référence
+                                // Lignes de référence (générales)
                                 minRefConverti?.let { min -> comparativeMeasure(min) }
                                 optiminRefConverti?.let { optimin -> comparativeMeasure(optimin) }
                                 optimaxRefConverti?.let { optimax -> comparativeMeasure(optimax) }
                                 maxRefConverti?.let { max -> comparativeMeasure(max) }
+
+                                // Lignes verticales pour les valeurs des références maladies
+                                referencesMaladies.forEach { refMaladie ->
+                                        val minM =
+                                                refMaladie.obtenirNutriment(nutriment, Reflevel.MIN)
+                                        val minMU =
+                                                refMaladie.obtenirUniteNutriment(
+                                                        nutriment,
+                                                        Reflevel.MIN
+                                                )
+                                        val minVal =
+                                                if (minM > 0f)
+                                                        convertirVersUnitePreferences(
+                                                                minM,
+                                                                UnitReqEnum.getById(minMU),
+                                                                typeExpressionBesoin.unitReqEnum,
+                                                                besoinEnergetiqueEntretien,
+                                                                poidsAnimal,
+                                                                poidsMetabolique
+                                                        )
+                                                                ?: minM
+                                                else null
+                                        val optiMinM =
+                                                refMaladie.obtenirNutriment(
+                                                        nutriment,
+                                                        Reflevel.OPTIMIN
+                                                )
+                                        val optiMinMU =
+                                                refMaladie.obtenirUniteNutriment(
+                                                        nutriment,
+                                                        Reflevel.OPTIMIN
+                                                )
+                                        val optiMinVal =
+                                                if (optiMinM > 0f)
+                                                        convertirVersUnitePreferences(
+                                                                optiMinM,
+                                                                UnitReqEnum.getById(optiMinMU),
+                                                                typeExpressionBesoin.unitReqEnum,
+                                                                besoinEnergetiqueEntretien,
+                                                                poidsAnimal,
+                                                                poidsMetabolique
+                                                        )
+                                                                ?: optiMinM
+                                                else null
+                                        val optiMaxM =
+                                                refMaladie.obtenirNutriment(
+                                                        nutriment,
+                                                        Reflevel.OPTIMAX
+                                                )
+                                        val optiMaxMU =
+                                                refMaladie.obtenirUniteNutriment(
+                                                        nutriment,
+                                                        Reflevel.OPTIMAX
+                                                )
+                                        val optiMaxVal =
+                                                if (optiMaxM > 0f)
+                                                        convertirVersUnitePreferences(
+                                                                optiMaxM,
+                                                                UnitReqEnum.getById(optiMaxMU),
+                                                                typeExpressionBesoin.unitReqEnum,
+                                                                besoinEnergetiqueEntretien,
+                                                                poidsAnimal,
+                                                                poidsMetabolique
+                                                        )
+                                                                ?: optiMaxM
+                                                else null
+                                        val maxM =
+                                                refMaladie.obtenirNutriment(nutriment, Reflevel.MAX)
+                                        val maxMU =
+                                                refMaladie.obtenirUniteNutriment(
+                                                        nutriment,
+                                                        Reflevel.MAX
+                                                )
+                                        val maxVal =
+                                                if (maxM > 0f)
+                                                        convertirVersUnitePreferences(
+                                                                maxM,
+                                                                UnitReqEnum.getById(maxMU),
+                                                                typeExpressionBesoin.unitReqEnum,
+                                                                besoinEnergetiqueEntretien,
+                                                                poidsAnimal,
+                                                                poidsMetabolique
+                                                        )
+                                                                ?: maxM
+                                                else null
+
+                                        listOfNotNull(minVal, optiMinVal, optiMaxVal, maxVal)
+                                                .forEach { v ->
+                                                        // Utiliser des marqueurs comparatifs
+                                                        // (lignes verticales)
+                                                        // pour indiquer les valeurs de maladies
+                                                        // (couleur par défaut)
+                                                        comparativeMeasure(v)
+                                                }
+                                }
                         }
                 }
 

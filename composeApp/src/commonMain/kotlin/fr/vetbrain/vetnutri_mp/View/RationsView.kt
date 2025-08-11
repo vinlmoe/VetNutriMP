@@ -93,7 +93,37 @@ fun RationsView(
 ) {
         val animal by viewModel.animal.collectAsState()
         val selectedConsultation by viewModel.selectedConsultation.collectAsState()
+        val availableReferences by viewModel.availableReferences.collectAsState()
         val selectedRation by viewModel.selectedRation.collectAsState()
+
+        // Résolution centralisée des références maladies sélectionnées + logs
+        val referencesMaladiesResolues =
+                remember(selectedConsultation?.referencesMaladies, availableReferences) {
+                        val ids = selectedConsultation?.referencesMaladies ?: emptyList()
+                        println(
+                                "DEBUG RationsView: IDs références maladies sélectionnées: ${ids.joinToString()}"
+                        )
+                        val resolved =
+                                ids.mapNotNull { id ->
+                                        availableReferences.firstOrNull { it.uuid == id }
+                                }
+                        if (resolved.isEmpty()) {
+                                if (ids.isNotEmpty()) {
+                                        println(
+                                                "DEBUG RationsView: Aucune référence maladie résolue parmi ${ids.size} ID(s)"
+                                        )
+                                } else {
+                                        println(
+                                                "DEBUG RationsView: Aucune référence maladie sélectionnée pour la consultation"
+                                        )
+                                }
+                        } else {
+                                println(
+                                        "DEBUG RationsView: Références maladies résolues (${resolved.size}): ${resolved.joinToString { it.nom }}"
+                                )
+                        }
+                        resolved
+                }
 
         // Récupération des valeurs métaboliques calculées
         val poidsMetabolique by viewModel.poidsMetabolique.collectAsState()
@@ -723,7 +753,9 @@ fun RationsView(
                                                                                 preferencesRepository,
                                                                         equationRepository =
                                                                                 equationRepository,
-                                                                        isLargeView = !isCompact
+                                                                        isLargeView = !isCompact,
+                                                                        referencesMaladies =
+                                                                                referencesMaladiesResolues
                                                                 )
                                                         }
                                                 }
@@ -1085,7 +1117,9 @@ fun RationsView(
                                                                         preferencesRepository,
                                                                 equationRepository =
                                                                         equationRepository,
-                                                                isLargeView = true
+                                                                isLargeView = true,
+                                                                referencesMaladies =
+                                                                        referencesMaladiesResolues
                                                         )
                                                 } else {
                                                         Card(
@@ -1218,6 +1252,7 @@ fun RationsView(
                                 espece = animal?.getEspece() ?: Espece.CHIEN,
                                 preferencesStorage = preferencesStorage,
                                 equationRepository = equationRepository,
+                                referencesMaladies = referencesMaladiesResolues,
                                 onDismiss = {
                                         showNutrimentDetailDialog = false
                                         selectedNutrimentData = null
