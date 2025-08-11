@@ -130,6 +130,11 @@ fun AnimalDetailView(
                                 icon = AppIcons.Analytics
                         ),
                         MenuOption(
+                                section = AnimalDetailSection.GRAPHIQUE_ALIMENTS,
+                                title = "Graphique Aliments",
+                                icon = AppIcons.Analytics
+                        ),
+                        MenuOption(
                                 section = AnimalDetailSection.EXPORT,
                                 title = "Export",
                                 icon = Icons.Default.Settings
@@ -357,6 +362,12 @@ private fun WideScreenLayout(
                                 }
                                 AnimalDetailSection.GRAPHIQUE -> {
                                         AnalyseGraphiqueView(
+                                                viewModel = viewModel,
+                                                modifier = Modifier.fillMaxSize()
+                                        )
+                                }
+                                AnimalDetailSection.GRAPHIQUE_ALIMENTS -> {
+                                        AnalyseGraphiqueAlimentsView(
                                                 viewModel = viewModel,
                                                 modifier = Modifier.fillMaxSize()
                                         )
@@ -727,6 +738,12 @@ private fun NarrowScreenLayout(
                                                 }
                                                 AnimalDetailSection.GRAPHIQUE -> {
                                                         AnalyseGraphiqueView(
+                                                                viewModel = viewModel,
+                                                                modifier = Modifier.fillMaxSize()
+                                                        )
+                                                }
+                                                AnimalDetailSection.GRAPHIQUE_ALIMENTS -> {
+                                                        AnalyseGraphiqueAlimentsView(
                                                                 viewModel = viewModel,
                                                                 modifier = Modifier.fillMaxSize()
                                                         )

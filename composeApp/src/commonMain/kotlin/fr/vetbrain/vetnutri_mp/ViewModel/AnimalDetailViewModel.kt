@@ -39,7 +39,8 @@ enum class AnimalDetailSection {
     IDENTIFICATION, // Informations d'identification de l'animal
     CONSULTATIONS, // Liste des consultations
     RATIONS, // Vue des rations
-    GRAPHIQUE,
+    GRAPHIQUE, // Analyse graphique des rations
+    GRAPHIQUE_ALIMENTS, // Analyse graphique des aliments
     EXPORT
 }
 
