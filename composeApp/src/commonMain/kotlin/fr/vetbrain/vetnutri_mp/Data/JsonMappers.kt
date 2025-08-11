@@ -3,6 +3,7 @@ package fr.vetbrain.vetnutri_mp.Data
 import fr.vetbrain.vetnutri_mp.Enumer.AlimIndic
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.FoodKind
+import fr.vetbrain.vetnutri_mp.Enumer.FoodKindResolver
 import fr.vetbrain.vetnutri_mp.Enumer.GroupAlim
 import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver.AllNutrientResolver
@@ -99,12 +100,7 @@ fun AlimentEvJson.toData(): AlimentEv {
                             } catch (e: Exception) {
                                 null
                             },
-                    typeAliment =
-                            try {
-                                FoodKind.valueOf(this.foodKind)
-                            } catch (e: Exception) {
-                                null
-                            },
+                    typeAliment = FoodKindResolver.resoudreFoodKindBrut(this.foodKind),
                     ingredients = this.ingredients,
                     price = this.prix,
                     categPrice = this.categoriePrix,
@@ -165,12 +161,7 @@ fun AlimentEvJson.toData(ratUUID: String): AlimentEv {
                     } catch (e: Exception) {
                         null
                     },
-            typeAliment =
-                    try {
-                        FoodKind.valueOf(this.foodKind)
-                    } catch (e: Exception) {
-                        null
-                    },
+            typeAliment = FoodKindResolver.resoudreFoodKindBrut(this.foodKind),
             ingredients = this.ingredients,
             price = this.prix,
             categPrice = this.categoriePrix,
