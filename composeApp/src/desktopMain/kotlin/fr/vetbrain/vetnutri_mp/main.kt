@@ -394,18 +394,28 @@ actual fun importApiFromFile(viewModel: SettingsViewModel) {
                             biblioRepository = viewModel.biblioRefRepository,
                             consultationRepository = viewModel.consultationRepository
                     )
-            // Découper l'import en étapes et mettre à jour la progression/logs via callbacks simples
+            // Découper l'import en étapes et mettre à jour la progression/logs via callbacks
+            // simples
             viewModel.appendApiImportLog("Lecture du fichier terminée")
-            val counts = exportRepo.importAll(
-                apiJson = content,
-                listener = fr.vetbrain.vetnutri_mp.Repository.ExportImportRepository.ImportProgressListener(
-                    onProgress = { p -> viewModel.updateApiImportProgress(p) },
-                    onLog = { msg -> viewModel.appendApiImportLog(msg) }
-                )
-            )
+            val counts =
+                    exportRepo.importAll(
+                            apiJson = content,
+                            listener =
+                                    fr.vetbrain.vetnutri_mp.Repository.ExportImportRepository
+                                            .ImportProgressListener(
+                                                    onProgress = { p ->
+                                                        viewModel.updateApiImportProgress(p)
+                                                    },
+                                                    onLog = { msg ->
+                                                        viewModel.appendApiImportLog(msg)
+                                                    }
+                                            )
+                    )
             viewModel.updateApiImportProgress(1f)
             val total = counts.animals + counts.foods + counts.equations + counts.references
-            viewModel.appendApiImportLog("Import terminé → animals=${counts.animals}, foods=${counts.foods}, equations=${counts.equations}, refs=${counts.references}")
+            viewModel.appendApiImportLog(
+                    "Import terminé → animals=${counts.animals}, foods=${counts.foods}, equations=${counts.equations}, refs=${counts.references}"
+            )
             viewModel.setImportResult(
                     SettingsViewModel.ImportResult.Success(
                             count = total,
@@ -421,7 +431,9 @@ actual fun importApiFromFile(viewModel: SettingsViewModel) {
             viewModel.setImportResult(
                     SettingsViewModel.ImportResult.Error("Erreur import API: ${e.message}")
             )
-        } finally { viewModel.finishApiImport() }
+        } finally {
+            viewModel.finishApiImport()
+        }
     }
 }
 
