@@ -201,68 +201,30 @@ fun NutrientDetailDialog(
                 onDismissRequest = onDismiss,
                 title = { DialogTitre(titre = "Détails : $nom", onDismiss = onDismiss) },
                 text = {
-                        LazyColumn(
-                                modifier = Modifier.fillMaxWidth().height(600.dp),
+                        Column(
+                                modifier = Modifier.fillMaxWidth(),
                                 verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
                         ) {
-                                item {
-                                        RecapitulatifCard(
-                                                valeurNutritionnelle = valeurNutritionnelle,
-                                                typeExpressionBesoin = typeExpressionBesoin,
-                                                poidsMetabolique = poidsMetabolique,
-                                                poidsAnimal = poidsAnimal,
-                                                besoinEnergetiqueEntretien =
-                                                        besoinEnergetiqueEntretien
-                                        )
-                                }
+                                // Titre et apport non scrollables
+                                RecapitulatifCard(
+                                        valeurNutritionnelle = valeurNutritionnelle,
+                                        typeExpressionBesoin = typeExpressionBesoin,
+                                        poidsMetabolique = poidsMetabolique,
+                                        poidsAnimal = poidsAnimal,
+                                        besoinEnergetiqueEntretien = besoinEnergetiqueEntretien
+                                )
 
-                                // Section des références nutritionnelles
-                                referenceUtilisee?.let { ref ->
-                                        val nutrient: Nutrient = valeurNutritionnelle.nutriment
-                                        val hasReferenceValues =
-                                                listOf(
-                                                                Reflevel.MIN,
-                                                                Reflevel.MAX,
-                                                                Reflevel.OPTIMIN,
-                                                                Reflevel.OPTIMAX
-                                                        )
-                                                        .any { level: Reflevel ->
-                                                                ref.contientNutriment(
-                                                                        nutrient,
-                                                                        level
-                                                                )
-                                                        }
-
-                                        if (hasReferenceValues) {
-                                                item {
-                                                        ReferenceCard(
-                                                                titre =
-                                                                        "Références nutritionnelles - ${ref.nom}",
-                                                                reference = ref,
-                                                                valeurNutritionnelle =
-                                                                        valeurNutritionnelle,
-                                                                typeExpressionBesoin =
-                                                                        typeExpressionBesoin,
-                                                                poidsAnimal = poidsAnimal,
-                                                                poidsMetabolique = poidsMetabolique,
-                                                                besoinEnergetiqueEntretien =
-                                                                        besoinEnergetiqueEntretien,
-                                                                referencesMaladies =
-                                                                        referencesMaladies
-                                                        )
-                                                }
-                                        }
-                                }
-
-                                // Section des références maladies (après les références générales)
-                                if (referencesMaladies.isNotEmpty()) {
-                                        println(
-                                                "DEBUG Detail: Références maladies affichées pour $nom -> ${referencesMaladies.joinToString { it.nom }}"
-                                        )
-                                        referencesMaladies.forEach { refMaladie ->
+                                // Contenu scrollable
+                                LazyColumn(
+                                        modifier = Modifier.fillMaxWidth().height(400.dp),
+                                        verticalArrangement =
+                                                Arrangement.spacedBy(AppSizes.paddingMedium)
+                                ) {
+                                        // Section des références nutritionnelles
+                                        referenceUtilisee?.let { ref ->
                                                 val nutrient: Nutrient =
                                                         valeurNutritionnelle.nutriment
-                                                val hasReferenceValuesMaladie =
+                                                val hasReferenceValues =
                                                         listOf(
                                                                         Reflevel.MIN,
                                                                         Reflevel.MAX,
@@ -270,18 +232,18 @@ fun NutrientDetailDialog(
                                                                         Reflevel.OPTIMAX
                                                                 )
                                                                 .any { level: Reflevel ->
-                                                                        refMaladie
-                                                                                .contientNutriment(
-                                                                                        nutrient,
-                                                                                        level
-                                                                                )
+                                                                        ref.contientNutriment(
+                                                                                nutrient,
+                                                                                level
+                                                                        )
                                                                 }
-                                                if (hasReferenceValuesMaladie) {
+
+                                                if (hasReferenceValues) {
                                                         item {
                                                                 ReferenceCard(
                                                                         titre =
-                                                                                "Références maladies - ${refMaladie.nom}",
-                                                                        reference = refMaladie,
+                                                                                "Références nutritionnelles - ${ref.nom}",
+                                                                        reference = ref,
                                                                         valeurNutritionnelle =
                                                                                 valeurNutritionnelle,
                                                                         typeExpressionBesoin =
@@ -290,23 +252,71 @@ fun NutrientDetailDialog(
                                                                         poidsMetabolique =
                                                                                 poidsMetabolique,
                                                                         besoinEnergetiqueEntretien =
-                                                                                besoinEnergetiqueEntretien
+                                                                                besoinEnergetiqueEntretien,
+                                                                        referencesMaladies =
+                                                                                referencesMaladies
                                                                 )
                                                         }
                                                 }
                                         }
-                                }
 
-                                // Section contribution des ingrédients
-                                item {
-                                        ContributionsList(
-                                                ration = ration,
-                                                valeurNutritionnelle = valeurNutritionnelle,
-                                                referenceUtilisee = referenceUtilisee,
-                                                espece = espece,
-                                                preferencesRepo = preferencesRepo,
-                                                equationRepository = equationRepository
-                                        )
+                                        // Section des références maladies (après les références
+                                        // générales)
+                                        if (referencesMaladies.isNotEmpty()) {
+                                                println(
+                                                        "DEBUG Detail: Références maladies affichées pour $nom -> ${referencesMaladies.joinToString { it.nom }}"
+                                                )
+                                                referencesMaladies.forEach { refMaladie ->
+                                                        val nutrient: Nutrient =
+                                                                valeurNutritionnelle.nutriment
+                                                        val hasReferenceValuesMaladie =
+                                                                listOf(
+                                                                                Reflevel.MIN,
+                                                                                Reflevel.MAX,
+                                                                                Reflevel.OPTIMIN,
+                                                                                Reflevel.OPTIMAX
+                                                                        )
+                                                                        .any { level: Reflevel ->
+                                                                                refMaladie
+                                                                                        .contientNutriment(
+                                                                                                nutrient,
+                                                                                                level
+                                                                                        )
+                                                                        }
+                                                        if (hasReferenceValuesMaladie) {
+                                                                item {
+                                                                        ReferenceCard(
+                                                                                titre =
+                                                                                        "Références maladies - ${refMaladie.nom}",
+                                                                                reference =
+                                                                                        refMaladie,
+                                                                                valeurNutritionnelle =
+                                                                                        valeurNutritionnelle,
+                                                                                typeExpressionBesoin =
+                                                                                        typeExpressionBesoin,
+                                                                                poidsAnimal =
+                                                                                        poidsAnimal,
+                                                                                poidsMetabolique =
+                                                                                        poidsMetabolique,
+                                                                                besoinEnergetiqueEntretien =
+                                                                                        besoinEnergetiqueEntretien
+                                                                        )
+                                                                }
+                                                        }
+                                                }
+                                        }
+
+                                        // Section contribution des ingrédients
+                                        item {
+                                                ContributionsList(
+                                                        ration = ration,
+                                                        valeurNutritionnelle = valeurNutritionnelle,
+                                                        referenceUtilisee = referenceUtilisee,
+                                                        espece = espece,
+                                                        preferencesRepo = preferencesRepo,
+                                                        equationRepository = equationRepository
+                                                )
+                                        }
                                 }
                         }
                 },
