@@ -198,10 +198,11 @@ fun NutrientDetailDialog(
         }
 
         AlertDialog(
+                modifier = Modifier.fillMaxWidth().fillMaxHeight(0.9f),
                 onDismissRequest = onDismiss,
                 title = { DialogTitre(titre = "Détails : $nom", onDismiss = onDismiss) },
                 text = {
-                        Column(modifier = Modifier.fillMaxWidth()) {
+                        Column(modifier = Modifier.fillMaxWidth().fillMaxHeight()) {
 
                                 // Titre et apport non scrollables
                                 RecapitulatifCard(
@@ -211,15 +212,22 @@ fun NutrientDetailDialog(
                                         poidsAnimal = poidsAnimal,
                                         besoinEnergetiqueEntretien = besoinEnergetiqueEntretien
                                 )
+Text(
+        text = "Références nutritionnelles",
+        style = MaterialTheme.typography.subtitle1,
+        fontWeight = FontWeight.Bold,
+        color = VetNutriColors.Primary
+)
+Divider()
 
                                 // Contenu scrollable
                                 LazyColumn(
-                                        modifier = Modifier.fillMaxWidth().height(400.dp),
+                                        modifier = Modifier.fillMaxWidth().weight(1f),
                                         verticalArrangement =
-                                                Arrangement.spacedBy(AppSizes.paddingMedium)
+                                                Arrangement.spacedBy(AppSizes.paddingSmall)
                                 ) {
                                         // Section des références nutritionnelles
-                                      
+
                                         referenceUtilisee?.let { ref ->
                                                 val nutrient: Nutrient =
                                                         valeurNutritionnelle.nutriment
@@ -236,7 +244,7 @@ fun NutrientDetailDialog(
                                                                                 level
                                                                         )
                                                                 }
-                                                        
+
                                                 if (hasReferenceValues) {
                                                         item {
                                                                 ReferenceCard(

@@ -595,9 +595,9 @@ fun AddAlimentView(
         }
 }
 
-/** Composant pour afficher un aliment dans la liste */
+/** Composant pour afficher un aliment dans la liste (rendu public pour réutilisation) */
 @Composable
-private fun AlimentListItem(aliment: AlimentEv, isSelected: Boolean, onClick: () -> Unit) {
+fun AlimentListItem(aliment: AlimentEv, isSelected: Boolean, onClick: () -> Unit) {
         Card(
                 modifier = Modifier.fillMaxWidth().clickable { onClick() },
                 elevation = if (isSelected) AppSizes.elevationMedium else AppSizes.elevationSmall,
