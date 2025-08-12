@@ -1447,7 +1447,11 @@ fun RationEditDialog(ration: Ration?, onDismiss: () -> Unit, onSave: (Ration) ->
                                 // Coefficient de la ration
                                 OutlinedTextField(
                                         value =
-                                                String.format("%.2f", editedRation.coef)
+                                                fr.vetbrain.vetnutri_mp.Utils.TextUtils
+                                                        .formatDecimal(
+                                                                editedRation.coef.toDouble(),
+                                                                2
+                                                        )
                                                         .replace('.', ','),
                                         onValueChange = { newValue ->
                                                 // Accepter seulement les nombres positifs
@@ -1529,7 +1533,7 @@ private fun MetabolicValuesDialog(
                                         label = "Poids corporel",
                                         value =
                                                 selectedConsultation?.weight?.let {
-                                                        "${String.format("%.1f", it)} kg"
+                                                        "${fr.vetbrain.vetnutri_mp.Utils.TextUtils.formatDecimal(it.toDouble(), 1)} kg"
                                                 }
                                                         ?: "Non renseigné"
                                 )
@@ -1547,7 +1551,7 @@ private fun MetabolicValuesDialog(
                                         label = "Besoin énergétique standard (BEE)",
                                         value =
                                                 besoinEnergetiqueStandard?.let {
-                                                        "${String.format("%.1f", it)} kcal/jour"
+                                                        "${fr.vetbrain.vetnutri_mp.Utils.TextUtils.formatDecimal(it.toDouble(), 1)} kcal/jour"
                                                 }
                                                         ?: "Non calculé"
                                 )
@@ -1556,7 +1560,7 @@ private fun MetabolicValuesDialog(
                                         label = "Besoin énergétique total",
                                         value =
                                                 besoinEnergetiqueTotal?.let {
-                                                        "${String.format("%.1f", it)} kcal/jour"
+                                                        "${fr.vetbrain.vetnutri_mp.Utils.TextUtils.formatDecimal(it.toDouble(), 1)} kcal/jour"
                                                 }
                                                         ?: "Non calculé"
                                 )
@@ -1603,7 +1607,11 @@ private fun CoefficientEditableRow(
         var editableValue by
                 remember(currentValue) {
                         mutableStateOf(
-                                String.format("%.2f", currentValue ?: 1.0f).replace('.', ',')
+                                fr.vetbrain.vetnutri_mp.Utils.TextUtils.formatDecimal(
+                                                (currentValue ?: 1.0f).toDouble(),
+                                                2
+                                        )
+                                        .replace('.', ',')
                         )
                 }
         var isEditing by remember { mutableStateOf(false) }
@@ -1729,15 +1737,19 @@ private fun CoefficientEditableRow(
                                                                         !isCustomValue
                                                         ) {
                                                                 append(
-                                                                        "$currentDescription (${String.format("%.2f", currentValue)})"
+                                                                        "$currentDescription (${fr.vetbrain.vetnutri_mp.Utils.TextUtils.formatDecimal((currentValue ?: 0f).toDouble(), 2)})"
                                                                 )
                                                         } else {
                                                                 append(
-                                                                        String.format(
-                                                                                        "%.2f",
-                                                                                        currentValue
-                                                                                                ?: 1.0f
-                                                                                )
+                                                                        (fr.vetbrain.vetnutri_mp
+                                                                                        .Utils
+                                                                                        .TextUtils
+                                                                                        .formatDecimal(
+                                                                                                (currentValue
+                                                                                                                ?: 1.0f)
+                                                                                                        .toDouble(),
+                                                                                                2
+                                                                                        ))
                                                                                 .replace('.', ',')
                                                                 )
                                                         }
@@ -1782,9 +1794,15 @@ private fun CoefficientEditableRow(
                                                                                 currentValue != null
                                                                 ) {
                                                                         editableValue =
-                                                                                String.format(
-                                                                                                "%.2f",
-                                                                                                currentValue
+                                                                                fr.vetbrain
+                                                                                        .vetnutri_mp
+                                                                                        .Utils
+                                                                                        .TextUtils
+                                                                                        .formatDecimal(
+                                                                                                (currentValue
+                                                                                                                ?: 0f)
+                                                                                                        .toDouble(),
+                                                                                                2
                                                                                         )
                                                                                         .replace(
                                                                                                 '.',
@@ -1821,7 +1839,7 @@ private fun CoefficientEditableRow(
                                                 )
                                                 Text(
                                                         text =
-                                                                "Coefficient: ${String.format("%.2f", coef.coef ?: 1.0f)}",
+                                                                "Coefficient: ${fr.vetbrain.vetnutri_mp.Utils.TextUtils.formatDecimal((coef.coef ?: 1.0f).toDouble(), 2)}",
                                                         style = MaterialTheme.typography.body2,
                                                         color = Color.Gray
                                                 )
@@ -1837,7 +1855,12 @@ private fun CoefficientEditableRow(
                                         isEditing = true
                                         if (!isCustomValue && currentValue != null) {
                                                 editableValue =
-                                                        String.format("%.2f", currentValue)
+                                                        fr.vetbrain.vetnutri_mp.Utils.TextUtils
+                                                                .formatDecimal(
+                                                                        (currentValue ?: 0f)
+                                                                                .toDouble(),
+                                                                        2
+                                                                )
                                                                 .replace('.', ',')
                                         }
                                         showDropdown = false
@@ -2107,10 +2130,14 @@ private fun CoefficientsDialog(
                                                                         selectedConsultation
                                                                                 ?.coefficientAjustement
                                                                                 ?.let {
-                                                                                        String.format(
-                                                                                                "%.2f",
-                                                                                                it
-                                                                                        )
+                                                                                        fr.vetbrain
+                                                                                                .vetnutri_mp
+                                                                                                .Utils
+                                                                                                .TextUtils
+                                                                                                .formatDecimal(
+                                                                                                        it,
+                                                                                                        2
+                                                                                                )
                                                                                 }
                                                                                 ?: "1.00",
                                                                         style =

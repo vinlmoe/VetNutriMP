@@ -22,6 +22,7 @@ import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
 import fr.vetbrain.vetnutri_mp.Enumer.*
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
+import fr.vetbrain.vetnutri_mp.Utils.TextUtils
 
 /** Données d'ajustement pour un aliment spécifique */
 data class AlimentAdjustmentData(
@@ -308,7 +309,7 @@ private fun calculateMultiNutrientAdjustment(
                     adjustmentData.filter { it.selectedNutrient == nutrientLabel && !it.isLocked }
 
             println(
-                    "🔍 DEBUG: $nutrientLabel - Besoin: ${String.format("%.2f", besoinAbsoluGrammes)}g, Aliments ajustables: ${alimentsAjustables.size}"
+                    "🔍 DEBUG: $nutrientLabel - Besoin: ${TextUtils.formatDecimal(besoinAbsoluGrammes, 2)}g, Aliments ajustables: ${alimentsAjustables.size}"
             )
 
             if (alimentsAjustables.isEmpty()) {
@@ -331,7 +332,7 @@ private fun calculateMultiNutrientAdjustment(
             val manque = besoinAbsoluGrammes - apportActuel
 
             println(
-                    "🔍 DEBUG: Nutriment $nutrientLabel - Besoin: ${String.format("%.2f", besoinAbsoluGrammes)}g, Apport actuel: ${String.format("%.2f", apportActuel)}g, Manque: ${String.format("%.2f", manque)}g"
+                    "🔍 DEBUG: Nutriment $nutrientLabel - Besoin: ${TextUtils.formatDecimal(besoinAbsoluGrammes, 2)}g, Apport actuel: ${TextUtils.formatDecimal(apportActuel, 2)}g, Manque: ${TextUtils.formatDecimal(manque, 2)}g"
             )
 
             if (manque > 0.01) { // Tolérance de 0.01g
@@ -356,7 +357,7 @@ private fun calculateMultiNutrientAdjustment(
                 }
             } else {
                 println(
-                        "✅ DEBUG: Aucun ajustement nécessaire pour $nutrientLabel (manque: ${String.format("%.2f", manque)}g)"
+                        "✅ DEBUG: Aucun ajustement nécessaire pour $nutrientLabel (manque: ${TextUtils.formatDecimal(manque, 2)}g)"
                 )
             }
 
@@ -576,14 +577,14 @@ private fun ajusterAlimentsPourNutriment(
             return RationAdjustmentResult(
                     success = false,
                     message =
-                            "Impossible de couvrir complètement le besoin en ${nutriment.label}. Manque: ${String.format("%.2f", manqueRestant)}g, Ajouté: ${String.format("%.2f", totalAjoute)}g"
+                            "Impossible de couvrir complètement le besoin en ${nutriment.label}. Manque: ${TextUtils.formatDecimal(manqueRestant, 2)}g, Ajouté: ${TextUtils.formatDecimal(totalAjoute, 2)}g"
             )
         }
 
         return RationAdjustmentResult(
                 success = true,
                 message =
-                        "Ajustement réussi pour ${nutriment.label}: ajouté ${String.format("%.2f", totalAjoute)}g"
+                        "Ajustement réussi pour ${nutriment.label}: ajouté ${TextUtils.formatDecimal(totalAjoute, 2)}g"
         )
     } catch (e: Exception) {
         return RationAdjustmentResult(
@@ -645,7 +646,7 @@ private fun adjustRationForMultipleNutrients(
             val manque = besoinAbsolu - apportActuel
 
             println(
-                    "🔍 DEBUG: Nutriment $nutrientLabel - Besoin: ${String.format("%.2f", besoinAbsolu)}g, Apport actuel: ${String.format("%.2f", apportActuel)}g, Manque: ${String.format("%.2f", manque)}g"
+                    "🔍 DEBUG: Nutriment $nutrientLabel - Besoin: ${TextUtils.formatDecimal(besoinAbsolu, 2)}g, Apport actuel: ${TextUtils.formatDecimal(apportActuel, 2)}g, Manque: ${TextUtils.formatDecimal(manque, 2)}g"
             )
 
             if (manque > 0.01) { // Tolérance de 0.01g
@@ -670,7 +671,7 @@ private fun adjustRationForMultipleNutrients(
                 }
             } else {
                 println(
-                        "✅ DEBUG: Aucun ajustement nécessaire pour $nutrientLabel (manque: ${String.format("%.2f", manque)}g)"
+                        "✅ DEBUG: Aucun ajustement nécessaire pour $nutrientLabel (manque: ${TextUtils.formatDecimal(manque, 2)}g)"
                 )
             }
 

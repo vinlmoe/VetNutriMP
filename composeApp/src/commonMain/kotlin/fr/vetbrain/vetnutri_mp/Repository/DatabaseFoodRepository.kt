@@ -43,7 +43,8 @@ class DatabaseFoodRepository(
     private val coroutineScope = CoroutineScope(AppDispatchers.Main)
 
     // Mode batch pour désactiver les refresh coûteux à chaque insert/update
-    @Volatile private var isBatchMode: Boolean = false
+    // KMP: éviter @Volatile en commonMain
+    private var isBatchMode: Boolean = false
     fun beginBatch() {
         isBatchMode = true
     }

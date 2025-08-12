@@ -106,12 +106,18 @@ private fun calculerAffichageNutriment(
                         poidsAnimal?.let { poids ->
                                 if (poids > 0) {
                                         val valeurParKg = valeurAbsolue / poids
-                                        Pair("%.2f".format(valeurParKg), "$uniteOriginale/kg")
+                                        Pair(
+                                                TextUtils.formatDecimal(valeurParKg, 2),
+                                                "$uniteOriginale/kg"
+                                        )
                                 } else {
-                                        Pair(String.format("%.2f", valeurAbsolue), uniteOriginale)
+                                        Pair(
+                                                TextUtils.formatDecimal(valeurAbsolue, 2),
+                                                uniteOriginale
+                                        )
                                 }
                         }
-                                ?: Pair(String.format("%.2f", valeurAbsolue), uniteOriginale)
+                                ?: Pair(TextUtils.formatDecimal(valeurAbsolue, 2), uniteOriginale)
                 }
                 TypeExpressionBesoin.PAR_KG_METABOLIQUE -> {
                         // Par kg de poids métabolique (kg^0.75)
@@ -119,14 +125,17 @@ private fun calculerAffichageNutriment(
                                 if (poidsMetab > 0) {
                                         val valeurParKgMetab = valeurAbsolue / poidsMetab
                                         Pair(
-                                                String.format("%.2f", valeurParKgMetab),
+                                                TextUtils.formatDecimal(valeurParKgMetab, 2),
                                                 "$uniteOriginale/kg${TextUtils.toSuperscript("0.75")}"
                                         )
                                 } else {
-                                        Pair(String.format("%.2f", valeurAbsolue), uniteOriginale)
+                                        Pair(
+                                                TextUtils.formatDecimal(valeurAbsolue, 2),
+                                                uniteOriginale
+                                        )
                                 }
                         }
-                                ?: Pair(String.format("%.2f", valeurAbsolue), uniteOriginale)
+                                ?: Pair(TextUtils.formatDecimal(valeurAbsolue, 2), uniteOriginale)
                 }
                 TypeExpressionBesoin.PAR_KCAL -> {
                         // Par 1000 kcal de BEE (Besoin Énergétique d'Entretien)
@@ -134,14 +143,17 @@ private fun calculerAffichageNutriment(
                                 if (bee > 0) {
                                         val valeurPar1000Kcal = (valeurAbsolue / bee) * 1000
                                         Pair(
-                                                String.format("%.2f", valeurPar1000Kcal),
+                                                TextUtils.formatDecimal(valeurPar1000Kcal, 2),
                                                 "$uniteOriginale/1000 kcal"
                                         )
                                 } else {
-                                        Pair(String.format("%.2f", valeurAbsolue), uniteOriginale)
+                                        Pair(
+                                                TextUtils.formatDecimal(valeurAbsolue, 2),
+                                                uniteOriginale
+                                        )
                                 }
                         }
-                                ?: Pair(String.format("%.2f", valeurAbsolue), uniteOriginale)
+                                ?: Pair(TextUtils.formatDecimal(valeurAbsolue, 2), uniteOriginale)
                 }
                 TypeExpressionBesoin.PAR_KJ -> {
                         // Par 1000 kJ de BEE (conversion : 1 kcal = 4.184 kJ)
@@ -150,14 +162,17 @@ private fun calculerAffichageNutriment(
                                         val beeEnKj = bee * 4.184 // Conversion kcal vers kJ
                                         val valeurPar1000Kj = (valeurAbsolue / beeEnKj) * 1000
                                         Pair(
-                                                String.format("%.2f", valeurPar1000Kj),
+                                                TextUtils.formatDecimal(valeurPar1000Kj, 2),
                                                 "$uniteOriginale/1000 kJ"
                                         )
                                 } else {
-                                        Pair(String.format("%.2f", valeurAbsolue), uniteOriginale)
+                                        Pair(
+                                                TextUtils.formatDecimal(valeurAbsolue, 2),
+                                                uniteOriginale
+                                        )
                                 }
                         }
-                                ?: Pair(String.format("%.2f", valeurAbsolue), uniteOriginale)
+                                ?: Pair(TextUtils.formatDecimal(valeurAbsolue, 2), uniteOriginale)
                 }
         }
 }
@@ -212,13 +227,13 @@ fun NutrientDetailDialog(
                                         poidsAnimal = poidsAnimal,
                                         besoinEnergetiqueEntretien = besoinEnergetiqueEntretien
                                 )
-Text(
-        text = "Références nutritionnelles",
-        style = MaterialTheme.typography.subtitle1,
-        fontWeight = FontWeight.Bold,
-        color = VetNutriColors.Primary
-)
-Divider()
+                                Text(
+                                        text = "Références nutritionnelles",
+                                        style = MaterialTheme.typography.subtitle1,
+                                        fontWeight = FontWeight.Bold,
+                                        color = VetNutriColors.Primary
+                                )
+                                Divider()
 
                                 // Contenu scrollable
                                 LazyColumn(
@@ -449,7 +464,10 @@ fun ReferenceBulletGraph(
                                                         if (tick % 1f == 0f) {
                                                                 tick.toInt().toString()
                                                         } else {
-                                                                String.format("%.1f", tick)
+                                                                TextUtils.formatDecimal(
+                                                                        tick.toDouble(),
+                                                                        1
+                                                                )
                                                         }
                                                 AxisText(label)
                                         }
@@ -663,7 +681,7 @@ fun ReferenceBulletGraph(
                                         )
                                         Text(
                                                 text =
-                                                        "Apport: ${String.format("%.1f", valeurApport)}",
+                                                        "Apport: ${TextUtils.formatDecimal(valeurApport.toDouble(), 1)}",
                                                 style = MaterialTheme.typography.caption,
                                                 color = Color.Gray
                                         )
@@ -971,7 +989,13 @@ private fun RecapitulatifCard(
                                                 fr.vetbrain.vetnutri_mp.Enumer.NutrientAnalysis &&
                                                 valeurNutritionnelle.unite.displayName.isBlank()
                                 ) {
-                                        Pair(String.format("%.2f", valeurNutritionnelle.valeur), "")
+                                        Pair(
+                                                TextUtils.formatDecimal(
+                                                        valeurNutritionnelle.valeur,
+                                                        2
+                                                ),
+                                                ""
+                                        )
                                 } else {
                                         calculerAffichageNutriment(
                                                 valeurNutritionnelle,
@@ -993,7 +1017,7 @@ private fun RecapitulatifCard(
                         ) {
                                 Text(
                                         text =
-                                                "→ ${String.format("%.2f", valeurNutritionnelle.valeur)} ${valeurNutritionnelle.unite.displayName}/jour",
+                                                "→ ${TextUtils.formatDecimal(valeurNutritionnelle.valeur, 2)} ${valeurNutritionnelle.unite.displayName}/jour",
                                         style = MaterialTheme.typography.body2,
                                         fontWeight = FontWeight.Medium,
                                         color = VetNutriColors.Primary.copy(alpha = 0.8f)
@@ -1120,7 +1144,7 @@ private fun ContributionItem(
                                 Column(modifier = Modifier.weight(1f)) {
                                         Text(
                                                 text =
-                                                        "Quantité: ${String.format("%.1f", quantite)}g",
+                                                        "Quantité: ${TextUtils.formatDecimal(quantite.toDouble(), 1)}g",
                                                 style = MaterialTheme.typography.body2,
                                                 fontWeight = FontWeight.Medium,
                                                 color = VetNutriColors.Primary
@@ -1133,17 +1157,17 @@ private fun ContributionItem(
                                                 text =
                                                         if (isAnalysisNoUnit) {
                                                                 if (valeurPour100gItem != null) {
-                                                                        "Valeur: ${String.format("%.2f", valeurPour100gItem)}"
+                                                                        "Valeur: ${TextUtils.formatDecimal(valeurPour100gItem.toDouble(), 2)}"
                                                                 } else {
                                                                         "Valeur: NA"
                                                                 }
                                                         } else {
                                                                 if (valeurAliment != null) {
-                                                                        "Valeur (100g): ${String.format("%.2f", valeurAliment)} ${valeurNutritionnelle.unite.displayName}"
+                                                                        "Valeur (100g): ${TextUtils.formatDecimal(valeurAliment.toDouble(), 2)} ${valeurNutritionnelle.unite.displayName}"
                                                                 } else if (valeurPour100gItem !=
                                                                                 null
                                                                 ) {
-                                                                        "Valeur (100g): ${String.format("%.2f", valeurPour100gItem)} ${valeurNutritionnelle.unite.displayName}"
+                                                                        "Valeur (100g): ${TextUtils.formatDecimal(valeurPour100gItem.toDouble(), 2)} ${valeurNutritionnelle.unite.displayName}"
                                                                 } else {
                                                                         "Valeur (100g): NA"
                                                                 }
@@ -1156,14 +1180,14 @@ private fun ContributionItem(
                                 Column(modifier = Modifier.weight(1f)) {
                                         Text(
                                                 text =
-                                                        "Contribution: ${String.format("%.2f", contributionAbsolue)} ${valeurNutritionnelle.unite.displayName}",
+                                                        "Contribution: ${TextUtils.formatDecimal(contributionAbsolue, 2)} ${valeurNutritionnelle.unite.displayName}",
                                                 style = MaterialTheme.typography.body2,
                                                 fontWeight = FontWeight.Medium,
                                                 color = VetNutriColors.Secondary
                                         )
                                         Text(
                                                 text =
-                                                        "Part: ${String.format("%.1f", contributionPourcentage)}%",
+                                                        "Part: ${TextUtils.formatDecimal(contributionPourcentage, 1)}%",
                                                 style = MaterialTheme.typography.body2,
                                                 color = VetNutriColors.Secondary
                                         )
@@ -1322,12 +1346,13 @@ private fun ReferenceLevelsList(
                                                 Text(
                                                         text =
                                                                 if (isAnalysisNoUnit)
-                                                                        String.format(
-                                                                                "%.2f",
+                                                                        TextUtils.formatDecimal(
                                                                                 valeurRef
+                                                                                        .toDouble(),
+                                                                                2
                                                                         )
                                                                 else
-                                                                        "${String.format("%.2f", valeurRef)} ${uniteRef.label}",
+                                                                        "${TextUtils.formatDecimal(valeurRef.toDouble(), 2)} ${uniteRef.label}",
                                                         style = MaterialTheme.typography.body2,
                                                         color = couleurConformite
                                                 )
@@ -1367,7 +1392,7 @@ private fun ReferenceLevelsList(
                                                 besoinAbsolu?.let { valeurAbsolue: Double ->
                                                         Text(
                                                                 text =
-                                                                        "→ ${String.format("%.2f", valeurAbsolue)} ${valeurNutritionnelle.unite.displayName}/jour",
+                                                                        "→ ${TextUtils.formatDecimal(valeurAbsolue, 2)} ${valeurNutritionnelle.unite.displayName}/jour",
                                                                 style =
                                                                         MaterialTheme.typography
                                                                                 .caption,

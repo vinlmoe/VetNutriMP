@@ -1008,7 +1008,7 @@ private fun CoefficientSelector(
                 OutlinedTextField(
                         value =
                                 if (valeurSelectionnee != null && descriptionSelectionnee != null) {
-                                        "$descriptionSelectionnee (${String.format("%.2f", valeurSelectionnee)})"
+                                        "$descriptionSelectionnee (${fr.vetbrain.vetnutri_mp.Utils.TextUtils.formatDecimal(valeurSelectionnee.toDouble(), 2)})"
                                 } else {
                                         "Sélectionner un coefficient"
                                 },
@@ -1079,7 +1079,7 @@ private fun CoefficientSelectionDialog(
                                                         )
                                                         Text(
                                                                 text =
-                                                                        "Coefficient: ${String.format("%.2f", coef.coef ?: 1.0f)}",
+                                                                        "Coefficient: ${fr.vetbrain.vetnutri_mp.Utils.TextUtils.formatDecimal((coef.coef ?: 1.0f).toDouble(), 2)}",
                                                                 style =
                                                                         MaterialTheme.typography
                                                                                 .body2,

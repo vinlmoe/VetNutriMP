@@ -54,7 +54,10 @@ fun SectionValeursMetaboliques(
         Row(horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)) {
             LigneInfoLocaleCompacte(
                     label = "Poids",
-                    value = selectedConsultation?.weight?.let { "${String.format("%.1f", it)} kg" }
+                    value =
+                            selectedConsultation?.weight?.let {
+                                "${TextUtils.formatDecimal(it.toDouble(), 1)} kg"
+                            }
                                     ?: "Non renseigné"
             )
             Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
@@ -68,13 +71,19 @@ fun SectionValeursMetaboliques(
         Row(horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)) {
             LigneInfoLocaleCompacte(
                     label = "BEE standard",
-                    value = besoinEnergetiqueStandard?.let { "${String.format("%.0f", it)} kcal/j" }
+                    value =
+                            besoinEnergetiqueStandard?.let {
+                                "${TextUtils.formatDecimal(it, 0)} kcal/j"
+                            }
                                     ?: "Non calculé"
             )
             Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
             LigneInfoLocaleCompacte(
                     label = "BE",
-                    value = besoinEnergetiqueTotal?.let { "${String.format("%.0f", it)} kcal/j" }
+                    value =
+                            besoinEnergetiqueTotal?.let {
+                                "${TextUtils.formatDecimal(it, 0)} kcal/j"
+                            }
                                     ?: "Non calculé"
             )
         }
@@ -112,32 +121,47 @@ fun SectionCoefficients(
         Row() {
             LigneInfoLocaleCompacte(
                     label = "K1",
-                    value = selectedConsultation?.k1Value?.let { String.format("%.2f", it) }
+                    value =
+                            selectedConsultation?.k1Value?.let {
+                                TextUtils.formatDecimal(it.toDouble(), 2)
+                            }
                                     ?: "1.00"
             )
             Spacer(modifier = Modifier.width(AppSizes.paddingXSmall))
             LigneInfoLocaleCompacte(
                     label = "K2",
-                    value = selectedConsultation?.k2Value?.let { String.format("%.2f", it) }
+                    value =
+                            selectedConsultation?.k2Value?.let {
+                                TextUtils.formatDecimal(it.toDouble(), 2)
+                            }
                                     ?: "1.00"
             )
             Spacer(modifier = Modifier.width(AppSizes.paddingXSmall))
             LigneInfoLocaleCompacte(
                     label = "K3",
-                    value = selectedConsultation?.k3Value?.let { String.format("%.2f", it) }
+                    value =
+                            selectedConsultation?.k3Value?.let {
+                                TextUtils.formatDecimal(it.toDouble(), 2)
+                            }
                                     ?: "1.00"
             )
         }
         Row() {
             LigneInfoLocaleCompacte(
                     label = "K4",
-                    value = selectedConsultation?.k4Value?.let { String.format("%.2f", it) }
+                    value =
+                            selectedConsultation?.k4Value?.let {
+                                TextUtils.formatDecimal(it.toDouble(), 2)
+                            }
                                     ?: "1.00"
             )
             Spacer(modifier = Modifier.width(AppSizes.paddingXSmall))
             LigneInfoLocaleCompacte(
                     label = "K5",
-                    value = selectedConsultation?.k5Value?.let { String.format("%.2f", it) }
+                    value =
+                            selectedConsultation?.k5Value?.let {
+                                TextUtils.formatDecimal(it.toDouble(), 2)
+                            }
                                     ?: "1.00"
             )
             Spacer(modifier = Modifier.width(AppSizes.paddingXSmall))
@@ -203,7 +227,7 @@ fun SectionCoefficients(
                             label = "Coeff. ajust.",
                             value =
                                     selectedConsultation?.coefficientAjustement?.let {
-                                        String.format("%.2f", it)
+                                        TextUtils.formatDecimal(it.toDouble(), 2)
                                     }
                                             ?: "1.00"
                     )
@@ -251,7 +275,7 @@ fun SectionBilanEnergetique(
         Row() {
             LigneInfoLocaleCompacte(
                     label = "Énergie apportée",
-                    value = "${String.format("%.0f", energieApportee)} kcal/j"
+                    value = "${TextUtils.formatDecimal(energieApportee, 0)} kcal/j"
             )
             Spacer(modifier = Modifier.width(AppSizes.paddingXSmall))
             Column {
@@ -261,7 +285,7 @@ fun SectionBilanEnergetique(
                         color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
                 )
                 Text(
-                        text = "${String.format("%.0f", pourcentageCouverture)}%",
+                        text = "${TextUtils.formatDecimal(pourcentageCouverture, 0)}%",
                         style = MaterialTheme.typography.caption,
                         fontWeight = FontWeight.Medium,
                         color =
@@ -283,7 +307,7 @@ fun SectionBilanEnergetique(
                         color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
                 )
                 Text(
-                        text = String.format("%.2f", kObserve),
+                        text = TextUtils.formatDecimal(kObserve, 2),
                         style = MaterialTheme.typography.caption,
                         fontWeight = FontWeight.Medium,
                         color =

@@ -32,7 +32,7 @@ actual class PreferencesStorage {
     }
 
     actual suspend fun clear() {
-        withContext(Dispatchers.IO) {
+        withContext(Dispatchers.Main) {
             val userDefaults = NSUserDefaults.standardUserDefaults
             for (key in getAllKeys()) {
                 userDefaults.removeObjectForKey(key)
@@ -52,4 +52,3 @@ actual class PreferencesStorage {
 actual fun createPreferencesStorage(): PreferencesStorage {
     return PreferencesStorage()
 }
- 
