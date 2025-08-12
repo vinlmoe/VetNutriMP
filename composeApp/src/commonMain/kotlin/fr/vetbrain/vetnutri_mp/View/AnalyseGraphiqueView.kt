@@ -14,6 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -22,43 +23,17 @@ import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailViewModel
 import io.github.koalaplot.core.*
-import io.github.koalaplot.core.line.LinePlot
-import io.github.koalaplot.core.util.ExperimentalKoalaPlotApi
-import io.github.koalaplot.core.xygraph.*
-import io.github.koalaplot.core.ChartLayout
-import io.github.koalaplot.core.legend.LegendLocation
 import io.github.koalaplot.core.line.AreaBaseline
 import io.github.koalaplot.core.line.AreaPlot
+import io.github.koalaplot.core.line.LinePlot
 import io.github.koalaplot.core.style.AreaStyle
-import io.github.koalaplot.core.style.KoalaPlotTheme
 import io.github.koalaplot.core.style.LineStyle
-
+import io.github.koalaplot.core.util.ExperimentalKoalaPlotApi
 import io.github.koalaplot.core.util.toString
-import io.github.koalaplot.core.xygraph.AnchorPoint
+import io.github.koalaplot.core.xygraph.*
 import io.github.koalaplot.core.xygraph.FloatLinearAxisModel
-import io.github.koalaplot.core.xygraph.HorizontalLineAnnotation
 import io.github.koalaplot.core.xygraph.Point
-import io.github.koalaplot.core.xygraph.VerticalLineAnnotation
-import io.github.koalaplot.core.xygraph.XYAnnotation
 import io.github.koalaplot.core.xygraph.XYGraph
-import io.github.koalaplot.core.xygraph.XYGraphScope
-import androidx.compose.ui.graphics.SolidColor
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
@@ -283,7 +258,7 @@ private val courbesCroissanceChien =
                         "0",
                         12
                 )
-        )
+)
 
 // Fonction pour formater l'âge en années et mois
 private fun formatAge(ageInYears: Double, ageInMonths: Double): String {
@@ -664,16 +639,16 @@ private fun EvolutionPoidsChart(viewModel: AnimalDetailViewModel) {
                 val yMargin = (maxY - minY).coerceAtLeast(1f) * 0.05f
                 val yRange = (minY - yMargin)..(maxY + yMargin)
 
-                val xRangeWidth = (xRange.endInclusive - xRange.start).coerceAtLeast(0f)
+                        val xRangeWidth = (xRange.endInclusive - xRange.start).coerceAtLeast(0f)
                 val xTickIncrement = if (xRangeWidth > 10f) 3f else 1f
-                val safeTickIncrement =
+                        val safeTickIncrement =
                         if (xRangeWidth > 0f) xTickIncrement.coerceAtMost(xRangeWidth) else 1f
 
                 // Graphique
-                GraphCard(
-                        titre = "Évolution du poids corporel",
+                        GraphCard(
+                                titre = "Évolution du poids corporel",
                         sousTitre = "Poids en kg selon l'âge (avec courbes de référence)"
-                ) {
+                        ) {
                         Column {
                                 XYGraph(
                                         xAxisModel =
@@ -683,7 +658,7 @@ private fun EvolutionPoidsChart(viewModel: AnimalDetailViewModel) {
                                                                 safeTickIncrement
                                                 ),
                                         yAxisModel = FloatLinearAxisModel(range = yRange),
-                                        modifier = Modifier.height(250.dp)
+                                        modifier = Modifier.height(500.dp)
                                 ) {
                                         // Courbes de référence: toutes les percentiles si demandé
                                         if (showReferenceCurves && courbeRef != null) {
@@ -710,18 +685,33 @@ private fun EvolutionPoidsChart(viewModel: AnimalDetailViewModel) {
                                                                 // valeur
                                                                 val firstY = pts.first().y
                                                                 val lastY = pts.last().y
-                                                              
-                                                                AreaPlot(
-        data = pts,
-        lineStyle = LineStyle(brush = SolidColor(Color(0xFF00498F)), strokeWidth = 2.dp),
-        areaStyle =
-                AreaStyle(
-                        brush = SolidColor(Color.Green),
-                        alpha = 0.2f,
-                ),
-        areaBaseline = AreaBaseline.ConstantLine(0f)
-)
 
+                                                                AreaPlot(
+                                                                        data = pts,
+                                                                        lineStyle =
+                                                                                LineStyle(
+                                                                                        brush =
+                                                                                                SolidColor(
+                                                                                                        Color.Gray
+                                                                                                ),
+                                                                                        strokeWidth =
+                                                                                                0.2.dp
+                                                                                ),
+                                                                        areaStyle =
+                                                                                AreaStyle(
+                                                                                        brush =
+                                                                                                SolidColor(
+                                                                                                        Color.Green
+                                                                                                ),
+                                                                                        alpha =
+                                                                                                0.1f,
+                                                                                ),
+                                                                        areaBaseline =
+                                                                                AreaBaseline
+                                                                                        .ConstantLine(
+                                                                                                0f
+                                                                                        )
+                                                                )
                                                         }
                                                 }
                                         } else if (pointsRef0_12.isNotEmpty()) {
@@ -731,8 +721,8 @@ private fun EvolutionPoidsChart(viewModel: AnimalDetailViewModel) {
 
                                         // Courbe des données réelles de l'animal
                                         if (donneesPoids.isNotEmpty()) {
-                                                LinePlot(
-                                                        data = donneesPoids,
+                                        LinePlot(
+                                                data = donneesPoids,
                                                         symbol = {
                                                                 androidx.compose.foundation.Canvas(
                                                                         modifier =

@@ -33,8 +33,6 @@ fun AnimalListView(
         onAddAnimal: () -> Unit,
         onSelectAnimal: (AnimalEv) -> Unit,
         onEditAnimal: (AnimalEv) -> Unit,
-        onImportAnimals: () -> Unit,
-        onImportFoods: () -> Unit,
         onShowFoodList: () -> Unit,
         onShowCalculationTabs: () -> Unit,
         modifier: Modifier = Modifier
@@ -67,30 +65,7 @@ fun AnimalListView(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                                // Boutons d'import
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        Button(
-                                                onClick = onImportAnimals,
-                                                colors =
-                                                        ButtonDefaults.buttonColors(
-                                                                backgroundColor =
-                                                                        VetNutriColors.Secondary,
-                                                                contentColor =
-                                                                        VetNutriColors.OnSecondary
-                                                        )
-                                        ) { Text(General.IMPORT.translate() + " " + "Animaux") }
-
-                                        Button(
-                                                onClick = onImportFoods,
-                                                colors =
-                                                        ButtonDefaults.buttonColors(
-                                                                backgroundColor =
-                                                                        VetNutriColors.Secondary,
-                                                                contentColor =
-                                                                        VetNutriColors.OnSecondary
-                                                        )
-                                        ) { Text(General.IMPORT.translate() + " " + "Aliments") }
-                                }
+                                // Boutons d'import supprimés
                         }
 
                         Spacer(modifier = Modifier.height(8.dp))

@@ -251,24 +251,32 @@ fun App(appDatabase: AppDatabase) {
 
     // Import automatique des aliments ET des références AVANT le thème
     runBlocking {
-        // --- ALIMENTS ---
+        // --- ALIMENTS ET REFERENCES ---
         val currentFoodCount = foodRepository.getAllFoods().size
-        if (currentFoodCount == 0) {
-            try {
-                val json = ResourceReader().readResource("data/vetfood.json")
-                if (json.isNotEmpty()) {
-                    val result = settingsViewModel.importFoodsFromJson(json)
-                } else {}
-            } catch (e: Exception) {}
-        }
-
-        // --- REFERENCES ---
         val currentReferenceCount = databaseReferenceEvRepository.getAllReferenceEv().size
-        if (currentReferenceCount == 0) {
+
+        if (currentFoodCount == 0 || currentReferenceCount == 0) {
             try {
-                val jsonRef = ResourceReader().readResource("data/references.json")
-                if (jsonRef.isNotEmpty()) {
-                    val result = importViewModel.importNutritionalRequirementsFromJson(jsonRef)
+                val json = ResourceReader().readResource("data/vetnutri_export_init.json")
+                if (json.isNotEmpty()) {
+                    val exportImportRepo =
+                            ExportImportRepository(
+                                    animalRepository = animalRepository,
+                                    foodRepository = foodRepository,
+                                    equationRepository = equationRepository,
+                                    referenceRepository = databaseReferenceEvRepository,
+                                    biblioRepository = biblioRefRepository,
+                                    consultationRepository = consultationRepository
+                            )
+
+                    exportImportRepo.importAll(
+                            apiJson = json,
+                            listener =
+                                    ExportImportRepository.ImportProgressListener(
+                                            onProgress = { /* no-op UI at startup */},
+                                            onLog = { msg -> println("IMPORT API: $msg") }
+                                    )
+                    )
                 } else {}
             } catch (e: Exception) {}
         }
@@ -284,14 +292,7 @@ fun App(appDatabase: AppDatabase) {
                                     title = "Liste des animaux",
                                     onSettingsClick = { currentScreen = Screen.Settings }
                             ) {
-                                // Ajouter un bouton de test
-                                Button(
-                                        onClick = { currentScreen = Screen.TestYellowBox },
-                                        colors =
-                                                ButtonDefaults.buttonColors(
-                                                        backgroundColor = Color.Yellow
-                                                )
-                                ) { Text("Test", color = Color.Red) }
+                                // Boutons supprimés
                             }
 
                             // Ajout d'un LaunchedEffect pour recharger la liste lorsque l'écran
@@ -321,8 +322,6 @@ fun App(appDatabase: AppDatabase) {
                                         isEditing = true
                                         currentScreen = Screen.Create
                                     },
-                                    onImportAnimals = handleImportAnimals,
-                                    onImportFoods = handleImportFoods,
                                     onShowFoodList = { currentScreen = Screen.FoodList },
                                     onShowCalculationTabs = {
                                         currentScreen = Screen.CalculationTabs
