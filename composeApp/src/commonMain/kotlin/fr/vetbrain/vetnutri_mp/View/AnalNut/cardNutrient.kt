@@ -481,7 +481,7 @@ fun AnalyseNutritionnelleCard(
                                     } else {
                                         Text(
                                                 text =
-                                                        "$nom: ${String.format("%.2f", apport)} ${valeur.unite.displayName}",
+                                                        "$nom: ${TextUtils.formatDecimal(apport.toDouble(), 2)} ${valeur.unite.displayName}",
                                                 style = MaterialTheme.typography.caption,
                                                 color = MaterialTheme.colors.onSurface
                                         )
@@ -1120,7 +1120,7 @@ private fun calculerAffichageNutriment(
     val isAnalysis =
             valeurNutritionnelle.nutriment is fr.vetbrain.vetnutri_mp.Enumer.NutrientAnalysis
     if (isAnalysis && isUnitEmpty) {
-        return Pair(String.format("%.2f", valeurAbsolue), "")
+        return Pair(TextUtils.formatDecimal(valeurAbsolue, 2), "")
     }
 
     // Si pas de type d'expression défini, affichage par défaut
@@ -1132,12 +1132,12 @@ private fun calculerAffichageNutriment(
             poidsAnimal?.let { poids ->
                 if (poids > 0) {
                     val valeurParKg = valeurAbsolue / poids
-                    Pair(String.format("%.2f", valeurParKg), "$uniteOriginale/kg")
+                    Pair(TextUtils.formatDecimal(valeurParKg, 2), "$uniteOriginale/kg")
                 } else {
-                    Pair(String.format("%.2f", valeurAbsolue), uniteOriginale)
+                    Pair(TextUtils.formatDecimal(valeurAbsolue, 2), uniteOriginale)
                 }
             }
-                    ?: Pair(String.format("%.2f", valeurAbsolue), uniteOriginale)
+                    ?: Pair(TextUtils.formatDecimal(valeurAbsolue, 2), uniteOriginale)
         }
         TypeExpressionBesoin.PAR_KG_METABOLIQUE -> {
             // Par kg de poids métabolique (kg^0.75)
@@ -1145,26 +1145,26 @@ private fun calculerAffichageNutriment(
                 if (poidsMetab > 0) {
                     val valeurParKgMetab = valeurAbsolue / poidsMetab
                     Pair(
-                            String.format("%.2f", valeurParKgMetab),
+                            TextUtils.formatDecimal(valeurParKgMetab, 2),
                             "$uniteOriginale/kg${TextUtils.toSuperscript("0.75")}"
                     )
                 } else {
-                    Pair(String.format("%.2f", valeurAbsolue), uniteOriginale)
+                    Pair(TextUtils.formatDecimal(valeurAbsolue, 2), uniteOriginale)
                 }
             }
-                    ?: Pair(String.format("%.2f", valeurAbsolue), uniteOriginale)
+                    ?: Pair(TextUtils.formatDecimal(valeurAbsolue, 2), uniteOriginale)
         }
         TypeExpressionBesoin.PAR_KCAL -> {
             // Par 1000 kcal de BEE (Besoin Énergétique d'Entretien)
             besoinEnergetiqueEntretien?.let { bee ->
                 if (bee > 0) {
                     val valeurPar1000Kcal = (valeurAbsolue / bee) * 1000
-                    Pair(String.format("%.2f", valeurPar1000Kcal), "$uniteOriginale/1000 kcal")
+                    Pair(TextUtils.formatDecimal(valeurPar1000Kcal, 2), "$uniteOriginale/1000 kcal")
                 } else {
-                    Pair(String.format("%.2f", valeurAbsolue), uniteOriginale)
+                    Pair(TextUtils.formatDecimal(valeurAbsolue, 2), uniteOriginale)
                 }
             }
-                    ?: Pair(String.format("%.2f", valeurAbsolue), uniteOriginale)
+                    ?: Pair(TextUtils.formatDecimal(valeurAbsolue, 2), uniteOriginale)
         }
         TypeExpressionBesoin.PAR_KJ -> {
             // Par 1000 kJ de BEE (conversion : 1 kcal = 4.184 kJ)
@@ -1172,12 +1172,12 @@ private fun calculerAffichageNutriment(
                 if (bee > 0) {
                     val beeEnKj = bee * 4.184 // Conversion kcal vers kJ
                     val valeurPar1000Kj = (valeurAbsolue / beeEnKj) * 1000
-                    Pair(String.format("%.2f", valeurPar1000Kj), "$uniteOriginale/1000 kJ")
+                    Pair(TextUtils.formatDecimal(valeurPar1000Kj, 2), "$uniteOriginale/1000 kJ")
                 } else {
-                    Pair(String.format("%.2f", valeurAbsolue), uniteOriginale)
+                    Pair(TextUtils.formatDecimal(valeurAbsolue, 2), uniteOriginale)
                 }
             }
-                    ?: Pair(String.format("%.2f", valeurAbsolue), uniteOriginale)
+                    ?: Pair(TextUtils.formatDecimal(valeurAbsolue, 2), uniteOriginale)
         }
     }
 }

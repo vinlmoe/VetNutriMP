@@ -16,6 +16,7 @@ import androidx.compose.ui.text.font.FontWeight
 import fr.vetbrain.vetnutri_mp.Data.Ration
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
+import fr.vetbrain.vetnutri_mp.Utils.TextUtils
 
 /**
  * Composant pour afficher une ration dans une liste
@@ -80,7 +81,7 @@ fun RationItem(
                                         Spacer(modifier = Modifier.width(AppSizes.paddingXSmall))
                                         Text(
                                                 text =
-                                                        "Coef: ${String.format("%.2f", ration.coef)}",
+                                                        "Coef: ${TextUtils.formatDecimal(ration.coef.toDouble(), 2)}",
                                                 style = MaterialTheme.typography.caption,
                                                 color = Color.Gray,
                                                 modifier =

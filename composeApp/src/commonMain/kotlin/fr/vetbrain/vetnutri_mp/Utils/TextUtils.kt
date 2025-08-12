@@ -31,13 +31,54 @@ object TextUtils {
     }
 
     /**
+     * Formate un nombre décimal avec un nombre de décimales fixe, de manière multiplateforme.
+     * N'ajoute aucune séparation de milliers et utilise un point comme séparateur décimal.
+     *
+     * @param value Valeur à formater
+     * @param decimales Nombre de décimales à afficher (>= 0)
+     * @return Chaîne formatée avec exactement [decimales] décimales
+     */
+    fun formatDecimal(value: Double, decimales: Int = 2): String {
+        if (decimales <= 0) {
+            val entier: Long = kotlin.math.round(value).toLong()
+            return entier.toString()
+        }
+        if (value.isNaN() || value.isInfinite()) return value.toString()
+        val d: Int = if (decimales < 0) 0 else decimales
+        val facteur: Long = d10(d)
+        val echelle: Double = value * facteur.toDouble()
+        val arrondiEchelle: Long = kotlin.math.round(echelle).toLong()
+        val arrondiAbsolu: Long = kotlin.math.abs(arrondiEchelle)
+        val partieEntiere: Long = arrondiAbsolu / facteur
+        val partieDecimale: Long = arrondiAbsolu % facteur
+        val signe: String = if (arrondiEchelle < 0) "-" else ""
+        val decimaleStr: String = partieDecimale.toString().padStart(d, '0')
+        return "$signe$partieEntiere.$decimaleStr"
+    }
+
+    /** Version Float -> Double pour éviter la duplication. */
+    fun formatDecimal(value: Float, decimales: Int = 2): String {
+        return formatDecimal(value.toDouble(), decimales)
+    }
+
+    private fun d10(exp: Int): Long {
+        var res: Long = 1
+        var i: Int = 0
+        while (i < exp) {
+            res *= 10
+            i += 1
+        }
+        return res
+    }
+
+    /**
      * Formate kg^0.75 en kg⁰·⁷⁵
      * @param value La valeur numérique
      * @param decimales Le nombre de décimales à afficher
      * @return Le texte formaté avec exposant Unicode
      */
     fun formatKgPuissance075(value: Double, decimales: Int = 2): String {
-        return "${String.format("%.${decimales}f", value)} kg${toSuperscript("0.75")}"
+        return "${formatDecimal(value, decimales)} kg${toSuperscript("0.75")}"
     }
 
     /**
@@ -54,6 +95,6 @@ object TextUtils {
             exposant: String,
             decimales: Int = 2
     ): String {
-        return "${String.format("%.${decimales}f", value)} $unite${toSuperscript(exposant)}"
+        return "${formatDecimal(value, decimales)} $unite${toSuperscript(exposant)}"
     }
 }

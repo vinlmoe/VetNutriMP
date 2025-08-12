@@ -29,7 +29,6 @@ import io.github.koalaplot.core.line.LinePlot
 import io.github.koalaplot.core.style.AreaStyle
 import io.github.koalaplot.core.style.LineStyle
 import io.github.koalaplot.core.util.ExperimentalKoalaPlotApi
-import io.github.koalaplot.core.util.toString
 import io.github.koalaplot.core.xygraph.*
 import io.github.koalaplot.core.xygraph.FloatLinearAxisModel
 import io.github.koalaplot.core.xygraph.Point
@@ -57,7 +56,7 @@ data class CurveParamP(
         val max: Double,
         val half: Double,
         val slope: Double,
-        val UUID: String = java.util.UUID.randomUUID().toString()
+        val UUID: String = generateUuidString()
 )
 
 data class CurveP(
@@ -72,7 +71,21 @@ data class CurveP(
 // Fonction pour calculer le poids selon l'équation de croissance
 private fun calculerPoidsCroissance(param: CurveParamP, ageInMonths: Double): Double {
         val t = ageInMonths * 4
-        return param.max - (param.max / (1 + Math.pow(t / param.half, param.slope)))
+        val base = t / param.half
+        val exponent = param.slope
+        val powVal = expPow(base, exponent)
+        return param.max - (param.max / (1 + powVal))
+}
+
+private fun expPow(base: Double, exponent: Double): Double {
+        if (base <= 0.0) return 0.0
+        return kotlin.math.exp(exponent * kotlin.math.ln(base))
+}
+
+private fun generateUuidString(): String {
+        return Clock.System.now().toEpochMilliseconds().toString() +
+                "-" +
+                kotlin.random.Random.nextInt()
 }
 
 // Données des courbes de croissance pour chiens
@@ -258,7 +271,7 @@ private val courbesCroissanceChien =
                         "0",
                         12
                 )
-)
+        )
 
 // Fonction pour formater l'âge en années et mois
 private fun formatAge(ageInYears: Double, ageInMonths: Double): String {
@@ -639,16 +652,16 @@ private fun EvolutionPoidsChart(viewModel: AnimalDetailViewModel) {
                 val yMargin = (maxY - minY).coerceAtLeast(1f) * 0.05f
                 val yRange = (minY - yMargin)..(maxY + yMargin)
 
-                        val xRangeWidth = (xRange.endInclusive - xRange.start).coerceAtLeast(0f)
+                val xRangeWidth = (xRange.endInclusive - xRange.start).coerceAtLeast(0f)
                 val xTickIncrement = if (xRangeWidth > 10f) 3f else 1f
-                        val safeTickIncrement =
+                val safeTickIncrement =
                         if (xRangeWidth > 0f) xTickIncrement.coerceAtMost(xRangeWidth) else 1f
 
                 // Graphique
-                        GraphCard(
-                                titre = "Évolution du poids corporel",
+                GraphCard(
+                        titre = "Évolution du poids corporel",
                         sousTitre = "Poids en kg selon l'âge (avec courbes de référence)"
-                        ) {
+                ) {
                         Column {
                                 XYGraph(
                                         xAxisModel =
@@ -721,8 +734,8 @@ private fun EvolutionPoidsChart(viewModel: AnimalDetailViewModel) {
 
                                         // Courbe des données réelles de l'animal
                                         if (donneesPoids.isNotEmpty()) {
-                                        LinePlot(
-                                                data = donneesPoids,
+                                                LinePlot(
+                                                        data = donneesPoids,
                                                         symbol = {
                                                                 androidx.compose.foundation.Canvas(
                                                                         modifier =
@@ -958,8 +971,11 @@ private fun PoidsTableau(
                                                 )
                                                 Text(
                                                         text =
-                                                                "%.1f".format(
+                                                                fr.vetbrain.vetnutri_mp.Utils
+                                                                        .TextUtils.formatDecimal(
                                                                         consultationData.weight
+                                                                                .toDouble(),
+                                                                        1
                                                                 ),
                                                         modifier = Modifier.weight(1f),
                                                         style = MaterialTheme.typography.caption

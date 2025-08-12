@@ -33,6 +33,7 @@ import fr.vetbrain.vetnutri_mp.Enumer.*
 import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
+import fr.vetbrain.vetnutri_mp.Utils.TextUtils
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailViewModel
 
 /**
@@ -826,7 +827,7 @@ private fun AlimentDetailsPanel(
                                         if (value != null) {
                                                 DetailRow(
                                                         nutrient.label,
-                                                        "${String.format("%.1f", value.value)} ${value.unit ?: ""}"
+                                                        "${TextUtils.formatDecimal(value.value.toDouble(), 1)} ${value.unit ?: ""}"
                                                 )
                                         }
                                 }

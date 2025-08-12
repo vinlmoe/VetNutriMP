@@ -3,6 +3,7 @@ package fr.vetbrain.vetnutri_mp.Export
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
 import fr.vetbrain.vetnutri_mp.Data.Ration
 import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
+import fr.vetbrain.vetnutri_mp.Utils.TextUtils
 
 object HtmlDocumentBuilder {
 
@@ -73,7 +74,7 @@ object HtmlDocumentBuilder {
         val rows =
                 ration.alimentMutableList.joinToString("\n") { a ->
                     val nom = a.aliment?.nom ?: "?"
-                    val qte = String.format("%.1f", a.quantite)
+                    val qte = TextUtils.formatDecimal(a.quantite.toDouble(), 1)
                     "<tr><td>${nom}</td><td style='text-align:right'>${qte} g</td></tr>"
                 }
         return """

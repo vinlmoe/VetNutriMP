@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.datetime.Clock
 
 /**
  * ViewModel pour l'édition et la création de références nutritionnelles (ReferenceEv).
@@ -292,7 +293,7 @@ class NewReferenceEvViewModel(
         _currentReference.value = reference
 
         // Déclencher un timestamp de mise à jour forcée
-        _forceUpdate.value = System.currentTimeMillis()
+        _forceUpdate.value = Clock.System.now().toEpochMilliseconds()
     }
 
     /**
@@ -309,13 +310,13 @@ class NewReferenceEvViewModel(
         _currentReference.value = reference
 
         // Déclencher un timestamp de mise à jour forcée
-        _forceUpdate.value = System.currentTimeMillis()
+        _forceUpdate.value = Clock.System.now().toEpochMilliseconds()
     }
 
     /** Force la mise à jour du StateFlow pour déclencher la recomposition */
     private fun updateReferenceStateFlow() {
         // Déclencher un timestamp de mise à jour forcée
-        _forceUpdate.value = System.currentTimeMillis()
+        _forceUpdate.value = Clock.System.now().toEpochMilliseconds()
     }
 
     /** Sauvegarde la référence dans le repository */
@@ -638,7 +639,7 @@ class NewReferenceEvViewModel(
                     } else {
                         // À défaut, force un tick de mise à jour
                         _currentReference.value = current
-                        _forceUpdate.value = System.currentTimeMillis()
+                        _forceUpdate.value = Clock.System.now().toEpochMilliseconds()
                     }
                 } else {
                     _errorMessage.value =

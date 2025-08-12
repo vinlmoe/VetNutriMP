@@ -319,7 +319,9 @@ fun AnalyseGraphiqueAlimentsView(viewModel: AnimalDetailViewModel, modifier: Mod
                         onClick = {
                             val union: MutableMap<String, AlimentEv> =
                                     selectedRightFoods.associateBy { it.uuid }.toMutableMap()
-                            alimentsFiltres.forEach { a: AlimentEv -> union.putIfAbsent(a.uuid, a) }
+                            alimentsFiltres.forEach { a: AlimentEv ->
+                                if (!union.containsKey(a.uuid)) union[a.uuid] = a
+                            }
                             selectedRightFoods = union.values.toList()
                         }
                 ) { Icon(imageVector = AppIcons.Export, contentDescription = "Ajouter tous →") }

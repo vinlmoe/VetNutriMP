@@ -12,6 +12,7 @@ import fr.vetbrain.vetnutri_mp.Enumer.NutrientOther
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientVitam
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Utils.NutrientUtils
+import fr.vetbrain.vetnutri_mp.Utils.TextUtils
 import kotlinx.coroutines.runBlocking
 
 /**
@@ -95,9 +96,9 @@ fun analyserValeursNutritionnellesRationAvecEquations(
                                     val valeurAbs = valeur.toDouble()
                                     val pourcentage =
                                             ((valeurAbs / valeurTotale) * 100).let {
-                                                String.format("%.1f", it)
+                                                TextUtils.formatDecimal(it, 1)
                                             }
-                                    "$nom: ${String.format("%.2f", valeurAbs)} (${pourcentage}%)"
+                                    "$nom: ${TextUtils.formatDecimal(valeurAbs, 2)} (${pourcentage}%)"
                                 }
                             }
                             .joinToString(", ")
@@ -175,9 +176,9 @@ private fun calculerValeurNutrimentDansRation(
                                 val valeurAbs = valeur.toDouble()
                                 val pourcentage =
                                         ((valeurAbs / valeurTotale) * 100).let {
-                                            String.format("%.1f", it)
+                                            TextUtils.formatDecimal(it, 1)
                                         }
-                                "$nom: ${String.format("%.2f", valeurAbs)} (${pourcentage}%)"
+                                "$nom: ${TextUtils.formatDecimal(valeurAbs, 2)} (${pourcentage}%)"
                             }
                         }
                         .joinToString(", ")
@@ -316,7 +317,7 @@ fun analyserValeursNutritionnellesRationSelective(
                                     } else {
                                         val pourcentage =
                                                 ((valeur.toDouble() / valeurTotale) * 100).let {
-                                                    String.format("%.1f", it)
+                                                    TextUtils.formatDecimal(it, 1)
                                                 }
                                         "$nom: $pourcentage%"
                                     }
@@ -360,7 +361,9 @@ fun exempleUtilisationAnalyseRation(ration: Ration) {
     nutrimentsImportants.forEach { labelNutriment ->
         val valeur = valeursNutritionnelles[labelNutriment]
         if (valeur != null) {
-            println("Valeur totale: ${String.format("%.2f", valeur.valeur)} ${valeur.unite.label}")
+            println(
+                    "Valeur totale: ${TextUtils.formatDecimal(valeur.valeur, 2)} ${valeur.unite.label}"
+            )
             println("Complet: ${if (valeur.complete) "Oui" else "Non"}")
         }
     }
