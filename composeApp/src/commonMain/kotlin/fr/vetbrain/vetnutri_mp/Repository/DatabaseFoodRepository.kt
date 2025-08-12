@@ -13,7 +13,6 @@ import fr.vetbrain.vetnutri_mp.DataBase.NutrientValueDao
 import fr.vetbrain.vetnutri_mp.DataBase.NutrientValueEntity
 import fr.vetbrain.vetnutri_mp.Enumer.AlimIndic
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
-import fr.vetbrain.vetnutri_mp.Enumer.FoodKind
 import fr.vetbrain.vetnutri_mp.Enumer.FoodKindResolver
 import fr.vetbrain.vetnutri_mp.Enumer.GroupAlim
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientLipid
@@ -519,7 +518,8 @@ class DatabaseFoodRepository(
                                             typeAlim =
                                                     FoodKindResolver.resoudreFoodKindBrut(
                                                                     food.foodKind
-                                                            )?.ordinal
+                                                            )
+                                                            ?.ordinal
                                                             ?: 0,
                                             ingredients = food.ingredients ?: "",
                                             price = food.prix ?: 0.0,

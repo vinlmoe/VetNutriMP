@@ -585,6 +585,7 @@ fun RationsView(
                                                                                 true
                                                                 },
                                                                 showSnackbar = showSnackbar,
+                                                                isCompact = isCompact,
                                                                 modifier = Modifier.fillMaxWidth()
                                                         )
 

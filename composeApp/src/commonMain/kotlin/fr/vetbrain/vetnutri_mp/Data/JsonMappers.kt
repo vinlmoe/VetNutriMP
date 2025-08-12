@@ -2,7 +2,6 @@ package fr.vetbrain.vetnutri_mp.Data
 
 import fr.vetbrain.vetnutri_mp.Enumer.AlimIndic
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
-import fr.vetbrain.vetnutri_mp.Enumer.FoodKind
 import fr.vetbrain.vetnutri_mp.Enumer.FoodKindResolver
 import fr.vetbrain.vetnutri_mp.Enumer.GroupAlim
 import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
