@@ -1069,25 +1069,18 @@ private fun calculerBesoinAbsoluLocal(
         poidsAnimal: Double?,
         poidsMetabolique: Double?
 ): Double? {
+    val valeurRefD: Double = valeurRef.toDouble()
     return when (uniteRef) {
-        UnitReqEnum.PERKCAL -> {
-            besoinEnergetiqueEntretien?.let { bee -> (valeurRef * bee) / 1000.0 }
-        }
-        UnitReqEnum.PERKJ -> {
-            besoinEnergetiqueEntretien?.let { bee ->
-                val beeEnKj = bee * 4.184
-                (valeurRef * beeEnKj) / 1000.0
-            }
-        }
-        UnitReqEnum.PERKG -> {
-            poidsAnimal?.let { poids -> valeurRef * poids }
-        }
-        UnitReqEnum.PERMS -> {
-            poidsMetabolique?.let { poidsMetab -> valeurRef * poidsMetab }
-        }
-        UnitReqEnum.ABSOLUTE -> {
-            valeurRef.toDouble()
-        }
+        UnitReqEnum.PERKCAL ->
+                besoinEnergetiqueEntretien?.let { bee: Double -> (valeurRefD * bee) / 1000.0 }
+        UnitReqEnum.PERKJ ->
+                besoinEnergetiqueEntretien?.let { bee: Double ->
+                    val beeEnKj: Double = bee * 4.184
+                    (valeurRefD * beeEnKj) / 1000.0
+                }
+        UnitReqEnum.PERKG -> poidsAnimal?.let { poids: Double -> valeurRefD * poids }
+        UnitReqEnum.PERMS -> poidsMetabolique?.let { poidsMetab: Double -> valeurRefD * poidsMetab }
+        UnitReqEnum.ABSOLUTE -> valeurRefD
         UnitReqEnum.RATIO -> null
         else -> null
     }

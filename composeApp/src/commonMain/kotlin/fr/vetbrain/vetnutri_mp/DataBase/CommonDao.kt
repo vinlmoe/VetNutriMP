@@ -90,6 +90,28 @@ interface ConsultationDao {
 }
 
 @Dao
+interface RecipeDao {
+        @Insert suspend fun insertRecipe(recipe: RecetteEntity)
+        @Update suspend fun updateRecipe(recipe: RecetteEntity)
+        @Delete suspend fun deleteRecipe(recipe: RecetteEntity)
+
+        @Insert suspend fun insertAlimentRecette(aliment: AlimentRecetteEntity)
+        @Update suspend fun updateAlimentRecette(aliment: AlimentRecetteEntity)
+        @Delete suspend fun deleteAlimentRecette(aliment: AlimentRecetteEntity)
+
+        @Query("SELECT * FROM RECETTES") suspend fun getAllRecipes(): List<RecetteEntity>
+
+        @Query("SELECT * FROM RECETTES WHERE uuid = :id")
+        suspend fun getRecipeById(id: String): RecetteEntity?
+
+        @Query("SELECT * FROM ALIMENTS_RECETTES WHERE refRecipe = :recipeId")
+        suspend fun getAlimentsForRecipe(recipeId: String): List<AlimentRecetteEntity>
+
+        @Query("DELETE FROM ALIMENTS_RECETTES WHERE refRecipe = :recipeId")
+        suspend fun deleteAlimentsForRecipe(recipeId: String)
+}
+
+@Dao
 interface FoodDao {
         @Insert suspend fun insert(food: FoodEntity)
 

@@ -22,6 +22,8 @@ import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
                         WeightEntity::class,
                         RationEntity::class,
                         AlimentRationEntity::class,
+                        RecetteEntity::class,
+                        AlimentRecetteEntity::class,
                         EspeceAlimentEntity::class,
                         IndicationAlimentEntity::class,
                         SupplementalVariableEntity::class,
@@ -33,7 +35,7 @@ import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
                         ReferenceEvEquationEntity::class,
                         ReferenceEvCoefficientEntity::class,
                         ReferenceEvNutrientEntity::class],
-        version = 21,
+        version = 22,
         exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -42,6 +44,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun foodDao(): FoodDao
     abstract fun animalDao(): AnimalDao
     abstract fun consultationDao(): ConsultationDao
+    abstract fun recipeDao(): RecipeDao
     abstract fun nutrientValueDao(): NutrientValueDao
     abstract fun biblioRefDao(): BiblioRefDao
     abstract fun equationDao(): EquationDao
@@ -79,7 +82,9 @@ fun getRoomDatabase(builder: RoomDatabase.Builder<AppDatabase>): AppDatabase {
                         // Migration 19→20 : Ajout du champ nutrient à la table EQUATIONS
                         createMigration19to20(),
                         // Migration 20→21 : Ajout du champ ratio à la table EQUATIONS
-                        createMigration20to21()
+                        createMigration20to21(),
+                        // Migration 21→22 : Création des tables de recettes
+                        createMigration21to22()
                 )
                 .setDriver(BundledSQLiteDriver())
                 .setQueryCoroutineContext(AppDispatchers.IO)
@@ -236,6 +241,41 @@ fun createMigration20to21(): Migration {
                 println("✅ Migration 20→21 terminée avec succès")
             } catch (e: Exception) {
                 println("❌ Erreur lors de la migration 20→21 : ${e.message}")
+                throw e
+            }
+        }
+    }
+}
+
+/** Migration 21 → 22 : Création des tables RECIPES et ALIMENTS_RECETTES */
+fun createMigration21to22(): Migration {
+    return object : Migration(21, 22) {
+        override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
+            try {
+                connection.prepare(
+                                "CREATE TABLE IF NOT EXISTS RECETTES (uuid TEXT NOT NULL PRIMARY KEY, name TEXT, number INTEGER NOT NULL DEFAULT 0, espece TEXT, description TEXT)"
+                        )
+                        .use { it.step() }
+
+                connection.prepare(
+                                "CREATE TABLE IF NOT EXISTS ALIMENTS_RECETTES (uuid TEXT NOT NULL PRIMARY KEY, refAlimUnif TEXT NOT NULL, refRecipe TEXT NOT NULL, quantity REAL NOT NULL DEFAULT 0, refTarget INTEGER NOT NULL DEFAULT 0, FOREIGN KEY(refRecipe) REFERENCES RECETTES(uuid) ON DELETE CASCADE, FOREIGN KEY(refAlimUnif) REFERENCES FOOD(uuid) ON DELETE SET NULL)"
+                        )
+                        .use { it.step() }
+
+                connection.prepare(
+                                "CREATE INDEX IF NOT EXISTS index_ALIMENTS_RECETTES_refRecipe ON ALIMENTS_RECETTES(refRecipe)"
+                        )
+                        .use { it.step() }
+                connection.prepare(
+                                "CREATE INDEX IF NOT EXISTS index_ALIMENTS_RECETTES_refAlimUnif ON ALIMENTS_RECETTES(refAlimUnif)"
+                        )
+                        .use { it.step() }
+                // Contrainte d'unicité composite
+                connection.prepare(
+                                "CREATE UNIQUE INDEX IF NOT EXISTS index_ALIMENTS_RECETTES_refAlimUnif_refRecipe ON ALIMENTS_RECETTES(refAlimUnif, refRecipe)"
+                        )
+                        .use { it.step() }
+            } catch (e: Exception) {
                 throw e
             }
         }

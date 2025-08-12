@@ -39,6 +39,7 @@ import fr.vetbrain.vetnutri_mp.Data.convertirPreferencesVersLabelsNutriments
 import fr.vetbrain.vetnutri_mp.Enumer.*
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Repository.PreferencesRepository
+import fr.vetbrain.vetnutri_mp.Repository.RecipeRepository
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.EquationEvaluator
@@ -52,6 +53,7 @@ import fr.vetbrain.vetnutri_mp.View.AnalNut.SectionAlimentsRation
 import fr.vetbrain.vetnutri_mp.View.AnalNut.SectionBilanEnergetique
 import fr.vetbrain.vetnutri_mp.View.AnalNut.SectionCoefficients
 import fr.vetbrain.vetnutri_mp.View.AnalNut.SectionValeursMetaboliques
+import fr.vetbrain.vetnutri_mp.View.components.RecipeDialog
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailViewModel
 import kotlinx.coroutines.launch
 
@@ -89,7 +91,8 @@ fun RationsView(
         viewModel: AnimalDetailViewModel,
         showSnackbar: (String) -> Unit,
         modifier: Modifier = Modifier,
-        equationRepository: EquationRepository
+        equationRepository: EquationRepository,
+        recipeRepository: RecipeRepository
 ) {
         val animal by viewModel.animal.collectAsState()
         val selectedConsultation by viewModel.selectedConsultation.collectAsState()
@@ -219,10 +222,118 @@ fun RationsView(
 
         // État pour le dialog d'ajustement multi-nutriments
         var showMultiNutrientAdjustmentDialog by remember { mutableStateOf(false) }
+        var showRecipeDialog by remember { mutableStateOf(false) }
+        var showSaveRecipeDialog by remember { mutableStateOf(false) }
+        var newRecipeName by remember { mutableStateOf("") }
 
         // État pour le dialog de confirmation de suppression de ration
         var showDeleteRationDialog by remember { mutableStateOf(false) }
         var rationToDelete by remember { mutableStateOf<Ration?>(null) }
+
+        // Barre d'actions pour ajouter un aliment ou une recette
+        Row(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+        ) {
+                Button(
+                        onClick = {
+                                rationForAddAliment = selectedRation
+                                showAddAlimentView = true
+                        },
+                        enabled = selectedRation != null
+                ) { Text("Ajouter un aliment") }
+                Button(onClick = { showRecipeDialog = true }, enabled = selectedRation != null) {
+                        Text("Ajouter via recette")
+                }
+                Button(
+                        onClick = {
+                                selectedRation?.let { r ->
+                                        newRecipeName = r.name
+                                        showSaveRecipeDialog = true
+                                }
+                        },
+                        enabled = selectedRation != null
+                ) { Text("Sauvegarder en recette") }
+        }
+
+        // Dialog de gestion des recettes
+        if (showRecipeDialog) {
+                RecipeDialog(
+                        repository = recipeRepository,
+                        onApply = { recette ->
+                                viewModel.applyRecipeToSelectedRation(recette)
+                                showRecipeDialog = false
+                        },
+                        onClose = { showRecipeDialog = false }
+                )
+        }
+
+        if (showSaveRecipeDialog) {
+                AlertDialog(
+                        onDismissRequest = { showSaveRecipeDialog = false },
+                        title = { Text("Créer une recette") },
+                        text = {
+                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        OutlinedTextField(
+                                                value = newRecipeName,
+                                                onValueChange = { newRecipeName = it },
+                                                label = { Text("Nom de la recette") },
+                                                modifier = Modifier.fillMaxWidth()
+                                        )
+                                        val especeLabel = selectedRation?.espece ?: ""
+                                        if (especeLabel.isNotEmpty()) {
+                                                Text(
+                                                        "Espèce: $especeLabel",
+                                                        style = MaterialTheme.typography.body2
+                                                )
+                                        }
+                                }
+                        },
+                        confirmButton = {
+                                Button(
+                                        onClick = {
+                                                val ration = selectedRation
+                                                if (ration != null && newRecipeName.isNotBlank()) {
+                                                        coroutineScope.launch {
+                                                                try {
+                                                                        val recette =
+                                                                                recipeRepository
+                                                                                        .createRecipe(
+                                                                                                name =
+                                                                                                        newRecipeName,
+                                                                                                espece =
+                                                                                                        ration.espece,
+                                                                                                description =
+                                                                                                        null
+                                                                                        )
+                                                                        recipeRepository
+                                                                                .replaceAliments(
+                                                                                        recette.uuid,
+                                                                                        ration.alimentMutableList
+                                                                                )
+                                                                        showSnackbar(
+                                                                                "Recette créée: $newRecipeName"
+                                                                        )
+                                                                } catch (err: Exception) {
+                                                                        showSnackbar(
+                                                                                "Erreur: ${err.message ?: "création recette"}"
+                                                                        )
+                                                                } finally {
+                                                                        showSaveRecipeDialog = false
+                                                                }
+                                                        }
+                                                }
+                                        }
+                                ) { Text("Créer") }
+                        },
+                        dismissButton = {
+                                OutlinedButton(onClick = { showSaveRecipeDialog = false }) {
+                                        Text("Annuler")
+                                }
+                        }
+                )
+        }
 
         // Afficher la vue d'ajout d'aliment si nécessaire
         if (showAddAlimentView && rationForAddAliment != null) {
