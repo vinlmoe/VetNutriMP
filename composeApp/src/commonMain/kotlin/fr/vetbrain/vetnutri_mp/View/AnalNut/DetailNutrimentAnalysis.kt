@@ -1,9 +1,7 @@
 package fr.vetbrain.vetnutri_mp.View.AnalNut
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
@@ -655,122 +653,7 @@ fun ReferenceBulletGraph(
                         }
                 }
 
-                // Légende explicative
-                Spacer(modifier = Modifier.height(8.dp))
-                Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
-                        // Légende pour les éléments du graphique
-                        Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                                // Barre d'apport
-                                Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                        Box(
-                                                modifier =
-                                                        Modifier.size(12.dp, 4.dp)
-                                                                .background(
-                                                                        color = Color.Gray,
-                                                                        shape =
-                                                                                RoundedCornerShape(
-                                                                                        2.dp
-                                                                                )
-                                                                )
-                                        )
-                                        Text(
-                                                text =
-                                                        "Apport: ${TextUtils.formatDecimal(valeurApport.toDouble(), 1)}",
-                                                style = MaterialTheme.typography.caption,
-                                                color = Color.Gray
-                                        )
-                                }
-
-                                // Zones de référence
-                                Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                        // Zone rouge (dangereuse)
-                                        Row(
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                        ) {
-                                                Box(
-                                                        modifier =
-                                                                Modifier.size(12.dp, 8.dp)
-                                                                        .background(
-                                                                                color =
-                                                                                        VetNutriColors
-                                                                                                .Error,
-                                                                                shape =
-                                                                                        RoundedCornerShape(
-                                                                                                2.dp
-                                                                                        )
-                                                                        )
-                                                )
-                                                Text(
-                                                        text = "Dangereux",
-                                                        style = MaterialTheme.typography.caption,
-                                                        color = VetNutriColors.Error
-                                                )
-                                        }
-
-                                        // Zone bleue (acceptable)
-                                        Row(
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                        ) {
-                                                Box(
-                                                        modifier =
-                                                                Modifier.size(12.dp, 8.dp)
-                                                                        .background(
-                                                                                color =
-                                                                                        Color(
-                                                                                                0xFF2196F3
-                                                                                        ),
-                                                                                shape =
-                                                                                        RoundedCornerShape(
-                                                                                                2.dp
-                                                                                        )
-                                                                        )
-                                                )
-                                                Text(
-                                                        text = "Acceptable",
-                                                        style = MaterialTheme.typography.caption,
-                                                        color = Color(0xFF2196F3)
-                                                )
-                                        }
-
-                                        // Zone verte (optimal)
-                                        Row(
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                        ) {
-                                                Box(
-                                                        modifier =
-                                                                Modifier.size(12.dp, 8.dp)
-                                                                        .background(
-                                                                                color =
-                                                                                        Color(
-                                                                                                0xFF4CAF50
-                                                                                        ),
-                                                                                shape =
-                                                                                        RoundedCornerShape(
-                                                                                                2.dp
-                                                                                        )
-                                                                        )
-                                                )
-                                                Text(
-                                                        text = "Optimal",
-                                                        style = MaterialTheme.typography.caption,
-                                                        color = Color(0xFF4CAF50)
-                                                )
-                                        }
-                                }
-                        }
-                }
+                // Légende retirée sous les bullet graphs
         }
 }
 
@@ -1451,34 +1334,35 @@ private fun calculerBesoinAbsolu(
         poidsAnimal: Double?,
         poidsMetabolique: Double?
 ): Double? {
+        val valeurRefD: Double = valeurRef.toDouble()
         return when (uniteRef) {
                 // Basé sur l'énergie (par 1000 kcal)
                 UnitReqEnum.PERKCAL -> {
-                        besoinEnergetiqueEntretien?.let { bee -> (valeurRef * bee) / 1000.0 }
+                        besoinEnergetiqueEntretien?.let { bee -> (valeurRefD * bee) / 1000.0 }
                 }
 
                 // Basé sur l'énergie (par 1000 kJ) - conversion en kcal puis calcul
                 UnitReqEnum.PERKJ -> {
                         besoinEnergetiqueEntretien?.let { bee ->
                                 // Convertir kJ en kcal : 1 kcal = 4.184 kJ
-                                val beeEnKj = bee * 4.184
-                                (valeurRef * beeEnKj) / 1000.0
+                                val beeEnKj: Double = bee * 4.184
+                                (valeurRefD * beeEnKj) / 1000.0
                         }
                 }
 
                 // Basé sur le poids corporel (par kg de poids vif)
                 UnitReqEnum.PERKG -> {
-                        poidsAnimal?.let { poids -> valeurRef * poids }
+                        poidsAnimal?.let { poids -> valeurRefD * poids }
                 }
 
                 // Basé sur le poids métabolique (par kg^0.75)
                 UnitReqEnum.PERMS -> {
-                        poidsMetabolique?.let { poidsMetab -> valeurRef * poidsMetab }
+                        poidsMetabolique?.let { poidsMetab -> valeurRefD * poidsMetab }
                 }
 
                 // Valeur absolue (déjà en unité finale)
                 UnitReqEnum.ABSOLUTE -> {
-                        valeurRef.toDouble()
+                        valeurRefD
                 }
 
                 // Ratio - pas de calcul absolu possible

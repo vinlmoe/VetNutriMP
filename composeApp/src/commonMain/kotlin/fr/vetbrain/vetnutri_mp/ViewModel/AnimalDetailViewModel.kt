@@ -430,6 +430,28 @@ class AnimalDetailViewModel(
         }
     }
 
+    /** Applique une recette (liste d'aliments) à la ration sélectionnée et recharge l'état */
+    fun applyRecipeToSelectedRation(recipe: Ration) {
+        val rationActuelle = _selectedRation.value ?: return
+        val consultationActuelle = _selectedConsultation.value ?: return
+        viewModelScope.launch {
+            try {
+                consultationRepository.applyRecipeToRation(recipe, rationActuelle.uuid)
+                // Recharger la consultation pour refléter les nouveaux aliments
+                val refreshed = consultationRepository.getConsultationById(consultationActuelle.uuid)
+                if (refreshed != null) {
+                    _selectedConsultation.value = refreshed
+                    // Resélectionner la ration par UUID
+                    refreshed.rations.firstOrNull { it.uuid == rationActuelle.uuid }?.let {
+                        selectRation(it)
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
     /**
      * Génère un rapport d'analyse nutritionnelle détaillé de la ration sélectionnée
      *

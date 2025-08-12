@@ -25,6 +25,7 @@ import fr.vetbrain.vetnutri_mp.Export.HtmlPreviewDialog
 import fr.vetbrain.vetnutri_mp.Export.PdfExporter
 import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
+import fr.vetbrain.vetnutri_mp.Repository.RecipeRepository
 import fr.vetbrain.vetnutri_mp.Theme.AppIcons
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
@@ -33,6 +34,8 @@ import fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.SettingsViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+
+typealias RecipeRepo = fr.vetbrain.vetnutri_mp.Repository.RecipeRepository
 
 /**
  * Vue principale pour afficher les détails d'un animal
@@ -50,7 +53,8 @@ fun AnimalDetailView(
         onNavigateBack: () -> Unit,
         onOpenSettings: () -> Unit = {},
         modifier: Modifier = Modifier,
-        equationRepository: EquationRepository
+        equationRepository: EquationRepository,
+        recipeRepository: RecipeRepository
 ) {
         val animal by viewModel.animal.collectAsState()
         val currentSection by viewModel.currentSection.collectAsState()
@@ -165,7 +169,8 @@ fun AnimalDetailView(
                                         },
                                         showConsultationDetail = showConsultationDetail,
                                         onShowConsultationDetail = { showConsultationDetail = it },
-                                        equationRepository = equationRepository
+                                        equationRepository = equationRepository,
+                                        recipeRepository = recipeRepository
                                 )
                         } else {
                                 // Layout pour écrans étroits avec drawer
@@ -185,7 +190,8 @@ fun AnimalDetailView(
                                         onShowConsultationDetail = { showConsultationDetail = it },
                                         drawerState = drawerState,
                                         scope = scope,
-                                        equationRepository = equationRepository
+                                        equationRepository = equationRepository,
+                                        recipeRepository = recipeRepository
                                 )
                         }
 
@@ -246,7 +252,8 @@ private fun WideScreenLayout(
         onShowDeleteConfirmation: () -> Unit,
         showConsultationDetail: Boolean,
         onShowConsultationDetail: (Boolean) -> Unit,
-        equationRepository: EquationRepository
+        equationRepository: EquationRepository,
+        recipeRepository: RecipeRepository
 ) {
         Row(modifier = Modifier.fillMaxSize()) {
                 // Sidebar
@@ -357,7 +364,8 @@ private fun WideScreenLayout(
                                         RationsView(
                                                 viewModel = viewModel,
                                                 showSnackbar = { message -> },
-                                                equationRepository = equationRepository
+                                                equationRepository = equationRepository,
+                                                recipeRepository = recipeRepository
                                         )
                                 }
                                 AnimalDetailSection.GRAPHIQUE -> {
@@ -561,7 +569,8 @@ private fun NarrowScreenLayout(
         onShowConsultationDetail: (Boolean) -> Unit,
         drawerState: DrawerState,
         scope: CoroutineScope,
-        equationRepository: EquationRepository
+        equationRepository: EquationRepository,
+        recipeRepository: RecipeRepository
 ) {
         ModalDrawer(
                 drawerState = drawerState,
@@ -733,7 +742,8 @@ private fun NarrowScreenLayout(
                                                                 viewModel = viewModel,
                                                                 showSnackbar = { message -> },
                                                                 equationRepository =
-                                                                        equationRepository
+                                                                        equationRepository,
+                                                                recipeRepository = recipeRepository
                                                         )
                                                 }
                                                 AnimalDetailSection.GRAPHIQUE -> {

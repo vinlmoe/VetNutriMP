@@ -1,6 +1,7 @@
 package fr.vetbrain.vetnutri_mp.Repository
 
 import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
+import fr.vetbrain.vetnutri_mp.Data.Ration
 import fr.vetbrain.vetnutri_mp.DataBase.ConsultationDao
 import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toData
 import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toEntity
@@ -13,12 +14,23 @@ interface ConsultationRepository {
     suspend fun getConsultationsForAnimal(animalId: String): List<ConsultationEv>
     suspend fun getConsultationById(id: String): ConsultationEv?
     suspend fun deleteConsultation(consultation: ConsultationEv)
+    suspend fun applyRecipeToRation(recipe: Ration, rationId: String)
 }
 
 class DatabaseConsultationRepository(
         private val consultationDao: ConsultationDao,
         private val foodRepository: FoodRepository
 ) : ConsultationRepository {
+    override suspend fun applyRecipeToRation(recipe: Ration, rationId: String) {
+        withContext(AppDispatchers.IO) {
+            recipe.alimentMutableList.forEach { aliment ->
+                try {
+                    val entity = aliment.copy(refRation = rationId).toEntity()
+                    consultationDao.insertAlimentRation(entity)
+                } catch (_: Exception) {}
+            }
+        }
+    }
     override suspend fun saveConsultation(consultation: ConsultationEv) {
         withContext(AppDispatchers.IO) {
             // Vérifier si la consultation existe déjà
@@ -67,10 +79,8 @@ class DatabaseConsultationRepository(
                             // Convertir l'AlimentRation en AlimentRationEntity et l'insérer
                             val alimentEntity = aliment.toEntity()
                             consultationDao.insertAlimentRation(alimentEntity)
-                        } catch (e: Exception) {
-                        }
-                    } else {
-                    }
+                        } catch (e: Exception) {}
+                    } else {}
                 }
             }
         }
@@ -86,7 +96,6 @@ class DatabaseConsultationRepository(
                         )
                 val rations = consultationDao.getRationsForConsultation(consultationEntity.uuid)
 
-
                 // Créer d'abord la consultation avec les entités RationEntity
                 val consultation = consultationEntity.toData(rations = rations, suppVars = suppVars)
 
@@ -99,7 +108,6 @@ class DatabaseConsultationRepository(
                     // Remplacer la liste d'aliments vide par les aliments chargés
                     ration.alimentMutableList.clear()
                     ration.alimentMutableList.addAll(aliments.map { it.toData() })
-
 
                     // Pour chaque AlimentRation, charger les détails complets de l'aliment
                     ration.alimentMutableList.forEachIndexed { index, alimentRation ->
@@ -117,8 +125,7 @@ class DatabaseConsultationRepository(
                                 if (alimentById != null) {
                                     ration.alimentMutableList[index] =
                                             alimentRation.copy(aliment = alimentById)
-                                } else {
-                                }
+                                } else {}
                             }
                         }
                                 ?: println(
@@ -139,7 +146,6 @@ class DatabaseConsultationRepository(
                     consultationDao.getSupplementalVariablesForConsultation(consultation.uuid)
             val rations = consultationDao.getRationsForConsultation(consultation.uuid)
 
-
             // Créer d'abord la consultation avec les entités RationEntity
             val consultationEv = consultation.toData(rations = rations, suppVars = suppVars)
 
@@ -152,7 +158,6 @@ class DatabaseConsultationRepository(
                 // Remplacer la liste d'aliments vide par les aliments chargés
                 ration.alimentMutableList.clear()
                 ration.alimentMutableList.addAll(aliments.map { it.toData() })
-
 
                 // Pour chaque AlimentRation, charger les détails complets de l'aliment
                 ration.alimentMutableList.forEachIndexed { index, alimentRation ->
@@ -172,11 +177,9 @@ class DatabaseConsultationRepository(
                             if (alimentById != null) {
                                 ration.alimentMutableList[index] =
                                         alimentRation.copy(aliment = alimentById)
-                            } else {
-                            }
+                            } else {}
                         }
-                    } else {
-                    }
+                    } else {}
                 }
             }
 

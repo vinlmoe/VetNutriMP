@@ -198,6 +198,47 @@ data class AlimentRationEntity(
 )
 
 @Serializable
+@Entity(tableName = "RECETTES")
+data class RecetteEntity(
+        @PrimaryKey val uuid: String,
+        val name: String?,
+        val number: Int = 0,
+        val espece: String?,
+        val description: String?
+)
+
+@Serializable
+@Entity(
+        tableName = "ALIMENTS_RECETTES",
+        foreignKeys =
+                [
+                        ForeignKey(
+                                entity = RecetteEntity::class,
+                                parentColumns = ["uuid"],
+                                childColumns = ["refRecipe"],
+                                onDelete = ForeignKey.CASCADE
+                        ),
+                        ForeignKey(
+                                entity = FoodEntity::class,
+                                parentColumns = ["uuid"],
+                                childColumns = ["refAlimUnif"],
+                                onDelete = ForeignKey.SET_NULL
+                        )],
+        indices =
+                [
+                        Index("refRecipe"),
+                        Index("refAlimUnif"),
+                        Index(value = ["refAlimUnif", "refRecipe"], unique = true)]
+)
+data class AlimentRecetteEntity(
+        @PrimaryKey val uuid: String,
+        val refAlimUnif: String = "",
+        val refRecipe: String,
+        val quantity: Float = 0f,
+        val refTarget: Int = 0
+)
+
+@Serializable
 @Entity(
         tableName = "ESPECES_ALIMENTS",
         foreignKeys =

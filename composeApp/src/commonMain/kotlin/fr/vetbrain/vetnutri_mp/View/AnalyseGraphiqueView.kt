@@ -1,6 +1,5 @@
 package fr.vetbrain.vetnutri_mp.View
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -746,109 +745,7 @@ private fun EvolutionPoidsChart(viewModel: AnimalDetailViewModel) {
                                         }
                                 }
 
-                                // Légende des courbes de croissance
-                                Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
-                                Card(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        elevation = AppSizes.elevationSmall,
-                                        backgroundColor =
-                                                MaterialTheme.colors.surface.copy(alpha = 0.8f)
-                                ) {
-                                        Column(modifier = Modifier.padding(AppSizes.paddingSmall)) {
-                                                Text(
-                                                        text = "Courbes de référence de croissance",
-                                                        style = MaterialTheme.typography.caption,
-                                                        fontWeight = FontWeight.Bold,
-                                                        color = VetNutriColors.Primary
-                                                )
-                                                Spacer(modifier = Modifier.height(4.dp))
-                                                Row(
-                                                        modifier = Modifier.fillMaxWidth(),
-                                                        horizontalArrangement =
-                                                                Arrangement.SpaceEvenly
-                                                ) {
-                                                        // Légende pour les données réelles
-                                                        Row(
-                                                                verticalAlignment =
-                                                                        Alignment.CenterVertically,
-                                                                horizontalArrangement =
-                                                                        Arrangement.spacedBy(4.dp)
-                                                        ) {
-                                                                Box(
-                                                                        modifier =
-                                                                                Modifier.size(12.dp)
-                                                                                        .background(
-                                                                                                Color.Blue
-                                                                                        )
-                                                                )
-                                                                Text(
-                                                                        text = "Données réelles",
-                                                                        style =
-                                                                                MaterialTheme
-                                                                                        .typography
-                                                                                        .caption
-                                                                )
-                                                        }
-
-                                                        // Légende pour les courbes de
-                                                        // référence
-                                                        Row(
-                                                                verticalAlignment =
-                                                                        Alignment.CenterVertically,
-                                                                horizontalArrangement =
-                                                                        Arrangement.spacedBy(4.dp)
-                                                        ) {
-                                                                Box(
-                                                                        modifier =
-                                                                                Modifier.size(12.dp)
-                                                                                        .background(
-                                                                                                Color.Gray
-                                                                                                        .copy(
-                                                                                                                alpha =
-                                                                                                                        0.5f
-                                                                                                        )
-                                                                                        )
-                                                                )
-                                                                Text(
-                                                                        text =
-                                                                                "Courbes de référence",
-                                                                        style =
-                                                                                MaterialTheme
-                                                                                        .typography
-                                                                                        .caption
-                                                                )
-                                                        }
-
-                                                        // Légende pour la zone normale
-                                                        Row(
-                                                                verticalAlignment =
-                                                                        Alignment.CenterVertically,
-                                                                horizontalArrangement =
-                                                                        Arrangement.spacedBy(4.dp)
-                                                        ) {
-                                                                Box(
-                                                                        modifier =
-                                                                                Modifier.size(12.dp)
-                                                                                        .background(
-                                                                                                Color.Green
-                                                                                                        .copy(
-                                                                                                                alpha =
-                                                                                                                        0.3f
-                                                                                                        )
-                                                                                        )
-                                                                )
-                                                                Text(
-                                                                        text =
-                                                                                "Zone normale (25-75%)",
-                                                                        style =
-                                                                                MaterialTheme
-                                                                                        .typography
-                                                                                        .caption
-                                                                )
-                                                        }
-                                                }
-                                        }
-                                }
+                                // Légende supprimée
                         }
                 }
                 // Tableau des poids
