@@ -16,11 +16,7 @@ import fr.vetbrain.vetnutri_mp.Repository.RecipeRepository
 import kotlinx.coroutines.launch
 
 @Composable
-fun RecipeDialog(
-        repository: RecipeRepository,
-        onApply: (Ration) -> Unit,
-        onClose: () -> Unit
-) {
+fun RecipeDialog(repository: RecipeRepository, onApply: (Ration) -> Unit, onClose: () -> Unit) {
     val scope = rememberCoroutineScope()
     var recipes by remember { mutableStateOf<List<Ration>>(emptyList()) }
     var isLoading by remember { mutableStateOf(false) }
@@ -48,32 +44,65 @@ fun RecipeDialog(
                         LazyColumn(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
                             items(recipes) { r ->
                                 Card(modifier = Modifier.fillMaxWidth().padding(4.dp)) {
-                                    Row(
+                                    Column(
                                             modifier = Modifier.fillMaxWidth().padding(8.dp),
-                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                            verticalArrangement = Arrangement.spacedBy(6.dp)
                                     ) {
-                                        Column(modifier = Modifier.weight(1f)) {
-                                            Text(text = r.name)
-                                            val esp = r.espece ?: ""
-                                            if (esp.isNotBlank()) Text(text = esp, style = MaterialTheme.typography.caption)
+                                        Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                Text(text = r.name)
+                                                val esp = r.espece ?: ""
+                                                if (esp.isNotBlank())
+                                                        Text(
+                                                                text = esp,
+                                                                style =
+                                                                        MaterialTheme.typography
+                                                                                .caption
+                                                        )
+                                            }
+                                            TextButton(onClick = { onApply(r) }) {
+                                                Text("Appliquer")
+                                            }
+                                            TextButton(
+                                                    onClick = {
+                                                        scope.launch {
+                                                            repository.cloneRecipe(r.uuid)
+                                                            recipes = repository.getAllRecipes()
+                                                        }
+                                                    }
+                                            ) { Text("Cloner") }
+                                            TextButton(
+                                                    onClick = {
+                                                        scope.launch {
+                                                            repository.deleteRecipe(r.uuid)
+                                                            recipes = repository.getAllRecipes()
+                                                        }
+                                                    }
+                                            ) { Text("Supprimer") }
                                         }
-                                        TextButton(onClick = { onApply(r) }) { Text("Appliquer") }
-                                        TextButton(
-                                                onClick = {
-                                                    scope.launch {
-                                                        repository.cloneRecipe(r.uuid)
-                                                        recipes = repository.getAllRecipes()
-                                                    }
+                                        if (r.alimentMutableList.isNotEmpty()) {
+                                            Divider()
+                                            Column(
+                                                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                                            ) {
+                                                r.alimentMutableList.forEach { a ->
+                                                    val nom =
+                                                            a.aliment?.nom
+                                                                    ?: a.refAlimUnif ?: a.uuidUnif
+                                                    val q = a.quantite
+                                                    val qStr =
+                                                            (kotlin.math.round(q * 10f) / 10f)
+                                                                    .toString()
+                                                    Text(
+                                                            "- ${'$'}nom: ${'$'}qStr g",
+                                                            style = MaterialTheme.typography.caption
+                                                    )
                                                 }
-                                        ) { Text("Cloner") }
-                                        TextButton(
-                                                onClick = {
-                                                    scope.launch {
-                                                        repository.deleteRecipe(r.uuid)
-                                                        recipes = repository.getAllRecipes()
-                                                    }
-                                                }
-                                        ) { Text("Supprimer") }
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -114,6 +143,3 @@ fun RecipeDialog(
         )
     }
 }
-
-
-

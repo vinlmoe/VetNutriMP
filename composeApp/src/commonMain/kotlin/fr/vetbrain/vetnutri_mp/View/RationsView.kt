@@ -230,7 +230,7 @@ fun RationsView(
         var showDeleteRationDialog by remember { mutableStateOf(false) }
         var rationToDelete by remember { mutableStateOf<Ration?>(null) }
 
-        // Barre d'actions pour ajouter un aliment ou une recette
+        // Barre d'actions: uniquement ajout d'aliment (icônes recette déplacées dans le titre)
         Row(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -243,18 +243,6 @@ fun RationsView(
                         },
                         enabled = selectedRation != null
                 ) { Text("Ajouter un aliment") }
-                Button(onClick = { showRecipeDialog = true }, enabled = selectedRation != null) {
-                        Text("Ajouter via recette")
-                }
-                Button(
-                        onClick = {
-                                selectedRation?.let { r ->
-                                        newRecipeName = r.name
-                                        showSaveRecipeDialog = true
-                                }
-                        },
-                        enabled = selectedRation != null
-                ) { Text("Sauvegarder en recette") }
         }
 
         // Dialog de gestion des recettes
@@ -695,6 +683,17 @@ fun RationsView(
                                                                         showMultiNutrientAdjustmentDialog =
                                                                                 true
                                                                 },
+                                                                onOpenRecipeDialog = {
+                                                                        showRecipeDialog = true
+                                                                },
+                                                                onSaveRecipe = {
+                                                                        selectedRation?.let { r ->
+                                                                                newRecipeName =
+                                                                                        r.name
+                                                                                showSaveRecipeDialog =
+                                                                                        true
+                                                                        }
+                                                                },
                                                                 showSnackbar = showSnackbar,
                                                                 isCompact = isCompact,
                                                                 modifier = Modifier.fillMaxWidth()
@@ -1112,6 +1111,15 @@ fun RationsView(
                                                                         showSnackbar(
                                                                                 "Sélectionnez d'abord une ration"
                                                                         )
+                                                                }
+                                                        },
+                                                        onOpenRecipeDialog = {
+                                                                showRecipeDialog = true
+                                                        },
+                                                        onSaveRecipe = {
+                                                                selectedRation?.let { r ->
+                                                                        newRecipeName = r.name
+                                                                        showSaveRecipeDialog = true
                                                                 }
                                                         },
                                                         showSnackbar = showSnackbar,
