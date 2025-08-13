@@ -1037,7 +1037,7 @@ private fun ajusterAlimentsPourNutriment(
         for (i in contributions.indices) {
             val (data, need, idx) = contributions[i]
             val w = (constraints[data.alimentRation.uuid]?.weight ?: data.weight).coerceIn(0f, 1f)
-            val adjNeed = if (w > 0f) need / w else Double.POSITIVE_INFINITY
+            val adjNeed = if (w > 0f) need / w.toDouble() else Double.POSITIVE_INFINITY
             contributions[i] = Triple(data, adjNeed, idx)
         }
         // Trier par efficacité pondérée
