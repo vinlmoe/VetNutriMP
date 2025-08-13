@@ -93,6 +93,7 @@ fun MultiNutrientAdjustmentDialog(
     var refLevelByNutrient by remember { mutableStateOf<Map<String, Reflevel>>(emptyMap()) }
     var preview by remember { mutableStateOf<RationAdjustmentResult?>(null) }
     var params by remember { mutableStateOf(AdjustmentParams()) }
+    var energyRebalanceNutrients by remember { mutableStateOf<Set<String>>(emptySet()) }
 
     AlertDialog(
             onDismissRequest = onDismiss,
@@ -252,6 +253,35 @@ fun MultiNutrientAdjustmentDialog(
                         }
                     }
 
+                    if (selectedLabels.isNotEmpty()) {
+                        Divider()
+                        Text(
+                                "Rééquilibrage énergie: nutriments porteurs",
+                                style = MaterialTheme.typography.subtitle2
+                        )
+                        Column(verticalArrangement = Arrangement.spacedBy(AppSizes.paddingXSmall)) {
+                            selectedLabels.forEach { label ->
+                                val checked = energyRebalanceNutrients.contains(label)
+                                Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(label)
+                                    Checkbox(
+                                            checked = checked,
+                                            onCheckedChange = { isChecked ->
+                                                energyRebalanceNutrients =
+                                                        if (isChecked)
+                                                                energyRebalanceNutrients + label
+                                                        else energyRebalanceNutrients - label
+                                            }
+                                    )
+                                }
+                            }
+                        }
+                    }
+
                     // Aperçu des deltas
                     preview?.let { pr ->
                         if (pr.adjustedAliments != null) {
@@ -300,6 +330,7 @@ fun MultiNutrientAdjustmentDialog(
                                             poidsMetabolique = poidsMetabolique,
                                             refLevelByNutrient = refLevelByNutrient,
                                             constraints = constraints,
+                                            energyRebalanceNutrients = energyRebalanceNutrients,
                                             params = params
                                     )
                             onConfirm(result)
@@ -338,6 +369,7 @@ fun MultiNutrientAdjustmentDialog(
                                                 poidsMetabolique = poidsMetabolique,
                                                 refLevelByNutrient = refLevelByNutrient,
                                                 constraints = constraints,
+                                                energyRebalanceNutrients = energyRebalanceNutrients,
                                                 params = params
                                         )
                             }
@@ -513,6 +545,7 @@ private fun calculateMultiNutrientAdjustment(
         adjustmentData: List<AlimentAdjustmentData>,
         refLevelByNutrient: Map<String, Reflevel> = emptyMap(),
         constraints: List<AlimentConstraint> = emptyList(),
+        energyRebalanceNutrients: Set<String> = emptySet(),
         params: AdjustmentParams = AdjustmentParams()
 ): RationAdjustmentResult {
     try {
@@ -600,7 +633,7 @@ private fun calculateMultiNutrientAdjustment(
                     val alimentRation = adjustedAliments[i]
                     val densite = alimentRation.densiteEnergetique
                     if (densite > 0.0) {
-                        apportActuel += densite * alimentRation.quantite
+                        apportActuel += densite * alimentRation.quantite.toDouble()
                     } else {
                         val energiePar100g =
                                 alimentRation
@@ -611,7 +644,8 @@ private fun calculateMultiNutrientAdjustment(
                                         ?.toDouble()
                                         ?: 0.0
                         if (energiePar100g > 0.0) {
-                            apportActuel += (energiePar100g * alimentRation.quantite) / 100.0
+                            apportActuel +=
+                                    (energiePar100g * alimentRation.quantite.toDouble()) / 100.0
                         }
                     }
                 }
@@ -668,12 +702,12 @@ private fun calculateMultiNutrientAdjustment(
             val currentEnergy =
                     adjustedAliments.sumOf { ar ->
                         val densite = ar.densiteEnergetique
-                        if (densite > 0.0) densite * ar.quantite
+                        if (densite > 0.0) densite * ar.quantite.toDouble()
                         else {
                             val e =
                                     ar.aliment?.valMap?.get(NutrientMain.ENERGIE)?.value?.toDouble()
                                             ?: 0.0
-                            (e * ar.quantite) / 100.0
+                            (e * ar.quantite.toDouble()) / 100.0
                         }
                     }
             val diff = besoinEnergetiqueTotal - currentEnergy
@@ -685,8 +719,15 @@ private fun calculateMultiNutrientAdjustment(
                                     constraints.find { cc ->
                                         cc.alimentUuid == it.alimentRation.uuid
                                     }
+                            val allowedByNutrient =
+                                    energyRebalanceNutrients.isEmpty() ||
+                                            (it.selectedNutrient != null &&
+                                                    energyRebalanceNutrients.contains(
+                                                            it.selectedNutrient!!
+                                                    ))
                             (c?.mode
                                     ?: it.mode) == ConstraintMode.ADJUSTABLE &&
+                                    allowedByNutrient &&
                                     (it.alimentRation.densiteEnergetique > 0.0 ||
                                             (it.alimentRation.aliment?.valMap?.get(
                                                             NutrientMain.ENERGIE
@@ -728,16 +769,17 @@ private fun calculateMultiNutrientAdjustment(
                                                 ?.toDouble()
                                                 ?: 0.0) / 100.0
                         if (densite > 0.0) {
-                            val deltaQ = (share / densite).toFloat()
-                            val currentQ = adjustedAliments[idx].quantite
+                            val deltaQ: Double = share / densite
+                            val currentQ: Double = adjustedAliments[idx].quantite.toDouble()
                             val c =
                                     constraints.find { cc ->
                                         cc.alimentUuid == cand.alimentRation.uuid
                                     }
-                            val minQ = c?.minQuantity ?: 0f
-                            val maxQ = c?.maxQuantity ?: Float.MAX_VALUE
-                            val newQ = (currentQ + deltaQ).coerceIn(minQ, maxQ)
-                            adjustedAliments[idx] = adjustedAliments[idx].copy(quantite = newQ)
+                            val minQ: Double = (c?.minQuantity ?: 0f).toDouble()
+                            val maxQ: Double = (c?.maxQuantity ?: Float.MAX_VALUE).toDouble()
+                            val newQ: Double = (currentQ + deltaQ).coerceIn(minQ, maxQ)
+                            adjustedAliments[idx] =
+                                    adjustedAliments[idx].copy(quantite = newQ.toFloat())
                         }
                     }
                 }
@@ -746,10 +788,10 @@ private fun calculateMultiNutrientAdjustment(
 
         // Arrondi final pour stabiliser l'UI
         for (i in adjustedAliments.indices) {
-            val q = adjustedAliments[i].quantite
-            val step = params.roundTo
-            val rounded = if (step > 0f) kotlin.math.round(q / step) * step else q
-            adjustedAliments[i] = adjustedAliments[i].copy(quantite = rounded)
+            val q: Double = adjustedAliments[i].quantite.toDouble()
+            val step: Double = params.roundTo.toDouble()
+            val rounded: Double = if (step > 0.0) kotlin.math.round(q / step) * step else q
+            adjustedAliments[i] = adjustedAliments[i].copy(quantite = rounded.toFloat())
         }
 
         println("✅ DEBUG: Traitement terminé pour ${nutrimentsTraites.size} nutriments")
@@ -779,7 +821,7 @@ private fun calculerBesoinAbsoluGrammes(
     val uniteRequis = nutrimentRef.uniteReq
 
     // Conversion initiale en grammes
-    val quantiteEnGrammes = quantite * uniteBase.conv
+    val quantiteEnGrammes: Double = quantite * uniteBase.conv.toDouble()
 
     // Calcul du besoin absolu en fonction de l'unité requise
     return when (uniteRequis) {
@@ -1065,12 +1107,16 @@ private fun ajusterAlimentsPourNutriment(
                                 }
                                 ?.maxQuantity
                                 ?: Float.MAX_VALUE
-                val nouvelleQuantite: Float =
-                        (quantiteActuelle + quantiteAAjouter.toFloat()).coerceIn(minQ, maxQ)
-                adjustedAliments[index] = adjustedAliments[index].copy(quantite = nouvelleQuantite)
+                val nouvelleQuantite: Double =
+                        (quantiteActuelle.toDouble() + quantiteAAjouter).coerceIn(
+                                minQ.toDouble(),
+                                maxQ.toDouble()
+                        )
+                adjustedAliments[index] =
+                        adjustedAliments[index].copy(quantite = nouvelleQuantite.toFloat())
 
                 // Mettre à jour le manque restant
-                val apportAjoute =
+                val apportAjoute: Double =
                         if (nutriment == NutrientMain.ENERGIE) {
                             val densite = adjustedAliments[index].densiteEnergetique
                             if (densite > 0.0) {
