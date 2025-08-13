@@ -7,6 +7,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.MenuBook
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.runtime.*
@@ -30,6 +32,8 @@ import kotlinx.coroutines.launch
  * @param viewModel Le ViewModel pour les opérations sur les données
  * @param onAddAliment Callback pour ajouter un aliment
  * @param onMultiNutrientAdjustment Callback pour l'ajustement multi-nutriments
+ * @param onOpenRecipeDialog Callback pour ouvrir le gestionnaire de recettes
+ * @param onSaveRecipe Callback pour sauvegarder la ration actuelle comme recette
  * @param showSnackbar Callback pour afficher des messages
  * @param modifier Modificateur optionnel pour personnaliser l'apparence
  */
@@ -41,6 +45,8 @@ fun SectionAlimentsRation(
         viewModel: AnimalDetailViewModel,
         onAddAliment: () -> Unit,
         onMultiNutrientAdjustment: () -> Unit,
+        onOpenRecipeDialog: () -> Unit,
+        onSaveRecipe: () -> Unit,
         showSnackbar: (String) -> Unit,
         isCompact: Boolean = false,
         modifier: Modifier = Modifier
@@ -73,6 +79,43 @@ fun SectionAlimentsRation(
                                         horizontalArrangement =
                                                 Arrangement.spacedBy(AppSizes.paddingXSmall)
                                 ) {
+                                        // Ouvrir le gestionnaire de recettes
+                                        Icon(
+                                                imageVector = Icons.Filled.MenuBook,
+                                                contentDescription = "Ouvrir les recettes",
+                                                tint = VetNutriColors.Primary,
+                                                modifier =
+                                                        Modifier.size(AppSizes.iconSizeXSmall)
+                                                                .clickable(
+                                                                        onClick = onOpenRecipeDialog
+                                                                )
+                                        )
+
+                                        // Sauvegarder la ration comme recette
+                                        Icon(
+                                                imageVector = Icons.Filled.Save,
+                                                contentDescription = "Enregistrer comme recette",
+                                                tint =
+                                                        if (selectedRation?.alimentMutableList
+                                                                        ?.isNotEmpty() == true
+                                                        )
+                                                                VetNutriColors.Primary
+                                                        else
+                                                                VetNutriColors.Primary.copy(
+                                                                        alpha = 0.5f
+                                                                ),
+                                                modifier =
+                                                        Modifier.size(AppSizes.iconSizeXSmall)
+                                                                .clickable(
+                                                                        enabled =
+                                                                                selectedRation
+                                                                                        ?.alimentMutableList
+                                                                                        ?.isNotEmpty() ==
+                                                                                        true,
+                                                                        onClick = onSaveRecipe
+                                                                )
+                                        )
+
                                         // Bouton pour ajuster la ration
                                         Icon(
                                                 imageVector = Icons.Filled.Tune,
@@ -132,7 +175,8 @@ fun SectionAlimentsRation(
                                                                                                                                 ?: 0.0
                                                                                                                 (densiteEnergetique *
                                                                                                                         alimentRation
-                                                                                                                                .quantite) /
+                                                                                                                                .quantite
+                                                                                                                                .toDouble()) /
                                                                                                                         100.0
                                                                                                         }
                                                                                         if (energieApportee >

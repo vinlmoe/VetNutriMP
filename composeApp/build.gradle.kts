@@ -82,18 +82,11 @@ kotlin {
                 implementation("com.openhtmltopdf:openhtmltopdf-pdfbox:1.0.10")
             }
         }
-        commonTest.dependencies {
-            implementation(kotlin("test"))
-            implementation(kotlin("test-common"))
-            implementation(kotlin("test-annotations-common"))
-            implementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
-        }
+
         val iosMain by getting {
             kotlin.srcDir("build/generated/ksp/metadata")
             dependencies { implementation(libs.sqliter.driver) }
         }
-
-        val iosTest by creating { dependencies { implementation(kotlin("test")) } }
 
         val iosArm64Main by getting
         val iosX64Main by getting

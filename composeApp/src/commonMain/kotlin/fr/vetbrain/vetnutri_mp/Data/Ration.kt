@@ -4,7 +4,6 @@ import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
 import fr.vetbrain.vetnutri_mp.Utils.genUUID
 import kotlin.uuid.ExperimentalUuidApi
-import kotlin.uuid.Uuid
 
 @OptIn(ExperimentalUuidApi::class)
 data class Ration(
@@ -44,7 +43,7 @@ data class Ration(
                 for (aliment in alimentMutableList) {
                         val valeur = aliment.getNutrient(nutrient)
                         if (valeur != null) {
-                                total += valeur * aliment.quantite / 100f
+                                total += (valeur * aliment.quantite) / 100f
                         }
                 }
 

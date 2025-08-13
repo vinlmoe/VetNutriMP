@@ -57,8 +57,8 @@ actual object PdfExporter {
                                 CGRectMake(
                                         margin,
                                         margin,
-                                        a4Width - 2 * margin,
-                                        a4Height - 2 * margin
+                                        a4Width - 2.toDouble() * margin,
+                                        a4Height - 2.toDouble() * margin
                                 )
                         val renderer: UIPrintPageRenderer =
                                 object : UIPrintPageRenderer() {

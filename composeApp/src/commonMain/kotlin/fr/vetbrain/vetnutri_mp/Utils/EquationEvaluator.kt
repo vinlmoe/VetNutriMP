@@ -161,7 +161,9 @@ object EquationEvaluator {
                                 equationRepository = equationRepository,
                                 referenceEv = referenceEv
                         )
-                if (valeur != null) total += (valeur * aliment.quantite / 100f).toDouble()
+                if (valeur != null) {
+                    total += (valeur.toDouble() * aliment.quantite.toDouble()) / 100.0
+                }
             }
             return total
         }
@@ -337,7 +339,7 @@ object EquationEvaluator {
                             equationRepository = equationRepository,
                             referenceEv = referenceEv
                     )
-            total += kcal100 * (ing.quantite / 100.0)
+            total += kcal100 * (ing.quantite.toDouble() / 100.0)
         }
         return total
     }
