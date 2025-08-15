@@ -947,8 +947,9 @@ private fun adjustRationForNutrient(
             val index = adjustedAliments.indexOfFirst { it.uuid == alimentData.alimentRation.uuid }
             if (index >= 0) {
                 val quantiteActuelle: Double = alimentData.alimentRation.quantite.toDouble()
-                val nouvelleQuantite: Float = (quantiteActuelle * ratio).toFloat()
-                adjustedAliments[index] = adjustedAliments[index].copy(quantite = nouvelleQuantite)
+                val nouvelleQuantite: Double = quantiteActuelle * ratio
+                adjustedAliments[index] =
+                        adjustedAliments[index].copy(quantite = nouvelleQuantite.toFloat())
             }
         }
 

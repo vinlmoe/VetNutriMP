@@ -132,8 +132,7 @@ android {
 
 dependencies {
     debugImplementation(compose.uiTooling)
-    testImplementation(kotlin("test"))
-    testImplementation(kotlin("test-junit"))
+
 }
 
 compose.desktop {
@@ -149,7 +148,7 @@ compose.desktop {
 }
 
 dependencies {
-    implementation(libs.jansi)
+
     implementation("org.jetbrains.compose.material:material-icons-extended:1.7.3")
     implementation(libs.skiko.awt)
     implementation(libs.androidx.sqlite.bundled)
