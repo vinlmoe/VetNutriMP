@@ -697,28 +697,29 @@ private fun convertirVersUnitePreferences(
                 // Vers PERKG (par kg de poids vif)
                 UnitReqEnum.PERKG -> {
                         poidsAnimal?.let { poids ->
-                                if (poids > 0) (valeurAbsolue / poids).toFloat() else null
+                                if (poids > 0.0) (valeurAbsolue / poids).toFloat() else null
                         }
                 }
 
                 // Vers PERMS (par kg de poids métabolique)
                 UnitReqEnum.PERMS -> {
                         poidsMetabolique?.let { poidsMetab ->
-                                if (poidsMetab > 0) (valeurAbsolue / poidsMetab).toFloat() else null
+                                if (poidsMetab > 0.0) (valeurAbsolue / poidsMetab).toFloat()
+                                else null
                         }
                 }
 
                 // Vers PERKCAL (par 1000 kcal)
                 UnitReqEnum.PERKCAL -> {
                         besoinEnergetiqueEntretien?.let { bee ->
-                                if (bee > 0) ((valeurAbsolue * 1000.0) / bee).toFloat() else null
+                                if (bee > 0.0) ((valeurAbsolue * 1000.0) / bee).toFloat() else null
                         }
                 }
 
                 // Vers PERKJ (par 1000 kJ)
                 UnitReqEnum.PERKJ -> {
                         besoinEnergetiqueEntretien?.let { bee ->
-                                if (bee > 0) {
+                                if (bee > 0.0) {
                                         // Convertir kcal en kJ : 1 kcal = 4.184 kJ
                                         val beeEnKj = bee * 4.184
                                         ((valeurAbsolue * 1000.0) / beeEnKj).toFloat()
