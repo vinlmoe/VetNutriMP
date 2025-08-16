@@ -623,16 +623,16 @@ private fun EvolutionPoidsChart(viewModel: AnimalDetailViewModel) {
                 // Préparer données réelles (peut être vide) et fallback courbe 50% 0–12 mois
                 val donneesPoids =
                         consultationsWithAge.map { d ->
-                                Point(x = d.ageInMonths.toDouble(), y = d.weight)
+                                Point(x = d.ageInMonths.toFloat(), y = d.weight.toFloat())
                         }
                 val courbeRef = selectedCurve
                 val param50 = courbeRef?.params?.find { it.name == "50%" }
                 val pointsRef0_12 =
                         param50?.let {
                                 (0..12).map { mois ->
-                                        val ageInMonths = mois.toDouble()
-                                        val poids = calculerPoidsCroissance(it, ageInMonths)
-                                        Point(x = ageInMonths.toDouble(), y = poids.toDouble())
+                                        val ageInMonths = mois.toFloat()
+                                        val poids = calculerPoidsCroissance(it, ageInMonths.toDouble())
+                                        Point(x = ageInMonths, y = poids.toFloat())
                                 }
                         }
                                 ?: emptyList()
@@ -651,6 +651,10 @@ private fun EvolutionPoidsChart(viewModel: AnimalDetailViewModel) {
                 val yMargin = (maxY - minY).coerceAtLeast(1.0) * 0.05
                 val yRange = (minY - yMargin)..(maxY + yMargin)
 
+                // Créer des plages Float pour KoalaPlot
+                val xRangeFloat = (minX - xMargin).toFloat()..(maxX + xMargin).toFloat()
+                val yRangeFloat = (minY - yMargin).toFloat()..(maxY + yMargin).toFloat()
+
                 val xRangeWidth = (xRange.endInclusive - xRange.start).coerceAtLeast(0.0)
                 val xTickIncrement = if (xRangeWidth > 10.0) 3.0 else 1.0
                 val safeTickIncrement =
@@ -665,11 +669,11 @@ private fun EvolutionPoidsChart(viewModel: AnimalDetailViewModel) {
                                 XYGraph(
                                         xAxisModel =
                                                 FloatLinearAxisModel(
-                                                        range = xRange,
+                                                        range = xRangeFloat,
                                                         minimumMajorTickIncrement =
-                                                                safeTickIncrement
+                                                                safeTickIncrement.toFloat()
                                                 ),
-                                        yAxisModel = FloatLinearAxisModel(range = yRange),
+                                        yAxisModel = FloatLinearAxisModel(range = yRangeFloat),
                                         modifier = Modifier.height(500.dp)
                                 ) {
                                         // Courbes de référence: toutes les percentiles si demandé
@@ -678,17 +682,15 @@ private fun EvolutionPoidsChart(viewModel: AnimalDetailViewModel) {
                                                         val pts =
                                                                 (0..12).map { mois ->
                                                                         val ageInMonths =
-                                                                                mois.toDouble()
+                                                                                mois.toFloat()
                                                                         val y =
                                                                                 calculerPoidsCroissance(
                                                                                         param,
-                                                                                        ageInMonths
+                                                                                        ageInMonths.toDouble()
                                                                                 )
                                                                         Point(
-                                                                                x =
-                                                                                        ageInMonths
-                                                                                                .toDouble(),
-                                                                                y = y.toDouble()
+                                                                                x = ageInMonths,
+                                                                                y = y.toFloat()
                                                                         )
                                                                 }
 
@@ -721,7 +723,7 @@ private fun EvolutionPoidsChart(viewModel: AnimalDetailViewModel) {
                                                                         areaBaseline =
                                                                                 AreaBaseline
                                                                                         .ConstantLine(
-                                                                                                0.0
+                                                                                                0.0f
                                                                                         )
                                                                 )
                                                         }
@@ -988,10 +990,10 @@ private fun CompositionNutritionnelleChart() {
                                         )
 
                                         LinearProgressIndicator(
-                                                progress = valeur / 100.0,
-                                                modifier = Modifier.weight(1.0).height(20.dp),
+                                                progress = (valeur / 100.0).toFloat(),
+                                                modifier = Modifier.weight(1.0f).height(20.dp),
                                                 color = couleur,
-                                                backgroundColor = Color.LightGray.copy(alpha = 0.3)
+                                                backgroundColor = Color.LightGray.copy(alpha = 0.3f)
                                         )
 
                                         Text(
@@ -1042,10 +1044,10 @@ private fun ComparaisonBesoinsChart() {
                                         )
 
                                         LinearProgressIndicator(
-                                                progress = (apport / 150.0).coerceIn(0.0, 1.0),
-                                                modifier = Modifier.weight(1.0).height(20.dp),
+                                                progress = (apport / 150.0).coerceIn(0.0, 1.0).toFloat(),
+                                                modifier = Modifier.weight(1.0f).height(20.dp),
                                                 color = couleur,
-                                                backgroundColor = Color.LightGray.copy(alpha = 0.3)
+                                                backgroundColor = Color.LightGray.copy(alpha = 0.3f)
                                         )
 
                                         Text(
@@ -1095,10 +1097,10 @@ private fun RepartitionEnergieChart() {
                                         )
 
                                         LinearProgressIndicator(
-                                                progress = valeur / 100.0,
-                                                modifier = Modifier.weight(1.0).height(25.dp),
+                                                progress = (valeur / 100.0).toFloat(),
+                                                modifier = Modifier.weight(1.0f).height(25.dp),
                                                 color = couleur,
-                                                backgroundColor = Color.LightGray.copy(alpha = 0.3)
+                                                backgroundColor = Color.LightGray.copy(alpha = 0.3f)
                                         )
 
                                         Text(

@@ -472,7 +472,7 @@ fun ReferenceBulletGraph(
                                 }
 
                                 // Barre représentant l'apport
-                                featuredMeasureBar(valeurApport) {
+                                featuredMeasureBar(valeurApport.toFloat()) {
                                         HorizontalBarIndicator(
                                                 SolidColor(Color.Gray),
                                                 fraction = 0.33f
@@ -551,10 +551,14 @@ fun ReferenceBulletGraph(
                                 }
 
                                 // Lignes de référence (générales)
-                                minRefConverti?.let { min -> comparativeMeasure(min) }
-                                optiminRefConverti?.let { optimin -> comparativeMeasure(optimin) }
-                                optimaxRefConverti?.let { optimax -> comparativeMeasure(optimax) }
-                                maxRefConverti?.let { max -> comparativeMeasure(max) }
+                                minRefConverti?.let { min -> comparativeMeasure(min.toFloat()) }
+                                optiminRefConverti?.let { optimin ->
+                                        comparativeMeasure(optimin.toFloat())
+                                }
+                                optimaxRefConverti?.let { optimax ->
+                                        comparativeMeasure(optimax.toFloat())
+                                }
+                                maxRefConverti?.let { max -> comparativeMeasure(max.toFloat()) }
 
                                 // Lignes verticales pour les valeurs des références maladies
                                 referencesMaladies.forEach { refMaladie ->
@@ -647,7 +651,7 @@ fun ReferenceBulletGraph(
                                                         // (lignes verticales)
                                                         // pour indiquer les valeurs de maladies
                                                         // (couleur par défaut)
-                                                        comparativeMeasure(v)
+                                                        comparativeMeasure(v.toFloat())
                                                 }
                                 }
                         }
