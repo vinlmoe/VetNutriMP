@@ -272,6 +272,15 @@ data class ReferenceNutrientApi(
 )
 
 @Serializable
+data class ReferenceCoefficientApi(
+        val uuid: String,
+        val groupType: String, // "k1", "k2", "k3", "k4", "k5"
+        val description: String,
+        val coef: Double,
+        val groupUUID: Int
+)
+
+@Serializable
 data class ReferenceEvApi(
         val uuid: String,
         val nom: String,
@@ -288,7 +297,8 @@ data class ReferenceEvApi(
         val equationDEraw: String? = null,
         val equationME: String? = null,
         val equationsNut: List<String> = emptyList(),
-        val nutrients: List<ReferenceNutrientApi> = emptyList()
+        val nutrients: List<ReferenceNutrientApi> = emptyList(),
+        val coefficients: List<ReferenceCoefficientApi> = emptyList()
 )
 
 /** Mappers domaine -> API */
@@ -527,6 +537,74 @@ fun ReferenceEv.toApiRef(): ReferenceEvApi {
                 )
         }
 
+        // 🆕 AJOUTER LES COEFFICIENTS
+        val coefficients = mutableListOf<ReferenceCoefficientApi>()
+
+        // Ajouter les coefficients k1
+        getModk1().forEach { coef ->
+                coefficients.add(
+                        ReferenceCoefficientApi(
+                                uuid = coef.uuid,
+                                groupType = "k1",
+                                description = coef.description ?: "Normal",
+                                coef = coef.coef ?: 1.0,
+                                groupUUID = coef.groupUUID ?: 0
+                        )
+                )
+        }
+
+        // Ajouter les coefficients k2
+        getModk2().forEach { coef ->
+                coefficients.add(
+                        ReferenceCoefficientApi(
+                                uuid = coef.uuid,
+                                groupType = "k2",
+                                description = coef.description ?: "Normal",
+                                coef = coef.coef ?: 1.0,
+                                groupUUID = coef.groupUUID ?: 1
+                        )
+                )
+        }
+
+        // Ajouter les coefficients k3
+        getModk3().forEach { coef ->
+                coefficients.add(
+                        ReferenceCoefficientApi(
+                                uuid = coef.uuid,
+                                groupType = "k3",
+                                description = coef.description ?: "Normal",
+                                coef = coef.coef ?: 1.0,
+                                groupUUID = coef.groupUUID ?: 2
+                        )
+                )
+        }
+
+        // Ajouter les coefficients k4
+        getModk4().forEach { coef ->
+                coefficients.add(
+                        ReferenceCoefficientApi(
+                                uuid = coef.uuid,
+                                groupType = "k4",
+                                description = coef.description ?: "Normal",
+                                coef = coef.coef ?: 1.0,
+                                groupUUID = coef.groupUUID ?: 3
+                        )
+                )
+        }
+
+        // Ajouter les coefficients k5
+        getModk5().forEach { coef ->
+                coefficients.add(
+                        ReferenceCoefficientApi(
+                                uuid = coef.uuid,
+                                groupType = "k5",
+                                description = coef.description ?: "Normal",
+                                coef = coef.coef ?: 1.0,
+                                groupUUID = coef.groupUUID ?: 4
+                        )
+                )
+        }
+
         return ReferenceEvApi(
                 uuid = uuid,
                 nom = nom,
@@ -543,7 +621,8 @@ fun ReferenceEv.toApiRef(): ReferenceEvApi {
                 equationDEraw = equationDEraw?.uuid,
                 equationME = equationME?.uuid,
                 equationsNut = equationsNut.map { it.uuid },
-                nutrients = nutrients
+                nutrients = nutrients,
+                coefficients = coefficients
         )
 }
 

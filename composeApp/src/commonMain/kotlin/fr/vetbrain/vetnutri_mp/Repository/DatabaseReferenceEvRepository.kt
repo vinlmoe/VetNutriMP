@@ -85,6 +85,15 @@ class DatabaseReferenceEvRepository(
         }
     }
 
+    // 🆕 Méthode publique pour sauvegarder un coefficient individuel
+    suspend fun saveCoefficient(coefficient: ReferenceEvCoefficientEntity) {
+        try {
+            referenceEvDao.insertCoefficient(coefficient)
+        } catch (e: Exception) {
+            throw e
+        }
+    }
+
     // Méthodes de conversion
 
     private fun convertReferenceEvToEntity(referenceEv: ReferenceEv): ReferenceEvEntity {
