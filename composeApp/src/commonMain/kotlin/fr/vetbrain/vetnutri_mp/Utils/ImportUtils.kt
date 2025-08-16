@@ -627,7 +627,7 @@ object ImportUtils {
                                     // convertie en nombre)
                                     value is JsonPrimitive &&
                                             value.isString &&
-                                            value.content.toFloatOrNull() != null -> {
+                                            value.content.toDoubleOrNull() != null -> {
                                         // Convertir en objet NutrientQuantity
                                         val nutritionValue =
                                                 JsonObject(
@@ -635,7 +635,7 @@ object ImportUtils {
                                                                 "value" to
                                                                         JsonPrimitive(
                                                                                 value.content
-                                                                                        .toFloat()
+                                                                                        .toDouble()
                                                                         ),
                                                                 "nut" to
                                                                         JsonPrimitive(normalizedKey)
@@ -646,15 +646,15 @@ object ImportUtils {
 
                                     // Format 4: Valeur numérique directe
                                     value is JsonPrimitive &&
-                                            value.content.toFloatOrNull() != null -> {
+                                            value.content.toDoubleOrNull() != null -> {
                                         // Convertir en objet NutrientQuantity
-                                        val floatValue = value.content.toFloatOrNull() ?: 0f
+                                        val doubleValue = value.content.toDoubleOrNull() ?: 0.0
 
                                         val nutritionValue =
                                                 JsonObject(
                                                         mapOf(
                                                                 "value" to
-                                                                        JsonPrimitive(floatValue),
+                                                                        JsonPrimitive(doubleValue),
                                                                 "nut" to
                                                                         JsonPrimitive(normalizedKey)
                                                         )
@@ -670,7 +670,7 @@ object ImportUtils {
                                         val nutritionValue =
                                                 JsonObject(
                                                         mapOf(
-                                                                "value" to JsonPrimitive(0f),
+                                                                "value" to JsonPrimitive(0.0),
                                                                 "nut" to
                                                                         JsonPrimitive(normalizedKey)
                                                         )
@@ -694,7 +694,7 @@ object ImportUtils {
                                                 ) {
                                                     val extractedValue =
                                                             (value[path] as JsonPrimitive).content
-                                                                    .toFloatOrNull()
+                                                                    .toDoubleOrNull()
                                                     if (extractedValue != null) {
                                                         val nutritionValue =
                                                                 JsonObject(
@@ -730,7 +730,7 @@ object ImportUtils {
                                                 val match = numberPattern.find(jsonString)
                                                 if (match != null) {
                                                     val extractedNumber =
-                                                            match.value.toFloatOrNull()
+                                                            match.value.toDoubleOrNull()
                                                     if (extractedNumber != null) {
                                                         val nutritionValue =
                                                                 JsonObject(
@@ -879,12 +879,12 @@ object ImportUtils {
     private fun ensureEssentialNutrients(valMap: MutableMap<String, JsonElement>) {
         val essentialNutrients =
                 mapOf(
-                        "PROTEINE" to 0f,
-                        "LIPIDE" to 0f,
-                        "HUMIDITE" to 0f,
-                        "CENDRE" to 0f,
-                        "ENA" to 0f,
-                        "CELLULOSE" to 0f
+                        "PROTEINE" to 0.0,
+                        "LIPIDE" to 0.0,
+                        "HUMIDITE" to 0.0,
+                        "CENDRE" to 0.0,
+                        "ENA" to 0.0,
+                        "CELLULOSE" to 0.0
                 )
 
         // Pour chaque nutriment essentiel
@@ -907,47 +907,47 @@ object ImportUtils {
             val enaValue =
                     try {
                         val enaObj = valMap["ENA"] as? JsonObject
-                        (enaObj?.get("value") as? JsonPrimitive)?.content?.toFloatOrNull() ?: 0f
+                        (enaObj?.get("value") as? JsonPrimitive)?.content?.toDoubleOrNull() ?: 0.0
                     } catch (e: Exception) {
-                        0f
+                        0.0
                     }
 
             // Si ENA est 0, essayer de le calculer
-            if (enaValue == 0f) {
+            if (enaValue == 0.0) {
                 try {
                     val proteine =
                             (valMap["PROTEINE"] as? JsonObject)?.let {
-                                (it["value"] as? JsonPrimitive)?.content?.toFloatOrNull()
+                                (it["value"] as? JsonPrimitive)?.content?.toDoubleOrNull()
                             }
-                                    ?: 0f
+                                    ?: 0.0
                     val lipide =
                             (valMap["LIPIDE"] as? JsonObject)?.let {
-                                (it["value"] as? JsonPrimitive)?.content?.toFloatOrNull()
+                                (it["value"] as? JsonPrimitive)?.content?.toDoubleOrNull()
                             }
-                                    ?: 0f
+                                    ?: 0.0
                     val humidite =
                             (valMap["HUMIDITE"] as? JsonObject)?.let {
-                                (it["value"] as? JsonPrimitive)?.content?.toFloatOrNull()
+                                (it["value"] as? JsonPrimitive)?.content?.toDoubleOrNull()
                             }
-                                    ?: 0f
+                                    ?: 0.0
                     val cendre =
                             (valMap["CENDRE"] as? JsonObject)?.let {
-                                (it["value"] as? JsonPrimitive)?.content?.toFloatOrNull()
+                                (it["value"] as? JsonPrimitive)?.content?.toDoubleOrNull()
                             }
-                                    ?: 0f
+                                    ?: 0.0
                     val cellulose =
                             (valMap["CELLULOSE"] as? JsonObject)?.let {
-                                (it["value"] as? JsonPrimitive)?.content?.toFloatOrNull()
+                                (it["value"] as? JsonPrimitive)?.content?.toDoubleOrNull()
                             }
-                                    ?: 0f
+                                    ?: 0.0
 
                     // Formule pour calculer l'ENA
-                    val calculatedEna = 100f - proteine - lipide - humidite - cendre - cellulose
+                    val calculatedEna = 100.0 - proteine - lipide - humidite - cendre - cellulose
 
                     // Ne mettre à jour que si le résultat est positif et que les valeurs semblent
                     // cohérentes
                     if (calculatedEna > 0 &&
-                                    (proteine + lipide + humidite + cendre + cellulose) <= 100f
+                                    (proteine + lipide + humidite + cendre + cellulose) <= 100.0
                     ) {
                         val nutritionValue =
                                 JsonObject(
@@ -2018,7 +2018,7 @@ object ImportUtils {
             val referenceLevel = convertirStringVersReflevel(referenceLevelStr)
 
             // Extraire la quantité et les unités
-            val quantity = extraireFloatDepuisJson(nutrientObj, "quantity") ?: 0f
+            val quantity = extraireDoubleDepuisJson(nutrientObj, "quantity") ?: 0.0
             val unitStr = extraireStringDepuisJson(nutrientObj, "unit") ?: "BUg"
             val unitRequirementStr =
                     extraireStringDepuisJson(nutrientObj, "unitRequirement") ?: "MCAL"
@@ -2303,8 +2303,8 @@ object ImportUtils {
                     extraireStringDepuisJson(coefObj, "description")
                             ?: extraireStringDepuisJson(coefObj, "name") ?: ""
             val coef =
-                    extraireFloatDepuisJson(coefObj, "coef")
-                            ?: extraireFloatDepuisJson(coefObj, "value") ?: 0f
+                    extraireDoubleDepuisJson(coefObj, "coef")
+                            ?: extraireDoubleDepuisJson(coefObj, "value") ?: 0.0
 
             return fr.vetbrain.vetnutri_mp.Data.CoefP(
                     description = description,
@@ -2338,14 +2338,6 @@ object ImportUtils {
             key: String
     ): Int? {
         return (obj[key] as? kotlinx.serialization.json.JsonPrimitive)?.content?.toIntOrNull()
-    }
-
-    /** Extrait un float d'un objet JSON */
-    private fun extraireFloatDepuisJson(
-            obj: kotlinx.serialization.json.JsonObject,
-            key: String
-    ): Float? {
-        return (obj[key] as? kotlinx.serialization.json.JsonPrimitive)?.content?.toFloatOrNull()
     }
 
     /** Convertit une chaîne en énumération Espece */
@@ -3041,6 +3033,14 @@ object ImportUtils {
             Pair(emptyList(), "")
         }
     }
+
+    /** Extrait un double d'un objet JSON */
+    private fun extraireDoubleDepuisJson(
+            obj: kotlinx.serialization.json.JsonObject,
+            key: String
+    ): Double? {
+        return (obj[key] as? kotlinx.serialization.json.JsonPrimitive)?.content?.toDoubleOrNull()
+    }
 }
 
 /** Classe contenant le résultat de l'importation */
@@ -3050,7 +3050,7 @@ data class ImportResult(val animals: List<AnimalEvJson>, val foods: List<Aliment
 data class NutrientRequirementInfo(
         val nutrient: fr.vetbrain.vetnutri_mp.Enumer.Nutrient,
         val referenceLevel: fr.vetbrain.vetnutri_mp.Enumer.Reflevel,
-        val quantity: Float,
+        val quantity: Double,
         val unit: fr.vetbrain.vetnutri_mp.Enumer.UnitEnum,
         val unitRequirement: fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum,
         val bibliographicReference: fr.vetbrain.vetnutri_mp.Data.BiblioRef?

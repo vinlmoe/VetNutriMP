@@ -59,34 +59,34 @@ fun NutrientRefEditView(
                 Text(
                         "Nutriment",
                         fontWeight = FontWeight.Bold,
-                        modifier = Modifier.weight(2f).padding(horizontal = 8.dp)
+                        modifier = Modifier.weight(2.0).padding(horizontal = 8.dp)
                 )
                 Text(
                         "Valeur",
                         fontWeight = FontWeight.Bold,
-                        modifier = Modifier.weight(1f).padding(horizontal = 8.dp)
+                        modifier = Modifier.weight(1.0).padding(horizontal = 8.dp)
                 )
                 Text(
                         "Unité physique",
                         fontWeight = FontWeight.Bold,
-                        modifier = Modifier.weight(1f).padding(horizontal = 8.dp)
+                        modifier = Modifier.weight(1.0).padding(horizontal = 8.dp)
                 )
                 Text(
                         "Unité besoin",
                         fontWeight = FontWeight.Bold,
-                        modifier = Modifier.weight(1f).padding(horizontal = 8.dp)
+                        modifier = Modifier.weight(1.0).padding(horizontal = 8.dp)
                 )
                 Text(
                         "Référence",
                         fontWeight = FontWeight.Bold,
-                        modifier = Modifier.weight(2f).padding(horizontal = 8.dp)
+                        modifier = Modifier.weight(2.0).padding(horizontal = 8.dp)
                 )
             }
 
             Divider()
 
             // Liste des nutriments
-            LazyColumn(modifier = Modifier.fillMaxWidth().weight(1f)) {
+            LazyColumn(modifier = Modifier.fillMaxWidth().weight(1.0)) {
                 items(nutrientRefs.filter { it.nutrientType == nutrientType }) { nutrientRef ->
                     NutrientRefItem(
                             nutrientRef = nutrientRef,
@@ -163,13 +163,13 @@ private fun NutrientRefItem(
             verticalAlignment = Alignment.CenterVertically
     ) {
         // Nom du nutriment
-        Text(text = nutrientRef.name, modifier = Modifier.weight(2f).padding(horizontal = 8.dp))
+        Text(text = nutrientRef.name, modifier = Modifier.weight(2.0).padding(horizontal = 8.dp))
 
         // Valeur du nutriment
         OutlinedTextField(
                 value = nutrientRef.value,
                 onValueChange = onValueChange,
-                modifier = Modifier.weight(1f).padding(horizontal = 4.dp),
+                modifier = Modifier.weight(1.0).padding(horizontal = 4.dp),
                 singleLine = true,
                 colors =
                         TextFieldDefaults.outlinedTextFieldColors(
@@ -179,7 +179,7 @@ private fun NutrientRefItem(
         )
 
         // Sélection de l'unité physique (UnitEnum)
-        Box(modifier = Modifier.weight(1f).padding(horizontal = 4.dp)) {
+        Box(modifier = Modifier.weight(1.0).padding(horizontal = 4.dp)) {
             OutlinedButton(
                     onClick = { showUnitEnumDropdown = true },
                     modifier = Modifier.fillMaxWidth()
@@ -201,7 +201,7 @@ private fun NutrientRefItem(
         }
 
         // Sélection de l'unité de besoin (UnitReqEnum)
-        Box(modifier = Modifier.weight(1f).padding(horizontal = 4.dp)) {
+        Box(modifier = Modifier.weight(1.0).padding(horizontal = 4.dp)) {
             OutlinedButton(
                     onClick = { showUnitDropdown = true },
                     modifier = Modifier.fillMaxWidth()
@@ -223,7 +223,7 @@ private fun NutrientRefItem(
         }
 
         // Sélection de la référence bibliographique
-        Box(modifier = Modifier.weight(2f).padding(horizontal = 4.dp)) {
+        Box(modifier = Modifier.weight(2.0).padding(horizontal = 4.dp)) {
             OutlinedButton(
                     onClick = { showBiblioDropdown = true },
                     modifier = Modifier.fillMaxWidth()

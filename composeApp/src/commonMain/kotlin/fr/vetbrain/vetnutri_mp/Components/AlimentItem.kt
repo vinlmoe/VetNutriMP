@@ -34,7 +34,7 @@ fun AlimentItem(
         aliment: AlimentRation,
         isEditing: Boolean,
         onStartEditing: () -> Unit,
-        onQuantityChange: (Float) -> Unit,
+        onQuantityChange: (Double) -> Unit,
         onFinishEditing: () -> Unit,
         onDelete: () -> Unit,
         modifier: Modifier = Modifier
@@ -72,9 +72,13 @@ fun AlimentItem(
                                                         alim.getNutrient(NutrientMain.HUMIDITE)
 
                                                 Row(
-                                                        horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingXSmall)
+                                                        horizontalArrangement =
+                                                                Arrangement.spacedBy(
+                                                                        AppSizes.paddingXSmall
+                                                                )
                                                 ) {
-                                                        // Afficher la marque si c'est un aliment complet ou
+                                                        // Afficher la marque si c'est un aliment
+                                                        // complet ou
                                                         // complémentaire
                                                         if ((typeAliment == FoodKind.COMPLET ||
                                                                         typeAliment ==
@@ -84,27 +88,33 @@ fun AlimentItem(
                                                                 Text(
                                                                         text = marque,
                                                                         style =
-                                                                                MaterialTheme.typography
+                                                                                MaterialTheme
+                                                                                        .typography
                                                                                         .caption,
                                                                         color =
                                                                                 MaterialTheme.colors
-                                                                                        .onSurface.copy(
-                                                                                        alpha = 0.7f
-                                                                                )
+                                                                                        .onSurface
+                                                                                        .copy(
+                                                                                                alpha =
+                                                                                                        0.7f
+                                                                                        )
                                                                 )
                                                         }
 
-                                                        // Afficher l'état humide/sec basé sur l'humidité
+                                                        // Afficher l'état humide/sec basé sur
+                                                        // l'humidité
                                                         humidite?.let { hum ->
                                                                 val etatHumidite =
-                                                                        if (hum > 15f) "Humide" else "Sec"
+                                                                        if (hum > 15.0) "Humide"
+                                                                        else "Sec"
                                                                 Text(
                                                                         text = etatHumidite,
                                                                         style =
-                                                                                MaterialTheme.typography
+                                                                                MaterialTheme
+                                                                                        .typography
                                                                                         .caption,
                                                                         color =
-                                                                                if (hum > 15f)
+                                                                                if (hum > 15.0)
                                                                                         VetNutriColors
                                                                                                 .Primary
                                                                                 else
@@ -198,7 +208,7 @@ fun AlimentItem(
                                         Button(
                                                 onClick = {
                                                         val newQuantity =
-                                                                quantityText.toFloatOrNull()
+                                                                quantityText.toDoubleOrNull()
                                                                         ?: aliment.quantite
                                                         onQuantityChange(newQuantity)
                                                         onFinishEditing()

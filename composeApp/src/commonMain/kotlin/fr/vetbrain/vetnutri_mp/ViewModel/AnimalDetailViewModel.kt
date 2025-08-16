@@ -189,7 +189,7 @@ class AnimalDetailViewModel(
 
     /** Ajoute un aliment à une ration */
     @OptIn(ExperimentalUuidApi::class)
-    fun addAlimentToRation(ration: Ration, aliment: AlimentEv, quantite: Float) {
+    fun addAlimentToRation(ration: Ration, aliment: AlimentEv, quantite: Double) {
         println("Ajout de l'aliment ${aliment.nom} (${quantite}g) à la ration ${ration.uuid}")
 
         viewModelScope.launch {
@@ -438,7 +438,8 @@ class AnimalDetailViewModel(
             try {
                 consultationRepository.applyRecipeToRation(recipe, rationActuelle.uuid)
                 // Recharger la consultation pour refléter les nouveaux aliments
-                val refreshed = consultationRepository.getConsultationById(consultationActuelle.uuid)
+                val refreshed =
+                        consultationRepository.getConsultationById(consultationActuelle.uuid)
                 if (refreshed != null) {
                     _selectedConsultation.value = refreshed
                     // Resélectionner la ration par UUID
@@ -774,7 +775,7 @@ class AnimalDetailViewModel(
      * @param alimentUuid UUID de l'aliment à mettre à jour
      * @param newQuantity Nouvelle quantité de l'aliment
      */
-    fun updateAlimentQuantity(alimentUuid: String, newQuantity: Float) {
+    fun updateAlimentQuantity(alimentUuid: String, newQuantity: Double) {
         val currentRation = _selectedRation.value?.copy() ?: return
 
         // Créer une nouvelle liste d'aliments avec la quantité mise à jour
@@ -1516,7 +1517,7 @@ class AnimalDetailViewModel(
     fun updateCoefficient(
             consultationId: String,
             coefficientType: String,
-            nouveauCoefficient: Float,
+            nouveauCoefficient: Double,
             description: String?
     ) {
         viewModelScope.launch {
@@ -1593,7 +1594,7 @@ class AnimalDetailViewModel(
      * @param date La date de la mesure
      * @param weight Le poids en kg
      */
-    fun addWeight(date: LocalDate, weight: Float) {
+    fun addWeight(date: LocalDate, weight: Double) {
         viewModelScope.launch {
             try {
                 val animalActuel = _animal.value

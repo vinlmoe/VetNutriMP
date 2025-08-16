@@ -16,9 +16,9 @@ import fr.vetbrain.vetnutri_mp.Enumer.NutrientVitam
  */
 class RequirementAnalyzer {
     private val mapRef = mutableMapOf<String, ListNutrientRef>()
-    private var bee: Float = 0.0f
-    private var bw: Float = 0.0f
-    private var mw: Float = 0.0f
+    private var bee: Double = 0.0
+    private var bw: Double = 0.0
+    private var mw: Double = 0.0
 
     /**
      * Initialise l'analyseur avec les données nécessaires
@@ -32,9 +32,9 @@ class RequirementAnalyzer {
      */
     fun initialiser(
             references: List<ReferenceEv>,
-            bee: Float,
-            bw: Float,
-            mw: Float,
+            bee: Double,
+            bw: Double,
+            mw: Double,
             svp: List<SupplementalvariableP>,
             ration: Ration
     ) {
@@ -105,9 +105,9 @@ class RequirementAnalyzer {
     private fun definirReference(
             nutrient: Nutrient,
             references: List<ReferenceEv>,
-            bee: Float,
-            bw: Float,
-            mw: Float,
+            bee: Double,
+            bw: Double,
+            mw: Double,
             svp: List<SupplementalvariableP>,
             ration: Ration
     ) {
@@ -174,7 +174,7 @@ class RequirementAnalyzer {
      *
      * @return Le besoin énergétique de base
      */
-    fun getBEE(): Float {
+    fun getBEE(): Double {
         return bee
     }
 
@@ -183,7 +183,7 @@ class RequirementAnalyzer {
      *
      * @return Le poids de l'animal
      */
-    fun getBW(): Float {
+    fun getBW(): Double {
         return bw
     }
 
@@ -192,7 +192,7 @@ class RequirementAnalyzer {
      *
      * @return Le poids métabolique
      */
-    fun getMW(): Float {
+    fun getMW(): Double {
         return mw
     }
 

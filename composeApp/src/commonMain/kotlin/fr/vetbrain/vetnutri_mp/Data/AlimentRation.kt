@@ -8,10 +8,10 @@ import kotlin.uuid.ExperimentalUuidApi
 data class AlimentRation(
         val uuid: String = genUUID(),
         val uuidUnif: String = "",
-        val quantite: Float = 0f,
-        val proportion: Float = 0f,
+        val quantite: Double = 0.0,
+        val proportion: Double = 0.0,
         var aliment: AlimentEv? = null,
-        val weight: Float = 1f,
+        val weight: Double = 1.0,
         val category: Int = 0,
         val densiteEnergetique: Double = 0.0,
         val refAlimUnif: String? = null,
@@ -22,7 +22,7 @@ data class AlimentRation(
          * Propriété pour la compatibilité avec les références à quantity Cette propriété est un
          * alias pour quantite
          */
-        val quantity: Float
+        val quantity: Double
                 get() = quantite
 
         /**
@@ -31,7 +31,7 @@ data class AlimentRation(
          * @param nutrient Le nutriment à rechercher
          * @return La valeur du nutriment ou null si non trouvé
          */
-        fun getNutrient(nutrient: Nutrient): Float? {
+        fun getNutrient(nutrient: Nutrient): Double? {
                 // Déléguer à l'aliment sous-jacent s'il existe
                 return aliment?.getNutrient(nutrient)
         }
@@ -51,10 +51,10 @@ data class AlimentRation(
                 preferences: fr.vetbrain.vetnutri_mp.Data.PreferencesEspece? = null,
                 equationRepository: fr.vetbrain.vetnutri_mp.Repository.EquationRepository? = null,
                 referenceEv: ReferenceEv? = null
-        ): Float? {
+        ): Double? {
                 // D'abord, essayer d'obtenir la valeur directement
                 val valeurDirecte = getNutrient(nutrient)
-                if (valeurDirecte != null && valeurDirecte > 0f) {
+                if (valeurDirecte != null && valeurDirecte > 0.0) {
                         return valeurDirecte
                 }
 
@@ -76,7 +76,7 @@ data class AlimentRation(
                                                                         equationRepository,
                                                                 referenceEv = referenceEv
                                                         )
-                                        if (res != null) return res.toFloat()
+                                        if (res != null) return res
                                 }
                         }
 
@@ -157,7 +157,7 @@ data class AlimentRation(
                                 println("EQDBG-ING result accum=${accum}")
                                 // Si ratio: la dernière valeur res est la valeur par 100g
                                 // Si somme: accum contient la somme des contributions par 100g
-                                if (accum != null) return accum.toFloat()
+                                if (accum != null) return accum
                         }
 
                         // 3) Fallback: calculateur existant (micro-ration)
@@ -180,8 +180,8 @@ data class AlimentRation(
          *
          * @return La quantité d'énergie
          */
-        fun getEnergie(): Float {
-                return (densiteEnergetique * quantite).toFloat()
+        fun getEnergie(): Double {
+                return densiteEnergetique * quantite
         }
 
         /**
@@ -202,10 +202,10 @@ data class AlimentRation(
          * @param equationScript Le script de l'équation utilisée
          * @return La densité énergétique
          */
-        fun getDE(equationScript: String): Float {
+        fun getDE(equationScript: String): Double {
                 // Cette méthode devrait retourner la densité énergétique calculée
                 // avec l'équation spécifiée
-                return densiteEnergetique.toFloat()
+                return densiteEnergetique
         }
 
         /**
@@ -214,7 +214,7 @@ data class AlimentRation(
          * @param densite La densité énergétique
          * @param equationScript Le script de l'équation utilisée
          */
-        fun setDE(densite: Float, equationScript: String) {
+        fun setDE(densite: Double, equationScript: String) {
                 // Cette méthode devrait stocker la densité énergétique calculée
                 // avec l'équation spécifiée
                 // Comme densiteEnergetique est un val, on ne peut pas le modifier directement

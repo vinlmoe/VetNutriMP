@@ -3,12 +3,12 @@ package fr.vetbrain.vetnutri_mp.Enumer
 import fr.vetbrain.vetnutri_mp.Data.Labelable
 
 /** Énumération des sexes des animaux Correspond à l'enum Sex de Java */
-enum class Sex(val id: Int, val displayName: String, override val label: String, val coef: Float) :
+enum class Sex(val id: Int, val displayName: String, override val label: String, val coef: Double) :
         Labelable {
-    MALE_ENTIER(0, "Mâle entier", "MaleEnt", 1.0f),
-    MALE_CASTRE(1, "Mâle castré", "MaleSpray", 0.8f),
-    FEMELLE_ENTIERE(2, "Femelle entière", "FemEnt", 1.0f),
-    FEMELLE_STERILISEE(3, "Femelle stérilisée", "FemSpray", 0.8f);
+    MALE_ENTIER(0, "Mâle entier", "MaleEnt", 1.0),
+    MALE_CASTRE(1, "Mâle castré", "MaleSpray", 0.8),
+    FEMELLE_ENTIERE(2, "Femelle entière", "FemEnt", 1.0),
+    FEMELLE_STERILISEE(3, "Femelle stérilisée", "FemSpray", 0.8);
 
     companion object {
         fun fromId(id: Int): Sex = values().find { it.id == id } ?: MALE_ENTIER

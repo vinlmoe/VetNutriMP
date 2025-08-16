@@ -8,7 +8,7 @@ import kotlinx.serialization.Serializable
  * NutrientQuantity existante
  */
 @Serializable
-data class NutrientQuantityExt(val value: Float, val unit: UnitEnum) {
+data class NutrientQuantityExt(val value: Double, val unit: UnitEnum) {
     /**
      * Convertit cette quantité vers une autre unité
      *
@@ -54,7 +54,7 @@ data class NutrientQuantityExt(val value: Float, val unit: UnitEnum) {
      * @param factor Le facteur de multiplication
      * @return La quantité multipliée
      */
-    fun times(factor: Float): NutrientQuantityExt {
+    fun times(factor: Double): NutrientQuantityExt {
         return NutrientQuantityExt(value * factor, unit)
     }
 

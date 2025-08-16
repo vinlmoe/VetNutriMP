@@ -29,7 +29,7 @@ fun AlimentEv.toJson(): AlimentEvJson {
             Especes = this.especes,
             gamme = this.gamme ?: "",
             presentation = "", // Non présent dans AlimentEv
-            quantInt = this.quantInt ?: 0f,
+            quantInt = this.quantInt ?: 0.0,
             cont = if (this.cont != null) this.cont.name else "NO",
             deprecated = this.deprecated,
             DataB = this.dataB ?: "6",
@@ -337,19 +337,19 @@ fun ConsultationEv.toJson(): ConsultationEvJson {
             objet = this.objectConsult,
             observation = this.observation,
             CRendu = this.cRendu,
-            Poids = this.weight ?: 0f,
-            PoidsIdeal = this.idealWeight ?: 0f,
+            Poids = this.weight ?: 0.0,
+            PoidsIdeal = this.idealWeight ?: 0.0,
             PoidsIdealex = this.idealWeight != null,
-            Boisson = this.water ?: 0f,
-            TauxMG = this.bodyFat ?: 20f,
+            Boisson = this.water ?: 0.0,
+            TauxMG = this.bodyFat ?: 20.0,
             suivi = false, // Non présent dans ConsultationEv
             bcs = "", // Non présent dans ConsultationEv
             MCS = this.MCS ?: 3,
-            k1value = this.k1Value ?: 1f,
-            k2value = this.k2Value ?: 1f,
-            k3value = this.k3Value ?: 1f,
-            k4value = this.k4Value ?: 1f,
-            k5value = this.k5Value ?: 1f,
+            k1value = this.k1Value ?: 1.0,
+            k2value = this.k2Value ?: 1.0,
+            k3value = this.k3Value ?: 1.0,
+            k4value = this.k4Value ?: 1.0,
+            k5value = this.k5Value ?: 1.0,
             rationList = this.rations.associateBy({ it.uuid }, { it.toJson() }),
             diseaseRef = listOf(), // Non présent dans ConsultationEv
             svp = this.suppVarp.map { it.toJson() }
@@ -432,7 +432,10 @@ fun AlimentRationJson.toData(): AlimentRation {
 
 // SupplementalvariableP <-> SupplementalvariablePJson
 fun SupplementalvariableP.toJson(): SupplementalvariablePJson {
-    return SupplementalvariablePJson(variable = this.variable?.name ?: "", value = this.varue ?: 0f)
+    return SupplementalvariablePJson(
+            variable = this.variable?.name ?: "",
+            value = this.varue ?: 0.0
+    )
 }
 
 fun SupplementalvariablePJson.toData(): SupplementalvariableP {
@@ -501,10 +504,10 @@ fun AdjustSaveEvJson.toData(): AdjustSaveEv {
 fun TargetDefinitionEv.toJson(): TargetDefinitionEvJson {
     return TargetDefinitionEvJson(
             target = this.targ?.name ?: "",
-            value = this.varue ?: 0f,
+            value = this.varue ?: 0.0,
             unit = this.ure?.name ?: "",
-            percentCompletion = this.percent ?: 0f,
-            pas = this.measure ?: 0f
+            percentCompletion = this.percent ?: 0.0,
+            pas = this.measure ?: 0.0
     )
 }
 

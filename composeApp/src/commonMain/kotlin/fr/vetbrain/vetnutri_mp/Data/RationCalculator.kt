@@ -12,11 +12,11 @@ import kotlinx.serialization.Serializable
 @Serializable
 class RationCalculator {
 
-    private var poids: Float = 0f
-    private var poidsOptimal: Float = 0f
-    private var bee: Float = 0f
-    private var poidsMetabolique: Float = 0f
-    private var poidsMetaboliqueOptimal: Float = 0f
+    private var poids: Double = 0.0
+    private var poidsOptimal: Double = 0.0
+    private var bee: Double = 0.0
+    private var poidsMetabolique: Double = 0.0
+    private var poidsMetaboliqueOptimal: Double = 0.0
     private var espece: Espece = Espece.CHIEN
     private var equationBEE: Equation? = null
     private var equationPM: Equation? = null
@@ -33,7 +33,7 @@ class RationCalculator {
      * @param poidsOptimal Le poids optimal de l'animal
      * @param espece L'espèce de l'animal
      */
-    constructor(poids: Float, poidsOptimal: Float, espece: Espece) {
+    constructor(poids: Double, poidsOptimal: Double, espece: Espece) {
         this.poids = poids
         this.poidsOptimal = poidsOptimal
         this.espece = espece
@@ -49,22 +49,22 @@ class RationCalculator {
         if (equationPM != null) {
             // TODO: Implémenter l'évaluation des équations personnalisées
             // Pour l'instant, utiliser le calcul par défaut
-            poidsMetabolique = poids.toDouble().pow(0.75).toFloat()
-            poidsMetaboliqueOptimal = poidsOptimal.toDouble().pow(0.75).toFloat()
+            poidsMetabolique = poids.pow(0.75)
+            poidsMetaboliqueOptimal = poidsOptimal.pow(0.75)
         } else {
             // Calcul par défaut si pas d'équation
-            poidsMetabolique = poids.toDouble().pow(0.75).toFloat()
-            poidsMetaboliqueOptimal = poidsOptimal.toDouble().pow(0.75).toFloat()
+            poidsMetabolique = poids.pow(0.75)
+            poidsMetaboliqueOptimal = poidsOptimal.pow(0.75)
         }
 
         // Calcul du besoin énergétique
         if (equationBEE != null) {
             // TODO: Implémenter l'évaluation des équations personnalisées
             // Pour l'instant, utiliser le calcul par défaut
-            bee = 70f * poidsMetabolique
+            bee = 70.0 * poidsMetabolique
         } else {
             // Calcul par défaut si pas d'équation
-            bee = 70f * poidsMetabolique
+            bee = 70.0 * poidsMetabolique
         }
     }
 
@@ -92,23 +92,23 @@ class RationCalculator {
 
     // Getters et setters
 
-    fun getPoids(): Float = poids
+    fun getPoids(): Double = poids
 
-    fun setPoids(poids: Float) {
+    fun setPoids(poids: Double) {
         this.poids = poids
     }
 
-    fun getOptiPoids(): Float = poidsOptimal
+    fun getOptiPoids(): Double = poidsOptimal
 
-    fun setOptiPoids(poidsOptimal: Float) {
+    fun setOptiPoids(poidsOptimal: Double) {
         this.poidsOptimal = poidsOptimal
     }
 
-    fun getBEE(): Float = bee
+    fun getBEE(): Double = bee
 
-    fun getPM(): Float = poidsMetabolique
+    fun getPM(): Double = poidsMetabolique
 
-    fun getPMOpti(): Float = poidsMetaboliqueOptimal
+    fun getPMOpti(): Double = poidsMetaboliqueOptimal
 
     fun getEspece(): Espece = espece
 

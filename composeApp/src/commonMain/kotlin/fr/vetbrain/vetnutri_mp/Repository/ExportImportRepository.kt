@@ -19,7 +19,7 @@ class ExportImportRepository(
         private val biblioRepository: BiblioRefRepository? = null,
         private val consultationRepository: ConsultationRepository? = null
 ) {
-        class ImportProgressListener(val onProgress: (Float) -> Unit, val onLog: (String) -> Unit)
+        class ImportProgressListener(val onProgress: (Double) -> Unit, val onLog: (String) -> Unit)
 
         private val jsonPretty: Json = Json {
                 prettyPrint = true
@@ -206,7 +206,7 @@ class ExportImportRepository(
                 listener: ImportProgressListener? = null
         ): ImportCounts {
 
-                listener?.onProgress(0.02f)
+                listener?.onProgress(0.02)
                 listener?.onLog("Lecture/Parsing du JSON…")
                 val envelope = jsonPretty.decodeFromString<ApiEnvelope>(apiJson)
 
@@ -229,10 +229,10 @@ class ExportImportRepository(
                 var processedUnits = 0
                 fun advance(units: Int = 1) {
                         processedUnits += units
-                        val p = 0.1f + 0.9f * (processedUnits.toFloat() / totalUnits.toFloat())
-                        listener?.onProgress(p.coerceIn(0f, 1f))
+                        val p = 0.1 + 0.9 * (processedUnits.toDouble() / totalUnits.toDouble())
+                        listener?.onProgress(p.coerceIn(0.0, 1.0))
                 }
-                listener?.onProgress(0.1f)
+                listener?.onProgress(0.1)
 
                 // 1) Aliments
                 if (envelope.foods.isNotEmpty() && foodRepository != null) {

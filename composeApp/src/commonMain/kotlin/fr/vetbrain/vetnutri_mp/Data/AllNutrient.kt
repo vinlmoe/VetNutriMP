@@ -22,7 +22,7 @@ class AllNutrient private constructor() {
         private set
     var unit: String = ""
         private set
-    var mne: Float = 0f
+    var mne: Double = 0.0
         private set
     var kindnut: Int = 0
         private set
@@ -34,7 +34,7 @@ class AllNutrient private constructor() {
      * @param mne Le code du type principal de nutriment
      * @param kind Le code du type spécifique de nutriment
      */
-    private constructor(label: String, mne: Float, kind: Int) : this() {
+    private constructor(label: String, mne: Double, kind: Int) : this() {
         this.label = label
         this.mne = mne
         this.kindnut = kind
@@ -133,7 +133,7 @@ class AllNutrient private constructor() {
          * @param kind Le code du type spécifique de nutriment
          * @return Le nutriment correspondant ou null si non trouvé
          */
-        fun getByMneAndKind(mne: Float, kind: Int): AllNutrient? {
+        fun getByMneAndKind(mne: Double, kind: Int): AllNutrient? {
             return getById((mne.toInt() * 1000) + kind)
         }
     }

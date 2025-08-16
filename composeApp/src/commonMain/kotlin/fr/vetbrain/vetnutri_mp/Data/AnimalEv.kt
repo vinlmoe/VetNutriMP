@@ -61,9 +61,7 @@ data class AnimalEv(
             // Approximations: utiliser coefficientAjustement comme proxy si pas de calcul dédié
             val poids = c.weight?.toDouble()
             if (poids != null) {
-                fr.vetbrain.vetnutri_mp.Utils.EquationEvaluator.calculerBesoinEnergetiqueBase(
-                                poids.toFloat()
-                        )
+                fr.vetbrain.vetnutri_mp.Utils.EquationEvaluator.calculerBesoinEnergetiqueBase(poids)
                         .also {
                             return it
                         }

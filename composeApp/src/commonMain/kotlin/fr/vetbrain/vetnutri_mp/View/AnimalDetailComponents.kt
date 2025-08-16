@@ -408,7 +408,7 @@ fun AlimentItem(
         isEditing: Boolean = false,
         onStartEditing: () -> Unit = {},
         onEndEditing: () -> Unit = {},
-        onQuantityChange: (Float) -> Unit = {},
+        onQuantityChange: (Double) -> Unit = {},
         onDelete: () -> Unit = {},
         modifier: Modifier = Modifier
 ) {
@@ -422,7 +422,7 @@ fun AlimentItem(
 
         // Fonction de validation de la quantité
         val validateQuantity = {
-                val newQuantity = quantityText.toFloatOrNull() ?: aliment.quantity
+                val newQuantity = quantityText.toDoubleOrNull() ?: aliment.quantity
                 onQuantityChange(newQuantity)
         }
 
@@ -461,7 +461,7 @@ fun AlimentItem(
                                                 KeyboardOptions(keyboardType = KeyboardType.Number),
                                         singleLine = true,
                                         modifier =
-                                                Modifier.width(AppSizes.textFieldHeight.times(2.2f))
+                                                Modifier.width(AppSizes.textFieldHeight.times(2.2))
                                 )
                                 Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
                                 IconButton(onClick = validateQuantity) {
@@ -475,7 +475,7 @@ fun AlimentItem(
                                         Icon(
                                                 AppIcons.Close,
                                                 contentDescription = "Annuler",
-                                                tint = Color.Red
+                                                tint = Color.Red.copy(alpha = 0.8)
                                         )
                                 }
                         }

@@ -5,11 +5,8 @@ import fr.vetbrain.vetnutri_mp.Enumer.AlimIndic
 import fr.vetbrain.vetnutri_mp.Enumer.FoodKind
 import fr.vetbrain.vetnutri_mp.Enumer.GroupAlim
 import fr.vetbrain.vetnutri_mp.Utils.genUUID
-import kotlin.uuid.ExperimentalUuidApi
-import kotlin.uuid.Uuid
 
 /** Classe représentant un aliment évalué Basée sur la classe AlimentEv du projet Java original */
-
 data class AlimentEv(
         val uuid: String = genUUID(),
         val group: GroupAlim? = null,
@@ -22,7 +19,7 @@ data class AlimentEv(
         val nom: String? = null,
         val consistent: Boolean = false,
         val cont: ContEnum? = null,
-        var quantInt: Float? = null,
+        var quantInt: Double? = null,
         var deprecated: Boolean = false,
         var dataB: String? = null,
         var especes: MutableList<String> = mutableListOf(),
@@ -36,7 +33,7 @@ data class AlimentEv(
          * @param nutrient Le nutriment à rechercher
          * @return La valeur du nutriment ou null si non trouvé
          */
-        fun getNutrient(nutrient: Nutrient): Float? {
+        fun getNutrient(nutrient: Nutrient): Double? {
                 val quantity = valMap[nutrient]
                 return quantity?.value
         }
@@ -47,7 +44,7 @@ data class AlimentEv(
          * @param nutrient Le nutriment à définir
          * @param value La valeur du nutriment
          */
-        fun setNutrient(nutrient: Nutrient, value: Float) {
+        fun setNutrient(nutrient: Nutrient, value: Double) {
                 valMap[nutrient] = NutrientQuantity(value, nutrient.ue.label)
         }
 

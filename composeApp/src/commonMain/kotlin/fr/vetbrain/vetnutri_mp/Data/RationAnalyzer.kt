@@ -15,15 +15,15 @@ import kotlinx.serialization.Serializable
 data class AnalyseResultat(
         val rationId: String = "",
         val rationName: String = "",
-        val quantiteTotale: Float = 0f,
-        val densiteEnergetique: Float = 0f,
-        val macronutriments: Map<String, Float> = mapOf(),
-        val mineraux: Map<String, Float> = mapOf(),
-        val vitamines: Map<String, Float> = mapOf(),
-        val lipides: Map<String, Float> = mapOf(),
-        val ratios: Map<String, Float> = mapOf(),
-        val completude: Float = 0f,
-        val equilibre: Float = 0f,
+        val quantiteTotale: Double = 0.0,
+        val densiteEnergetique: Double = 0.0,
+        val macronutriments: Map<String, Double> = mapOf(),
+        val mineraux: Map<String, Double> = mapOf(),
+        val vitamines: Map<String, Double> = mapOf(),
+        val lipides: Map<String, Double> = mapOf(),
+        val ratios: Map<String, Double> = mapOf(),
+        val completude: Double = 0.0,
+        val equilibre: Double = 0.0,
         val alertes: List<String> = listOf()
 )
 
@@ -40,8 +40,7 @@ class RationAnalyzer {
         println("Analyse de la ration: ${ration.name} (${ration.uuid})")
 
         if (consultation != null) {
-            consultation.suppVarp.forEach { variable ->
-            }
+            consultation.suppVarp.forEach { variable -> }
         }
 
         // Listes des nutriments à analyser par catégorie
@@ -60,52 +59,52 @@ class RationAnalyzer {
         val valeurs = calculerValeursNutritionnelles(ration.alimentMutableList, tousNutriments)
 
         // Préparation des résultats
-        val macronutrimentsMap = mutableMapOf<String, Float>()
-        val minerauxMap = mutableMapOf<String, Float>()
-        val vitaminesMap = mutableMapOf<String, Float>()
-        val lipidesMap = mutableMapOf<String, Float>()
-        val ratiosMap = mutableMapOf<String, Float>()
+        val macronutrimentsMap = mutableMapOf<String, Double>()
+        val minerauxMap = mutableMapOf<String, Double>()
+        val vitaminesMap = mutableMapOf<String, Double>()
+        val lipidesMap = mutableMapOf<String, Double>()
+        val ratiosMap = mutableMapOf<String, Double>()
 
         // Remplissage des maps de résultats
         macronutriments.forEach { nutriment ->
-            macronutrimentsMap[nutriment.label] = valeurs[nutriment] ?: 0f
+            macronutrimentsMap[nutriment.label] = valeurs[nutriment] ?: 0.0
         }
 
-        mineraux.forEach { nutriment -> minerauxMap[nutriment.label] = valeurs[nutriment] ?: 0f }
+        mineraux.forEach { nutriment -> minerauxMap[nutriment.label] = valeurs[nutriment] ?: 0.0 }
 
-        vitamines.forEach { nutriment -> vitaminesMap[nutriment.label] = valeurs[nutriment] ?: 0f }
+        vitamines.forEach { nutriment -> vitaminesMap[nutriment.label] = valeurs[nutriment] ?: 0.0 }
 
-        lipides.forEach { nutriment -> lipidesMap[nutriment.label] = valeurs[nutriment] ?: 0f }
+        lipides.forEach { nutriment -> lipidesMap[nutriment.label] = valeurs[nutriment] ?: 0.0 }
 
         // Calcul des ratios nutritionnels
-        val omega3 = valeurs[NutrientLipid.O3] ?: 0f
-        val omega6 = valeurs[NutrientLipid.O6] ?: 0f
-        val calcium = valeurs[NutrientMacro.CAL] ?: 0f
-        val phosphore = valeurs[NutrientMacro.PHOS] ?: 0f
-        val sodium = valeurs[NutrientMacro.NA] ?: 0f
-        val potassium = valeurs[NutrientMacro.K] ?: 0f
-        val zinc = valeurs[NutrientMin.ZN] ?: 0f
-        val cuivre = valeurs[NutrientMin.CU] ?: 0f
-        val proteines = valeurs[NutrientMain.PROTEINE] ?: 0f
+        val omega3 = valeurs[NutrientLipid.O3] ?: 0.0
+        val omega6 = valeurs[NutrientLipid.O6] ?: 0.0
+        val calcium = valeurs[NutrientMacro.CAL] ?: 0.0
+        val phosphore = valeurs[NutrientMacro.PHOS] ?: 0.0
+        val sodium = valeurs[NutrientMacro.NA] ?: 0.0
+        val potassium = valeurs[NutrientMacro.K] ?: 0.0
+        val zinc = valeurs[NutrientMin.ZN] ?: 0.0
+        val cuivre = valeurs[NutrientMin.CU] ?: 0.0
+        val proteines = valeurs[NutrientMain.PROTEINE] ?: 0.0
 
         // Calcul des ratios
-        if (omega3 > 0f && omega6 > 0f) {
+        if (omega3 > 0.0 && omega6 > 0.0) {
             ratiosMap["Oméga-6/Oméga-3"] = omega6 / omega3
         }
 
-        if (calcium > 0f && phosphore > 0f) {
+        if (calcium > 0.0 && phosphore > 0.0) {
             ratiosMap["Calcium/Phosphore"] = calcium / phosphore
         }
 
-        if (sodium > 0f && potassium > 0f) {
+        if (sodium > 0.0 && potassium > 0.0) {
             ratiosMap["Potassium/Sodium"] = potassium / sodium
         }
 
-        if (zinc > 0f && cuivre > 0f) {
+        if (zinc > 0.0 && cuivre > 0.0) {
             ratiosMap["Zinc/Cuivre"] = zinc / cuivre
         }
 
-        if (proteines > 0f && phosphore > 0f) {
+        if (proteines > 0.0 && phosphore > 0.0) {
             ratiosMap["Protéines/Phosphore"] = proteines / phosphore
         }
 
@@ -114,15 +113,15 @@ class RationAnalyzer {
 
         // Vérification de l'équilibre des ratios (exemples de valeurs optimales)
         if (ratiosMap.containsKey("Oméga-6/Oméga-3") &&
-                        (ratiosMap["Oméga-6/Oméga-3"]!! < 2.5f ||
-                                ratiosMap["Oméga-6/Oméga-3"]!! > 10f)
+                        (ratiosMap["Oméga-6/Oméga-3"]!! < 2.5 ||
+                                ratiosMap["Oméga-6/Oméga-3"]!! > 10.0)
         ) {
             alertes.add("Le ratio Oméga-6/Oméga-3 est déséquilibré (optimal entre 2.5 et 10)")
         }
 
         if (ratiosMap.containsKey("Calcium/Phosphore") &&
-                        (ratiosMap["Calcium/Phosphore"]!! < 1f ||
-                                ratiosMap["Calcium/Phosphore"]!! > 2f)
+                        (ratiosMap["Calcium/Phosphore"]!! < 1.0 ||
+                                ratiosMap["Calcium/Phosphore"]!! > 2.0)
         ) {
             alertes.add("Le ratio Calcium/Phosphore est déséquilibré (optimal entre 1.0 et 2.0)")
         }
@@ -141,23 +140,23 @@ class RationAnalyzer {
                 )
 
         for (nutriment in nutrimentsCles) {
-            if (valeurs[nutriment] == null || valeurs[nutriment]!! <= 0f) {
+            if (valeurs[nutriment] == null || valeurs[nutriment]!! <= 0.0) {
                 alertes.add("Nutriment essentiel manquant: ${nutriment.label}")
             }
         }
 
         // Calcul du score de complétude (% des nutriments essentiels présents)
-        val nutrimentsPrésents = nutrimentsCles.count { valeurs[it] != null && valeurs[it]!! > 0f }
-        val completude = (nutrimentsPrésents.toFloat() / nutrimentsCles.size) * 100f
+        val nutrimentsPrésents = nutrimentsCles.count { valeurs[it] != null && valeurs[it]!! > 0.0 }
+        val completude = (nutrimentsPrésents.toDouble() / nutrimentsCles.size) * 100.0
 
         // Calcul du score d'équilibre (basé sur les ratios)
         val ratiosOptimaux =
                 mapOf(
-                        "Oméga-6/Oméga-3" to (2.5f..10f),
-                        "Calcium/Phosphore" to (1f..2f),
-                        "Potassium/Sodium" to (2f..4f),
-                        "Zinc/Cuivre" to (5f..10f),
-                        "Protéines/Phosphore" to (15f..30f)
+                        "Oméga-6/Oméga-3" to (2.5..10.0),
+                        "Calcium/Phosphore" to (1.0..2.0),
+                        "Potassium/Sodium" to (2.0..4.0),
+                        "Zinc/Cuivre" to (5.0..10.0),
+                        "Protéines/Phosphore" to (15.0..30.0)
                 )
 
         var ratiosEquilibres = 0
@@ -174,9 +173,9 @@ class RationAnalyzer {
 
         val equilibre =
                 if (ratiosCalcules > 0) {
-                    (ratiosEquilibres.toFloat() / ratiosCalcules) * 100f
+                    (ratiosEquilibres.toDouble() / ratiosCalcules) * 100.0
                 } else {
-                    0f
+                    0.0
                 }
 
         return AnalyseResultat(
@@ -210,15 +209,15 @@ class RationAnalyzer {
 
         // Comparer les macronutriments
         for ((nutriment, valeur1) in analyse1.macronutriments) {
-            val valeur2 = analyse2.macronutriments[nutriment] ?: 0f
+            val valeur2 = analyse2.macronutriments[nutriment] ?: 0.0
             val difference = valeur2 - valeur1
             val pourcentage =
-                    if (valeur1 > 0f) {
-                        difference / valeur1 * 100f
-                    } else if (valeur2 > 0f) {
-                        100f
+                    if (valeur1 > 0.0) {
+                        difference / valeur1 * 100.0
+                    } else if (valeur2 > 0.0) {
+                        100.0
                     } else {
-                        0f
+                        0.0
                     }
 
             resultat[nutriment] =
@@ -237,10 +236,10 @@ class RationAnalyzer {
                 resultat[nutriment] =
                         ComparaisonNutriment(
                                 nomNutriment = nutriment,
-                                valeur1 = 0f,
+                                valeur1 = 0.0,
                                 valeur2 = valeur2,
                                 difference = valeur2,
-                                pourcentageDifference = 100f
+                                pourcentageDifference = 100.0
                         )
             }
         }
@@ -260,21 +259,21 @@ class RationAnalyzer {
 
     /** Combine les valeurs d'une catégorie nutritionnelle pour la comparaison */
     private fun combinerCategorie(
-            valeurs1: Map<String, Float>,
-            valeurs2: Map<String, Float>,
+            valeurs1: Map<String, Double>,
+            valeurs2: Map<String, Double>,
             resultat: MutableMap<String, ComparaisonNutriment>
     ) {
         // Ajouter les nutriments de la première catégorie
         for ((nutriment, valeur1) in valeurs1) {
-            val valeur2 = valeurs2[nutriment] ?: 0f
+            val valeur2 = valeurs2[nutriment] ?: 0.0
             val difference = valeur2 - valeur1
             val pourcentage =
-                    if (valeur1 > 0f) {
-                        difference / valeur1 * 100f
-                    } else if (valeur2 > 0f) {
-                        100f
+                    if (valeur1 > 0.0) {
+                        difference / valeur1 * 100.0
+                    } else if (valeur2 > 0.0) {
+                        100.0
                     } else {
-                        0f
+                        0.0
                     }
 
             resultat[nutriment] =
@@ -293,10 +292,10 @@ class RationAnalyzer {
                 resultat[nutriment] =
                         ComparaisonNutriment(
                                 nomNutriment = nutriment,
-                                valeur1 = 0f,
+                                valeur1 = 0.0,
                                 valeur2 = valeur2,
                                 difference = valeur2,
-                                pourcentageDifference = 100f
+                                pourcentageDifference = 100.0
                         )
             }
         }
@@ -307,8 +306,8 @@ class RationAnalyzer {
 @Serializable
 data class ComparaisonNutriment(
         val nomNutriment: String,
-        val valeur1: Float,
-        val valeur2: Float,
-        val difference: Float,
-        val pourcentageDifference: Float
+        val valeur1: Double,
+        val valeur2: Double,
+        val difference: Double,
+        val pourcentageDifference: Double
 )

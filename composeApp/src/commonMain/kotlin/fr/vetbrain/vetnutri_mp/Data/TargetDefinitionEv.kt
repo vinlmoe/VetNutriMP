@@ -11,10 +11,10 @@ data class TargetDefinitionEv(
         var refMethod: String?,
         var ord: Int?,
         var kind: Int?,
-        var varue: Float?,
+        var varue: Double?,
         var unit: Int?,
-        var percent: Float?,
-        var measure: Float?,
+        var percent: Double?,
+        var measure: Double?,
         var targ: TargetAdjust? = null,
         var ure: UnitReqEnum? = null
 )

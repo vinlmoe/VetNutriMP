@@ -3,19 +3,19 @@ package fr.vetbrain.vetnutri_mp.Enumer
 import fr.vetbrain.vetnutri_mp.Data.Labelable
 
 /** Énumération des catégories principales de nutriments */
-enum class MainNutrientEnum(val id: Int, override val label: String, val coef: Float) : Labelable {
-    MIN(0, "Minéraux", 1.0f),
-    ANA(1, "Acides aminés", 1.0f),
-    MACRO(2, "Macronutriments", 1.0f),
-    VITAM(3, "Vitamines", 1.0f),
-    BASE(4, "Base de données", 1.0f),
-    LIPID(5, "Acides gras", 1.0f),
-    OTHER(6, "Autres", 1.0f),
-    ENERGIE(7, "Énergie", 1.0f),
-    NO(8, "Aucun", 1.0f),
-    AMA(9, "Acides aminés", 1.0f),
-    INGREDIENT(10, "Ingrédients", 1.0f),
-    INDICAT(11, "Indicateurs", 1.0f);
+enum class MainNutrientEnum(val id: Int, override val label: String, val coef: Double) : Labelable {
+    MIN(0, "Minéraux", 1.0),
+    ANA(1, "Acides aminés", 1.0),
+    MACRO(2, "Macronutriments", 1.0),
+    VITAM(3, "Vitamines", 1.0),
+    BASE(4, "Base de données", 1.0),
+    LIPID(5, "Acides gras", 1.0),
+    OTHER(6, "Autres", 1.0),
+    ENERGIE(7, "Énergie", 1.0),
+    NO(8, "Aucun", 1.0),
+    AMA(9, "Acides aminés", 1.0),
+    INGREDIENT(10, "Ingrédients", 1.0),
+    INDICAT(11, "Indicateurs", 1.0);
 
     fun getNutrient(i: Int): String {
         val result =

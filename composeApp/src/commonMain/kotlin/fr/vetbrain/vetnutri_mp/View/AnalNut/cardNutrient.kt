@@ -168,14 +168,14 @@ fun AnalyseNutritionnelleCard(
                                                     eq.equationScript +
                                                     "'"
                                     )
-                                    val poids = (animal?.consultations?.lastOrNull()?.weight ?: 0f)
-                                    val bee = (animal?.getBEE()?.toFloat() ?: 0f)
+                                    val poids = (animal?.consultations?.lastOrNull()?.weight ?: 0.0)
+                                    val bee = (animal?.getBEE() ?: 0.0)
                                     val mw =
                                             if (poids > 0)
                                                     fr.vetbrain.vetnutri_mp.Utils.EquationEvaluator
                                                             .calculerPoidsMetabolique(poids)
-                                                            .toFloat()
-                                            else 0f
+                                                            .toDouble()
+                                            else 0.0
                                     println(
                                             "EQDBG inputs: BW=" +
                                                     poids +
@@ -447,7 +447,7 @@ fun AnalyseNutritionnelleCard(
                                     ->
                                     val nom = pair.first
                                     val valeur = pair.second
-                                    val apport = valeur.valeur.toFloat()
+                                    val apport = valeur.valeur
                                     val typeExpr =
                                             typeExpressionBesoin ?: TypeExpressionBesoin.DEFAULT
                                     if (referenceUtilisee != null) {
@@ -1063,24 +1063,23 @@ private fun obtenirIconeConformite(
  * DetailNutrimentAnalysis.kt pour éviter les dépendances)
  */
 private fun calculerBesoinAbsoluLocal(
-        valeurRef: Float,
+        valeurRef: Double,
         uniteRef: UnitReqEnum,
         besoinEnergetiqueEntretien: Double?,
         poidsAnimal: Double?,
         poidsMetabolique: Double?
 ): Double? {
-    val valeurRefD: Double = valeurRef.toDouble()
     return when (uniteRef) {
         UnitReqEnum.PERKCAL ->
-                besoinEnergetiqueEntretien?.let { bee: Double -> (valeurRefD * bee) / 1000.0 }
+                besoinEnergetiqueEntretien?.let { bee: Double -> (valeurRef * bee) / 1000.0 }
         UnitReqEnum.PERKJ ->
                 besoinEnergetiqueEntretien?.let { bee: Double ->
                     val beeEnKj: Double = bee * 4.184
-                    (valeurRefD * beeEnKj) / 1000.0
+                    (valeurRef * beeEnKj) / 1000.0
                 }
-        UnitReqEnum.PERKG -> poidsAnimal?.let { poids: Double -> valeurRefD * poids }
-        UnitReqEnum.PERMS -> poidsMetabolique?.let { poidsMetab: Double -> valeurRefD * poidsMetab }
-        UnitReqEnum.ABSOLUTE -> valeurRefD
+        UnitReqEnum.PERKG -> poidsAnimal?.let { poids: Double -> valeurRef * poids }
+        UnitReqEnum.PERMS -> poidsMetabolique?.let { poidsMetab: Double -> valeurRef * poidsMetab }
+        UnitReqEnum.ABSOLUTE -> valeurRef
         UnitReqEnum.RATIO -> null
         else -> null
     }

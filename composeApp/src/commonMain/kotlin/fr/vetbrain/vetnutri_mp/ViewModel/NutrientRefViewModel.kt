@@ -63,7 +63,6 @@ class NutrientRefViewModel(
                 // Charger les vrais nutriments depuis la référence
                 val nutrients = loadNutrientsFromReference(reference)
                 _nutrientRefs.value = nutrients
-
             } catch (e: Exception) {
                 _error.value =
                         "Erreur lors du chargement des nutriments: ${e.message ?: "Erreur inconnue"}"
@@ -91,7 +90,6 @@ class NutrientRefViewModel(
                 // Conserver les nutriments des autres types déjà chargés
                 val otherNutrients = _nutrientRefs.value.filter { it.nutrientType != nutrientType }
                 _nutrientRefs.value = otherNutrients + nutrients
-
             } catch (e: Exception) {
                 _error.value =
                         "Erreur lors du chargement des nutriments: ${e.message ?: "Erreur inconnue"}"
@@ -120,7 +118,6 @@ class NutrientRefViewModel(
 
                 // Recharger les nutriments
                 loadNutrientsForType(nutrientType)
-
             } catch (e: Exception) {
                 _error.value =
                         "Erreur lors de la réinitialisation: ${e.message ?: "Erreur inconnue"}"
@@ -148,8 +145,7 @@ class NutrientRefViewModel(
                 // Sauvegarder la référence mise à jour dans la base de données
                 referenceEvRepository.updateReferenceEv(reference)
 
-                nutrientsToSave.forEach {
-                }
+                nutrientsToSave.forEach {}
             } catch (e: Exception) {
                 _error.value = "Erreur lors de la sauvegarde: ${e.message ?: "Erreur inconnue"}"
             } finally {
@@ -210,8 +206,7 @@ class NutrientRefViewModel(
                 // Charger les vraies données depuis le repository
                 biblioRefRepository.getAllBiblioRefs().collect { biblioRefs ->
                     _availableBiblioRefs.value = biblioRefs
-                    biblioRefs.forEach { biblio ->
-                    }
+                    biblioRefs.forEach { biblio -> }
                 }
             } catch (e: Exception) {
                 _error.value =
@@ -333,21 +328,19 @@ class NutrientRefViewModel(
                 val nutrient = findNutrientByName(nutrientName, nutrientRef.nutrientType)
 
                 if (nutrient != null) {
-                    // Convertir la valeur en float
-                    val floatValue = nutrientRef.value.toFloatOrNull() ?: 0f
+                    // Convertir la valeur en double
+                    val doubleValue = nutrientRef.value.toDoubleOrNull() ?: 0.0
 
                     // Définir le nutriment dans la référence
                     reference.definirNutriment(
-                            floatValue,
+                            doubleValue,
                             nutrient,
                             level,
                             nutrientRef.unitReq,
                             nutrientRef.biblioRef ?: BiblioRef()
                     )
-
                 }
-            } catch (e: Exception) {
-            }
+            } catch (e: Exception) {}
         }
     }
 

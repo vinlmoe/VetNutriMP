@@ -53,11 +53,11 @@ data class ReferenceEv(
 
         init {
                 // Initialisation des coefficients par défaut
-                modk1.add(CoefP(description = "Normal", coef = 1.0f, groupUUID = 0))
-                modk2.add(CoefP(description = "Normal", coef = 1.0f, groupUUID = 1))
-                modk3.add(CoefP(description = "Normal", coef = 1.0f, groupUUID = 2))
-                modk4.add(CoefP(description = "Normal", coef = 1.0f, groupUUID = 3))
-                modk5.add(CoefP(description = "Normal", coef = 1.0f, groupUUID = 4))
+                modk1.add(CoefP(description = "Normal", coef = 1.0, groupUUID = 0))
+                modk2.add(CoefP(description = "Normal", coef = 1.0, groupUUID = 1))
+                modk3.add(CoefP(description = "Normal", coef = 1.0, groupUUID = 2))
+                modk4.add(CoefP(description = "Normal", coef = 1.0, groupUUID = 3))
+                modk5.add(CoefP(description = "Normal", coef = 1.0, groupUUID = 4))
         }
 
         // Constructeur secondaire pour compatibilité
@@ -75,7 +75,7 @@ data class ReferenceEv(
          * défaut)
          */
         fun definirNutriment(
-                valeur: Float,
+                valeur: Double,
                 nutrient: Nutrient,
                 niveauRef: Reflevel,
                 uniteReq: UnitReqEnum,
@@ -100,11 +100,11 @@ data class ReferenceEv(
          * @param niveauRef Le niveau de référence (MIN, MAX, OPTIMIN, OPTIMAX)
          * @return La valeur du nutriment ou -1 si non trouvé
          */
-        fun obtenirNutriment(nutrient: Nutrient, niveauRef: Reflevel): Float {
+        fun obtenirNutriment(nutrient: Nutrient, niveauRef: Reflevel): Double {
                 return if (contientNutriment(nutrient, niveauRef)) {
-                        obtenirMap(niveauRef)[nutrient]?.quantite ?: -1f
+                        obtenirMap(niveauRef)[nutrient]?.quantite ?: -1.0
                 } else {
-                        -1f
+                        -1.0
                 }
         }
 
@@ -317,7 +317,7 @@ data class ReferenceEv(
         inner class Nut4Ref(
                 val nutrient: Nutrient,
                 val niveauRelatif: Reflevel,
-                val quantite: Float,
+                val quantite: Double,
                 val unite: UnitEnum,
                 val uniteReq: UnitReqEnum,
                 val biblio: BiblioRef

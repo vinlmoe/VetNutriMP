@@ -348,7 +348,7 @@ fun NutrientDetailDialog(
 @OptIn(ExperimentalKoalaPlotApi::class)
 @Composable
 fun ReferenceBulletGraph(
-        valeurApport: Float,
+        valeurApport: Double,
         reference: ReferenceEv,
         nutriment: Nutrient,
         typeExpressionBesoin: TypeExpressionBesoin,
@@ -374,7 +374,7 @@ fun ReferenceBulletGraph(
                 nutriment is fr.vetbrain.vetnutri_mp.Enumer.NutrientAnalysis &&
                         nutriment.unite.isBlank()
         val minRefConverti =
-                if (minRef > 0f) {
+                if (minRef > 0.0) {
                         if (isAnalysisNoUnit) minRef
                         else
                                 convertirVersUnitePreferences(
@@ -389,7 +389,7 @@ fun ReferenceBulletGraph(
                 } else null
 
         val optiminRefConverti =
-                if (optiminRef > 0f) {
+                if (optiminRef > 0.0) {
                         if (isAnalysisNoUnit) optiminRef
                         else
                                 convertirVersUnitePreferences(
@@ -404,7 +404,7 @@ fun ReferenceBulletGraph(
                 } else null
 
         val optimaxRefConverti =
-                if (optimaxRef > 0f) {
+                if (optimaxRef > 0.0) {
                         if (isAnalysisNoUnit) optimaxRef
                         else
                                 convertirVersUnitePreferences(
@@ -419,7 +419,7 @@ fun ReferenceBulletGraph(
                 } else null
 
         val maxRefConverti =
-                if (maxRef > 0f) {
+                if (maxRef > 0.0) {
                         if (isAnalysisNoUnit) maxRef
                         else
                                 convertirVersUnitePreferences(
@@ -443,7 +443,7 @@ fun ReferenceBulletGraph(
                 )
         if (valeurs.isEmpty()) return // Rien à tracer
 
-        val maxAxis = (valeurs.maxOrNull() ?: 0f) * 1.1f
+        val maxAxis = (valeurs.maxOrNull() ?: 0.0) * 1.1
 
         Column(modifier = Modifier.fillMaxWidth()) {
                 // Graphique bullet plus fin
@@ -453,13 +453,13 @@ fun ReferenceBulletGraph(
                         // Pas d'étiquette à gauche
                         labelWidth = FixedFraction(0f)
 
-                        bullet(FloatLinearAxisModel(0f..maxAxis)) {
+                        bullet(FloatLinearAxisModel(0f..maxAxis.toFloat())) {
                                 // Axe X avec labels
                                 axis {
                                         labels {
                                                 val tick = it
                                                 val label =
-                                                        if (tick % 1f == 0f) {
+                                                        if (tick % 1.0 == 0.0) {
                                                                 tick.toInt().toString()
                                                         } else {
                                                                 TextUtils.formatDecimal(
@@ -482,7 +482,7 @@ fun ReferenceBulletGraph(
                                 // Construction dynamique des intervalles colorés
                                 val bornes =
                                         buildList {
-                                                        add(0f)
+                                                        add(0.0)
                                                         minRefConverti?.let { add(it) }
                                                         optiminRefConverti?.let { add(it) }
                                                         optimaxRefConverti?.let { add(it) }
@@ -503,7 +503,7 @@ fun ReferenceBulletGraph(
                                                         when {
                                                                 // Rouge : 0 à MIN
                                                                 minRefConverti != null &&
-                                                                        start == 0f &&
+                                                                        start == 0.0 &&
                                                                         end == minRefConverti ->
                                                                         VetNutriColors.Error
                                                                 // Rouge : MAX à maxAxis
@@ -538,13 +538,13 @@ fun ReferenceBulletGraph(
                                                                 minRefConverti == null &&
                                                                         optiminRefConverti !=
                                                                                 null &&
-                                                                        start == 0f &&
+                                                                        start == 0.0 &&
                                                                         end == optiminRefConverti ->
                                                                         Color(0xFF2196F3)
                                                                 // Vert : tout le reste
                                                                 else -> Color(0xFF4CAF50)
                                                         }
-                                                range(end) {
+                                                range(end.toFloat()) {
                                                         HorizontalBarIndicator(SolidColor(color))
                                                 }
                                         }
@@ -566,7 +566,7 @@ fun ReferenceBulletGraph(
                                                         Reflevel.MIN
                                                 )
                                         val minVal =
-                                                if (minM > 0f)
+                                                if (minM > 0.0)
                                                         convertirVersUnitePreferences(
                                                                 minM,
                                                                 UnitReqEnum.getById(minMU),
@@ -588,7 +588,7 @@ fun ReferenceBulletGraph(
                                                         Reflevel.OPTIMIN
                                                 )
                                         val optiMinVal =
-                                                if (optiMinM > 0f)
+                                                if (optiMinM > 0.0)
                                                         convertirVersUnitePreferences(
                                                                 optiMinM,
                                                                 UnitReqEnum.getById(optiMinMU),
@@ -610,7 +610,7 @@ fun ReferenceBulletGraph(
                                                         Reflevel.OPTIMAX
                                                 )
                                         val optiMaxVal =
-                                                if (optiMaxM > 0f)
+                                                if (optiMaxM > 0.0)
                                                         convertirVersUnitePreferences(
                                                                 optiMaxM,
                                                                 UnitReqEnum.getById(optiMaxMU),
@@ -629,7 +629,7 @@ fun ReferenceBulletGraph(
                                                         Reflevel.MAX
                                                 )
                                         val maxVal =
-                                                if (maxM > 0f)
+                                                if (maxM > 0.0)
                                                         convertirVersUnitePreferences(
                                                                 maxM,
                                                                 UnitReqEnum.getById(maxMU),
@@ -658,10 +658,9 @@ fun ReferenceBulletGraph(
 }
 
 /**
- * Convertit une valeur d'une unité vers l'unité des préférences utilisateur
- *
- * @param valeurRef Valeur de référence du nutriment
- * @param uniteRef Unité de la référence (PERKG, PERKCAL, PERMS, etc.)
+ * Convertit une valeur de référence d'une unité vers une autre
+ * @param valeurRef Valeur de référence à convertir
+ * @param uniteRef Unité de la valeur de référence
  * @param unitePreferences Unité des préférences utilisateur
  * @param besoinEnergetiqueEntretien Besoin énergétique d'entretien en kcal/jour
  * @param poidsAnimal Poids de l'animal en kg
@@ -669,13 +668,13 @@ fun ReferenceBulletGraph(
  * @return Valeur convertie dans l'unité des préférences ou null si impossible à calculer
  */
 private fun convertirVersUnitePreferences(
-        valeurRef: Float,
+        valeurRef: Double,
         uniteRef: UnitReqEnum,
         unitePreferences: UnitReqEnum,
         besoinEnergetiqueEntretien: Double?,
         poidsAnimal: Double?,
         poidsMetabolique: Double?
-): Float? {
+): Double? {
         // Si les unités sont identiques, pas de conversion nécessaire
         if (uniteRef == unitePreferences) {
                 return valeurRef
@@ -697,22 +696,21 @@ private fun convertirVersUnitePreferences(
                 // Vers PERKG (par kg de poids vif)
                 UnitReqEnum.PERKG -> {
                         poidsAnimal?.let { poids ->
-                                if (poids > 0.0) (valeurAbsolue / poids).toFloat() else null
+                                if (poids > 0.0) (valeurAbsolue / poids) else null
                         }
                 }
 
                 // Vers PERMS (par kg de poids métabolique)
                 UnitReqEnum.PERMS -> {
                         poidsMetabolique?.let { poidsMetab ->
-                                if (poidsMetab > 0.0) (valeurAbsolue / poidsMetab).toFloat()
-                                else null
+                                if (poidsMetab > 0.0) (valeurAbsolue / poidsMetab) else null
                         }
                 }
 
                 // Vers PERKCAL (par 1000 kcal)
                 UnitReqEnum.PERKCAL -> {
                         besoinEnergetiqueEntretien?.let { bee ->
-                                if (bee > 0.0) ((valeurAbsolue * 1000.0) / bee).toFloat() else null
+                                if (bee > 0.0) ((valeurAbsolue * 1000.0) / bee) else null
                         }
                 }
 
@@ -722,14 +720,14 @@ private fun convertirVersUnitePreferences(
                                 if (bee > 0.0) {
                                         // Convertir kcal en kJ : 1 kcal = 4.184 kJ
                                         val beeEnKj = bee * 4.184
-                                        ((valeurAbsolue * 1000.0) / beeEnKj).toFloat()
+                                        ((valeurAbsolue * 1000.0) / beeEnKj)
                                 } else null
                         }
                 }
 
                 // Vers ABSOLUTE (valeur absolue)
                 UnitReqEnum.ABSOLUTE -> {
-                        valeurAbsolue.toFloat()
+                        valeurAbsolue
                 }
 
                 // Vers RATIO - pas de conversion possible
@@ -788,7 +786,7 @@ private fun ContributionsList(
         val contributionsTriees =
                 ration.alimentMutableList
                         .map { alimentRation ->
-                                val quantite: Float = alimentRation.quantite
+                                val quantite: Double = alimentRation.quantite
                                 val nutrient: Nutrient = valeurNutritionnelle.nutriment
                                 val valeurPour100g: Double? =
                                         try {
@@ -817,7 +815,7 @@ private fun ContributionsList(
                                 val contributionCalculee: Double =
                                         if (valeurPour100g != null) {
                                                 if (isRatioNutrient) valeurPour100g
-                                                else (valeurPour100g * quantite.toDouble()) / 100.0
+                                                else (valeurPour100g * quantite) / 100.0
                                         } else 0.0
                                 println(
                                         "EQDBG-ING detail: food='${alimentRation.aliment?.nom}' v100g=${valeurPour100g} contrib=${contributionCalculee}"
@@ -947,9 +945,9 @@ private fun ContributionItem(
         contributionAbsolue: Double,
         contributionPourcentage: Double
 ) {
-        val quantite: Float = alimentRation.quantite
+        val quantite: Double = alimentRation.quantite
         val nutrient: Nutrient = valeurNutritionnelle.nutriment
-        val valeurAliment: Float? = alimentRation.aliment?.getNutrient(nutrient)
+        val valeurAliment: Double? = alimentRation.aliment?.getNutrient(nutrient)
         val prefsEspeceItem =
                 try {
                         kotlinx.coroutines.runBlocking {
@@ -967,7 +965,7 @@ private fun ContributionItem(
                                 prefsEspeceItem.getSelectedEquationUuids()
                 )
         }
-        val valeurPour100gItem: Float? =
+        val valeurPour100gItem: Double? =
                 try {
                         println(
                                 "EQDBG-ING detail(item): try getNutrientWithComplementary food='${alimentRation.aliment?.nom}' nutr=${nutrient.label}"
@@ -1002,7 +1000,7 @@ private fun ContributionItem(
                                         modifier = Modifier.weight(1f)
                                 )
                                 val hasEqForAliment: Boolean =
-                                        (valeurAliment == null || valeurAliment <= 0f) &&
+                                        (valeurAliment == null || valeurAliment <= 0.0) &&
                                                 valeurPour100gItem != null
                                 if (hasEqForAliment) {
                                         Icon(
@@ -1120,19 +1118,19 @@ private fun ReferenceCard(
         val isAnalysisNoUnit: Boolean =
                 (nutrient is fr.vetbrain.vetnutri_mp.Enumer.NutrientAnalysis &&
                         nutrient.unite.isBlank())
-        val apportConverti: Float =
+        val apportConverti: Double =
                 if (isAnalysisNoUnit) {
-                        valeurNutritionnelle.valeur.toFloat()
+                        valeurNutritionnelle.valeur
                 } else {
                         convertirVersUnitePreferences(
-                                valeurNutritionnelle.valeur.toFloat(),
+                                valeurNutritionnelle.valeur,
                                 UnitReqEnum.ABSOLUTE,
                                 typeExpressionBesoin.unitReqEnum,
                                 besoinEnergetiqueEntretien,
                                 poidsAnimal,
                                 poidsMetabolique
                         )
-                                ?: valeurNutritionnelle.valeur.toFloat()
+                                ?: valeurNutritionnelle.valeur
                 }
         Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -1194,7 +1192,7 @@ private fun ReferenceLevelsList(
                 )
         refLevels.forEach { (level: Reflevel, levelName: String) ->
                 if (reference.contientNutriment(nutrient, level)) {
-                        val valeurRef: Float = reference.obtenirNutriment(nutrient, level)
+                        val valeurRef: Double = reference.obtenirNutriment(nutrient, level)
                         val uniteRef: UnitReqEnum =
                                 UnitReqEnum.getById(
                                         reference.obtenirUniteNutriment(nutrient, level)
@@ -1329,17 +1327,16 @@ private fun ReferenceLevelsList(
  * @return Besoin absolu calculé ou null si impossible à calculer
  */
 private fun calculerBesoinAbsolu(
-        valeurRef: Float,
+        valeurRef: Double,
         uniteRef: UnitReqEnum,
         besoinEnergetiqueEntretien: Double?,
         poidsAnimal: Double?,
         poidsMetabolique: Double?
 ): Double? {
-        val valeurRefD: Double = valeurRef.toDouble()
         return when (uniteRef) {
                 // Basé sur l'énergie (par 1000 kcal)
                 UnitReqEnum.PERKCAL -> {
-                        besoinEnergetiqueEntretien?.let { bee -> (valeurRefD * bee) / 1000.0 }
+                        besoinEnergetiqueEntretien?.let { bee -> (valeurRef * bee) / 1000.0 }
                 }
 
                 // Basé sur l'énergie (par 1000 kJ) - conversion en kcal puis calcul
@@ -1347,23 +1344,23 @@ private fun calculerBesoinAbsolu(
                         besoinEnergetiqueEntretien?.let { bee ->
                                 // Convertir kJ en kcal : 1 kcal = 4.184 kJ
                                 val beeEnKj: Double = bee * 4.184
-                                (valeurRefD * beeEnKj) / 1000.0
+                                (valeurRef * beeEnKj) / 1000.0
                         }
                 }
 
                 // Basé sur le poids corporel (par kg de poids vif)
                 UnitReqEnum.PERKG -> {
-                        poidsAnimal?.let { poids -> valeurRefD * poids }
+                        poidsAnimal?.let { poids -> valeurRef * poids }
                 }
 
                 // Basé sur le poids métabolique (par kg^0.75)
                 UnitReqEnum.PERMS -> {
-                        poidsMetabolique?.let { poidsMetab -> valeurRefD * poidsMetab }
+                        poidsMetabolique?.let { poidsMetab -> valeurRef * poidsMetab }
                 }
 
                 // Valeur absolue (déjà en unité finale)
                 UnitReqEnum.ABSOLUTE -> {
-                        valeurRefD
+                        valeurRef
                 }
 
                 // Ratio - pas de calcul absolu possible

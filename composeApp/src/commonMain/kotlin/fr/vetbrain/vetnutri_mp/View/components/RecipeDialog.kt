@@ -94,7 +94,7 @@ fun RecipeDialog(repository: RecipeRepository, onApply: (Ration) -> Unit, onClos
                                                                     ?: a.refAlimUnif ?: a.uuidUnif
                                                     val q = a.quantite
                                                     val qStr =
-                                                            (kotlin.math.round(q * 10f) / 10f)
+                                                            (kotlin.math.round(q * 10.0) / 10.0)
                                                                     .toString()
                                                     Text(
                                                             "- ${'$'}nom: ${'$'}qStr g",

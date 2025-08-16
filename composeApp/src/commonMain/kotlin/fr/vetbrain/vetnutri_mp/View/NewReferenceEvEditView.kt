@@ -326,11 +326,11 @@ fun ReferenceEvInfoTab(viewModel: NewReferenceEvViewModel, currentReference: Ref
                 )
 
                 Slider(
-                        value = currentReference.consistent.toFloat(),
+                        value = currentReference.consistent.toDouble(),
                         onValueChange = {
                                 viewModel.updateReferenceProperty("consistent", it.toInt())
                         },
-                        valueRange = 1f..10f,
+                        valueRange = 1.0..10.0,
                         steps = 9,
                         modifier = Modifier.fillMaxWidth()
                 )
@@ -1071,7 +1071,7 @@ fun ReferenceEvCoefficientsTab(viewModel: NewReferenceEvViewModel, currentRefere
                                         EditCoefficientDialog(
                                                 initialDescription = coefficient.description
                                                                 ?: "Normal",
-                                                initialCoef = coefficient.coef ?: 1.0f,
+                                                initialCoef = coefficient.coef ?: 1.0,
                                                 onDismiss = {
                                                         showEditCoefficientDialog = false
                                                         editingCoefficientIndex = -1
@@ -1153,10 +1153,10 @@ fun <T : Nutrient> NutrientCard(
         var hasOptMin by remember { mutableStateOf(false) }
         var hasOptMax by remember { mutableStateOf(false) }
 
-        var minValue by remember { mutableStateOf(0f) }
-        var maxValue by remember { mutableStateOf(0f) }
-        var optMinValue by remember { mutableStateOf(0f) }
-        var optMaxValue by remember { mutableStateOf(0f) }
+        var minValue by remember { mutableStateOf(0.0) }
+        var maxValue by remember { mutableStateOf(0.0) }
+        var optMinValue by remember { mutableStateOf(0.0) }
+        var optMaxValue by remember { mutableStateOf(0.0) }
 
         var minUnit by remember {
                 mutableStateOf<fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum?>(null)
@@ -1223,7 +1223,7 @@ fun <T : Nutrient> NutrientCard(
                                         nutrient,
                                         fr.vetbrain.vetnutri_mp.Enumer.Reflevel.MIN
                                 )
-                        else 0f
+                        else 0.0
 
                 maxValue =
                         if (hasMax)
@@ -1231,7 +1231,7 @@ fun <T : Nutrient> NutrientCard(
                                         nutrient,
                                         fr.vetbrain.vetnutri_mp.Enumer.Reflevel.MAX
                                 )
-                        else 0f
+                        else 0.0
 
                 optMinValue =
                         if (hasOptMin)
@@ -1239,7 +1239,7 @@ fun <T : Nutrient> NutrientCard(
                                         nutrient,
                                         fr.vetbrain.vetnutri_mp.Enumer.Reflevel.OPTIMIN
                                 )
-                        else 0f
+                        else 0.0
 
                 optMaxValue =
                         if (hasOptMax)
@@ -1247,7 +1247,7 @@ fun <T : Nutrient> NutrientCard(
                                         nutrient,
                                         fr.vetbrain.vetnutri_mp.Enumer.Reflevel.OPTIMAX
                                 )
-                        else 0f
+                        else 0.0
 
                 // Récupérer les unités si elles existent
                 minUnit =
@@ -1476,7 +1476,7 @@ fun <T : Nutrient> NutrientCard(
 @Composable
 fun CompactNutrientValueRow(
         label: String,
-        value: Float,
+        value: Double,
         unit: String,
         unitEnum: String,
         biblio: String,
@@ -1544,7 +1544,7 @@ fun CompactNutrientValueRow(
 @Composable
 fun NutrientValueRow(
         label: String,
-        value: Float,
+        value: Double,
         unit: String,
         unitEnum: String,
         biblio: String,
@@ -1920,11 +1920,11 @@ fun NutrientEditDialog(
                                                         fr.vetbrain.vetnutri_mp.Enumer.Reflevel.MIN
                                                 )
                                         } else {
-                                                val minFloat = minValue.toFloatOrNull()
-                                                if (minFloat != null && minFloat >= 0) {
+                                                val minDouble = minValue.toDoubleOrNull()
+                                                if (minDouble != null && minDouble >= 0) {
                                                         viewModel.updateNutrientValue(
                                                                 nutrient = nutrient,
-                                                                value = minFloat,
+                                                                value = minDouble,
                                                                 level =
                                                                         fr.vetbrain.vetnutri_mp
                                                                                 .Enumer.Reflevel
@@ -1943,11 +1943,11 @@ fun NutrientEditDialog(
                                                         fr.vetbrain.vetnutri_mp.Enumer.Reflevel.MAX
                                                 )
                                         } else {
-                                                val maxFloat = maxValue.toFloatOrNull()
-                                                if (maxFloat != null && maxFloat >= 0) {
+                                                val maxDouble = maxValue.toDoubleOrNull()
+                                                if (maxDouble != null && maxDouble >= 0) {
                                                         viewModel.updateNutrientValue(
                                                                 nutrient = nutrient,
-                                                                value = maxFloat,
+                                                                value = maxDouble,
                                                                 level =
                                                                         fr.vetbrain.vetnutri_mp
                                                                                 .Enumer.Reflevel
@@ -1967,11 +1967,11 @@ fun NutrientEditDialog(
                                                                 .OPTIMIN
                                                 )
                                         } else {
-                                                val optMinFloat = optMinValue.toFloatOrNull()
-                                                if (optMinFloat != null && optMinFloat >= 0) {
+                                                val optMinDouble = optMinValue.toDoubleOrNull()
+                                                if (optMinDouble != null && optMinDouble >= 0) {
                                                         viewModel.updateNutrientValue(
                                                                 nutrient = nutrient,
-                                                                value = optMinFloat,
+                                                                value = optMinDouble,
                                                                 level =
                                                                         fr.vetbrain.vetnutri_mp
                                                                                 .Enumer.Reflevel
@@ -1991,11 +1991,11 @@ fun NutrientEditDialog(
                                                                 .OPTIMAX
                                                 )
                                         } else {
-                                                val optMaxFloat = optMaxValue.toFloatOrNull()
-                                                if (optMaxFloat != null && optMaxFloat >= 0) {
+                                                val optMaxDouble = optMaxValue.toDoubleOrNull()
+                                                if (optMaxDouble != null && optMaxDouble >= 0) {
                                                         viewModel.updateNutrientValue(
                                                                 nutrient = nutrient,
-                                                                value = optMaxFloat,
+                                                                value = optMaxDouble,
                                                                 level =
                                                                         fr.vetbrain.vetnutri_mp
                                                                                 .Enumer.Reflevel
@@ -2291,7 +2291,7 @@ fun CoefficientCard(
                                         fontWeight = FontWeight.Bold
                                 )
                                 Text(
-                                        text = "Coefficient: ${coefficient.coef ?: 1.0f}",
+                                        text = "Coefficient: ${coefficient.coef ?: 1.0}",
                                         style = MaterialTheme.typography.body2,
                                         color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                                 )
@@ -2325,7 +2325,7 @@ fun CoefficientCard(
  * @param onConfirm Callback pour confirmer l'ajout avec description et coefficient
  */
 @Composable
-fun AddCoefficientDialog(onDismiss: () -> Unit, onConfirm: (String, Float) -> Unit) {
+fun AddCoefficientDialog(onDismiss: () -> Unit, onConfirm: (String, Double) -> Unit) {
         var description by remember { mutableStateOf("") }
         var coefText by remember { mutableStateOf("1.0") }
         var showError by remember { mutableStateOf(false) }
@@ -2339,7 +2339,7 @@ fun AddCoefficientDialog(onDismiss: () -> Unit, onConfirm: (String, Float) -> Un
                         return
                 }
 
-                val coef = coefText.toFloatOrNull()
+                val coef = coefText.toDoubleOrNull()
                 if (coef == null) {
                         showError = true
                         errorMessage = "Le coefficient doit être un nombre valide"
@@ -2378,7 +2378,7 @@ fun AddCoefficientDialog(onDismiss: () -> Unit, onConfirm: (String, Float) -> Un
                                                         keyboardType = KeyboardType.Decimal
                                                 ),
                                         modifier = Modifier.fillMaxWidth(),
-                                        isError = showError && coefText.toFloatOrNull() == null
+                                        isError = showError && coefText.toDoubleOrNull() == null
                                 )
 
                                 if (showError) {
@@ -2415,9 +2415,9 @@ fun AddCoefficientDialog(onDismiss: () -> Unit, onConfirm: (String, Float) -> Un
 @Composable
 fun EditCoefficientDialog(
         initialDescription: String,
-        initialCoef: Float,
+        initialCoef: Double,
         onDismiss: () -> Unit,
-        onConfirm: (String, Float) -> Unit,
+        onConfirm: (String, Double) -> Unit,
         onDelete: () -> Unit
 ) {
         var description by remember { mutableStateOf(initialDescription) }
@@ -2434,7 +2434,7 @@ fun EditCoefficientDialog(
                         return
                 }
 
-                val coef = coefText.toFloatOrNull()
+                val coef = coefText.toDoubleOrNull()
                 if (coef == null) {
                         showError = true
                         errorMessage = "Le coefficient doit être un nombre valide"
@@ -2499,7 +2499,7 @@ fun EditCoefficientDialog(
                                                 modifier = Modifier.fillMaxWidth(),
                                                 isError =
                                                         showError &&
-                                                                coefText.toFloatOrNull() == null
+                                                                coefText.toDoubleOrNull() == null
                                         )
 
                                         if (showError) {

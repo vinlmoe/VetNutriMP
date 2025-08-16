@@ -28,16 +28,6 @@ class Converters {
     }
 
     @TypeConverter
-    fun fromFloat(value: Float?): String? {
-        return value?.toString()
-    }
-
-    @TypeConverter
-    fun toFloat(value: String?): Float? {
-        return value?.toFloatOrNull()
-    }
-
-    @TypeConverter
     fun fromDouble(value: Double?): String? {
         return value?.toString()
     }

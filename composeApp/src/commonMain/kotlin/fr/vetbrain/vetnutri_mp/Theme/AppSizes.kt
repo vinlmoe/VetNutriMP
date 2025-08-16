@@ -8,7 +8,7 @@ import androidx.compose.ui.unit.sp
 
 /** Objet contenant toutes les tailles utilisées dans l'application */
 object AppSizes {
-    var sizeMultiplier by mutableStateOf(1f)
+    var sizeMultiplier by mutableStateOf(1.0)
 
     // Padding
     val paddingTiny
@@ -109,7 +109,7 @@ object AppSizes {
     val dialogMaxHeight
         get() = (600 * sizeMultiplier).dp
 
-    fun adjustSize(multiplier: Float) {
-        sizeMultiplier = multiplier.coerceIn(0.5f, 2f)
+    fun adjustSize(multiplier: Double) {
+        sizeMultiplier = multiplier.coerceIn(0.5, 2.0)
     }
 }

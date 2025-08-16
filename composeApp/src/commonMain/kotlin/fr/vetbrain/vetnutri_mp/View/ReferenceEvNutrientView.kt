@@ -128,7 +128,7 @@ fun ReferenceEvNutrientView(
                                                                                         .Primary
                                                                                         .copy(
                                                                                                 alpha =
-                                                                                                        0.1f
+                                                                                                        0.1
                                                                                         )
                                                                         else Color.Transparent,
                                                                 contentColor =
@@ -149,7 +149,7 @@ fun ReferenceEvNutrientView(
                         // Zone d'édition des nutriments sélectionnés
                         if (selectedNutrientType != null) {
                                 Card(
-                                        modifier = Modifier.fillMaxWidth().weight(1f),
+                                        modifier = Modifier.fillMaxWidth().weight(1.0f),
                                         elevation = 4.dp
                                 ) {
                                         if (loading) {
@@ -175,7 +175,7 @@ fun ReferenceEvNutrientView(
                         } else {
                                 // Afficher un message lorsqu'aucun type n'est sélectionné
                                 Box(
-                                        modifier = Modifier.fillMaxWidth().weight(1f),
+                                        modifier = Modifier.fillMaxWidth().weight(1.0f),
                                         contentAlignment = Alignment.Center
                                 ) {
                                         Text(

@@ -364,7 +364,7 @@ class DatabaseReferenceEvRepository(
                             referenceEvId = referenceEv.uuid,
                             groupType = "k1",
                             description = coef.description ?: "Normal",
-                            coef = coef.coef ?: 1.0f,
+                            coef = coef.coef ?: 1.0,
                             groupUUID = coef.groupUUID ?: 0
                     )
             )
@@ -377,7 +377,7 @@ class DatabaseReferenceEvRepository(
                             referenceEvId = referenceEv.uuid,
                             groupType = "k2",
                             description = coef.description ?: "Normal",
-                            coef = coef.coef ?: 1.0f,
+                            coef = coef.coef ?: 1.0,
                             groupUUID = coef.groupUUID ?: 1
                     )
             )
@@ -390,7 +390,7 @@ class DatabaseReferenceEvRepository(
                             referenceEvId = referenceEv.uuid,
                             groupType = "k3",
                             description = coef.description ?: "Normal",
-                            coef = coef.coef ?: 1.0f,
+                            coef = coef.coef ?: 1.0,
                             groupUUID = coef.groupUUID ?: 2
                     )
             )
@@ -403,7 +403,7 @@ class DatabaseReferenceEvRepository(
                             referenceEvId = referenceEv.uuid,
                             groupType = "k4",
                             description = coef.description ?: "Normal",
-                            coef = coef.coef ?: 1.0f,
+                            coef = coef.coef ?: 1.0,
                             groupUUID = coef.groupUUID ?: 3
                     )
             )
@@ -416,7 +416,7 @@ class DatabaseReferenceEvRepository(
                             referenceEvId = referenceEv.uuid,
                             groupType = "k5",
                             description = coef.description ?: "Normal",
-                            coef = coef.coef ?: 1.0f,
+                            coef = coef.coef ?: 1.0,
                             groupUUID = coef.groupUUID ?: 4
                     )
             )

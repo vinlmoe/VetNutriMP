@@ -19,7 +19,7 @@ data class AlimentEvJson(
         val Especes: List<String> = listOf(),
         val gamme: String = "",
         val presentation: String = "",
-        val quantInt: Float = 0f,
+        val quantInt: Double = 0.0,
         val cont: String = "NO",
         val deprecated: Boolean = false,
         val DataB: String = "6",
@@ -55,19 +55,19 @@ data class ConsultationEvJson(
         val objet: String? = null,
         val observation: String? = null,
         val CRendu: String = "",
-        val Poids: Float = 0f,
-        val PoidsIdeal: Float = 0f,
+        val Poids: Double = 0.0,
+        val PoidsIdeal: Double = 0.0,
         val PoidsIdealex: Boolean = false,
-        val Boisson: Float = 0f,
-        val TauxMG: Float = 20f,
+        val Boisson: Double = 0.0,
+        val TauxMG: Double = 20.0,
         val suivi: Boolean = false,
         val bcs: String = "",
         val MCS: Int = 3,
-        val k1value: Float = 1f,
-        val k2value: Float = 1f,
-        val k3value: Float = 1f,
-        val k4value: Float = 1f,
-        val k5value: Float = 1f,
+        val k1value: Double = 1.0,
+        val k2value: Double = 1.0,
+        val k3value: Double = 1.0,
+        val k4value: Double = 1.0,
+        val k5value: Double = 1.0,
         val rationList: Map<String, RationJson> = mapOf(),
         val diseaseRef: List<String> = listOf(),
         val svp: List<SupplementalvariablePJson> = listOf(),
@@ -78,10 +78,10 @@ data class ConsultationEvJson(
         val k4d: String? = null,
         val k5d: String? = null,
         val k6d: Int = 0,
-        val previousBE: Float = 0f,
+        val previousBE: Double = 0.0,
         val previousRation: RationJson? = null,
-        val ky: Float = 0f,
-        val newBE: Float = 0f,
+        val ky: Double = 0.0,
+        val newBE: Double = 0.0,
         val newRation: List<RationJson> = listOf()
 )
 
@@ -114,17 +114,17 @@ data class AdjustSaveEvJson(
 data class AlimentRationJson(
         val UUID: String,
         val UUIDunif: String,
-        val quantite: Float,
-        val prop: Float,
+        val quantite: Double,
+        val prop: Double,
         val alime: AlimentEvJson,
-        val weight: Float = 1f,
+        val weight: Double = 1.0,
         val categ: Int = 0,
         val density: Double = 0.0
 )
 
 // Structures de support
 
-@Serializable data class WeightDateJson(val UUID: String, val date: LocalDate, val value: Float)
+@Serializable data class WeightDateJson(val UUID: String, val date: LocalDate, val value: Double)
 
 @Serializable data class ListConsultEvJson(val consultations: List<ConsultationEvJson>)
 
@@ -143,16 +143,16 @@ data class RationJson(
 @Serializable
 data class TargetDefinitionEvJson(
         val target: String,
-        val value: Float,
+        val value: Double,
         val unit: String,
-        val percentCompletion: Float,
-        val pas: Float
+        val percentCompletion: Double,
+        val pas: Double
 )
 
-@Serializable data class SupplementalvariablePJson(val variable: String, val value: Float)
+@Serializable data class SupplementalvariablePJson(val variable: String, val value: Double)
 
 @Serializable
-data class NutrientQuantity(val value: Float, val nut: String) {
+data class NutrientQuantity(val value: Double, val nut: String) {
         /**
          * Obtient l'unité du nutriment
          *
@@ -162,7 +162,7 @@ data class NutrientQuantity(val value: Float, val nut: String) {
                 get() = nut
 
         /** Propriété pour rendre compatible avec les références à quantity */
-        val quantity: Float
+        val quantity: Double
                 get() = value
 
         /**
@@ -171,7 +171,7 @@ data class NutrientQuantity(val value: Float, val nut: String) {
          * @param factor Le facteur de multiplication
          * @return La nouvelle quantité résultante
          */
-        fun times(factor: Float): NutrientQuantity {
+        fun times(factor: Double): NutrientQuantity {
                 return NutrientQuantity(value * factor, nut)
         }
 
