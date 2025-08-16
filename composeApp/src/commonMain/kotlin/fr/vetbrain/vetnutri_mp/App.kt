@@ -260,8 +260,41 @@ fun App(appDatabase: AppDatabase) {
 
         if (currentFoodCount == 0 || currentReferenceCount == 0) {
             try {
-                val json = ResourceReader().readResource("data/vetnutri_export_init.json")
+                println("IMPORT AUTO: Début de l'import automatique...")
+                println("IMPORT AUTO: Lecture du fichier de ressources...")
+
+                // Essayer d'abord le chemin iOS (direct), puis le chemin Android/Desktop (data/)
+                val json =
+                        try {
+                            println(
+                                    "IMPORT AUTO: Tentative 1 - Chemin iOS: vetnutri_export_init.json"
+                            )
+                            val result = ResourceReader().readResource("vetnutri_export_init.json")
+                            println("IMPORT AUTO: ✅ Succès avec le chemin iOS!")
+                            result
+                        } catch (e: Exception) {
+                            println("IMPORT AUTO: ❌ Échec chemin iOS: ${e.message}")
+                            try {
+                                println(
+                                        "IMPORT AUTO: Tentative 2 - Chemin Android/Desktop: data/vetnutri_export_init.json"
+                                )
+                                val result =
+                                        ResourceReader()
+                                                .readResource("data/vetnutri_export_init.json")
+                                println("IMPORT AUTO: ✅ Succès avec le chemin Android/Desktop!")
+                                result
+                            } catch (e2: Exception) {
+                                println(
+                                        "IMPORT AUTO: ❌ Échec chemin Android/Desktop: ${e2.message}"
+                                )
+                                throw IllegalStateException(
+                                        "Fichier vetnutri_export_init.json introuvable sur iOS (vetnutri_export_init.json) et Android/Desktop (data/vetnutri_export_init.json). Erreurs: iOS=${e.message}, Android/Desktop=${e2.message}"
+                                )
+                            }
+                        }
                 if (json.isNotEmpty()) {
+                    println("IMPORT AUTO: Fichier JSON lu avec succès (${json.length} caractères)")
+
                     val exportImportRepo =
                             ExportImportRepository(
                                     animalRepository = animalRepository,
@@ -272,16 +305,53 @@ fun App(appDatabase: AppDatabase) {
                                     consultationRepository = consultationRepository
                             )
 
-                    exportImportRepo.importAll(
-                            apiJson = json,
-                            listener =
-                                    ExportImportRepository.ImportProgressListener(
-                                            onProgress = { /* no-op UI at startup */},
-                                            onLog = { msg -> println("IMPORT API: $msg") }
-                                    )
+                    println("IMPORT AUTO: ExportImportRepository créé, début de l'import...")
+
+                    val importResult =
+                            exportImportRepo.importAll(
+                                    apiJson = json,
+                                    listener =
+                                            ExportImportRepository.ImportProgressListener(
+                                                    onProgress = { progress ->
+                                                        println(
+                                                                "IMPORT AUTO: Progression: ${(progress * 100).toInt()}%"
+                                                        )
+                                                    },
+                                                    onLog = { msg -> println("IMPORT AUTO: $msg") }
+                                            )
+                            )
+
+                    println("IMPORT AUTO: Import terminé avec succès!")
+                    println(
+                            "IMPORT AUTO: Résultats - Animaux: ${importResult.animals}, Aliments: ${importResult.foods}, Références: ${importResult.references}"
                     )
-                } else {}
-            } catch (e: Exception) {}
+                } else {
+                    println("IMPORT AUTO: ERREUR - Le fichier JSON est vide!")
+                }
+            } catch (e: Exception) {
+                println("IMPORT AUTO: ERREUR CRITIQUE lors de l'import automatique!")
+                println("IMPORT AUTO: Type d'erreur: ${e::class.simpleName}")
+                println("IMPORT AUTO: Message: ${e.message}")
+                println("IMPORT AUTO: Stack trace: ${e.stackTraceToString()}")
+
+                // Afficher des informations de débogage supplémentaires
+                try {
+                    println("IMPORT AUTO: Vérification des ressources disponibles...")
+                    val resourceReader = ResourceReader()
+                    println("IMPORT AUTO: ResourceReader créé avec succès")
+                } catch (resourceError: Exception) {
+                    println(
+                            "IMPORT AUTO: ERREUR lors de la création du ResourceReader: ${resourceError.message}"
+                    )
+                    println(
+                            "IMPORT AUTO: Stack trace ResourceReader: ${resourceError.stackTraceToString()}"
+                    )
+                }
+            }
+        } else {
+            println(
+                    "IMPORT AUTO: Base déjà peuplée (Aliments: $currentFoodCount, Références: $currentReferenceCount)"
+            )
         }
     }
 
