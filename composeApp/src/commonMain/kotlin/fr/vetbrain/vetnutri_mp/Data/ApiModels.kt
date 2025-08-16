@@ -39,7 +39,7 @@ data class AnimalApi(
 data class WeightEntryApi(
         val uuid: String,
         @Serializable(with = LocalDateSerializer::class) val date: LocalDate,
-        val valueKg: Float
+        val valueKg: Double
 )
 
 @Serializable
@@ -49,25 +49,25 @@ data class ConsultationApi(
         val objective: String = "",
         val observation: String = "",
         val report: String = "",
-        val weightKg: Float? = null,
-        val idealWeightKg: Float? = null,
-        val waterMl: Float? = null,
-        val bodyFatPercent: Float? = null,
+        val weightKg: Double? = null,
+        val idealWeightKg: Double? = null,
+        val waterMl: Double? = null,
+        val bodyFatPercent: Double? = null,
         val bcs: Int? = null,
         val mcs: Int? = null,
         val methodAnalysis: String = "",
         val k1Id: String? = null,
-        val k1Value: Float? = null,
+        val k1Value: Double? = null,
         val k2Id: String? = null,
-        val k2Value: Float? = null,
+        val k2Value: Double? = null,
         val k3Id: String? = null,
-        val k3Value: Float? = null,
+        val k3Value: Double? = null,
         val k4Id: String? = null,
-        val k4Value: Float? = null,
+        val k4Value: Double? = null,
         val k5Id: String? = null,
-        val k5Value: Float? = null,
+        val k5Value: Double? = null,
         val nLittle: Int? = null,
-        val pAdult: Float? = null,
+        val pAdult: Double? = null,
         val coefGes: Int? = null,
         val coefLact: Int? = null,
         val referenceGeneraleId: String? = null,
@@ -89,14 +89,14 @@ data class FoodApi(
         val ingredients: String? = null,
         val gamme: String? = null,
         val presentation: String? = null,
-        val presentationQuantity: Float? = null,
+        val presentationQuantity: Double? = null,
         val deprecated: Boolean? = null,
         val dataB: String? = null,
         val consistent: Boolean? = null,
         val rationId: String? = null,
         val species: List<String> = emptyList(),
         val indications: List<String> = emptyList(),
-        val nutrients: Map<String, Float> = emptyMap()
+        val nutrients: Map<String, Double> = emptyMap()
 )
 
 @Serializable
@@ -104,7 +104,7 @@ data class RationApi(
         val uuid: String,
         val consultationId: String,
         val name: String,
-        val coef: Float,
+        val coef: Double,
         val isCurrent: Boolean,
         val number: Int,
         val specie: String?,
@@ -117,14 +117,14 @@ data class RationApi(
 data class RationItemApi(
         val uuid: String,
         val foodId: String,
-        val quantity: Float,
-        val proportion: Float,
-        val weight: Float? = null,
+        val quantity: Double,
+        val proportion: Double,
+        val weight: Double? = null,
         val category: Int? = null,
         val density: Double? = null
 )
 
-@Serializable data class SupplementalVariableApi(val variable: String, val value: Float)
+@Serializable data class SupplementalVariableApi(val variable: String, val value: Double)
 
 @Serializable
 data class EquationApi(
@@ -266,7 +266,7 @@ data class BiblioRefApi(
 data class ReferenceNutrientApi(
         val nutrientLabel: String,
         val reflevel: String,
-        val quantity: Float,
+        val quantity: Double,
         val uniteReqId: Int,
         val biblioRefId: String? = null
 )
@@ -347,7 +347,7 @@ fun ConsultationEv.toApi(): ConsultationApi {
                 supplementalVariables =
                         suppVarp.mapNotNull { sv ->
                                 sv.variable?.name?.let { vn ->
-                                        SupplementalVariableApi(vn, sv.varue ?: 0f)
+                                        SupplementalVariableApi(vn, sv.varue ?: 0.0)
                                 }
                         },
                 rations = rations.map { it.toApi() }
@@ -623,7 +623,7 @@ fun ConsultationApi.toDomain(): ConsultationEv {
                                                                                 aliment = null,
                                                                                 weight =
                                                                                         itApi.weight
-                                                                                                ?: 1f,
+                                                                                                ?: 1.0,
                                                                                 category =
                                                                                         itApi.category
                                                                                                 ?: 0,

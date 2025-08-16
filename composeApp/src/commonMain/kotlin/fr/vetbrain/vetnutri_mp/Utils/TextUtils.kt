@@ -56,11 +56,6 @@ object TextUtils {
         return "$signe$partieEntiere.$decimaleStr"
     }
 
-    /** Version Float -> Double pour éviter la duplication. */
-    fun formatDecimal(value: Float, decimales: Int = 2): String {
-        return formatDecimal(value.toDouble(), decimales)
-    }
-
     private fun d10(exp: Int): Long {
         var res: Long = 1
         var i: Int = 0

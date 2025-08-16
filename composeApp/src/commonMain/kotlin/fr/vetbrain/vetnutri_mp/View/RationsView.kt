@@ -462,7 +462,7 @@ fun RationsView(
                                                                 color =
                                                                         MaterialTheme.colors
                                                                                 .onSurface.copy(
-                                                                                alpha = 0.7f
+                                                                                alpha = 0.7
                                                                         )
                                                         )
                                                 }
@@ -934,7 +934,7 @@ fun RationsView(
                                 ) {
                                         // Colonne gauche (listes) - 50% de l'espace
                                         Column(
-                                                modifier = Modifier.weight(0.5f),
+                                                modifier = Modifier.weight(0.5),
                                                 verticalArrangement =
                                                         Arrangement.spacedBy(AppSizes.paddingMedium)
                                         ) {
@@ -1534,7 +1534,7 @@ fun RationEditDialog(ration: Ration?, onDismiss: () -> Unit, onSave: (Ration) ->
                                                                         VetNutriColors.Primary,
                                                                 checkedTrackColor =
                                                                         VetNutriColors.Primary.copy(
-                                                                                alpha = 0.5f
+                                                                                alpha = 0.5
                                                                         )
                                                         )
                                         )
@@ -1575,7 +1575,7 @@ fun RationEditDialog(ration: Ration?, onDismiss: () -> Unit, onSave: (Ration) ->
                                         onValueChange = { newValue ->
                                                 // Accepter seulement les nombres positifs
                                                 val normalizedValue = newValue.replace(',', '.')
-                                                val coefficient = normalizedValue.toFloatOrNull()
+                                                val coefficient = normalizedValue.toDoubleOrNull()
                                                 if (coefficient != null && coefficient > 0) {
                                                         editedRation =
                                                                 editedRation.copy(
@@ -1705,7 +1705,7 @@ private fun MetabolicValuesDialog(
 @Composable
 private fun CoefficientEditableRow(
         label: String,
-        currentValue: Float?,
+        currentValue: Double?,
         currentDescription: String?,
         availableCoefficients: List<fr.vetbrain.vetnutri_mp.Data.CoefP>,
         onCoefficientSelected: (fr.vetbrain.vetnutri_mp.Data.CoefP) -> Unit
@@ -1727,7 +1727,7 @@ private fun CoefficientEditableRow(
                 remember(currentValue) {
                         mutableStateOf(
                                 fr.vetbrain.vetnutri_mp.Utils.TextUtils.formatDecimal(
-                                                (currentValue ?: 1.0f).toDouble(),
+                                                (currentValue ?: 1.0).toDouble(),
                                                 2
                                         )
                                         .replace('.', ',')
@@ -1753,7 +1753,7 @@ private fun CoefficientEditableRow(
                                         editableValue = newValue
                                         // Validation et mise à jour en temps réel
                                         val normalizedText = newValue.replace(',', '.')
-                                        val value = normalizedText.toFloatOrNull()
+                                        val value = normalizedText.toDoubleOrNull()
                                         if (value != null && value > 0) {
                                                 val customCoef =
                                                         fr.vetbrain.vetnutri_mp.Data.CoefP(
@@ -1786,7 +1786,7 @@ private fun CoefficientEditableRow(
                                                                                         )
                                                                         val value =
                                                                                 normalizedText
-                                                                                        .toFloatOrNull()
+                                                                                        .toDoubleOrNull()
                                                                         if (value != null &&
                                                                                         value > 0
                                                                         ) {
@@ -1856,7 +1856,7 @@ private fun CoefficientEditableRow(
                                                                         !isCustomValue
                                                         ) {
                                                                 append(
-                                                                        "$currentDescription (${fr.vetbrain.vetnutri_mp.Utils.TextUtils.formatDecimal((currentValue ?: 0f).toDouble(), 2)})"
+                                                                        "$currentDescription (${fr.vetbrain.vetnutri_mp.Utils.TextUtils.formatDecimal((currentValue ?: 0.0).toDouble(), 2)})"
                                                                 )
                                                         } else {
                                                                 append(
@@ -1865,7 +1865,7 @@ private fun CoefficientEditableRow(
                                                                                         .TextUtils
                                                                                         .formatDecimal(
                                                                                                 (currentValue
-                                                                                                                ?: 1.0f)
+                                                                                                                ?: 1.0)
                                                                                                         .toDouble(),
                                                                                                 2
                                                                                         ))
@@ -1919,7 +1919,7 @@ private fun CoefficientEditableRow(
                                                                                         .TextUtils
                                                                                         .formatDecimal(
                                                                                                 (currentValue
-                                                                                                                ?: 0f)
+                                                                                                                ?: 0.0)
                                                                                                         .toDouble(),
                                                                                                 2
                                                                                         )
@@ -1958,7 +1958,7 @@ private fun CoefficientEditableRow(
                                                 )
                                                 Text(
                                                         text =
-                                                                "Coefficient: ${fr.vetbrain.vetnutri_mp.Utils.TextUtils.formatDecimal((coef.coef ?: 1.0f).toDouble(), 2)}",
+                                                                "Coefficient: ${fr.vetbrain.vetnutri_mp.Utils.TextUtils.formatDecimal((coef.coef ?: 1.0).toDouble(), 2)}",
                                                         style = MaterialTheme.typography.body2,
                                                         color = Color.Gray
                                                 )
@@ -1976,7 +1976,7 @@ private fun CoefficientEditableRow(
                                                 editableValue =
                                                         fr.vetbrain.vetnutri_mp.Utils.TextUtils
                                                                 .formatDecimal(
-                                                                        (currentValue ?: 0f)
+                                                                        (currentValue ?: 0.0)
                                                                                 .toDouble(),
                                                                         2
                                                                 )
@@ -2059,7 +2059,7 @@ private fun CoefficientsDialog(
                                                                 viewModel.updateCoefficient(
                                                                         consultation.uuid,
                                                                         "k1",
-                                                                        coef.coef ?: 1.0f,
+                                                                        coef.coef ?: 1.0,
                                                                         coef.description
                                                                 )
                                                         }
@@ -2081,7 +2081,7 @@ private fun CoefficientsDialog(
                                                                 viewModel.updateCoefficient(
                                                                         consultation.uuid,
                                                                         "k2",
-                                                                        coef.coef ?: 1.0f,
+                                                                        coef.coef ?: 1.0,
                                                                         coef.description
                                                                 )
                                                         }
@@ -2103,7 +2103,7 @@ private fun CoefficientsDialog(
                                                                 viewModel.updateCoefficient(
                                                                         consultation.uuid,
                                                                         "k3",
-                                                                        coef.coef ?: 1.0f,
+                                                                        coef.coef ?: 1.0,
                                                                         coef.description
                                                                 )
                                                         }
@@ -2125,7 +2125,7 @@ private fun CoefficientsDialog(
                                                                 viewModel.updateCoefficient(
                                                                         consultation.uuid,
                                                                         "k4",
-                                                                        coef.coef ?: 1.0f,
+                                                                        coef.coef ?: 1.0,
                                                                         coef.description
                                                                 )
                                                         }
@@ -2147,7 +2147,7 @@ private fun CoefficientsDialog(
                                                                 viewModel.updateCoefficient(
                                                                         consultation.uuid,
                                                                         "k5",
-                                                                        coef.coef ?: 1.0f,
+                                                                        coef.coef ?: 1.0,
                                                                         coef.description
                                                                 )
                                                         }

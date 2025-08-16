@@ -53,17 +53,17 @@ class NutrientRefP(
     )
 
     /** Calcule la conversion entre l'unité courante et l'unité principale */
-    fun getConverter(): Float {
+    fun getConverter(): Double {
         return unit.getUnit().conv / unitMain.getUnit().conv
     }
 
     /** Obtient la valeur convertie (utilisé dans ReferenceEv) */
-    fun getQuantityConverted(): Float {
+    fun getQuantityConverted(): Double {
         // Si la quantité est vide, retourner 0
-        if (quantity.isBlank()) return 0f
+        if (quantity.isBlank()) return 0.0
 
         // Sinon, convertir la valeur
-        val value = quantity.replace(",", ".").toFloat()
+        val value = quantity.replace(",", ".").toDouble()
         return value * getConverter()
     }
 }

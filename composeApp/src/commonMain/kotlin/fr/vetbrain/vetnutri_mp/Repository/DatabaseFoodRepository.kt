@@ -389,7 +389,7 @@ class DatabaseFoodRepository(
                     food.valMap.forEach { (key, nutrientQuantity) ->
                         try {
                             val nutrientKey: String? = nutrientQuantity.nut
-                            val value: Float = nutrientQuantity.value
+                            val value: Double = nutrientQuantity.value
                             if (nutrientKey.isNullOrBlank()) return@forEach
                             var nutrient =
                                     fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver
@@ -504,7 +504,7 @@ class DatabaseFoodRepository(
                         val indicationsJson: String = json.encodeToString(indications)
                         val belongs: Boolean = existingFoodUUIDs.contains(food.UUID)
                         val contName: String = resoudreCont(if (belongs) null else food.cont)
-                        val quantityPres: Float = food.quantInt ?: 0f
+                        val quantityPres: Double = food.quantInt ?: 0.0
                         if (!belongs) {
                             val entity: FoodEntity =
                                     FoodEntity(
@@ -545,7 +545,7 @@ class DatabaseFoodRepository(
                                             RefRation = null,
                                             RefAlimUnif = null,
                                             name = food.nom ?: "",
-                                            quantite = 0f,
+                                            quantite = 0.0,
                                             especesJson = especesJson,
                                             indicationsJson = indicationsJson
                                     )
@@ -600,8 +600,8 @@ class DatabaseFoodRepository(
                                                     ?: fr.vetbrain.vetnutri_mp.Enumer.ContEnum.NO
                                                             .name
                                         }
-                                val quantityPres: Float =
-                                        food.quantInt ?: existing.quantityPres ?: 0f
+                                val quantityPres: Double =
+                                        food.quantInt ?: existing.quantityPres ?: 0.0
                                 val updated: FoodEntity =
                                         existing.copy(
                                                 nameDef = food.nom ?: existing.nameDef,
@@ -796,44 +796,44 @@ class DatabaseFoodRepository(
                                 nutrientKey.contains("VIT", ignoreCase = true) &&
                                         nutrientKey.contains("A", ignoreCase = true) ->
                                         NutrientVitam.entries.find { n ->
-                                            n.label.equals("VITA", ignoreCase = true)
+                                            n.label.equals("VITA", true)
                                         }
                                 nutrientKey.contains("VIT", ignoreCase = true) &&
                                         nutrientKey.contains("C", ignoreCase = true) ->
                                         NutrientVitam.entries.find { n ->
-                                            n.label.equals("VITC", ignoreCase = true)
+                                            n.label.equals("VITC", true)
                                         }
                                 nutrientKey.contains("VIT", ignoreCase = true) &&
                                         nutrientKey.contains("E", ignoreCase = true) ->
                                         NutrientVitam.entries.find { n ->
-                                            n.label.equals("VITE", ignoreCase = true)
+                                            n.label.equals("VITE", true)
                                         }
                                 nutrientKey.contains("VIT", ignoreCase = true) &&
                                         nutrientKey.contains("D", ignoreCase = true) ->
                                         NutrientVitam.entries.find { n ->
-                                            n.label.equals("VITD", ignoreCase = true)
+                                            n.label.equals("VITD", true)
                                         }
                                 nutrientKey.contains("VIT", ignoreCase = true) &&
                                         nutrientKey.contains("B1", ignoreCase = true) ->
                                         NutrientVitam.entries.find { n ->
-                                            n.label.equals("VITB1", ignoreCase = true)
+                                            n.label.equals("VITB1", true)
                                         }
                                 nutrientKey.contains("CHOL", ignoreCase = true) ||
                                         nutrientKey.contains("CHOLEST", ignoreCase = true) ->
                                         NutrientLipid.entries.find { n ->
-                                            n.label.equals("CHOLES", ignoreCase = true)
+                                            n.label.equals("CHOLES", true)
                                         }
                                 nutrientKey.contains("OMEG", ignoreCase = true) &&
                                         (nutrientKey.contains("3", ignoreCase = true) ||
                                                 nutrientKey.contains("TROIS", ignoreCase = true)) ->
                                         NutrientLipid.entries.find { n ->
-                                            n.label.equals("O3", ignoreCase = true)
+                                            n.label.equals("O3", true)
                                         }
                                 nutrientKey.contains("OMEG", ignoreCase = true) &&
                                         (nutrientKey.contains("6", ignoreCase = true) ||
-                                                nutrientKey.contains("SIX", ignoreCase = true)) ->
+                                                nutrientKey.contains("SIX", true)) ->
                                         NutrientLipid.entries.find { n ->
-                                            n.label.equals("O6", ignoreCase = true)
+                                            n.label.equals("O6", true)
                                         }
                                 else -> null
                             }

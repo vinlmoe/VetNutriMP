@@ -13,7 +13,7 @@ enum class ContEnum(override val label: String, private val id: Int) : Labelable
     BOUCH("spoon", 7),
     DOSETTE("dosette", 8);
 
-    var conv: Float = 1f
+    var conv: Double = 1.0
 
     fun nameToString() = label
 

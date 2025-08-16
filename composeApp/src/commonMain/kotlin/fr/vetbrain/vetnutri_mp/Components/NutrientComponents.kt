@@ -102,13 +102,13 @@ fun NutrientSection(
                                                                 nouvelleValeur
                                                         // Validation en temps réel
                                                         if (nouvelleValeur.isNotBlank()) {
-                                                                val valeurFloat =
+                                                                val valeurDouble =
                                                                         nouvelleValeur
                                                                                 .replace(",", ".")
-                                                                                .toFloatOrNull()
+                                                                                .toDoubleOrNull()
                                                                 erreursNutriments[nutriment] =
-                                                                        valeurFloat == null ||
-                                                                                valeurFloat < 0
+                                                                        valeurDouble == null ||
+                                                                                valeurDouble < 0
                                                         } else {
                                                                 erreursNutriments.remove(nutriment)
                                                         }
@@ -162,8 +162,8 @@ fun NutrientSection(
 @Composable
 fun AnalyseNutritionnelleCard(
         nutriments: List<Nutrient>,
-        valeursTotales: Map<Nutrient, Float>,
-        diviseur: Float,
+        valeursTotales: Map<Nutrient, Double>,
+        diviseur: Double,
         typeDiviseur: String,
         couleurFond: Color = MaterialTheme.colors.surface,
         onModeDivisionChange: () -> Unit,
@@ -269,10 +269,10 @@ fun AnalyseNutritionnelleCard(
 
                                         // Liste des nutriments
                                         nutriments.forEach { nutriment ->
-                                                val valeurBrute = valeursTotales[nutriment] ?: 0f
+                                                val valeurBrute = valeursTotales[nutriment] ?: 0.0
                                                 val valeurRapportee =
                                                         if (diviseur > 0) valeurBrute / diviseur
-                                                        else 0f
+                                                        else 0.0
 
                                                 Row(
                                                         modifier =
@@ -368,8 +368,8 @@ fun AnalyseNutritionnelleCard(
 @Composable
 fun AnalyseNutritionnelleCompacte(
         nutriments: List<Nutrient>,
-        valeursTotales: Map<Nutrient, Float>,
-        diviseur: Float,
+        valeursTotales: Map<Nutrient, Double>,
+        diviseur: Double,
         typeDiviseur: String,
         couleurFond: Color = MaterialTheme.colors.surface,
         onModeDivisionChange: () -> Unit,
@@ -434,11 +434,11 @@ fun AnalyseNutritionnelleCompacte(
                                                 // Afficher manuellement chaque élément
                                                 nutriments.forEach { nutriment ->
                                                         val valeurBrute =
-                                                                valeursTotales[nutriment] ?: 0f
+                                                                valeursTotales[nutriment] ?: 0.0
                                                         val valeurRapportee =
                                                                 if (diviseur > 0)
                                                                         valeurBrute / diviseur
-                                                                else 0f
+                                                                else 0.0
 
                                                         // Obtenir le nom à afficher selon le type
                                                         // de nutriment

@@ -392,7 +392,7 @@ class DatabaseAnimalRepository(
                                                         brand = aliment.marque ?: "",
                                                         gamme = aliment.gamme ?: "",
                                                         unitPres = 0, // Par défaut
-                                                        quantityPres = aliment.quantInt ?: 0f,
+                                                        quantityPres = aliment.quantInt ?: 0.0,
                                                         version = 1, // Par défaut
                                                         date = "", // Par défaut
                                                         nameDef = aliment.nom ?: "",
@@ -405,7 +405,7 @@ class DatabaseAnimalRepository(
                                                         RefAlimUnif = "",
                                                         cont = "NO", // Valeur par défaut
                                                         name = aliment.nom ?: "",
-                                                        quantite = 0f,
+                                                        quantite = 0.0,
                                                         especesJson = "[]",
                                                         indicationsJson = "[]"
                                                 )
@@ -700,7 +700,7 @@ class DatabaseAnimalRepository(
                                                                                                 variable.uuid,
                                                                                         value =
                                                                                                 suppVar.varue
-                                                                                                        ?: 0f
+                                                                                                        ?: 0.0
                                                                                 )
                                                                         )
                                                         }
@@ -785,7 +785,7 @@ class DatabaseAnimalRepository(
                                                                                                         unitPres =
                                                                                                                 0,
                                                                                                         quantityPres =
-                                                                                                                0f,
+                                                                                                                0.0,
                                                                                                         version =
                                                                                                                 1,
                                                                                                         date =
@@ -807,7 +807,7 @@ class DatabaseAnimalRepository(
                                                                                                         name =
                                                                                                                 nomAliment,
                                                                                                         quantite =
-                                                                                                                0f,
+                                                                                                                0.0,
                                                                                                         especesJson =
                                                                                                                 "[]",
                                                                                                         indicationsJson =

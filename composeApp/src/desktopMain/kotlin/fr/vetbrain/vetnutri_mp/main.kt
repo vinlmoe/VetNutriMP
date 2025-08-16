@@ -411,7 +411,7 @@ actual fun importApiFromFile(viewModel: SettingsViewModel) {
                                                     }
                                             )
                     )
-            viewModel.updateApiImportProgress(1f)
+            viewModel.updateApiImportProgress(1.0)
             val total = counts.animals + counts.foods + counts.equations + counts.references
             viewModel.appendApiImportLog(
                     "Import terminé → animals=${counts.animals}, foods=${counts.foods}, equations=${counts.equations}, refs=${counts.references}"

@@ -13,12 +13,12 @@ import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
 fun calculerValeursNutritionnelles(
         alimentsRation: List<AlimentRation>,
         nutriments: List<Nutrient>
-): Map<Nutrient, Float> {
-    val resultat = mutableMapOf<Nutrient, Float>()
+): Map<Nutrient, Double> {
+    val resultat = mutableMapOf<Nutrient, Double>()
 
 
     // Initialiser tous les nutriments à 0
-    nutriments.forEach { nutriment -> resultat[nutriment] = 0f }
+    nutriments.forEach { nutriment -> resultat[nutriment] = 0.0 }
 
     // Pour chaque aliment, ajouter sa contribution pour chaque nutriment
     alimentsRation.forEachIndexed { index, alimentRation ->
@@ -39,9 +39,9 @@ fun calculerValeursNutritionnelles(
                     // La valeur est en g/kg ou unités/kg, donc pour obtenir la
                     // valeur réelle:
                     // valeur * quantité(g) / 1000
-                    val quantiteEnKg = alimentRation.quantity / 1000f
+                    val quantiteEnKg = alimentRation.quantity / 1000.0
                     val contributionNutriment = valeurNutritive * quantiteEnKg
-                    val valeurCourante = resultat[nutriment] ?: 0f
+                    val valeurCourante = resultat[nutriment] ?: 0.0
                     val nouvelleValeur = valeurCourante + contributionNutriment
                     resultat[nutriment] = nouvelleValeur
 
@@ -56,9 +56,9 @@ fun calculerValeursNutritionnelles(
                     if (nutrimentTrouve != null) {
                         val valeurNutritiveAlt = aliment.valMap[nutrimentTrouve]?.value
                         if (valeurNutritiveAlt != null) {
-                            val quantiteEnKg = alimentRation.quantity / 1000f
+                            val quantiteEnKg = alimentRation.quantity / 1000.0
                             val contributionNutriment = valeurNutritiveAlt * quantiteEnKg
-                            val valeurCourante = resultat[nutriment] ?: 0f
+                            val valeurCourante = resultat[nutriment] ?: 0.0
                             val nouvelleValeur = valeurCourante + contributionNutriment
                             resultat[nutriment] = nouvelleValeur
 
@@ -84,7 +84,7 @@ fun calculerValeursNutritionnelles(
                     // Vérifier si la valeur existe déjà dans le résultat final
                     // pour cet aliment
                     val valeurExistante = resultat[nutriment]
-                    if (valeurExistante != null && valeurExistante > 0f) {
+                    if (valeurExistante != null && valeurExistante > 0.0) {
                         return@forEach
                     }
 
@@ -98,11 +98,11 @@ fun calculerValeursNutritionnelles(
                         // La valeur est en g/kg ou unités/kg, donc pour
                         // obtenir la valeur réelle:
                         // valeur * quantité(g) / 1000
-                        val quantiteEnKg = alimentRation.quantity / 1000f
+                        val quantiteEnKg = alimentRation.quantity / 1000.0
                         // Calcul sécurisé de la contribution
                         val contributionNutriment = valeurNutriment * quantiteEnKg
                         // Mise à jour sécurisée du résultat
-                        val valeurCourante = resultat[nutriment] ?: 0f
+                        val valeurCourante = resultat[nutriment] ?: 0.0
                         val nouvelleValeur = valeurCourante + contributionNutriment
                         resultat[nutriment] = nouvelleValeur
 
@@ -119,7 +119,7 @@ fun calculerValeursNutritionnelles(
 
     // Afficher un résumé des résultats
     nutriments.forEach { nutriment ->
-        val valeur = resultat[nutriment] ?: 0f
+        val valeur = resultat[nutriment] ?: 0.0
     }
 
     return resultat

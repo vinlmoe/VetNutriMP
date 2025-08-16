@@ -126,7 +126,7 @@ fun AppConsultationDetailView(
                                                 weightText = newValue
                                                 try {
                                                         if (newValue.isNotEmpty()) {
-                                                                val weight = newValue.toFloat()
+                                                                val weight = newValue.toDouble()
                                                                 editedConsultation =
                                                                         editedConsultation.copy(
                                                                                 weight = weight
@@ -179,7 +179,7 @@ fun AppConsultationDetailView(
                                         },
                                         label = Consultation.OBSERVATION.translate(),
                                         leadingIcon = AppIcons.Info,
-                                        modifier = Modifier.fillMaxWidth().weight(1f),
+                                        modifier = Modifier.fillMaxWidth().weight(1.0),
                                         maxLines = 5,
                                         singleLine = false
                                 )

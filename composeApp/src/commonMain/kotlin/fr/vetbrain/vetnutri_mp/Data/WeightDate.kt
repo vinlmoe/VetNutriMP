@@ -9,5 +9,5 @@ data class WeightDate(
         var uuid: String = Uuid.random().toString(),
         var refAnimal: String,
         var date: LocalDate,
-        var value: Float
+        var value: Double
 )

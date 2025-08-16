@@ -73,7 +73,7 @@ fun SpeciesPreferencesView(
                                 // En-tête avec informations sur l'espèce
                                 Card(
                                         modifier = Modifier.fillMaxWidth(),
-                                        backgroundColor = VetNutriColors.Primary.copy(alpha = 0.1f),
+                                        backgroundColor = VetNutriColors.Primary.copy(alpha = 0.1),
                                         elevation = 2.dp
                                 ) {
                                         Column(modifier = Modifier.padding(16.dp)) {
@@ -209,7 +209,7 @@ fun SpeciesPreferencesView(
                                                                 )
                                                                 Column(
                                                                         modifier =
-                                                                                Modifier.weight(1f)
+                                                                                Modifier.weight(1.0)
                                                                 ) {
                                                                         Text(
                                                                                 text =
@@ -423,7 +423,7 @@ fun SpeciesPreferencesView(
                                 // Informations sur la persistance
                                 Card(
                                         modifier = Modifier.fillMaxWidth(),
-                                        backgroundColor = VetNutriColors.Primary.copy(alpha = 0.1f),
+                                        backgroundColor = VetNutriColors.Primary.copy(alpha = 0.1),
                                         elevation = 1.dp
                                 ) {
                                         Column(modifier = Modifier.padding(16.dp)) {
@@ -583,7 +583,7 @@ private fun ComplementaryNutrientEquationsSection(
 
                                 Spacer(modifier = Modifier.width(8.dp))
 
-                                Column(modifier = Modifier.weight(1f)) {
+                                Column(modifier = Modifier.weight(1.0)) {
                                         Text(
                                                 text = equation.name,
                                                 style = MaterialTheme.typography.body1,
@@ -643,7 +643,7 @@ private fun NutrientCategoryCard(
                                         tint = VetNutriColors.Primary
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Column(modifier = Modifier.weight(1f)) {
+                                Column(modifier = Modifier.weight(1.0)) {
                                         Text(
                                                 text =
                                                         fr.vetbrain.vetnutri_mp.Utils.NutrientUtils
@@ -729,7 +729,7 @@ private fun NutrientCategoryCard(
                                                         enabled = !isSaving
                                                 )
                                                 Spacer(modifier = Modifier.width(8.dp))
-                                                Column(modifier = Modifier.weight(1f)) {
+                                                Column(modifier = Modifier.weight(1.0)) {
                                                         Text(
                                                                 text = nutrient.displayName,
                                                                 style =

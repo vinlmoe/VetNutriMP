@@ -47,13 +47,13 @@ object EquationEvaluator {
      */
     fun evaluerPourAnimal(
             expression: String,
-            poidsCorps: Float,
+            poidsCorps: Double,
             variablesSupp: List<SupplementalvariableP> = emptyList()
     ): Double? {
         val variables = mutableMapOf<String, Double>()
 
         // Ajouter le poids corporel
-        variables["BW"] = poidsCorps.toDouble()
+        variables["BW"] = poidsCorps
 
         // Ajouter les variables supplémentaires
         for (variable in variablesSupp) {
@@ -78,18 +78,18 @@ object EquationEvaluator {
      */
     fun evaluerBesoinNutritionnel(
             expression: String,
-            poidsCorps: Float,
-            besoinEnergetique: Float,
-            poidsMetabolique: Float,
+            poidsCorps: Double,
+            besoinEnergetique: Double,
+            poidsMetabolique: Double,
             variablesSupp: List<SupplementalvariableP> = emptyList(),
             ration: Ration
     ): Double? {
         val variables = mutableMapOf<String, Double>()
 
         // Variables de base
-        variables["BW"] = poidsCorps.toDouble()
-        variables["BEE"] = besoinEnergetique.toDouble()
-        variables["MW"] = poidsMetabolique.toDouble()
+        variables["BW"] = poidsCorps
+        variables["BEE"] = besoinEnergetique
+        variables["MW"] = poidsMetabolique
 
         // Variables supplémentaires
         for (variable in variablesSupp) {
@@ -133,9 +133,9 @@ object EquationEvaluator {
      */
     suspend fun evaluerBesoinNutritionnelAvecComplementaires(
             expression: String,
-            poidsCorps: Float,
-            besoinEnergetique: Float,
-            poidsMetabolique: Float,
+            poidsCorps: Double,
+            besoinEnergetique: Double,
+            poidsMetabolique: Double,
             variablesSupp: List<SupplementalvariableP> = emptyList(),
             ration: Ration,
             preferences: PreferencesEspece,
@@ -143,9 +143,9 @@ object EquationEvaluator {
             referenceEv: ReferenceEv? = null
     ): Double? {
         val variables: MutableMap<String, Double> = mutableMapOf()
-        variables["BW"] = poidsCorps.toDouble()
-        variables["BEE"] = besoinEnergetique.toDouble()
-        variables["MW"] = poidsMetabolique.toDouble()
+        variables["BW"] = poidsCorps
+        variables["BEE"] = besoinEnergetique
+        variables["MW"] = poidsMetabolique
         for (variable in variablesSupp) {
             variable.variable?.let { varKind ->
                 variables[varKind.variable] = variable.varue?.toDouble() ?: 0.0
@@ -154,7 +154,7 @@ object EquationEvaluator {
         suspend fun sommeRation(nutriment: Nutrient): Double {
             var total: Double = 0.0
             for (aliment in ration.alimentMutableList) {
-                val valeur: Float? =
+                val valeur: Double? =
                         aliment.getNutrientWithComplementary(
                                 nutrient = nutriment,
                                 preferences = preferences,
@@ -162,7 +162,7 @@ object EquationEvaluator {
                                 referenceEv = referenceEv
                         )
                 if (valeur != null) {
-                    total += (valeur.toDouble() * aliment.quantite.toDouble()) / 100.0
+                    total += (valeur * aliment.quantite.toDouble()) / 100.0
                 }
             }
             return total
@@ -181,9 +181,9 @@ object EquationEvaluator {
      */
     fun evaluerBesoinNutritionnelAvecComplementairesBlocking(
             expression: String,
-            poidsCorps: Float,
-            besoinEnergetique: Float,
-            poidsMetabolique: Float,
+            poidsCorps: Double,
+            besoinEnergetique: Double,
+            poidsMetabolique: Double,
             variablesSupp: List<SupplementalvariableP> = emptyList(),
             ration: Ration,
             preferences: PreferencesEspece,
@@ -346,15 +346,15 @@ object EquationEvaluator {
 
     /** Construit un jeu de variables de base pour les équations de `ReferenceEv`. */
     fun construireVariablesPourReference(
-            poidsCorps: Float,
-            besoinEnergetique: Float? = null,
-            poidsMetabolique: Float? = null,
+            poidsCorps: Double,
+            besoinEnergetique: Double? = null,
+            poidsMetabolique: Double? = null,
             variablesSupp: List<SupplementalvariableP> = emptyList()
     ): MutableMap<String, Double> {
         val variables: MutableMap<String, Double> = mutableMapOf()
-        variables["BW"] = poidsCorps.toDouble()
-        if (besoinEnergetique != null) variables["BEE"] = besoinEnergetique.toDouble()
-        if (poidsMetabolique != null) variables["MW"] = poidsMetabolique.toDouble()
+        variables["BW"] = poidsCorps
+        if (besoinEnergetique != null) variables["BEE"] = besoinEnergetique
+        if (poidsMetabolique != null) variables["MW"] = poidsMetabolique
         for (variable in variablesSupp) {
             variable.variable?.let { varKind ->
                 variables[varKind.variable] = variable.varue?.toDouble() ?: 0.0
@@ -370,9 +370,9 @@ object EquationEvaluator {
      */
     suspend fun evaluerBesoinNutritionnelPourAliment(
             expression: String,
-            poidsCorps: Float = 0f,
-            besoinEnergetique: Float = 0f,
-            poidsMetabolique: Float = 0f,
+            poidsCorps: Double = 0.0,
+            besoinEnergetique: Double = 0.0,
+            poidsMetabolique: Double = 0.0,
             variablesSupp: List<SupplementalvariableP> = emptyList(),
             aliment: AlimentRation,
             preferences: PreferencesEspece? = null,
@@ -382,9 +382,9 @@ object EquationEvaluator {
         val variables = mutableMapOf<String, Double>()
 
         // Variables de base
-        variables["BW"] = poidsCorps.toDouble()
-        variables["BEE"] = besoinEnergetique.toDouble()
-        variables["MW"] = poidsMetabolique.toDouble()
+        variables["BW"] = poidsCorps
+        variables["BEE"] = besoinEnergetique
+        variables["MW"] = poidsMetabolique
 
         // Variables supplémentaires
         for (variable in variablesSupp) {
@@ -415,9 +415,9 @@ object EquationEvaluator {
     /** Variante suspendue utilisant les nutriments complémentaires pour un aliment unique. */
     suspend fun evaluerBesoinNutritionnelPourAlimentAvecComplementaires(
             expression: String,
-            poidsCorps: Float = 0f,
-            besoinEnergetique: Float = 0f,
-            poidsMetabolique: Float = 0f,
+            poidsCorps: Double = 0.0,
+            besoinEnergetique: Double = 0.0,
+            poidsMetabolique: Double = 0.0,
             variablesSupp: List<SupplementalvariableP> = emptyList(),
             aliment: AlimentRation,
             preferences: PreferencesEspece,
@@ -425,9 +425,9 @@ object EquationEvaluator {
             referenceEv: ReferenceEv? = null
     ): Double? {
         val variables = mutableMapOf<String, Double>()
-        variables["BW"] = poidsCorps.toDouble()
-        variables["BEE"] = besoinEnergetique.toDouble()
-        variables["MW"] = poidsMetabolique.toDouble()
+        variables["BW"] = poidsCorps
+        variables["BEE"] = besoinEnergetique
+        variables["MW"] = poidsMetabolique
         for (variable in variablesSupp) {
             variable.variable?.let { varKind ->
                 variables[varKind.variable] = variable.varue?.toDouble() ?: 0.0
@@ -443,7 +443,7 @@ object EquationEvaluator {
                             )
                             ?.toDouble()
                             ?: 0.0
-            return v
+            return (v * aliment.quantite.toDouble()) / 100.0
         }
         for (n in NutrientMain.entries) variables[n.label] = valueOf(n)
         for (n in NutrientLipid.entries) variables[n.label] = valueOf(n)
@@ -529,7 +529,7 @@ object EquationEvaluator {
      * @param poidsCorps Le poids corporel en kg
      * @return Le poids métabolique
      */
-    fun calculerPoidsMetabolique(poidsCorps: Float): Double {
+    fun calculerPoidsMetabolique(poidsCorps: Double): Double {
         return evaluerPourAnimal("BW ^ 0.75", poidsCorps) ?: 0.0
     }
 
@@ -540,7 +540,7 @@ object EquationEvaluator {
      * @param facteur Le facteur multiplicateur (défaut: 130 pour chiens)
      * @return Le besoin énergétique de base
      */
-    fun calculerBesoinEnergetiqueBase(poidsCorps: Float, facteur: Double = 130.0): Double {
+    fun calculerBesoinEnergetiqueBase(poidsCorps: Double, facteur: Double = 130.0): Double {
         return evaluerPourAnimal("$facteur * BW ^ 0.75", poidsCorps) ?: 0.0
     }
 

@@ -285,7 +285,7 @@ private fun WideScreenLayout(
                                 )
                         }
 
-                        Spacer(modifier = Modifier.weight(1f))
+                        Spacer(modifier = Modifier.weight(1.0f))
 
                         // Bouton retour
                         Button(
@@ -406,7 +406,7 @@ private fun WideScreenLayout(
                                                                 else "Aucune ration sélectionnée",
                                                         color =
                                                                 MaterialTheme.colors.onSurface.copy(
-                                                                        alpha = 0.7f
+                                                                        alpha = 0.7
                                                                 )
                                                 )
                                                 var showPreview by remember {
@@ -678,7 +678,7 @@ private fun NarrowScreenLayout(
                                 }
 
                                 Divider(
-                                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.12f),
+                                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.12),
                                         thickness = AppSizes.dividerHeight
                                 )
 

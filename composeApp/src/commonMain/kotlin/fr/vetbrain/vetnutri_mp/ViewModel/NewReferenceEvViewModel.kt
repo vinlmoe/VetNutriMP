@@ -51,8 +51,8 @@ class NewReferenceEvViewModel(
 
     // État pour les nutriments définis
     private val _definedNutrients =
-            MutableStateFlow<Map<Nutrient, Map<Reflevel, Float>>>(emptyMap())
-    val definedNutrients: StateFlow<Map<Nutrient, Map<Reflevel, Float>>> =
+            MutableStateFlow<Map<Nutrient, Map<Reflevel, Double>>>(emptyMap())
+    val definedNutrients: StateFlow<Map<Nutrient, Map<Reflevel, Double>>> =
             _definedNutrients.asStateFlow()
 
     // État pour les erreurs
@@ -266,7 +266,7 @@ class NewReferenceEvViewModel(
      */
     fun updateNutrientValue(
             nutrient: Nutrient,
-            value: Float,
+            value: Double,
             level: Reflevel,
             unit: UnitReqEnum,
             biblioRef: BiblioRef,
@@ -782,7 +782,7 @@ class NewReferenceEvViewModel(
      * @param description Description du coefficient
      * @param coef Valeur du coefficient
      */
-    fun addCoefficient(groupIndex: Int, description: String, coef: Float) {
+    fun addCoefficient(groupIndex: Int, description: String, coef: Double) {
         val reference = _currentReference.value
         val newCoef =
                 fr.vetbrain.vetnutri_mp.Data.CoefP(
@@ -846,7 +846,7 @@ class NewReferenceEvViewModel(
             groupIndex: Int,
             coefficientIndex: Int,
             description: String,
-            coef: Float
+            coef: Double
     ) {
         val reference = _currentReference.value
         val group =

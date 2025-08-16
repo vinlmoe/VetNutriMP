@@ -232,7 +232,7 @@ fun ConsultationFullScreenEditView(
                                         weightText = newValue
                                         try {
                                                 if (newValue.isNotEmpty()) {
-                                                        val weight = newValue.toFloat()
+                                                        val weight = newValue.toDouble()
                                                         editedConsultation =
                                                                 editedConsultation.copy(
                                                                         weight = weight
@@ -862,8 +862,8 @@ fun ConsultationFullScreenEditView(
 @Composable
 private fun ScoreSelector(
         label: String,
-        valeurSelectionnee: Int?,
-        onScoreSelected: (Int?) -> Unit,
+        valeurSelectionnee: Double?,
+        onScoreSelected: (Double?) -> Unit,
         plageScore: IntRange,
         descriptions: Map<Int, String>,
         modifier: Modifier = Modifier
@@ -883,7 +883,7 @@ private fun ScoreSelector(
                 OutlinedTextField(
                         value =
                                 if (valeurSelectionnee != null) {
-                                        "$valeurSelectionnee/9 - ${descriptions[valeurSelectionnee] ?: "Description non disponible"}"
+                                        "$valeurSelectionnee/9 - ${descriptions[valeurSelectionnee.toInt()] ?: "Description non disponible"}"
                                 } else {
                                         "Aucune note sélectionnée"
                                 },
@@ -935,8 +935,8 @@ private fun ScoreSelectionDialog(
         label: String,
         plageScore: IntRange,
         descriptions: Map<Int, String>,
-        scoreSelectionne: Int?,
-        onScoreSelected: (Int) -> Unit,
+        scoreSelectionne: Double?,
+        onScoreSelected: (Double) -> Unit,
         onDismiss: () -> Unit
 ) {
         AlertDialog(
@@ -950,13 +950,19 @@ private fun ScoreSelectionDialog(
                                                         Modifier.fillMaxWidth()
                                                                 .padding(vertical = 4.dp)
                                                                 .clickable {
-                                                                        onScoreSelected(score)
+                                                                        onScoreSelected(
+                                                                                score.toDouble()
+                                                                        )
                                                                 },
                                                 verticalAlignment = Alignment.CenterVertically
                                         ) {
                                                 RadioButton(
-                                                        selected = scoreSelectionne == score,
-                                                        onClick = { onScoreSelected(score) }
+                                                        selected =
+                                                                scoreSelectionne ==
+                                                                        score.toDouble(),
+                                                        onClick = {
+                                                                onScoreSelected(score.toDouble())
+                                                        }
                                                 )
                                                 Spacer(modifier = Modifier.width(8.dp))
                                                 Column {
@@ -987,7 +993,7 @@ private fun ScoreSelectionDialog(
 @Composable
 private fun CoefficientSelector(
         nom: String,
-        valeurSelectionnee: Float?,
+        valeurSelectionnee: Double?,
         descriptionSelectionnee: String?,
         coefficients: ArrayList<fr.vetbrain.vetnutri_mp.Data.CoefP>,
         onCoefficientSelected: (fr.vetbrain.vetnutri_mp.Data.CoefP) -> Unit,
@@ -1079,7 +1085,7 @@ private fun CoefficientSelectionDialog(
                                                         )
                                                         Text(
                                                                 text =
-                                                                        "Coefficient: ${fr.vetbrain.vetnutri_mp.Utils.TextUtils.formatDecimal((coef.coef ?: 1.0f).toDouble(), 2)}",
+                                                                        "Coefficient: ${fr.vetbrain.vetnutri_mp.Utils.TextUtils.formatDecimal((coef.coef ?: 1.0).toDouble(), 2)}",
                                                                 style =
                                                                         MaterialTheme.typography
                                                                                 .body2,
@@ -1478,8 +1484,8 @@ private fun extraireVariablesRequises(
 @Composable
 private fun VariableSupplementaireField(
         variable: fr.vetbrain.vetnutri_mp.Enumer.VariableKind,
-        valeurActuelle: Float?,
-        onValeurChange: (Float?) -> Unit,
+        valeurActuelle: Double?,
+        onValeurChange: (Double?) -> Unit,
         modifier: Modifier = Modifier
 ) {
         var textValue by
@@ -1532,10 +1538,11 @@ private fun VariableSupplementaireField(
                                                                 onValeurChange(null)
                                                                 isError = false
                                                         }
-                                                        newValue.toFloatOrNull() != null -> {
-                                                                val floatValue = newValue.toFloat()
-                                                                if (floatValue >= 0) {
-                                                                        onValeurChange(floatValue)
+                                                        newValue.toDoubleOrNull() != null -> {
+                                                                val doubleValue =
+                                                                        newValue.toDouble()
+                                                                if (doubleValue >= 0) {
+                                                                        onValeurChange(doubleValue)
                                                                         isError = false
                                                                 } else {
                                                                         isError = true

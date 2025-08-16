@@ -38,7 +38,7 @@ fun RationItem(
         onEdit: () -> Unit,
         onDelete: () -> Unit,
         onDuplicate: (() -> Unit)? = null,
-        onEditCoef: ((Float) -> Unit)? = null,
+        onEditCoef: ((Double) -> Unit)? = null,
         modifier: Modifier = Modifier
 ) {
         Card(

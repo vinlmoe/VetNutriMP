@@ -34,13 +34,13 @@ data class Equation(
 ) {
         /** Crée une map contenant les variables de base pour une expression */
         private fun createExpressionWithVariables(
-                poids: Float,
+                poids: Double,
                 svp: List<SupplementalvariableP>
         ): MutableMap<String, Double> {
                 val expression = mutableMapOf<String, Double>()
 
                 // Ajout du poids
-                expression["BW"] = poids.toDouble()
+                expression["BW"] = poids
 
                 // Ajout des variables supplémentaires
                 for (variable in svp) {

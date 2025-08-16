@@ -71,8 +71,8 @@ fun FoodEditView(
 
                 nutrientValues.forEach { (nutrient, value) ->
                         if (value.isNotBlank()) {
-                                val floatValue = value.replace(",", ".").toFloatOrNull()
-                                if (floatValue == null || floatValue < 0) {
+                                val doubleValue = value.replace(",", ".").toDoubleOrNull()
+                                if (doubleValue == null || doubleValue < 0) {
                                         nutrientErrors[nutrient] = true
                                         isValid = false
                                 } else {
@@ -86,7 +86,6 @@ fun FoodEditView(
 
         // Mettre à jour les états locaux lorsque l'aliment change
         LaunchedEffect(aliment) {
-
                 nomState.value = aliment.nom ?: ""
                 brandState.value = aliment.brand ?: ""
                 gammeState.value = aliment.gamme ?: ""
@@ -108,8 +107,7 @@ fun FoodEditView(
                         val espece = Espece.getFromString(especeStr)
                         if (espece != null) {
                                 matchedEspeces.add(espece)
-                        } else {
-                        }
+                        } else {}
                 }
 
                 selectedEspecesState.value = matchedEspeces
@@ -226,9 +224,9 @@ fun FoodEditView(
                                                                                                 ",",
                                                                                                 "."
                                                                                         )
-                                                                                        .toFloatOrNull()
-                                                                                        ?: 0f
-                                                                        if (value > 0f) {
+                                                                                        .toDoubleOrNull()
+                                                                                        ?: 0.0
+                                                                        if (value > 0.0) {
                                                                                 processedNutrientValues[
                                                                                         nutrient] =
                                                                                         fr.vetbrain
@@ -290,7 +288,7 @@ fun FoodEditView(
                                                                                                 ",",
                                                                                                 "."
                                                                                         )
-                                                                                        .toFloatOrNull(),
+                                                                                        .toDoubleOrNull(),
                                                                         cont =
                                                                                 ContEnum.getByName(
                                                                                         contState

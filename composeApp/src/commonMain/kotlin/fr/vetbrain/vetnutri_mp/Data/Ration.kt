@@ -10,7 +10,7 @@ data class Ration(
         var uuid: String = genUUID(),
         var idConsult: String = "",
         var name: String = "",
-        var coef: Float = 1.0f,
+        var coef: Double = 1.0,
         var actual: Boolean = false,
         var number: Int = 1,
         var espece: String? = null,
@@ -36,18 +36,18 @@ data class Ration(
          * @param nutrient Le nutriment à rechercher
          * @return La valeur du nutriment ou null si non trouvé
          */
-        fun getNutrient(nutrient: Nutrient): Float? {
+        fun getNutrient(nutrient: Nutrient): Double? {
                 // Calculer la somme des valeurs du nutriment pour tous les aliments de la ration
-                var total = 0.0f
+                var total = 0.0
 
                 for (aliment in alimentMutableList) {
                         val valeur = aliment.getNutrient(nutrient)
                         if (valeur != null) {
-                                total += (valeur * aliment.quantite) / 100f
+                                total += (valeur * aliment.quantite) / 100.0
                         }
                 }
 
-                return if (total > 0.0f) total else null
+                return if (total > 0.0) total else null
         }
 
         /**
@@ -55,8 +55,8 @@ data class Ration(
          *
          * @return La quantité totale d'aliments
          */
-        fun getQuantiteTotale(): Float {
-                return alimentMutableList.sumOf { it.quantite.toDouble() }.toFloat()
+        fun getQuantiteTotale(): Double {
+                return alimentMutableList.sumOf { it.quantite }
         }
 
         /**
@@ -64,17 +64,17 @@ data class Ration(
          *
          * @return La densité énergétique moyenne
          */
-        fun getDensiteEnergetiqueMoyenne(): Float {
+        fun getDensiteEnergetiqueMoyenne(): Double {
                 val quantiteTotale = getQuantiteTotale()
 
-                if (quantiteTotale <= 0.0f) {
-                        return 0.0f
+                if (quantiteTotale <= 0.0) {
+                        return 0.0
                 }
 
-                var totalEnergie = 0.0f
+                var totalEnergie = 0.0
 
                 for (aliment in alimentMutableList) {
-                        totalEnergie += aliment.densiteEnergetique.toFloat() * aliment.quantite
+                        totalEnergie += aliment.densiteEnergetique * aliment.quantite
                 }
 
                 return totalEnergie / quantiteTotale

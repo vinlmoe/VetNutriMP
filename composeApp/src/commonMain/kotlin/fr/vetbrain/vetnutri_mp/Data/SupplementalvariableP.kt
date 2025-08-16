@@ -9,4 +9,4 @@ import kotlinx.serialization.Serializable
  * SupplementalvariableP du projet Java original
  */
 @Serializable
-data class SupplementalvariableP(val variable: VariableKind? = null, val varue: Float? = null)
+data class SupplementalvariableP(val variable: VariableKind? = null, val varue: Double? = null)

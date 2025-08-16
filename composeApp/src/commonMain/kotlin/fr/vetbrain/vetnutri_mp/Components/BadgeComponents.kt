@@ -28,50 +28,58 @@ fun Badge(
         backgroundColor: Color,
         modifier: Modifier = Modifier
 ) {
-    Surface(
-            color = backgroundColor.copy(alpha = 0.2f),
-            shape = MaterialTheme.shapes.small,
-            modifier = modifier.padding(vertical = AppSizes.paddingXXSmall)
-    ) {
-        Column(
-                modifier =
-                        Modifier.padding(
-                                horizontal = AppSizes.paddingSmall,
-                                vertical = AppSizes.paddingXSmall
-                        ),
-                horizontalAlignment = Alignment.CenterHorizontally
+        Surface(
+                color = backgroundColor.copy(alpha = 0.2f),
+                shape = MaterialTheme.shapes.small,
+                modifier = modifier.padding(vertical = AppSizes.paddingXXSmall)
         ) {
-            Text(
-                    text = text,
-                    style = MaterialTheme.typography.body1.copy(fontSize = AppSizes.fontSizeBody1)
-            )
-            if (subText != null || id != null) {
-                Row(
-                        horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingXSmall),
-                        verticalAlignment = Alignment.CenterVertically
+                Column(
+                        modifier =
+                                Modifier.padding(
+                                        horizontal = AppSizes.paddingSmall,
+                                        vertical = AppSizes.paddingXSmall
+                                ),
+                        horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    if (id != null) {
                         Text(
-                                text = "ID: $id",
+                                text = text,
                                 style =
-                                        MaterialTheme.typography.caption.copy(
-                                                fontSize = AppSizes.fontSizeCaption
-                                        ),
-                                color = Color.Gray
+                                        MaterialTheme.typography.body1.copy(
+                                                fontSize = AppSizes.fontSizeBody1
+                                        )
                         )
-                    }
-                    if (subText != null) {
-                        Text(
-                                text = "($subText)",
-                                style =
-                                        MaterialTheme.typography.caption.copy(
-                                                fontSize = AppSizes.fontSizeCaption
-                                        ),
-                                color = Color.Gray
-                        )
-                    }
+                        if (subText != null || id != null) {
+                                Row(
+                                        horizontalArrangement =
+                                                Arrangement.spacedBy(AppSizes.paddingXSmall),
+                                        verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                        if (id != null) {
+                                                Text(
+                                                        text = "ID: $id",
+                                                        style =
+                                                                MaterialTheme.typography.caption
+                                                                        .copy(
+                                                                                fontSize =
+                                                                                        AppSizes.fontSizeCaption
+                                                                        ),
+                                                        color = Color.Gray
+                                                )
+                                        }
+                                        if (subText != null) {
+                                                Text(
+                                                        text = "($subText)",
+                                                        style =
+                                                                MaterialTheme.typography.caption
+                                                                        .copy(
+                                                                                fontSize =
+                                                                                        AppSizes.fontSizeCaption
+                                                                        ),
+                                                        color = Color.Gray
+                                                )
+                                        }
+                                }
+                        }
                 }
-            }
         }
-    }
 }

@@ -44,7 +44,7 @@ data class ConsultationAgeData(
         val ageInDays: Int,
         val ageInYears: Double,
         val ageInMonths: Double,
-        val weight: Float,
+        val weight: Double,
         val isFromConsultation: Boolean = false,
         val weightUuid: String? = null
 )
@@ -396,15 +396,15 @@ private fun AddWeightForm(viewModel: AnimalDetailViewModel) {
 
                                 Button(
                                         onClick = {
-                                                val weight = weightText.toFloatOrNull()
+                                                val weight = weightText.toDoubleOrNull()
                                                 if (weight != null && weight > 0) {
                                                         viewModel.addWeight(selectedDate, weight)
                                                         weightText = ""
                                                 }
                                         },
                                         enabled =
-                                                weightText.toFloatOrNull() != null &&
-                                                        weightText.toFloatOrNull()!! > 0,
+                                                weightText.toDoubleOrNull() != null &&
+                                                        weightText.toDoubleOrNull()!! > 0,
                                         colors =
                                                 ButtonDefaults.buttonColors(
                                                         backgroundColor = VetNutriColors.Primary
@@ -623,7 +623,7 @@ private fun EvolutionPoidsChart(viewModel: AnimalDetailViewModel) {
                 // Préparer données réelles (peut être vide) et fallback courbe 50% 0–12 mois
                 val donneesPoids =
                         consultationsWithAge.map { d ->
-                                Point(x = d.ageInMonths.toFloat(), y = d.weight)
+                                Point(x = d.ageInMonths.toDouble(), y = d.weight)
                         }
                 val courbeRef = selectedCurve
                 val param50 = courbeRef?.params?.find { it.name == "50%" }
@@ -632,7 +632,7 @@ private fun EvolutionPoidsChart(viewModel: AnimalDetailViewModel) {
                                 (0..12).map { mois ->
                                         val ageInMonths = mois.toDouble()
                                         val poids = calculerPoidsCroissance(it, ageInMonths)
-                                        Point(x = ageInMonths.toFloat(), y = poids.toFloat())
+                                        Point(x = ageInMonths.toDouble(), y = poids.toDouble())
                                 }
                         }
                                 ?: emptyList()
@@ -640,21 +640,21 @@ private fun EvolutionPoidsChart(viewModel: AnimalDetailViewModel) {
                 // Axes: si on a des données réelles, utiliser leur plage; sinon, utiliser 0..12
                 // mois et y basé sur la courbe
                 val useReal = donneesPoids.isNotEmpty()
-                val minX = if (useReal) donneesPoids.minOf { it.x } else 0f
-                val maxX = if (useReal) donneesPoids.maxOf { it.x } else 12f
-                val xMargin = (maxX - minX).coerceAtLeast(1f) * 0.05f
+                val minX = if (useReal) donneesPoids.minOf { it.x } else 0.0
+                val maxX = if (useReal) donneesPoids.maxOf { it.x } else 12.0
+                val xMargin = (maxX - minX).coerceAtLeast(1.0) * 0.05
                 val xRange = (minX - xMargin)..(maxX + xMargin)
 
                 val yCandidates = (if (useReal) donneesPoids else pointsRef0_12).map { it.y }
-                val minY = yCandidates.minOrNull() ?: 0f
-                val maxY = yCandidates.maxOrNull() ?: (minY + 5f)
-                val yMargin = (maxY - minY).coerceAtLeast(1f) * 0.05f
+                val minY = yCandidates.minOrNull() ?: 0.0
+                val maxY = yCandidates.maxOrNull() ?: (minY + 5.0)
+                val yMargin = (maxY - minY).coerceAtLeast(1.0) * 0.05
                 val yRange = (minY - yMargin)..(maxY + yMargin)
 
-                val xRangeWidth = (xRange.endInclusive - xRange.start).coerceAtLeast(0f)
-                val xTickIncrement = if (xRangeWidth > 10f) 3f else 1f
+                val xRangeWidth = (xRange.endInclusive - xRange.start).coerceAtLeast(0.0)
+                val xTickIncrement = if (xRangeWidth > 10.0) 3.0 else 1.0
                 val safeTickIncrement =
-                        if (xRangeWidth > 0f) xTickIncrement.coerceAtMost(xRangeWidth) else 1f
+                        if (xRangeWidth > 0.0) xTickIncrement.coerceAtMost(xRangeWidth) else 1.0
 
                 // Graphique
                 GraphCard(
@@ -687,8 +687,8 @@ private fun EvolutionPoidsChart(viewModel: AnimalDetailViewModel) {
                                                                         Point(
                                                                                 x =
                                                                                         ageInMonths
-                                                                                                .toFloat(),
-                                                                                y = y.toFloat()
+                                                                                                .toDouble(),
+                                                                                y = y.toDouble()
                                                                         )
                                                                 }
 
@@ -721,7 +721,7 @@ private fun EvolutionPoidsChart(viewModel: AnimalDetailViewModel) {
                                                                         areaBaseline =
                                                                                 AreaBaseline
                                                                                         .ConstantLine(
-                                                                                                0f
+                                                                                                0.0
                                                                                         )
                                                                 )
                                                         }
@@ -951,7 +951,7 @@ private fun CompositionNutritionnelleChart() {
                         "Protéines" to 25f,
                         "Lipides" to 15f,
                         "Glucides" to 45f,
-                        "Fibres" to 10f,
+                        "Fibres" to 10.0,
                         "Cendres" to 5f
                 )
         }
@@ -988,10 +988,10 @@ private fun CompositionNutritionnelleChart() {
                                         )
 
                                         LinearProgressIndicator(
-                                                progress = valeur / 100f,
-                                                modifier = Modifier.weight(1f).height(20.dp),
+                                                progress = valeur / 100.0,
+                                                modifier = Modifier.weight(1.0).height(20.dp),
                                                 color = couleur,
-                                                backgroundColor = Color.LightGray.copy(alpha = 0.3f)
+                                                backgroundColor = Color.LightGray.copy(alpha = 0.3)
                                         )
 
                                         Text(
@@ -1010,7 +1010,7 @@ private fun CompositionNutritionnelleChart() {
 private fun ComparaisonBesoinsChart() {
         // Données d'exemple pour comparaison apports vs besoins
         val nutriments = listOf("Protéines", "Calcium", "Phosphore", "Vitamine A", "Fer")
-        val apports = listOf(120f, 95f, 110f, 85f, 105f) // en % des besoins
+        val apports = listOf(120.0, 95.0, 110.0, 85.0, 105.0) // en % des besoins
 
         GraphCard(
                 titre = "Apports vs Besoins nutritionnels",
@@ -1025,9 +1025,9 @@ private fun ComparaisonBesoinsChart() {
                                 val apport = apports[index]
                                 val couleur =
                                         when {
-                                                apport < 80f -> Color.Red
-                                                apport < 100f -> Color(0xFFFFA500) // Orange
-                                                apport > 120f -> Color.Blue
+                                                apport < 80.0 -> Color.Red
+                                                apport < 100.0 -> Color(0xFFFFA500) // Orange
+                                                apport > 120.0 -> Color.Blue
                                                 else -> Color.Green
                                         }
 
@@ -1042,10 +1042,10 @@ private fun ComparaisonBesoinsChart() {
                                         )
 
                                         LinearProgressIndicator(
-                                                progress = (apport / 150f).coerceIn(0f, 1f),
-                                                modifier = Modifier.weight(1f).height(20.dp),
+                                                progress = (apport / 150.0).coerceIn(0.0, 1.0),
+                                                modifier = Modifier.weight(1.0).height(20.dp),
                                                 color = couleur,
-                                                backgroundColor = Color.LightGray.copy(alpha = 0.3f)
+                                                backgroundColor = Color.LightGray.copy(alpha = 0.3)
                                         )
 
                                         Text(
@@ -1065,9 +1065,9 @@ private fun RepartitionEnergieChart() {
         // Données d'exemple pour la répartition énergétique
         val donneesEnergie = remember {
                 mapOf(
-                        "Protéines\n(4 kcal/g)" to 30f,
-                        "Lipides\n(9 kcal/g)" to 35f,
-                        "Glucides\n(4 kcal/g)" to 35f
+                        "Protéines\n(4 kcal/g)" to 30.0,
+                        "Lipides\n(9 kcal/g)" to 35.0,
+                        "Glucides\n(4 kcal/g)" to 35.0
                 )
         }
 
@@ -1095,10 +1095,10 @@ private fun RepartitionEnergieChart() {
                                         )
 
                                         LinearProgressIndicator(
-                                                progress = valeur / 100f,
-                                                modifier = Modifier.weight(1f).height(25.dp),
+                                                progress = valeur / 100.0,
+                                                modifier = Modifier.weight(1.0).height(25.dp),
                                                 color = couleur,
-                                                backgroundColor = Color.LightGray.copy(alpha = 0.3f)
+                                                backgroundColor = Color.LightGray.copy(alpha = 0.3)
                                         )
 
                                         Text(

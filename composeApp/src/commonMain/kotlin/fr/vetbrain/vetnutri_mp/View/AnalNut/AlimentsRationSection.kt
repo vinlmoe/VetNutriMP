@@ -197,7 +197,7 @@ fun SectionAlimentsRation(
                                                                                                                                                 (alimentRation
                                                                                                                                                                 .quantite *
                                                                                                                                                                 ratio)
-                                                                                                                                                        .toFloat()
+                                                                                                                                                        .toDouble()
                                                                                                                                 )
                                                                                                                 }
                                                                                                 coroutineScope

@@ -7,20 +7,20 @@ enum class UnitEnum(
         private val id: Int,
         private val idFamily: Int,
         private val refId: Int,
-        val conv: Float,
+        val conv: Double,
         override val label: String
 ) : Labelable {
-    BUg("g", 1, 1, 1, 1f, "BUg"),
-    BUmg("mg", 2, 1, 1, 0.001f, "BUmg"),
-    BUmu("µg", 3, 1, 1, 0.000001f, "BUmu"),
-    AUui("UI", 4, 2, 4, 1f, "AUui"),
-    AUmu("µg", 5, 2, 4, 3.33f, "AUmu"),
-    DUui("UI", 6, 3, 6, 1f, "DUui"),
-    DUmu("µg", 7, 3, 6, 40f, "DUmu"),
-    EUui("UI", 8, 4, 6, 1f, "EUui"),
-    EUmg("mg", 9, 4, 8, 1f, "EUmg"),
-    KCAL("kcal", 10, 6, 10, 1f, "KCAL"),
-    NO("", 0, 5, 10, 0f, "NO");
+    BUg("g", 1, 1, 1, 1.0, "BUg"),
+    BUmg("mg", 2, 1, 1, 0.001, "BUmg"),
+    BUmu("µg", 3, 1, 1, 0.000001, "BUmu"),
+    AUui("UI", 4, 2, 4, 1.0, "AUui"),
+    AUmu("µg", 5, 2, 4, 3.33, "AUmu"),
+    DUui("UI", 6, 3, 6, 1.0, "DUui"),
+    DUmu("µg", 7, 3, 6, 40.0, "DUmu"),
+    EUui("UI", 8, 4, 6, 1.0, "EUui"),
+    EUmg("mg", 9, 4, 8, 1.0, "EUmg"),
+    KCAL("kcal", 10, 6, 10, 1.0, "KCAL"),
+    NO("", 0, 5, 10, 0.0, "NO");
 
     val displayName: String
         get() = unitName

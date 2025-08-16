@@ -62,7 +62,7 @@ fun analyserValeursNutritionnellesRationAvecEquations(
 
             // Utiliser la logique unifiée: valeur table > 0 sinon équation complémentaire
             // (évite que 0.0 bloque l'utilisation de l'équation)
-            val valeurPour100g: Float? = runBlocking {
+            val valeurPour100g: Double? = runBlocking {
                 alimentRation.getNutrientWithComplementary(
                         nutrient = nutriment,
                         preferences = preferencesEspece,
@@ -284,7 +284,7 @@ fun analyserValeursNutritionnellesRationSelective(
                 val nomIngredient = alimentRation.aliment?.nom ?: "Ingrédient inconnu"
                 val quantiteIngredient = alimentRation.quantite
 
-                val valeurPour100g: Float? = runBlocking {
+                val valeurPour100g: Double? = runBlocking {
                     alimentRation.getNutrientWithComplementary(
                             nutrient = nutriment,
                             preferences = preferencesEspece,

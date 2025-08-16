@@ -27,7 +27,7 @@ object ComplementaryNutrientCalculator {
             alimentRation: AlimentRation,
             preferences: PreferencesEspece,
             equationRepository: EquationRepository
-    ): Float? {
+    ): Double? {
         // Vérifier si une équation complémentaire est configurée pour ce nutriment
         val equationUuid = preferences.getEquationComplementaire(nutriment.label)
         if (equationUuid == null) {
@@ -51,7 +51,7 @@ object ComplementaryNutrientCalculator {
      * @param alimentRation L'aliment ration
      * @return La valeur calculée ou null en cas d'erreur
      */
-    private fun calculerAvecEquation(equation: Equation, alimentRation: AlimentRation): Float? {
+    private fun calculerAvecEquation(equation: Equation, alimentRation: AlimentRation): Double? {
         try {
             // Créer les variables pour l'évaluation
             val variables = mutableMapOf<String, Double>()
@@ -64,12 +64,12 @@ object ComplementaryNutrientCalculator {
 
             // Variables des nutriments disponibles dans l'aliment
             alimentRation.aliment?.valMap?.forEach { (nutrient, value) ->
-                variables[nutrient.label.uppercase()] = value.value.toDouble()
+                variables[nutrient.label.uppercase()] = value.value
             }
 
             // Évaluer l'équation
             val result = ExpressionMathematique.evaluer(equation.equationScript, variables)
-            return result?.toFloat()
+            return result
         } catch (e: Exception) {
             println("Erreur lors du calcul du nutriment complémentaire: ${e.message}")
             return null

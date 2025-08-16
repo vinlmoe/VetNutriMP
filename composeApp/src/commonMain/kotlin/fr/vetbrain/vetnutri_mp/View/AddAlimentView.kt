@@ -49,7 +49,7 @@ fun AddAlimentView(
         viewModel: AnimalDetailViewModel,
         ration: Ration,
         onNavigateBack: () -> Unit,
-        onAddAliment: (AlimentEv, Float) -> Unit,
+        onAddAliment: (AlimentEv, Double) -> Unit,
         modifier: Modifier = Modifier
 ) {
         // États pour les filtres
@@ -166,7 +166,7 @@ fun AddAlimentView(
                                                 selectedFood?.let { aliment ->
                                                         try {
                                                                 val quantiteValue =
-                                                                        quantite.toFloat()
+                                                                        quantite.toDouble()
                                                                 if (quantiteValue > 0) {
                                                                         onAddAliment(
                                                                                 aliment,
@@ -583,7 +583,7 @@ fun AddAlimentView(
                                                         quantite = newQuantite
                                                         quantiteError =
                                                                 try {
-                                                                        newQuantite.toFloat() <= 0
+                                                                        newQuantite.toDouble() <= 0
                                                                 } catch (e: NumberFormatException) {
                                                                         true
                                                                 }
