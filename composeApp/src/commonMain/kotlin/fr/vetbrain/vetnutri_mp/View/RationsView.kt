@@ -230,21 +230,6 @@ fun RationsView(
         var showDeleteRationDialog by remember { mutableStateOf(false) }
         var rationToDelete by remember { mutableStateOf<Ration?>(null) }
 
-        // Barre d'actions: uniquement ajout d'aliment (icônes recette déplacées dans le titre)
-        Row(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-        ) {
-                Button(
-                        onClick = {
-                                rationForAddAliment = selectedRation
-                                showAddAlimentView = true
-                        },
-                        enabled = selectedRation != null
-                ) { Text("Ajouter un aliment") }
-        }
-
         // Dialog de gestion des recettes
         if (showRecipeDialog) {
                 RecipeDialog(
@@ -864,6 +849,13 @@ fun RationsView(
                                                                                 preferencesRepository,
                                                                         equationRepository =
                                                                                 equationRepository,
+                                                                        // Utiliser les préférences
+                                                                        // pré-chargées du ViewModel
+                                                                        typeExpressionBesoin =
+                                                                                viewModel
+                                                                                        .typeExpressionBesoin
+                                                                                        .collectAsState()
+                                                                                        .value,
                                                                         isLargeView = !isCompact,
                                                                         referencesMaladies =
                                                                                 referencesMaladiesResolues
@@ -1237,6 +1229,13 @@ fun RationsView(
                                                                         preferencesRepository,
                                                                 equationRepository =
                                                                         equationRepository,
+                                                                // Utiliser les préférences
+                                                                // pré-chargées du ViewModel
+                                                                typeExpressionBesoin =
+                                                                        viewModel
+                                                                                .typeExpressionBesoin
+                                                                                .collectAsState()
+                                                                                .value,
                                                                 isLargeView = true,
                                                                 referencesMaladies =
                                                                         referencesMaladiesResolues

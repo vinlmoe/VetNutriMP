@@ -40,10 +40,12 @@ fun AnalyseNutritionnelleCard(
         modifier: Modifier = Modifier,
         nutrimentsSelectionnes: List<String>? = null,
         onNutrimentClick: (String, ValeurNutritionnelle) -> Unit,
-        // Nouveaux paramètres pour les préférences
+        // Paramètres pour les préférences (maintenant optionnels)
         animal: AnimalEv? = null,
         preferencesRepository: PreferencesRepository? = null,
         equationRepository: EquationRepository? = null,
+        // Nouveau paramètre pour les préférences pré-chargées
+        typeExpressionBesoin: TypeExpressionBesoin? = null,
         // Paramètre pour adapter la hauteur selon la vue (large ou compacte)
         isLargeView: Boolean = false,
         // Références de maladies pour le contrôle et les graphes
@@ -52,21 +54,42 @@ fun AnalyseNutritionnelleCard(
     // Etat pour basculer entre affichage filtré et complet
     var afficherTousLesNutriments by remember { mutableStateOf(false) }
 
-    // Charger les préférences d'expression pour l'espèce de l'animal
-    var typeExpressionBesoin by remember { mutableStateOf<TypeExpressionBesoin?>(null) }
+    // Utiliser les préférences pré-chargées ou les charger localement si nécessaire
+    var localTypeExpressionBesoin by remember { mutableStateOf<TypeExpressionBesoin?>(null) }
+    var preferencesLoaded by remember { mutableStateOf(false) }
 
-    LaunchedEffect(animal, preferencesRepository) {
+    // Priorité aux préférences pré-chargées
+    val finalTypeExpressionBesoin = typeExpressionBesoin ?: localTypeExpressionBesoin
+
+    LaunchedEffect(animal, preferencesRepository, typeExpressionBesoin) {
+        // Si les préférences sont déjà fournies, les utiliser
+        if (typeExpressionBesoin != null) {
+            localTypeExpressionBesoin = typeExpressionBesoin
+            preferencesLoaded = true
+            return@LaunchedEffect
+        }
+
+        // Sinon, charger les préférences localement (fallback)
         animal?.let { animalData ->
             preferencesRepository?.let { repo ->
                 try {
                     val preferences = repo.getPreferencesForSpecies(animalData.getEspece())
-                    typeExpressionBesoin = preferences.getTypeExpressionBesoinEnum()
+                    localTypeExpressionBesoin = preferences.getTypeExpressionBesoinEnum()
+                    preferencesLoaded = true
                 } catch (e: Exception) {
-                    typeExpressionBesoin = TypeExpressionBesoin.DEFAULT
+                    localTypeExpressionBesoin = TypeExpressionBesoin.DEFAULT
+                    preferencesLoaded = false
                 }
             }
+                    ?: run {
+                        localTypeExpressionBesoin = TypeExpressionBesoin.DEFAULT
+                        preferencesLoaded = false
+                    }
         }
-                ?: run { typeExpressionBesoin = TypeExpressionBesoin.DEFAULT }
+                ?: run {
+                    localTypeExpressionBesoin = TypeExpressionBesoin.DEFAULT
+                    preferencesLoaded = false
+                }
     }
 
     val valeursNutritionnellesBase =
@@ -309,13 +332,26 @@ fun AnalyseNutritionnelleCard(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                        text = "Analyse nutritionnelle",
-                        style = MaterialTheme.typography.subtitle1,
-                        fontWeight = FontWeight.Bold,
-                        color = VetNutriColors.Primary,
-                        modifier = Modifier.weight(1f)
-                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                            text = "Analyse nutritionnelle",
+                            style = MaterialTheme.typography.subtitle1,
+                            fontWeight = FontWeight.Bold,
+                            color = VetNutriColors.Primary
+                    )
+
+                    // Indicateur des préférences d'affichage
+                    finalTypeExpressionBesoin?.let { typeExpr ->
+                        Text(
+                                text = "Affichage: ${typeExpr.displayName}",
+                                style = MaterialTheme.typography.caption,
+                                color =
+                                        if (preferencesLoaded) VetNutriColors.Primary
+                                        else VetNutriColors.Error,
+                                modifier = Modifier.padding(top = 2.dp)
+                        )
+                    }
+                }
 
                 Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -431,7 +467,8 @@ fun AnalyseNutritionnelleCard(
                                                                 onNutrimentClick(nom, valeur)
                                                             },
                                                             typeExpressionBesoin =
-                                                                    typeExpressionBesoin
+                                                                    finalTypeExpressionBesoin,
+                                                            preferencesLoaded = preferencesLoaded
                                                     )
                                                 }
                                                 repeat(3 - rangeeNutriments.size) {
@@ -449,7 +486,8 @@ fun AnalyseNutritionnelleCard(
                                     val valeur = pair.second
                                     val apport = valeur.valeur
                                     val typeExpr =
-                                            typeExpressionBesoin ?: TypeExpressionBesoin.DEFAULT
+                                            finalTypeExpressionBesoin
+                                                    ?: TypeExpressionBesoin.DEFAULT
                                     if (referenceUtilisee != null) {
                                         Row(
                                                 verticalAlignment = Alignment.CenterVertically,
@@ -805,6 +843,7 @@ private fun NutrimentCard(
         modifier: Modifier = Modifier,
         onClick: () -> Unit,
         typeExpressionBesoin: TypeExpressionBesoin?,
+        preferencesLoaded: Boolean = false,
         referencesMaladies: List<ReferenceEv> = emptyList()
 ) {
     // Vérifier la conformité aux références
@@ -890,21 +929,31 @@ private fun NutrimentCard(
             }
 
             // Valeur et unité selon les préférences d'expression
-            val (valeurAffichee, uniteAffichee) =
-                    calculerAffichageNutriment(
-                            valeurNutritionnelle = valeurNutritionnelle,
-                            typeExpressionBesoin = typeExpressionBesoin,
-                            poidsMetabolique = poidsMetabolique,
-                            poidsAnimal = poidsAnimal,
-                            besoinEnergetiqueEntretien = besoinEnergetiqueEntretien
-                    )
+            if (preferencesLoaded) {
+                val (valeurAffichee, uniteAffichee) =
+                        calculerAffichageNutriment(
+                                valeurNutritionnelle = valeurNutritionnelle,
+                                typeExpressionBesoin = typeExpressionBesoin,
+                                poidsMetabolique = poidsMetabolique,
+                                poidsAnimal = poidsAnimal,
+                                besoinEnergetiqueEntretien = besoinEnergetiqueEntretien
+                        )
 
-            Text(
-                    text = "$valeurAffichee $uniteAffichee",
-                    style = MaterialTheme.typography.overline,
-                    color = MaterialTheme.colors.onSurface,
-                    maxLines = 2
-            )
+                Text(
+                        text = "$valeurAffichee $uniteAffichee",
+                        style = MaterialTheme.typography.overline,
+                        color = MaterialTheme.colors.onSurface,
+                        maxLines = 2
+                )
+            } else {
+                // Afficher un indicateur de chargement des préférences
+                Text(
+                        text = "Chargement des préférences...",
+                        style = MaterialTheme.typography.overline,
+                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f),
+                        maxLines = 2
+                )
+            }
         }
     }
 }
@@ -1126,10 +1175,18 @@ private fun calculerAffichageNutriment(
                     val valeurParKg = valeurAbsolue / poids
                     Pair(TextUtils.formatDecimal(valeurParKg, 2), "$uniteOriginale/kg")
                 } else {
-                    Pair(TextUtils.formatDecimal(valeurAbsolue, 2), uniteOriginale)
+                    // Si pas de poids disponible, garder l'unité originale mais indiquer le type
+                    // d'expression
+                    Pair(
+                            TextUtils.formatDecimal(valeurAbsolue, 2),
+                            "$uniteOriginale (par kg si poids disponible)"
+                    )
                 }
             }
-                    ?: Pair(TextUtils.formatDecimal(valeurAbsolue, 2), uniteOriginale)
+                    ?: Pair(
+                            TextUtils.formatDecimal(valeurAbsolue, 2),
+                            "$uniteOriginale (par kg si poids disponible)"
+                    )
         }
         TypeExpressionBesoin.PAR_KG_METABOLIQUE -> {
             // Par kg de poids métabolique (kg^0.75)
@@ -1141,10 +1198,18 @@ private fun calculerAffichageNutriment(
                             "$uniteOriginale/kg${TextUtils.toSuperscript("0.75")}"
                     )
                 } else {
-                    Pair(TextUtils.formatDecimal(valeurAbsolue, 2), uniteOriginale)
+                    // Si pas de poids métabolique disponible, garder l'unité originale mais
+                    // indiquer le type d'expression
+                    Pair(
+                            TextUtils.formatDecimal(valeurAbsolue, 2),
+                            "$uniteOriginale (par kg^0.75 si poids métabolique disponible)"
+                    )
                 }
             }
-                    ?: Pair(TextUtils.formatDecimal(valeurAbsolue, 2), uniteOriginale)
+                    ?: Pair(
+                            TextUtils.formatDecimal(valeurAbsolue, 2),
+                            "$uniteOriginale (par kg^0.75 si poids métabolique disponible)"
+                    )
         }
         TypeExpressionBesoin.PAR_KCAL -> {
             // Par 1000 kcal de BEE (Besoin Énergétique d'Entretien)
@@ -1153,10 +1218,18 @@ private fun calculerAffichageNutriment(
                     val valeurPar1000Kcal = (valeurAbsolue / bee) * 1000
                     Pair(TextUtils.formatDecimal(valeurPar1000Kcal, 2), "$uniteOriginale/1000 kcal")
                 } else {
-                    Pair(TextUtils.formatDecimal(valeurAbsolue, 2), uniteOriginale)
+                    // Si pas de BEE disponible, garder l'unité originale mais indiquer le type
+                    // d'expression
+                    Pair(
+                            TextUtils.formatDecimal(valeurAbsolue, 2),
+                            "$uniteOriginale (par 1000 kcal si BEE disponible)"
+                    )
                 }
             }
-                    ?: Pair(TextUtils.formatDecimal(valeurAbsolue, 2), uniteOriginale)
+                    ?: Pair(
+                            TextUtils.formatDecimal(valeurAbsolue, 2),
+                            "$uniteOriginale (par 1000 kcal si BEE disponible)"
+                    )
         }
         TypeExpressionBesoin.PAR_KJ -> {
             // Par 1000 kJ de BEE (conversion : 1 kcal = 4.184 kJ)
@@ -1166,10 +1239,18 @@ private fun calculerAffichageNutriment(
                     val valeurPar1000Kj = (valeurAbsolue / beeEnKj) * 1000
                     Pair(TextUtils.formatDecimal(valeurPar1000Kj, 2), "$uniteOriginale/1000 kJ")
                 } else {
-                    Pair(TextUtils.formatDecimal(valeurAbsolue, 2), uniteOriginale)
+                    // Si pas de BEE disponible, garder l'unité originale mais indiquer le type
+                    // d'expression
+                    Pair(
+                            TextUtils.formatDecimal(valeurAbsolue, 2),
+                            "$uniteOriginale (par 1000 kJ si BEE disponible)"
+                    )
                 }
             }
-                    ?: Pair(TextUtils.formatDecimal(valeurAbsolue, 2), uniteOriginale)
+                    ?: Pair(
+                            TextUtils.formatDecimal(valeurAbsolue, 2),
+                            "$uniteOriginale (par 1000 kJ si BEE disponible)"
+                    )
         }
     }
 }

@@ -8,14 +8,17 @@ import fr.vetbrain.vetnutri_mp.Data.AnalyseResultat
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
 import fr.vetbrain.vetnutri_mp.Data.ComparaisonNutriment
 import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
+import fr.vetbrain.vetnutri_mp.Data.PreferencesEspece
 import fr.vetbrain.vetnutri_mp.Data.Ration
 import fr.vetbrain.vetnutri_mp.Data.RationAnalyzer
 import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
+import fr.vetbrain.vetnutri_mp.Enumer.TypeExpressionBesoin
 import fr.vetbrain.vetnutri_mp.Repository.AlimentRepository
 import fr.vetbrain.vetnutri_mp.Repository.AnimalRepository
 import fr.vetbrain.vetnutri_mp.Repository.ConsultationRepository
 import fr.vetbrain.vetnutri_mp.Repository.DatabaseReferenceEvRepository
+import fr.vetbrain.vetnutri_mp.Repository.PreferencesRepository
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import fr.vetbrain.vetnutri_mp.Utils.ExpressionEvaluator
 import kotlin.uuid.ExperimentalUuidApi
@@ -47,7 +50,8 @@ enum class AnimalDetailSection {
 class AnimalDetailViewModel(
         private val consultationRepository: ConsultationRepository,
         private val animalRepository: AnimalRepository,
-        private val databaseReferenceEvRepository: DatabaseReferenceEvRepository
+        private val databaseReferenceEvRepository: DatabaseReferenceEvRepository,
+        private val preferencesRepository: PreferencesRepository
 ) {
     private val viewModelScope = CoroutineScope(AppDispatchers.Main)
     private val _animal = MutableStateFlow<AnimalEv?>(null)
@@ -95,6 +99,14 @@ class AnimalDetailViewModel(
     // StateFlow pour stocker les résultats d'analyse de la ration sélectionnée
     private val _rationAnalyseResultat = MutableStateFlow<AnalyseResultat?>(null)
     val rationAnalyseResultat: StateFlow<AnalyseResultat?> = _rationAnalyseResultat.asStateFlow()
+
+    // StateFlow pour stocker les préférences de l'espèce de l'animal
+    private val _speciesPreferences = MutableStateFlow<PreferencesEspece?>(null)
+    val speciesPreferences: StateFlow<PreferencesEspece?> = _speciesPreferences.asStateFlow()
+
+    // StateFlow pour stocker le type d'expression des besoins
+    private val _typeExpressionBesoin = MutableStateFlow<TypeExpressionBesoin?>(null)
+    val typeExpressionBesoin: StateFlow<TypeExpressionBesoin?> = _typeExpressionBesoin.asStateFlow()
 
     // StateFlow pour stocker la comparaison entre deux rations
     private val _rationsComparaison =
@@ -259,6 +271,23 @@ class AnimalDetailViewModel(
 
             // Mettre à jour l'animal dans le ViewModel
             _animal.value = originalAnimal
+
+            // Charger les préférences de l'espèce de l'animal
+            try {
+                preferencesRepository.loadPreferences()
+                val preferences = preferencesRepository.getPreferencesForSpecies(animal.getEspece())
+                _speciesPreferences.value = preferences
+                _typeExpressionBesoin.value = preferences.getTypeExpressionBesoinEnum()
+                println(
+                        "✅ DEBUG setAnimal: Préférences chargées pour ${animal.getEspece()}: ${preferences.getTypeExpressionBesoinEnum().displayName}"
+                )
+            } catch (e: Exception) {
+                println(
+                        "❌ DEBUG setAnimal: Erreur lors du chargement des préférences: ${e.message}"
+                )
+                _speciesPreferences.value = null
+                _typeExpressionBesoin.value = null
+            }
 
             // Charger les consultations depuis la base de données
             try {

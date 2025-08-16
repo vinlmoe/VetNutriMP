@@ -637,7 +637,7 @@ fun ConsultationFullScreenEditView(
                         }
 
                         // Section Coefficients
-                        if (referenceGeneraleSelectionnee != null) {
+                        if (availableReferences.isNotEmpty()) {
                                 Card(
                                         modifier = Modifier.fillMaxWidth(),
                                         elevation = AppSizes.elevationSmall,
@@ -669,155 +669,145 @@ fun ConsultationFullScreenEditView(
                                                                         AppSizes.paddingSmall
                                                                 )
                                                 ) {
-                                                        if (referenceGeneraleSelectionnee.nomk1
-                                                                        .isNotBlank()
-                                                        ) {
-                                                                CoefficientSelector(
-                                                                        nom =
-                                                                                referenceGeneraleSelectionnee
-                                                                                        .nomk1,
-                                                                        valeurSelectionnee =
-                                                                                editedConsultation
-                                                                                        .k1Value,
-                                                                        descriptionSelectionnee =
-                                                                                editedConsultation
-                                                                                        .k1Id,
-                                                                        coefficients =
-                                                                                referenceGeneraleSelectionnee
-                                                                                        .getModk1(),
-                                                                        onCoefficientSelected = {
-                                                                                coef ->
-                                                                                editedConsultation =
-                                                                                        editedConsultation
-                                                                                                .copy(
-                                                                                                        k1Id =
-                                                                                                                coef.description,
-                                                                                                        k1Value =
-                                                                                                                coef.coef
-                                                                                                )
+                                                        // Coefficient K1
+                                                        CoefficientSelector(
+                                                                nom =
+                                                                        referenceGeneraleSelectionnee
+                                                                                ?.nomk1?.takeIf {
+                                                                                it.isNotBlank()
                                                                         }
-                                                                )
-                                                        }
+                                                                                ?: "Coefficient K1",
+                                                                valeurSelectionnee =
+                                                                        editedConsultation.k1Value,
+                                                                descriptionSelectionnee =
+                                                                        editedConsultation.k1Id,
+                                                                coefficients =
+                                                                        referenceGeneraleSelectionnee
+                                                                                ?.getModk1()
+                                                                                ?: arrayListOf(),
+                                                                onCoefficientSelected = { coef ->
+                                                                        editedConsultation =
+                                                                                editedConsultation
+                                                                                        .copy(
+                                                                                                k1Id =
+                                                                                                        coef.description,
+                                                                                                k1Value =
+                                                                                                        coef.coef
+                                                                                        )
+                                                                }
+                                                        )
 
-                                                        if (referenceGeneraleSelectionnee.nomk2
-                                                                        .isNotBlank()
-                                                        ) {
-                                                                CoefficientSelector(
-                                                                        nom =
-                                                                                referenceGeneraleSelectionnee
-                                                                                        .nomk2,
-                                                                        valeurSelectionnee =
-                                                                                editedConsultation
-                                                                                        .k2Value,
-                                                                        descriptionSelectionnee =
-                                                                                editedConsultation
-                                                                                        .k2Id,
-                                                                        coefficients =
-                                                                                referenceGeneraleSelectionnee
-                                                                                        .getModk2(),
-                                                                        onCoefficientSelected = {
-                                                                                coef ->
-                                                                                editedConsultation =
-                                                                                        editedConsultation
-                                                                                                .copy(
-                                                                                                        k2Id =
-                                                                                                                coef.description,
-                                                                                                        k2Value =
-                                                                                                                coef.coef
-                                                                                                )
+                                                        // Coefficient K2
+                                                        CoefficientSelector(
+                                                                nom =
+                                                                        referenceGeneraleSelectionnee
+                                                                                ?.nomk2?.takeIf {
+                                                                                it.isNotBlank()
                                                                         }
-                                                                )
-                                                        }
+                                                                                ?: "Coefficient K2",
+                                                                valeurSelectionnee =
+                                                                        editedConsultation.k2Value,
+                                                                descriptionSelectionnee =
+                                                                        editedConsultation.k2Id,
+                                                                coefficients =
+                                                                        referenceGeneraleSelectionnee
+                                                                                ?.getModk2()
+                                                                                ?: arrayListOf(),
+                                                                onCoefficientSelected = { coef ->
+                                                                        editedConsultation =
+                                                                                editedConsultation
+                                                                                        .copy(
+                                                                                                k2Id =
+                                                                                                        coef.description,
+                                                                                                k2Value =
+                                                                                                        coef.coef
+                                                                                        )
+                                                                }
+                                                        )
 
-                                                        if (referenceGeneraleSelectionnee.nomk3
-                                                                        .isNotBlank()
-                                                        ) {
-                                                                CoefficientSelector(
-                                                                        nom =
-                                                                                referenceGeneraleSelectionnee
-                                                                                        .nomk3,
-                                                                        valeurSelectionnee =
-                                                                                editedConsultation
-                                                                                        .k3Value,
-                                                                        descriptionSelectionnee =
-                                                                                editedConsultation
-                                                                                        .k3Id,
-                                                                        coefficients =
-                                                                                referenceGeneraleSelectionnee
-                                                                                        .getModk3(),
-                                                                        onCoefficientSelected = {
-                                                                                coef ->
-                                                                                editedConsultation =
-                                                                                        editedConsultation
-                                                                                                .copy(
-                                                                                                        k3Id =
-                                                                                                                coef.description,
-                                                                                                        k3Value =
-                                                                                                                coef.coef
-                                                                                                )
+                                                        // Coefficient K3
+                                                        CoefficientSelector(
+                                                                nom =
+                                                                        referenceGeneraleSelectionnee
+                                                                                ?.nomk3?.takeIf {
+                                                                                it.isNotBlank()
                                                                         }
-                                                                )
-                                                        }
+                                                                                ?: "Coefficient K3",
+                                                                valeurSelectionnee =
+                                                                        editedConsultation.k3Value,
+                                                                descriptionSelectionnee =
+                                                                        editedConsultation.k3Id,
+                                                                coefficients =
+                                                                        referenceGeneraleSelectionnee
+                                                                                ?.getModk3()
+                                                                                ?: arrayListOf(),
+                                                                onCoefficientSelected = { coef ->
+                                                                        editedConsultation =
+                                                                                editedConsultation
+                                                                                        .copy(
+                                                                                                k3Id =
+                                                                                                        coef.description,
+                                                                                                k3Value =
+                                                                                                        coef.coef
+                                                                                        )
+                                                                }
+                                                        )
 
-                                                        if (referenceGeneraleSelectionnee.nomk4
-                                                                        .isNotBlank()
-                                                        ) {
-                                                                CoefficientSelector(
-                                                                        nom =
-                                                                                referenceGeneraleSelectionnee
-                                                                                        .nomk4,
-                                                                        valeurSelectionnee =
-                                                                                editedConsultation
-                                                                                        .k4Value,
-                                                                        descriptionSelectionnee =
-                                                                                editedConsultation
-                                                                                        .k4Id,
-                                                                        coefficients =
-                                                                                referenceGeneraleSelectionnee
-                                                                                        .getModk4(),
-                                                                        onCoefficientSelected = {
-                                                                                coef ->
-                                                                                editedConsultation =
-                                                                                        editedConsultation
-                                                                                                .copy(
-                                                                                                        k4Id =
-                                                                                                                coef.description,
-                                                                                                        k4Value =
-                                                                                                                coef.coef
-                                                                                                )
+                                                        // Coefficient K4
+                                                        CoefficientSelector(
+                                                                nom =
+                                                                        referenceGeneraleSelectionnee
+                                                                                ?.nomk4?.takeIf {
+                                                                                it.isNotBlank()
                                                                         }
-                                                                )
-                                                        }
+                                                                                ?: "Coefficient K4",
+                                                                valeurSelectionnee =
+                                                                        editedConsultation.k4Value,
+                                                                descriptionSelectionnee =
+                                                                        editedConsultation.k4Id,
+                                                                coefficients =
+                                                                        referenceGeneraleSelectionnee
+                                                                                ?.getModk4()
+                                                                                ?: arrayListOf(),
+                                                                onCoefficientSelected = { coef ->
+                                                                        editedConsultation =
+                                                                                editedConsultation
+                                                                                        .copy(
+                                                                                                k4Id =
+                                                                                                        coef.description,
+                                                                                                k4Value =
+                                                                                                        coef.coef
+                                                                                        )
+                                                                }
+                                                        )
 
-                                                        if (referenceGeneraleSelectionnee.nomk5
-                                                                        .isNotBlank()
-                                                        ) {
-                                                                CoefficientSelector(
-                                                                        nom =
-                                                                                referenceGeneraleSelectionnee
-                                                                                        .nomk5,
-                                                                        valeurSelectionnee =
-                                                                                editedConsultation
-                                                                                        .k5Value,
-                                                                        descriptionSelectionnee =
-                                                                                editedConsultation
-                                                                                        .k5Id,
-                                                                        coefficients =
-                                                                                referenceGeneraleSelectionnee
-                                                                                        .getModk5(),
-                                                                        onCoefficientSelected = {
-                                                                                coef ->
-                                                                                editedConsultation =
-                                                                                        editedConsultation
-                                                                                                .copy(
-                                                                                                        k5Id =
-                                                                                                                coef.description,
-                                                                                                        k5Value =
-                                                                                                                coef.coef
-                                                                                                )
+                                                        // Coefficient K5
+                                                        CoefficientSelector(
+                                                                nom =
+                                                                        referenceGeneraleSelectionnee
+                                                                                ?.nomk5?.takeIf {
+                                                                                it.isNotBlank()
                                                                         }
-                                                                )
-                                                        }
+                                                                                ?: "Coefficient K5",
+                                                                valeurSelectionnee =
+                                                                        editedConsultation.k5Value,
+                                                                descriptionSelectionnee =
+                                                                        editedConsultation.k5Id,
+                                                                coefficients =
+                                                                        referenceGeneraleSelectionnee
+                                                                                ?.getModk5()
+                                                                                ?: arrayListOf(),
+                                                                onCoefficientSelected = { coef ->
+                                                                        editedConsultation =
+                                                                                editedConsultation
+                                                                                        .copy(
+                                                                                                k5Id =
+                                                                                                        coef.description,
+                                                                                                k5Value =
+                                                                                                        coef.coef
+                                                                                        )
+                                                                }
+                                                        )
                                                 }
                                         }
                                 }

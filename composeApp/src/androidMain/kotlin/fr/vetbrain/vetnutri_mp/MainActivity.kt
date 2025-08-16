@@ -16,8 +16,15 @@ class MainActivity : ComponentActivity() {
         AndroidContext.appContext = applicationContext
         AndroidContext.setCurrentActivity(this)
 
-        // Initialisation de la localisation
-        LocalizationManager.initialize()
+        // Initialisation de la localisation avec détection de la langue du système
+        val systemLocale = resources.configuration.locales[0].language
+        val primaryLanguage =
+                systemLocale.split("-")[
+                        0] // Extraire la langue principale (ex: "de" depuis "de-DE")
+        println(
+                "🌍 DEBUG: Langue du système détectée: $systemLocale -> Langue principale: $primaryLanguage"
+        )
+        LocalizationManager.initialize(primaryLanguage)
 
         // Initialisation de la base de données
         val appDatabase = getRoomDatabase(getDatabaseBuilder(this))

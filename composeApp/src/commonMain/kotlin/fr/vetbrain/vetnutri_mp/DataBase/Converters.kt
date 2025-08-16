@@ -14,7 +14,20 @@ class Converters {
 
     @TypeConverter
     fun toLocalDate(value: String?): LocalDate? {
-        return value?.let { LocalDate.parse(it) }
+        return value?.let { dateStr ->
+            if (dateStr.isBlank()) {
+                null
+            } else {
+                try {
+                    LocalDate.parse(dateStr)
+                } catch (e: Exception) {
+                    println(
+                            "⚠️ WARNING: Impossible de parser la date '$dateStr' dans le convertisseur Room: ${e.message}"
+                    )
+                    null
+                }
+            }
+        }
     }
 
     @TypeConverter
