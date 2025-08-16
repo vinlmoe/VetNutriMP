@@ -78,7 +78,7 @@ fun AnimalListView(
                                 // Bouton pour accéder à la liste des aliments
                                 Button(
                                         onClick = onShowFoodList,
-                                        modifier = Modifier.weight(1.0),
+                                        modifier = Modifier.weight(1f),
                                         colors =
                                                 ButtonDefaults.buttonColors(
                                                         backgroundColor = VetNutriColors.Primary,
@@ -91,7 +91,7 @@ fun AnimalListView(
                                 // précédents)
                                 Button(
                                         onClick = onShowCalculationTabs,
-                                        modifier = Modifier.weight(1.0),
+                                        modifier = Modifier.weight(1f),
                                         colors =
                                                 ButtonDefaults.buttonColors(
                                                         backgroundColor = VetNutriColors.Primary,
@@ -111,7 +111,7 @@ fun AnimalListView(
                                 OutlinedTextField(
                                         value = searchQuery,
                                         onValueChange = { viewModel.setSearchQuery(it) },
-                                        modifier = Modifier.weight(2.0),
+                                        modifier = Modifier.weight(2f),
                                         placeholder = {
                                                 Text(
                                                         "${General.SEARCH.translate()} (nom, propriétaire, race)"
@@ -150,7 +150,7 @@ fun AnimalListView(
                                         selectedEspece = selectedEspece,
                                         onEspeceSelected = { viewModel.setSelectedEspece(it) },
                                         availableEspeces = viewModel.availableEspeces,
-                                        modifier = Modifier.weight(1.0)
+                                        modifier = Modifier.weight(1f)
                                 )
                         }
 
@@ -263,7 +263,7 @@ private fun AnimalCard(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                         ) {
-                                Column(modifier = Modifier.weight(1.0)) {
+                                Column(modifier = Modifier.weight(1f)) {
                                         Text(text = animal.nom, style = MaterialTheme.typography.h6)
                                         Text(
                                                 text =

@@ -461,7 +461,7 @@ fun AlimentItem(
                                                 KeyboardOptions(keyboardType = KeyboardType.Number),
                                         singleLine = true,
                                         modifier =
-                                                Modifier.width(AppSizes.textFieldHeight.times(2.2))
+                                                Modifier.width(AppSizes.textFieldHeight.times(2.2f))
                                 )
                                 Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
                                 IconButton(onClick = validateQuantity) {
@@ -475,7 +475,7 @@ fun AlimentItem(
                                         Icon(
                                                 AppIcons.Close,
                                                 contentDescription = "Annuler",
-                                                tint = Color.Red.copy(alpha = 0.8)
+                                                tint = Color.Red.copy(alpha = 0.8f)
                                         )
                                 }
                         }

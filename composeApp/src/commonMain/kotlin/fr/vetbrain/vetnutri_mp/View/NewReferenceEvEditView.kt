@@ -326,11 +326,11 @@ fun ReferenceEvInfoTab(viewModel: NewReferenceEvViewModel, currentReference: Ref
                 )
 
                 Slider(
-                        value = currentReference.consistent.toDouble(),
+                        value = currentReference.consistent.toFloat(),
                         onValueChange = {
                                 viewModel.updateReferenceProperty("consistent", it.toInt())
                         },
-                        valueRange = 1.0..10.0,
+                        valueRange = 1f..10f,
                         steps = 9,
                         modifier = Modifier.fillMaxWidth()
                 )

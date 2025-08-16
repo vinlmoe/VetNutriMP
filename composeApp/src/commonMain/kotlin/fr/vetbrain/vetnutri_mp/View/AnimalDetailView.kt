@@ -406,7 +406,7 @@ private fun WideScreenLayout(
                                                                 else "Aucune ration sélectionnée",
                                                         color =
                                                                 MaterialTheme.colors.onSurface.copy(
-                                                                        alpha = 0.7
+                                                                        alpha = 0.7f
                                                                 )
                                                 )
                                                 var showPreview by remember {
@@ -678,7 +678,7 @@ private fun NarrowScreenLayout(
                                 }
 
                                 Divider(
-                                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.12),
+                                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.12f),
                                         thickness = AppSizes.dividerHeight
                                 )
 

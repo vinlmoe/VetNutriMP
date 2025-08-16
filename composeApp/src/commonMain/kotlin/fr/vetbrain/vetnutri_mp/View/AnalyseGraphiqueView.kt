@@ -631,7 +631,8 @@ private fun EvolutionPoidsChart(viewModel: AnimalDetailViewModel) {
                         param50?.let {
                                 (0..12).map { mois ->
                                         val ageInMonths = mois.toFloat()
-                                        val poids = calculerPoidsCroissance(it, ageInMonths.toDouble())
+                                        val poids =
+                                                calculerPoidsCroissance(it, ageInMonths.toDouble())
                                         Point(x = ageInMonths, y = poids.toFloat())
                                 }
                         }
@@ -640,25 +641,25 @@ private fun EvolutionPoidsChart(viewModel: AnimalDetailViewModel) {
                 // Axes: si on a des données réelles, utiliser leur plage; sinon, utiliser 0..12
                 // mois et y basé sur la courbe
                 val useReal = donneesPoids.isNotEmpty()
-                val minX = if (useReal) donneesPoids.minOf { it.x } else 0.0
-                val maxX = if (useReal) donneesPoids.maxOf { it.x } else 12.0
-                val xMargin = (maxX - minX).coerceAtLeast(1.0) * 0.05
+                val minX = if (useReal) donneesPoids.minOf { it.x } else 0.0f
+                val maxX = if (useReal) donneesPoids.maxOf { it.x } else 12.0f
+                val xMargin = (maxX - minX).coerceAtLeast(1.0f) * 0.05f
                 val xRange = (minX - xMargin)..(maxX + xMargin)
 
                 val yCandidates = (if (useReal) donneesPoids else pointsRef0_12).map { it.y }
-                val minY = yCandidates.minOrNull() ?: 0.0
-                val maxY = yCandidates.maxOrNull() ?: (minY + 5.0)
-                val yMargin = (maxY - minY).coerceAtLeast(1.0) * 0.05
+                val minY = yCandidates.minOrNull() ?: 0.0f
+                val maxY = yCandidates.maxOrNull() ?: (minY + 5.0f)
+                val yMargin = (maxY - minY).coerceAtLeast(1.0f) * 0.05f
                 val yRange = (minY - yMargin)..(maxY + yMargin)
 
-                // Créer des plages Float pour KoalaPlot
-                val xRangeFloat = (minX - xMargin).toFloat()..(maxX + xMargin).toFloat()
-                val yRangeFloat = (minY - yMargin).toFloat()..(maxY + yMargin).toFloat()
+                // Créer des plages Float pour KoalaPlot (déjà Float)
+                val xRangeFloat = xRange
+                val yRangeFloat = yRange
 
-                val xRangeWidth = (xRange.endInclusive - xRange.start).coerceAtLeast(0.0)
-                val xTickIncrement = if (xRangeWidth > 10.0) 3.0 else 1.0
+                val xRangeWidth = (xRange.endInclusive - xRange.start).coerceAtLeast(0.0f)
+                val xTickIncrement = if (xRangeWidth > 10.0f) 3.0f else 1.0f
                 val safeTickIncrement =
-                        if (xRangeWidth > 0.0) xTickIncrement.coerceAtMost(xRangeWidth) else 1.0
+                        if (xRangeWidth > 0.0f) xTickIncrement.coerceAtMost(xRangeWidth) else 1.0f
 
                 // Graphique
                 GraphCard(
@@ -671,7 +672,7 @@ private fun EvolutionPoidsChart(viewModel: AnimalDetailViewModel) {
                                                 FloatLinearAxisModel(
                                                         range = xRangeFloat,
                                                         minimumMajorTickIncrement =
-                                                                safeTickIncrement.toFloat()
+                                                                safeTickIncrement
                                                 ),
                                         yAxisModel = FloatLinearAxisModel(range = yRangeFloat),
                                         modifier = Modifier.height(500.dp)
@@ -686,7 +687,8 @@ private fun EvolutionPoidsChart(viewModel: AnimalDetailViewModel) {
                                                                         val y =
                                                                                 calculerPoidsCroissance(
                                                                                         param,
-                                                                                        ageInMonths.toDouble()
+                                                                                        ageInMonths
+                                                                                                .toDouble()
                                                                                 )
                                                                         Point(
                                                                                 x = ageInMonths,
@@ -990,7 +992,7 @@ private fun CompositionNutritionnelleChart() {
                                         )
 
                                         LinearProgressIndicator(
-                                                progress = (valeur / 100.0).toFloat(),
+                                                progress = (valeur.toFloat() / 100.0f),
                                                 modifier = Modifier.weight(1.0f).height(20.dp),
                                                 color = couleur,
                                                 backgroundColor = Color.LightGray.copy(alpha = 0.3f)
@@ -1044,7 +1046,10 @@ private fun ComparaisonBesoinsChart() {
                                         )
 
                                         LinearProgressIndicator(
-                                                progress = (apport / 150.0).coerceIn(0.0, 1.0).toFloat(),
+                                                progress =
+                                                        (apport / 150.0)
+                                                                .coerceIn(0.0, 1.0)
+                                                                .toFloat(),
                                                 modifier = Modifier.weight(1.0f).height(20.dp),
                                                 color = couleur,
                                                 backgroundColor = Color.LightGray.copy(alpha = 0.3f)
