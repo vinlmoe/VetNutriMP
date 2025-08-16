@@ -1,7 +1,6 @@
 package fr.vetbrain.vetnutri_mp.Repository
 
 import fr.vetbrain.vetnutri_mp.Data.*
-import fr.vetbrain.vetnutri_mp.DataBase.ReferenceEvCoefficientEntity
 import kotlinx.coroutines.flow.first
 import kotlinx.datetime.Clock
 import kotlinx.serialization.decodeFromString
@@ -457,29 +456,42 @@ class ExportImportRepository(
                                                 }
                                         }
 
-                                        // 🆕 AJOUTER LES COEFFICIENTS
+                                        // 🆕 AJOUTER LES COEFFICIENTS À L'OBJET REFERENCEEV
+                                        // Au lieu de les sauvegarder individuellement, les ajouter
+                                        // à l'objet
                                         for (coefApi in refApi.coefficients) {
                                                 try {
-                                                        val coef =
-                                                                ReferenceEvCoefficientEntity(
-                                                                        uuid = coefApi.uuid,
-                                                                        referenceEvId = ref.uuid,
-                                                                        groupType =
-                                                                                coefApi.groupType,
+                                                        // Créer un CoefP avec l'UUID original
+                                                        val coefP =
+                                                                CoefP(
+                                                                        uuid = coefApi.uuid, // ✅
+                                                                        // UUID original préservé
                                                                         description =
                                                                                 coefApi.description,
                                                                         coef = coefApi.coef,
                                                                         groupUUID =
                                                                                 coefApi.groupUUID
                                                                 )
-                                                        // Sauvegarder le coefficient via le
-                                                        // repository
-                                                        referenceRepository.saveCoefficient(coef)
+
+                                                        // Ajouter le coefficient à l'objet
+                                                        // ReferenceEv selon son type
+                                                        when (coefApi.groupType) {
+                                                                "k1" -> ref.getModk1().add(coefP)
+                                                                "k2" -> ref.getModk2().add(coefP)
+                                                                "k3" -> ref.getModk3().add(coefP)
+                                                                "k4" -> ref.getModk4().add(coefP)
+                                                                "k5" -> ref.getModk5().add(coefP)
+                                                                else ->
+                                                                        println(
+                                                                                "IMPORT API: Type de coefficient inconnu: ${coefApi.groupType}"
+                                                                        )
+                                                        }
+
                                                         println(
-                                                                "IMPORT API: coefficient ${coef.uuid} sauvegardé pour referenceEv ${ref.uuid}"
+                                                                "IMPORT API: coefficient ${coefApi.uuid} ajouté à ReferenceEv ${ref.uuid}"
                                                         )
                                                         listener?.onLog(
-                                                                "Coefficient ${coef.uuid} sauvegardé"
+                                                                "Coefficient ${coefApi.uuid} ajouté à ReferenceEv ${ref.uuid}"
                                                         )
                                                 } catch (e: Exception) {
                                                         println(
@@ -491,9 +503,117 @@ class ExportImportRepository(
                                                 }
                                         }
 
-                                        referenceRepository.saveReferenceEv(ref)
-                                        println("IMPORT API: referenceEv ${ref.uuid} sauvegardée")
-                                        listener?.onLog("ReferenceEv ${ref.uuid} sauvegardée")
+                                        // 🆕 SAUVEGARDER LA REFERENCEEV SANS LES COEFFICIENTS
+                                        try {
+                                                referenceRepository.saveReferenceEvForImport(ref)
+                                                println(
+                                                        "IMPORT API: ReferenceEv ${ref.uuid} sauvegardée (sans coefficients)"
+                                                )
+                                                listener?.onLog(
+                                                        "ReferenceEv ${ref.uuid} sauvegardée (sans coefficients)"
+                                                )
+                                        } catch (e: Exception) {
+                                                println(
+                                                        "IMPORT API: Erreur sauvegarde ReferenceEv: ${e.message}"
+                                                )
+                                                listener?.onLog(
+                                                        "Erreur sauvegarde ReferenceEv: ${e.message}"
+                                                )
+                                                throw e
+                                        }
+
+                                        // 🆕 RESTAURER LES COEFFICIENTS DANS L'OBJET EN MÉMOIRE
+                                        // Après la sauvegarde, restaurer les coefficients dans
+                                        // l'objet ref
+                                        try {
+                                                // Recharger la ReferenceEv depuis la base pour
+                                                // avoir tous les coefficients
+                                                val refWithCoefficients =
+                                                        referenceRepository.getReferenceEvById(
+                                                                ref.uuid
+                                                        )
+                                                if (refWithCoefficients != null) {
+                                                        // Copier les coefficients restaurés dans
+                                                        // l'objet original
+                                                        ref.getModk1().clear()
+                                                        ref.getModk1()
+                                                                .addAll(
+                                                                        refWithCoefficients
+                                                                                .getModk1()
+                                                                )
+
+                                                        ref.getModk2().clear()
+                                                        ref.getModk2()
+                                                                .addAll(
+                                                                        refWithCoefficients
+                                                                                .getModk2()
+                                                                )
+
+                                                        ref.getModk3().clear()
+                                                        ref.getModk3()
+                                                                .addAll(
+                                                                        refWithCoefficients
+                                                                                .getModk3()
+                                                                )
+
+                                                        ref.getModk4().clear()
+                                                        ref.getModk4()
+                                                                .addAll(
+                                                                        refWithCoefficients
+                                                                                .getModk4()
+                                                                )
+
+                                                        ref.getModk5().clear()
+                                                        ref.getModk5()
+                                                                .addAll(
+                                                                        refWithCoefficients
+                                                                                .getModk5()
+                                                                )
+
+                                                        println(
+                                                                "IMPORT API: Coefficients restaurés dans ReferenceEv ${ref.uuid}"
+                                                        )
+                                                        listener?.onLog(
+                                                                "Coefficients restaurés dans ReferenceEv ${ref.uuid}"
+                                                        )
+
+                                                        // Afficher le nombre de coefficients
+                                                        // restaurés
+                                                        val totalCoeffs =
+                                                                ref.getModk1().size +
+                                                                        ref.getModk2().size +
+                                                                        ref.getModk3().size +
+                                                                        ref.getModk4().size +
+                                                                        ref.getModk5().size
+                                                        println(
+                                                                "IMPORT API: Total coefficients restaurés: $totalCoeffs"
+                                                        )
+                                                        listener?.onLog(
+                                                                "Total coefficients restaurés: $totalCoeffs"
+                                                        )
+                                                } else {
+                                                        println(
+                                                                "IMPORT API: ERREUR - Impossible de recharger ReferenceEv ${ref.uuid}"
+                                                        )
+                                                        listener?.onLog(
+                                                                "ERREUR - Impossible de recharger ReferenceEv ${ref.uuid}"
+                                                        )
+                                                }
+                                        } catch (e: Exception) {
+                                                println(
+                                                        "IMPORT API: Erreur lors de la restauration des coefficients: ${e.message}"
+                                                )
+                                                listener?.onLog(
+                                                        "Erreur restauration coefficients: ${e.message}"
+                                                )
+                                        }
+
+                                        println(
+                                                "IMPORT API: referenceEv ${ref.uuid} sauvegardée avec coefficients"
+                                        )
+                                        listener?.onLog(
+                                                "ReferenceEv ${ref.uuid} sauvegardée avec coefficients"
+                                        )
                                         referencesImported++
                                         advance()
                                 } catch (e: Exception) {
