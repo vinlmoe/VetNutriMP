@@ -338,6 +338,44 @@ fun NutrientDetailDialog(
                                                 )
                                         }
                                 }
+
+                                // Bouton de fermeture en bas
+                                Spacer(modifier = Modifier.height(AppSizes.paddingMedium))
+                                Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.Center
+                                ) {
+                                        Button(
+                                                onClick = onDismiss,
+                                                colors =
+                                                        ButtonDefaults.buttonColors(
+                                                                backgroundColor =
+                                                                        VetNutriColors.Primary
+                                                        ),
+                                                modifier =
+                                                        Modifier.padding(
+                                                                horizontal = AppSizes.paddingMedium
+                                                        )
+                                        ) {
+                                                Icon(
+                                                        imageVector = Icons.Filled.Close,
+                                                        contentDescription = "Fermer",
+                                                        tint = VetNutriColors.OnPrimary,
+                                                        modifier = Modifier.size(18.dp)
+                                                )
+                                                Spacer(
+                                                        modifier =
+                                                                Modifier.width(
+                                                                        AppSizes.paddingXSmall
+                                                                )
+                                                )
+                                                Text(
+                                                        text = "Fermer",
+                                                        color = VetNutriColors.OnPrimary,
+                                                        style = MaterialTheme.typography.button
+                                                )
+                                        }
+                                }
                         }
                 },
                 confirmButton = {},
@@ -764,14 +802,19 @@ private fun ContributionsList(
         )
         val selectedEquationUuids: List<String> =
                 referenceUtilisee?.equationsNut?.map { it.uuid } ?: emptyList()
-        val allEquations =
+        // Chargement asynchrone des équations pour éviter le blocage du thread principal
+        var allEquations by remember {
+                mutableStateOf<List<fr.vetbrain.vetnutri_mp.Data.Equation>>(emptyList())
+        }
+
+        LaunchedEffect(equationRepository) {
                 try {
-                        kotlinx.coroutines.runBlocking {
-                                equationRepository?.getAllEquations() ?: emptyList()
-                        }
+                        val equations = equationRepository?.getAllEquations() ?: emptyList()
+                        allEquations = equations
                 } catch (_: Exception) {
-                        emptyList()
+                        allEquations = emptyList()
                 }
+        }
         val applicableEquations =
                 allEquations.filter { eq ->
                         val kindOk: Boolean = eq.kind == EquationKind.COMPLEMENTARY_NUTRIENT
@@ -781,9 +824,7 @@ private fun ContributionsList(
                                         (eq.nutrient?.label == valeurNutritionnelle.nutriment.label)
                         (eq.uuid in selectedEquationUuids) && kindOk && specieOk && nutrientOk
                 }
-        println(
-                "EQDBG-ING applicableEquations=${applicableEquations.map { it.uuid }} for nutrient=${valeurNutritionnelle.nutriment.label} specie=${espece.name}"
-        )
+
         val isRatioNutrient: Boolean =
                 valeurNutritionnelle.unite == fr.vetbrain.vetnutri_mp.Enumer.UnitEnum.NO ||
                         valeurNutritionnelle.unite.label == "RATIO"
@@ -792,38 +833,36 @@ private fun ContributionsList(
                         .map { alimentRation ->
                                 val quantite: Double = alimentRation.quantite
                                 val nutrient: Nutrient = valeurNutritionnelle.nutriment
-                                val valeurPour100g: Double? =
+                                // Chargement asynchrone pour éviter le blocage du thread principal
+                                var valeurPour100g by remember { mutableStateOf<Double?>(null) }
+
+                                LaunchedEffect(
+                                        alimentRation,
+                                        nutrient,
+                                        equationRepository,
+                                        referenceUtilisee
+                                ) {
                                         try {
-                                                println(
-                                                        "EQDBG-ING detail: try getNutrientWithComplementary for food='${alimentRation.aliment?.nom}' nutr=${nutrient.label}"
-                                                )
-                                                kotlinx.coroutines
-                                                        .runBlocking {
-                                                                alimentRation
-                                                                        .getNutrientWithComplementary(
-                                                                                nutrient = nutrient,
-                                                                                preferences = null,
-                                                                                equationRepository =
-                                                                                        equationRepository,
-                                                                                referenceEv =
-                                                                                        referenceUtilisee
-                                                                        )
-                                                        }
-                                                        ?.toDouble()
+                                                val valeur =
+                                                        alimentRation.getNutrientWithComplementary(
+                                                                nutrient = nutrient,
+                                                                preferences = null,
+                                                                equationRepository =
+                                                                        equationRepository,
+                                                                referenceEv = referenceUtilisee
+                                                        )
+                                                valeurPour100g = valeur?.toDouble()
                                         } catch (e: Exception) {
-                                                println(
-                                                        "EQDBG-ING detail: exception getNutrientWithComplementary ${e.message}"
-                                                )
-                                                null
+                                                valeurPour100g = null
                                         }
+                                }
                                 val contributionCalculee: Double =
-                                        if (valeurPour100g != null) {
-                                                if (isRatioNutrient) valeurPour100g
-                                                else (valeurPour100g * quantite) / 100.0
-                                        } else 0.0
-                                println(
-                                        "EQDBG-ING detail: food='${alimentRation.aliment?.nom}' v100g=${valeurPour100g} contrib=${contributionCalculee}"
-                                )
+                                        valeurPour100g?.let { valeur ->
+                                                if (isRatioNutrient) valeur
+                                                else (valeur * quantite) / 100.0
+                                        }
+                                                ?: 0.0
+
                                 val contributionPourcentage: Double =
                                         if (!isRatioNutrient && valeurNutritionnelle.valeur > 0) {
                                                 (contributionCalculee /
@@ -952,40 +991,39 @@ private fun ContributionItem(
         val quantite: Double = alimentRation.quantite
         val nutrient: Nutrient = valeurNutritionnelle.nutriment
         val valeurAliment: Double? = alimentRation.aliment?.getNutrient(nutrient)
-        val prefsEspeceItem =
-                try {
-                        kotlinx.coroutines.runBlocking {
-                                preferencesRepo.loadPreferences()
-                                preferencesRepo.getPreferencesForSpecies(espece)
-                        }
-                } catch (_: Exception) {
-                        null
-                }
-        if (prefsEspeceItem == null) {
-                println("EQDBG-ING detail(item): prefsEspece null for ${espece.name}")
-        } else {
-                println(
-                        "EQDBG-ING detail(item): prefs uuids=" +
-                                prefsEspeceItem.getSelectedEquationUuids()
-                )
+        // Chargement asynchrone des préférences pour éviter le blocage du thread principal
+        var prefsEspeceItem by remember {
+                mutableStateOf<fr.vetbrain.vetnutri_mp.Data.PreferencesEspece?>(null)
         }
-        val valeurPour100gItem: Double? =
+
+        LaunchedEffect(preferencesRepo, espece) {
                 try {
-                        println(
-                                "EQDBG-ING detail(item): try getNutrientWithComplementary food='${alimentRation.aliment?.nom}' nutr=${nutrient.label}"
-                        )
-                        kotlinx.coroutines.runBlocking {
+                        preferencesRepo.loadPreferences()
+                        val prefs = preferencesRepo.getPreferencesForSpecies(espece)
+                        prefsEspeceItem = prefs
+                } catch (_: Exception) {
+                        prefsEspeceItem = null
+                }
+        }
+
+        // Chargement asynchrone pour éviter le blocage du thread principal
+        var valeurPour100gItem by remember { mutableStateOf<Double?>(null) }
+
+        LaunchedEffect(alimentRation, nutrient, equationRepository, referenceUtilisee) {
+                try {
+                        val valeur =
                                 alimentRation.getNutrientWithComplementary(
                                         nutrient = nutrient,
                                         preferences = null,
                                         equationRepository = equationRepository,
                                         referenceEv = referenceUtilisee
                                 )
-                        }
+                        valeurPour100gItem = valeur?.toDouble()
                 } catch (e: Exception) {
-                        println("EQDBG-ING detail(item): exception ${e.message}")
-                        null
+                        // Exception silencieuse
+                        valeurPour100gItem = null
                 }
+        }
         Card(
                 modifier = Modifier.fillMaxWidth(),
                 elevation = AppSizes.elevationSmall,
@@ -1042,20 +1080,19 @@ private fun ContributionItem(
                                         Text(
                                                 text =
                                                         if (isAnalysisNoUnit) {
-                                                                if (valeurPour100gItem != null) {
-                                                                        "Valeur: ${TextUtils.formatDecimal(valeurPour100gItem.toDouble(), 2)}"
-                                                                } else {
-                                                                        "Valeur: NA"
+                                                                valeurPour100gItem?.let { valeur ->
+                                                                        "Valeur: ${TextUtils.formatDecimal(valeur, 2)}"
                                                                 }
+                                                                        ?: "Valeur: NA"
                                                         } else {
                                                                 if (valeurAliment != null) {
                                                                         "Valeur (100g): ${TextUtils.formatDecimal(valeurAliment.toDouble(), 2)} ${valeurNutritionnelle.unite.displayName}"
-                                                                } else if (valeurPour100gItem !=
-                                                                                null
-                                                                ) {
-                                                                        "Valeur (100g): ${TextUtils.formatDecimal(valeurPour100gItem.toDouble(), 2)} ${valeurNutritionnelle.unite.displayName}"
                                                                 } else {
-                                                                        "Valeur (100g): NA"
+                                                                        valeurPour100gItem?.let {
+                                                                                valeur ->
+                                                                                "Valeur (100g): ${TextUtils.formatDecimal(valeur, 2)} ${valeurNutritionnelle.unite.displayName}"
+                                                                        }
+                                                                                ?: "Valeur (100g): NA"
                                                                 }
                                                         },
                                                 style = MaterialTheme.typography.body2,
@@ -1097,11 +1134,12 @@ private fun DialogTitre(titre: String, onDismiss: () -> Unit) {
                         color = VetNutriColors.Primary,
                         modifier = Modifier.weight(1f)
                 )
-                IconButton(onClick = onDismiss) {
+                IconButton(onClick = onDismiss, modifier = Modifier.size(48.dp)) {
                         Icon(
                                 imageVector = Icons.Filled.Close,
                                 contentDescription = "Fermer",
-                                tint = VetNutriColors.Primary
+                                tint = VetNutriColors.Primary,
+                                modifier = Modifier.size(24.dp)
                         )
                 }
         }

@@ -70,8 +70,21 @@ class DatabaseAnimalRepository(
                                                 specieId = entity.specieId ?: "",
                                                 ownerName = entity.ownerName ?: "",
                                                 birthdate =
-                                                        entity.birthdate?.let {
-                                                                LocalDate.parse(it)
+                                                        entity.birthdate?.let { dateStr ->
+                                                                if (dateStr.isNotBlank()) {
+                                                                        try {
+                                                                                LocalDate.parse(
+                                                                                        dateStr
+                                                                                )
+                                                                        } catch (e: Exception) {
+                                                                                println(
+                                                                                        "⚠️ WARNING: Impossible de parser la date de naissance '${dateStr}' pour l'animal ${entity.uuid}: ${e.message}"
+                                                                                )
+                                                                                null
+                                                                        }
+                                                                } else {
+                                                                        null
+                                                                }
                                                         },
                                                 race = entity.race ?: "",
                                                 summary = entity.summary ?: ""
@@ -81,16 +94,40 @@ class DatabaseAnimalRepository(
                                 val weightEntities = animalDao.getWeightsForAnimal(entity.uuid)
                                 if (weightEntities.isNotEmpty()) {
                                         animalEv.weightHistory.addAll(
-                                                weightEntities.map { weightEntity ->
-                                                        WeightDate(
-                                                                uuid = weightEntity.uuid,
-                                                                refAnimal = weightEntity.refAnimal,
-                                                                date =
-                                                                        LocalDate.parse(
-                                                                                weightEntity.date
-                                                                        ),
-                                                                value = weightEntity.value
-                                                        )
+                                                weightEntities.mapNotNull { weightEntity ->
+                                                        // Vérifier que la date n'est pas vide ou
+                                                        // null
+                                                        if (weightEntity.date.isNullOrBlank()) {
+                                                                println(
+                                                                        "⚠️ WARNING: Date vide pour le poids ${weightEntity.uuid} de l'animal ${entity.uuid}"
+                                                                )
+                                                                null // Ignorer ce poids
+                                                        } else {
+                                                                try {
+                                                                        WeightDate(
+                                                                                uuid =
+                                                                                        weightEntity
+                                                                                                .uuid,
+                                                                                refAnimal =
+                                                                                        weightEntity
+                                                                                                .refAnimal,
+                                                                                date =
+                                                                                        LocalDate
+                                                                                                .parse(
+                                                                                                        weightEntity
+                                                                                                                .date
+                                                                                                ),
+                                                                                value =
+                                                                                        weightEntity
+                                                                                                .value
+                                                                        )
+                                                                } catch (e: Exception) {
+                                                                        println(
+                                                                                "⚠️ WARNING: Impossible de parser la date '${weightEntity.date}' pour le poids ${weightEntity.uuid}: ${e.message}"
+                                                                        )
+                                                                        null // Ignorer ce poids
+                                                                }
+                                                        }
                                                 }
                                         )
                                         println(
@@ -156,7 +193,21 @@ class DatabaseAnimalRepository(
                                         sexId = entity.sexId ?: 0,
                                         specieId = entity.specieId ?: "",
                                         ownerName = entity.ownerName ?: "",
-                                        birthdate = entity.birthdate?.let { LocalDate.parse(it) },
+                                        birthdate =
+                                                entity.birthdate?.let { dateStr ->
+                                                        if (dateStr.isNotBlank()) {
+                                                                try {
+                                                                        LocalDate.parse(dateStr)
+                                                                } catch (e: Exception) {
+                                                                        println(
+                                                                                "⚠️ WARNING: Impossible de parser la date de naissance '${dateStr}' pour l'animal ${entity.uuid}: ${e.message}"
+                                                                        )
+                                                                        null
+                                                                }
+                                                        } else {
+                                                                null
+                                                        }
+                                                },
                                         race = entity.race ?: "",
                                         summary = entity.summary ?: ""
                                 )
@@ -165,13 +216,29 @@ class DatabaseAnimalRepository(
                         val consultationEntities = animalDao.getConsultationsForAnimal(id)
                         if (consultationEntities.isNotEmpty()) {
                                 animalEv.consultations.addAll(
-                                        consultationEntities.map { consultEntity ->
+                                        consultationEntities.mapNotNull { consultEntity ->
                                                 ConsultationEv(
                                                         uuid = consultEntity.uuid,
                                                         idAnim = consultEntity.idAnim,
                                                         date =
-                                                                consultEntity.date?.let {
-                                                                        LocalDate.parse(it)
+                                                                consultEntity.date?.let { dateStr ->
+                                                                        if (dateStr.isNotBlank()) {
+                                                                                try {
+                                                                                        LocalDate
+                                                                                                .parse(
+                                                                                                        dateStr
+                                                                                                )
+                                                                                } catch (
+                                                                                        e:
+                                                                                                Exception) {
+                                                                                        println(
+                                                                                                "⚠️ WARNING: Impossible de parser la date de consultation '${dateStr}' pour la consultation ${consultEntity.uuid}: ${e.message}"
+                                                                                        )
+                                                                                        null
+                                                                                }
+                                                                        } else {
+                                                                                null
+                                                                        }
                                                                 },
                                                         objectConsult = consultEntity.objectConsult
                                                                         ?: "",
@@ -216,13 +283,34 @@ class DatabaseAnimalRepository(
 
                         if (weightEntities.isNotEmpty()) {
                                 animalEv.weightHistory.addAll(
-                                        weightEntities.map { weightEntity ->
-                                                WeightDate(
-                                                        uuid = weightEntity.uuid,
-                                                        refAnimal = weightEntity.refAnimal,
-                                                        date = LocalDate.parse(weightEntity.date),
-                                                        value = weightEntity.value
-                                                )
+                                        weightEntities.mapNotNull { weightEntity ->
+                                                // Vérifier que la date n'est pas vide ou null
+                                                if (weightEntity.date.isNullOrBlank()) {
+                                                        println(
+                                                                "⚠️ WARNING: Date vide pour le poids ${weightEntity.uuid} de l'animal $id"
+                                                        )
+                                                        null // Ignorer ce poids
+                                                } else {
+                                                        try {
+                                                                WeightDate(
+                                                                        uuid = weightEntity.uuid,
+                                                                        refAnimal =
+                                                                                weightEntity
+                                                                                        .refAnimal,
+                                                                        date =
+                                                                                LocalDate.parse(
+                                                                                        weightEntity
+                                                                                                .date
+                                                                                ),
+                                                                        value = weightEntity.value
+                                                                )
+                                                        } catch (e: Exception) {
+                                                                println(
+                                                                        "⚠️ WARNING: Impossible de parser la date '${weightEntity.date}' pour le poids ${weightEntity.uuid}: ${e.message}"
+                                                                )
+                                                                null // Ignorer ce poids
+                                                        }
+                                                }
                                         }
                                 )
 

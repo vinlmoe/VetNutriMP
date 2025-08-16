@@ -117,6 +117,11 @@ fun App(appDatabase: AppDatabase) {
         )
     }
 
+    // Repository des préférences (global pour tous les ViewModels)
+    val preferencesRepository = remember {
+        fr.vetbrain.vetnutri_mp.Repository.PreferencesRepository(createPreferencesStorage())
+    }
+
     // Création des ViewModels
     val animalListViewModel = remember { AnimalListViewModel(animalRepository) }
 
@@ -124,7 +129,8 @@ fun App(appDatabase: AppDatabase) {
         AnimalDetailViewModel(
                 consultationRepository,
                 animalRepository,
-                databaseReferenceEvRepository
+                databaseReferenceEvRepository,
+                preferencesRepository
         )
     }
     val createAnimalViewModel = remember { CreateAnimalViewModel(animalRepository) }
@@ -651,12 +657,6 @@ fun App(appDatabase: AppDatabase) {
                     }
                     Screen.SpeciesPreferences -> {
                         selectedSpecies?.let { species ->
-                            val preferencesRepository = remember {
-                                fr.vetbrain.vetnutri_mp.Repository.PreferencesRepository(
-                                        createPreferencesStorage()
-                                )
-                            }
-
                             Scaffold(
                                     topBar = {
                                         TopBarSimple(

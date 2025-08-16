@@ -92,9 +92,7 @@ data class AlimentRation(
                                                 }
                                         }
                                         .distinct()
-                        println(
-                                "EQDBG-ING getNutrientWithComplementary nutr=${nutrient.label} food='${aliment?.nom}' selectedUuids=${selectedUuids}"
-                        )
+
                         if (selectedUuids.isNotEmpty()) {
                                 var accum: Double? = null
                                 val especePref =
@@ -125,9 +123,7 @@ data class AlimentRation(
                                                                         fr.vetbrain.vetnutri_mp
                                                                                 .Enumer.Espece.CH
                                                 if (!kindOk || !nutrientOk || !specieOk) {
-                                                        println(
-                                                                "EQDBG-ING skip eq=${eq.uuid} kindOk=${kindOk} nutrientOk=${nutrientOk} specieOk=${specieOk}"
-                                                        )
+                                                        println()
                                                 }
                                                 if (kindOk && nutrientOk && specieOk) {
                                                         val res =
@@ -145,16 +141,14 @@ data class AlimentRation(
                                                                                         referenceEv
                                                                         )
                                                                         ?: 0.0
-                                                        println(
-                                                                "EQDBG-ING apply eq=${eq.uuid} ratio=${eq.ratio} res=${res}"
-                                                        )
+                                                        println()
                                                         accum =
                                                                 if (eq.ratio) res
                                                                 else (accum ?: 0.0) + res
                                                 }
                                         }
                                 }
-                                println("EQDBG-ING result accum=${accum}")
+
                                 // Si ratio: la dernière valeur res est la valeur par 100g
                                 // Si somme: accum contient la somme des contributions par 100g
                                 if (accum != null) return accum

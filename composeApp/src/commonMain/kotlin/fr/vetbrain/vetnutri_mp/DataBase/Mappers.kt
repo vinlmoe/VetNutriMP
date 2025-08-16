@@ -52,8 +52,15 @@ object Mappers {
                         specieId = this.specieId ?: "",
                         ownerName = this.ownerName ?: "",
                         birthdate =
-                                this.birthdate?.takeIf { it.isNotEmpty() }?.let {
-                                        LocalDate.parse(it)
+                                this.birthdate?.takeIf { it.isNotEmpty() }?.let { dateStr ->
+                                        try {
+                                                LocalDate.parse(dateStr)
+                                        } catch (e: Exception) {
+                                                println(
+                                                        "⚠️ WARNING: Impossible de parser la date de naissance '${dateStr}' dans AnimalEntity.toData(): ${e.message}"
+                                                )
+                                                null
+                                        }
                                 },
                         race = this.race ?: "",
                         summary = this.summary ?: "",
@@ -123,8 +130,18 @@ object Mappers {
                         uuid = this.uuid,
                         idAnim = this.idAnim,
                         date =
-                                if (this.date?.isNotBlank() == true) LocalDate.parse(this.date)
-                                else null,
+                                if (this.date?.isNotBlank() == true) {
+                                        try {
+                                                LocalDate.parse(this.date)
+                                        } catch (e: Exception) {
+                                                println(
+                                                        "⚠️ WARNING: Impossible de parser la date de consultation '${this.date}' dans ConsultationEntity.toData(): ${e.message}"
+                                                )
+                                                null
+                                        }
+                                } else {
+                                        null
+                                },
                         objectConsult = this.objectConsult ?: "",
                         observation = this.observation ?: "",
                         cRendu = this.cRendu ?: "",
@@ -522,7 +539,7 @@ object Mappers {
                 return WeightEntity(
                         uuid = this.uuid,
                         refAnimal = this.refAnimal,
-                        date = this.date.toString(),
+                        date = this.date?.toString() ?: "", // ✅ Sécurisé avec null-safety
                         value = this.value
                 )
         }
@@ -531,7 +548,23 @@ object Mappers {
                 return WeightDate(
                         uuid = this.uuid,
                         refAnimal = this.refAnimal,
-                        date = LocalDate.parse(this.date),
+                        date =
+                                if (this.date.isNotBlank()) {
+                                        try {
+                                                LocalDate.parse(this.date)
+                                        } catch (e: Exception) {
+                                                println(
+                                                        "⚠️ WARNING: Impossible de parser la date '${this.date}' dans WeightEntity.toData(): ${e.message}"
+                                                )
+                                                LocalDate(
+                                                        2000,
+                                                        1,
+                                                        1
+                                                ) // Date par défaut en cas d'erreur
+                                        }
+                                } else {
+                                        LocalDate(2000, 1, 1) // Date par défaut si vide
+                                },
                         value = this.value
                 )
         }
