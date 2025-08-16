@@ -1,6 +1,7 @@
 package fr.vetbrain.vetnutri_mp.Repository
 
 import fr.vetbrain.vetnutri_mp.Data.*
+import fr.vetbrain.vetnutri_mp.DataBase.ReferenceEvCoefficientEntity
 import kotlinx.coroutines.flow.first
 import kotlinx.datetime.Clock
 import kotlinx.serialization.decodeFromString
@@ -234,7 +235,52 @@ class ExportImportRepository(
                 }
                 listener?.onProgress(0.1)
 
-                // 1) Aliments
+                // 1) Références biblio (aucune dépendance)
+                if (envelope.biblioRefs.isNotEmpty() && biblioRepository != null) {
+
+                        listener?.onLog("Import des bibliographies (${envelope.biblioRefs.size})…")
+                        for (b in envelope.biblioRefs) {
+                                try {
+                                        biblioRepository.insertBiblioRef(
+                                                BiblioRef(
+                                                        uuid = b.uuid,
+                                                        firstAuthor = b.firstAuthor,
+                                                        year = b.year,
+                                                        completeRef = b.completeRef,
+                                                        comments = b.comments,
+                                                        bibtex = b.bibtex,
+                                                        consistent = b.consistent
+                                                )
+                                        )
+
+                                        biblioImported++
+                                        advance()
+                                } catch (e: Exception) {
+
+                                        listener?.onLog("Erreur biblioRef ${b.uuid}: ${e.message}")
+                                        advance()
+                                }
+                        }
+
+                        listener?.onLog("Bibliographies importées=$biblioImported")
+                }
+
+                // 2) Équations (aucune dépendance)
+                if (envelope.equations.isNotEmpty() && equationRepository != null) {
+
+                        listener?.onLog("Import des équations (${envelope.equations.size})…")
+                        for (eqApi in envelope.equations) {
+                                val eq = eqApi.toDomain()
+                                equationRepository.saveEquation(eq)
+
+                                equationsImported++
+                                advance()
+                        }
+
+                        listener?.onLog("Équations importées=$equationsImported")
+                }
+
+                // 3) Aliments (aucune dépendance)
                 if (envelope.foods.isNotEmpty() && foodRepository != null) {
 
                         listener?.onLog("Import des aliments (${envelope.foods.size})…")
@@ -276,52 +322,195 @@ class ExportImportRepository(
                         }
                 }
 
-                // 2) Équations
-                if (envelope.equations.isNotEmpty() && equationRepository != null) {
+                // 4) ReferenceEv (dépend des équations et bibliographies)
+                if (envelope.references.isNotEmpty() && referenceRepository != null) {
+                        listener?.onLog(
+                                "Import des références nutritionnelles (${envelope.references.size})…"
+                        )
 
-                        listener?.onLog("Import des équations (${envelope.equations.size})…")
-                        for (eqApi in envelope.equations) {
-                                val eq = eqApi.toDomain()
-                                equationRepository.saveEquation(eq)
+                        // Préparer les caches pour éviter les requêtes répétées
+                        val eqCache =
+                                if (equationRepository != null) {
+                                        try {
+                                                envelope.equations.associate { eqApi ->
+                                                        eqApi.uuid to eqApi.toDomain()
+                                                }
+                                        } catch (_: Exception) {
+                                                emptyMap()
+                                        }
+                                } else emptyMap()
 
-                                equationsImported++
-                                advance()
-                        }
+                        val biblioCache =
+                                if (biblioRepository != null) {
+                                        try {
+                                                envelope.biblioRefs.associate { b ->
+                                                        b.uuid to
+                                                                BiblioRef(
+                                                                        uuid = b.uuid,
+                                                                        firstAuthor = b.firstAuthor,
+                                                                        year = b.year,
+                                                                        completeRef = b.completeRef,
+                                                                        comments = b.comments,
+                                                                        bibtex = b.bibtex,
+                                                                        consistent = b.consistent
+                                                                )
+                                                }
+                                        } catch (_: Exception) {
+                                                emptyMap()
+                                        }
+                                } else emptyMap()
 
-                        listener?.onLog("Équations importées=$equationsImported")
-                }
-
-                // 3) Références biblio
-                if (envelope.biblioRefs.isNotEmpty() && biblioRepository != null) {
-
-                        listener?.onLog("Import des bibliographies (${envelope.biblioRefs.size})…")
-                        for (b in envelope.biblioRefs) {
+                        for (refApi in envelope.references) {
                                 try {
-                                        biblioRepository.insertBiblioRef(
-                                                BiblioRef(
-                                                        uuid = b.uuid,
-                                                        firstAuthor = b.firstAuthor,
-                                                        year = b.year,
-                                                        completeRef = b.completeRef,
-                                                        comments = b.comments,
-                                                        bibtex = b.bibtex,
-                                                        consistent = b.consistent
+                                        val ref =
+                                                ReferenceEv(
+                                                        uuid = refApi.uuid,
+                                                        nom = refApi.nom,
+                                                        description = refApi.description,
+                                                        maladie = refApi.maladie,
+                                                        nomMaladie = refApi.nomMaladie,
+                                                        nomEnergie = refApi.nomEnergie,
+                                                        consistent = refApi.consistent,
+                                                        espece =
+                                                                fr.vetbrain.vetnutri_mp.Enumer
+                                                                        .Espece.valueOf(
+                                                                        refApi.espece
+                                                                ),
+                                                        stadePhysio =
+                                                                fr.vetbrain.vetnutri_mp.Enumer
+                                                                        .StadePhysio.valueOf(
+                                                                        refApi.stadePhysio
+                                                                )
                                                 )
+
+                                        // Lier équations
+                                        ref.equationBW = refApi.equationBW?.let { eqCache[it] }
+                                        ref.equationBEE = refApi.equationBEE?.let { eqCache[it] }
+                                        ref.equationDEcom =
+                                                refApi.equationDEcom?.let { eqCache[it] }
+                                        ref.equationDEraw =
+                                                refApi.equationDEraw?.let { eqCache[it] }
+                                        ref.equationME = refApi.equationME?.let { eqCache[it] }
+                                        ref.equationsNut.addAll(
+                                                refApi.equationsNut.mapNotNull { eqCache[it] }
                                         )
 
-                                        biblioImported++
+                                        // Nutriments
+                                        for (n in refApi.nutrients) {
+                                                val nutrient =
+                                                        fr.vetbrain.vetnutri_mp.Enumer
+                                                                .NutrientResolver
+                                                                .findNutrientByLabel(
+                                                                        n.nutrientLabel
+                                                                )
+                                                if (nutrient != null) {
+                                                        val bib: BiblioRef =
+                                                                if (n.biblioRefId != null) {
+                                                                        biblioCache[n.biblioRefId]
+                                                                                ?: BiblioRef()
+                                                                } else BiblioRef()
+
+                                                        val level =
+                                                                when (n.reflevel) {
+                                                                        "MIN" ->
+                                                                                fr.vetbrain
+                                                                                        .vetnutri_mp
+                                                                                        .Enumer
+                                                                                        .Reflevel
+                                                                                        .MIN
+                                                                        "MAX" ->
+                                                                                fr.vetbrain
+                                                                                        .vetnutri_mp
+                                                                                        .Enumer
+                                                                                        .Reflevel
+                                                                                        .MAX
+                                                                        "OPTIMIN" ->
+                                                                                fr.vetbrain
+                                                                                        .vetnutri_mp
+                                                                                        .Enumer
+                                                                                        .Reflevel
+                                                                                        .OPTIMIN
+                                                                        "OPTIMAX" ->
+                                                                                fr.vetbrain
+                                                                                        .vetnutri_mp
+                                                                                        .Enumer
+                                                                                        .Reflevel
+                                                                                        .OPTIMAX
+                                                                        else ->
+                                                                                fr.vetbrain
+                                                                                        .vetnutri_mp
+                                                                                        .Enumer
+                                                                                        .Reflevel
+                                                                                        .MIN
+                                                                }
+
+                                                        ref.definirNutriment(
+                                                                n.quantity,
+                                                                nutrient,
+                                                                level,
+                                                                fr.vetbrain.vetnutri_mp.Enumer
+                                                                        .UnitReqEnum.getById(
+                                                                        n.uniteReqId
+                                                                ),
+                                                                bib
+                                                        )
+                                                }
+                                        }
+
+                                        // 🆕 AJOUTER LES COEFFICIENTS
+                                        for (coefApi in refApi.coefficients) {
+                                                try {
+                                                        val coef =
+                                                                ReferenceEvCoefficientEntity(
+                                                                        uuid = coefApi.uuid,
+                                                                        referenceEvId = ref.uuid,
+                                                                        groupType =
+                                                                                coefApi.groupType,
+                                                                        description =
+                                                                                coefApi.description,
+                                                                        coef = coefApi.coef,
+                                                                        groupUUID =
+                                                                                coefApi.groupUUID
+                                                                )
+                                                        // Sauvegarder le coefficient via le
+                                                        // repository
+                                                        referenceRepository.saveCoefficient(coef)
+                                                        println(
+                                                                "IMPORT API: coefficient ${coef.uuid} sauvegardé pour referenceEv ${ref.uuid}"
+                                                        )
+                                                        listener?.onLog(
+                                                                "Coefficient ${coef.uuid} sauvegardé"
+                                                        )
+                                                } catch (e: Exception) {
+                                                        println(
+                                                                "IMPORT API: erreur coefficient ${coefApi.uuid} → ${e.message}"
+                                                        )
+                                                        listener?.onLog(
+                                                                "Erreur coefficient ${coefApi.uuid}: ${e.message}"
+                                                        )
+                                                }
+                                        }
+
+                                        referenceRepository.saveReferenceEv(ref)
+                                        println("IMPORT API: referenceEv ${ref.uuid} sauvegardée")
+                                        listener?.onLog("ReferenceEv ${ref.uuid} sauvegardée")
+                                        referencesImported++
                                         advance()
                                 } catch (e: Exception) {
-
-                                        listener?.onLog("Erreur biblioRef ${b.uuid}: ${e.message}")
+                                        println(
+                                                "IMPORT API: erreur referenceEv=${refApi.uuid} → ${e.message}"
+                                        )
+                                        listener?.onLog(
+                                                "Erreur referenceEv ${refApi.uuid}: ${e.message}"
+                                        )
                                         advance()
                                 }
                         }
-
-                        listener?.onLog("Bibliographies importées=$biblioImported")
+                        println("IMPORT API: referencesEv importées=$referencesImported")
+                        listener?.onLog("Références nutritionnelles importées=$referencesImported")
                 }
 
-                // 4) Animaux + consultations/rations
+                // 5) Animaux + consultations/rations (dépendent des aliments et références)
                 if (envelope.animals.isNotEmpty())
                         listener?.onLog("Import des animaux (${envelope.animals.size})…")
                 // Préparer un set d'UUID d'aliments pour limiter les accès DB répétés lors des
@@ -483,70 +672,6 @@ class ExportImportRepository(
                                         ref.equationsNut.addAll(
                                                 refApi.equationsNut.mapNotNull { eqCache[it] }
                                         )
-                                        // Nutriments
-                                        for (n in refApi.nutrients) {
-                                                val nutrient =
-                                                        fr.vetbrain.vetnutri_mp.Enumer
-                                                                .NutrientResolver
-                                                                .findNutrientByLabel(
-                                                                        n.nutrientLabel
-                                                                )
-                                                if (nutrient != null) {
-                                                        val bib: BiblioRef =
-                                                                if (n.biblioRefId != null) {
-                                                                        biblioCache[n.biblioRefId]
-                                                                                ?: BiblioRef()
-                                                                } else BiblioRef()
-                                                        val level =
-                                                                when (n.reflevel) {
-                                                                        "MIN" ->
-                                                                                fr.vetbrain
-                                                                                        .vetnutri_mp
-                                                                                        .Enumer
-                                                                                        .Reflevel
-                                                                                        .MIN
-                                                                        "MAX" ->
-                                                                                fr.vetbrain
-                                                                                        .vetnutri_mp
-                                                                                        .Enumer
-                                                                                        .Reflevel
-                                                                                        .MAX
-                                                                        "OPTIMIN" ->
-                                                                                fr.vetbrain
-                                                                                        .vetnutri_mp
-                                                                                        .Enumer
-                                                                                        .Reflevel
-                                                                                        .OPTIMIN
-                                                                        "OPTIMAX" ->
-                                                                                fr.vetbrain
-                                                                                        .vetnutri_mp
-                                                                                        .Enumer
-                                                                                        .Reflevel
-                                                                                        .OPTIMAX
-                                                                        else ->
-                                                                                fr.vetbrain
-                                                                                        .vetnutri_mp
-                                                                                        .Enumer
-                                                                                        .Reflevel
-                                                                                        .MIN
-                                                                }
-                                                        ref.definirNutriment(
-                                                                n.quantity,
-                                                                nutrient,
-                                                                level,
-                                                                fr.vetbrain.vetnutri_mp.Enumer
-                                                                        .UnitReqEnum.getById(
-                                                                        n.uniteReqId
-                                                                ),
-                                                                bib
-                                                        )
-                                                }
-                                        }
-                                        referenceRepository.saveReferenceEv(ref)
-                                        println("IMPORT API: referenceEv ${ref.uuid} sauvegardée")
-                                        listener?.onLog("ReferenceEv ${ref.uuid} sauvegardée")
-                                        referencesImported++
-                                        advance()
                                 } catch (e: Exception) {
                                         println(
                                                 "IMPORT API: erreur referenceEv=${refApi.uuid} → ${e.message}"
