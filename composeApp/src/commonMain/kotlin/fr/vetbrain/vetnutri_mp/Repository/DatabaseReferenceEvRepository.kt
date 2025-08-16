@@ -94,6 +94,101 @@ class DatabaseReferenceEvRepository(
         }
     }
 
+    // 🆕 Méthode spéciale pour l'import qui gère les coefficients avec leurs UUIDs originaux
+    suspend fun saveReferenceEvForImport(referenceEv: ReferenceEv): String {
+        try {
+            // 1. Sauvegarder l'entité principale
+            val entity = convertReferenceEvToEntity(referenceEv)
+            referenceEvDao.insertReferenceEv(entity)
+
+            // 2. Sauvegarder les relations avec les équations
+            saveEquationRelations(referenceEv)
+
+            // 3. 🆕 Sauvegarder les coefficients AVEC leurs UUIDs originaux
+            saveCoefficientsForImport(referenceEv)
+
+            // 4. Sauvegarder les nutriments
+            saveNutrients(referenceEv)
+
+            return referenceEv.uuid
+        } catch (e: Exception) {
+            throw e
+        }
+    }
+
+    // 🆕 Méthode pour sauvegarder les coefficients avec leurs UUIDs originaux
+    private suspend fun saveCoefficientsForImport(referenceEv: ReferenceEv) {
+        val coefficients = mutableListOf<ReferenceEvCoefficientEntity>()
+
+        // Sauvegarder les coefficients k1-k5 avec leurs UUIDs originaux
+        referenceEv.getModk1().forEach { coef ->
+            coefficients.add(
+                    ReferenceEvCoefficientEntity(
+                            uuid = coef.uuid, // ✅ UUID original préservé
+                            referenceEvId = referenceEv.uuid,
+                            groupType = "k1",
+                            description = coef.description ?: "Normal",
+                            coef = coef.coef ?: 1.0,
+                            groupUUID = coef.groupUUID ?: 0
+                    )
+            )
+        }
+
+        referenceEv.getModk2().forEach { coef ->
+            coefficients.add(
+                    ReferenceEvCoefficientEntity(
+                            uuid = coef.uuid, // ✅ UUID original préservé
+                            referenceEvId = referenceEv.uuid,
+                            groupType = "k2",
+                            description = coef.description ?: "Normal",
+                            coef = coef.coef ?: 1.0,
+                            groupUUID = coef.groupUUID ?: 1
+                    )
+            )
+        }
+
+        referenceEv.getModk3().forEach { coef ->
+            coefficients.add(
+                    ReferenceEvCoefficientEntity(
+                            uuid = coef.uuid, // ✅ UUID original préservé
+                            referenceEvId = referenceEv.uuid,
+                            groupType = "k3",
+                            description = coef.description ?: "Normal",
+                            coef = coef.coef ?: 1.0,
+                            groupUUID = coef.groupUUID ?: 2
+                    )
+            )
+        }
+
+        referenceEv.getModk4().forEach { coef ->
+            coefficients.add(
+                    ReferenceEvCoefficientEntity(
+                            uuid = coef.uuid, // ✅ UUID original préservé
+                            referenceEvId = referenceEv.uuid,
+                            groupType = "k4",
+                            description = coef.description ?: "Normal",
+                            coef = coef.coef ?: 1.0,
+                            groupUUID = coef.groupUUID ?: 3
+                    )
+            )
+        }
+
+        referenceEv.getModk5().forEach { coef ->
+            coefficients.add(
+                    ReferenceEvCoefficientEntity(
+                            uuid = coef.uuid, // ✅ UUID original préservé
+                            referenceEvId = referenceEv.uuid,
+                            groupType = "k5",
+                            description = coef.description ?: "Normal",
+                            coef = coef.coef ?: 1.0,
+                            groupUUID = coef.groupUUID ?: 4
+                    )
+            )
+        }
+
+        coefficients.forEach { coefficient -> referenceEvDao.insertCoefficient(coefficient) }
+    }
+
     // Méthodes de conversion
 
     private fun convertReferenceEvToEntity(referenceEv: ReferenceEv): ReferenceEvEntity {
