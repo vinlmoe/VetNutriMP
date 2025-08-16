@@ -462,7 +462,7 @@ fun RationsView(
                                                                 color =
                                                                         MaterialTheme.colors
                                                                                 .onSurface.copy(
-                                                                                alpha = 0.7
+                                                                                alpha = 0.7f
                                                                         )
                                                         )
                                                 }
@@ -934,7 +934,7 @@ fun RationsView(
                                 ) {
                                         // Colonne gauche (listes) - 50% de l'espace
                                         Column(
-                                                modifier = Modifier.weight(0.5),
+                                                modifier = Modifier.weight(0.5f),
                                                 verticalArrangement =
                                                         Arrangement.spacedBy(AppSizes.paddingMedium)
                                         ) {
@@ -1534,7 +1534,7 @@ fun RationEditDialog(ration: Ration?, onDismiss: () -> Unit, onSave: (Ration) ->
                                                                         VetNutriColors.Primary,
                                                                 checkedTrackColor =
                                                                         VetNutriColors.Primary.copy(
-                                                                                alpha = 0.5
+                                                                                alpha = 0.5f
                                                                         )
                                                         )
                                         )

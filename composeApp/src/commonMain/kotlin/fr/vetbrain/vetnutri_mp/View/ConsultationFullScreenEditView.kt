@@ -308,10 +308,13 @@ fun ConsultationFullScreenEditView(
                                         // Sélecteur de BCS
                                         ScoreSelector(
                                                 label = "Note BCS (1-9)",
-                                                valeurSelectionnee = editedConsultation.BCS,
+                                                valeurSelectionnee =
+                                                        editedConsultation.BCS?.toDouble(),
                                                 onScoreSelected = { score ->
                                                         editedConsultation =
-                                                                editedConsultation.copy(BCS = score)
+                                                                editedConsultation.copy(
+                                                                        BCS = score?.toInt()
+                                                                )
                                                 },
                                                 plageScore = 1..9,
                                                 descriptions =

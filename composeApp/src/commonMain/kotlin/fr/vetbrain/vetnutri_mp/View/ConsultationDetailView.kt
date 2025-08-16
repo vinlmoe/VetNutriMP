@@ -179,7 +179,7 @@ fun AppConsultationDetailView(
                                         },
                                         label = Consultation.OBSERVATION.translate(),
                                         leadingIcon = AppIcons.Info,
-                                        modifier = Modifier.fillMaxWidth().weight(1.0),
+                                        modifier = Modifier.fillMaxWidth().weight(1f),
                                         maxLines = 5,
                                         singleLine = false
                                 )

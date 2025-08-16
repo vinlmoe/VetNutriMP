@@ -128,7 +128,7 @@ fun ReferenceEvNutrientView(
                                                                                         .Primary
                                                                                         .copy(
                                                                                                 alpha =
-                                                                                                        0.1
+                                                                                                        0.1f
                                                                                         )
                                                                         else Color.Transparent,
                                                                 contentColor =

@@ -163,7 +163,7 @@ fun SettingsDrawer(
                         icon = Icons.Default.Settings
                 )
 
-                Spacer(modifier = Modifier.weight(1.0f))
+                Spacer(modifier = Modifier.weight(1f))
 
                 Divider(color = Color.LightGray, thickness = 1.dp)
 
@@ -186,7 +186,7 @@ fun SettingsSectionItem(
         icon: androidx.compose.ui.graphics.vector.ImageVector
 ) {
         val backgroundColor =
-                if (isSelected) VetNutriColors.Primary.copy(alpha = 0.1) else Color.Transparent
+                if (isSelected) VetNutriColors.Primary.copy(alpha = 0.1f) else Color.Transparent
 
         val textColor = if (isSelected) VetNutriColors.Primary else Color.DarkGray
 
@@ -804,6 +804,7 @@ fun SettingsView(
                                                                                         LinearProgressIndicator(
                                                                                                 progress =
                                                                                                         apiProgress
+                                                                                                                .toFloat()
                                                                                         )
                                                                                         Box(
                                                                                                 modifier =
@@ -1367,7 +1368,8 @@ fun SettingsView(
         // Indicateur de progression pendant le traitement
         if (isProcessing) {
                 Box(
-                        modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5)),
+                        modifier =
+                                Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f)),
                         contentAlignment = Alignment.Center
                 ) { CircularProgressIndicator(color = VetNutriColors.Primary) }
         }
@@ -1537,7 +1539,7 @@ private fun PreferencesContentWithPersistence(
                         // Informations sur la persistance
                         Card(
                                 modifier = Modifier.fillMaxWidth(),
-                                backgroundColor = VetNutriColors.Primary.copy(alpha = 0.1),
+                                backgroundColor = VetNutriColors.Primary.copy(alpha = 0.1f),
                                 elevation = 1.dp
                         ) {
                                 Column(modifier = Modifier.padding(16.dp)) {
@@ -1707,7 +1709,7 @@ private fun SpeciesPreferenceCardWithPersistence(
                                                                 enabled = !isSaving
                                                         )
                                                         Spacer(modifier = Modifier.width(8.dp))
-                                                        Column(modifier = Modifier.weight(1.0f)) {
+                                                        Column(modifier = Modifier.weight(1f)) {
                                                                 Text(
                                                                         text = type.displayName,
                                                                         style =
@@ -1784,7 +1786,7 @@ private fun PreferencesContentSimplified(modifier: Modifier = Modifier) {
                 // Note d'information
                 Card(
                         modifier = Modifier.fillMaxWidth(),
-                        backgroundColor = VetNutriColors.Primary.copy(alpha = 0.1),
+                        backgroundColor = VetNutriColors.Primary.copy(alpha = 0.1f),
                         elevation = 1.dp
                 ) {
                         Column(modifier = Modifier.padding(16.dp)) {
