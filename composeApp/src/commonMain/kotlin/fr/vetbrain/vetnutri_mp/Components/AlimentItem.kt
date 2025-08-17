@@ -1,7 +1,6 @@
 package fr.vetbrain.vetnutri_mp.Components
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
@@ -10,7 +9,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Data.AlimentRation
 import fr.vetbrain.vetnutri_mp.Enumer.FoodKind
@@ -172,8 +170,8 @@ fun AlimentItem(
                                 ) // texte réduit
 
                                 if (isEditing) {
-                                        // Mode édition avec champ de texte
-                                        OutlinedTextField(
+                                        // Mode édition avec le composant BasicNumberTextField
+                                        BasicNumberTextField(
                                                 value = quantityText,
                                                 onValueChange = { newValue ->
                                                         // Filtrer pour n'accepter que les nombres
@@ -188,21 +186,9 @@ fun AlimentItem(
                                                                 quantityText = newValue
                                                         }
                                                 },
-                                                keyboardOptions =
-                                                        KeyboardOptions(
-                                                                keyboardType = KeyboardType.Number
-                                                        ),
-                                                singleLine = true,
-                                                modifier =
-                                                        Modifier.weight(1f)
-                                                                .height(40.dp), // hauteur réduite
-                                                colors =
-                                                        TextFieldDefaults.outlinedTextFieldColors(
-                                                                focusedBorderColor =
-                                                                        VetNutriColors.Primary,
-                                                                unfocusedBorderColor =
-                                                                        VetNutriColors.Secondary
-                                                        )
+                                                placeholder = "",
+                                                modifier = Modifier.weight(1f).height(40.dp),
+                                                singleLine = true
                                         )
 
                                         Button(
@@ -224,9 +210,7 @@ fun AlimentItem(
                                                         Modifier.padding(
                                                                 start = AppSizes.paddingSmall
                                                         )
-                                        ) {
-                                                Text("OK", style = MaterialTheme.typography.caption)
-                                        } // texte réduit
+                                        ) { Text("OK", style = MaterialTheme.typography.caption) }
                                 } else {
                                         // Mode affichage
                                         Text(

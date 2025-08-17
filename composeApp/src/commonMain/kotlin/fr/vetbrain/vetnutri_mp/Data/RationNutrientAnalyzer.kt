@@ -4,6 +4,7 @@ import fr.vetbrain.vetnutri_mp.Enumer.AAEnum
 import fr.vetbrain.vetnutri_mp.Enumer.MainNutrientEnum
 import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientAnalysis
+import fr.vetbrain.vetnutri_mp.Enumer.NutrientEnergy
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientLipid
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientMain
@@ -212,6 +213,7 @@ private fun obtenirTousLesNutriments(): List<Nutrient> {
     nutriments.addAll(NutrientAnalysis.entries)
     nutriments.addAll(AAEnum.entries)
     nutriments.addAll(NutrientOther.entries)
+    nutriments.addAll(NutrientEnergy.entries)
 
     return nutriments
 }

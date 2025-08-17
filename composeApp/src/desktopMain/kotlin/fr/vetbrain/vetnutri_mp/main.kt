@@ -405,7 +405,7 @@ actual fun importApiFromFile(viewModel: SettingsViewModel) {
                                             .ImportProgressListener(
                                                     onProgress = { p ->
                                                         viewModel.updateApiImportProgress(p)
-                                                    },33333333
+                                                    },
                                                     onLog = { msg ->
                                                         viewModel.appendApiImportLog(msg)
                                                     }

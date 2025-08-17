@@ -1,6 +1,7 @@
 package fr.vetbrain.vetnutri_mp.Data
 
 import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
+import fr.vetbrain.vetnutri_mp.Enumer.NutrientMain
 import fr.vetbrain.vetnutri_mp.Utils.genUUID
 import kotlin.uuid.ExperimentalUuidApi
 
@@ -29,11 +30,12 @@ data class AlimentRation(
          * Obtient la valeur d'un nutriment dans cet aliment
          *
          * @param nutrient Le nutriment à rechercher
+         * @param referenceEv Référence optionnelle pour calculer l'énergie via les équations
          * @return La valeur du nutriment ou null si non trouvé
          */
-        fun getNutrient(nutrient: Nutrient): Double? {
+        fun getNutrient(nutrient: Nutrient, referenceEv: ReferenceEv? = null): Double? {
                 // Déléguer à l'aliment sous-jacent s'il existe
-                return aliment?.getNutrient(nutrient)
+                return aliment?.getNutrient(nutrient, referenceEv)
         }
 
         /**
@@ -52,8 +54,9 @@ data class AlimentRation(
                 equationRepository: fr.vetbrain.vetnutri_mp.Repository.EquationRepository? = null,
                 referenceEv: ReferenceEv? = null
         ): Double? {
-                // D'abord, essayer d'obtenir la valeur directement
-                val valeurDirecte = getNutrient(nutrient)
+                // D'abord, essayer d'obtenir la valeur directement (avec calcul d'énergie si
+                // nécessaire)
+                val valeurDirecte = getNutrient(nutrient, referenceEv)
                 if (valeurDirecte != null && valeurDirecte > 0.0) {
                         return valeurDirecte
                 }
@@ -172,9 +175,30 @@ data class AlimentRation(
         /**
          * Calcule la quantité d'énergie fournie par cet aliment
          *
+         * @param referenceEv Référence optionnelle pour calculer l'énergie via les équations
+         * @param preferences Préférences de l'espèce pour les équations complémentaires
+         * @param equationRepository Repository des équations pour les équations complémentaires
          * @return La quantité d'énergie
          */
-        fun getEnergie(): Double {
+        suspend fun getEnergie(
+                referenceEv: ReferenceEv? = null,
+                preferences: PreferencesEspece? = null,
+                equationRepository: fr.vetbrain.vetnutri_mp.Repository.EquationRepository? = null
+        ): Double {
+                // Si on a les dépendances, utiliser getNutrientWithComplementary pour l'énergie
+                if (referenceEv != null || (preferences != null && equationRepository != null)) {
+                        val energiePour100g =
+                                getNutrientWithComplementary(
+                                        nutrient = NutrientMain.ENERGIE,
+                                        preferences = preferences,
+                                        equationRepository = equationRepository,
+                                        referenceEv = referenceEv
+                                )
+                                        ?: 0.0
+                        return (energiePour100g * quantite) / 100.0
+                }
+
+                // Sinon, utiliser la densité énergétique stockée
                 return densiteEnergetique * quantite
         }
 
