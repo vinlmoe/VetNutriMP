@@ -1,17 +1,12 @@
 package fr.vetbrain.vetnutri_mp.View
 
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
-import androidx.compose.material.LocalTextStyle
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Clear
@@ -19,11 +14,10 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import fr.vetbrain.vetnutri_mp.Components.BasicAppTextField
 import fr.vetbrain.vetnutri_mp.Components.DropdownField
 import fr.vetbrain.vetnutri_mp.Components.MultiSelectDropdownField
 import fr.vetbrain.vetnutri_mp.Components.TopBar
@@ -226,144 +220,20 @@ fun AddAlimentView(
                                                 )
 
                                                 // Champ de recherche textuelle
-                                                Box(
+                                                BasicAppTextField(
+                                                        value = searchQuery,
+                                                        onValueChange = { searchQuery = it },
+                                                        placeholder = "Nom, marque, ingrédients...",
+                                                        leadingIcon = Icons.Default.Search,
+                                                        trailingIcon =
+                                                                if (searchQuery.isNotEmpty())
+                                                                        Icons.Default.Clear
+                                                                else null,
+                                                        onTrailingIconClick = { searchQuery = "" },
                                                         modifier =
                                                                 Modifier.fillMaxWidth()
                                                                         .height(40.dp)
-                                                ) {
-                                                        BasicTextField(
-                                                                value = searchQuery,
-                                                                onValueChange = {
-                                                                        searchQuery = it
-                                                                },
-                                                                textStyle =
-                                                                        LocalTextStyle.current.copy(
-                                                                                fontSize = 13.sp,
-                                                                                color =
-                                                                                        MaterialTheme
-                                                                                                .colors
-                                                                                                .onSurface
-                                                                        ),
-                                                                singleLine = true,
-                                                                modifier = Modifier.fillMaxSize(),
-                                                                decorationBox = { innerTextField ->
-                                                                        Box(
-                                                                                modifier =
-                                                                                        Modifier.fillMaxSize()
-                                                                                                .border(
-                                                                                                        width =
-                                                                                                                0.5.dp,
-                                                                                                        color =
-                                                                                                                MaterialTheme
-                                                                                                                        .colors
-                                                                                                                        .onSurface
-                                                                                                                        .copy(
-                                                                                                                                alpha =
-                                                                                                                                        0.4f
-                                                                                                                        ),
-                                                                                                        shape =
-                                                                                                                RoundedCornerShape(
-                                                                                                                        4.dp
-                                                                                                                )
-                                                                                                )
-                                                                                                .padding(
-                                                                                                        horizontal =
-                                                                                                                8.dp,
-                                                                                                        vertical =
-                                                                                                                6.dp
-                                                                                                )
-                                                                        ) {
-                                                                                Row(
-                                                                                        modifier =
-                                                                                                Modifier.fillMaxSize(),
-                                                                                        verticalAlignment =
-                                                                                                Alignment
-                                                                                                        .CenterVertically
-                                                                                ) {
-                                                                                        Icon(
-                                                                                                imageVector =
-                                                                                                        Icons.Default
-                                                                                                                .Search,
-                                                                                                contentDescription =
-                                                                                                        "Rechercher",
-                                                                                                modifier =
-                                                                                                        Modifier.size(
-                                                                                                                        16.dp
-                                                                                                                )
-                                                                                                                .padding(
-                                                                                                                        end =
-                                                                                                                                4.dp
-                                                                                                                ),
-                                                                                                tint =
-                                                                                                        MaterialTheme
-                                                                                                                .colors
-                                                                                                                .onSurface
-                                                                                                                .copy(
-                                                                                                                        alpha =
-                                                                                                                                0.7f
-                                                                                                                )
-                                                                                        )
-                                                                                        Box(
-                                                                                                modifier =
-                                                                                                        Modifier.weight(
-                                                                                                                1f
-                                                                                                        )
-                                                                                        ) {
-                                                                                                if (searchQuery
-                                                                                                                .isEmpty()
-                                                                                                ) {
-                                                                                                        Text(
-                                                                                                                text =
-                                                                                                                        "Nom, marque, ingrédients...",
-                                                                                                                fontSize =
-                                                                                                                        13.sp,
-                                                                                                                color =
-                                                                                                                        MaterialTheme
-                                                                                                                                .colors
-                                                                                                                                .onSurface
-                                                                                                                                .copy(
-                                                                                                                                        alpha =
-                                                                                                                                                0.4f
-                                                                                                                                )
-                                                                                                        )
-                                                                                                }
-                                                                                                innerTextField()
-                                                                                        }
-                                                                                        if (searchQuery
-                                                                                                        .isNotEmpty()
-                                                                                        ) {
-                                                                                                IconButton(
-                                                                                                        onClick = {
-                                                                                                                searchQuery =
-                                                                                                                        ""
-                                                                                                        }
-                                                                                                ) {
-                                                                                                        Icon(
-                                                                                                                imageVector =
-                                                                                                                        Icons.Default
-                                                                                                                                .Clear,
-                                                                                                                contentDescription =
-                                                                                                                        "Effacer",
-                                                                                                                modifier =
-                                                                                                                        Modifier.size(
-                                                                                                                                16.dp
-                                                                                                                        ),
-                                                                                                                tint =
-                                                                                                                        MaterialTheme
-                                                                                                                                .colors
-                                                                                                                                .onSurface
-                                                                                                                                .copy(
-                                                                                                                                        alpha =
-                                                                                                                                                0.6f
-                                                                                                                                )
-                                                                                                        )
-                                                                                                }
-                                                                                        }
-                                                                                }
-                                                                        }
-                                                                }
-                                                        )
-                                                }
+                                                )
 
                                                 // Filtres par dropdowns en grille 2x2
                                                 Row(
@@ -781,23 +651,16 @@ private fun AlimentDetailsPanel(
                         fontWeight = FontWeight.Bold
                 )
 
-                OutlinedTextField(
+                BasicAppTextField(
                         value = quantite,
                         onValueChange = onQuantiteChange,
-                        label = { Text("Quantité (g)") },
+                        placeholder = "Quantité (g)",
                         modifier = Modifier.fillMaxWidth(),
                         isError = quantiteError,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        singleLine = true
+                        errorMessage =
+                                if (quantiteError) "Veuillez entrer une quantité valide > 0"
+                                else null
                 )
-
-                if (quantiteError) {
-                        Text(
-                                text = "Veuillez entrer une quantité valide > 0",
-                                color = Color.Red,
-                                style = MaterialTheme.typography.caption
-                        )
-                }
 
                 // Informations nutritionnelles principales (si disponibles)
                 if (aliment.valMap.isNotEmpty()) {

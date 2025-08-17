@@ -34,14 +34,15 @@ data class Ration(
          * Obtient la valeur d'un nutriment dans la ration
          *
          * @param nutrient Le nutriment à rechercher
+         * @param referenceEv Référence optionnelle pour calculer l'énergie via les équations
          * @return La valeur du nutriment ou null si non trouvé
          */
-        fun getNutrient(nutrient: Nutrient): Double? {
+        fun getNutrient(nutrient: Nutrient, referenceEv: ReferenceEv? = null): Double? {
                 // Calculer la somme des valeurs du nutriment pour tous les aliments de la ration
                 var total = 0.0
 
                 for (aliment in alimentMutableList) {
-                        val valeur = aliment.getNutrient(nutrient)
+                        val valeur = aliment.getNutrient(nutrient, referenceEv)
                         if (valeur != null) {
                                 total += (valeur * aliment.quantite) / 100.0
                         }
@@ -62,7 +63,37 @@ data class Ration(
         /**
          * Calcule la densité énergétique moyenne de la ration
          *
+         * @param referenceEv Référence optionnelle pour calculer l'énergie via les équations
+         * @param preferences Préférences de l'espèce pour les équations complémentaires
+         * @param equationRepository Repository des équations pour les équations complémentaires
          * @return La densité énergétique moyenne
+         */
+        suspend fun getDensiteEnergetiqueMoyenne(
+                referenceEv: ReferenceEv? = null,
+                preferences: PreferencesEspece? = null,
+                equationRepository: fr.vetbrain.vetnutri_mp.Repository.EquationRepository? = null
+        ): Double {
+                val quantiteTotale = getQuantiteTotale()
+
+                if (quantiteTotale <= 0.0) {
+                        return 0.0
+                }
+
+                var totalEnergie = 0.0
+
+                for (aliment in alimentMutableList) {
+                        totalEnergie +=
+                                aliment.getEnergie(referenceEv, preferences, equationRepository)
+                }
+
+                return totalEnergie / quantiteTotale
+        }
+
+        /**
+         * Version non-suspend de getDensiteEnergetiqueMoyenne qui utilise les valeurs stockées
+         * (pour compatibilité avec les contextes non-suspend)
+         *
+         * @return La densité énergétique moyenne basée sur les valeurs stockées
          */
         fun getDensiteEnergetiqueMoyenne(): Double {
                 val quantiteTotale = getQuantiteTotale()

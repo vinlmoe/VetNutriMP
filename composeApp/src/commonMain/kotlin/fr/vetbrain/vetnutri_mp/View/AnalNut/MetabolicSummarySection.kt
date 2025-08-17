@@ -1,7 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View.AnalNut
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
@@ -13,8 +12,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import fr.vetbrain.vetnutri_mp.Components.BasicAppTextField
 import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
@@ -173,54 +172,34 @@ fun SectionCoefficients(
                         )
                     }
             if (isEditingCoefficient) {
-                OutlinedTextField(
+                BasicAppTextField(
                         value = coefficientText,
                         onValueChange = { coefficientText = it },
+                        placeholder = "Coefficient",
                         modifier = Modifier.width(80.dp).height(50.dp),
-                        textStyle = MaterialTheme.typography.body2,
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        trailingIcon = {
-                            Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                                IconButton(
-                                        onClick = {
-                                            coefficientText.toDoubleOrNull()?.let { newValue ->
-                                                selectedConsultation?.let { consultation ->
-                                                    viewModel.updateCoefficientAjustement(
-                                                            consultation.uuid,
-                                                            newValue
-                                                    )
-                                                }
-                                            }
-                                            isEditingCoefficient = false
-                                        },
-                                        modifier = Modifier.size(24.dp)
-                                ) {
-                                    Icon(
-                                            Icons.Filled.Check,
-                                            contentDescription = "Valider",
-                                            tint = Color.Green
-                                    )
-                                }
-                                IconButton(
-                                        onClick = {
-                                            coefficientText =
-                                                    selectedConsultation?.coefficientAjustement
-                                                            ?.toString()
-                                                            ?: "1.0"
-                                            isEditingCoefficient = false
-                                        },
-                                        modifier = Modifier.size(24.dp)
-                                ) {
-                                    Icon(
-                                            Icons.Filled.Close,
-                                            contentDescription = "Annuler",
-                                            tint = Color.Red
+                        trailingIcon = Icons.Filled.Check,
+                        onTrailingIconClick = {
+                            coefficientText.toDoubleOrNull()?.let { newValue ->
+                                selectedConsultation?.let { consultation ->
+                                    viewModel.updateCoefficientAjustement(
+                                            consultation.uuid,
+                                            newValue
                                     )
                                 }
                             }
+                            isEditingCoefficient = false
                         }
                 )
+
+                // Bouton d'annulation séparé
+                IconButton(
+                        onClick = {
+                            coefficientText =
+                                    selectedConsultation?.coefficientAjustement?.toString() ?: "1.0"
+                            isEditingCoefficient = false
+                        },
+                        modifier = Modifier.size(24.dp)
+                ) { Icon(Icons.Filled.Close, contentDescription = "Annuler", tint = Color.Red) }
             } else {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     LigneInfoLocaleCompacte(

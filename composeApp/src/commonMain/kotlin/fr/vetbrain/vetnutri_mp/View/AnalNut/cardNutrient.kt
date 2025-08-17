@@ -512,7 +512,8 @@ fun AnalyseNutritionnelleCard(
                                                         poidsMetabolique = poidsMetabolique,
                                                         besoinEnergetiqueEntretien =
                                                                 besoinEnergetiqueEntretien,
-                                                        referencesMaladies = referencesMaladies
+                                                        referencesMaladies = referencesMaladies,
+                                                        onClick = { onNutrimentClick(nom, valeur) }
                                                 )
                                             }
                                         }

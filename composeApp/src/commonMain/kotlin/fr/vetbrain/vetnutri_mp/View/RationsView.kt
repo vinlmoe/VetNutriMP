@@ -42,7 +42,6 @@ import fr.vetbrain.vetnutri_mp.Repository.PreferencesRepository
 import fr.vetbrain.vetnutri_mp.Repository.RecipeRepository
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
-import fr.vetbrain.vetnutri_mp.Utils.EquationEvaluator
 import fr.vetbrain.vetnutri_mp.Utils.PreferencesStorage
 import fr.vetbrain.vetnutri_mp.Utils.TextUtils
 import fr.vetbrain.vetnutri_mp.Utils.createPreferencesStorage
@@ -183,6 +182,7 @@ fun RationsView(
                 val reference = referenceUtilisee
                 val prefsApp = preferencesApplication
                 val animalActuel = animal
+
                 energieApportee =
                         if (rationActuelle != null &&
                                         reference != null &&
@@ -191,12 +191,17 @@ fun RationsView(
                         ) {
                                 val prefsEspece =
                                         prefsApp.getPreferencesEspece(animalActuel.getEspece())
-                                EquationEvaluator.calculerApportEnergetiqueRation(
-                                        ration = rationActuelle,
-                                        preferences = prefsEspece,
-                                        equationRepository = equationRepository,
-                                        referenceEv = reference
-                                )
+                                // Utiliser getDensiteEnergetiqueMoyenne() qui utilise les nouvelles
+                                // fonctions d'énergie
+                                // et multiplier par la quantité totale pour obtenir l'énergie
+                                // totale
+                                val densiteEnergetique =
+                                        rationActuelle.getDensiteEnergetiqueMoyenne(
+                                                referenceEv = reference,
+                                                preferences = prefsEspece,
+                                                equationRepository = equationRepository
+                                        )
+                                densiteEnergetique * rationActuelle.getQuantiteTotale()
                         } else 0.0
         }
 

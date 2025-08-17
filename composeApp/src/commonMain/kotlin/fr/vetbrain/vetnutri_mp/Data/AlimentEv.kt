@@ -4,6 +4,7 @@ import fr.vetbrain.vetnutri_mp.Enumer.*
 import fr.vetbrain.vetnutri_mp.Enumer.AlimIndic
 import fr.vetbrain.vetnutri_mp.Enumer.FoodKind
 import fr.vetbrain.vetnutri_mp.Enumer.GroupAlim
+import fr.vetbrain.vetnutri_mp.Utils.ExpressionMathematique
 import fr.vetbrain.vetnutri_mp.Utils.genUUID
 
 /** Classe représentant un aliment évalué Basée sur la classe AlimentEv du projet Java original */
@@ -31,11 +32,61 @@ data class AlimentEv(
          * Obtient la valeur d'un nutriment dans cet aliment
          *
          * @param nutrient Le nutriment à rechercher
+         * @param referenceEv Référence optionnelle pour calculer l'énergie via les équations
          * @return La valeur du nutriment ou null si non trouvé
          */
-        fun getNutrient(nutrient: Nutrient): Double? {
+        fun getNutrient(nutrient: Nutrient, referenceEv: ReferenceEv? = null): Double? {
+                // Si c'est l'énergie (NutrientEnergy ou NutrientMain.ENERGIE) et qu'on a une
+                // référence avec des équations, utiliser les équations
+                if (referenceEv != null &&
+                                (nutrient is NutrientEnergy || nutrient == NutrientMain.ENERGIE)
+                ) {
+                        return calculerEnergieViaReference(referenceEv)
+                }
+
+                // Sinon, retourner la valeur stockée
                 val quantity = valMap[nutrient]
                 return quantity?.value
+        }
+
+        /** Calcule l'énergie via les équations de ReferenceEv */
+        private fun calculerEnergieViaReference(referenceEv: ReferenceEv): Double? {
+                // Déterminer si l'aliment est commercial (complet/complémentaire) ou brut
+                val estCommercial =
+                        indicat.any { indication ->
+                                indication.name == "COMP" || indication.name == "COMPL"
+                        }
+
+                // Choisir l'équation appropriée
+                val equation =
+                        if (estCommercial) {
+                                referenceEv.equationDEcom
+                        } else {
+                                referenceEv.equationDEraw
+                        }
+
+                if (equation == null || equation.equationScript.isEmpty()) {
+                        return null
+                }
+
+                // Créer les variables pour l'évaluation
+                val variables = mutableMapOf<String, Double>()
+
+                // Ajouter les nutriments principaux nécessaires aux formules
+                valMap.forEach { (nutrient, quantity) ->
+                        variables[nutrient.label] = quantity.value
+                }
+
+                // Évaluer l'équation
+                return try {
+                        fr.vetbrain.vetnutri_mp.Utils.ExpressionMathematique.evaluer(
+                                equation.equationScript,
+                                variables
+                        )
+                                ?: null
+                } catch (e: Exception) {
+                        null
+                }
         }
 
         /**

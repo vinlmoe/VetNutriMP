@@ -17,12 +17,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Components.DropdownField
 import fr.vetbrain.vetnutri_mp.Data.AlimentRation
+import fr.vetbrain.vetnutri_mp.Data.PreferencesEspece
 import fr.vetbrain.vetnutri_mp.Data.Ration
 import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
 import fr.vetbrain.vetnutri_mp.Enumer.*
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.TextUtils
+import kotlinx.coroutines.launch
 
 /** Données d'ajustement pour un aliment spécifique */
 data class AlimentAdjustmentData(
@@ -94,6 +96,9 @@ fun MultiNutrientAdjustmentDialog(
     var preview by remember { mutableStateOf<RationAdjustmentResult?>(null) }
     var params by remember { mutableStateOf(AdjustmentParams()) }
     var energyRebalanceNutrients by remember { mutableStateOf<Set<String>>(emptySet()) }
+
+    // Scope pour les coroutines
+    val coroutineScope = rememberCoroutineScope()
 
     AlertDialog(
             onDismissRequest = onDismiss,
@@ -320,20 +325,22 @@ fun MultiNutrientAdjustmentDialog(
                                                         else it.maxQuantity
                                         )
                                     }
-                            val result =
-                                    calculateMultiNutrientAdjustment(
-                                            ration = ration,
-                                            referenceUtilisee = referenceUtilisee,
-                                            besoinEnergetiqueTotal = besoinEnergetiqueTotal,
-                                            adjustmentData = adjustmentData,
-                                            poidsAnimal = poidsAnimal,
-                                            poidsMetabolique = poidsMetabolique,
-                                            refLevelByNutrient = refLevelByNutrient,
-                                            constraints = constraints,
-                                            energyRebalanceNutrients = energyRebalanceNutrients,
-                                            params = params
-                                    )
-                            onConfirm(result)
+                            coroutineScope.launch {
+                                val result =
+                                        calculateMultiNutrientAdjustment(
+                                                ration = ration,
+                                                referenceUtilisee = referenceUtilisee,
+                                                besoinEnergetiqueTotal = besoinEnergetiqueTotal,
+                                                adjustmentData = adjustmentData,
+                                                poidsAnimal = poidsAnimal,
+                                                poidsMetabolique = poidsMetabolique,
+                                                refLevelByNutrient = refLevelByNutrient,
+                                                constraints = constraints,
+                                                energyRebalanceNutrients = energyRebalanceNutrients,
+                                                params = params
+                                        )
+                                onConfirm(result)
+                            }
                         },
                         enabled = adjustmentData.any { it.selectedNutrient != null && !it.isLocked }
                 ) {
@@ -359,19 +366,22 @@ fun MultiNutrientAdjustmentDialog(
                                                             else it.maxQuantity
                                             )
                                         }
-                                preview =
-                                        calculateMultiNutrientAdjustment(
-                                                ration = ration,
-                                                referenceUtilisee = referenceUtilisee,
-                                                besoinEnergetiqueTotal = besoinEnergetiqueTotal,
-                                                adjustmentData = adjustmentData,
-                                                poidsAnimal = poidsAnimal,
-                                                poidsMetabolique = poidsMetabolique,
-                                                refLevelByNutrient = refLevelByNutrient,
-                                                constraints = constraints,
-                                                energyRebalanceNutrients = energyRebalanceNutrients,
-                                                params = params
-                                        )
+                                coroutineScope.launch {
+                                    preview =
+                                            calculateMultiNutrientAdjustment(
+                                                    ration = ration,
+                                                    referenceUtilisee = referenceUtilisee,
+                                                    besoinEnergetiqueTotal = besoinEnergetiqueTotal,
+                                                    adjustmentData = adjustmentData,
+                                                    poidsAnimal = poidsAnimal,
+                                                    poidsMetabolique = poidsMetabolique,
+                                                    refLevelByNutrient = refLevelByNutrient,
+                                                    constraints = constraints,
+                                                    energyRebalanceNutrients =
+                                                            energyRebalanceNutrients,
+                                                    params = params
+                                            )
+                                }
                             }
                     ) { Text("Prévisualiser") }
                     TextButton(onClick = onDismiss) {
@@ -537,7 +547,7 @@ private fun AlimentAdjustmentItem(
 }
 
 /** Calcule l'ajustement multi-nutriments de la ration */
-private fun calculateMultiNutrientAdjustment(
+private suspend fun calculateMultiNutrientAdjustment(
         ration: Ration,
         referenceUtilisee: ReferenceEv,
         besoinEnergetiqueTotal: Double,
@@ -547,7 +557,9 @@ private fun calculateMultiNutrientAdjustment(
         refLevelByNutrient: Map<String, Reflevel> = emptyMap(),
         constraints: List<AlimentConstraint> = emptyList(),
         energyRebalanceNutrients: Set<String> = emptySet(),
-        params: AdjustmentParams = AdjustmentParams()
+        params: AdjustmentParams = AdjustmentParams(),
+        preferences: PreferencesEspece? = null,
+        equationRepository: fr.vetbrain.vetnutri_mp.Repository.EquationRepository? = null
 ): RationAdjustmentResult {
     try {
         // Créer une copie des aliments pour les ajustements
@@ -629,26 +641,15 @@ private fun calculateMultiNutrientAdjustment(
             // Étape 3: Calculer l'apport actuel du nutriment (avec TOUS les aliments déjà ajustés)
             var apportActuel = 0.0
             if (nutrient == NutrientMain.ENERGIE) {
-                // Somme des kcal de chaque aliment
+                // Somme des kcal de chaque aliment en utilisant la nouvelle logique d'énergie
                 for (i in adjustedAliments.indices) {
                     val alimentRation = adjustedAliments[i]
-                    val densite = alimentRation.densiteEnergetique
-                    if (densite > 0.0) {
-                        apportActuel += densite * alimentRation.quantite.toDouble()
-                    } else {
-                        val energiePar100g =
-                                alimentRation
-                                        .aliment
-                                        ?.valMap
-                                        ?.get(NutrientMain.ENERGIE)
-                                        ?.value
-                                        ?.toDouble()
-                                        ?: 0.0
-                        if (energiePar100g > 0.0) {
-                            apportActuel +=
-                                    (energiePar100g * alimentRation.quantite.toDouble()) / 100.0
-                        }
-                    }
+                    apportActuel +=
+                            alimentRation.getEnergie(
+                                    referenceUtilisee,
+                                    preferences,
+                                    equationRepository
+                            )
                 }
             } else {
                 for (i in adjustedAliments.indices) {
@@ -702,14 +703,8 @@ private fun calculateMultiNutrientAdjustment(
         if (params.energyLastRebalance) {
             val currentEnergy =
                     adjustedAliments.sumOf { ar ->
-                        val densite = ar.densiteEnergetique
-                        if (densite > 0.0) densite * ar.quantite.toDouble()
-                        else {
-                            val e =
-                                    ar.aliment?.valMap?.get(NutrientMain.ENERGIE)?.value?.toDouble()
-                                            ?: 0.0
-                            (e * ar.quantite.toDouble()) / 100.0
-                        }
+                        // Utiliser la nouvelle logique d'énergie via ReferenceEv si disponible
+                        ar.getEnergie(referenceUtilisee)
                     }
             val diff = besoinEnergetiqueTotal - currentEnergy
             if (kotlin.math.abs(diff) > params.toleranceGrams) {
@@ -729,12 +724,11 @@ private fun calculateMultiNutrientAdjustment(
                             (c?.mode
                                     ?: it.mode) == ConstraintMode.ADJUSTABLE &&
                                     allowedByNutrient &&
-                                    (it.alimentRation.densiteEnergetique > 0.0 ||
-                                            (it.alimentRation.aliment?.valMap?.get(
-                                                            NutrientMain.ENERGIE
-                                                    )
-                                                    ?.value
-                                                    ?: 0.0) > 0.0)
+                                    (it.alimentRation.getEnergie(
+                                            referenceUtilisee,
+                                            preferences,
+                                            equationRepository
+                                    ) > 0.0)
                         }
                 val totalWeight =
                         energyCandidates.sumOf {

@@ -1,6 +1,12 @@
 package fr.vetbrain.vetnutri_mp.View.AnalNut
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
@@ -235,7 +241,10 @@ fun NutrientDetailDialog(
 
                                 // Contenu scrollable
                                 LazyColumn(
-                                        modifier = Modifier.fillMaxWidth().weight(1f),
+                                        modifier =
+                                                Modifier.fillMaxWidth()
+                                                        .weight(1f)
+                                                        .heightIn(max = 500.dp),
                                         verticalArrangement =
                                                 Arrangement.spacedBy(AppSizes.paddingSmall)
                                 ) {
@@ -338,44 +347,6 @@ fun NutrientDetailDialog(
                                                 )
                                         }
                                 }
-
-                                // Bouton de fermeture en bas
-                                Spacer(modifier = Modifier.height(AppSizes.paddingMedium))
-                                Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.Center
-                                ) {
-                                        Button(
-                                                onClick = onDismiss,
-                                                colors =
-                                                        ButtonDefaults.buttonColors(
-                                                                backgroundColor =
-                                                                        VetNutriColors.Primary
-                                                        ),
-                                                modifier =
-                                                        Modifier.padding(
-                                                                horizontal = AppSizes.paddingMedium
-                                                        )
-                                        ) {
-                                                Icon(
-                                                        imageVector = Icons.Filled.Close,
-                                                        contentDescription = "Fermer",
-                                                        tint = VetNutriColors.OnPrimary,
-                                                        modifier = Modifier.size(18.dp)
-                                                )
-                                                Spacer(
-                                                        modifier =
-                                                                Modifier.width(
-                                                                        AppSizes.paddingXSmall
-                                                                )
-                                                )
-                                                Text(
-                                                        text = "Fermer",
-                                                        color = VetNutriColors.OnPrimary,
-                                                        style = MaterialTheme.typography.button
-                                                )
-                                        }
-                                }
                         }
                 },
                 confirmButton = {},
@@ -393,7 +364,8 @@ fun ReferenceBulletGraph(
         poidsAnimal: Double?,
         poidsMetabolique: Double?,
         besoinEnergetiqueEntretien: Double?,
-        referencesMaladies: List<ReferenceEv> = emptyList()
+        referencesMaladies: List<ReferenceEv> = emptyList(),
+        onClick: (() -> Unit)? = null
 ) {
         // Récupération des valeurs de référence avec leurs unités
         val minRef = reference.obtenirNutriment(nutriment, Reflevel.MIN)
@@ -484,9 +456,41 @@ fun ReferenceBulletGraph(
         val maxAxis = (valeurs.maxOrNull() ?: 0.0) * 1.1
 
         Column(modifier = Modifier.fillMaxWidth()) {
+                // Indicateur visuel si le bullet graph est cliquable
+                if (onClick != null) {
+                        Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.End,
+                                verticalAlignment = Alignment.CenterVertically
+                        ) {
+                                Icon(
+                                        imageVector = Icons.Filled.Info,
+                                        contentDescription = "Cliquer pour plus de détails",
+                                        tint = VetNutriColors.Primary.copy(alpha = 0.7f),
+                                        modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                        text = "Cliquer pour plus de détails",
+                                        style = MaterialTheme.typography.caption,
+                                        color = VetNutriColors.Primary.copy(alpha = 0.7f)
+                                )
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                }
+
                 // Graphique bullet plus fin
                 BulletGraphs(
-                        modifier = Modifier.fillMaxWidth().height(60.dp) // Hauteur fixe plus petite
+                        modifier =
+                                Modifier.fillMaxWidth()
+                                        .height(60.dp)
+                                        .then(
+                                                if (onClick != null) {
+                                                        Modifier.clickable { onClick() }
+                                                } else {
+                                                        Modifier
+                                                }
+                                        ) // Hauteur fixe plus petite
                 ) {
                         // Pas d'étiquette à gauche
                         labelWidth = FixedFraction(0f)
@@ -1198,7 +1202,8 @@ private fun ReferenceCard(
                                 poidsAnimal = poidsAnimal,
                                 poidsMetabolique = poidsMetabolique,
                                 besoinEnergetiqueEntretien = besoinEnergetiqueEntretien,
-                                referencesMaladies = referencesMaladies
+                                referencesMaladies = referencesMaladies,
+                                onClick = null // Pas de clic dans ce contexte
                         )
                         ReferenceLevelsList(
                                 reference = reference,
