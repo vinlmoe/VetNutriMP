@@ -11,7 +11,6 @@ import fr.vetbrain.vetnutri_mp.Components.ComboBox
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.Sex
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Animal as AnimalKeys
-import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.General
 import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Theme.AppIcons
@@ -206,22 +205,6 @@ fun CreateAnimalView(
                                 modifier = Modifier.fillMaxWidth(),
                                 minLines = 3
                         )
-
-                        // Le FAB gère l'enregistrement; conserver un bouton d'annulation si besoin
-                        Button(
-                                onClick = {
-                                        if (!isEditing) {
-                                                viewModel.resetAnimal()
-                                        }
-                                        onNavigateBack()
-                                },
-                                modifier = Modifier.fillMaxWidth(),
-                                colors =
-                                        ButtonDefaults.buttonColors(
-                                                backgroundColor = VetNutriColors.Secondary,
-                                                contentColor = VetNutriColors.OnSecondary
-                                        )
-                        ) { Text(General.CANCEL.translate()) }
                 }
         }
 }

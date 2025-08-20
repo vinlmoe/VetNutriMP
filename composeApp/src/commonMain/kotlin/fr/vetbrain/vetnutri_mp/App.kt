@@ -415,6 +415,11 @@ fun App(appDatabase: AppDatabase) {
                                     title =
                                             if (isEditing) "Modifier un animal"
                                             else "Ajouter un animal",
+                                    onBackClick = {
+                                        isEditing = false
+                                        selectedAnimal = null
+                                        currentScreen = Screen.List
+                                    },
                                     onSettingsClick = { currentScreen = Screen.Settings }
                             )
                             CreateAnimalView(
@@ -438,7 +443,8 @@ fun App(appDatabase: AppDatabase) {
                                     onOpenSettings = { currentScreen = Screen.Settings },
                                     modifier = Modifier.fillMaxWidth().weight(1f),
                                     equationRepository = equationRepository,
-                                    recipeRepository = recipeRepository
+                                    recipeRepository = recipeRepository,
+                                    foodRepository = foodRepository
                             )
                         }
                     }
