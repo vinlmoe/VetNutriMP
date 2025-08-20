@@ -460,26 +460,80 @@ class AnimalDetailViewModel(
     }
 
     /** Applique une recette (liste d'aliments) à la ration sélectionnée et recharge l'état */
-    fun applyRecipeToSelectedRation(recipe: Ration) {
-        val rationActuelle = _selectedRation.value ?: return
-        val consultationActuelle = _selectedConsultation.value ?: return
+    fun applyRecipeToRation(recipe: Ration) {
+        println("🔍 DEBUG ViewModel: Début applyRecipeToSelectedRation")
+        println("🔍 DEBUG ViewModel: Recipe reçue: ${recipe.name} (${recipe.uuid})")
+        println(
+                "🔍 DEBUG ViewModel: Nombre d'aliments dans la recette: ${recipe.alimentMutableList.size}"
+        )
+
+        val rationActuelle = _selectedRation.value
+        if (rationActuelle == null) {
+            println("❌ DEBUG ViewModel: Aucune ration sélectionnée")
+            return
+        }
+        println(
+                "🔍 DEBUG ViewModel: Ration actuelle: ${rationActuelle.name} (${rationActuelle.uuid})"
+        )
+        println(
+                "🔍 DEBUG ViewModel: Nombre d'aliments dans la ration actuelle: ${rationActuelle.alimentMutableList.size}"
+        )
+
+        val consultationActuelle = _selectedConsultation.value
+        if (consultationActuelle == null) {
+            println("❌ DEBUG ViewModel: Aucune consultation sélectionnée")
+            return
+        }
+        println("🔍 DEBUG ViewModel: Consultation actuelle: ${consultationActuelle.uuid}")
+
         viewModelScope.launch {
             try {
+                println("🔍 DEBUG ViewModel: Appel à consultationRepository.applyRecipeToRation")
                 consultationRepository.applyRecipeToRation(recipe, rationActuelle.uuid)
+                println("✅ DEBUG ViewModel: applyRecipeToRation terminé avec succès")
+
                 // Recharger la consultation pour refléter les nouveaux aliments
+                println("🔍 DEBUG ViewModel: Rechargement de la consultation...")
                 val refreshed =
                         consultationRepository.getConsultationById(consultationActuelle.uuid)
+
                 if (refreshed != null) {
+                    println("✅ DEBUG ViewModel: Consultation rechargée avec succès")
+                    println(
+                            "🔍 DEBUG ViewModel: Nombre de rations dans la consultation rechargée: ${refreshed.rations.size}"
+                    )
+
                     _selectedConsultation.value = refreshed
+
                     // Resélectionner la ration par UUID
-                    refreshed.rations.firstOrNull { it.uuid == rationActuelle.uuid }?.let {
-                        selectRation(it)
+                    val rationMiseAJour =
+                            refreshed.rations.firstOrNull { it.uuid == rationActuelle.uuid }
+                    if (rationMiseAJour != null) {
+                        println(
+                                "✅ DEBUG ViewModel: Ration mise à jour trouvée: ${rationMiseAJour.name}"
+                        )
+                        println(
+                                "🔍 DEBUG ViewModel: Nombre d'aliments dans la ration mise à jour: ${rationMiseAJour.alimentMutableList.size}"
+                        )
+
+                        selectRation(rationMiseAJour)
+                        println("✅ DEBUG ViewModel: Ration mise à jour sélectionnée")
+                    } else {
+                        println(
+                                "❌ DEBUG ViewModel: Ration mise à jour non trouvée dans la consultation rechargée"
+                        )
                     }
+                } else {
+                    println("❌ DEBUG ViewModel: Impossible de recharger la consultation")
                 }
             } catch (e: Exception) {
+                println(
+                        "❌ DEBUG ViewModel: Erreur lors de l'application de la recette: ${e.message}"
+                )
                 e.printStackTrace()
             }
         }
+        println("🔍 DEBUG ViewModel: Fin applyRecipeToSelectedRation")
     }
 
     /**

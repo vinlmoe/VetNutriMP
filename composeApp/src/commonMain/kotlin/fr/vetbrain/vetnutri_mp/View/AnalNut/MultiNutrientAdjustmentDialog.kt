@@ -34,7 +34,8 @@ data class AlimentAdjustmentData(
         var mode: ConstraintMode = ConstraintMode.ADJUSTABLE,
         var weight: Double = 1.0,
         var minQuantity: Double = 0.0,
-        var maxQuantity: Double = Double.MAX_VALUE
+        var maxQuantity: Double = Double.MAX_VALUE,
+        var isEnergyAdjustable: Boolean = true
 )
 
 /** Modes de contrainte pour un aliment */
@@ -73,6 +74,7 @@ fun MultiNutrientAdjustmentDialog(
         ration: Ration,
         referenceUtilisee: ReferenceEv,
         besoinEnergetiqueTotal: Double,
+        besoinEnergetiqueStandard: Double,
         poidsAnimal: Double?,
         poidsMetabolique: Double?,
         onConfirm: (RationAdjustmentResult) -> Unit,
@@ -85,7 +87,8 @@ fun MultiNutrientAdjustmentDialog(
                     AlimentAdjustmentData(
                             alimentRation = alimentRation,
                             selectedNutrient = suggestion,
-                            isLocked = false
+                            isLocked = false,
+                            isEnergyAdjustable = true
                     )
                 }
         )
@@ -95,7 +98,6 @@ fun MultiNutrientAdjustmentDialog(
     var refLevelByNutrient by remember { mutableStateOf<Map<String, Reflevel>>(emptyMap()) }
     var preview by remember { mutableStateOf<RationAdjustmentResult?>(null) }
     var params by remember { mutableStateOf(AdjustmentParams()) }
-    var energyRebalanceNutrients by remember { mutableStateOf<Set<String>>(emptySet()) }
 
     // Scope pour les coroutines
     val coroutineScope = rememberCoroutineScope()
@@ -167,7 +169,8 @@ fun MultiNutrientAdjustmentDialog(
                                                         ConstraintMode.ADJUSTABLE,
                                                         1.0,
                                                         0.0,
-                                                        Double.MAX_VALUE
+                                                        Double.MAX_VALUE,
+                                                        true
                                                 )
                                             }
                                     refLevelByNutrient = emptyMap()
@@ -213,6 +216,17 @@ fun MultiNutrientAdjustmentDialog(
                                                     )
                                             adjustmentData = updatedList
                                         }
+                                    },
+                                    onEnergyAdjustableToggle = { isEnergyAdjustable ->
+                                        val index = adjustmentData.indexOf(alimentData)
+                                        if (index != -1) {
+                                            val updatedList = adjustmentData.toMutableList()
+                                            updatedList[index] =
+                                                    alimentData.copy(
+                                                            isEnergyAdjustable = isEnergyAdjustable
+                                                    )
+                                            adjustmentData = updatedList
+                                        }
                                     }
                             )
                         }
@@ -253,35 +267,6 @@ fun MultiNutrientAdjustmentDialog(
                                             ) { Text(r.name) }
                                         }
                                     }
-                                }
-                            }
-                        }
-                    }
-
-                    if (selectedLabels.isNotEmpty()) {
-                        Divider()
-                        Text(
-                                "Rééquilibrage énergie: nutriments porteurs",
-                                style = MaterialTheme.typography.subtitle2
-                        )
-                        Column(verticalArrangement = Arrangement.spacedBy(AppSizes.paddingXSmall)) {
-                            selectedLabels.forEach { label ->
-                                val checked = energyRebalanceNutrients.contains(label)
-                                Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(label)
-                                    Checkbox(
-                                            checked = checked,
-                                            onCheckedChange = { isChecked ->
-                                                energyRebalanceNutrients =
-                                                        if (isChecked)
-                                                                energyRebalanceNutrients + label
-                                                        else energyRebalanceNutrients - label
-                                            }
-                                    )
                                 }
                             }
                         }
@@ -331,12 +316,12 @@ fun MultiNutrientAdjustmentDialog(
                                                 ration = ration,
                                                 referenceUtilisee = referenceUtilisee,
                                                 besoinEnergetiqueTotal = besoinEnergetiqueTotal,
+                                                besoinEnergetiqueStandard = besoinEnergetiqueStandard,
                                                 adjustmentData = adjustmentData,
                                                 poidsAnimal = poidsAnimal,
                                                 poidsMetabolique = poidsMetabolique,
                                                 refLevelByNutrient = refLevelByNutrient,
                                                 constraints = constraints,
-                                                energyRebalanceNutrients = energyRebalanceNutrients,
                                                 params = params
                                         )
                                 onConfirm(result)
@@ -372,13 +357,12 @@ fun MultiNutrientAdjustmentDialog(
                                                     ration = ration,
                                                     referenceUtilisee = referenceUtilisee,
                                                     besoinEnergetiqueTotal = besoinEnergetiqueTotal,
+                                                    besoinEnergetiqueStandard = besoinEnergetiqueStandard,
                                                     adjustmentData = adjustmentData,
                                                     poidsAnimal = poidsAnimal,
                                                     poidsMetabolique = poidsMetabolique,
                                                     refLevelByNutrient = refLevelByNutrient,
                                                     constraints = constraints,
-                                                    energyRebalanceNutrients =
-                                                            energyRebalanceNutrients,
                                                     params = params
                                             )
                                 }
@@ -402,8 +386,8 @@ private fun suggestDefaultTargetNutrient(alimentRation: AlimentRation): String? 
     val aliment = alimentRation.aliment ?: return null
     val kind: FoodKind? = aliment.typeAliment
 
-    // Si aliment complet → par défaut PROTEINE (éviter ÉNERGIE qui est traitée globalement)
-    if (kind == FoodKind.COMPLET) return NutrientMain.PROTEINE.label
+    // Si aliment complet → par défaut ÉNERGIE (ajustement énergétique par défaut)
+    if (kind == FoodKind.COMPLET) return NutrientMain.ENERGIE.label
 
     fun n(nutrient: Nutrient): Double {
         return aliment.valMap[nutrient]?.value ?: 0.0
@@ -428,7 +412,7 @@ private fun suggestDefaultTargetNutrient(alimentRation: AlimentRation): String? 
     // targetAdjust.EPA → EPADHA
     // targetAdjust.LIP → LIPIDE
     // targetAdjust.FIBER → CELLULOSE
-    // L'énergie est traitée globalement via besoin énergétique, ne pas la proposer ici.
+    // L'énergie est maintenant proposée mais traitée en dernier dans l'ordre de traitement
 
     return when {
         // (Cendres/MS > 10) et présence de Calcium
@@ -446,7 +430,8 @@ private fun suggestDefaultTargetNutrient(alimentRation: AlimentRation): String? 
         (celluloseMs > 20.0) -> NutrientMain.CELLULOSE.label
         // ENA/MS > 50 → énergie/carbs
         (enaMs > 50.0) -> NutrientMain.PROTEINE.label
-        else -> null
+        // Pour tous les autres cas (aliments inclassables) → ÉNERGIE par défaut
+        else -> NutrientMain.ENERGIE.label
     }
 }
 
@@ -455,7 +440,8 @@ private fun suggestDefaultTargetNutrient(alimentRation: AlimentRation): String? 
 private fun AlimentAdjustmentItem(
         alimentData: AlimentAdjustmentData,
         onNutrientChange: (String?) -> Unit,
-        onLockToggle: () -> Unit
+        onLockToggle: () -> Unit,
+        onEnergyAdjustableToggle: (Boolean) -> Unit
 ) {
     val aliment = alimentData.alimentRation.aliment
     if (aliment == null) return
@@ -470,7 +456,12 @@ private fun AlimentAdjustmentItem(
                         if (qty.value > 0) labels.add(nutr.label)
                     }
                 }
-                // Ne pas ajouter ÉNERGIE ici: l'énergie est ajustée globalement en fin de processus
+                // Ajouter ÉNERGIE car elle peut maintenant être sélectionnée comme nutriment cible
+                if (aliment.valMap.containsKey(NutrientMain.ENERGIE) ||
+                                alimentData.alimentRation.densiteEnergetique > 0.0
+                ) {
+                    labels.add(NutrientMain.ENERGIE.label)
+                }
                 labels.toList().sorted()
             }
 
@@ -500,15 +491,44 @@ private fun AlimentAdjustmentItem(
                                 else MaterialTheme.colors.onSurface
                 )
 
-                IconButton(onClick = onLockToggle, modifier = Modifier.size(24.dp)) {
-                    Icon(
-                            imageVector =
-                                    if (alimentData.isLocked) Icons.Filled.Lock
-                                    else Icons.Filled.LockOpen,
-                            contentDescription =
-                                    if (alimentData.isLocked) "Déverrouiller" else "Verrouiller",
-                            tint = if (alimentData.isLocked) Color.Gray else VetNutriColors.Primary
-                    )
+                Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Case pour l'ajustement énergétique
+                    Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                                text = "Énergie",
+                                style = MaterialTheme.typography.caption,
+                                color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                        )
+                        Checkbox(
+                                checked = alimentData.isEnergyAdjustable,
+                                onCheckedChange = { isChecked ->
+                                    onEnergyAdjustableToggle(isChecked)
+                                },
+                                enabled = !alimentData.isLocked,
+                                modifier = Modifier.size(20.dp)
+                        )
+                    }
+
+                    // Bouton de verrouillage
+                    IconButton(onClick = onLockToggle, modifier = Modifier.size(24.dp)) {
+                        Icon(
+                                imageVector =
+                                        if (alimentData.isLocked) Icons.Filled.Lock
+                                        else Icons.Filled.LockOpen,
+                                contentDescription =
+                                        if (alimentData.isLocked) "Déverrouiller"
+                                        else "Verrouiller",
+                                tint =
+                                        if (alimentData.isLocked) Color.Gray
+                                        else VetNutriColors.Primary
+                        )
+                    }
                 }
             }
 
@@ -551,12 +571,12 @@ private suspend fun calculateMultiNutrientAdjustment(
         ration: Ration,
         referenceUtilisee: ReferenceEv,
         besoinEnergetiqueTotal: Double,
+        besoinEnergetiqueStandard: Double,
         poidsAnimal: Double?,
         poidsMetabolique: Double?,
         adjustmentData: List<AlimentAdjustmentData>,
         refLevelByNutrient: Map<String, Reflevel> = emptyMap(),
         constraints: List<AlimentConstraint> = emptyList(),
-        energyRebalanceNutrients: Set<String> = emptySet(),
         params: AdjustmentParams = AdjustmentParams(),
         preferences: PreferencesEspece? = null,
         equationRepository: fr.vetbrain.vetnutri_mp.Repository.EquationRepository? = null
@@ -588,32 +608,40 @@ private suspend fun calculateMultiNutrientAdjustment(
         val nutrimentsTraites = mutableSetOf<String>()
         val processingOrder = buildProcessingOrderFromSelections(adjustmentData)
 
-        for (nutrientLabel in processingOrder) {
+        println("🔍 DEBUG: Ordre de traitement des nutriments: $processingOrder")
+        println("🔍 DEBUG: Nutriments sélectionnés dans adjustmentData:")
+        adjustmentData.forEach { data ->
+            println(
+                    "  - ${data.alimentRation.aliment?.nom}: sélectionné=${data.selectedNutrient}, énergie=${data.isEnergyAdjustable}"
+            )
+        }
+
+        // PREMIÈRE ÉTAPE : Ajuster tous les nutriments sauf l'énergie
+        val nutrimentsNonEnergetiques = processingOrder.filter { it != "ENERGIE" }
+        for (nutrientLabel in nutrimentsNonEnergetiques) {
             val nutrient = findNutrientByLabel(nutrientLabel)
             if (nutrient == null) {
                 println("⚠️ DEBUG: Nutriment $nutrientLabel non trouvé")
                 continue
             }
 
+            println("🔍 DEBUG: === PREMIÈRE ÉTAPE : $nutrientLabel ===")
+
             // Calculer le besoin absolu en fonction du nutriment
-            val besoinAbsoluGrammes: Double =
-                    if (nutrient == NutrientMain.ENERGIE) {
-                        // Pour l'énergie, la cible est le besoin énergétique total (kcal)
-                        besoinEnergetiqueTotal
-                    } else {
-                        val rl = refLevelByNutrient[nutrientLabel] ?: Reflevel.OPTIMIN
-                        val nutrimentRef = referenceUtilisee.obtenirNutrimentRef(nutrient, rl)
-                        if (nutrimentRef == null || nutrimentRef.quantite <= 0) {
-                            println("⚠️ DEBUG: Pas de référence pour $nutrientLabel")
-                            continue
-                        }
-                        calculerBesoinAbsoluGrammes(
-                                nutrimentRef = nutrimentRef,
-                                poidsAnimal = poidsAnimal,
-                                poidsMetabolique = poidsMetabolique,
-                                besoinEnergetiqueTotal = besoinEnergetiqueTotal
-                        )
-                    }
+            val rl = refLevelByNutrient[nutrientLabel] ?: Reflevel.OPTIMIN
+            val nutrimentRef = referenceUtilisee.obtenirNutrimentRef(nutrient, rl)
+            if (nutrimentRef == null || nutrimentRef.quantite <= 0) {
+                println("⚠️ DEBUG: Pas de référence pour $nutrientLabel")
+                continue
+            }
+            
+            val besoinAbsoluGrammes = calculerBesoinAbsoluGrammes(
+                    nutrimentRef = nutrimentRef,
+                    poidsAnimal = poidsAnimal,
+                    poidsMetabolique = poidsMetabolique,
+                    besoinEnergetiqueTotal = besoinEnergetiqueStandard
+            )
+            
             if (besoinAbsoluGrammes <= 0) {
                 println("⚠️ DEBUG: Besoin nul pour $nutrientLabel: $besoinAbsoluGrammes")
                 continue
@@ -621,59 +649,34 @@ private suspend fun calculateMultiNutrientAdjustment(
 
             // Trouver les aliments ajustables pour ce nutriment
             val constraintByUuid = constraints.associateBy { it.alimentUuid }
-            val alimentsAjustables =
-                    adjustmentData.filter {
-                        it.selectedNutrient == nutrientLabel &&
-                                !it.isLocked &&
-                                (constraintByUuid[it.alimentRation.uuid]?.mode
-                                        ?: it.mode) == ConstraintMode.ADJUSTABLE
-                    }
-
-            println(
-                    "🔍 DEBUG: $nutrientLabel - Besoin: ${TextUtils.formatDecimal(besoinAbsoluGrammes, 2)}g, Aliments ajustables: ${alimentsAjustables.size}"
-            )
+            val alimentsAjustables = adjustmentData.filter {
+                it.selectedNutrient == nutrientLabel &&
+                        !it.isLocked &&
+                        (constraintByUuid[it.alimentRation.uuid]?.mode ?: it.mode) == ConstraintMode.ADJUSTABLE
+            }
 
             if (alimentsAjustables.isEmpty()) {
                 println("⚠️ DEBUG: Aucun aliment ajustable pour $nutrientLabel")
                 continue
             }
 
-            // Étape 3: Calculer l'apport actuel du nutriment (avec TOUS les aliments déjà ajustés)
+            // Calculer l'apport actuel pour ce nutriment
             var apportActuel = 0.0
-            if (nutrient == NutrientMain.ENERGIE) {
-                // Somme des kcal de chaque aliment en utilisant la nouvelle logique d'énergie
-                for (i in adjustedAliments.indices) {
-                    val alimentRation = adjustedAliments[i]
-                    apportActuel +=
-                            alimentRation.getEnergie(
-                                    referenceUtilisee,
-                                    preferences,
-                                    equationRepository
-                            )
-                }
-            } else {
-                for (i in adjustedAliments.indices) {
-                    val alimentRation = adjustedAliments[i]
-                    val aliment = alimentRation.aliment ?: continue
-                    val quantiteNutriment: Double =
-                            (aliment.valMap?.get(nutrient)?.value ?: 0.0).toDouble()
-                    val quantiteAliment: Double = alimentRation.quantite.toDouble()
-                    apportActuel += (quantiteNutriment * quantiteAliment) / 100.0
-                }
+            for (i in adjustedAliments.indices) {
+                val alimentRation = adjustedAliments[i]
+                val aliment = alimentRation.aliment ?: continue
+                val quantiteNutriment: Double = (aliment.valMap?.get(nutrient)?.value ?: 0.0).toDouble()
+                val quantiteAliment: Double = alimentRation.quantite.toDouble()
+                apportActuel += (quantiteNutriment * quantiteAliment) / 100.0
             }
 
-            // Étape 4: Calculer ce qui manque
             val manque = besoinAbsoluGrammes - apportActuel
-
             println(
                     "🔍 DEBUG: Nutriment $nutrientLabel - Besoin: ${TextUtils.formatDecimal(besoinAbsoluGrammes, 2)}g, Apport actuel: ${TextUtils.formatDecimal(apportActuel, 2)}g, Manque: ${TextUtils.formatDecimal(manque, 2)}g"
             )
 
-            if (manque > 0.01) { // Tolérance de 0.01g
-                // Étape 5: Ajuster les aliments pour couvrir le manque
-                println(
-                        "🔍 DEBUG: Ajustement nécessaire pour $nutrientLabel - ${alimentsAjustables.size} aliments ajustables"
-                )
+            if (manque > 0.01) {
+                println("🔍 DEBUG: Ajustement nécessaire pour $nutrientLabel - ${alimentsAjustables.size} aliments ajustables")
                 val result =
                         ajusterAlimentsPourNutriment(
                                 nutriment = nutrient,
@@ -681,7 +684,10 @@ private suspend fun calculateMultiNutrientAdjustment(
                                 alimentsAjustables = alimentsAjustables,
                                 adjustedAliments = adjustedAliments,
                                 alimentsVerrouilles = alimentsVerrouilles,
-                                constraints = constraintByUuid
+                                constraints = constraintByUuid,
+                                referenceUtilisee = referenceUtilisee,
+                                preferences = preferences,
+                                equationRepository = equationRepository
                         )
 
                 if (!result.success) {
@@ -691,15 +697,94 @@ private suspend fun calculateMultiNutrientAdjustment(
                     println("✅ DEBUG: Succès ajustement $nutrientLabel - ${result.message}")
                 }
             } else {
-                println(
-                        "✅ DEBUG: Aucun ajustement nécessaire pour $nutrientLabel (manque: ${TextUtils.formatDecimal(manque, 2)}g)"
-                )
+                println("✅ DEBUG: Aucun ajustement nécessaire pour $nutrientLabel (manque: ${TextUtils.formatDecimal(manque, 2)}g)")
             }
 
             nutrimentsTraites.add(nutrientLabel)
         }
 
-        // Rééquilibrage énergie si demandé
+        // DEUXIÈME ÉTAPE : Ajuster l'énergie en recalculant l'apport total de la ration finale
+        if (processingOrder.contains("ENERGIE")) {
+            println("🔍 DEBUG: === DEUXIÈME ÉTAPE : AJUSTEMENT ÉNERGÉTIQUE ===")
+            
+            // Créer une ration temporaire avec les ajustements effectués
+            val rationTemp = ration.copy()
+            for (i in adjustedAliments.indices) {
+                val alimentRation = adjustedAliments[i]
+                val alimentRationTemp = rationTemp.alimentMutableList.find { it.uuid == alimentRation.uuid }
+                if (alimentRationTemp != null) {
+                    // Créer une nouvelle instance avec la quantité modifiée
+                    val index = rationTemp.alimentMutableList.indexOf(alimentRationTemp)
+                    if (index >= 0) {
+                        rationTemp.alimentMutableList[index] = alimentRationTemp.copy(quantite = alimentRation.quantite)
+                    }
+                }
+            }
+
+            // Calculer l'apport énergétique total de la ration finale
+            var apportEnergetiqueTotal = 0.0
+            for (alimentRation in rationTemp.alimentMutableList) {
+                if (alimentRation.quantite > 0.01) {
+                    val energieAliment = alimentRation.getEnergie(
+                            referenceUtilisee,
+                            preferences,
+                            equationRepository
+                    ) * alimentRation.quantite / 100.0
+                    apportEnergetiqueTotal += energieAliment
+                    println("  - ${alimentRation.aliment?.nom}: ${TextUtils.formatDecimal(alimentRation.quantite, 2)}g → ${TextUtils.formatDecimal(energieAliment, 2)} kcal")
+                }
+            }
+            
+            println("🔍 DEBUG: Apport énergétique total de la ration finale: ${TextUtils.formatDecimal(apportEnergetiqueTotal, 2)} kcal")
+            println("🔍 DEBUG: Besoin énergétique: ${TextUtils.formatDecimal(besoinEnergetiqueTotal, 2)} kcal")
+            
+            val manqueEnergie = besoinEnergetiqueTotal - apportEnergetiqueTotal
+            println("🔍 DEBUG: Manque énergétique: ${TextUtils.formatDecimal(manqueEnergie, 2)} kcal")
+
+            if (manqueEnergie > 0.01) {
+                // Trouver les aliments ajustables pour l'énergie
+                val constraintByUuid = constraints.associateBy { it.alimentUuid }
+                val alimentsAjustablesEnergie = adjustmentData.filter {
+                    it.isEnergyAdjustable &&
+                            !it.isLocked &&
+                            (constraintByUuid[it.alimentRation.uuid]?.mode ?: it.mode) == ConstraintMode.ADJUSTABLE
+                }
+                
+                println("🔍 DEBUG: Ajustement énergétique nécessaire - ${alimentsAjustablesEnergie.size} aliments ajustables")
+                val result =
+                        ajusterAlimentsPourNutriment(
+                                nutriment = NutrientMain.ENERGIE,
+                                manque = manqueEnergie,
+                                alimentsAjustables = alimentsAjustablesEnergie,
+                                adjustedAliments = adjustedAliments,
+                                alimentsVerrouilles = alimentsVerrouilles,
+                                constraints = constraintByUuid,
+                                referenceUtilisee = referenceUtilisee,
+                                preferences = preferences,
+                                equationRepository = equationRepository
+                        )
+
+                if (result.success) {
+                    println("✅ DEBUG: Succès ajustement énergétique - ${result.message}")
+                    nutrimentsTraites.add("ENERGIE")
+                } else {
+                    println("❌ DEBUG: Échec ajustement énergétique - ${result.message}")
+                    return RationAdjustmentResult(
+                            success = false,
+                            message = "Échec de l'ajustement énergétique: ${result.message}",
+                            adjustedAliments = null
+                    )
+                }
+            } else {
+                println("✅ DEBUG: Aucun ajustement énergétique nécessaire (surplus: ${TextUtils.formatDecimal(-manqueEnergie, 2)} kcal)")
+                nutrimentsTraites.add("ENERGIE")
+            }
+        }
+
+        // Rééquilibrage énergie final désactivé car l'énergie est maintenant traitée comme les
+        // autres nutriments
+        // L'énergie est ajustée dans la boucle principale des nutriments
+        /*
         if (params.energyLastRebalance) {
             val currentEnergy =
                     adjustedAliments.sumOf { ar ->
@@ -715,15 +800,9 @@ private suspend fun calculateMultiNutrientAdjustment(
                                     constraints.find { cc ->
                                         cc.alimentUuid == it.alimentRation.uuid
                                     }
-                            val allowedByNutrient =
-                                    energyRebalanceNutrients.isEmpty() ||
-                                            (it.selectedNutrient != null &&
-                                                    energyRebalanceNutrients.contains(
-                                                            it.selectedNutrient!!
-                                                    ))
                             (c?.mode
                                     ?: it.mode) == ConstraintMode.ADJUSTABLE &&
-                                    allowedByNutrient &&
+                                    it.isEnergyAdjustable &&
                                     (it.alimentRation.getEnergie(
                                             referenceUtilisee,
                                             preferences,
@@ -780,6 +859,7 @@ private suspend fun calculateMultiNutrientAdjustment(
                 }
             }
         }
+        */
 
         // Arrondi final pour stabiliser l'UI
         for (i in adjustedAliments.indices) {
@@ -835,7 +915,9 @@ private fun buildProcessingOrderFromSelections(
     if (selected.isEmpty()) return emptyList()
 
     val energyLabel = NutrientMain.ENERGIE.label
-    val hasEnergy = selected.contains(energyLabel)
+    // L'énergie doit être traitée si elle est sélectionnée OU si au moins un aliment a l'énergie
+    // cochée
+    val hasEnergy = selected.contains(energyLabel) || adjustmentData.any { it.isEnergyAdjustable }
 
     fun isOf(label: String, group: Array<out Nutrient>): Boolean {
         return group.any { it.label == label }
@@ -845,8 +927,8 @@ private fun buildProcessingOrderFromSelections(
 
     val order = mutableListOf<String>()
 
-    // Priorité: Macro > Minéraux > Vitamines > Lipides > AA > Autres (arbitré), trié par label
-    // interne
+    // Priorité: Macro > Minéraux > Vitamines > Lipides > AA > Autres > Main (sans l'énergie), trié
+    // par label
     order += nonEnergy.filter { isOf(it, NutrientMacro.values()) }.sorted()
     order += nonEnergy.filter { isOf(it, NutrientMin.values()) }.sorted()
     order += nonEnergy.filter { isOf(it, NutrientVitam.values()) }.sorted()
@@ -884,7 +966,7 @@ private fun buildProcessingOrderFromSelectionLabels(labels: List<String>): List<
     order += nonEnergy.filter { isOf(it, NutrientOther.values()) }.sorted()
     order += nonEnergy.filter { isOf(it, NutrientMain.values()) && it != energyLabel }.sorted()
 
-    if (hasEnergy) order += energyLabel
+    if (hasEnergy) order += energyLabel // Toujours en dernier
     return order.distinct()
 }
 
@@ -965,7 +1047,10 @@ private fun ajusterAlimentsPourNutriment(
         alimentsAjustables: List<AlimentAdjustmentData>,
         adjustedAliments: MutableList<AlimentRation>,
         alimentsVerrouilles: Set<String>,
-        constraints: Map<String, AlimentConstraint> = emptyMap()
+        constraints: Map<String, AlimentConstraint> = emptyMap(),
+        referenceUtilisee: ReferenceEv? = null,
+        preferences: PreferencesEspece? = null,
+        equationRepository: fr.vetbrain.vetnutri_mp.Repository.EquationRepository? = null
 ): RationAdjustmentResult {
     try {
         // Filtrer les aliments disponibles pour l'ajustement
@@ -974,9 +1059,13 @@ private fun ajusterAlimentsPourNutriment(
                     if (alimentsVerrouilles.contains(data.alimentRation.uuid)) return@filter false
                     val aliment = data.alimentRation.aliment ?: return@filter false
                     if (nutriment == NutrientMain.ENERGIE) {
-                        val densite = data.alimentRation.densiteEnergetique
-                        val energiePar100g = aliment.valMap[nutriment]?.value ?: 0.0
-                        densite > 0.0 || energiePar100g > 0.0
+                        // Utiliser la référence pour déterminer la disponibilité énergétique
+                        val energiePar100gRef: Double =
+                                aliment.getNutrient(NutrientMain.ENERGIE, referenceUtilisee)
+                                        ?: 0.0
+                        val densite: Double = if (energiePar100gRef > 0.0) energiePar100gRef / 100.0
+                        else data.alimentRation.densiteEnergetique
+                        densite > 0.0
                     } else {
                         (aliment.valMap[nutriment]?.value ?: 0.0) > 0.0
                     }
@@ -996,17 +1085,17 @@ private fun ajusterAlimentsPourNutriment(
             val index = adjustedAliments.indexOfFirst { it.uuid == alimentData.alimentRation.uuid }
             if (index < 0) continue
             if (nutriment == NutrientMain.ENERGIE) {
-                val densite = alimentData.alimentRation.densiteEnergetique
+                val energiePar100gRef: Double =
+                        alimentData.alimentRation.aliment?.getNutrient(
+                                NutrientMain.ENERGIE,
+                                referenceUtilisee
+                        )
+                                ?: 0.0
+                val densite: Double = if (energiePar100gRef > 0.0) energiePar100gRef / 100.0
+                else adjustedAliments[index].densiteEnergetique
                 if (densite > 0.0) {
                     val quantiteNecessaire = manque / densite
                     contributions.add(Triple(alimentData, quantiteNecessaire, index))
-                } else {
-                    val energiePar100g =
-                            alimentData.alimentRation.aliment?.valMap?.get(nutriment)?.value ?: 0.0
-                    if (energiePar100g > 0.0) {
-                        val quantiteNecessaire = (manque * 100.0) / energiePar100g.toDouble()
-                        contributions.add(Triple(alimentData, quantiteNecessaire, index))
-                    }
                 }
             } else {
                 val aliment = alimentData.alimentRation.aliment ?: continue
@@ -1045,30 +1134,19 @@ private fun ajusterAlimentsPourNutriment(
             val (alimentData, quantiteNecessaire, index) = contributions[indexContribution]
             val quantiteAAjouter =
                     if (nutriment == NutrientMain.ENERGIE) {
-                        val densite = adjustedAliments[index].densiteEnergetique
-                        if (densite > 0.0) {
-                            if (indexContribution == contributions.size - 1) {
-                                manqueRestant / densite
-                            } else {
-                                val alimentsRestants = contributions.size - indexContribution
-                                (manqueRestant / densite) / alimentsRestants
-                            }
+                        val energiePar100gRef: Double =
+                                adjustedAliments[index]
+                                        .aliment
+                                        ?.getNutrient(NutrientMain.ENERGIE, referenceUtilisee)
+                                        ?: 0.0
+                        val densite: Double = if (energiePar100gRef > 0.0) energiePar100gRef / 100.0
+                        else adjustedAliments[index].densiteEnergetique
+                        if (densite <= 0.0) 0.0
+                        else if (indexContribution == contributions.size - 1) {
+                            manqueRestant / densite
                         } else {
-                            val energiePar100g =
-                                    adjustedAliments[index]
-                                            .aliment
-                                            ?.valMap
-                                            ?.get(NutrientMain.ENERGIE)
-                                            ?.value
-                                            ?.toDouble()
-                                            ?: 0.0
-                            if (energiePar100g <= 0.0) 0.0
-                            else if (indexContribution == contributions.size - 1) {
-                                (manqueRestant * 100.0) / energiePar100g
-                            } else {
-                                val alimentsRestants = contributions.size - indexContribution
-                                ((manqueRestant * 100.0) / energiePar100g) / alimentsRestants
-                            }
+                            val alimentsRestants = contributions.size - indexContribution
+                            (manqueRestant / densite) / alimentsRestants
                         }
                     } else {
                         val aliment = alimentData.alimentRation.aliment
@@ -1107,20 +1185,14 @@ private fun ajusterAlimentsPourNutriment(
                 // Mettre à jour le manque restant
                 val apportAjoute: Double =
                         if (nutriment == NutrientMain.ENERGIE) {
-                            val densite = adjustedAliments[index].densiteEnergetique
-                            if (densite > 0.0) {
-                                densite * quantiteAAjouter
-                            } else {
-                                val energiePar100g =
-                                        adjustedAliments[index]
-                                                .aliment
-                                                ?.valMap
-                                                ?.get(NutrientMain.ENERGIE)
-                                                ?.value
-                                                ?.toDouble()
-                                                ?: 0.0
-                                (energiePar100g * quantiteAAjouter) / 100.0
-                            }
+                            val energiePar100gRef: Double =
+                                    adjustedAliments[index]
+                                            .aliment
+                                            ?.getNutrient(NutrientMain.ENERGIE, referenceUtilisee)
+                                            ?: 0.0
+                            val densite: Double = if (energiePar100gRef > 0.0) energiePar100gRef / 100.0
+                            else adjustedAliments[index].densiteEnergetique
+                            densite * quantiteAAjouter
                         } else {
                             val aliment = alimentData.alimentRation.aliment
                             val quantiteNutriment: Double =
@@ -1204,8 +1276,9 @@ private fun adjustRationForMultipleNutrients(
             // Étape 4: Calculer ce qui manque
             val manque = besoinAbsolu - apportActuel
 
+            val unite = if (nutrientLabel == NutrientMain.ENERGIE.label) "kcal" else "g"
             println(
-                    "🔍 DEBUG: Nutriment $nutrientLabel - Besoin: ${TextUtils.formatDecimal(besoinAbsolu, 2)}g, Apport actuel: ${TextUtils.formatDecimal(apportActuel, 2)}g, Manque: ${TextUtils.formatDecimal(manque, 2)}g"
+                    "🔍 DEBUG: Nutriment $nutrientLabel - Besoin: ${TextUtils.formatDecimal(besoinAbsolu, 2)}$unite, Apport actuel: ${TextUtils.formatDecimal(apportActuel, 2)}$unite, Manque: ${TextUtils.formatDecimal(manque, 2)}$unite"
             )
 
             if (manque > 0.01) { // Tolérance de 0.01g

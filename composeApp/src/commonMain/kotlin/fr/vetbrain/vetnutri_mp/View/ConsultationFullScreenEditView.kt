@@ -477,22 +477,23 @@ fun ConsultationFullScreenEditView(
                                                                                                         )
                                                                                                 }
                                                                                         }
-                                                                                        IconButton(
-                                                                                                onClick = {
-                                                                                                        editedConsultation
-                                                                                                                .supprimerReferenceMaladie(
-                                                                                                                        referenceId
-                                                                                                                )
-                                                                                                }
-                                                                                        ) {
-                                                                                                Icon(
-                                                                                                        AppIcons.Delete,
-                                                                                                        contentDescription =
-                                                                                                                "Supprimer la référence",
-                                                                                                        tint =
-                                                                                                                Color.Red
-                                                                                                )
-                                                                                        }
+                                                                                                                                                IconButton(
+                                                                onClick = {
+                                                                        val nouvellesReferences = editedConsultation.referencesMaladies.toMutableList()
+                                                                        nouvellesReferences.remove(referenceId)
+                                                                        editedConsultation = editedConsultation.copy(
+                                                                                referencesMaladies = nouvellesReferences
+                                                                        )
+                                                                }
+                                                        ) {
+                                                                Icon(
+                                                                        AppIcons.Delete,
+                                                                        contentDescription =
+                                                                                "Supprimer la référence",
+                                                                        tint =
+                                                                                Color.Red
+                                                                )
+                                                        }
                                                                                 }
                                                                         }
                                                                 }

@@ -38,6 +38,7 @@ import fr.vetbrain.vetnutri_mp.Data.ValeurNutritionnelle
 import fr.vetbrain.vetnutri_mp.Data.convertirPreferencesVersLabelsNutriments
 import fr.vetbrain.vetnutri_mp.Enumer.*
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
+import fr.vetbrain.vetnutri_mp.Repository.FoodRepository
 import fr.vetbrain.vetnutri_mp.Repository.PreferencesRepository
 import fr.vetbrain.vetnutri_mp.Repository.RecipeRepository
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
@@ -91,7 +92,8 @@ fun RationsView(
         showSnackbar: (String) -> Unit,
         modifier: Modifier = Modifier,
         equationRepository: EquationRepository,
-        recipeRepository: RecipeRepository
+        recipeRepository: RecipeRepository,
+        foodRepository: FoodRepository
 ) {
         val animal by viewModel.animal.collectAsState()
         val selectedConsultation by viewModel.selectedConsultation.collectAsState()
@@ -239,8 +241,9 @@ fun RationsView(
         if (showRecipeDialog) {
                 RecipeDialog(
                         repository = recipeRepository,
+                        foodRepository = foodRepository,
                         onApply = { recette ->
-                                viewModel.applyRecipeToSelectedRation(recette)
+                                viewModel.applyRecipeToRation(recette)
                                 showRecipeDialog = false
                         },
                         onClose = { showRecipeDialog = false }
@@ -1388,16 +1391,17 @@ fun RationsView(
                 if (showMultiNutrientAdjustmentDialog &&
                                 selectedRation != null &&
                                 referenceUtilisee != null &&
-                                besoinEnergetiqueStandard != null
+                                besoinEnergetiqueTotal != null
                 ) {
                         val ration = selectedRation!!
                         val reference = referenceUtilisee!!
-                        val besoinEnergetique = besoinEnergetiqueStandard!!
+                        val besoinEnergetique = besoinEnergetiqueTotal!!
 
                         MultiNutrientAdjustmentDialog(
                                 ration = ration,
                                 referenceUtilisee = reference,
                                 besoinEnergetiqueTotal = besoinEnergetique,
+                                besoinEnergetiqueStandard = besoinEnergetiqueStandard!!,
                                 poidsAnimal = selectedConsultation?.weight?.toDouble(),
                                 poidsMetabolique = poidsMetabolique,
                                 onConfirm = { result ->

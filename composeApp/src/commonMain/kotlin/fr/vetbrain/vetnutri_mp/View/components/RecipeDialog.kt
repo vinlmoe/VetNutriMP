@@ -12,21 +12,41 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Data.Ration
+import fr.vetbrain.vetnutri_mp.Repository.FoodRepository
 import fr.vetbrain.vetnutri_mp.Repository.RecipeRepository
 import kotlinx.coroutines.launch
 
 @Composable
-fun RecipeDialog(repository: RecipeRepository, onApply: (Ration) -> Unit, onClose: () -> Unit) {
+fun RecipeDialog(
+        repository: RecipeRepository,
+        foodRepository: FoodRepository,
+        onApply: (Ration) -> Unit,
+        onClose: () -> Unit
+) {
     val scope = rememberCoroutineScope()
     var recipes by remember { mutableStateOf<List<Ration>>(emptyList()) }
     var isLoading by remember { mutableStateOf(false) }
     var showCreateDialog by remember { mutableStateOf(false) }
     var newName by remember { mutableStateOf("") }
 
+    // Fonction helper pour charger les recettes avec les détails des aliments
+    suspend fun loadRecipesWithFoodDetails(): List<Ration> {
+        val loadedRecipes = repository.getAllRecipes()
+        return loadedRecipes.map { recipe ->
+            val alimentsWithDetails =
+                    recipe.alimentMutableList.map { aliment ->
+                        val alimentDetails =
+                                aliment.refAlimUnif?.let { foodRepository.getFoodById(it) }
+                        aliment.copy(aliment = alimentDetails)
+                    }
+            recipe.copy(alimentMutableList = alimentsWithDetails.toMutableList())
+        }
+    }
+
     LaunchedEffect(Unit) {
         isLoading = true
         try {
-            recipes = repository.getAllRecipes()
+            recipes = loadRecipesWithFoodDetails()
         } finally {
             isLoading = false
         }
@@ -70,7 +90,7 @@ fun RecipeDialog(repository: RecipeRepository, onApply: (Ration) -> Unit, onClos
                                                     onClick = {
                                                         scope.launch {
                                                             repository.cloneRecipe(r.uuid)
-                                                            recipes = repository.getAllRecipes()
+                                                            recipes = loadRecipesWithFoodDetails()
                                                         }
                                                     }
                                             ) { Text("Cloner") }
@@ -78,7 +98,7 @@ fun RecipeDialog(repository: RecipeRepository, onApply: (Ration) -> Unit, onClos
                                                     onClick = {
                                                         scope.launch {
                                                             repository.deleteRecipe(r.uuid)
-                                                            recipes = repository.getAllRecipes()
+                                                            recipes = loadRecipesWithFoodDetails()
                                                         }
                                                     }
                                             ) { Text("Supprimer") }
@@ -97,7 +117,7 @@ fun RecipeDialog(repository: RecipeRepository, onApply: (Ration) -> Unit, onClos
                                                             (kotlin.math.round(q * 10.0) / 10.0)
                                                                     .toString()
                                                     Text(
-                                                            "- ${'$'}nom: ${'$'}qStr g",
+                                                            "- $nom: $qStr g",
                                                             style = MaterialTheme.typography.caption
                                                     )
                                                 }
@@ -129,7 +149,7 @@ fun RecipeDialog(repository: RecipeRepository, onApply: (Ration) -> Unit, onClos
                             onClick = {
                                 scope.launch {
                                     repository.createRecipe(newName, null, null)
-                                    recipes = repository.getAllRecipes()
+                                    recipes = loadRecipesWithFoodDetails()
                                     newName = ""
                                     showCreateDialog = false
                                 }

@@ -23,12 +23,57 @@ class DatabaseConsultationRepository(
 ) : ConsultationRepository {
     override suspend fun applyRecipeToRation(recipe: Ration, rationId: String) {
         withContext(AppDispatchers.IO) {
-            recipe.alimentMutableList.forEach { aliment ->
+            println("🔍 DEBUG RecipeApplication: Début d'application de recette")
+            println("🔍 DEBUG RecipeApplication: Recipe UUID: ${recipe.uuid}")
+            println("🔍 DEBUG RecipeApplication: Recipe name: ${recipe.name}")
+            println("🔍 DEBUG RecipeApplication: Ration cible UUID: $rationId")
+            println(
+                    "🔍 DEBUG RecipeApplication: Nombre d'aliments dans la recette: ${recipe.alimentMutableList.size}"
+            )
+
+            recipe.alimentMutableList.forEachIndexed { index, aliment ->
+                println("🔍 DEBUG RecipeApplication: Traitement aliment $index: ${aliment.uuid}")
+                println("🔍 DEBUG RecipeApplication: - refAlimUnif: ${aliment.refAlimUnif}")
+                println("🔍 DEBUG RecipeApplication: - quantite: ${aliment.quantite}")
+                println("🔍 DEBUG RecipeApplication: - aliment.nom: ${aliment.aliment?.nom}")
+
                 try {
-                    val entity = aliment.copy(refRation = rationId).toEntity()
+                    // Générer un nouvel UUID pour éviter les conflits
+                    val nouvelAliment =
+                            aliment.copy(
+                                    uuid = fr.vetbrain.vetnutri_mp.Utils.genUUID(),
+                                    refRation = rationId
+                            )
+                    println("🔍 DEBUG RecipeApplication: Nouvel UUID généré: ${nouvelAliment.uuid}")
+
+                    val entity = nouvelAliment.toEntity()
+                    println(
+                            "🔍 DEBUG RecipeApplication: Entity créé avec refRation: ${entity.refRation}"
+                    )
+                    println("🔍 DEBUG RecipeApplication: Entity UUID: ${entity.uuid}")
+
                     consultationDao.insertAlimentRation(entity)
-                } catch (_: Exception) {}
+                    println("✅ DEBUG RecipeApplication: Aliment $index inséré avec succès")
+                } catch (e: Exception) {
+                    println(
+                            "❌ DEBUG RecipeApplication: Erreur lors de l'insertion de l'aliment $index: ${e.message}"
+                    )
+                    e.printStackTrace()
+                }
             }
+
+            // Vérifier que les aliments ont bien été insérés
+            val alimentsInseres = consultationDao.getAlimentsForRation(rationId)
+            println(
+                    "🔍 DEBUG RecipeApplication: Vérification - Aliments trouvés pour la ration $rationId: ${alimentsInseres.size}"
+            )
+            alimentsInseres.forEachIndexed { index, alimentEntity ->
+                println(
+                        "🔍 DEBUG RecipeApplication: Aliment $index en base: ${alimentEntity.uuid} -> ${alimentEntity.refAlimUnif}"
+                )
+            }
+
+            println("🔍 DEBUG RecipeApplication: Fin d'application de recette")
         }
     }
     override suspend fun saveConsultation(consultation: ConsultationEv) {
