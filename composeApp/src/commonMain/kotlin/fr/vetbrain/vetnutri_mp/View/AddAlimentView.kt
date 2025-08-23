@@ -8,6 +8,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Search
@@ -29,6 +30,10 @@ import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.TextUtils
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailViewModel
+import fr.vetbrain.vetnutri_mp.View.components.FoodSearchComponent
+import fr.vetbrain.vetnutri_mp.View.components.FoodSearchConfig
+import fr.vetbrain.vetnutri_mp.View.components.FoodSearchFilters
+import fr.vetbrain.vetnutri_mp.View.components.FoodSearchLayout
 
 /**
  * Vue complète pour ajouter un aliment à une ration
@@ -46,20 +51,13 @@ fun AddAlimentView(
         onAddAliment: (AlimentEv, Double) -> Unit,
         modifier: Modifier = Modifier
 ) {
-        // États pour les filtres
-        var searchQuery by remember { mutableStateOf("") }
-        var selectedFoodType by remember { mutableStateOf<FoodKind?>(null) }
-        var selectedFoodGroup by remember { mutableStateOf<GroupAlim?>(null) }
-        var selectedEspece by remember { mutableStateOf<Espece?>(null) }
-        var selectedIndications by remember { mutableStateOf<Set<AlimIndic>>(emptySet()) }
-        var selectedFood by remember { mutableStateOf<AlimentEv?>(null) }
+        // États pour les filtres - maintenant gérés par FoodSearchComponent
+        var filters by remember { mutableStateOf(FoodSearchFilters()) }
 
         // État pour l'aliment sélectionné et la quantité
+        var selectedFood by remember { mutableStateOf<AlimentEv?>(null) }
         var quantite by remember { mutableStateOf("100") }
         var quantiteError by remember { mutableStateOf(false) }
-
-        // États pour les dropdowns (plus nécessaires pour DropdownField)
-        var showIndicationsDropdown by remember { mutableStateOf(false) }
 
         // Charger les aliments au premier affichage
         LaunchedEffect(Unit) { viewModel.loadAvailableFoods() }
@@ -68,81 +66,17 @@ fun AddAlimentView(
         val availableFoods by viewModel.availableFoods.collectAsState()
         val isLoadingFoods by viewModel.isLoadingFoods.collectAsState()
 
-        // Filtrer les aliments selon les critères
-        val filteredFoods =
-                remember(
-                        availableFoods,
-                        searchQuery,
-                        selectedFoodType,
-                        selectedFoodGroup,
-                        selectedEspece,
-                        selectedIndications
-                ) {
-                        availableFoods.filter { aliment ->
-                                // Filtre par recherche textuelle
-                                val matchesSearch =
-                                        if (searchQuery.isEmpty()) true
-                                        else {
-                                                aliment.nom?.contains(
-                                                        searchQuery,
-                                                        ignoreCase = true
-                                                ) == true ||
-                                                        aliment.brand?.contains(
-                                                                searchQuery,
-                                                                ignoreCase = true
-                                                        ) == true ||
-                                                        aliment.ingredients?.contains(
-                                                                searchQuery,
-                                                                ignoreCase = true
-                                                        ) == true
-                                        }
-
-                                // Filtre par type d'aliment (ALL = pas de filtre)
-                                val matchesType =
-                                        when (val sel = selectedFoodType) {
-                                                null -> true
-                                                FoodKind.ALL -> true
-                                                else -> aliment.typeAliment == sel
-                                        }
-
-                                // Filtre par groupe d'aliment (ALL = pas de filtre)
-                                val matchesGroup =
-                                        when (val sel = selectedFoodGroup) {
-                                                null -> true
-                                                GroupAlim.ALL -> true
-                                                else -> aliment.group == sel
-                                        }
-
-                                // Filtre par espèce
-                                val matchesEspece =
-                                        when (val sel = selectedEspece) {
-                                                null -> true
-                                                Espece.CH -> true
-                                                else -> {
-                                                        val foodSpecies = aliment.getEspecesList()
-                                                        foodSpecies.isEmpty() ||
-                                                                foodSpecies.contains(Espece.CH) ||
-                                                                foodSpecies.contains(sel)
-                                                }
-                                        }
-
-                                // Filtre par indications
-                                val matchesIndications =
-                                        if (selectedIndications.isEmpty() ||
-                                                        selectedIndications.contains(AlimIndic.ALL)
-                                        )
-                                                true
-                                        else
-                                                selectedIndications.any { indication ->
-                                                        aliment.indicat.contains(indication)
-                                                }
-
-                                matchesSearch &&
-                                        matchesType &&
-                                        matchesGroup &&
-                                        matchesEspece &&
-                                        matchesIndications
-                        }
+        // Configuration pour FoodSearchComponent
+        val searchConfig = remember {
+                FoodSearchConfig(
+                        layout = FoodSearchLayout.HORIZONTAL,
+                        showFilters = true,
+                        showSearchBar = true,
+                        showResultsCount = true,
+                        onFoodSelected = { aliment -> selectedFood = aliment },
+                        isLoading = isLoadingFoods,
+                        selectedFood = selectedFood
+                )
                 }
 
         Column(modifier = modifier.fillMaxSize()) {
@@ -150,47 +84,7 @@ fun AddAlimentView(
                 TopBar(
                         title = "Ajouter aliment - ${ration.name}",
                         onBackClick = onNavigateBack,
-                        onSettingsClick = { /* Pas de settings pour cette vue */},
-                        actions = {
-                                // Bouton d'ajout (activé seulement si un aliment est sélectionné et
-                                // quantité
-                                // valide)
-                                Button(
-                                        onClick = {
-                                                selectedFood?.let { aliment ->
-                                                        try {
-                                                                val quantiteValue =
-                                                                        quantite.toDouble()
-                                                                if (quantiteValue > 0) {
-                                                                        onAddAliment(
-                                                                                aliment,
-                                                                                quantiteValue
-                                                                        )
-                                                                }
-                                                        } catch (e: NumberFormatException) {
-                                                                // Ignore
-                                                        }
-                                                }
-                                        },
-                                        enabled =
-                                                selectedFood != null &&
-                                                        !quantiteError &&
-                                                        quantite.isNotEmpty(),
-                                        colors =
-                                                ButtonDefaults.buttonColors(
-                                                        backgroundColor = VetNutriColors.Primary,
-                                                        contentColor = VetNutriColors.OnPrimary
-                                                )
-                                ) {
-                                        Icon(
-                                                imageVector = Icons.Default.Check,
-                                                contentDescription = "Ajouter",
-                                                modifier = Modifier.size(16.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Text("Ajouter")
-                                }
-                        }
+                        onSettingsClick = { /* Pas de settings pour cette vue */}
                 )
 
                 // Contenu principal - layout à deux colonnes
@@ -203,226 +97,14 @@ fun AddAlimentView(
                                 modifier = Modifier.weight(0.6f).fillMaxHeight(),
                                 verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
                         ) {
-                                // Section des filtres
-                                Card(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        elevation = AppSizes.elevationSmall
-                                ) {
-                                        Column(
-                                                modifier = Modifier.padding(AppSizes.paddingMedium),
-                                                verticalArrangement =
-                                                        Arrangement.spacedBy(AppSizes.paddingSmall)
-                                        ) {
-                                                Text(
-                                                        text = "Filtres de recherche",
-                                                        style = MaterialTheme.typography.subtitle2,
-                                                        color = VetNutriColors.Primary
-                                                )
-
-                                                // Champ de recherche textuelle
-                                                BasicAppTextField(
-                                                        value = searchQuery,
-                                                        onValueChange = { searchQuery = it },
-                                                        placeholder = "Nom, marque, ingrédients...",
-                                                        leadingIcon = Icons.Default.Search,
-                                                        trailingIcon =
-                                                                if (searchQuery.isNotEmpty())
-                                                                        Icons.Default.Clear
-                                                                else null,
-                                                        onTrailingIconClick = { searchQuery = "" },
-                                                        modifier =
-                                                                Modifier.fillMaxWidth()
-                                                                        .height(40.dp)
-                                                )
-
-                                                // Filtres par dropdowns en grille 2x2
-                                                Row(
-                                                        modifier = Modifier.fillMaxWidth(),
-                                                        horizontalArrangement =
-                                                                Arrangement.spacedBy(
-                                                                        AppSizes.paddingSmall
-                                                                )
-                                                ) {
-                                                        // Type d'aliment
-                                                        Box(modifier = Modifier.weight(1f)) {
-                                                                DropdownField(
-                                                                        label = "Type",
-                                                                        selectedValue =
-                                                                                selectedFoodType,
-                                                                        options = FoodKind.entries,
-                                                                        onValueChange = {
-                                                                                selectedFoodType =
-                                                                                        it
-                                                                        },
-                                                                        valueToString = {
-                                                                                it.translateEnum()
-                                                                        },
-                                                                        modifier =
-                                                                                Modifier.fillMaxWidth(),
-                                                                        height = 40.dp,
-                                                                        fontSize = 12.sp,
-                                                                        labelFontSize = 10.sp,
-                                                                        borderWidth = 0.5.dp
-                                                                )
-                                                        }
-
-                                                        // Groupe d'aliment
-                                                        Box(modifier = Modifier.weight(1f)) {
-                                                                DropdownField(
-                                                                        label = "Groupe",
-                                                                        selectedValue =
-                                                                                selectedFoodGroup,
-                                                                        options = GroupAlim.entries,
-                                                                        onValueChange = {
-                                                                                selectedFoodGroup =
-                                                                                        it
-                                                                        },
-                                                                        valueToString = {
-                                                                                it.translateEnum()
-                                                                        },
-                                                                        modifier =
-                                                                                Modifier.fillMaxWidth(),
-                                                                        height = 40.dp,
-                                                                        fontSize = 12.sp,
-                                                                        labelFontSize = 10.sp,
-                                                                        borderWidth = 0.5.dp
-                                                                )
-                                                        }
-                                                }
-
-                                                Row(
-                                                        modifier = Modifier.fillMaxWidth(),
-                                                        horizontalArrangement =
-                                                                Arrangement.spacedBy(
-                                                                        AppSizes.paddingSmall
-                                                                )
-                                                ) {
-                                                        // Espèce
-                                                        Box(modifier = Modifier.weight(1f)) {
-                                                                DropdownField(
-                                                                        label = "Espèce",
-                                                                        selectedValue =
-                                                                                selectedEspece,
-                                                                        options = Espece.entries,
-                                                                        onValueChange = {
-                                                                                selectedEspece = it
-                                                                        },
-                                                                        valueToString = {
-                                                                                it.translateEnum()
-                                                                        },
-                                                                        modifier =
-                                                                                Modifier.fillMaxWidth(),
-                                                                        height = 40.dp,
-                                                                        fontSize = 12.sp,
-                                                                        labelFontSize = 10.sp,
-                                                                        borderWidth = 0.5.dp
-                                                                )
-                                                        }
-
-                                                        // Indications (multi-sélection)
-                                                        Box(modifier = Modifier.weight(1f)) {
-                                                                MultiSelectDropdownField(
-                                                                        label = "Indications",
-                                                                        selectedValues =
-                                                                                selectedIndications,
-                                                                        options = AlimIndic.entries,
-                                                                        onValuesChange = {
-                                                                                selectedIndications =
-                                                                                        it
-                                                                        },
-                                                                        valueToString = {
-                                                                                it.translateEnum()
-                                                                        },
-                                                                        modifier =
-                                                                                Modifier.fillMaxWidth(),
-                                                                        height = 40.dp,
-                                                                        fontSize = 12.sp,
-                                                                        labelFontSize = 10.sp,
-                                                                        borderWidth = 0.5.dp
-                                                                )
-                                                        }
-                                                }
-
-                                                // Résumé des filtres actifs
-                                                if (selectedFoodType != null ||
-                                                                selectedFoodGroup != null ||
-                                                                selectedEspece != null ||
-                                                                selectedIndications.isNotEmpty()
-                                                ) {
-                                                        Text(
-                                                                text =
-                                                                        "Filtres actifs: ${filteredFoods.size} aliment(s) trouvé(s)",
-                                                                style =
-                                                                        MaterialTheme.typography
-                                                                                .caption,
-                                                                color = VetNutriColors.Primary
-                                                        )
-                                                }
-                                        }
-                                }
-
-                                // Liste des aliments
-                                Card(
-                                        modifier = Modifier.fillMaxWidth().weight(1f),
-                                        elevation = AppSizes.elevationSmall
-                                ) {
-                                        Column(
-                                                modifier =
-                                                        Modifier.fillMaxSize()
-                                                                .padding(AppSizes.paddingMedium)
-                                        ) {
-                                                Text(
-                                                        text =
-                                                                "Aliments disponibles (${filteredFoods.size})",
-                                                        style = MaterialTheme.typography.subtitle2,
-                                                        color = VetNutriColors.Primary
-                                                )
-
-                                                Spacer(
-                                                        modifier =
-                                                                Modifier.height(
-                                                                        AppSizes.paddingSmall
-                                                                )
-                                                )
-
-                                                if (isLoadingFoods) {
-                                                        Box(
-                                                                modifier = Modifier.fillMaxSize(),
-                                                                contentAlignment = Alignment.Center
-                                                        ) { CircularProgressIndicator() }
-                                                } else if (filteredFoods.isEmpty()) {
-                                                        Box(
-                                                                modifier = Modifier.fillMaxSize(),
-                                                                contentAlignment = Alignment.Center
-                                                        ) {
-                                                                Text(
-                                                                        "Aucun aliment trouvé avec ces critères"
-                                                                )
-                                                        }
-                                                } else {
-                                                        LazyColumn(
-                                                                verticalArrangement =
-                                                                        Arrangement.spacedBy(
-                                                                                AppSizes.paddingSmall
-                                                                        )
-                                                        ) {
-                                                                items(filteredFoods) { aliment ->
-                                                                        AlimentListItem(
-                                                                                aliment = aliment,
-                                                                                isSelected =
-                                                                                        selectedFood
-                                                                                                ?.uuid ==
-                                                                                                aliment.uuid,
-                                                                                onClick = {
-                                                                                        selectedFood =
-                                                                                                aliment
-                                                                                }
-                                                                        )
-                                                                }
-                                                        }
-                                                }
-                                        }
-                                }
+                                // Utilisation du composant partagé FoodSearchComponent
+                                FoodSearchComponent(
+                                        foods = availableFoods,
+                                        filters = filters,
+                                        onFiltersChange = { filters = it },
+                                        config = searchConfig,
+                                        modifier = Modifier.fillMaxSize()
+                                )
                         }
 
                         // Colonne droite - Détails de l'aliment sélectionné (40% de l'espace)
@@ -459,6 +141,38 @@ fun AddAlimentView(
                                                                 }
                                                 },
                                                 quantiteError = quantiteError
+                                        )
+                                }
+                        }
+                }
+
+                // Bouton d'ajout flottant en bas à droite
+                Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.BottomEnd
+                ) {
+                        if (selectedFood != null && !quantiteError && quantite.isNotEmpty()) {
+                                FloatingActionButton(
+                                        onClick = {
+                                                selectedFood?.let { aliment ->
+                                                        try {
+                                                                val quantiteValue = quantite.toDouble()
+                                                                if (quantiteValue > 0) {
+                                                                        onAddAliment(aliment, quantiteValue)
+                                                                }
+                                                        } catch (e: NumberFormatException) {
+                                                                // Ignore
+                                                        }
+                                                }
+                                        },
+                                        backgroundColor = VetNutriColors.Primary,
+                                        contentColor = VetNutriColors.OnPrimary,
+                                        modifier = Modifier.padding(AppSizes.paddingLarge)
+                                ) {
+                                        Icon(
+                                                imageVector = Icons.Default.Add,
+                                                contentDescription = "Ajouter l'aliment",
+                                                modifier = Modifier.size(24.dp)
                                         )
                                 }
                         }

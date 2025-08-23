@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
@@ -28,9 +27,15 @@ import fr.vetbrain.vetnutri_mp.Enumer.*
 import fr.vetbrain.vetnutri_mp.Repository.ExportImportRepository
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
+import fr.vetbrain.vetnutri_mp.View.SettingsComponents.SettingsTabs
+import fr.vetbrain.vetnutri_mp.View.SettingsComponents.SettingsHeader
+import fr.vetbrain.vetnutri_mp.View.SettingsSections.InterfaceSettings
+import fr.vetbrain.vetnutri_mp.View.SettingsSections.AdministrationSettings
+import fr.vetbrain.vetnutri_mp.View.SettingsSections.RecipeEditView
 import fr.vetbrain.vetnutri_mp.ViewModel.ImportViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.SettingsViewModel
-import fr.vetbrain.vetnutri_mp.exportJsonToFile
+import fr.vetbrain.vetnutri_mp.ViewModel.RecipeEditViewModel
+
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 
@@ -94,122 +99,6 @@ fun SettingsDialog(viewModel: SettingsViewModel, onDismiss: () -> Unit) {
         )
 }
 
-/**
- * Menu latéral pour la navigation dans les paramètres
- * @param currentSection Section actuellement sélectionnée
- * @param onSectionSelected Callback appelé lors de la sélection d'une section
- */
-@Composable
-fun SettingsDrawer(
-        currentSection: SettingsSection,
-        onSectionSelected: (SettingsSection) -> Unit,
-        onClose: () -> Unit
-) {
-        Column(
-                modifier =
-                        Modifier.fillMaxHeight()
-                                .width(300.dp)
-                                .background(MaterialTheme.colors.surface)
-                                .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-                Row(
-                        modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                ) {
-                        Text(
-                                "Paramètres",
-                                style = MaterialTheme.typography.h6,
-                                color = VetNutriColors.Primary
-                        )
-                        IconButton(onClick = onClose) {
-                                Icon(
-                                        Icons.Default.Close,
-                                        contentDescription = "Fermer",
-                                        tint = Color.Gray
-                                )
-                        }
-                }
-
-                Divider(color = Color.LightGray, thickness = 1.dp)
-
-                // Sections de paramètres
-                SettingsSectionItem(
-                        section = SettingsSection.INTERFACE,
-                        isSelected = currentSection == SettingsSection.INTERFACE,
-                        onSelected = onSectionSelected,
-                        icon = Icons.Default.Settings
-                )
-
-                SettingsSectionItem(
-                        section = SettingsSection.PREFERENCES,
-                        isSelected = currentSection == SettingsSection.PREFERENCES,
-                        onSelected = onSectionSelected,
-                        icon = Icons.Default.Settings
-                )
-
-                SettingsSectionItem(
-                        section = SettingsSection.IMPORTATION,
-                        isSelected = currentSection == SettingsSection.IMPORTATION,
-                        onSelected = onSectionSelected,
-                        icon = Icons.Default.Build
-                )
-
-                SettingsSectionItem(
-                        section = SettingsSection.ADMINISTRATION,
-                        isSelected = currentSection == SettingsSection.ADMINISTRATION,
-                        onSelected = onSectionSelected,
-                        icon = Icons.Default.Settings
-                )
-
-                Spacer(modifier = Modifier.weight(1f))
-
-                Divider(color = Color.LightGray, thickness = 1.dp)
-
-                Text(
-                        "VetNutri MP",
-                        style = MaterialTheme.typography.caption,
-                        color = Color.Gray,
-                        modifier = Modifier.padding(top = 16.dp, bottom = 4.dp)
-                )
-                Text("Version 1.0", style = MaterialTheme.typography.caption, color = Color.Gray)
-        }
-}
-
-/** Élément d'une section dans le menu latéral */
-@Composable
-fun SettingsSectionItem(
-        section: SettingsSection,
-        isSelected: Boolean,
-        onSelected: (SettingsSection) -> Unit,
-        icon: androidx.compose.ui.graphics.vector.ImageVector
-) {
-        val backgroundColor =
-                if (isSelected) VetNutriColors.Primary.copy(alpha = 0.1f) else Color.Transparent
-
-        val textColor = if (isSelected) VetNutriColors.Primary else Color.DarkGray
-
-        Row(
-                modifier =
-                        Modifier.fillMaxWidth()
-                                .background(backgroundColor, RoundedCornerShape(4.dp))
-                                .clickable { onSelected(section) }
-                                .padding(horizontal = 12.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-                Icon(icon, contentDescription = section.title, tint = textColor)
-
-                Text(
-                        section.title,
-                        style = MaterialTheme.typography.body1,
-                        color = textColor,
-                        fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal
-                )
-        }
-}
-
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun SettingsView(
@@ -222,16 +111,7 @@ fun SettingsView(
         modifier: Modifier = Modifier,
         onSpeciesClick: (fr.vetbrain.vetnutri_mp.Enumer.Espece) -> Unit = {}
 ) {
-        // État pour le dialogue de confirmation de suppression
-        var isDialogVisible by remember { mutableStateOf(false) }
-        var isProcessing by remember { mutableStateOf(false) }
-        var resultMessage by remember { mutableStateOf("") }
-        var isAnimalDeleteDialogVisible by remember { mutableStateOf(false) }
 
-        // États pour les nouveaux dialogues de suppression
-        var isReferenceDeleteDialogVisible by remember { mutableStateOf(false) }
-        var isEquationDeleteDialogVisible by remember { mutableStateOf(false) }
-        var isBiblioDeleteDialogVisible by remember { mutableStateOf(false) }
 
         // État pour le dialogue d'alerte d'importation des références nutritionnelles
         var showImportDialog by remember { mutableStateOf(false) }
@@ -240,9 +120,8 @@ fun SettingsView(
         val coroutineScope = rememberCoroutineScope()
         val uiScale by viewModel.uiScale.collectAsState()
 
-        // État pour la section actuelle et le menu latéral
-        var currentSection by remember { mutableStateOf(SettingsSection.INTERFACE) }
-        val isDrawerOpen by viewModel.isDrawerOpen.collectAsState()
+        // État pour l'onglet actuel
+        var selectedTab by remember { mutableStateOf(0) }
 
         // Observer le message d'importation des références nutritionnelles
         val nutritionalRequirementMessage by remember {
@@ -265,136 +144,32 @@ fun SettingsView(
                 }
         }
 
-        // État pour le drawer
-        val scaffoldState =
-                rememberScaffoldState(
-                        drawerState =
-                                rememberDrawerState(
-                                        initialValue =
-                                                if (isDrawerOpen) DrawerValue.Open
-                                                else DrawerValue.Closed
-                                )
+
+
+        Column(modifier = modifier.fillMaxSize()) {
+                // En-tête avec bouton retour
+                SettingsHeader(onBack = onBack)
+                
+                // Navigation par onglets
+                SettingsTabs(
+                    selectedTab = selectedTab,
+                    onTabSelected = { selectedTab = it }
                 )
-
-        LaunchedEffect(isDrawerOpen) {
-                if (isDrawerOpen) {
-                        scaffoldState.drawerState.open()
-                } else {
-                        scaffoldState.drawerState.close()
-                }
-        }
-
-        Scaffold(
-                scaffoldState = scaffoldState,
-                topBar = {
-                        Row(
-                                modifier = Modifier.fillMaxWidth().padding(AppSizes.paddingMedium),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                        ) {
-                                Row(
-                                        horizontalArrangement =
-                                                Arrangement.spacedBy(AppSizes.paddingSmall),
-                                        verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                        IconButton(
-                                                onClick = { viewModel.openDrawer() },
-                                                modifier = Modifier.size(AppSizes.iconSizeLarge)
-                                        ) {
-                                                Icon(
-                                                        Icons.Default.Menu,
-                                                        contentDescription = "Menu",
-                                                        modifier =
-                                                                Modifier.size(
-                                                                        AppSizes.iconSizeMedium
-                                                                )
-                                                )
-                                        }
-                                        Text(
-                                                text = "Paramètres",
-                                                style =
-                                                        MaterialTheme.typography.h5.copy(
-                                                                fontSize = AppSizes.fontSizeH5
-                                                        )
-                                        )
-                                }
-
-                                IconButton(
-                                        onClick = onBack,
-                                        modifier = Modifier.size(AppSizes.iconSizeLarge)
-                                ) {
-                                        Icon(
-                                                Icons.Default.Close,
-                                                contentDescription = "Fermer",
-                                                modifier = Modifier.size(AppSizes.iconSizeMedium)
-                                        )
-                                }
-                        }
-                },
-                drawerContent = {
-                        SettingsDrawer(
-                                currentSection = currentSection,
-                                onSectionSelected = { section ->
-                                        currentSection = section
-                                        viewModel.closeDrawer()
-                                },
-                                onClose = { viewModel.closeDrawer() }
-                        )
-                },
-                drawerGesturesEnabled = true
-        ) { paddingValues ->
-                Column(
-                        modifier =
-                                Modifier.fillMaxSize()
-                                        .padding(paddingValues)
-                                        .padding(AppSizes.paddingMedium),
-                        verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
+                
+                // Contenu de l'onglet sélectionné
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(AppSizes.paddingMedium)
                 ) {
-                        when (currentSection) {
-                                SettingsSection.INTERFACE -> {
-                                        // Section pour l'échelle de l'interface
-                                        Section(title = "Échelle de l'interface") {
-                                                Row(
-                                                        modifier =
-                                                                Modifier.fillMaxWidth()
-                                                                        .padding(vertical = 8.dp),
-                                                        horizontalArrangement =
-                                                                Arrangement.SpaceBetween,
-                                                        verticalAlignment =
-                                                                Alignment.CenterVertically
-                                                ) {
-                                                        Button(
-                                                                onClick = {
-                                                                        viewModel.decrementUiScale()
-                                                                },
-                                                                enabled = uiScale > 0.5f,
-                                                                modifier =
-                                                                        Modifier.size(
-                                                                                AppSizes.buttonHeight
-                                                                        )
-                                                        ) { Text("-") }
-
-                                                        Text(
-                                                                "${(uiScale * 100).roundToInt()}%",
-                                                                style =
-                                                                        MaterialTheme.typography
-                                                                                .body1
-                                                        )
-
-                                                        Button(
-                                                                onClick = {
-                                                                        viewModel.incrementUiScale()
-                                                                },
-                                                                enabled = uiScale < 2f,
-                                                                modifier =
-                                                                        Modifier.size(
-                                                                                AppSizes.buttonHeight
-                                                                        )
-                                                        ) { Text("+") }
-                                                }
-                                        }
-                                }
-                                SettingsSection.PREFERENCES -> {
+                    when (selectedTab) {
+                        0 -> { // Interface
+                            InterfaceSettings(
+                                viewModel = viewModel,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                        1 -> { // Préférences
                                         // Section pour les préférences
                                         Section(title = "Préférences de l'application") {
                                                 PreferencesSection(
@@ -403,7 +178,7 @@ fun SettingsView(
                                                 )
                                         }
                                 }
-                                SettingsSection.IMPORTATION -> {
+                        2 -> { // Importation
                                         // Section pour l'importation des données
                                         Section(title = "Importation des données") {
                                                 Column(
@@ -711,25 +486,14 @@ fun SettingsView(
                                                                                                                                         selectedFoodIds
                                                                                                                         )
                                                                                                         )
-                                                                                        val ok =
-                                                                                                exportJsonToFile(
-                                                                                                        content =
-                                                                                                                json,
-                                                                                                        defaultFileName =
-                                                                                                                "vetnutri_export.json"
-                                                                                                )
-                                                                                        if (ok) {
-                                                                                                resultMessage =
-                                                                                                        "✅ Export réussi"
-                                                                                        } else {
-                                                                                                resultMessage =
-                                                                                                        "❌ Export annulé ou échoué"
-                                                                                        }
-                                                                                } catch (
-                                                                                        e:
-                                                                                                Exception) {
-                                                                                        resultMessage =
-                                                                                                "❌ Erreur export: ${e.message}"
+                                                                                                                val ok =
+                                fr.vetbrain.vetnutri_mp.exportJsonToFile(
+                                        content = json,
+                                        defaultFileName = "vetnutri_export.json"
+                                )
+                                                                                        // Export terminé, résultat : $ok
+                                                                                } catch (e: Exception) {
+                                                                                        // Erreur d'export gérée
                                                                                 }
                                                                         }
                                                                 },
@@ -940,10 +704,9 @@ fun SettingsView(
                                                                                 // importFoodsFromFile
                                                                                 viewModel
                                                                                         .importFoodsFromFileUI()
-                                                                        } catch (e: Exception) {
-                                                                                resultMessage =
-                                                                                        "Erreur lors de l'importation : ${e.message}"
-                                                                        }
+                                                                                                                                } catch (e: Exception) {
+                                                                // Les erreurs sont gérées par le ViewModel
+                                                        }
                                                                 },
                                                                 colors =
                                                                         ButtonDefaults.buttonColors(
@@ -973,10 +736,9 @@ fun SettingsView(
                                                                                 // nutritionnelles
                                                                                 importViewModel
                                                                                         .importNutritionalRequirementsFromFileUI()
-                                                                        } catch (e: Exception) {
-                                                                                resultMessage =
-                                                                                        "Erreur lors de l'importation des références : ${e.message}"
-                                                                        }
+                                                                                                                                } catch (e: Exception) {
+                                                                // Les erreurs sont gérées par le ViewModel
+                                                        }
                                                                 },
                                                                 colors =
                                                                         ButtonDefaults.buttonColors(
@@ -994,385 +756,29 @@ fun SettingsView(
                                                 }
                                         }
                                 }
-                                SettingsSection.ADMINISTRATION -> {
-                                        // Section pour l'administration de la base de données
-                                        Section(title = "Administration de la base de données") {
-                                                Column(
-                                                        verticalArrangement =
-                                                                Arrangement.spacedBy(16.dp)
-                                                ) {
-                                                        Button(
-                                                                onClick = {
-                                                                        isDialogVisible = true
-                                                                },
-                                                                colors =
-                                                                        ButtonDefaults.buttonColors(
-                                                                                backgroundColor =
-                                                                                        VetNutriColors
-                                                                                                .Error,
-                                                                                contentColor =
-                                                                                        Color.White
-                                                                        ),
-                                                                modifier = Modifier.fillMaxWidth()
-                                                        ) {
-                                                                Text(
-                                                                        "Vider la base de données des aliments"
-                                                                )
-                                                        }
-
-                                                        // Nouveau bouton pour vider la base de
-                                                        // données des animaux
-                                                        Button(
-                                                                onClick = {
-                                                                        isAnimalDeleteDialogVisible =
-                                                                                true
-                                                                },
-                                                                colors =
-                                                                        ButtonDefaults.buttonColors(
-                                                                                backgroundColor =
-                                                                                        VetNutriColors
-                                                                                                .Error,
-                                                                                contentColor =
-                                                                                        Color.White
-                                                                        ),
-                                                                modifier = Modifier.fillMaxWidth()
-                                                        ) {
-                                                                Text(
-                                                                        "Vider la base de données des animaux"
-                                                                )
-                                                        }
-
-                                                        // Boutons pour supprimer les références
-                                                        // nutritionnelles, équations et
-                                                        // bibliographies
-                                                        Button(
-                                                                onClick = {
-                                                                        isReferenceDeleteDialogVisible =
-                                                                                true
-                                                                },
-                                                                colors =
-                                                                        ButtonDefaults.buttonColors(
-                                                                                backgroundColor =
-                                                                                        VetNutriColors
-                                                                                                .Error,
-                                                                                contentColor =
-                                                                                        Color.White
-                                                                        ),
-                                                                modifier = Modifier.fillMaxWidth()
-                                                        ) {
-                                                                Text(
-                                                                        "Vider la base de données des références nutritionnelles"
-                                                                )
-                                                        }
-
-                                                        Button(
-                                                                onClick = {
-                                                                        isEquationDeleteDialogVisible =
-                                                                                true
-                                                                },
-                                                                colors =
-                                                                        ButtonDefaults.buttonColors(
-                                                                                backgroundColor =
-                                                                                        VetNutriColors
-                                                                                                .Error,
-                                                                                contentColor =
-                                                                                        Color.White
-                                                                        ),
-                                                                modifier = Modifier.fillMaxWidth()
-                                                        ) {
-                                                                Text(
-                                                                        "Vider la base de données des équations"
-                                                                )
-                                                        }
-
-                                                        Button(
-                                                                onClick = {
-                                                                        isBiblioDeleteDialogVisible =
-                                                                                true
-                                                                },
-                                                                colors =
-                                                                        ButtonDefaults.buttonColors(
-                                                                                backgroundColor =
-                                                                                        VetNutriColors
-                                                                                                .Error,
-                                                                                contentColor =
-                                                                                        Color.White
-                                                                        ),
-                                                                modifier = Modifier.fillMaxWidth()
-                                                        ) {
-                                                                Text(
-                                                                        "Vider la base de données des bibliographies"
-                                                                )
-                                                        }
-                                                }
-                                        }
-                                }
+                        3 -> { // Recettes
+                            RecipeEditView(
+                                viewModel = RecipeEditViewModel(
+                                    recipeRepository = viewModel.recipeRepository ?: throw IllegalStateException("RecipeRepository not available"),
+                                    foodRepository = viewModel.foodRepository
+                                ),
+                                foodRepository = viewModel.foodRepository,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                        4 -> { // Administration
+                            AdministrationSettings(
+                                viewModel = viewModel,
+                                onAnimalListRefresh = onAnimalListRefresh,
+                                onFoodListRefresh = onFoodListRefresh,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
                         }
                 }
         }
 
-        // Dialogue de confirmation pour vider la base de données
-        if (isDialogVisible) {
-                AlertDialog(
-                        onDismissRequest = { isDialogVisible = false },
-                        title = { Text("Confirmation") },
-                        text = {
-                                Text(
-                                        "Êtes-vous sûr de vouloir supprimer TOUS les aliments de la base de données ? Cette action est irréversible."
-                                )
-                        },
-                        confirmButton = {
-                                Button(
-                                        onClick = {
-                                                isDialogVisible = false
-                                                isProcessing = true
-                                                coroutineScope.launch {
-                                                        try {
-                                                                val count =
-                                                                        viewModel.clearAllFoods()
-                                                                resultMessage =
-                                                                        "$count aliments ont été supprimés avec succès."
-                                                                // Rafraîchir la liste des aliments
-                                                                onFoodListRefresh()
-                                                        } catch (e: Exception) {
-                                                                resultMessage =
-                                                                        "Erreur lors de la suppression : ${e.message}"
-                                                        } finally {
-                                                                isProcessing = false
-                                                        }
-                                                }
-                                        },
-                                        colors =
-                                                ButtonDefaults.buttonColors(
-                                                        backgroundColor = VetNutriColors.Error,
-                                                        contentColor = Color.White
-                                                )
-                                ) { Text("Oui, vider la base") }
-                        },
-                        dismissButton = {
-                                Button(onClick = { isDialogVisible = false }) { Text("Annuler") }
-                        }
-                )
-        }
 
-        // Dialogue de confirmation pour vider la base des animaux
-        if (isAnimalDeleteDialogVisible) {
-                AlertDialog(
-                        onDismissRequest = { isAnimalDeleteDialogVisible = false },
-                        title = { Text("Confirmation") },
-                        text = {
-                                Text(
-                                        "Êtes-vous sûr de vouloir supprimer TOUS les animaux de la base de données ? Cette action est irréversible."
-                                )
-                        },
-                        confirmButton = {
-                                Button(
-                                        onClick = {
-                                                isAnimalDeleteDialogVisible = false
-                                                isProcessing = true
-                                                coroutineScope.launch {
-                                                        try {
-                                                                val count =
-                                                                        viewModel.clearAllAnimals()
-                                                                resultMessage =
-                                                                        "$count animaux ont été supprimés avec succès."
-                                                                // Rafraîchir la liste des animaux
-                                                                onAnimalListRefresh()
-                                                        } catch (e: Exception) {
-                                                                resultMessage =
-                                                                        "Erreur lors de la suppression : ${e.message}"
-                                                        } finally {
-                                                                isProcessing = false
-                                                        }
-                                                }
-                                        },
-                                        colors =
-                                                ButtonDefaults.buttonColors(
-                                                        backgroundColor = VetNutriColors.Error,
-                                                        contentColor = Color.White
-                                                )
-                                ) { Text("Oui, vider la base") }
-                        },
-                        dismissButton = {
-                                Button(onClick = { isAnimalDeleteDialogVisible = false }) {
-                                        Text("Annuler")
-                                }
-                        }
-                )
-        }
-
-        // Dialogue de confirmation pour vider la base des références nutritionnelles
-        if (isReferenceDeleteDialogVisible) {
-                AlertDialog(
-                        onDismissRequest = { isReferenceDeleteDialogVisible = false },
-                        title = { Text("Confirmation") },
-                        text = {
-                                Text(
-                                        "Êtes-vous sûr de vouloir supprimer TOUTES les références nutritionnelles de la base de données ? Cette action est irréversible."
-                                )
-                        },
-                        confirmButton = {
-                                Button(
-                                        onClick = {
-                                                isReferenceDeleteDialogVisible = false
-                                                isProcessing = true
-                                                coroutineScope.launch {
-                                                        try {
-                                                                // Suppression robuste : même si une
-                                                                // référence est corrompue,
-                                                                // continuer
-                                                                var refCount = 0
-                                                                try {
-                                                                        refCount =
-                                                                                viewModel
-                                                                                        .clearAllReferences()
-                                                                } catch (e: Exception) {}
-                                                                var eqCount = 0
-                                                                try {
-                                                                        eqCount =
-                                                                                viewModel
-                                                                                        .clearAllEquations()
-                                                                } catch (e: Exception) {}
-                                                                var bibCount = 0
-                                                                try {
-                                                                        bibCount =
-                                                                                viewModel
-                                                                                        .clearAllBiblioRefs()
-                                                                } catch (e: Exception) {}
-                                                                resultMessage =
-                                                                        "$refCount références nutritionnelles, $eqCount équations et $bibCount bibliographies ont été supprimées avec succès."
-                                                        } catch (e: Exception) {
-                                                                e.printStackTrace()
-                                                                resultMessage =
-                                                                        "Erreur lors de la suppression : ${e.message}"
-                                                        } finally {
-                                                                isProcessing = false
-                                                        }
-                                                }
-                                        },
-                                        colors =
-                                                ButtonDefaults.buttonColors(
-                                                        backgroundColor = VetNutriColors.Error,
-                                                        contentColor = Color.White
-                                                )
-                                ) { Text("Oui, vider la base") }
-                        },
-                        dismissButton = {
-                                Button(onClick = { isReferenceDeleteDialogVisible = false }) {
-                                        Text("Annuler")
-                                }
-                        }
-                )
-        }
-
-        // Dialogue de confirmation pour vider la base des équations
-        if (isEquationDeleteDialogVisible) {
-                AlertDialog(
-                        onDismissRequest = { isEquationDeleteDialogVisible = false },
-                        title = { Text("Confirmation") },
-                        text = {
-                                Text(
-                                        "Êtes-vous sûr de vouloir supprimer TOUTES les équations de la base de données ? Cette action est irréversible."
-                                )
-                        },
-                        confirmButton = {
-                                Button(
-                                        onClick = {
-                                                isEquationDeleteDialogVisible = false
-                                                isProcessing = true
-                                                coroutineScope.launch {
-                                                        try {
-                                                                val count =
-                                                                        viewModel
-                                                                                .clearAllEquations()
-                                                                resultMessage =
-                                                                        "$count équations ont été supprimées avec succès."
-                                                        } catch (e: Exception) {
-                                                                e.printStackTrace()
-                                                                resultMessage =
-                                                                        "Erreur lors de la suppression : ${e.message}"
-                                                        } finally {
-                                                                isProcessing = false
-                                                        }
-                                                }
-                                        },
-                                        colors =
-                                                ButtonDefaults.buttonColors(
-                                                        backgroundColor = VetNutriColors.Error,
-                                                        contentColor = Color.White
-                                                )
-                                ) { Text("Oui, vider la base") }
-                        },
-                        dismissButton = {
-                                Button(onClick = { isEquationDeleteDialogVisible = false }) {
-                                        Text("Annuler")
-                                }
-                        }
-                )
-        }
-
-        // Dialogue de confirmation pour vider la base des bibliographies
-        if (isBiblioDeleteDialogVisible) {
-                AlertDialog(
-                        onDismissRequest = { isBiblioDeleteDialogVisible = false },
-                        title = { Text("Confirmation") },
-                        text = {
-                                Text(
-                                        "Êtes-vous sûr de vouloir supprimer TOUTES les références bibliographiques de la base de données ? Cette action est irréversible."
-                                )
-                        },
-                        confirmButton = {
-                                Button(
-                                        onClick = {
-                                                isBiblioDeleteDialogVisible = false
-                                                isProcessing = true
-                                                coroutineScope.launch {
-                                                        try {
-                                                                val count =
-                                                                        viewModel
-                                                                                .clearAllBiblioRefs()
-                                                                resultMessage =
-                                                                        "$count références bibliographiques ont été supprimées avec succès."
-                                                        } catch (e: Exception) {
-                                                                e.printStackTrace()
-                                                                resultMessage =
-                                                                        "Erreur lors de la suppression : ${e.message}"
-                                                        } finally {
-                                                                isProcessing = false
-                                                        }
-                                                }
-                                        },
-                                        colors =
-                                                ButtonDefaults.buttonColors(
-                                                        backgroundColor = VetNutriColors.Error,
-                                                        contentColor = Color.White
-                                                )
-                                ) { Text("Oui, vider la base") }
-                        },
-                        dismissButton = {
-                                Button(onClick = { isBiblioDeleteDialogVisible = false }) {
-                                        Text("Annuler")
-                                }
-                        }
-                )
-        }
-
-        // Affichage du résultat
-        if (resultMessage.isNotEmpty()) {
-                Snackbar(
-                        modifier = Modifier.padding(16.dp),
-                        action = { TextButton(onClick = { resultMessage = "" }) { Text("OK") } }
-                ) { Text(resultMessage) }
-        }
-
-        // Indicateur de progression pendant le traitement
-        if (isProcessing) {
-                Box(
-                        modifier =
-                                Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f)),
-                        contentAlignment = Alignment.Center
-                ) { CircularProgressIndicator(color = VetNutriColors.Primary) }
-        }
 
         // Dialogue d'alerte pour l'importation des références nutritionnelles
         if (showImportDialog) {
@@ -1417,6 +823,7 @@ enum class SettingsSection(val title: String) {
         INTERFACE("Interface"),
         PREFERENCES("Préférences"),
         IMPORTATION("Importation"),
+        RECIPES("Recettes"),
         ADMINISTRATION("Administration")
 }
 
