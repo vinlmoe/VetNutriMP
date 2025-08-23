@@ -154,7 +154,7 @@ class RecipeEditViewModel(
      */
     fun startCreatingRecipe() {
         _editingRecipe.value = Ration(
-            uuid = UUID.randomUUID().toString(),
+            uuid = "temp_${UUID.randomUUID().toString()}", // UUID temporaire pour distinguer des nouvelles recettes
             name = "",
             espece = "CHIEN", // Espèce par défaut
             description = "",
@@ -224,6 +224,14 @@ class RecipeEditViewModel(
             try {
                 val quantityValue = quantity.toDouble()
                 if (quantityValue > 0) {
+                    // Vérifier si l'aliment n'est pas déjà dans la liste
+                    val existingAliment = _selectedIngredients.find { it.refAlimUnif == aliment.uuid }
+                    if (existingAliment != null) {
+                        println("🔍 DEBUG RecipeEditViewModel: Aliment ${aliment.nom} déjà présent dans la recette")
+                        _message.value = "Cet aliment est déjà dans la recette"
+                        return
+                    }
+                    
                     val newAlimentRation = AlimentRation(
                         uuid = UUID.randomUUID().toString(),
                         uuidUnif = aliment.uuid,
@@ -239,6 +247,7 @@ class RecipeEditViewModel(
                     _alimentToAdd.value = null
                     _quantityToAdd.value = "100"
                     _targetToAdd.value = 0
+                    println("🔍 DEBUG RecipeEditViewModel: Aliment ${aliment.nom} ajouté à la recette")
                 }
             } catch (e: NumberFormatException) {
                 _quantityError.value = true
@@ -296,6 +305,12 @@ class RecipeEditViewModel(
             return
         }
         
+        // Protection contre les appels multiples
+        if (_isLoading.value) {
+            println("🔍 DEBUG RecipeEditViewModel: Sauvegarde déjà en cours, ignoré")
+            return
+        }
+        
         CoroutineScope(AppDispatchers.IO).launch {
             try {
                 _isLoading.value = true
@@ -311,7 +326,11 @@ class RecipeEditViewModel(
                     alimentMutableList = _selectedIngredients.toMutableList()
                 )
                 
-                if (_editingRecipe.value?.uuid != null) {
+                // Vérifier si c'est une nouvelle recette ou une modification
+                val isNewRecipe = _editingRecipe.value?.uuid?.startsWith("temp_") == true || 
+                                 _recipes.none { it.uuid == _editingRecipe.value?.uuid }
+                
+                if (!isNewRecipe && _editingRecipe.value?.uuid != null) {
                     // Modification d'une recette existante
                     recipeRepository.renameRecipe(recipeToSave.uuid, recipeToSave.name)
                     recipeRepository.replaceAliments(recipeToSave.uuid, recipeToSave.alimentMutableList)

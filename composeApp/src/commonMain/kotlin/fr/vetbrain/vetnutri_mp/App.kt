@@ -68,7 +68,7 @@ fun App(appDatabase: AppDatabase) {
     }
 
     // Repository pour les recettes
-    val recipeRepository = remember { RecipeRepository(appDatabase.recipeDao()) }
+    val recipeRepository = remember { RecipeRepository(appDatabase.recipeDao(), appDatabase.foodDao()) }
 
     // Création du repository pour les références bibliographiques - version database directe
     val biblioRefRepository = remember {

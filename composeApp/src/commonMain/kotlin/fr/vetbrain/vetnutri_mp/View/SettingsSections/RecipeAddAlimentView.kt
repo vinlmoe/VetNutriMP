@@ -4,6 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
@@ -88,19 +89,50 @@ fun RecipeAddAlimentView(
         filtered
     }
     
-    Column(modifier = modifier.fillMaxSize()) {
-        // Barre de navigation
-        TopAppBar(
-            title = { Text("Ajouter un aliment à la recette") },
-            navigationIcon = {
-                IconButton(onClick = onNavigateBack) {
-                    Icon(Icons.Default.ArrowBack, contentDescription = "Retour")
-                }
-            },
-            backgroundColor = VetNutriColors.Primary,
-            contentColor = VetNutriColors.OnPrimary
-        )
-        
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Ajouter un aliment à la recette") },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Retour")
+                    }
+                },
+                backgroundColor = VetNutriColors.Primary,
+                contentColor = VetNutriColors.OnPrimary
+            )
+        },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = {
+                    if (selectedFood != null && !quantiteError && quantite.isNotEmpty()) {
+                        selectedFood?.let { aliment ->
+                            try {
+                                val quantiteValue = quantite.toDouble()
+                                if (quantiteValue > 0) {
+                                    onAddAliment(aliment, quantiteValue)
+                                }
+                            } catch (e: NumberFormatException) {
+                                // Ignore
+                            }
+                        }
+                    }
+                },
+                backgroundColor = if (selectedFood != null && !quantiteError && quantite.isNotEmpty()) {
+                    VetNutriColors.Primary
+                } else {
+                    VetNutriColors.Primary.copy(alpha = 0.5f)
+                },
+                contentColor = VetNutriColors.OnPrimary
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "Ajouter l'aliment sélectionné",
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        }
+    ) {
         // Contenu principal - layout à deux colonnes
         Row(
             modifier = Modifier.fillMaxSize().padding(AppSizes.paddingMedium),
@@ -119,7 +151,8 @@ fun RecipeAddAlimentView(
                     modifier = Modifier.fillMaxWidth()
                 )
                 
-                // Filtres (simplifiés pour l'instant)
+               
+                // Filtres simplifiés
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
@@ -130,7 +163,8 @@ fun RecipeAddAlimentView(
                         onValueChange = { },
                         readOnly = true,
                         label = { Text("Type") },
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
+                        singleLine = true
                     )
                     
                     // Groupe d'aliment
@@ -139,14 +173,16 @@ fun RecipeAddAlimentView(
                         onValueChange = { },
                         readOnly = true,
                         label = { Text("Groupe") },
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
+                        singleLine = true
                     )
                 }
                 
                 // Liste des aliments
                 LazyColumn(
                     modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    state = rememberLazyListState()
                 ) {
                     items(filteredFoods) { aliment ->
                         AlimentListItem(
@@ -175,51 +211,23 @@ fun RecipeAddAlimentView(
                         )
                     }
                 } else {
-                    AlimentDetailsPanel(
-                        aliment = selectedFood!!,
-                        quantite = quantite,
-                        onQuantiteChange = { newQuantite ->
-                            quantite = newQuantite
-                            quantiteError = try {
-                                newQuantite.toDouble() <= 0
-                            } catch (e: NumberFormatException) {
-                                true
-                            }
-                        },
-                        quantiteError = quantiteError
-                    )
-                }
-            }
-        }
-        
-        // Bouton d'ajout flottant en bas à droite
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.BottomEnd
-        ) {
-            if (selectedFood != null && !quantiteError && quantite.isNotEmpty()) {
-                FloatingActionButton(
-                    onClick = {
-                        selectedFood?.let { aliment ->
-                            try {
-                                val quantiteValue = quantite.toDouble()
-                                if (quantiteValue > 0) {
-                                    onAddAliment(aliment, quantiteValue)
+                    Box(
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        AlimentDetailsPanel(
+                            aliment = selectedFood!!,
+                            quantite = quantite,
+                            onQuantiteChange = { newQuantite ->
+                                quantite = newQuantite
+                                quantiteError = try {
+                                    newQuantite.toDouble() <= 0
+                                } catch (e: NumberFormatException) {
+                                    true
                                 }
-                            } catch (e: NumberFormatException) {
-                                // Ignore
-                            }
-                        }
-                    },
-                    backgroundColor = VetNutriColors.Primary,
-                    contentColor = VetNutriColors.OnPrimary,
-                    modifier = Modifier.padding(AppSizes.paddingLarge)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "Ajouter l'aliment",
-                        modifier = Modifier.size(24.dp)
-                    )
+                            },
+                            quantiteError = quantiteError
+                        )
+                    }
                 }
             }
         }
@@ -235,45 +243,57 @@ private fun AlimentListItem(aliment: AlimentEv, isSelected: Boolean, onClick: ()
         backgroundColor = if (isSelected) VetNutriColors.Primary.copy(alpha = 0.1f) else MaterialTheme.colors.surface
     ) {
         Column(modifier = Modifier.padding(AppSizes.paddingMedium)) {
+            // Nom de l'aliment
             Text(
                 text = aliment.nom ?: "Sans nom",
                 style = MaterialTheme.typography.subtitle1,
                 fontWeight = FontWeight.Bold
             )
             
-            if (!aliment.brand.isNullOrEmpty()) {
-                Text(
-                    text = aliment.brand!!,
-                    style = MaterialTheme.typography.body2,
-                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
-                )
+            // Marque et gamme sur la même ligne
+            if (!aliment.brand.isNullOrEmpty() || !aliment.gamme.isNullOrEmpty()) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    aliment.brand?.let {
+                        Text(
+                            text = it,
+                            style = MaterialTheme.typography.body2,
+                            color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f),
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    aliment.gamme?.let {
+                        Text(
+                            text = it,
+                            style = MaterialTheme.typography.caption,
+                            color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f),
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
             }
             
-            if (!aliment.gamme.isNullOrEmpty()) {
-                Text(
-                    text = "Gamme: ${aliment.gamme}",
-                    style = MaterialTheme.typography.caption,
-                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
-                )
-            }
-            
-            // Afficher quelques infos clés
-            Row(horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)) {
-                val typeText = aliment.typeAliment?.takeIf { it != FoodKind.ALL }?.translateEnum()
-                val groupText = aliment.group?.takeIf { it != GroupAlim.ALL }?.translateEnum()
-                
-                typeText?.let {
+            // Type et groupe sur la même ligne
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                aliment.typeAliment?.takeIf { it != FoodKind.ALL }?.let { type ->
                     Text(
-                        text = it,
+                        text = type.translateEnum(),
                         style = MaterialTheme.typography.caption,
-                        color = VetNutriColors.Primary
+                        color = VetNutriColors.Primary,
+                        modifier = Modifier.weight(1f)
                     )
                 }
-                groupText?.let {
+                aliment.group?.takeIf { it != GroupAlim.ALL }?.let { group ->
                     Text(
-                        text = it,
+                        text = group.translateEnum(),
                         style = MaterialTheme.typography.caption,
-                        color = VetNutriColors.Primary
+                        color = VetNutriColors.Primary,
+                        modifier = Modifier.weight(1f)
                     )
                 }
             }
@@ -289,41 +309,45 @@ private fun AlimentDetailsPanel(
     onQuantiteChange: (String) -> Unit,
     quantiteError: Boolean
 ) {
-    Column(
+    LazyColumn(
         modifier = Modifier.fillMaxSize()
-            .padding(AppSizes.paddingMedium)
-            .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
+            .padding(AppSizes.paddingMedium),
+        verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall),
+        state = rememberLazyListState()
     ) {
-        Text(
-            text = "Détails de l'aliment",
-            style = MaterialTheme.typography.h6,
-            color = VetNutriColors.Primary
-        )
+        item {
+            Text(
+                text = "Détails de l'aliment",
+                style = MaterialTheme.typography.h6,
+                color = VetNutriColors.Primary
+            )
+        }
         
-        Divider()
+        item { Divider() }
         
         // Informations générales
-        Text(
-            text = aliment.nom ?: "Sans nom",
-            style = MaterialTheme.typography.h6,
-            fontWeight = FontWeight.Bold
-        )
+        item {
+            Text(
+                text = aliment.nom ?: "Sans nom",
+                style = MaterialTheme.typography.h6,
+                fontWeight = FontWeight.Bold
+            )
+        }
         
         if (!aliment.brand.isNullOrEmpty()) {
-            DetailRow("Marque", aliment.brand!!)
+            item { DetailRow("Marque", aliment.brand!!) }
         }
         
         if (!aliment.gamme.isNullOrEmpty()) {
-            DetailRow("Gamme", aliment.gamme!!)
+            item { DetailRow("Gamme", aliment.gamme!!) }
         }
         
         aliment.typeAliment?.let { type ->
-            DetailRow("Type", type.translateEnum())
+            item { DetailRow("Type", type.translateEnum()) }
         }
         
         aliment.group?.let { group ->
-            DetailRow("Groupe", group.translateEnum())
+            item { DetailRow("Groupe", group.translateEnum()) }
         }
         
         // Espèces ciblées
@@ -331,7 +355,7 @@ private fun AlimentDetailsPanel(
             .filter { it != Espece.CH }
             .map { it.translateEnum() }
         if (species.isNotEmpty()) {
-            DetailRow("Espèces", species.joinToString(", "))
+            item { DetailRow("Espèces", species.joinToString(", ")) }
         }
         
         // Indications
@@ -339,40 +363,46 @@ private fun AlimentDetailsPanel(
             .filter { it != AlimIndic.ALL && it != AlimIndic.AUTRE }
             .map { it.translateEnum() }
         if (indications.isNotEmpty()) {
-            DetailRow("Indications", indications.joinToString(", "))
+            item { DetailRow("Indications", indications.joinToString(", ")) }
         }
         
         if (!aliment.ingredients.isNullOrEmpty()) {
-            DetailRow("Ingrédients", aliment.ingredients!!)
+            item { DetailRow("Ingrédients", aliment.ingredients!!) }
         }
         
-        Divider()
+        item { Divider() }
         
         // Section quantité
-        Text(
-            text = "Quantité à ajouter",
-            style = MaterialTheme.typography.subtitle1,
-            fontWeight = FontWeight.Bold
-        )
-        
-        BasicAppTextField(
-            value = quantite,
-            onValueChange = onQuantiteChange,
-            placeholder = "Quantité (g)",
-            modifier = Modifier.fillMaxWidth(),
-            isError = quantiteError,
-            errorMessage = if (quantiteError) "Veuillez entrer une quantité valide > 0" else null
-        )
-        
-        // Informations nutritionnelles principales
-        if (aliment.valMap.isNotEmpty()) {
-            Divider()
-            
+        item {
             Text(
-                text = "Composition nutritionnelle (pour 100g)",
+                text = "Quantité à ajouter",
                 style = MaterialTheme.typography.subtitle1,
                 fontWeight = FontWeight.Bold
             )
+        }
+        
+        item {
+            BasicAppTextField(
+                value = quantite,
+                onValueChange = onQuantiteChange,
+                placeholder = "Quantité (g)",
+                modifier = Modifier.fillMaxWidth(),
+                isError = quantiteError,
+                errorMessage = if (quantiteError) "Veuillez entrer une quantité valide > 0" else null
+            )
+        }
+        
+        // Informations nutritionnelles principales
+        if (aliment.valMap.isNotEmpty()) {
+            item { Divider() }
+            
+            item {
+                Text(
+                    text = "Composition nutritionnelle (pour 100g)",
+                    style = MaterialTheme.typography.subtitle1,
+                    fontWeight = FontWeight.Bold
+                )
+            }
             
             val nutrientsToShow = listOf(
                 "PROTEINE", "LIPIDE", "ENA", "CELLULOSE", "CENDRE", "HUMIDITE"
@@ -383,10 +413,12 @@ private fun AlimentDetailsPanel(
                 if (nutrient != null) {
                     val value = aliment.valMap[nutrient]
                     if (value != null) {
-                        DetailRow(
-                            nutrient.label,
-                            "${TextUtils.formatDecimal(value.value.toDouble(), 1)} ${value.unit ?: ""}"
-                        )
+                        item {
+                            DetailRow(
+                                nutrient.label,
+                                "${TextUtils.formatDecimal(value.value.toDouble(), 1)} ${value.unit ?: ""}"
+                            )
+                        }
                     }
                 }
             }
