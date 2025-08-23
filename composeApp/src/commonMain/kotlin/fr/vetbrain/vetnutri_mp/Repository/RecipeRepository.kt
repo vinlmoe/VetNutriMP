@@ -3,8 +3,10 @@ package fr.vetbrain.vetnutri_mp.Repository
 import fr.vetbrain.vetnutri_mp.Data.AlimentRation
 import fr.vetbrain.vetnutri_mp.Data.Ration
 import fr.vetbrain.vetnutri_mp.DataBase.AlimentRecetteEntity
+import fr.vetbrain.vetnutri_mp.DataBase.FoodDao
 import fr.vetbrain.vetnutri_mp.DataBase.RecetteEntity
 import fr.vetbrain.vetnutri_mp.DataBase.RecipeDao
+import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toAlimentEv
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import kotlinx.coroutines.withContext
 
@@ -12,7 +14,10 @@ import kotlinx.coroutines.withContext
  * Repository pour gérer les recettes persistantes (listes d'aliments réutilisables). Une recette
  * est analogue à une ration mais indépendante de toute consultation, et sans flags.
  */
-class RecipeRepository(private val recipeDao: RecipeDao) {
+class RecipeRepository(
+    private val recipeDao: RecipeDao,
+    private val foodDao: FoodDao
+) {
     suspend fun createRecipe(name: String, espece: String?, description: String?): Ration {
         return withContext(AppDispatchers.IO) {
             val uuid: String = fr.vetbrain.vetnutri_mp.Utils.genUUID()
@@ -70,7 +75,7 @@ class RecipeRepository(private val recipeDao: RecipeDao) {
                                         description = recipe.description ?: "",
                                         alimentMutableList =
                                                 aliments
-                                                        .map { it.toDataForRecipe() }
+                                                        .map { it.toDataForRecipeWithDetails() }
                                                         .toMutableList()
                                 )
                         println(
@@ -201,6 +206,40 @@ class RecipeRepository(private val recipeDao: RecipeDao) {
         println("🔍 DEBUG RecipeRepository: - refAlimUnif: ${result.refAlimUnif}")
         println("🔍 DEBUG RecipeRepository: - quantite: ${result.quantite}")
         println("🔍 DEBUG RecipeRepository: - refRation: ${result.refRation}")
+
+        return result
+    }
+
+    private suspend fun AlimentRecetteEntity.toDataForRecipeWithDetails(): AlimentRation {
+        println("🔍 DEBUG RecipeRepository: Conversion AlimentRecetteEntity vers AlimentRation avec détails")
+        println("🔍 DEBUG RecipeRepository: - UUID entité recette: ${this.uuid}")
+        println("🔍 DEBUG RecipeRepository: - refAlimUnif (aliment): ${this.refAlimUnif}")
+        println("🔍 DEBUG RecipeRepository: - refRecipe: ${this.refRecipe}")
+        println("🔍 DEBUG RecipeRepository: - quantity: ${this.quantity}")
+        println("🔍 DEBUG RecipeRepository: - refTarget: ${this.refTarget}")
+
+        // Charger les détails complets de l'aliment depuis la base de données
+        val foodEntity = foodDao.getFoodById(this.refAlimUnif)
+        val alimentDetails = foodEntity?.toAlimentEv()
+        println("🔍 DEBUG RecipeRepository: Détails aliment chargés: ${alimentDetails?.nom ?: "NON TROUVÉ"}")
+
+        val result =
+                AlimentRation(
+                        uuid = fr.vetbrain.vetnutri_mp.Utils.genUUID(), // UUID temporaire
+                        uuidUnif = this.refAlimUnif,
+                        quantite = this.quantity,
+                        proportion = 0.0,
+                        aliment = alimentDetails, // Aliment complet avec tous les détails
+                        refAlimUnif = this.refAlimUnif,
+                        refRation = null,
+                        refTarget = this.refTarget
+                )
+
+        println("🔍 DEBUG RecipeRepository: AlimentRation créé avec détails:")
+        println("🔍 DEBUG RecipeRepository: - UUID temporaire: ${result.uuid}")
+        println("🔍 DEBUG RecipeRepository: - refAlimUnif: ${result.refAlimUnif}")
+        println("🔍 DEBUG RecipeRepository: - quantite: ${result.quantite}")
+        println("🔍 DEBUG RecipeRepository: - Nom aliment: ${result.aliment?.nom ?: "NULL"}")
 
         return result
     }

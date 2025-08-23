@@ -15,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import fr.vetbrain.vetnutri_mp.Components.BasicAppTextField
@@ -49,6 +50,8 @@ fun RecipeEditView(
     val showDeleteConfirmation = viewModel.showDeleteConfirmation.value
     val showSaveConfirmation = viewModel.showSaveConfirmation.value
     
+
+    
     // État pour afficher la vue d'ajout d'aliment
     var showAddAlimentView by remember { mutableStateOf(false) }
     
@@ -68,41 +71,97 @@ fun RecipeEditView(
             modifier = modifier
         )
     } else {
-        Column(
-            modifier = modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
-        ) {
-            // En-tête avec actions
-            RecipeEditHeader(
-                viewModel = viewModel,
-                isEditMode = isEditMode,
-                canSave = viewModel.canSaveRecipe(),
-                hasChanges = viewModel.hasRecipeChanged()
-            )
-            
-            // Message d'information/erreur
-            message?.let { msg ->
-                MessageCard(
-                    message = msg,
-                    onDismiss = { viewModel.clearMessage() }
-                )
+        Scaffold(
+            floatingActionButton = {
+                if (isEditMode) {
+                    // Bouton de validation en mode édition
+                    FloatingActionButton(
+                        onClick = { 
+                            // Protection contre les clics multiples
+                            if (!viewModel.isLoading.value) {
+                                viewModel.showSaveConfirmation()
+                            }
+                        },
+                        backgroundColor = if (viewModel.canSaveRecipe() && !viewModel.isLoading.value) VetNutriColors.Primary else Color.Gray,
+                        modifier = Modifier.size(56.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Check,
+                            contentDescription = "Sauvegarder",
+                            tint = Color.White
+                        )
+                    }
+                } else {
+                    // Bouton d'ajout en mode liste
+                    FloatingActionButton(
+                        onClick = { 
+                            // Protection contre les clics multiples
+                            if (!viewModel.isLoading.value) {
+                                viewModel.startCreatingRecipe()
+                            }
+                        },
+                        backgroundColor = VetNutriColors.Primary,
+                        modifier = Modifier.size(56.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Add,
+                            contentDescription = "Nouvelle recette",
+                            tint = Color.White
+                        )
+                    }
+                }
             }
-            
-            if (isEditMode) {
-                // Mode édition : formulaire de recette
-                RecipeEditForm(
-                    viewModel = viewModel,
-                    editingRecipe = editingRecipe,
-                    selectedIngredients = selectedIngredients,
-                    onAddAliment = { showAddAlimentView = true },
-                    modifier = Modifier.weight(1f)
-                )
-            } else {
-                // Mode liste : affichage des recettes existantes
-                RecipeListSection(
-                    viewModel = viewModel,
-                    modifier = Modifier.weight(1f)
-                )
+        ) { paddingValues ->
+            Column(
+                modifier = modifier.fillMaxSize().padding(paddingValues),
+                verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
+            ) {
+                // En-tête simplifié (seulement en mode édition)
+                if (isEditMode) {
+                    TopAppBar(
+                        title = { 
+                            Text(
+                                text = editingRecipe?.name ?: "Nouvelle recette",
+                                style = MaterialTheme.typography.h6
+                            ) 
+                        },
+                        navigationIcon = {
+                            IconButton(onClick = { viewModel.cancelEditing() }) {
+                                Icon(
+                                    Icons.Default.ArrowBack,
+                                    contentDescription = "Retour"
+                                )
+                            }
+                        },
+                        backgroundColor = VetNutriColors.Surface,
+                        elevation = AppSizes.elevationSmall
+                    )
+                }
+                
+                // Message d'information/erreur
+                message?.let { msg ->
+                    MessageCard(
+                        message = msg,
+                        onDismiss = { viewModel.clearMessage() }
+                    )
+                }
+                
+                if (isEditMode) {
+                    // Mode édition : formulaire de recette
+                    RecipeEditForm(
+                        viewModel = viewModel,
+                        editingRecipe = editingRecipe,
+                        selectedIngredients = selectedIngredients,
+                        onAddAliment = { showAddAlimentView = true },
+                        modifier = Modifier.weight(1f)
+                    )
+                } else {
+                    // Mode liste : affichage des recettes existantes (sans titre)
+                    RecipeListSection(
+                        viewModel = viewModel,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
             }
         }
     }
@@ -122,91 +181,18 @@ fun RecipeEditView(
     if (showSaveConfirmation) {
         SaveRecipeDialog(
             onConfirm = {
-                viewModel.saveRecipe()
-                viewModel.hideSaveConfirmation()
+                // Protection contre les appels multiples
+                if (!viewModel.isLoading.value) {
+                    viewModel.saveRecipe()
+                    viewModel.hideSaveConfirmation()
+                }
             },
             onDismiss = { viewModel.hideSaveConfirmation() }
         )
     }
 }
 
-/**
- * En-tête de la vue d'édition avec actions
- */
-@Composable
-private fun RecipeEditHeader(
-    viewModel: RecipeEditViewModel,
-    isEditMode: Boolean,
-    canSave: Boolean,
-    hasChanges: Boolean,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        elevation = AppSizes.elevationSmall,
-        backgroundColor = VetNutriColors.Primary.copy(alpha = 0.1f)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(AppSizes.paddingMedium),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column {
-                Text(
-                    text = if (isEditMode) "Édition de recette" else "Gestion des recettes",
-                    style = MaterialTheme.typography.h6,
-                    color = VetNutriColors.Primary
-                )
-                if (isEditMode && hasChanges) {
-                    Text(
-                        text = "Modifications non sauvegardées",
-                        style = MaterialTheme.typography.caption,
-                        color = VetNutriColors.Secondary
-                    )
-                }
-            }
-            
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
-            ) {
-                if (isEditMode) {
-                    // Boutons en mode édition
-                    OutlinedButton(
-                        onClick = { viewModel.cancelEditing() }
-                    ) {
-                        Icon(Icons.Default.Close, contentDescription = "Annuler")
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Annuler")
-                    }
-                    
-                    Button(
-                        onClick = { viewModel.showSaveConfirmation() },
-                        enabled = canSave,
-                        colors = ButtonDefaults.buttonColors(
-                            backgroundColor = VetNutriColors.Primary
-                        )
-                    ) {
-                        Icon(Icons.Default.Save, contentDescription = "Sauvegarder")
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Sauvegarder")
-                    }
-                } else {
-                    // Bouton en mode liste
-                    Button(
-                        onClick = { viewModel.startCreatingRecipe() },
-                        colors = ButtonDefaults.buttonColors(
-                            backgroundColor = VetNutriColors.Primary
-                        )
-                    ) {
-                        Icon(Icons.Default.Add, contentDescription = "Nouvelle recette")
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Nouvelle recette")
-                    }
-                }
-            }
-        }
-    }
-}
+
 
 /**
  * Formulaire d'édition de recette
@@ -223,133 +209,71 @@ private fun RecipeEditForm(
         modifier = modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
     ) {
-        // Informations de base de la recette
-        Section(title = "Informations de la recette") {
-            Column(
+        // En-tête avec nom de la recette et bouton d'ajout
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            BasicAppTextField(
+                value = viewModel.newRecipeName.value,
+                onValueChange = { viewModel.updateRecipeName(it) },
+                placeholder = "Nom de la recette",
+                modifier = Modifier.weight(1f)
+            )
+            
+            Spacer(modifier = Modifier.width(AppSizes.paddingMedium))
+            
+            // Bouton d'ajout d'aliment (petit + comme dans AlimentsRationSection)
+            Icon(
+                imageVector = Icons.Default.Add,
+                contentDescription = "Ajouter un aliment",
+                tint = VetNutriColors.Primary,
+                modifier = Modifier
+                    .size(AppSizes.iconSizeXSmall)
+                    .clickable(
+                        onClick = onAddAliment,
+                        enabled = !viewModel.isLoading.value
+                    )
+            )
+        }
+        
+        Divider()
+        
+        // Liste des aliments de la recette (scrollable)
+        if (selectedIngredients.isNotEmpty()) {
+            LazyColumn(
+                modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
             ) {
-                BasicAppTextField(
-                    value = viewModel.newRecipeName.value,
-                    onValueChange = { viewModel.updateRecipeName(it) },
-                    placeholder = "Nom de la recette",
-                    modifier = Modifier.fillMaxWidth()
-                )
-                
+                items(selectedIngredients) { ingredient ->
+                    RecipeIngredientItem(
+                        ingredient = ingredient,
+                        onRemove = { viewModel.removeAlimentFromRecipe(ingredient) },
+                        onUpdateQuantity = { quantity ->
+                            viewModel.updateAlimentQuantity(ingredient, quantity)
+                        }
+                    )
+                }
+            }
+        } else {
+            // Message quand aucun aliment
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
                 Text(
-                    text = "Aliments dans la recette: ${selectedIngredients.size}",
-                    style = MaterialTheme.typography.body2,
-                    color = VetNutriColors.Primary
-                )
-            }
-        }
-        
-        // Section d'ajout d'aliments
-        Section(title = "Ajouter des aliments") {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
-            ) {
-                // Configuration de l'aliment à ajouter
-                AlimentAddConfiguration(
-                    viewModel = viewModel,
-                    onAddAliment = onAddAliment,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        }
-        
-        // Liste des aliments de la recette
-        if (selectedIngredients.isNotEmpty()) {
-            Section(title = "Aliments de la recette") {
-                RecipeIngredientsList(
-                    ingredients = selectedIngredients,
-                    onRemoveIngredient = { viewModel.removeAlimentFromRecipe(it) },
-                    onUpdateQuantity = { aliment, quantity ->
-                        viewModel.updateAlimentQuantity(aliment, quantity)
-                    },
-                    onUpdateTarget = { aliment, target ->
-                        viewModel.updateAlimentTarget(aliment, target)
-                    },
-                    modifier = Modifier.fillMaxWidth()
+                    text = "Aucun aliment dans cette recette\nCliquez sur le + pour en ajouter",
+                    style = MaterialTheme.typography.body1,
+                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f),
+                    textAlign = TextAlign.Center
                 )
             }
         }
     }
 }
 
-/**
- * Configuration de l'aliment à ajouter
- */
-@Composable
-private fun AlimentAddConfiguration(
-    viewModel: RecipeEditViewModel,
-    onAddAliment: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        modifier = modifier,
-        elevation = AppSizes.elevationSmall
-    ) {
-        Column(
-            modifier = Modifier.padding(AppSizes.paddingMedium),
-            verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
-        ) {
-            Text(
-                text = "Ajouter des aliments",
-                style = MaterialTheme.typography.h6,
-                color = VetNutriColors.Primary
-            )
-            
-            Text(
-                text = "Cliquez sur le bouton ci-dessous pour rechercher et ajouter des aliments à votre recette",
-                style = MaterialTheme.typography.body2,
-                color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
-            )
-            
-            Button(
-                onClick = onAddAliment,
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(
-                    backgroundColor = VetNutriColors.Primary,
-                    contentColor = VetNutriColors.OnPrimary
-                )
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Rechercher et ajouter un aliment")
-            }
-        }
-    }
-}
 
-/**
- * Liste des ingrédients de la recette
- */
-@Composable
-private fun RecipeIngredientsList(
-    ingredients: List<AlimentRation>,
-    onRemoveIngredient: (AlimentRation) -> Unit,
-    onUpdateQuantity: (AlimentRation, String) -> Unit,
-    onUpdateTarget: (AlimentRation, Int) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    LazyColumn(
-        modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
-    ) {
-        items(ingredients) { ingredient ->
-            RecipeIngredientItem(
-                ingredient = ingredient,
-                onRemove = { onRemoveIngredient(ingredient) },
-                onUpdateQuantity = { quantity -> onUpdateQuantity(ingredient, quantity) },
-                onUpdateTarget = { target -> onUpdateTarget(ingredient, target) }
-            )
-        }
-    }
-}
 
 /**
  * Élément d'ingrédient de recette
@@ -359,7 +283,6 @@ private fun RecipeIngredientItem(
     ingredient: AlimentRation,
     onRemove: () -> Unit,
     onUpdateQuantity: (String) -> Unit,
-    onUpdateTarget: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -387,28 +310,22 @@ private fun RecipeIngredientItem(
                 }
             }
             
-            // Contrôles de quantité et cible
+            // Contrôle de quantité avec label clair
             Row(
                 horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                Text(
+                    text = "Quantité (g):",
+                    style = MaterialTheme.typography.caption,
+                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f),
+                    modifier = Modifier.width(70.dp)
+                )
+                
                 BasicAppTextField(
                     value = ingredient.quantite.toString(),
                     onValueChange = onUpdateQuantity,
                     placeholder = "100",
-                    modifier = Modifier.width(80.dp)
-                )
-                
-                BasicAppTextField(
-                    value = (ingredient.refTarget ?: 0).toString(),
-                    onValueChange = { 
-                        try {
-                            onUpdateTarget(it.toInt())
-                        } catch (e: NumberFormatException) {
-                            // Ignore les valeurs invalides
-                        }
-                    },
-                    placeholder = "0",
                     modifier = Modifier.width(80.dp)
                 )
                 
@@ -439,6 +356,8 @@ private fun RecipeListSection(
     val recipes = viewModel.recipes.toList()
     val searchQuery = viewModel.searchQuery.value
     val isLoading = viewModel.isLoading.value
+    
+
     
     Column(
         modifier = modifier.fillMaxSize(),
