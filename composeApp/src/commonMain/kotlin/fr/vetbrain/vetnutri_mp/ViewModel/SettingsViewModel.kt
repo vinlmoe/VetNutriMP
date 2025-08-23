@@ -25,6 +25,7 @@ import kotlinx.serialization.json.Json
 class SettingsViewModel(
         internal val animalRepository: AnimalRepository,
         internal val foodRepository: DatabaseFoodRepository,
+        internal val recipeRepository: fr.vetbrain.vetnutri_mp.Repository.RecipeRepository? = null,
         internal val referenceEvRepository:
                 fr.vetbrain.vetnutri_mp.Repository.DatabaseReferenceEvRepository? =
                 null,

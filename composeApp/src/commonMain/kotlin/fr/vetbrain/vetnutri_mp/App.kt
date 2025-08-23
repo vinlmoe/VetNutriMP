@@ -138,6 +138,7 @@ fun App(appDatabase: AppDatabase) {
         SettingsViewModel(
                 animalRepository = animalRepository,
                 foodRepository = foodRepository,
+                recipeRepository = recipeRepository,
                 referenceEvRepository = databaseReferenceEvRepository,
                 equationRepository = equationRepository,
                 biblioRefRepository = biblioRefRepository,
