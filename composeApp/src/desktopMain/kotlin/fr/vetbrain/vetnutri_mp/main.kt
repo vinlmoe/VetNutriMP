@@ -392,7 +392,8 @@ actual fun importApiFromFile(viewModel: SettingsViewModel) {
                             equationRepository = viewModel.equationRepository,
                             referenceRepository = viewModel.referenceEvRepository,
                             biblioRepository = viewModel.biblioRefRepository,
-                            consultationRepository = viewModel.consultationRepository
+                            consultationRepository = viewModel.consultationRepository,
+                            recipeRepository = viewModel.recipeRepository
                     )
             // Découper l'import en étapes et mettre à jour la progression/logs via callbacks
             // simples

@@ -14,6 +14,7 @@ data class ApiEnvelope(
         val animals: List<AnimalApi>,
         val foods: List<FoodApi> = emptyList(),
         val rations: List<RationApi> = emptyList(),
+        val recipes: List<RecipeApi> = emptyList(),
         val equations: List<EquationApi> = emptyList(),
         val biblioRefs: List<BiblioRefApi> = emptyList(),
         val references: List<ReferenceEvApi> = emptyList()

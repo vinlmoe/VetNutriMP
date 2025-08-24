@@ -12,7 +12,6 @@ import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Menu
 import androidx.compose.runtime.*
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -27,15 +26,14 @@ import fr.vetbrain.vetnutri_mp.Enumer.*
 import fr.vetbrain.vetnutri_mp.Repository.ExportImportRepository
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
-import fr.vetbrain.vetnutri_mp.View.SettingsComponents.SettingsTabs
 import fr.vetbrain.vetnutri_mp.View.SettingsComponents.SettingsHeader
-import fr.vetbrain.vetnutri_mp.View.SettingsSections.InterfaceSettings
+import fr.vetbrain.vetnutri_mp.View.SettingsComponents.SettingsTabs
 import fr.vetbrain.vetnutri_mp.View.SettingsSections.AdministrationSettings
+import fr.vetbrain.vetnutri_mp.View.SettingsSections.InterfaceSettings
 import fr.vetbrain.vetnutri_mp.View.SettingsSections.RecipeEditView
 import fr.vetbrain.vetnutri_mp.ViewModel.ImportViewModel
-import fr.vetbrain.vetnutri_mp.ViewModel.SettingsViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.RecipeEditViewModel
-
+import fr.vetbrain.vetnutri_mp.ViewModel.SettingsViewModel
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 
@@ -112,7 +110,6 @@ fun SettingsView(
         onSpeciesClick: (fr.vetbrain.vetnutri_mp.Enumer.Espece) -> Unit = {}
 ) {
 
-
         // État pour le dialogue d'alerte d'importation des références nutritionnelles
         var showImportDialog by remember { mutableStateOf(false) }
         var importDialogMessage by remember { mutableStateOf("") }
@@ -144,32 +141,23 @@ fun SettingsView(
                 }
         }
 
-
-
         Column(modifier = modifier.fillMaxSize()) {
                 // En-tête avec bouton retour
                 SettingsHeader(onBack = onBack)
-                
+
                 // Navigation par onglets
-                SettingsTabs(
-                    selectedTab = selectedTab,
-                    onTabSelected = { selectedTab = it }
-                )
-                
+                SettingsTabs(selectedTab = selectedTab, onTabSelected = { selectedTab = it })
+
                 // Contenu de l'onglet sélectionné
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(AppSizes.paddingMedium)
-                ) {
-                    when (selectedTab) {
-                        0 -> { // Interface
-                            InterfaceSettings(
-                                viewModel = viewModel,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
-                        1 -> { // Préférences
+                Box(modifier = Modifier.fillMaxSize().padding(AppSizes.paddingMedium)) {
+                        when (selectedTab) {
+                                0 -> { // Interface
+                                        InterfaceSettings(
+                                                viewModel = viewModel,
+                                                modifier = Modifier.fillMaxWidth()
+                                        )
+                                }
+                                1 -> { // Préférences
                                         // Section pour les préférences
                                         Section(title = "Préférences de l'application") {
                                                 PreferencesSection(
@@ -178,7 +166,7 @@ fun SettingsView(
                                                 )
                                         }
                                 }
-                        2 -> { // Importation
+                                2 -> { // Importation
                                         // Section pour l'importation des données
                                         Section(title = "Importation des données") {
                                                 Column(
@@ -201,6 +189,9 @@ fun SettingsView(
                                                                 mutableStateOf(true)
                                                         }
                                                         var includeRations by remember {
+                                                                mutableStateOf(true)
+                                                        }
+                                                        var includeRecipes by remember {
                                                                 mutableStateOf(true)
                                                         }
                                                         var selectedAnimalIds by remember {
@@ -326,6 +317,18 @@ fun SettingsView(
                                                                 )
                                                                 Text("Inclure rations (sommaire)")
                                                         }
+                                                        Row(
+                                                                verticalAlignment =
+                                                                        Alignment.CenterVertically
+                                                        ) {
+                                                                Checkbox(
+                                                                        checked = includeRecipes,
+                                                                        onCheckedChange = {
+                                                                                includeRecipes = it
+                                                                        }
+                                                                )
+                                                                Text("Inclure recettes")
+                                                        }
                                                         // Affichage du message de résultat
                                                         // d'importation des références
                                                         // nutritionnelles
@@ -446,58 +449,70 @@ fun SettingsView(
                                                                 onClick = {
                                                                         coroutineScope.launch {
                                                                                 try {
-                                                                                                                                                val exportRepo =
-                                                                ExportImportRepository(
-                                                                        animalRepository =
-                                                                                viewModel
-                                                                                        .animalRepository,
-                                                                        foodRepository =
-                                                                                viewModel
-                                                                                        .foodRepository,
-                                                                        equationRepository =
-                                                                                viewModel
-                                                                                        .equationRepository,
-                                                                        referenceRepository =
-                                                                                viewModel
-                                                                                        .referenceEvRepository,
-                                                                        biblioRepository =
-                                                                                viewModel
-                                                                                        .biblioRefRepository,
-                                                                        consultationRepository =
-                                                                                viewModel
-                                                                                        .consultationRepository,
-                                                                        recipeRepository =
-                                                                                viewModel
-                                                                                        .recipeRepository
-                                                                )
-                                                                                                                                                val json =
-                                                                exportRepo
-                                                                        .exportWithSelection(
-                                                                                ExportImportRepository
-                                                                                        .ExportSelectionOptions(
-                                                                                                includeAnimals =
-                                                                                                        includeAnimals,
-                                                                                                includeFoods =
-                                                                                                        includeFoods,
-                                                                                                includeRations =
-                                                                                                        includeRations,
-                                                                                                includeRecipes = true,
-                                                                                                includeEquations =
-                                                                                                        includeEquations,
-                                                                                                animalIds =
-                                                                                                        selectedAnimalIds,
-                                                                                                foodIds =
-                                                                                                        selectedFoodIds
-                                                                                        )
-                                                                                )
-                                                                                                                val ok =
-                                fr.vetbrain.vetnutri_mp.exportJsonToFile(
-                                        content = json,
-                                        defaultFileName = "vetnutri_export.json"
-                                )
-                                                                                        // Export terminé, résultat : $ok
-                                                                                } catch (e: Exception) {
-                                                                                        // Erreur d'export gérée
+                                                                                        val exportRepo =
+                                                                                                ExportImportRepository(
+                                                                                                        animalRepository =
+                                                                                                                viewModel
+                                                                                                                        .animalRepository,
+                                                                                                        foodRepository =
+                                                                                                                viewModel
+                                                                                                                        .foodRepository,
+                                                                                                        equationRepository =
+                                                                                                                viewModel
+                                                                                                                        .equationRepository,
+                                                                                                        referenceRepository =
+                                                                                                                viewModel
+                                                                                                                        .referenceEvRepository,
+                                                                                                        biblioRepository =
+                                                                                                                viewModel
+                                                                                                                        .biblioRefRepository,
+                                                                                                        consultationRepository =
+                                                                                                                viewModel
+                                                                                                                        .consultationRepository,
+                                                                                                        recipeRepository =
+                                                                                                                viewModel
+                                                                                                                        .recipeRepository
+                                                                                                )
+                                                                                        val json =
+                                                                                                exportRepo
+                                                                                                        .exportWithSelection(
+                                                                                                                ExportImportRepository
+                                                                                                                        .ExportSelectionOptions(
+                                                                                                                                includeAnimals =
+                                                                                                                                        includeAnimals,
+                                                                                                                                includeFoods =
+                                                                                                                                        includeFoods,
+                                                                                                                                includeRations =
+                                                                                                                                        includeRations,
+                                                                                                                                includeRecipes =
+                                                                                                                                        includeRecipes,
+                                                                                                                                includeEquations =
+                                                                                                                                        includeEquations,
+                                                                                                                                animalIds =
+                                                                                                                                        selectedAnimalIds,
+                                                                                                                                foodIds =
+                                                                                                                                        selectedFoodIds
+                                                                                                                        )
+                                                                                                        )
+                                                                                        val ok =
+                                                                                                fr.vetbrain
+                                                                                                        .vetnutri_mp
+                                                                                                        .exportJsonToFile(
+                                                                                                                content =
+                                                                                                                        json,
+                                                                                                                defaultFileName =
+                                                                                                                        "vetnutri_export.json"
+                                                                                                        )
+                                                                                        // Export
+                                                                                        // terminé,
+                                                                                        // résultat
+                                                                                        // : $ok
+                                                                                } catch (
+                                                                                        e:
+                                                                                                Exception) {
+                                                                                        // Erreur
+                                                                                        // d'export
+                                                                                        // gérée
                                                                                 }
                                                                         }
                                                                 },
@@ -708,9 +723,11 @@ fun SettingsView(
                                                                                 // importFoodsFromFile
                                                                                 viewModel
                                                                                         .importFoodsFromFileUI()
-                                                                                                                                } catch (e: Exception) {
-                                                                // Les erreurs sont gérées par le ViewModel
-                                                        }
+                                                                        } catch (e: Exception) {
+                                                                                // Les erreurs sont
+                                                                                // gérées par le
+                                                                                // ViewModel
+                                                                        }
                                                                 },
                                                                 colors =
                                                                         ButtonDefaults.buttonColors(
@@ -740,9 +757,11 @@ fun SettingsView(
                                                                                 // nutritionnelles
                                                                                 importViewModel
                                                                                         .importNutritionalRequirementsFromFileUI()
-                                                                                                                                } catch (e: Exception) {
-                                                                // Les erreurs sont gérées par le ViewModel
-                                                        }
+                                                                        } catch (e: Exception) {
+                                                                                // Les erreurs sont
+                                                                                // gérées par le
+                                                                                // ViewModel
+                                                                        }
                                                                 },
                                                                 colors =
                                                                         ButtonDefaults.buttonColors(
@@ -760,29 +779,33 @@ fun SettingsView(
                                                 }
                                         }
                                 }
-                        3 -> { // Recettes
-                            RecipeEditView(
-                                viewModel = RecipeEditViewModel(
-                                    recipeRepository = viewModel.recipeRepository ?: throw IllegalStateException("RecipeRepository not available"),
-                                    foodRepository = viewModel.foodRepository
-                                ),
-                                foodRepository = viewModel.foodRepository,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
-                        4 -> { // Administration
-                            AdministrationSettings(
-                                viewModel = viewModel,
-                                onAnimalListRefresh = onAnimalListRefresh,
-                                onFoodListRefresh = onFoodListRefresh,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
+                                3 -> { // Recettes
+                                        RecipeEditView(
+                                                viewModel =
+                                                        RecipeEditViewModel(
+                                                                recipeRepository =
+                                                                        viewModel.recipeRepository
+                                                                                ?: throw IllegalStateException(
+                                                                                        "RecipeRepository not available"
+                                                                                ),
+                                                                foodRepository =
+                                                                        viewModel.foodRepository
+                                                        ),
+                                                foodRepository = viewModel.foodRepository,
+                                                modifier = Modifier.fillMaxWidth()
+                                        )
+                                }
+                                4 -> { // Administration
+                                        AdministrationSettings(
+                                                viewModel = viewModel,
+                                                onAnimalListRefresh = onAnimalListRefresh,
+                                                onFoodListRefresh = onFoodListRefresh,
+                                                modifier = Modifier.fillMaxWidth()
+                                        )
+                                }
                         }
                 }
         }
-
-
 
         // Dialogue d'alerte pour l'importation des références nutritionnelles
         if (showImportDialog) {
