@@ -1,0 +1,72 @@
+{
+    "version": "1.0.0",
+    "generatedAtEpochMs": 1703123456789,
+    "animals": [],
+    "foods": [
+        {
+            "uuid": "test-food-1",
+            "nom": "Poulet cru",
+            "brand": "Test Brand",
+            "price": 5.99,
+            "especes": [
+                "CHIEN",
+                "CHAT"
+            ],
+            "indicat": [],
+            "nutriments": {
+                "PROTEINE": 20.0,
+                "LIPIDE": 3.0,
+                "HUMIDITE": 70.0,
+                "CENDRE": 1.0,
+                "CELLULOSE": 0.0
+            }
+        },
+        {
+            "uuid": "test-food-2",
+            "nom": "Riz cuit",
+            "brand": "Test Brand",
+            "price": 2.99,
+            "especes": [
+                "CHIEN",
+                "CHAT"
+            ],
+            "indicat": [],
+            "nutriments": {
+                "PROTEINE": 2.5,
+                "LIPIDE": 0.5,
+                "HUMIDITE": 70.0,
+                "CENDRE": 0.5,
+                "CELLULOSE": 0.5
+            }
+        }
+    ],
+    "rations": [],
+    "recipes": [
+        {
+            "uuid": "test-recipe-1",
+            "name": "Recette test poulet et riz",
+            "number": 1,
+            "espece": "CHIEN",
+            "description": "Une recette de test pour l'import",
+            "aliments": [
+                {
+                    "uuid": "test-ingredient-1",
+                    "refAlimUnif": "test-food-1",
+                    "refRecipe": "test-recipe-1",
+                    "quantity": 100.0,
+                    "refTarget": 0
+                },
+                {
+                    "uuid": "test-ingredient-2",
+                    "refAlimUnif": "test-food-2",
+                    "refRecipe": "test-recipe-1",
+                    "quantity": 50.0,
+                    "refTarget": 0
+                }
+            ]
+        }
+    ],
+    "equations": [],
+    "biblioRefs": [],
+    "references": []
+}

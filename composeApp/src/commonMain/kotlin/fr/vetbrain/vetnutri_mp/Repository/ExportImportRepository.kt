@@ -1,27 +1,22 @@
 package fr.vetbrain.vetnutri_mp.Repository
 
-import fr.vetbrain.vetnutri_mp.Data.ApiEnvelope
-import fr.vetbrain.vetnutri_mp.Data.AnimalApi
-import fr.vetbrain.vetnutri_mp.Data.FoodApi
-import fr.vetbrain.vetnutri_mp.Data.RationApi
-import fr.vetbrain.vetnutri_mp.Data.RecipeApi
-
-import fr.vetbrain.vetnutri_mp.Data.EquationApi
-import fr.vetbrain.vetnutri_mp.Data.BiblioRefApi
-import fr.vetbrain.vetnutri_mp.Data.ReferenceEvApi
-import fr.vetbrain.vetnutri_mp.Data.AnimalEv
-import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
-import fr.vetbrain.vetnutri_mp.Data.Ration
-import fr.vetbrain.vetnutri_mp.Data.BiblioRef
-import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
+import fr.vetbrain.vetnutri_mp.Data.AlimentEv
 import fr.vetbrain.vetnutri_mp.Data.AlimentRation
+import fr.vetbrain.vetnutri_mp.Data.AnimalApi
+import fr.vetbrain.vetnutri_mp.Data.AnimalEv
+import fr.vetbrain.vetnutri_mp.Data.ApiEnvelope
+import fr.vetbrain.vetnutri_mp.Data.BiblioRef
+import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
 import fr.vetbrain.vetnutri_mp.Data.Equation
+import fr.vetbrain.vetnutri_mp.Data.FoodApi
+import fr.vetbrain.vetnutri_mp.Data.Ration
+import fr.vetbrain.vetnutri_mp.Data.RationApi
+import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
+import fr.vetbrain.vetnutri_mp.Data.toApi
+import fr.vetbrain.vetnutri_mp.Data.toApiRef
+import fr.vetbrain.vetnutri_mp.Data.toDomain
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.StadePhysio
-import fr.vetbrain.vetnutri_mp.Data.AlimentEv
-import fr.vetbrain.vetnutri_mp.Data.toApi
-import fr.vetbrain.vetnutri_mp.Data.toDomain
-import fr.vetbrain.vetnutri_mp.Data.toApiRef
 import kotlinx.coroutines.flow.first
 import kotlinx.datetime.Clock
 import kotlinx.serialization.decodeFromString
@@ -60,7 +55,10 @@ class ExportImportRepository(
                 val foodIds: Set<String> = emptySet()
         )
 
-        /** Exporte l'ensemble des données (animaux, aliments, rations, équations, recettes) au format API. */
+        /**
+         * Exporte l'ensemble des données (animaux, aliments, rations, équations, recettes) au
+         * format API.
+         */
         suspend fun exportAll(): String {
                 val domainAnimals = animalRepository.getAllAnimals()
                 // Charger les consultations/rations pour chaque animal pour un export complet
@@ -81,30 +79,36 @@ class ExportImportRepository(
                         } else domainAnimals
                 val animals: List<AnimalApi> = animalsWithConsultations.map { it.toApi() }
                 val foods = foodRepository?.getAllFoods()?.map { it.toApi() } ?: emptyList()
-                
+
                 // Rassembler toutes les rations depuis les consultations (depuis le domaine)
                 val rationsList: List<RationApi> =
                         animalsWithConsultations
                                 .asSequence()
                                 .flatMap { animal: AnimalEv ->
                                         animal.consultations.asSequence().flatMap {
-                                                consult: ConsultationEv
-                                                ->
-                                                consult.rations.asSequence().map {
-                                                        ration: Ration
-                                                        ->
+                                                consult: ConsultationEv ->
+                                                consult.rations.asSequence().map { ration: Ration ->
                                                         ration.toApi()
                                                 }
                                         }
                                 }
                                 .toList()
-                
+
                 val equations =
                         equationRepository?.getAllEquations()?.map { it.toApi() } ?: emptyList()
-                
+
                 // Récupérer toutes les recettes
-                val recipes = recipeRepository?.getAllRecipes()?.map { it.toApi() } ?: emptyList()
-                
+                println("🔍 DEBUG ExportImportRepository: Début de récupération des recettes")
+                println(
+                        "🔍 DEBUG ExportImportRepository: recipeRepository = ${recipeRepository != null}"
+                )
+                val recipes =
+                        recipeRepository?.getAllRecipesAsRecette()?.map { it.toApi() }
+                                ?: emptyList()
+                println(
+                        "🔍 DEBUG ExportImportRepository: ${recipes.size} recettes récupérées pour l'export"
+                )
+
                 // Références et biblios
                 val references =
                         referenceRepository?.getAllReferenceEv()?.map { it.toApiRef() }
@@ -117,16 +121,18 @@ class ExportImportRepository(
                         } catch (e: Exception) {
                                 emptyList()
                         }
-                val envelope = ApiEnvelope(
-                        version = "1.0.0",
-                        generatedAtEpochMs = Clock.System.now().toEpochMilliseconds(),
-                        animals = animals,
-                        foods = foods,
-                        rations = rationsList,
-                        equations = equations,
-                        biblioRefs = biblioRefs,
-                        references = references
-                )
+                val envelope =
+                        ApiEnvelope(
+                                version = "1.0.0",
+                                generatedAtEpochMs = Clock.System.now().toEpochMilliseconds(),
+                                animals = animals,
+                                foods = foods,
+                                rations = rationsList,
+                                recipes = recipes,
+                                equations = equations,
+                                biblioRefs = biblioRefs,
+                                references = references
+                        )
                 return jsonPretty.encodeToString(envelope)
         }
 
@@ -179,11 +185,9 @@ class ExportImportRepository(
                                         .asSequence()
                                         .flatMap { animal: AnimalEv ->
                                                 animal.consultations.asSequence().flatMap {
-                                                        consult: ConsultationEv
-                                                        ->
+                                                        consult: ConsultationEv ->
                                                         consult.rations.asSequence().map {
-                                                                ration: Ration
-                                                                ->
+                                                                ration: Ration ->
                                                                 ration.toApi()
                                                         }
                                                 }
@@ -200,12 +204,26 @@ class ExportImportRepository(
                                 referenceRepository?.getAllReferenceEv()?.map { it.toApiRef() }
                                         ?: emptyList()
                         } else emptyList()
-                
+
                 // Récupérer les recettes selon les options
-                val recipes = if (options.includeRecipes) {
-                        recipeRepository?.getAllRecipes()?.map { it.toApi() } ?: emptyList()
-                } else emptyList()
-                
+                println(
+                        "🔍 DEBUG ExportImportRepository: exportWithSelection - Début de récupération des recettes"
+                )
+                println(
+                        "🔍 DEBUG ExportImportRepository: exportWithSelection - recipeRepository = ${recipeRepository != null}"
+                )
+                println(
+                        "🔍 DEBUG ExportImportRepository: exportWithSelection - includeRecipes = ${options.includeRecipes}"
+                )
+                val recipes =
+                        if (options.includeRecipes) {
+                                recipeRepository?.getAllRecipesAsRecette()?.map { it.toApi() }
+                                        ?: emptyList()
+                        } else emptyList()
+                println(
+                        "🔍 DEBUG ExportImportRepository: exportWithSelection - ${recipes.size} recettes récupérées (includeRecipes=${options.includeRecipes})"
+                )
+
                 val biblioRefs =
                         try {
                                 val list =
@@ -215,22 +233,22 @@ class ExportImportRepository(
                                 emptyList()
                         }
 
-                val envelope = ApiEnvelope(
-                        version = "1.0.0",
-                        generatedAtEpochMs = Clock.System.now().toEpochMilliseconds(),
-                        animals = animals,
-                        foods = foods,
-                        rations = rationsList2,
-                        equations = equations,
-                        biblioRefs = biblioRefs,
-                        references = references
-                )
+                val envelope =
+                        ApiEnvelope(
+                                version = "1.0.0",
+                                generatedAtEpochMs = Clock.System.now().toEpochMilliseconds(),
+                                animals = animals,
+                                foods = foods,
+                                rations = rationsList2,
+                                recipes = recipes,
+                                equations = equations,
+                                biblioRefs = biblioRefs,
+                                references = references
+                        )
                 return jsonPretty.encodeToString(envelope)
         }
 
-        /**
-         * Importe les données au format API et les sauvegarde via les repositories.
-         */
+        /** Importe les données au format API et les sauvegarde via les repositories. */
         suspend fun importAll(
                 apiJson: String,
                 listener: ImportProgressListener? = null
@@ -241,7 +259,7 @@ class ExportImportRepository(
                 val envelope = jsonPretty.decodeFromString<ApiEnvelope>(apiJson)
 
                 listener?.onLog(
-                        "Contenu: animals=${envelope.animals.size}, foods=${envelope.foods.size}, rations=${envelope.rations.size}, equations=${envelope.equations.size}, biblioRefs=${envelope.biblioRefs.size}, references=${envelope.references.size}"
+                        "Contenu: animals=${envelope.animals.size}, foods=${envelope.foods.size}, rations=${envelope.rations.size}, recipes=${envelope.recipes.size}, equations=${envelope.equations.size}, biblioRefs=${envelope.biblioRefs.size}, references=${envelope.references.size}"
                 )
                 var animalsImported: Int = 0
                 var foodsImported: Int = 0
@@ -250,13 +268,14 @@ class ExportImportRepository(
                 var referencesImported: Int = 0
                 var biblioImported: Int = 0
                 var rationsImported: Int = 0
+                var recipesImported: Int = 0
                 val totalUnits: Int =
                         (envelope.foods.size +
                                         envelope.equations.size +
                                         envelope.biblioRefs.size +
                                         envelope.animals.size +
                                         envelope.references.size +
-                                        0)
+                                        envelope.recipes.size)
                                 .coerceAtLeast(1)
                 var processedUnits = 0
                 fun advance(units: Int = 1) {
@@ -328,7 +347,9 @@ class ExportImportRepository(
                                                 foodsImported++
                                                 advance()
                                         } catch (e: Exception) {
-                                                listener?.onLog("Erreur aliment ${api.uuid}: ${e.message}")
+                                                listener?.onLog(
+                                                        "Erreur aliment ${api.uuid}: ${e.message}"
+                                                )
                                                 advance()
                                         }
                                 }
@@ -338,7 +359,9 @@ class ExportImportRepository(
 
                 // 4) Références nutritionnelles (avec liens vers équations et biblio)
                 if (envelope.references.isNotEmpty() && referenceRepository != null) {
-                        listener?.onLog("Import des références nutritionnelles (${envelope.references.size})…")
+                        listener?.onLog(
+                                "Import des références nutritionnelles (${envelope.references.size})…"
+                        )
                         // Construire un cache d'équations
                         val eqCache: MutableMap<String, Equation> = mutableMapOf()
                         if (equationRepository != null) {
@@ -360,22 +383,28 @@ class ExportImportRepository(
                                 } else emptyMap()
                         for (refApi in envelope.references) {
                                 try {
-                                        val ref = ReferenceEv(
-                                                uuid = refApi.uuid,
-                                                nom = refApi.nom,
-                                                description = refApi.description,
-                                                maladie = refApi.maladie,
-                                                nomMaladie = refApi.nomMaladie,
-                                                nomEnergie = refApi.nomEnergie,
-                                                consistent = refApi.consistent,
-                                                espece = Espece.valueOf(refApi.espece),
-                                                stadePhysio = StadePhysio.valueOf(refApi.stadePhysio)
-                                        )
+                                        val ref =
+                                                ReferenceEv(
+                                                        uuid = refApi.uuid,
+                                                        nom = refApi.nom,
+                                                        description = refApi.description,
+                                                        maladie = refApi.maladie,
+                                                        nomMaladie = refApi.nomMaladie,
+                                                        nomEnergie = refApi.nomEnergie,
+                                                        consistent = refApi.consistent,
+                                                        espece = Espece.valueOf(refApi.espece),
+                                                        stadePhysio =
+                                                                StadePhysio.valueOf(
+                                                                        refApi.stadePhysio
+                                                                )
+                                                )
                                         // Lier équations
                                         ref.equationBW = refApi.equationBW?.let { eqCache[it] }
                                         ref.equationBEE = refApi.equationBEE?.let { eqCache[it] }
-                                        ref.equationDEcom = refApi.equationDEcom?.let { eqCache[it] }
-                                        ref.equationDEraw = refApi.equationDEraw?.let { eqCache[it] }
+                                        ref.equationDEcom =
+                                                refApi.equationDEcom?.let { eqCache[it] }
+                                        ref.equationDEraw =
+                                                refApi.equationDEraw?.let { eqCache[it] }
                                         ref.equationME = refApi.equationME?.let { eqCache[it] }
                                         ref.equationsNut.addAll(
                                                 refApi.equationsNut.mapNotNull { eqCache[it] }
@@ -384,7 +413,9 @@ class ExportImportRepository(
                                         referencesImported++
                                         advance()
                                 } catch (e: Exception) {
-                                        listener?.onLog("Erreur referenceEv ${refApi.uuid}: ${e.message}")
+                                        listener?.onLog(
+                                                "Erreur referenceEv ${refApi.uuid}: ${e.message}"
+                                        )
                                         advance()
                                 }
                         }
@@ -406,55 +437,196 @@ class ExportImportRepository(
                                         animalRepository.saveAnimal(animal)
                                         // Sauvegarder les consultations avec rations si possible
                                         if (consultationRepository != null) {
-                                                // Créer les aliments manquants référencés par les rations
+                                                // Créer les aliments manquants référencés par les
+                                                // rations
                                                 animal.consultations.forEach { consult ->
                                                         consult.rations.forEach { ration ->
-                                                                ration.alimentMutableList.forEach { ar ->
+                                                                ration.alimentMutableList.forEach {
+                                                                        ar ->
                                                                         val foodId = ar.refAlimUnif
-                                                                        if (!foodId.isNullOrEmpty() && !existingFoodIdsForRations.contains(foodId)) {
-                                                                                val nameGuess: String =
+                                                                        if (!foodId.isNullOrEmpty() &&
+                                                                                        !existingFoodIdsForRations
+                                                                                                .contains(
+                                                                                                        foodId
+                                                                                                )
+                                                                        ) {
+                                                                                val nameGuess:
+                                                                                        String =
                                                                                         ar.aliment
                                                                                                 ?.nom
                                                                                                 ?: ar.aliment
                                                                                                         ?.ingredients
                                                                                                         ?: "Aliment importé ${foodId}"
-                                                                                val placeholder = AlimentEv(
-                                                                                        uuid = foodId!!,
-                                                                                        nom = nameGuess,
-                                                                                        brand = ar.aliment?.brand,
-                                                                                        price = ar.aliment?.price,
-                                                                                        especes = mutableListOf(),
-                                                                                        indicat = mutableListOf()
-                                                                                )
+                                                                                val placeholder =
+                                                                                        AlimentEv(
+                                                                                                uuid =
+                                                                                                        foodId!!,
+                                                                                                nom =
+                                                                                                        nameGuess,
+                                                                                                brand =
+                                                                                                        ar.aliment
+                                                                                                                ?.brand,
+                                                                                                price =
+                                                                                                        ar.aliment
+                                                                                                                ?.price,
+                                                                                                especes =
+                                                                                                        mutableListOf(),
+                                                                                                indicat =
+                                                                                                        mutableListOf()
+                                                                                        )
                                                                                 try {
                                                                                         foodRepository
-                                                                                                ?.insertFood(placeholder)
-                                                                                        existingFoodIdsForRations.add(foodId!!)
+                                                                                                ?.insertFood(
+                                                                                                        placeholder
+                                                                                                )
+                                                                                        existingFoodIdsForRations
+                                                                                                .add(
+                                                                                                        foodId!!
+                                                                                                )
                                                                                         foodsImported++
-                                                                                } catch (_: Exception) {}
+                                                                                } catch (
+                                                                                        _:
+                                                                                                Exception) {}
                                                                         }
                                                                 }
                                                         }
-                                                        consultationRepository.saveConsultation(consult)
+                                                        consultationRepository.saveConsultation(
+                                                                consult
+                                                        )
                                                         listener?.onLog(
                                                                 "Consultation ${consult.uuid}: rations=${consult.rations.size}"
                                                         )
                                                 }
                                         }
                                         // Compter les rations importées
-                                        rationsImported += animal.consultations.sumOf { it.rations.size }
+                                        rationsImported +=
+                                                animal.consultations.sumOf { it.rations.size }
                                 } catch (e: Exception) {
-                                        listener?.onLog("Erreur animal ${animalApi.uuid}: ${e.message}")
+                                        listener?.onLog(
+                                                "Erreur animal ${animalApi.uuid}: ${e.message}"
+                                        )
                                         advance()
                                 }
                         }
                         animalsImported++
                         advance()
-                        listener?.onLog("Animaux importés=$animalsImported, rations liées=$rationsImported")
+                        listener?.onLog(
+                                "Animaux importés=$animalsImported, rations liées=$rationsImported"
+                        )
                 }
 
-                // Recettes temporairement désactivées pour éviter les conflits de types
-                // TODO: Réactiver une fois le problème de compilation résolu
+                // 6) Recettes (dépendent des aliments)
+                if (envelope.recipes.isNotEmpty() && recipeRepository != null) {
+                        listener?.onLog("Import des recettes (${envelope.recipes.size})…")
+                        println("🔍 DEBUG ExportImportRepository: Début import des recettes")
+                        println(
+                                "🔍 DEBUG ExportImportRepository: Nombre de recettes à importer: ${envelope.recipes.size}"
+                        )
+                        println(
+                                "🔍 DEBUG ExportImportRepository: recipeRepository disponible: ${recipeRepository != null}"
+                        )
+
+                        // Construire un cache des aliments existants pour vérifier les références
+                        val existingFoodIds: Set<String> =
+                                if (foodRepository != null) {
+                                        try {
+                                                foodRepository.getAllFoods().map { it.uuid }.toSet()
+                                        } catch (_: Exception) {
+                                                emptySet()
+                                        }
+                                } else emptySet()
+                        println(
+                                "🔍 DEBUG ExportImportRepository: Nombre d'aliments existants: ${existingFoodIds.size}"
+                        )
+
+                        for (recipeApi in envelope.recipes) {
+                                try {
+                                        println(
+                                                "🔍 DEBUG ExportImportRepository: Import de la recette: ${recipeApi.name} (${recipeApi.uuid})"
+                                        )
+                                        val recipe = recipeApi.toDomain()
+
+                                        // Vérifier et créer les aliments manquants référencés par
+                                        // la recette
+                                        recipe.aliments.forEach { ingredient ->
+                                                val foodId = ingredient.refAlimUnif
+                                                if (!foodId.isNullOrEmpty() &&
+                                                                !existingFoodIds.contains(foodId)
+                                                ) {
+                                                        val placeholder =
+                                                                AlimentEv(
+                                                                        uuid = foodId,
+                                                                        nom =
+                                                                                "Aliment importé ${foodId}",
+                                                                        brand = null,
+                                                                        price = null,
+                                                                        especes = mutableListOf(),
+                                                                        indicat = mutableListOf()
+                                                                )
+                                                        try {
+                                                                foodRepository?.insertFood(
+                                                                        placeholder
+                                                                )
+                                                                existingFoodIds
+                                                                        .toMutableSet()
+                                                                        .add(foodId)
+                                                                foodsImported++
+                                                        } catch (_: Exception) {}
+                                                }
+                                        }
+
+                                        // Créer la recette avec l'UUID original
+                                        val createdRecipe =
+                                                recipeRepository.createRecipeWithUuid(
+                                                        uuid = recipe.uuid,
+                                                        name = recipe.name ?: "Recette importée",
+                                                        espece = recipe.espece,
+                                                        description = recipe.description,
+                                                        number = recipe.number ?: 1
+                                                )
+
+                                        // Ajouter les ingrédients à la recette
+                                        if (recipe.aliments.isNotEmpty()) {
+                                                val alimentsRation =
+                                                        recipe.aliments.map { ingredient ->
+                                                                AlimentRation(
+                                                                        uuid = ingredient.uuid,
+                                                                        uuidUnif =
+                                                                                ingredient
+                                                                                        .refAlimUnif,
+                                                                        refAlimUnif =
+                                                                                ingredient
+                                                                                        .refAlimUnif,
+                                                                        quantite =
+                                                                                ingredient.quantity,
+                                                                        refTarget =
+                                                                                ingredient
+                                                                                        .refTarget,
+                                                                        proportion = 0.0,
+                                                                        weight = 1.0,
+                                                                        category = 0,
+                                                                        densiteEnergetique = 0.0,
+                                                                        refRation =
+                                                                                createdRecipe.uuid
+                                                                )
+                                                        }
+                                                recipeRepository.addAliments(
+                                                        createdRecipe.uuid,
+                                                        alimentsRation
+                                                )
+                                        }
+
+                                        recipesImported++
+                                        advance()
+                                } catch (e: Exception) {
+                                        listener?.onLog(
+                                                "Erreur recette ${recipeApi.uuid}: ${e.message}"
+                                        )
+                                        advance()
+                                }
+                        }
+                        listener?.onLog("Recettes importées=$recipesImported")
+                }
 
                 return ImportCounts(
                         animals = animalsImported,
@@ -462,7 +634,8 @@ class ExportImportRepository(
                         equations = equationsImported,
                         references = referencesImported,
                         biblios = biblioImported,
-                        rations = rationsImported
+                        rations = rationsImported,
+                        recipes = recipesImported
                 )
         }
 
@@ -472,6 +645,7 @@ class ExportImportRepository(
                 val equations: Int,
                 val references: Int,
                 val biblios: Int,
-                val rations: Int
+                val rations: Int,
+                val recipes: Int
         )
 }
