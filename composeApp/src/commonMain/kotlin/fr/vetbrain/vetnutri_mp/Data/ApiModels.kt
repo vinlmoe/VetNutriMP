@@ -724,3 +724,70 @@ fun ConsultationApi.toDomain(): ConsultationEv {
                 coefficientAjustement = coefficientAjustement
         )
 }
+
+// ============================================================================
+// MODÈLES API POUR LES RECETTES
+// ============================================================================
+
+@Serializable
+data class RecipeApi(
+        val uuid: String,
+        val name: String,
+        val number: Int = 0,
+        val specie: String? = null,
+        val description: String? = null,
+        val aliments: List<RecipeIngredientApi> = emptyList()
+)
+
+@Serializable
+data class RecipeIngredientApi(
+        val uuid: String,
+        val foodId: String,
+        val quantity: Double,
+        val targetRef: Int = 0
+)
+
+// ============================================================================
+// FONCTIONS DE CONVERSION POUR LES RECETTES
+// ============================================================================
+
+fun fr.vetbrain.vetnutri_mp.Data.Recette.toApi(): RecipeApi {
+        return RecipeApi(
+                uuid = uuid,
+                name = name ?: "",
+                number = number,
+                specie = espece,
+                description = description,
+                aliments = aliments.map { it.toApi() }
+        )
+}
+
+fun fr.vetbrain.vetnutri_mp.Data.AlimentRecette.toApi(): RecipeIngredientApi {
+        return RecipeIngredientApi(
+                uuid = uuid,
+                foodId = refAlimUnif,
+                quantity = quantity,
+                targetRef = refTarget
+        )
+}
+
+fun RecipeApi.toDomain(): fr.vetbrain.vetnutri_mp.Data.Recette {
+        return fr.vetbrain.vetnutri_mp.Data.Recette(
+                uuid = uuid,
+                name = name,
+                number = number,
+                espece = specie,
+                description = description,
+                aliments = aliments.map { it.toDomain() }.toMutableList()
+        )
+}
+
+fun RecipeIngredientApi.toDomain(): fr.vetbrain.vetnutri_mp.Data.AlimentRecette {
+        return fr.vetbrain.vetnutri_mp.Data.AlimentRecette(
+                uuid = uuid,
+                refAlimUnif = foodId,
+                refRecipe = "", // Sera défini lors de l'import
+                quantity = quantity,
+                refTarget = targetRef
+        )
+}

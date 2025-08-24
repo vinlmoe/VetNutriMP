@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
@@ -13,9 +14,12 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.*
+import androidx.compose.runtime.derivedStateOf
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Components.BasicAppTextField
 import fr.vetbrain.vetnutri_mp.Data.AlimentEv
@@ -36,8 +40,9 @@ fun RecipeAddAlimentView(
     onAddAliment: (AlimentEv, Double) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // États pour les filtres
+    // États pour les filtres avec debouncing
     var searchQuery by remember { mutableStateOf("") }
+    var debouncedSearchQuery by remember { mutableStateOf("") }
     var selectedType by remember { mutableStateOf<FoodKind?>(null) }
     var selectedGroup by remember { mutableStateOf<GroupAlim?>(null) }
     var selectedEspece by remember { mutableStateOf<Espece?>(null) }
@@ -48,6 +53,12 @@ fun RecipeAddAlimentView(
     var quantite by remember { mutableStateOf("100") }
     var quantiteError by remember { mutableStateOf(false) }
     
+    // Debouncing de la recherche (300ms)
+    LaunchedEffect(searchQuery) {
+        delay(300)
+        debouncedSearchQuery = searchQuery
+    }
+    
     // Charger les aliments
     val allFoods = remember {
         mutableStateListOf<AlimentEv>()
@@ -55,14 +66,14 @@ fun RecipeAddAlimentView(
     
     LaunchedEffect(Unit) {
         try {
-            println("🔍 RecipeAddAlimentView: Chargement des aliments...")
+            println("🔍 RecipeAddAlimentView: Début du chargement des aliments...")
             kotlinx.coroutines.withContext(fr.vetbrain.vetnutri_mp.Utils.AppDispatchers.IO) {
                 val foods = foodRepository.getAllFoods()
-                println("🔍 RecipeAddAlimentView: ${foods.size} aliments chargés")
+                println("🔍 RecipeAddAlimentView: ${foods.size} aliments récupérés du repository")
                 kotlinx.coroutines.withContext(fr.vetbrain.vetnutri_mp.Utils.AppDispatchers.Main) {
                     allFoods.clear()
                     allFoods.addAll(foods)
-                    println("🔍 RecipeAddAlimentView: ${allFoods.size} aliments dans la liste")
+                    println("🔍 RecipeAddAlimentView: ${allFoods.size} aliments ajoutés à la liste locale")
                 }
             }
         } catch (e: Exception) {
@@ -71,12 +82,12 @@ fun RecipeAddAlimentView(
         }
     }
     
-    // Filtrer les aliments selon les critères
-    val filteredFoods = remember(allFoods, searchQuery, selectedType, selectedGroup, selectedEspece, selectedIndic) {
+    // Filtrer les aliments selon les critères avec debouncing
+    val filteredFoods by derivedStateOf {
         val filtered = allFoods.filter { aliment ->
-            val matchesSearch = searchQuery.isEmpty() || 
-                aliment.nom?.contains(searchQuery, ignoreCase = true) == true ||
-                aliment.brand?.contains(searchQuery, ignoreCase = true) == true
+            val matchesSearch = debouncedSearchQuery.isEmpty() || 
+                aliment.nom?.contains(debouncedSearchQuery, ignoreCase = true) == true ||
+                aliment.brand?.contains(debouncedSearchQuery, ignoreCase = true) == true
             
             val matchesType = selectedType == null || aliment.typeAliment == selectedType
             val matchesGroup = selectedGroup == null || aliment.group == selectedGroup
@@ -85,7 +96,7 @@ fun RecipeAddAlimentView(
             
             matchesSearch && matchesType && matchesGroup && matchesEspece && matchesIndic
         }
-        println("🔍 RecipeAddAlimentView: ${filtered.size} aliments après filtrage (sur ${allFoods.size} total)")
+        println("🔍 RecipeAddAlimentView: Filtrage - ${allFoods.size} aliments totaux, ${filtered.size} après filtrage")
         filtered
     }
     
@@ -179,17 +190,46 @@ fun RecipeAddAlimentView(
                 }
                 
                 // Liste des aliments
-                LazyColumn(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    state = rememberLazyListState()
-                ) {
-                    items(filteredFoods) { aliment ->
-                        AlimentListItem(
-                            aliment = aliment,
-                            isSelected = selectedFood?.uuid == aliment.uuid,
-                            onClick = { selectedFood = aliment }
-                        )
+                if (allFoods.isEmpty()) {
+                    Box(
+                        modifier = Modifier.weight(1f),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        state = rememberLazyListState(),
+                        contentPadding = PaddingValues(vertical = 8.dp)
+                    ) {
+                        if (filteredFoods.isEmpty()) {
+                            item {
+                                Box(
+                                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "Aucun aliment trouvé\nEssayez de modifier vos filtres",
+                                        style = MaterialTheme.typography.body1,
+                                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f),
+                                        textAlign = TextAlign.Center
+                                    )
+                                }
+                            }
+                        } else {
+                            items(
+                                items = filteredFoods,
+                                key = { it.uuid } // Optimisation avec des clés uniques
+                            ) { aliment ->
+                                AlimentListItem(
+                                    aliment = aliment,
+                                    isSelected = selectedFood?.uuid == aliment.uuid,
+                                    onClick = { selectedFood = aliment }
+                                )
+                            }
+                        }
                     }
                 }
             }

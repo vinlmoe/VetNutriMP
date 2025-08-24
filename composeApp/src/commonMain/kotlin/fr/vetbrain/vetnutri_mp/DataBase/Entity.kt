@@ -15,7 +15,16 @@ import kotlinx.serialization.Serializable
                                 childColumns = ["RefRation"],
                                 onDelete = ForeignKey.SET_NULL
                         )],
-        indices = [Index("RefRation"), Index(value = ["uuid"], unique = true)]
+        indices = [
+                Index("RefRation"), 
+                Index(value = ["uuid"], unique = true),
+                Index("groupAlim"),           // Pour le filtrage par groupe
+                Index("typeAlim"),           // Pour le filtrage par type
+                Index("brand"),              // Pour la recherche par marque
+                Index("name"),               // Pour la recherche par nom
+                Index("especesJson"),        // Pour le filtrage par espèce
+                Index("deprecated")          // Pour filtrer les aliments obsolètes
+        ]
 )
 data class FoodEntity(
         @PrimaryKey val uuid: String,
