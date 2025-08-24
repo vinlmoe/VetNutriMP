@@ -83,7 +83,7 @@ fun MultiNutrientAdjustmentDialog(
     var adjustmentData by remember {
         mutableStateOf(
                 ration.alimentMutableList.map { alimentRation ->
-                    val suggestion = suggestDefaultTargetNutrient(alimentRation)
+                    val suggestion = suggestDefaultTargetNutrient(alimentRation, referenceUtilisee)
                     AlimentAdjustmentData(
                             alimentRation = alimentRation,
                             selectedNutrient = suggestion,
@@ -149,7 +149,8 @@ fun MultiNutrientAdjustmentDialog(
                                                         a.copy(
                                                                 selectedNutrient =
                                                                         suggestDefaultTargetNutrient(
-                                                                                a.alimentRation
+                                                                                a.alimentRation,
+                                                                                referenceUtilisee
                                                                         )
                                                         )
                                                 else a
@@ -161,7 +162,7 @@ fun MultiNutrientAdjustmentDialog(
                                     // Réinit
                                     adjustmentData =
                                             ration.alimentMutableList.map { ar ->
-                                                val s = suggestDefaultTargetNutrient(ar)
+                                                val s = suggestDefaultTargetNutrient(ar, referenceUtilisee)
                                                 AlimentAdjustmentData(
                                                         ar,
                                                         s,
@@ -192,6 +193,7 @@ fun MultiNutrientAdjustmentDialog(
                         items(adjustmentData) { alimentData ->
                             AlimentAdjustmentItem(
                                     alimentData = alimentData,
+                                    referenceUtilisee = referenceUtilisee,
                                     onNutrientChange = { newNutrient ->
                                         val index = adjustmentData.indexOf(alimentData)
                                         if (index != -1) {
@@ -248,15 +250,41 @@ fun MultiNutrientAdjustmentDialog(
                                 Text(label)
                                 var expanded by remember { mutableStateOf(false) }
                                 val current = refLevelByNutrient[label] ?: Reflevel.OPTIMIN
+                                
+                                // Récupérer les niveaux disponibles pour ce nutriment spécifique
+                                val availableRefLevels = remember(label, referenceUtilisee) {
+                                    val nutrient = findNutrientByLabel(label)
+                                    if (nutrient != null) {
+                                        getAvailableRefLevelsForNutrient(nutrient, referenceUtilisee)
+                                    } else {
+                                        emptyList()
+                                    }
+                                }
+                                
+                                // Vérifier que le niveau actuel est disponible, sinon utiliser le premier disponible
+                                val currentRefLevel = if (availableRefLevels.contains(current)) {
+                                    current
+                                } else if (availableRefLevels.isNotEmpty()) {
+                                    // Mettre à jour la valeur par défaut si le niveau actuel n'est pas disponible
+                                    val newDefaultLevel = availableRefLevels.first()
+                                    refLevelByNutrient = refLevelByNutrient.toMutableMap().apply { 
+                                        put(label, newDefaultLevel) 
+                                    }
+                                    newDefaultLevel
+                                } else {
+                                    Reflevel.OPTIMIN
+                                }
+                                
                                 Box {
                                     OutlinedButton(onClick = { expanded = true }) {
-                                        Text(current.name)
+                                        Text(currentRefLevel.name)
                                     }
                                     DropdownMenu(
                                             expanded = expanded,
                                             onDismissRequest = { expanded = false }
                                     ) {
-                                        Reflevel.entries.forEach { r ->
+                                        // Afficher seulement les niveaux disponibles
+                                        availableRefLevels.forEach { r ->
                                             DropdownMenuItem(
                                                     onClick = {
                                                         refLevelByNutrient =
@@ -381,8 +409,15 @@ fun MultiNutrientAdjustmentDialog(
 /**
  * Suggère automatiquement le nutriment cible à ajuster pour un aliment, en adaptant la logique
  * fournie. Les comparaisons se font sur matière sèche (MS): 100 * valeur / (100 - HUMIDITE).
+ * 
+ * @param alimentRation L'aliment ration pour lequel suggérer un nutriment cible
+ * @param referenceUtilisee La référence utilisée pour vérifier la disponibilité des nutriments
+ * @return Le label du nutriment suggéré ou null si aucun n'est disponible
  */
-private fun suggestDefaultTargetNutrient(alimentRation: AlimentRation): String? {
+private fun suggestDefaultTargetNutrient(
+    alimentRation: AlimentRation, 
+    referenceUtilisee: ReferenceEv
+): String? {
     val aliment = alimentRation.aliment ?: return null
     val kind: FoodKind? = aliment.typeAliment
 
@@ -414,23 +449,38 @@ private fun suggestDefaultTargetNutrient(alimentRation: AlimentRation): String? 
     // targetAdjust.FIBER → CELLULOSE
     // L'énergie est maintenant proposée mais traitée en dernier dans l'ordre de traitement
 
+    // Fonction helper pour vérifier si un nutriment a des références disponibles
+    fun hasReferenceForNutrient(nutrient: Nutrient): Boolean {
+        return Reflevel.entries.any { refLevel ->
+            referenceUtilisee.obtenirNutrimentRef(nutrient, refLevel) != null
+        }
+    }
+
     return when {
         // (Cendres/MS > 10) et présence de Calcium
-        (cendreMs > 10.0 && aliment.valMap.containsKey(NutrientMacro.CAL)) ->
+        (cendreMs > 10.0 && aliment.valMap.containsKey(NutrientMacro.CAL) && 
+         hasReferenceForNutrient(NutrientMacro.CAL)) ->
                 NutrientMacro.CAL.label
         // Protéines/MS > 30
-        (proteineMs > 30.0) -> NutrientMain.PROTEINE.label
+        (proteineMs > 30.0 && hasReferenceForNutrient(NutrientMain.PROTEINE)) -> 
+                NutrientMain.PROTEINE.label
         // Lipides/MS > 30 et O6/MS > 15
-        (lipideMs > 30.0 && o6Ms > 15.0) -> NutrientLipid.O6.label
+        (lipideMs > 30.0 && o6Ms > 15.0 && hasReferenceForNutrient(NutrientLipid.O6)) -> 
+                NutrientLipid.O6.label
         // Lipides/MS > 30 et EPADHA > 0
-        (lipideMs > 30.0 && epaDha > 0.0) -> NutrientLipid.EPADHA.label
+        (lipideMs > 30.0 && epaDha > 0.0 && hasReferenceForNutrient(NutrientLipid.EPADHA)) -> 
+                NutrientLipid.EPADHA.label
         // Lipides/MS > 40
-        (lipideMs > 40.0) -> NutrientMain.LIPIDE.label
+        (lipideMs > 40.0 && hasReferenceForNutrient(NutrientMain.LIPIDE)) -> 
+                NutrientMain.LIPIDE.label
         // Cellulose/MS > 20
-        (celluloseMs > 20.0) -> NutrientMain.CELLULOSE.label
+        (celluloseMs > 20.0 && hasReferenceForNutrient(NutrientMain.CELLULOSE)) -> 
+                NutrientMain.CELLULOSE.label
         // ENA/MS > 50 → énergie/carbs
-        (enaMs > 50.0) -> NutrientMain.PROTEINE.label
+        (enaMs > 50.0 && hasReferenceForNutrient(NutrientMain.PROTEINE)) -> 
+                NutrientMain.PROTEINE.label
         // Pour tous les autres cas (aliments inclassables) → ÉNERGIE par défaut
+        // L'énergie est toujours disponible, pas besoin de vérifier les références
         else -> NutrientMain.ENERGIE.label
     }
 }
@@ -439,6 +489,7 @@ private fun suggestDefaultTargetNutrient(alimentRation: AlimentRation): String? 
 @Composable
 private fun AlimentAdjustmentItem(
         alimentData: AlimentAdjustmentData,
+        referenceUtilisee: ReferenceEv,
         onNutrientChange: (String?) -> Unit,
         onLockToggle: () -> Unit,
         onEnergyAdjustableToggle: (Boolean) -> Unit
@@ -448,21 +499,78 @@ private fun AlimentAdjustmentItem(
 
     // Filtrer les nutriments disponibles pour cet aliment spécifique
     val availableNutrients =
-            remember(aliment) {
+            remember(aliment, referenceUtilisee) {
                 val labels = mutableSetOf<String>()
                 val valMap = aliment.valMap
                 if (valMap != null) {
                     for ((nutr, qty) in valMap.entries) {
-                        if (qty.value > 0) labels.add(nutr.label)
+                        if (qty.value > 0) {
+                            // Vérifier que le nutriment a au moins une référence disponible
+                            val hasReference = Reflevel.entries.any { refLevel ->
+                                referenceUtilisee.obtenirNutrimentRef(nutr, refLevel) != null
+                            }
+                            if (hasReference) {
+                                labels.add(nutr.label)
+                            }
+                        }
                     }
                 }
                 // Ajouter ÉNERGIE car elle peut maintenant être sélectionnée comme nutriment cible
-                if (aliment.valMap.containsKey(NutrientMain.ENERGIE) ||
-                                alimentData.alimentRation.densiteEnergetique > 0.0
-                ) {
-                    labels.add(NutrientMain.ENERGIE.label)
+                // (l'énergie est toujours disponible, pas besoin de vérifier les références)
+                // L'énergie doit toujours être disponible pour tous les aliments
+                labels.add(NutrientMain.ENERGIE.label)
+                
+                // Appliquer le même ordre de priorité que dans le calcul
+                val orderedLabels = mutableListOf<String>()
+                
+                // 1er : NutrientMain (sans l'énergie)
+                val mainNutrients = labels.filter { label ->
+                    NutrientMain.entries.any { it.label == label && it != NutrientMain.ENERGIE }
+                }.sorted()
+                orderedLabels.addAll(mainNutrients)
+                
+                // 2ème : NutrientMacro
+                val macroNutrients = labels.filter { label ->
+                    NutrientMacro.entries.any { it.label == label }
+                }.sorted()
+                orderedLabels.addAll(macroNutrients)
+                
+                // 3ème : NutrientMin
+                val minNutrients = labels.filter { label ->
+                    NutrientMin.entries.any { it.label == label }
+                }.sorted()
+                orderedLabels.addAll(minNutrients)
+                
+                // 4ème : NutrientVitam
+                val vitamNutrients = labels.filter { label ->
+                    NutrientVitam.entries.any { it.label == label }
+                }.sorted()
+                orderedLabels.addAll(vitamNutrients)
+                
+                // 5ème : NutrientLipid
+                val lipidNutrients = labels.filter { label ->
+                    NutrientLipid.entries.any { it.label == label }
+                }.sorted()
+                orderedLabels.addAll(lipidNutrients)
+                
+                // 6ème : AAEnum
+                val aaNutrients = labels.filter { label ->
+                    AAEnum.entries.any { it.label == label }
+                }.sorted()
+                orderedLabels.addAll(aaNutrients)
+                
+                // 7ème : NutrientOther
+                val otherNutrients = labels.filter { label ->
+                    NutrientOther.entries.any { it.label == label }
+                }.sorted()
+                orderedLabels.addAll(otherNutrients)
+                
+                // Dernier : ENERGIE (toujours en dernier)
+                if (labels.contains(NutrientMain.ENERGIE.label)) {
+                    orderedLabels.add(NutrientMain.ENERGIE.label)
                 }
-                labels.toList().sorted()
+                
+                orderedLabels
             }
 
     Card(
@@ -725,11 +833,12 @@ private suspend fun calculateMultiNutrientAdjustment(
             var apportEnergetiqueTotal = 0.0
             for (alimentRation in rationTemp.alimentMutableList) {
                 if (alimentRation.quantite > 0.01) {
+                    // Utiliser la même logique que le système principal pour assurer la cohérence
                     val energieAliment = alimentRation.getEnergie(
                             referenceUtilisee,
                             preferences,
                             equationRepository
-                    ) * alimentRation.quantite / 100.0
+                    )
                     apportEnergetiqueTotal += energieAliment
                     println("  - ${alimentRation.aliment?.nom}: ${TextUtils.formatDecimal(alimentRation.quantite, 2)}g → ${TextUtils.formatDecimal(energieAliment, 2)} kcal")
                 }
@@ -927,15 +1036,14 @@ private fun buildProcessingOrderFromSelections(
 
     val order = mutableListOf<String>()
 
-    // Priorité: Macro > Minéraux > Vitamines > Lipides > AA > Autres > Main (sans l'énergie), trié
-    // par label
-    order += nonEnergy.filter { isOf(it, NutrientMacro.values()) }.sorted()
-    order += nonEnergy.filter { isOf(it, NutrientMin.values()) }.sorted()
-    order += nonEnergy.filter { isOf(it, NutrientVitam.values()) }.sorted()
-    order += nonEnergy.filter { isOf(it, NutrientLipid.values()) }.sorted()
-    order += nonEnergy.filter { isOf(it, AAEnum.values()) }.sorted()
-    order += nonEnergy.filter { isOf(it, NutrientOther.values()) }.sorted()
-    order += nonEnergy.filter { isOf(it, NutrientMain.values()) && it != energyLabel }.sorted()
+    // Priorité: Main (sans l'énergie) > Macro > Minéraux > Vitamines > Lipides > AA > Autres, trié par label
+    order += nonEnergy.filter { isOf(it, NutrientMain.values()) && it != energyLabel }.sorted() // 1er - Base de la ration
+    order += nonEnergy.filter { isOf(it, NutrientMacro.values()) }.sorted()                    // 2ème
+    order += nonEnergy.filter { isOf(it, NutrientMin.values()) }.sorted()                      // 3ème
+    order += nonEnergy.filter { isOf(it, NutrientVitam.values()) }.sorted()                    // 4ème
+    order += nonEnergy.filter { isOf(it, NutrientLipid.values()) }.sorted()                    // 5ème
+    order += nonEnergy.filter { isOf(it, AAEnum.values()) }.sorted()                           // 6ème
+    order += nonEnergy.filter { isOf(it, NutrientOther.values()) }.sorted()                    // 7ème
 
     if (hasEnergy) order += energyLabel // Toujours en dernier
 
@@ -958,13 +1066,13 @@ private fun buildProcessingOrderFromSelectionLabels(labels: List<String>): List<
 
     val order = mutableListOf<String>()
 
-    order += nonEnergy.filter { isOf(it, NutrientMacro.values()) }.sorted()
-    order += nonEnergy.filter { isOf(it, NutrientMin.values()) }.sorted()
-    order += nonEnergy.filter { isOf(it, NutrientVitam.values()) }.sorted()
-    order += nonEnergy.filter { isOf(it, NutrientLipid.values()) }.sorted()
-    order += nonEnergy.filter { isOf(it, AAEnum.values()) }.sorted()
-    order += nonEnergy.filter { isOf(it, NutrientOther.values()) }.sorted()
-    order += nonEnergy.filter { isOf(it, NutrientMain.values()) && it != energyLabel }.sorted()
+    order += nonEnergy.filter { isOf(it, NutrientMain.values()) && it != energyLabel }.sorted() // 1er - Base de la ration
+    order += nonEnergy.filter { isOf(it, NutrientMacro.values()) }.sorted()                    // 2ème
+    order += nonEnergy.filter { isOf(it, NutrientMin.values()) }.sorted()                      // 3ème
+    order += nonEnergy.filter { isOf(it, NutrientVitam.values()) }.sorted()                    // 4ème
+    order += nonEnergy.filter { isOf(it, NutrientLipid.values()) }.sorted()                    // 5ème
+    order += nonEnergy.filter { isOf(it, AAEnum.values()) }.sorted()                           // 6ème
+    order += nonEnergy.filter { isOf(it, NutrientOther.values()) }.sorted()                    // 7ème
 
     if (hasEnergy) order += energyLabel // Toujours en dernier
     return order.distinct()
@@ -987,6 +1095,16 @@ private fun findNutrientByLabel(label: String): Nutrient? {
                 NutrientOther.entries.find { it.label == label }
         AAEnum.entries.any { it.label == label } -> AAEnum.entries.find { it.label == label }
         else -> null
+    }
+}
+
+/** Vérifie quels niveaux de référence sont disponibles pour un nutriment donné */
+private fun getAvailableRefLevelsForNutrient(
+    nutrient: Nutrient, 
+    referenceUtilisee: ReferenceEv
+): List<Reflevel> {
+    return Reflevel.entries.filter { refLevel ->
+        referenceUtilisee.obtenirNutrimentRef(nutrient, refLevel) != null
     }
 }
 

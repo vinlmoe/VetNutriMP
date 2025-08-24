@@ -27,6 +27,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.datetime.Clock
 
 /**
  * Implémentation de FoodRepository utilisant une base de données SQLite. Cette classe gère les
@@ -41,6 +42,11 @@ class DatabaseFoodRepository(
     // Flow réactif pour notifier les changements
     private val _foodsFlow = MutableStateFlow<List<AlimentEv>>(emptyList())
     private val coroutineScope = CoroutineScope(AppDispatchers.Main)
+    
+    // Cache en mémoire pour les aliments
+    private var cachedFoods: List<AlimentEv>? = null
+    private var lastCacheTime: Long = 0
+    private val cacheValidityDuration = 5 * 60 * 1000L // 5 minutes
 
     // Mode batch pour désactiver les refresh coûteux à chaque insert/update
     // KMP: éviter @Volatile en commonMain
@@ -51,6 +57,14 @@ class DatabaseFoodRepository(
     fun endBatch() {
         isBatchMode = false
         coroutineScope.launch { refreshFoodsFlow() }
+    }
+    
+    /**
+     * Vide le cache en mémoire pour forcer un rechargement des données
+     */
+    fun clearCache() {
+        cachedFoods = null
+        lastCacheTime = 0
     }
 
     /**
@@ -244,7 +258,13 @@ class DatabaseFoodRepository(
      */
     override suspend fun getAllFoods(): List<AlimentEv> {
         return withContext(AppDispatchers.IO) {
-
+            val currentTime = Clock.System.now().toEpochMilliseconds()
+            
+            // Vérifier si le cache est encore valide
+            if (cachedFoods != null && (currentTime - lastCacheTime) < cacheValidityDuration) {
+                return@withContext cachedFoods!!
+            }
+            
             // Récupérer tous les aliments de la base de données
             val foodEntities = foodDao.getAllFoods()
 
@@ -259,6 +279,10 @@ class DatabaseFoodRepository(
                                 }
                         foodEntity.toAlimentEv(nutrientValues = nutrientValues)
                     }
+            
+            // Mettre à jour le cache
+            cachedFoods = result
+            lastCacheTime = currentTime
 
             return@withContext result
         }

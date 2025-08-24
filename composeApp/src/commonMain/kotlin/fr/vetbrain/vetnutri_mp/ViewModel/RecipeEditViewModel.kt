@@ -19,7 +19,7 @@ import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.util.UUID
+import kotlinx.datetime.Clock
 
 /**
  * ViewModel pour l'édition des recettes
@@ -28,6 +28,17 @@ class RecipeEditViewModel(
     private val recipeRepository: RecipeRepository,
     private val foodRepository: FoodRepository
 ) {
+    // Compteur pour générer des UUIDs uniques
+    private var uuidCounter = 0
+    
+    /**
+     * Génère un UUID unique basé sur le timestamp et un compteur
+     */
+    private fun generateUniqueId(): String {
+        val timestamp = Clock.System.now().toEpochMilliseconds()
+        val counter = ++uuidCounter
+        return "temp_${timestamp}_$counter"
+    }
     
     // État des recettes
     private val _recipes = mutableStateListOf<Ration>()
@@ -96,15 +107,9 @@ class RecipeEditViewModel(
         CoroutineScope(AppDispatchers.IO).launch {
             try {
                 _isLoading.value = true
-                println("🔍 RecipeEditViewModel: Chargement des recettes...")
                 val loadedRecipes = recipeRepository.getAllRecipes()
-                println("🔍 RecipeEditViewModel: ${loadedRecipes.size} recettes chargées")
-                loadedRecipes.forEach { recipe ->
-                    println("🔍 RecipeEditViewModel: Recette: ${recipe.name} (${recipe.alimentMutableList.size} aliments)")
-                }
                 _recipes.clear()
                 _recipes.addAll(loadedRecipes)
-                println("🔍 RecipeEditViewModel: ${_recipes.size} recettes dans la liste")
             } catch (e: Exception) {
                 println("❌ RecipeEditViewModel: Erreur lors du chargement: ${e.message}")
                 _message.value = "Erreur lors du chargement des recettes: ${e.message}"
@@ -154,7 +159,7 @@ class RecipeEditViewModel(
      */
     fun startCreatingRecipe() {
         _editingRecipe.value = Ration(
-            uuid = "temp_${UUID.randomUUID().toString()}", // UUID temporaire pour distinguer des nouvelles recettes
+            uuid = generateUniqueId(), // UUID temporaire pour distinguer des nouvelles recettes
             name = "",
             espece = "CHIEN", // Espèce par défaut
             description = "",
@@ -233,7 +238,7 @@ class RecipeEditViewModel(
                     }
                     
                     val newAlimentRation = AlimentRation(
-                        uuid = UUID.randomUUID().toString(),
+                        uuid = generateUniqueId(),
                         uuidUnif = aliment.uuid,
                         quantite = quantityValue,
                         proportion = 0.0,
@@ -319,7 +324,7 @@ class RecipeEditViewModel(
                     name = _newRecipeName.value,
                     alimentMutableList = _selectedIngredients.toMutableList()
                 ) ?: Ration(
-                    uuid = UUID.randomUUID().toString(),
+                    uuid = generateUniqueId(),
                     name = _newRecipeName.value,
                     espece = "CHIEN",
                     description = "",

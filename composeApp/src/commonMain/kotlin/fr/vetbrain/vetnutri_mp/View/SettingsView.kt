@@ -446,46 +446,50 @@ fun SettingsView(
                                                                 onClick = {
                                                                         coroutineScope.launch {
                                                                                 try {
-                                                                                        val exportRepo =
-                                                                                                ExportImportRepository(
-                                                                                                        animalRepository =
-                                                                                                                viewModel
-                                                                                                                        .animalRepository,
-                                                                                                        foodRepository =
-                                                                                                                viewModel
-                                                                                                                        .foodRepository,
-                                                                                                        equationRepository =
-                                                                                                                viewModel
-                                                                                                                        .equationRepository,
-                                                                                                        referenceRepository =
-                                                                                                                viewModel
-                                                                                                                        .referenceEvRepository,
-                                                                                                        biblioRepository =
-                                                                                                                viewModel
-                                                                                                                        .biblioRefRepository,
-                                                                                                        consultationRepository =
-                                                                                                                viewModel
-                                                                                                                        .consultationRepository
-                                                                                                )
-                                                                                        val json =
-                                                                                                exportRepo
-                                                                                                        .exportWithSelection(
-                                                                                                                ExportImportRepository
-                                                                                                                        .ExportSelectionOptions(
-                                                                                                                                includeAnimals =
-                                                                                                                                        includeAnimals,
-                                                                                                                                includeFoods =
-                                                                                                                                        includeFoods,
-                                                                                                                                includeRations =
-                                                                                                                                        includeRations,
-                                                                                                                                includeEquations =
-                                                                                                                                        includeEquations,
-                                                                                                                                animalIds =
-                                                                                                                                        selectedAnimalIds,
-                                                                                                                                foodIds =
-                                                                                                                                        selectedFoodIds
-                                                                                                                        )
-                                                                                                        )
+                                                                                                                                                val exportRepo =
+                                                                ExportImportRepository(
+                                                                        animalRepository =
+                                                                                viewModel
+                                                                                        .animalRepository,
+                                                                        foodRepository =
+                                                                                viewModel
+                                                                                        .foodRepository,
+                                                                        equationRepository =
+                                                                                viewModel
+                                                                                        .equationRepository,
+                                                                        referenceRepository =
+                                                                                viewModel
+                                                                                        .referenceEvRepository,
+                                                                        biblioRepository =
+                                                                                viewModel
+                                                                                        .biblioRefRepository,
+                                                                        consultationRepository =
+                                                                                viewModel
+                                                                                        .consultationRepository,
+                                                                        recipeRepository =
+                                                                                viewModel
+                                                                                        .recipeRepository
+                                                                )
+                                                                                                                                                val json =
+                                                                exportRepo
+                                                                        .exportWithSelection(
+                                                                                ExportImportRepository
+                                                                                        .ExportSelectionOptions(
+                                                                                                includeAnimals =
+                                                                                                        includeAnimals,
+                                                                                                includeFoods =
+                                                                                                        includeFoods,
+                                                                                                includeRations =
+                                                                                                        includeRations,
+                                                                                                includeRecipes = true,
+                                                                                                includeEquations =
+                                                                                                        includeEquations,
+                                                                                                animalIds =
+                                                                                                        selectedAnimalIds,
+                                                                                                foodIds =
+                                                                                                        selectedFoodIds
+                                                                                        )
+                                                                                )
                                                                                                                 val ok =
                                 fr.vetbrain.vetnutri_mp.exportJsonToFile(
                                         content = json,

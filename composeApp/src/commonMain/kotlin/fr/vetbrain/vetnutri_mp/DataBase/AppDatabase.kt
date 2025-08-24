@@ -35,7 +35,7 @@ import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
                         ReferenceEvEquationEntity::class,
                         ReferenceEvCoefficientEntity::class,
                         ReferenceEvNutrientEntity::class],
-        version = 22,
+        version = 23,
         exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -84,7 +84,9 @@ fun getRoomDatabase(builder: RoomDatabase.Builder<AppDatabase>): AppDatabase {
                         // Migration 20→21 : Ajout du champ ratio à la table EQUATIONS
                         createMigration20to21(),
                         // Migration 21→22 : Création des tables de recettes
-                        createMigration21to22()
+                        createMigration21to22(),
+                        // Migration 22→23 : Ajout d'index pour optimiser les performances
+                        createMigration22to23()
                 )
                 .setDriver(BundledSQLiteDriver())
                 .setQueryCoroutineContext(AppDispatchers.IO)
@@ -276,6 +278,52 @@ fun createMigration21to22(): Migration {
                         )
                         .use { it.step() }
             } catch (e: Exception) {
+                throw e
+            }
+        }
+    }
+}
+
+/** Migration 22 → 23 : Ajout d'index pour optimiser les performances de recherche et filtrage */
+fun createMigration22to23(): Migration {
+    return object : Migration(22, 23) {
+        override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
+            println("🔵 Migration 22→23 : Ajout d'index pour optimiser les performances")
+            
+            try {
+                // Index pour le filtrage par groupe d'aliment
+                connection.prepare(
+                    "CREATE INDEX IF NOT EXISTS index_FOOD_groupAlim ON FOOD(groupAlim)"
+                ).use { it.step() }
+                
+                // Index pour le filtrage par type d'aliment
+                connection.prepare(
+                    "CREATE INDEX IF NOT EXISTS index_FOOD_typeAlim ON FOOD(typeAlim)"
+                ).use { it.step() }
+                
+                // Index pour la recherche par marque
+                connection.prepare(
+                    "CREATE INDEX IF NOT EXISTS index_FOOD_brand ON FOOD(brand)"
+                ).use { it.step() }
+                
+                // Index pour la recherche par nom
+                connection.prepare(
+                    "CREATE INDEX IF NOT EXISTS index_FOOD_name ON FOOD(name)"
+                ).use { it.step() }
+                
+                // Index pour le filtrage par espèces
+                connection.prepare(
+                    "CREATE INDEX IF NOT EXISTS index_FOOD_especesJson ON FOOD(especesJson)"
+                ).use { it.step() }
+                
+                // Index pour filtrer les aliments obsolètes
+                connection.prepare(
+                    "CREATE INDEX IF NOT EXISTS index_FOOD_deprecated ON FOOD(deprecated)"
+                ).use { it.step() }
+                
+                println("✅ Migration 22→23 terminée avec succès : 6 index ajoutés")
+            } catch (e: Exception) {
+                println("❌ Erreur lors de la migration 22→23 : ${e.message}")
                 throw e
             }
         }

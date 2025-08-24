@@ -309,7 +309,8 @@ fun App(appDatabase: AppDatabase) {
                                     equationRepository = equationRepository,
                                     referenceRepository = databaseReferenceEvRepository,
                                     biblioRepository = biblioRefRepository,
-                                    consultationRepository = consultationRepository
+                                    consultationRepository = consultationRepository,
+                                    recipeRepository = recipeRepository
                             )
 
                     println("IMPORT AUTO: ExportImportRepository créé, début de l'import...")
