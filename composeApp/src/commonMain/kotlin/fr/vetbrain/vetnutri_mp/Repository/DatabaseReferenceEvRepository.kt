@@ -716,6 +716,13 @@ class DatabaseReferenceEvRepository(
 
     private suspend fun loadNutrientsForReference(referenceEv: ReferenceEv) {
         val nutrients = referenceEvDao.getNutrientsForReference(referenceEv.uuid)
+        
+        // 🔍 LOG DIAGNOSTIC : Vérification des nutriments en base
+        println("🔍 DIAGNOSTIC LOAD: Chargement des nutriments pour ${referenceEv.nom} (${referenceEv.uuid})")
+        println("🔍 DIAGNOSTIC LOAD: ${nutrients.size} nutriments trouvés en base")
+        nutrients.forEach { nut ->
+            println("  - ${nut.nutrientCode} (${nut.reflevel}): ${nut.quantite}")
+        }
 
         // Grouper par niveau de référence
         val nutrientsByLevel = nutrients.groupBy { it.reflevel }

@@ -1979,13 +1979,21 @@ object ImportUtils {
 
             // Normaliser le nom du nutriment pour la résolution
             val normalizedNutrientString = normaliserNomNutrient(nutrientString)
+            
+            // 🔍 LOG DIAGNOSTIC : Tracer la résolution des nutriments
+            println("🔍 DIAGNOSTIC NUTRIMENT: '$nutrientString' → '$normalizedNutrientString'")
 
             var finalNutrient =
                     fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver.AllNutrientResolver(
                             normalizedNutrientString
                     )
 
-            if (finalNutrient != null) {} else {
+            if (finalNutrient != null) {
+                // 🔍 LOG DIAGNOSTIC : Nutriment résolu avec succès
+                println("✅ DIAGNOSTIC NUTRIMENT: '$nutrientString' → '$normalizedNutrientString' → ${finalNutrient::class.simpleName}.${finalNutrient.label}")
+            } else {
+                // 🔍 LOG DIAGNOSTIC : Échec de la résolution
+                println("❌ DIAGNOSTIC NUTRIMENT: ÉCHEC '$nutrientString' → '$normalizedNutrientString'")
                 resolutionsProblematiques.add(
                         "ECHEC_RESOLUTION_EXACTE: '$nutrientString' → '$normalizedNutrientString'"
                 )
@@ -2058,14 +2066,14 @@ object ImportUtils {
     /** Normalise le nom d'un nutriment pour une meilleure résolution */
     private fun normaliserNomNutrient(nutrient: String): String {
         return when (nutrient.uppercase().trim()) {
-            // Corrections des minéraux essentiels - Utiliser les labels des énumérations
+            // Corrections des minéraux essentiels - Utiliser les labels EXACTS des énumérations
             "MG",
             "MAGNESIUM" -> "MG" // NutrientMacro.MG a le label "MG"
-            "CA", "CALCIUM" -> "CAL" // NutrientMacro.CAL a le label "CAL"
-            "P", "PHOSPHORE", "PHOSPHORUS" -> "PHOS" // NutrientMacro.PHOS a le label "PHOS"
+            "CA", "CALCIUM" -> "CA" // NutrientMacro.CA a le label "CA" (pas "CAL")
+            "P", "PHOSPHORE", "PHOSPHORUS" -> "P" // NutrientMacro.P a le label "P" (pas "PHOS")
             "NA", "SODIUM" -> "NA" // NutrientMacro.NA a le label "NA"
             "K", "POTASSIUM" -> "K" // NutrientMacro.K a le label "K"
-            "CL", "CHLORE", "CHLORIDE" -> "CHL" // NutrientMacro.CHL a le label "CHL"
+            "CL", "CHLORE", "CHLORIDE" -> "CL" // NutrientMacro.CL a le label "CL" (pas "CHL")
 
             // Corrections des oligo-éléments
             "FE",
@@ -2237,6 +2245,9 @@ object ImportUtils {
             nutrientInfo: NutrientRequirementInfo
     ) {
         try {
+            // 🔍 LOG DIAGNOSTIC : Tentative d'ajout du nutriment
+            println("🔍 DIAGNOSTIC AJOUT: Ajout de ${nutrientInfo.nutrient.label} (${nutrientInfo.referenceLevel}) = ${nutrientInfo.quantity} ${nutrientInfo.unitRequirement}")
+            
             // Créer la référence bibliographique si elle n'existe pas
             val biblio =
                     nutrientInfo.bibliographicReference ?: fr.vetbrain.vetnutri_mp.Data.BiblioRef()
@@ -2249,7 +2260,16 @@ object ImportUtils {
                     uniteReq = nutrientInfo.unitRequirement,
                     biblio = biblio
             )
-        } catch (e: Exception) {}
+            
+            // 🔍 LOG DIAGNOSTIC : Vérification après ajout
+            val valeurVerifiee = reference.obtenirNutriment(nutrientInfo.nutrient, nutrientInfo.referenceLevel)
+            println("✅ DIAGNOSTIC AJOUT: ${nutrientInfo.nutrient.label} ajouté avec succès, valeur vérifiée: $valeurVerifiee")
+            
+        } catch (e: Exception) {
+            // 🔍 LOG DIAGNOSTIC : Erreur lors de l'ajout
+            println("❌ DIAGNOSTIC AJOUT: Erreur lors de l'ajout de ${nutrientInfo.nutrient.label}: ${e.message}")
+            e.printStackTrace()
+        }
     }
 
     /** Traite les coefficients de modification (modk1-5) si présents */
