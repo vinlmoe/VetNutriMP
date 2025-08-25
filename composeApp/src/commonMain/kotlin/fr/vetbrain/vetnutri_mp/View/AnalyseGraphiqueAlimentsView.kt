@@ -1,379 +1,412 @@
 package fr.vetbrain.vetnutri_mp.View
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.Button
-import androidx.compose.material.Card
-import androidx.compose.material.CircularProgressIndicator
-import androidx.compose.material.Icon
-import androidx.compose.material.IconButton
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.OutlinedTextField
-import androidx.compose.material.Text
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import fr.vetbrain.vetnutri_mp.Components.DropdownField
-import fr.vetbrain.vetnutri_mp.Components.MultiSelectDropdownField
 import fr.vetbrain.vetnutri_mp.Data.AlimentEv
-import fr.vetbrain.vetnutri_mp.Enumer.AlimIndic
-import fr.vetbrain.vetnutri_mp.Enumer.Espece
-import fr.vetbrain.vetnutri_mp.Enumer.FoodKind
-import fr.vetbrain.vetnutri_mp.Enumer.GroupAlim
-import fr.vetbrain.vetnutri_mp.Localization.translateEnum
-import fr.vetbrain.vetnutri_mp.Theme.AppIcons
+import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
+import fr.vetbrain.vetnutri_mp.Enumer.NutrientMain
+import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
-import fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailViewModel
-import kotlinx.coroutines.launch
+import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
+import io.github.koalaplot.core.*
+import io.github.koalaplot.core.line.LinePlot
+import io.github.koalaplot.core.xygraph.*
+import io.github.koalaplot.core.xygraph.FloatLinearAxisModel
+import io.github.koalaplot.core.xygraph.Point
+import io.github.koalaplot.core.xygraph.XYGraph
+import io.github.koalaplot.core.util.ExperimentalKoalaPlotApi
 
 /**
- * Écran d'analyse graphique des aliments. Permet de rechercher un aliment et d'afficher ses détails
- * de manière structurée.
+ * Données calculées pour un aliment avec sa densité énergétique et pourcentages
+ */
+data class AlimentAnalyseData(
+    val aliment: AlimentEv,
+    val numero: Int,
+    val densiteEnergetique: Double,
+    val pourcentageProteines: Double,
+    val pourcentageLipides: Double
+)
+
+/**
+ * Vue d'analyse graphique des aliments sélectionnés
  */
 @Composable
-fun AnalyseGraphiqueAlimentsView(viewModel: AnimalDetailViewModel, modifier: Modifier = Modifier) {
-    val isLoadingFoodsState: Boolean by viewModel.isLoadingFoods.collectAsState()
-    val availableFoods: List<AlimentEv> by viewModel.availableFoods.collectAsState()
-    var searchQuery: String by remember { mutableStateOf(viewModel.alimentSearchQuery) }
-    var selectedFoodType: FoodKind? by remember { mutableStateOf<FoodKind?>(null) }
-    var selectedFoodGroup: GroupAlim? by remember { mutableStateOf<GroupAlim?>(null) }
-    var selectedEspece: Espece? by remember { mutableStateOf<Espece?>(null) }
-    var selectedIndications: Set<AlimIndic> by remember {
-        mutableStateOf<Set<AlimIndic>>(emptySet())
+fun AnalyseGraphiqueAlimentsView(
+    aliments: List<AlimentEv>,
+    referenceEv: ReferenceEv?,
+    equationRepository: EquationRepository?,
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    // Calculer les données d'analyse pour chaque aliment
+    val alimentsAnalyses = remember(aliments, referenceEv, equationRepository) {
+        aliments.mapIndexedNotNull { index, aliment ->
+            try {
+                val densiteEnergetique = calculerDensiteEnergetique(aliment, referenceEv, equationRepository)
+                val pourcentageProteines = calculerPourcentageEnergieProteines(aliment, densiteEnergetique)
+                val pourcentageLipides = calculerPourcentageEnergieLipides(aliment, densiteEnergetique)
+                
+                AlimentAnalyseData(
+                    aliment = aliment,
+                    numero = index + 1,
+                    densiteEnergetique = densiteEnergetique,
+                    pourcentageProteines = pourcentageProteines,
+                    pourcentageLipides = pourcentageLipides
+                )
+            } catch (e: Exception) {
+                null
+            }
+        }.sortedByDescending { it.densiteEnergetique }
     }
-    var alimentSelectionne: AlimentEv? by remember { mutableStateOf(null) }
-    var alimentChargeComplet: AlimentEv? by remember { mutableStateOf(null) }
-    var selectedRightFoods: List<AlimentEv> by remember { mutableStateOf(emptyList()) }
-    var selectedRightFood: AlimentEv? by remember { mutableStateOf(null) }
-    val scope = rememberCoroutineScope()
 
-    LaunchedEffect(Unit) { viewModel.loadAvailableFoods() }
-
-    val alimentsFiltres: List<AlimentEv> =
-            remember(
-                    availableFoods,
-                    searchQuery,
-                    selectedFoodType,
-                    selectedFoodGroup,
-                    selectedEspece,
-                    selectedIndications
+    Column(
+        modifier = modifier.fillMaxSize().padding(AppSizes.paddingMedium),
+        verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
+    ) {
+        // En-tête avec titre et bouton de fermeture
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
             ) {
-                availableFoods.filter { aliment: AlimentEv ->
-                    val matchesSearch: Boolean =
-                            if (searchQuery.isEmpty()) true
-                            else {
-                                (aliment.nom?.contains(searchQuery, ignoreCase = true) == true) ||
-                                        (aliment.brand?.contains(searchQuery, ignoreCase = true) ==
-                                                true) ||
-                                        (aliment.ingredients?.contains(
-                                                searchQuery,
-                                                ignoreCase = true
-                                        ) == true)
-                            }
-
-                    val matchesType: Boolean =
-                            when (val sel: FoodKind? = selectedFoodType) {
-                                null -> true
-                                FoodKind.ALL -> true
-                                else -> aliment.typeAliment == sel
-                            }
-
-                    val matchesGroup: Boolean =
-                            when (val sel: GroupAlim? = selectedFoodGroup) {
-                                null -> true
-                                GroupAlim.ALL -> true
-                                else -> aliment.group == sel
-                            }
-
-                    val matchesEspece: Boolean =
-                            when (val sel: Espece? = selectedEspece) {
-                                null -> true
-                                Espece.CH -> true
-                                else -> {
-                                    val foodSpecies: List<Espece> = aliment.getEspecesList()
-                                    foodSpecies.isEmpty() ||
-                                            foodSpecies.contains(Espece.CH) ||
-                                            foodSpecies.contains(sel)
-                                }
-                            }
-
-                    val matchesIndications: Boolean =
-                            if (selectedIndications.isEmpty() ||
-                                            selectedIndications.contains(AlimIndic.ALL)
-                            )
-                                    true
-                            else
-                                    selectedIndications.any { indication: AlimIndic ->
-                                        aliment.indicat.contains(indication)
-                                    }
-
-                    matchesSearch &&
-                            matchesType &&
-                            matchesGroup &&
-                            matchesEspece &&
-                            matchesIndications
+                IconButton(onClick = onClose) {
+                    Icon(
+                        imageVector = Icons.Default.ArrowBack,
+                        contentDescription = "Retour",
+                        tint = VetNutriColors.Primary
+                    )
+                }
+                Column {
+                    Text(
+                        text = "Analyse graphique de ${aliments.size} aliment(s)",
+                        style = MaterialTheme.typography.h5,
+                        fontWeight = FontWeight.Bold,
+                        color = VetNutriColors.Primary
+                    )
+                    Text(
+                        text = "Visualisation des caractéristiques nutritionnelles",
+                        style = MaterialTheme.typography.caption,
+                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                    )
                 }
             }
-    Column(modifier = modifier.fillMaxSize().padding(AppSizes.paddingMedium)) {
-        Text(text = "Analyse graphique des aliments", style = MaterialTheme.typography.h6)
-        Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
-        // Panneau de filtres (réutilisation des mêmes éléments que AddAlimentView)
-        Card(modifier = Modifier.fillMaxWidth(), elevation = AppSizes.elevationSmall) {
-            Column(
-                    modifier = Modifier.padding(AppSizes.paddingMedium),
-                    verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
-            ) {
-                Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
+        }
+
+        // Contenu principal - responsive selon la largeur
+        BoxWithConstraints(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            val isCompact = maxWidth < 800.dp
+            
+            if (isCompact) {
+                // Vue compacte : graphiques puis liste
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
                 ) {
-                    // Champ de recherche simple
-                    OutlinedTextField(
-                            value = searchQuery,
-                            onValueChange = { nv: String ->
-                                searchQuery = nv
-                                viewModel.setAlimentSearchQuery(nv)
-                            },
-                            modifier = Modifier.weight(1f),
-                            label = { Text("Rechercher un aliment") },
-                            singleLine = true,
-                            leadingIcon = {
-                                Icon(
-                                        imageVector = Icons.Default.Search,
-                                        contentDescription = "Rechercher"
-                                )
-                            },
-                            trailingIcon = {
-                                if (searchQuery.isNotEmpty()) {
-                                    IconButton(onClick = { searchQuery = "" }) {
-                                        Icon(
-                                                imageVector = Icons.Default.Clear,
-                                                contentDescription = "Effacer"
-                                        )
-                                    }
-                                }
-                            }
+                    // Graphique principal
+                    GraphiqueNuagePoints(alimentsAnalyses, modifier = Modifier.fillMaxWidth())
+                    
+                    // Liste des aliments
+                    ListeAlimentsAnalyse(alimentsAnalyses, modifier = Modifier.fillMaxWidth())
+                }
+            } else {
+                // Vue large : côte à côte
+                Row(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
+                ) {
+                    // Colonne gauche : liste des aliments (1/4 de la largeur)
+                    Column(
+                        modifier = Modifier.weight(0.25f),
+                        verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
+                    ) {
+                        ListeAlimentsAnalyse(alimentsAnalyses, modifier = Modifier.fillMaxWidth())
+                    }
+                    
+                    // Colonne droite : graphiques (3/4 de la largeur)
+                    Column(
+                        modifier = Modifier.weight(0.75f),
+                        verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
+                    ) {
+                        GraphiqueNuagePoints(alimentsAnalyses, modifier = Modifier.fillMaxWidth())
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Graphique en nuage de points : % énergie protéines vs % énergie lipides
+ */
+@OptIn(ExperimentalKoalaPlotApi::class)
+@Composable
+private fun GraphiqueNuagePoints(
+    alimentsAnalyses: List<AlimentAnalyseData>,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier,
+        elevation = AppSizes.elevationMedium
+    ) {
+        Column(
+            modifier = Modifier.padding(AppSizes.paddingMedium)
+        ) {
+            Text(
+                text = "Répartition énergétique : Protéines vs Lipides",
+                style = MaterialTheme.typography.h6,
+                fontWeight = FontWeight.Bold,
+                color = VetNutriColors.Primary
+            )
+            
+            Text(
+                text = "Chaque point représente un aliment (numéroté de 1 à ${alimentsAnalyses.size})",
+                style = MaterialTheme.typography.caption,
+                color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+            )
+            
+            Spacer(modifier = Modifier.height(AppSizes.paddingMedium))
+            
+            if (alimentsAnalyses.isNotEmpty()) {
+                // Préparer les données pour le graphique
+                val points = alimentsAnalyses.map { data ->
+                    Point(
+                        x = data.pourcentageProteines.toFloat(),
+                        y = data.pourcentageLipides.toFloat()
                     )
                 }
-
-                Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
+                
+                // Calculer les plages des axes
+                val minX = points.minOf { it.x }.coerceAtLeast(0f)
+                val maxX = points.maxOf { it.x }.coerceAtMost(100f)
+                val minY = points.minOf { it.y }.coerceAtLeast(0f)
+                val maxY = points.maxOf { it.y }.coerceAtMost(100f)
+                
+                val xRange = (minX - 5f)..(maxX + 5f)
+                val yRange = (minY - 5f)..(maxY + 5f)
+                
+                XYGraph(
+                    xAxisModel = FloatLinearAxisModel(range = xRange),
+                    yAxisModel = FloatLinearAxisModel(range = yRange),
+                    modifier = Modifier.height(400.dp)
                 ) {
-                    DropdownField(
-                            label = "Type",
-                            selectedValue = selectedFoodType,
-                            options = FoodKind.entries,
-                            onValueChange = { value: FoodKind? -> selectedFoodType = value },
-                            valueToString = { it.translateEnum() },
-                            modifier = Modifier.weight(1f),
-                            height = 40.dp,
-                            fontSize = 12.sp,
-                            labelFontSize = 10.sp,
-                            borderWidth = 0.5.dp
-                    )
-
-                    DropdownField(
-                            label = "Groupe",
-                            selectedValue = selectedFoodGroup,
-                            options = GroupAlim.entries,
-                            onValueChange = { value: GroupAlim? -> selectedFoodGroup = value },
-                            valueToString = { it.translateEnum() },
-                            modifier = Modifier.weight(1f),
-                            height = 40.dp,
-                            fontSize = 12.sp,
-                            labelFontSize = 10.sp,
-                            borderWidth = 0.5.dp
-                    )
+                    // Créer tous les points d'un coup pour LinePlot
+                    val allPoints = alimentsAnalyses.map { data ->
+                        Point(
+                            x = data.pourcentageProteines.toFloat(),
+                            y = data.pourcentageLipides.toFloat()
+                        )
+                    }
+                    
+                    // Afficher tous les points en une seule fois
+                    if (allPoints.isNotEmpty()) {
+                        LinePlot(data = allPoints)
+                    }
                 }
+                
+                // Légende
+                Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
+                Text(
+                    text = "Axes : X = % énergie protéines, Y = % énergie lipides",
+                    style = MaterialTheme.typography.caption,
+                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                )
+            } else {
+                Text(
+                    text = "Aucune donnée disponible pour l'analyse",
+                    style = MaterialTheme.typography.body1,
+                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                )
+            }
+        }
+    }
+}
 
+/**
+ * Liste des aliments avec leurs données d'analyse
+ */
+@Composable
+private fun ListeAlimentsAnalyse(
+    alimentsAnalyses: List<AlimentAnalyseData>,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier,
+        elevation = AppSizes.elevationMedium
+    ) {
+        Column(
+            modifier = Modifier.padding(AppSizes.paddingMedium)
+        ) {
+            Text(
+                text = "Liste des aliments (triés par densité énergétique décroissante)",
+                style = MaterialTheme.typography.h6,
+                fontWeight = FontWeight.Bold,
+                color = VetNutriColors.Primary
+            )
+            
+            Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
+            
+            if (alimentsAnalyses.isNotEmpty()) {
+                // En-têtes du tableau
                 Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
-                ) {
-                    DropdownField(
-                            label = "Espèce",
-                            selectedValue = selectedEspece,
-                            options = Espece.entries,
-                            onValueChange = { value: Espece? -> selectedEspece = value },
-                            valueToString = { it.translateEnum() },
-                            modifier = Modifier.weight(1f),
-                            height = 40.dp,
-                            fontSize = 12.sp,
-                            labelFontSize = 10.sp,
-                            borderWidth = 0.5.dp
-                    )
-
-                    MultiSelectDropdownField(
-                            label = "Indications",
-                            selectedValues = selectedIndications,
-                            options = AlimIndic.entries,
-                            onValuesChange = { values: Set<AlimIndic> ->
-                                selectedIndications = values
-                            },
-                            valueToString = { it.translateEnum() },
-                            modifier = Modifier.weight(1f),
-                            height = 40.dp,
-                            fontSize = 12.sp,
-                            labelFontSize = 10.sp,
-                            borderWidth = 0.5.dp
-                    )
-                }
-
-                if (selectedFoodType != null ||
-                                selectedFoodGroup != null ||
-                                selectedEspece != null ||
-                                selectedIndications.isNotEmpty()
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                            text = "Filtres actifs: ${alimentsFiltres.size} aliment(s) trouvé(s)",
-                            style = MaterialTheme.typography.caption
+                        text = "N°",
+                        modifier = Modifier.weight(0.1f),
+                        style = MaterialTheme.typography.caption,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "Nom",
+                        modifier = Modifier.weight(0.4f),
+                        style = MaterialTheme.typography.caption,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "Gamme",
+                        modifier = Modifier.weight(0.25f),
+                        style = MaterialTheme.typography.caption,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "Marque",
+                        modifier = Modifier.weight(0.25f),
+                        style = MaterialTheme.typography.caption,
+                        fontWeight = FontWeight.Bold
                     )
                 }
-            }
-        }
-        Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(
-                    text = "Liste source: ${alimentsFiltres.size} aliment(s)",
-                    style = MaterialTheme.typography.caption
-            )
-            Text(
-                    text = "Liste cible: ${selectedRightFoods.size} aliment(s)",
-                    style = MaterialTheme.typography.caption
-            )
-        }
-        Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
-        var afficherVueAnalyse by remember { mutableStateOf(false) }
-        if (afficherVueAnalyse) {
-            AnalyseSelectionAlimentsView(
-                    aliments = selectedRightFoods,
-                    onClose = { afficherVueAnalyse = false }
-            )
-        }
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            Button(
-                    onClick = { afficherVueAnalyse = true },
-                    enabled = selectedRightFoods.isNotEmpty()
-            ) { Text("Analyser la sélection") }
-        }
-        Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
-        Row(
-                modifier = Modifier.fillMaxSize(),
-                horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
-        ) {
-            Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
-                if (isLoadingFoodsState) {
-                    CircularProgressIndicator()
-                } else {
-                    Column(modifier = Modifier.fillMaxSize()) {
-                        LazyColumn(modifier = Modifier.fillMaxSize()) {
-                            items(alimentsFiltres) { aliment: AlimentEv ->
-                                AlimentListItem(
-                                        aliment = aliment,
-                                        isSelected = alimentSelectionne?.uuid == aliment.uuid,
-                                        onClick = {
-                                            alimentSelectionne = aliment
-                                            scope.launch {
-                                                val alimentComplet: AlimentEv? =
-                                                        viewModel.getAlimentComplet(aliment.uuid)
-                                                alimentChargeComplet = alimentComplet ?: aliment
-                                            }
-                                        }
-                                )
-                            }
-                        }
+                
+                Divider(modifier = Modifier.padding(vertical = AppSizes.paddingSmall))
+                
+                // Lignes du tableau
+                alimentsAnalyses.forEach { data ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "${data.numero}",
+                            modifier = Modifier.weight(0.1f),
+                            style = MaterialTheme.typography.caption,
+                            fontWeight = FontWeight.Bold,
+                            color = VetNutriColors.Primary
+                        )
+                        Text(
+                            text = data.aliment.nom ?: "Sans nom",
+                            modifier = Modifier.weight(0.4f),
+                            style = MaterialTheme.typography.caption
+                        )
+                        Text(
+                            text = data.aliment.gamme ?: "-",
+                            modifier = Modifier.weight(0.25f),
+                            style = MaterialTheme.typography.caption
+                        )
+                        Text(
+                            text = data.aliment.brand ?: "-",
+                            modifier = Modifier.weight(0.25f),
+                            style = MaterialTheme.typography.caption
+                        )
+                    }
+                    
+                    if (alimentsAnalyses.last() != data) {
+                        Divider(
+                            modifier = Modifier.padding(vertical = AppSizes.paddingSmall / 2),
+                            color = MaterialTheme.colors.onSurface.copy(alpha = 0.1f)
+                        )
                     }
                 }
-            }
-            // Colonne centrale avec actions de transfert entre listes
-            Column(
-                    modifier = Modifier.fillMaxHeight().padding(horizontal = AppSizes.paddingSmall),
-                    verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall),
-                    horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                // Ajouter tous les aliments filtrés vers la liste de droite
-                IconButton(
-                        onClick = {
-                            val union: MutableMap<String, AlimentEv> =
-                                    selectedRightFoods.associateBy { it.uuid }.toMutableMap()
-                            alimentsFiltres.forEach { a: AlimentEv ->
-                                if (!union.containsKey(a.uuid)) union[a.uuid] = a
-                            }
-                            selectedRightFoods = union.values.toList()
-                        }
-                ) { Icon(imageVector = AppIcons.Export, contentDescription = "Ajouter tous →") }
-
-                // Ajouter l'aliment sélectionné vers la liste de droite
-                IconButton(
-                        onClick = {
-                            val a: AlimentEv = alimentSelectionne ?: return@IconButton
-                            if (selectedRightFoods.none { it.uuid == a.uuid }) {
-                                selectedRightFoods = selectedRightFoods + a
-                            }
-                        }
-                ) { Icon(imageVector = AppIcons.Add, contentDescription = "Ajouter sélection →") }
-
-                // Retirer l'aliment sélectionné de la liste de droite
-                IconButton(
-                        onClick = {
-                            val a: AlimentEv = selectedRightFood ?: return@IconButton
-                            selectedRightFoods = selectedRightFoods.filterNot { it.uuid == a.uuid }
-                            if (selectedRightFood?.uuid == a.uuid) selectedRightFood = null
-                        }
-                ) {
-                    Icon(imageVector = AppIcons.Delete, contentDescription = "Retirer sélection ←")
-                }
-
-                // Vider la liste de droite
-                IconButton(
-                        onClick = {
-                            selectedRightFoods = emptyList()
-                            selectedRightFood = null
-                        }
-                ) { Icon(imageVector = AppIcons.Close, contentDescription = "Retirer tous ←") }
-            }
-
-            // Liste de droite: aliments sélectionnés (target)
-            Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
-                if (selectedRightFoods.isEmpty()) {
-                    Text(text = "Aucun aliment sélectionné")
-                } else {
-                    Column(modifier = Modifier.fillMaxSize()) {
-                        LazyColumn(modifier = Modifier.fillMaxSize()) {
-                            items(selectedRightFoods) { aliment: AlimentEv ->
-                                AlimentListItem(
-                                        aliment = aliment,
-                                        isSelected = selectedRightFood?.uuid == aliment.uuid,
-                                        onClick = { selectedRightFood = aliment }
-                                )
-                            }
-                        }
-                    }
-                }
+            } else {
+                Text(
+                    text = "Aucun aliment à analyser",
+                    style = MaterialTheme.typography.body1,
+                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                )
             }
         }
     }
+}
+
+/**
+ * Calcule la densité énergétique d'un aliment
+ */
+private fun calculerDensiteEnergetique(
+    aliment: AlimentEv,
+    referenceEv: ReferenceEv?,
+    equationRepository: EquationRepository?
+): Double {
+    // Essayer d'abord de calculer via les équations si disponible
+    if (referenceEv != null && equationRepository != null) {
+        try {
+            val energie = aliment.getNutrient(NutrientMain.ENERGIE, referenceEv)
+            if (energie != null && energie > 0) {
+                return energie
+            }
+        } catch (e: Exception) {
+            // Fallback sur la méthode simple
+        }
+    }
+    
+    // Méthode simple : calcul basé sur les macronutriments
+    val proteines = aliment.getNutrient(NutrientMain.PROTEINE) ?: 0.0
+    val lipides = aliment.getNutrient(NutrientMain.LIPIDE) ?: 0.0
+    val glucides = aliment.getNutrient(NutrientMain.GLUCIDE) ?: 0.0
+    
+    // Coefficients énergétiques (kcal/g)
+    val kcalProteines = proteines * 3.5
+    val kcalLipides = lipides * 8.5
+    val kcalGlucides = glucides * 3.5
+    
+    return kcalProteines + kcalLipides + kcalGlucides
+}
+
+/**
+ * Calcule le pourcentage d'énergie apporté par les protéines
+ */
+private fun calculerPourcentageEnergieProteines(
+    aliment: AlimentEv,
+    densiteEnergetique: Double
+): Double {
+    if (densiteEnergetique <= 0) return 0.0
+    
+    val proteines = aliment.getNutrient(NutrientMain.PROTEINE) ?: 0.0
+    val energieProteines = proteines * 3.5
+    
+    return (energieProteines / densiteEnergetique) * 100.0
+}
+
+/**
+ * Calcule le pourcentage d'énergie apporté par les lipides
+ */
+private fun calculerPourcentageEnergieLipides(
+    aliment: AlimentEv,
+    densiteEnergetique: Double
+): Double {
+    if (densiteEnergetique <= 0) return 0.0
+    
+    val lipides = aliment.getNutrient(NutrientMain.LIPIDE) ?: 0.0
+    val energieLipides = lipides * 8.5
+    
+    return (energieLipides / densiteEnergetique) * 100.0
 }

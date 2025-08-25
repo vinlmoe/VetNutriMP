@@ -409,6 +409,81 @@ class ExportImportRepository(
                                         ref.equationsNut.addAll(
                                                 refApi.equationsNut.mapNotNull { eqCache[it] }
                                         )
+                                        
+                                        // 🔧 AJOUT : Importer les nutriments
+                                        if (refApi.nutrients.isNotEmpty()) {
+                                            listener?.onLog("Import des nutriments pour ${refApi.nom} (${refApi.nutrients.size} nutriments)")
+                                            for (nutrientApi in refApi.nutrients) {
+                                                try {
+                                                    // 🔍 LOG DIAGNOSTIC : Tracer l'import des nutriments
+                                                    println("🔍 DIAGNOSTIC IMPORT: Import nutriment '${nutrientApi.nutrientLabel}' (${nutrientApi.reflevel}) = ${nutrientApi.quantity}")
+                                                    
+                                                    // Résoudre le nutriment
+                                                    val nutrient = fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver.AllNutrientResolver(nutrientApi.nutrientLabel)
+                                                    if (nutrient != null) {
+                                                        // Créer la référence bibliographique
+                                                        val biblio = if (nutrientApi.biblioRefId != null) {
+                                                            biblioCache[nutrientApi.biblioRefId] ?: BiblioRef()
+                                                        } else {
+                                                            BiblioRef()
+                                                        }
+                                                        
+                                                        // Définir le nutriment dans la référence
+                                                        val reflevel = when (nutrientApi.reflevel) {
+                                                            "MIN" -> fr.vetbrain.vetnutri_mp.Enumer.Reflevel.MIN
+                                                            "MAX" -> fr.vetbrain.vetnutri_mp.Enumer.Reflevel.MAX
+                                                            "OPTIMIN" -> fr.vetbrain.vetnutri_mp.Enumer.Reflevel.OPTIMIN
+                                                            "OPTIMAX" -> fr.vetbrain.vetnutri_mp.Enumer.Reflevel.OPTIMAX
+                                                            else -> fr.vetbrain.vetnutri_mp.Enumer.Reflevel.MIN
+                                                        }
+                                                        
+                                                        val unitReq = fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum.getById(nutrientApi.uniteReqId)
+                                                        
+                                                        ref.definirNutriment(
+                                                            valeur = nutrientApi.quantity,
+                                                            nutrient = nutrient,
+                                                            niveauRef = reflevel,
+                                                            uniteReq = unitReq,
+                                                            biblio = biblio
+                                                        )
+                                                        
+                                                        println("✅ DIAGNOSTIC IMPORT: Nutriment '${nutrientApi.nutrientLabel}' importé avec succès")
+                                                    } else {
+                                                        println("❌ DIAGNOSTIC IMPORT: Nutriment '${nutrientApi.nutrientLabel}' non résolu")
+                                                        listener?.onLog("⚠️ Nutriment non résolu: ${nutrientApi.nutrientLabel}")
+                                                    }
+                                                } catch (e: Exception) {
+                                                    println("❌ DIAGNOSTIC IMPORT: Erreur import nutriment '${nutrientApi.nutrientLabel}': ${e.message}")
+                                                    listener?.onLog("Erreur nutriment ${nutrientApi.nutrientLabel}: ${e.message}")
+                                                }
+                                            }
+                                        }
+                                        
+                                        // 🔧 AJOUT : Importer les coefficients
+                                        if (refApi.coefficients.isNotEmpty()) {
+                                            listener?.onLog("Import des coefficients pour ${refApi.nom} (${refApi.coefficients.size} coefficients)")
+                                            for (coefApi in refApi.coefficients) {
+                                                try {
+                                                    val coef = fr.vetbrain.vetnutri_mp.Data.CoefP(
+                                                        uuid = coefApi.uuid,
+                                                        description = coefApi.description,
+                                                        coef = coefApi.coef,
+                                                        groupUUID = coefApi.groupUUID
+                                                    )
+                                                    
+                                                    when (coefApi.groupType) {
+                                                        "k1" -> ref.getModk1().add(coef)
+                                                        "k2" -> ref.getModk2().add(coef)
+                                                        "k3" -> ref.getModk3().add(coef)
+                                                        "k4" -> ref.getModk4().add(coef)
+                                                        "k5" -> ref.getModk5().add(coef)
+                                                    }
+                                                } catch (e: Exception) {
+                                                    listener?.onLog("Erreur coefficient ${coefApi.uuid}: ${e.message}")
+                                                }
+                                            }
+                                        }
+                                        
                                         referenceRepository.saveReferenceEv(ref)
                                         referencesImported++
                                         advance()

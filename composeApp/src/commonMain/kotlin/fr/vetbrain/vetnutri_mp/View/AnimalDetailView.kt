@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Components.ConfirmDialog
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
+import fr.vetbrain.vetnutri_mp.Data.AlimentEv
 import fr.vetbrain.vetnutri_mp.Export.DocumentType
 import fr.vetbrain.vetnutri_mp.Export.ExportData
 import fr.vetbrain.vetnutri_mp.Export.HtmlDocumentBuilder
@@ -33,6 +34,9 @@ import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailSection
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.SettingsViewModel
+import fr.vetbrain.vetnutri_mp.View.AnalyseGraphiqueAlimentsView
+import fr.vetbrain.vetnutri_mp.View.AnalyseSelectionAlimentsView
+import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -381,10 +385,67 @@ private fun WideScreenLayout(
                                         )
                                 }
                                 AnimalDetailSection.GRAPHIQUE_ALIMENTS -> {
-                                        AnalyseGraphiqueAlimentsView(
-                                                viewModel = viewModel,
-                                                modifier = Modifier.fillMaxSize()
-                                        )
+                                        val availableFoods by viewModel.availableFoods.collectAsState()
+                                        val isLoadingFoods by viewModel.isLoadingFoods.collectAsState()
+                                        
+                                        if (isLoadingFoods) {
+                                                Column(
+                                                        modifier = Modifier.fillMaxSize().padding(AppSizes.paddingMedium),
+                                                        verticalArrangement = Arrangement.Center,
+                                                        horizontalAlignment = Alignment.CenterHorizontally
+                                                ) {
+                                                        CircularProgressIndicator(color = VetNutriColors.Primary)
+                                                        Spacer(modifier = Modifier.height(AppSizes.paddingMedium))
+                                                        Text(
+                                                                "Chargement des aliments...",
+                                                                style = MaterialTheme.typography.body1,
+                                                                color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                                                        )
+                                                }
+                                        } else if (availableFoods.isNotEmpty()) {
+                                                var showAnalyseGraphique by remember { mutableStateOf(false) }
+                                                var alimentsSelectionnes by remember { mutableStateOf<List<AlimentEv>>(emptyList()) }
+                                                
+                                                if (showAnalyseGraphique && alimentsSelectionnes.isNotEmpty()) {
+                                                        // Afficher la vue d'analyse graphique
+                                                        AnalyseGraphiqueAlimentsView(
+                                                                aliments = alimentsSelectionnes,
+                                                                referenceEv = null,
+                                                                equationRepository = equationRepository,
+                                                                onClose = { showAnalyseGraphique = false },
+                                                                modifier = Modifier.fillMaxSize()
+                                                        )
+                                                } else {
+                                                        // Utiliser la vue de sélection des aliments avec possibilité d'analyse graphique
+                                                        AnalyseSelectionAlimentsView(
+                                                                aliments = availableFoods,
+                                                                onClose = { /* Retour à la section précédente */ },
+                                                                onAlimentSelected = { /* Gestion de la sélection */ },
+                                                                onAnalyseGraphique = { aliments ->
+                                                                        alimentsSelectionnes = aliments
+                                                                        showAnalyseGraphique = true
+                                                                },
+                                                                modifier = Modifier.fillMaxSize()
+                                                        )
+                                                }
+                                        } else {
+                                                Column(
+                                                        modifier = Modifier.fillMaxSize().padding(AppSizes.paddingMedium),
+                                                        verticalArrangement = Arrangement.Center,
+                                                        horizontalAlignment = Alignment.CenterHorizontally
+                                                ) {
+                                                        Text(
+                                                                "Aucun aliment disponible",
+                                                                style = MaterialTheme.typography.h5,
+                                                                color = VetNutriColors.Primary
+                                                        )
+                                                        Text(
+                                                                "Aucun aliment n'est disponible pour l'analyse graphique",
+                                                                style = MaterialTheme.typography.body1,
+                                                                color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                                                        )
+                                                }
+                                        }
                                 }
                                 AnimalDetailSection.EXPORT -> {
                                         val selectedConsultation by
@@ -761,10 +822,53 @@ private fun NarrowScreenLayout(
                                                         )
                                                 }
                                                 AnimalDetailSection.GRAPHIQUE_ALIMENTS -> {
-                                                        AnalyseGraphiqueAlimentsView(
-                                                                viewModel = viewModel,
-                                                                modifier = Modifier.fillMaxSize()
-                                                        )
+                                                        val availableFoods by viewModel.availableFoods.collectAsState()
+                                                        val isLoadingFoods by viewModel.isLoadingFoods.collectAsState()
+                                                        
+                                                        if (isLoadingFoods) {
+                                                                Column(
+                                                                        modifier = Modifier.fillMaxSize().padding(AppSizes.paddingMedium),
+                                                                        verticalArrangement = Arrangement.Center,
+                                                                        horizontalAlignment = Alignment.CenterHorizontally
+                                                                ) {
+                                                                        CircularProgressIndicator(color = VetNutriColors.Primary)
+                                                                        Spacer(modifier = Modifier.height(AppSizes.paddingMedium))
+                                                                        Text(
+                                                                                "Chargement des aliments...",
+                                                                                style = MaterialTheme.typography.body1,
+                                                                                color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                                                                        )
+                                                                }
+                                                        } else if (availableFoods.isNotEmpty()) {
+                                                                // Utiliser la vue de sélection des aliments avec possibilité d'analyse graphique
+                                                                                                                AnalyseSelectionAlimentsView(
+                                                        aliments = availableFoods,
+                                                        onClose = { /* Retour à la section précédente */ },
+                                                        onAlimentSelected = { /* Gestion de la sélection */ },
+                                                        onAnalyseGraphique = { aliments ->
+                                                                // TODO: Naviguer vers l'analyse graphique
+                                                                println("Aliments sélectionnés pour analyse: ${aliments.size}")
+                                                        },
+                                                        modifier = Modifier.fillMaxSize()
+                                                )
+                                                        } else {
+                                                                Column(
+                                                                        modifier = Modifier.fillMaxSize().padding(AppSizes.paddingMedium),
+                                                                        verticalArrangement = Arrangement.Center,
+                                                                        horizontalAlignment = Alignment.CenterHorizontally
+                                                                ) {
+                                                                        Text(
+                                                                                "Aucun aliment disponible",
+                                                                                style = MaterialTheme.typography.h5,
+                                                                                color = VetNutriColors.Primary
+                                                                        )
+                                                                        Text(
+                                                                                "Aucun aliment n'est disponible pour l'analyse graphique",
+                                                                                style = MaterialTheme.typography.body1,
+                                                                                color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                                                                        )
+                                                                }
+                                                        }
                                                 }
                                                 AnimalDetailSection.EXPORT -> {
                                                         val selectedConsultation by
