@@ -16,7 +16,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import fr.vetbrain.vetnutri_mp.Data.AlimentEv
+import fr.vetbrain.vetnutri_mp.Data.AlimentRation
 import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientMain
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
@@ -28,6 +30,7 @@ import io.github.koalaplot.core.xygraph.*
 import io.github.koalaplot.core.xygraph.FloatLinearAxisModel
 import io.github.koalaplot.core.xygraph.Point
 import io.github.koalaplot.core.xygraph.XYGraph
+
 import io.github.koalaplot.core.util.ExperimentalKoalaPlotApi
 
 /**
@@ -42,6 +45,132 @@ data class AlimentAnalyseData(
 )
 
 /**
+ * Calcule la densité énergétique d'un aliment de manière asynchrone
+ */
+private suspend fun calculerDensiteEnergetiqueAsync(
+    aliment: AlimentEv,
+    referenceEv: ReferenceEv?,
+    equationRepository: EquationRepository?,
+    preferencesEspece: fr.vetbrain.vetnutri_mp.Data.PreferencesEspece?
+): Double {
+    // ✅ UTILISER LA MÊME APPROCHE QUE RATIONSVIEW : AlimentRation transitoire
+    if (referenceEv != null && equationRepository != null) {
+        try {
+            val alimentRation = AlimentRation(
+                aliment = aliment,
+                quantite = 100.0,
+                weight = 1.0
+            )
+            
+            val energie = alimentRation.getNutrientWithComplementary(
+                nutrient = NutrientMain.ENERGIE,
+                preferences = null,
+                equationRepository = equationRepository,
+                referenceEv = referenceEv
+            )
+            if (energie != null && energie > 0) {
+                return energie
+            }
+        } catch (e: Exception) {
+            // Fallback sur la méthode simple
+        }
+    }
+    
+    // Méthode simple : calcul basé sur les macronutriments
+    val alimentRation = AlimentRation(
+        aliment = aliment,
+        quantite = 100.0,
+        weight = 1.0
+    )
+    
+    val proteines = alimentRation.getNutrientWithComplementary(
+        nutrient = NutrientMain.PROTEINE,
+        preferences = preferencesEspece,
+        equationRepository = equationRepository,
+        referenceEv = referenceEv
+    ) ?: 0.0
+    
+    val lipides = alimentRation.getNutrientWithComplementary(
+        nutrient = NutrientMain.LIPIDE,
+        preferences = preferencesEspece,
+        equationRepository = equationRepository,
+        referenceEv = referenceEv
+    ) ?: 0.0
+    
+    val glucides = alimentRation.getNutrientWithComplementary(
+        nutrient = NutrientMain.GLUCIDE,
+        preferences = preferencesEspece,
+        equationRepository = equationRepository,
+        referenceEv = referenceEv
+    ) ?: 0.0
+    
+    // Coefficients énergétiques (kcal/g)
+    val kcalProteines = proteines * 3.5
+    val kcalLipides = lipides * 8.5
+    val kcalGlucides = glucides * 3.5
+    
+    return kcalProteines + kcalLipides + kcalGlucides
+}
+
+/**
+ * Calcule le pourcentage d'énergie apporté par les protéines de manière asynchrone
+ */
+private suspend fun calculerPourcentageEnergieProteinesAsync(
+    aliment: AlimentEv,
+    densiteEnergetique: Double,
+    equationRepository: EquationRepository?,
+    preferencesEspece: fr.vetbrain.vetnutri_mp.Data.PreferencesEspece?
+): Double {
+    if (densiteEnergetique <= 0) return 0.0
+    
+    // ✅ UTILISER LA MÊME APPROCHE QUE RATIONSVIEW : AlimentRation transitoire
+    val alimentRation = AlimentRation(
+        aliment = aliment,
+        quantite = 100.0,
+        weight = 1.0
+    )
+    
+    val proteines = alimentRation.getNutrientWithComplementary(
+        nutrient = NutrientMain.PROTEINE,
+        preferences = preferencesEspece,
+        equationRepository = equationRepository,
+        referenceEv = null
+    ) ?: 0.0
+    val energieProteines = proteines * 3.5
+    
+    return (energieProteines / densiteEnergetique) * 100.0
+}
+
+/**
+ * Calcule le pourcentage d'énergie apporté par les lipides de manière asynchrone
+ */
+private suspend fun calculerPourcentageEnergieLipidesAsync(
+    aliment: AlimentEv,
+    densiteEnergetique: Double,
+    equationRepository: EquationRepository?,
+    preferencesEspece: fr.vetbrain.vetnutri_mp.Data.PreferencesEspece?
+): Double {
+    if (densiteEnergetique <= 0) return 0.0
+    
+    // ✅ UTILISER LA MÊME APPROCHE QUE RATIONSVIEW : AlimentRation transitoire
+    val alimentRation = AlimentRation(
+        aliment = aliment,
+        quantite = 100.0,
+        weight = 1.0
+    )
+    
+    val lipides = alimentRation.getNutrientWithComplementary(
+        nutrient = NutrientMain.LIPIDE,
+        preferences = preferencesEspece,
+        equationRepository = equationRepository,
+        referenceEv = null
+    ) ?: 0.0
+    val energieLipides = lipides * 8.5
+    
+    return (energieLipides / densiteEnergetique) * 100.0
+}
+
+/**
  * Vue d'analyse graphique des aliments sélectionnés
  */
 @Composable
@@ -49,28 +178,104 @@ fun AnalyseGraphiqueAlimentsView(
     aliments: List<AlimentEv>,
     referenceEv: ReferenceEv?,
     equationRepository: EquationRepository?,
+    preferencesEspece: fr.vetbrain.vetnutri_mp.Data.PreferencesEspece? = null,
     onClose: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Calculer les données d'analyse pour chaque aliment
-    val alimentsAnalyses = remember(aliments, referenceEv, equationRepository) {
-        aliments.mapIndexedNotNull { index, aliment ->
+    // États pour les données d'analyse
+    var alimentsAnalyses by remember { mutableStateOf<List<AlimentAnalyseData>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
+    
+    // Calculer les données d'analyse pour chaque aliment de manière asynchrone
+    LaunchedEffect(aliments, referenceEv, equationRepository) {
+        isLoading = true
+        val resultat = mutableListOf<AlimentAnalyseData>()
+        
+        for ((index, aliment) in aliments.withIndex()) {
             try {
-                val densiteEnergetique = calculerDensiteEnergetique(aliment, referenceEv, equationRepository)
-                val pourcentageProteines = calculerPourcentageEnergieProteines(aliment, densiteEnergetique)
-                val pourcentageLipides = calculerPourcentageEnergieLipides(aliment, densiteEnergetique)
+                // 🔍 LOG DIAGNOSTIC : Vérifier les valeurs de base de l'aliment
+                println("🔍 DIAGNOSTIC GRAPHIQUE: Aliment ${index + 1} - ${aliment.nom}")
+                println("  - UUID: ${aliment.uuid}")
+                println("  - Nom: ${aliment.nom}")
+                println("  - Marque: ${aliment.brand}")
+                println("  - Gamme: ${aliment.gamme}")
+                println("  - Valeurs stockées dans valMap:")
+                println("    * Protéines stockées: ${aliment.valMap[NutrientMain.PROTEINE]?.value ?: "null"}")
+                println("    * Lipides stockés: ${aliment.valMap[NutrientMain.LIPIDE]?.value ?: "null"}")
+                println("    * Glucides stockés: ${aliment.valMap[NutrientMain.GLUCIDE]?.value ?: "null"}")
+                println("    * Énergie stockée: ${aliment.valMap[NutrientMain.ENERGIE]?.value ?: "null"}")
+                println("  - Nombre total de nutriments dans valMap: ${aliment.valMap.size}")
+                println("  - ReferenceEv: ${referenceEv?.nom ?: "null"}")
+                println("  - EquationRepository: ${if (equationRepository != null) "disponible" else "null"}")
+                println("  - PreferencesEspece: ${if (preferencesEspece != null) "disponible" else "null"}")
                 
-                AlimentAnalyseData(
+                // ✅ CRÉER UN ALIMENTRATION TRANSITOIRE POUR UTILISER getNutrientWithComplementary
+                val alimentRation = AlimentRation(
+                    aliment = aliment,
+                    quantite = 100.0, // 100g pour les calculs
+                    weight = 1.0
+                )
+                
+                // Utiliser getNutrientWithComplementary de manière asynchrone
+                val proteines = alimentRation.getNutrientWithComplementary(
+                    nutrient = NutrientMain.PROTEINE,
+                    preferences = preferencesEspece,
+                    equationRepository = equationRepository,
+                    referenceEv = referenceEv
+                ) ?: 0.0
+                
+                val lipides = alimentRation.getNutrientWithComplementary(
+                    nutrient = NutrientMain.LIPIDE,
+                    preferences = preferencesEspece,
+                    equationRepository = equationRepository,
+                    referenceEv = referenceEv
+                ) ?: 0.0
+                
+                val glucides = alimentRation.getNutrientWithComplementary(
+                    nutrient = NutrientMain.GLUCIDE,
+                    preferences = preferencesEspece,
+                    equationRepository = equationRepository,
+                    referenceEv = referenceEv
+                ) ?: 0.0
+                
+                val energie = alimentRation.getNutrientWithComplementary(
+                    nutrient = NutrientMain.ENERGIE,
+                    preferences = preferencesEspece,
+                    equationRepository = equationRepository,
+                    referenceEv = referenceEv
+                ) ?: 0.0
+                
+                println("  - Protéines: $proteines g")
+                println("  - Lipides: $lipides g")
+                println("  - Glucides: $glucides g")
+                println("  - Énergie: $energie kcal")
+                
+                val densiteEnergetique = calculerDensiteEnergetiqueAsync(aliment, referenceEv, equationRepository, preferencesEspece)
+                val pourcentageProteines = calculerPourcentageEnergieProteinesAsync(aliment, densiteEnergetique, equationRepository, preferencesEspece)
+                val pourcentageLipides = calculerPourcentageEnergieLipidesAsync(aliment, densiteEnergetique, equationRepository, preferencesEspece)
+                
+                // 🔍 LOG DIAGNOSTIC : Vérifier les valeurs calculées
+                println("  - Densité énergétique: $densiteEnergetique kcal/100g")
+                println("  - % Protéines: $pourcentageProteines%")
+                println("  - % Lipides: $pourcentageLipides%")
+                println("  - Point graphique: ($pourcentageProteines, $pourcentageLipides)")
+                
+                resultat.add(AlimentAnalyseData(
                     aliment = aliment,
                     numero = index + 1,
                     densiteEnergetique = densiteEnergetique,
                     pourcentageProteines = pourcentageProteines,
                     pourcentageLipides = pourcentageLipides
-                )
+                ))
             } catch (e: Exception) {
-                null
+                println("❌ DIAGNOSTIC GRAPHIQUE: Erreur pour l'aliment ${index + 1}: ${e.message}")
+                e.printStackTrace()
             }
-        }.sortedByDescending { it.densiteEnergetique }
+        }
+        
+        // Mettre à jour l'état avec les résultats triés par densité énergétique décroissante
+        alimentsAnalyses = resultat.sortedByDescending { it.densiteEnergetique }
+        isLoading = false
     }
 
     Column(
@@ -111,43 +316,65 @@ fun AnalyseGraphiqueAlimentsView(
         }
 
         // Contenu principal - responsive selon la largeur
-        BoxWithConstraints(
-            modifier = Modifier.fillMaxSize()
-        ) {
-            val isCompact = maxWidth < 800.dp
-            
-            if (isCompact) {
-                // Vue compacte : graphiques puis liste
+        if (isLoading) {
+            // Indicateur de chargement
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
                 Column(
-                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
                 ) {
-                    // Graphique principal
-                    GraphiqueNuagePoints(alimentsAnalyses, modifier = Modifier.fillMaxWidth())
-                    
-                    // Liste des aliments
-                    ListeAlimentsAnalyse(alimentsAnalyses, modifier = Modifier.fillMaxWidth())
+                    CircularProgressIndicator(
+                        color = VetNutriColors.Primary
+                    )
+                    Text(
+                        text = "Calcul des valeurs nutritionnelles...",
+                        style = MaterialTheme.typography.body1,
+                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                    )
                 }
-            } else {
-                // Vue large : côte à côte
-                Row(
-                    modifier = Modifier.fillMaxSize(),
-                    horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
-                ) {
-                    // Colonne gauche : liste des aliments (1/4 de la largeur)
+            }
+        } else {
+            BoxWithConstraints(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                val isCompact = maxWidth < 800.dp
+                
+                if (isCompact) {
+                    // Vue compacte : graphiques puis liste
                     Column(
-                        modifier = Modifier.weight(0.25f),
-                        verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
-                    ) {
-                        ListeAlimentsAnalyse(alimentsAnalyses, modifier = Modifier.fillMaxWidth())
-                    }
-                    
-                    // Colonne droite : graphiques (3/4 de la largeur)
-                    Column(
-                        modifier = Modifier.weight(0.75f),
+                        modifier = Modifier.fillMaxWidth(),
                         verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
                     ) {
+                        // Graphique principal
                         GraphiqueNuagePoints(alimentsAnalyses, modifier = Modifier.fillMaxWidth())
+                        
+                        // Liste des aliments
+                        ListeAlimentsAnalyse(alimentsAnalyses, modifier = Modifier.fillMaxWidth())
+                    }
+                } else {
+                    // Vue large : côte à côte
+                    Row(
+                        modifier = Modifier.fillMaxSize(),
+                        horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
+                    ) {
+                        // Colonne gauche : liste des aliments (1/4 de la largeur)
+                        Column(
+                            modifier = Modifier.weight(0.25f),
+                            verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
+                        ) {
+                            ListeAlimentsAnalyse(alimentsAnalyses, modifier = Modifier.fillMaxWidth())
+                        }
+                        
+                        // Colonne droite : graphiques (3/4 de la largeur)
+                        Column(
+                            modifier = Modifier.weight(0.75f),
+                            verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
+                        ) {
+                            GraphiqueNuagePoints(alimentsAnalyses, modifier = Modifier.fillMaxWidth())
+                        }
                     }
                 }
             }
@@ -209,17 +436,25 @@ private fun GraphiqueNuagePoints(
                     yAxisModel = FloatLinearAxisModel(range = yRange),
                     modifier = Modifier.height(400.dp)
                 ) {
-                    // Créer tous les points d'un coup pour LinePlot
-                    val allPoints = alimentsAnalyses.map { data ->
-                        Point(
-                            x = data.pourcentageProteines.toFloat(),
-                            y = data.pourcentageLipides.toFloat()
+                    // Afficher chaque point individuellement avec LinePlot et symbol (comme dans AnalyseGraphiqueView.kt)
+                    alimentsAnalyses.forEach { data ->
+                        LinePlot(
+                            data = listOf(
+                                Point(
+                                    x = data.pourcentageProteines.toFloat(),
+                                    y = data.pourcentageLipides.toFloat()
+                                )
+                            ),
+                            symbol = {
+                                androidx.compose.foundation.Canvas(
+                                    modifier = Modifier.size(12.dp)
+                                ) { 
+                                    drawCircle(color = VetNutriColors.Primary) 
+                                }
+                            }
                         )
-                    }
-                    
-                    // Afficher tous les points en une seule fois
-                    if (allPoints.isNotEmpty()) {
-                        LinePlot(data = allPoints)
+                        
+
                     }
                 }
                 
@@ -346,67 +581,4 @@ private fun ListeAlimentsAnalyse(
             }
         }
     }
-}
-
-/**
- * Calcule la densité énergétique d'un aliment
- */
-private fun calculerDensiteEnergetique(
-    aliment: AlimentEv,
-    referenceEv: ReferenceEv?,
-    equationRepository: EquationRepository?
-): Double {
-    // Essayer d'abord de calculer via les équations si disponible
-    if (referenceEv != null && equationRepository != null) {
-        try {
-            val energie = aliment.getNutrient(NutrientMain.ENERGIE, referenceEv)
-            if (energie != null && energie > 0) {
-                return energie
-            }
-        } catch (e: Exception) {
-            // Fallback sur la méthode simple
-        }
-    }
-    
-    // Méthode simple : calcul basé sur les macronutriments
-    val proteines = aliment.getNutrient(NutrientMain.PROTEINE) ?: 0.0
-    val lipides = aliment.getNutrient(NutrientMain.LIPIDE) ?: 0.0
-    val glucides = aliment.getNutrient(NutrientMain.GLUCIDE) ?: 0.0
-    
-    // Coefficients énergétiques (kcal/g)
-    val kcalProteines = proteines * 3.5
-    val kcalLipides = lipides * 8.5
-    val kcalGlucides = glucides * 3.5
-    
-    return kcalProteines + kcalLipides + kcalGlucides
-}
-
-/**
- * Calcule le pourcentage d'énergie apporté par les protéines
- */
-private fun calculerPourcentageEnergieProteines(
-    aliment: AlimentEv,
-    densiteEnergetique: Double
-): Double {
-    if (densiteEnergetique <= 0) return 0.0
-    
-    val proteines = aliment.getNutrient(NutrientMain.PROTEINE) ?: 0.0
-    val energieProteines = proteines * 3.5
-    
-    return (energieProteines / densiteEnergetique) * 100.0
-}
-
-/**
- * Calcule le pourcentage d'énergie apporté par les lipides
- */
-private fun calculerPourcentageEnergieLipides(
-    aliment: AlimentEv,
-    densiteEnergetique: Double
-): Double {
-    if (densiteEnergetique <= 0) return 0.0
-    
-    val lipides = aliment.getNutrient(NutrientMain.LIPIDE) ?: 0.0
-    val energieLipides = lipides * 8.5
-    
-    return (energieLipides / densiteEnergetique) * 100.0
 }

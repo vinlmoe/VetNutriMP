@@ -28,6 +28,8 @@ import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Repository.FoodRepository
 import fr.vetbrain.vetnutri_mp.Repository.RecipeRepository
+import fr.vetbrain.vetnutri_mp.Repository.PreferencesRepository
+import fr.vetbrain.vetnutri_mp.Utils.createPreferencesStorage
 import fr.vetbrain.vetnutri_mp.Theme.AppIcons
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
@@ -67,6 +69,21 @@ fun AnimalDetailView(
         val showFullScreenEdit by viewModel.showFullScreenEdit.collectAsState()
         val selectedConsultation by viewModel.selectedConsultation.collectAsState()
         var showConsultationDetail by remember { mutableStateOf(false) }
+        
+        // Récupération des préférences pour l'espèce
+        val preferencesStorage: fr.vetbrain.vetnutri_mp.Utils.PreferencesStorage = remember { createPreferencesStorage() }
+        val preferencesRepository: PreferencesRepository = remember {
+                PreferencesRepository(preferencesStorage)
+        }
+        var preferencesApplication by remember {
+                mutableStateOf<fr.vetbrain.vetnutri_mp.Data.PreferencesApplication?>(null)
+        }
+        
+        // Charger les préférences au démarrage
+        LaunchedEffect(Unit) {
+                preferencesRepository.loadPreferences()
+                preferencesApplication = preferencesRepository.preferences
+        }
 
         // État du drawer pour les écrans étroits
         val drawerState = rememberDrawerState(DrawerValue.Closed)
@@ -388,6 +405,21 @@ private fun WideScreenLayout(
                                         val availableFoods by viewModel.availableFoods.collectAsState()
                                         val isLoadingFoods by viewModel.isLoadingFoods.collectAsState()
                                         
+                                        // Récupération des préférences pour l'espèce dans ce contexte
+                                        val preferencesStorageLocal: fr.vetbrain.vetnutri_mp.Utils.PreferencesStorage = remember { createPreferencesStorage() }
+                                        val preferencesRepositoryLocal: PreferencesRepository = remember {
+                                                PreferencesRepository(preferencesStorageLocal)
+                                        }
+                                        var preferencesApplicationLocal by remember {
+                                                mutableStateOf<fr.vetbrain.vetnutri_mp.Data.PreferencesApplication?>(null)
+                                        }
+                                        
+                                        // Charger les préférences au démarrage
+                                        LaunchedEffect(Unit) {
+                                                preferencesRepositoryLocal.loadPreferences()
+                                                preferencesApplicationLocal = preferencesRepositoryLocal.preferences
+                                        }
+                                        
                                         if (isLoadingFoods) {
                                                 Column(
                                                         modifier = Modifier.fillMaxSize().padding(AppSizes.paddingMedium),
@@ -408,13 +440,62 @@ private fun WideScreenLayout(
                                                 
                                                 if (showAnalyseGraphique && alimentsSelectionnes.isNotEmpty()) {
                                                         // Afficher la vue d'analyse graphique
-                                                        AnalyseGraphiqueAlimentsView(
-                                                                aliments = alimentsSelectionnes,
-                                                                referenceEv = null,
-                                                                equationRepository = equationRepository,
-                                                                onClose = { showAnalyseGraphique = false },
-                                                                modifier = Modifier.fillMaxSize()
-                                                        )
+                                                        // Récupérer les aliments complets avec leurs valeurs nutritionnelles
+                                                        var alimentsComplets by remember { mutableStateOf<List<fr.vetbrain.vetnutri_mp.Data.AlimentEv>>(emptyList()) }
+                                                        var isLoadingAlimentsComplets by remember { mutableStateOf(true) }
+                                                        
+                                                        LaunchedEffect(alimentsSelectionnes) {
+                                                                isLoadingAlimentsComplets = true
+                                                                val alimentsAvecValeurs = mutableListOf<fr.vetbrain.vetnutri_mp.Data.AlimentEv>()
+                                                                
+                                                                for (aliment in alimentsSelectionnes) {
+                                                                        try {
+                                                                                // Récupérer l'aliment complet depuis le repository
+                                                                                val alimentComplet = fr.vetbrain.vetnutri_mp.Repository.AlimentRepository.getAlimentByUUID(aliment.uuid)
+                                                                                if (alimentComplet != null) {
+                                                                                        alimentsAvecValeurs.add(alimentComplet)
+                                                                                } else {
+                                                                                        alimentsAvecValeurs.add(aliment) // Fallback
+                                                                                }
+                                                                        } catch (e: Exception) {
+                                                                                println("❌ Erreur récupération aliment complet: ${e.message}")
+                                                                                alimentsAvecValeurs.add(aliment) // Fallback
+                                                                        }
+                                                                }
+                                                                
+                                                                alimentsComplets = alimentsAvecValeurs
+                                                                isLoadingAlimentsComplets = false
+                                                        }
+                                                        
+                                                        if (isLoadingAlimentsComplets) {
+                                                                Box(
+                                                                        modifier = Modifier.fillMaxSize(),
+                                                                        contentAlignment = Alignment.Center
+                                                                ) {
+                                                                        Column(
+                                                                                horizontalAlignment = Alignment.CenterHorizontally,
+                                                                                verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
+                                                                        ) {
+                                                                                CircularProgressIndicator(color = VetNutriColors.Primary)
+                                                                                Text(
+                                                                                        text = "Chargement des valeurs nutritionnelles...",
+                                                                                        style = MaterialTheme.typography.body1,
+                                                                                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                                                                                )
+                                                                        }
+                                                                }
+                                                        } else {
+                                                                AnalyseGraphiqueAlimentsView(
+                                                                        aliments = alimentsComplets,
+                                                                        referenceEv = viewModel.referenceUtilisee.value,
+                                                                        equationRepository = equationRepository,
+                                                                        preferencesEspece = animalDetails?.let { animal ->
+                                                                                preferencesApplicationLocal?.getPreferencesEspece(animal.getEspece())
+                                                                        },
+                                                                        onClose = { showAnalyseGraphique = false },
+                                                                        modifier = Modifier.fillMaxSize()
+                                                                )
+                                                        }
                                                 } else {
                                                         // Utiliser la vue de sélection des aliments avec possibilité d'analyse graphique
                                                         AnalyseSelectionAlimentsView(
