@@ -26,6 +26,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.CircleShape
 import fr.vetbrain.vetnutri_mp.Data.AlimentEv
 import fr.vetbrain.vetnutri_mp.Data.AlimentRation
@@ -196,6 +197,9 @@ fun AnalyseGraphiqueAlimentsView(
     var alimentsAnalyses by remember { mutableStateOf<List<AlimentAnalyseData>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     
+    // État pour l'aliment sélectionné (UUID de l'aliment)
+    var alimentSelectionne by remember { mutableStateOf<String?>(null) }
+    
     // Calculer les données d'analyse pour chaque aliment de manière asynchrone
     LaunchedEffect(aliments, referenceEv, equationRepository) {
         isLoading = true
@@ -272,7 +276,7 @@ fun AnalyseGraphiqueAlimentsView(
                 
                 resultat.add(AlimentAnalyseData(
                     aliment = aliment,
-                    numero = index + 1,
+                    numero = 0, // Numéro temporaire, sera réassigné après le tri
                     densiteEnergetique = densiteEnergetique,
                     pourcentageProteines = pourcentageProteines,
                     pourcentageLipides = pourcentageLipides
@@ -284,7 +288,11 @@ fun AnalyseGraphiqueAlimentsView(
         }
         
         // Mettre à jour l'état avec les résultats triés par densité énergétique décroissante
+        // et réassigner les numéros dans l'ordre du tri
         alimentsAnalyses = resultat.sortedByDescending { it.densiteEnergetique }
+            .mapIndexed { index, data ->
+                data.copy(numero = index + 1)
+            }
         isLoading = false
     }
 
@@ -359,10 +367,19 @@ fun AnalyseGraphiqueAlimentsView(
                     verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
                 ) {
                     // Graphique principal
-                    GraphiqueNuagePoints(alimentsAnalyses, modifier = Modifier.fillMaxWidth())
+                    GraphiqueNuagePoints(
+                        alimentsAnalyses = alimentsAnalyses, 
+                        alimentSelectionne = alimentSelectionne, 
+                        modifier = Modifier.fillMaxWidth()
+                    )
                     
                     // Liste des aliments
-                    ListeAlimentsAnalyse(alimentsAnalyses, modifier = Modifier.fillMaxWidth())
+                    ListeAlimentsAnalyse(
+                        alimentsAnalyses = alimentsAnalyses, 
+                        alimentSelectionne = alimentSelectionne,
+                        onAlimentSelected = { uuid -> alimentSelectionne = uuid },
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
             } else {
                 // Vue large : côte à côte
@@ -375,7 +392,12 @@ fun AnalyseGraphiqueAlimentsView(
                         modifier = Modifier.weight(0.25f),
                         verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
                     ) {
-                        ListeAlimentsAnalyse(alimentsAnalyses, modifier = Modifier.fillMaxWidth())
+                        ListeAlimentsAnalyse(
+                            alimentsAnalyses = alimentsAnalyses, 
+                            alimentSelectionne = alimentSelectionne,
+                            onAlimentSelected = { uuid -> alimentSelectionne = uuid },
+                            modifier = Modifier.fillMaxWidth()
+                        )
                     }
                     
                     // Colonne droite : graphiques (3/4 de la largeur)
@@ -383,7 +405,11 @@ fun AnalyseGraphiqueAlimentsView(
                         modifier = Modifier.weight(0.75f),
                         verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
                     ) {
-                        GraphiqueNuagePoints(alimentsAnalyses, modifier = Modifier.fillMaxWidth())
+                        GraphiqueNuagePoints(
+                            alimentsAnalyses = alimentsAnalyses, 
+                            alimentSelectionne = alimentSelectionne, 
+                            modifier = Modifier.fillMaxWidth()
+                        )
                         }
                     }
                 }
@@ -399,6 +425,7 @@ fun AnalyseGraphiqueAlimentsView(
 @Composable
 private fun GraphiqueNuagePoints(
     alimentsAnalyses: List<AlimentAnalyseData>,
+    alimentSelectionne: String? = null,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -461,12 +488,18 @@ private fun GraphiqueNuagePoints(
                         )
                                 ),
                                 symbol = {
-                                    // Point principal seulement
+                                    // Point principal avec couleur selon sélection
+                                    val couleurPoint = if (data.aliment.uuid == alimentSelectionne) {
+                                        Color(0xFF9C27B0) // Violet
+                                    } else {
+                                        VetNutriColors.Primary
+                                    }
+                                    
                                     androidx.compose.foundation.Canvas(
                                         modifier = Modifier.size(12.dp)
                                     ) { 
                                         drawCircle(
-                                            color = VetNutriColors.Primary, 
+                                            color = couleurPoint, 
                                             radius = 6f,
                                             center = center
                                         )
@@ -493,14 +526,11 @@ private fun GraphiqueNuagePoints(
                         val effectiveGraphWidth = maxWidth - leftAxisMargin - rightMargin
                         val effectiveGraphHeight = maxHeight  - bottomAxisMargin - topMargin
                         
-                        // Couleur selon le numéro
-                        val numeroColor = when (data.numero) {
-                            1 -> Color.Red
-                            2 -> Color.Blue  
-                            3 -> Color.Green
-                            4 -> Color.Magenta
-                            5 -> Color.Cyan
-                            else -> VetNutriColors.Primary
+                        // Couleur selon la sélection (même logique que les points)
+                        val numeroColor = if (data.aliment.uuid == alimentSelectionne) {
+                            Color(0xFF9C27B0) // Violet pour sélectionné
+                        } else {
+                            VetNutriColors.Primary // Couleur par défaut pour tous
                         }
                         
                         Box(
@@ -557,6 +587,8 @@ private fun GraphiqueNuagePoints(
 @Composable
 private fun ListeAlimentsAnalyse(
     alimentsAnalyses: List<AlimentAnalyseData>,
+    alimentSelectionne: String? = null,
+    onAlimentSelected: (String?) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -615,8 +647,20 @@ private fun ListeAlimentsAnalyse(
                     modifier = Modifier.fillMaxHeight()
                 ) {
                     items(alimentsAnalyses) { data ->
+                        val isSelected = data.aliment.uuid == alimentSelectionne
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { 
+                                    onAlimentSelected(
+                                        if (isSelected) null else data.aliment.uuid
+                                    ) 
+                                }
+                                .background(
+                                    if (isSelected) Color(0xFF9C27B0).copy(alpha = 0.1f) 
+                                    else Color.Transparent
+                                )
+                                .padding(AppSizes.paddingSmall),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
