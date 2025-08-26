@@ -1,7 +1,10 @@
 package fr.vetbrain.vetnutri_mp.View
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -14,9 +17,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.drawscope.Stroke
+
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
 import fr.vetbrain.vetnutri_mp.Data.AlimentEv
 import fr.vetbrain.vetnutri_mp.Data.AlimentRation
 import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
@@ -337,43 +347,43 @@ fun AnalyseGraphiqueAlimentsView(
                 }
             }
         } else {
-            BoxWithConstraints(
-                modifier = Modifier.fillMaxSize()
-            ) {
-                val isCompact = maxWidth < 800.dp
-                
-                if (isCompact) {
-                    // Vue compacte : graphiques puis liste
+        BoxWithConstraints(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            val isCompact = maxWidth < 800.dp
+            
+            if (isCompact) {
+                // Vue compacte : graphiques puis liste
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
+                ) {
+                    // Graphique principal
+                    GraphiqueNuagePoints(alimentsAnalyses, modifier = Modifier.fillMaxWidth())
+                    
+                    // Liste des aliments
+                    ListeAlimentsAnalyse(alimentsAnalyses, modifier = Modifier.fillMaxWidth())
+                }
+            } else {
+                // Vue large : côte à côte
+                Row(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
+                ) {
+                    // Colonne gauche : liste des aliments (1/4 de la largeur)
                     Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
+                        modifier = Modifier.weight(0.25f),
+                        verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
                     ) {
-                        // Graphique principal
-                        GraphiqueNuagePoints(alimentsAnalyses, modifier = Modifier.fillMaxWidth())
-                        
-                        // Liste des aliments
                         ListeAlimentsAnalyse(alimentsAnalyses, modifier = Modifier.fillMaxWidth())
                     }
-                } else {
-                    // Vue large : côte à côte
-                    Row(
-                        modifier = Modifier.fillMaxSize(),
-                        horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
+                    
+                    // Colonne droite : graphiques (3/4 de la largeur)
+                    Column(
+                        modifier = Modifier.weight(0.75f),
+                        verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
                     ) {
-                        // Colonne gauche : liste des aliments (1/4 de la largeur)
-                        Column(
-                            modifier = Modifier.weight(0.25f),
-                            verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
-                        ) {
-                            ListeAlimentsAnalyse(alimentsAnalyses, modifier = Modifier.fillMaxWidth())
-                        }
-                        
-                        // Colonne droite : graphiques (3/4 de la largeur)
-                        Column(
-                            modifier = Modifier.weight(0.75f),
-                            verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
-                        ) {
-                            GraphiqueNuagePoints(alimentsAnalyses, modifier = Modifier.fillMaxWidth())
+                        GraphiqueNuagePoints(alimentsAnalyses, modifier = Modifier.fillMaxWidth())
                         }
                     }
                 }
@@ -431,40 +441,105 @@ private fun GraphiqueNuagePoints(
                 val xRange = (minX - 5f)..(maxX + 5f)
                 val yRange = (minY - 5f)..(maxY + 5f)
                 
-                XYGraph(
-                    xAxisModel = FloatLinearAxisModel(range = xRange),
-                    yAxisModel = FloatLinearAxisModel(range = yRange),
+                // 🎯 Graphique avec numéros superposés
+                BoxWithConstraints(
                     modifier = Modifier.height(400.dp)
                 ) {
-                    // Afficher chaque point individuellement avec LinePlot et symbol (comme dans AnalyseGraphiqueView.kt)
-                    alimentsAnalyses.forEach { data ->
-                        LinePlot(
-                            data = listOf(
-                                Point(
-                                    x = data.pourcentageProteines.toFloat(),
-                                    y = data.pourcentageLipides.toFloat()
-                                )
-                            ),
-                            symbol = {
-                                androidx.compose.foundation.Canvas(
-                                    modifier = Modifier.size(12.dp)
-                                ) { 
-                                    drawCircle(color = VetNutriColors.Primary) 
-                                }
-                            }
+                    // Graphique principal
+                    XYGraph(
+                        xAxisModel = FloatLinearAxisModel(range = xRange),
+                        yAxisModel = FloatLinearAxisModel(range = yRange),
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        // Afficher chaque point individuellement avec LinePlot et symbol
+                        alimentsAnalyses.forEach { data ->
+                            LinePlot(
+                                data = listOf(
+                        Point(
+                            x = data.pourcentageProteines.toFloat(),
+                            y = data.pourcentageLipides.toFloat()
                         )
+                                ),
+                                symbol = {
+                                    // Point principal seulement
+                                    androidx.compose.foundation.Canvas(
+                                        modifier = Modifier.size(12.dp)
+                                    ) { 
+                                        drawCircle(
+                                            color = VetNutriColors.Primary, 
+                                            radius = 6f,
+                                            center = center
+                                        )
+                                    }
+                                }
+                            )
+                        }
+                    }
+                    
+                    // 🎯 Numéros superposés directement avec correction des marges d'axes
+                    alimentsAnalyses.forEach { data ->
+                        // Calculer la position du numéro avec les vraies dimensions
+                        val xPosition = ((data.pourcentageProteines.toFloat() - xRange.start) / (xRange.endInclusive - xRange.start))
+                        val yPosition = 1f - ((data.pourcentageLipides.toFloat() - yRange.start) / (yRange.endInclusive - yRange.start))
                         
-
+                        // Marges typiques des axes KoalaPlot (estimation)
+                        // 🔧 Marges AJUSTÉES basées sur l'observation des logs (décalage empirique)
+                        val leftAxisMargin = 10.dp  // Marge pour les labels de l'axe Y (augmentée)
+                        val bottomAxisMargin = 15.dp  // Marge pour les labels de l'axe X (augmentée)
+                        val topMargin = 10.dp  // Marge supérieure
+                        val rightMargin = 20.dp  // Marge droite
+                        
+                        // Zone de graphique effective
+                        val effectiveGraphWidth = maxWidth - leftAxisMargin - rightMargin
+                        val effectiveGraphHeight = maxHeight  - bottomAxisMargin - topMargin
+                        
+                        // Couleur selon le numéro
+                        val numeroColor = when (data.numero) {
+                            1 -> Color.Red
+                            2 -> Color.Blue  
+                            3 -> Color.Green
+                            4 -> Color.Magenta
+                            5 -> Color.Cyan
+                            else -> VetNutriColors.Primary
+                        }
+                        
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .wrapContentSize(Alignment.TopStart)
+                                .offset(
+                                    x = leftAxisMargin + (xPosition * effectiveGraphWidth.value).dp - 10.dp, // Position dans la zone effective + centrage
+                                    y = topMargin + (yPosition * effectiveGraphHeight.value).dp - 30.dp  // Position dans la zone effective + au-dessus du point
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            // Fond du numéro
+                            androidx.compose.foundation.Canvas(
+                                modifier = Modifier.size(20.dp)
+                            ) {
+                                drawCircle(
+                                    color = Color.White,
+                                    radius = 10.dp.toPx()
+                                )
+                                drawCircle(
+                                    color = numeroColor,
+                                    radius = 10.dp.toPx(),
+                                    style = Stroke(width = 2.dp.toPx())
+                                )
+                            }
+                            
+                            // Numéro
+                            Text(
+                                text = "${data.numero}",
+                                style = MaterialTheme.typography.caption.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 12.sp
+                                ),
+                                color = numeroColor
+                            )
+                        }
                     }
                 }
-                
-                // Légende
-                Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
-                Text(
-                    text = "Axes : X = % énergie protéines, Y = % énergie lipides",
-                    style = MaterialTheme.typography.caption,
-                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
-                )
             } else {
                 Text(
                     text = "Aucune donnée disponible pour l'analyse",
@@ -534,42 +609,46 @@ private fun ListeAlimentsAnalyse(
                 
                 Divider(modifier = Modifier.padding(vertical = AppSizes.paddingSmall))
                 
-                // Lignes du tableau
-                alimentsAnalyses.forEach { data ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "${data.numero}",
-                            modifier = Modifier.weight(0.1f),
-                            style = MaterialTheme.typography.caption,
-                            fontWeight = FontWeight.Bold,
-                            color = VetNutriColors.Primary
-                        )
-                        Text(
-                            text = data.aliment.nom ?: "Sans nom",
-                            modifier = Modifier.weight(0.4f),
-                            style = MaterialTheme.typography.caption
-                        )
-                        Text(
-                            text = data.aliment.gamme ?: "-",
-                            modifier = Modifier.weight(0.25f),
-                            style = MaterialTheme.typography.caption
-                        )
-                        Text(
-                            text = data.aliment.brand ?: "-",
-                            modifier = Modifier.weight(0.25f),
-                            style = MaterialTheme.typography.caption
-                        )
-                    }
-                    
-                    if (alimentsAnalyses.last() != data) {
-                        Divider(
-                            modifier = Modifier.padding(vertical = AppSizes.paddingSmall / 2),
-                            color = MaterialTheme.colors.onSurface.copy(alpha = 0.1f)
-                        )
+                // Liste scrollable des aliments
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall / 2),
+                    modifier = Modifier.fillMaxHeight()
+                ) {
+                    items(alimentsAnalyses) { data ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "${data.numero}",
+                                modifier = Modifier.weight(0.1f),
+                                style = MaterialTheme.typography.caption,
+                                fontWeight = FontWeight.Bold,
+                                color = VetNutriColors.Primary
+                            )
+                            Text(
+                                text = data.aliment.nom ?: "Sans nom",
+                                modifier = Modifier.weight(0.4f),
+                                style = MaterialTheme.typography.caption
+                            )
+                            Text(
+                                text = data.aliment.gamme ?: "-",
+                                modifier = Modifier.weight(0.25f),
+                                style = MaterialTheme.typography.caption
+                            )
+                            Text(
+                                text = data.aliment.brand ?: "-",
+                                modifier = Modifier.weight(0.25f),
+                                style = MaterialTheme.typography.caption
+                            )
+                        }
+                        
+                        if (alimentsAnalyses.last() != data) {
+                            Divider(
+                                color = MaterialTheme.colors.onSurface.copy(alpha = 0.1f)
+                            )
+                        }
                     }
                 }
             } else {

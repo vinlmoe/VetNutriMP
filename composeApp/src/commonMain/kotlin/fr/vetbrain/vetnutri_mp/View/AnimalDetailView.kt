@@ -448,21 +448,31 @@ private fun WideScreenLayout(
                                                                 isLoadingAlimentsComplets = true
                                                                 val alimentsAvecValeurs = mutableListOf<fr.vetbrain.vetnutri_mp.Data.AlimentEv>()
                                                                 
+                                                                println("🔍 DIAGNOSTIC LOAD: Début chargement aliments complets pour ${alimentsSelectionnes.size} aliments")
+                                                                
                                                                 for (aliment in alimentsSelectionnes) {
                                                                         try {
+                                                                                println("🔍 DIAGNOSTIC LOAD: Tentative récupération aliment ${aliment.uuid} - ${aliment.nom}")
+                                                                                println("🔍 DIAGNOSTIC LOAD: Aliment light - valMap.size: ${aliment.valMap.size}")
+                                                                                
                                                                                 // Récupérer l'aliment complet depuis le repository
                                                                                 val alimentComplet = fr.vetbrain.vetnutri_mp.Repository.AlimentRepository.getAlimentByUUID(aliment.uuid)
+                                                                                
                                                                                 if (alimentComplet != null) {
+                                                                                        println("✅ DIAGNOSTIC LOAD: Aliment complet récupéré - valMap.size: ${alimentComplet.valMap.size}")
                                                                                         alimentsAvecValeurs.add(alimentComplet)
                                                                                 } else {
+                                                                                        println("❌ DIAGNOSTIC LOAD: Aliment complet NULL - fallback sur light")
                                                                                         alimentsAvecValeurs.add(aliment) // Fallback
                                                                                 }
                                                                         } catch (e: Exception) {
-                                                                                println("❌ Erreur récupération aliment complet: ${e.message}")
+                                                                                println("❌ DIAGNOSTIC LOAD: Erreur récupération aliment complet: ${e.message}")
+                                                                                e.printStackTrace()
                                                                                 alimentsAvecValeurs.add(aliment) // Fallback
                                                                         }
                                                                 }
                                                                 
+                                                                println("🔍 DIAGNOSTIC LOAD: Fin chargement - ${alimentsAvecValeurs.size} aliments chargés")
                                                                 alimentsComplets = alimentsAvecValeurs
                                                                 isLoadingAlimentsComplets = false
                                                         }
