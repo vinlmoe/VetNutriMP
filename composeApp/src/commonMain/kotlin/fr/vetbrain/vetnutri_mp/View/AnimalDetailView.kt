@@ -421,14 +421,14 @@ private fun WideScreenLayout(
                                         }
                                         
                                         if (isLoadingFoods) {
-                                                Column(
-                                                        modifier = Modifier.fillMaxSize().padding(AppSizes.paddingMedium),
-                                                        verticalArrangement = Arrangement.Center,
-                                                        horizontalAlignment = Alignment.CenterHorizontally
-                                                ) {
+                                        Column(
+                                                modifier = Modifier.fillMaxSize().padding(AppSizes.paddingMedium),
+                                                verticalArrangement = Arrangement.Center,
+                                                horizontalAlignment = Alignment.CenterHorizontally
+                                        ) {
                                                         CircularProgressIndicator(color = VetNutriColors.Primary)
                                                         Spacer(modifier = Modifier.height(AppSizes.paddingMedium))
-                                                        Text(
+                                                Text(
                                                                 "Chargement des aliments...",
                                                                 style = MaterialTheme.typography.body1,
                                                                 color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
@@ -528,14 +528,14 @@ private fun WideScreenLayout(
                                                 ) {
                                                         Text(
                                                                 "Aucun aliment disponible",
-                                                                style = MaterialTheme.typography.h5,
-                                                                color = VetNutriColors.Primary
-                                                        )
-                                                        Text(
+                                                        style = MaterialTheme.typography.h5,
+                                                        color = VetNutriColors.Primary
+                                                )
+                                                Text(
                                                                 "Aucun aliment n'est disponible pour l'analyse graphique",
-                                                                style = MaterialTheme.typography.body1,
-                                                                color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
-                                                        )
+                                                        style = MaterialTheme.typography.body1,
+                                                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                                                )
                                                 }
                                         }
                                 }
@@ -913,36 +913,125 @@ private fun NarrowScreenLayout(
                                                                 modifier = Modifier.fillMaxSize()
                                                         )
                                                 }
-                                                AnimalDetailSection.GRAPHIQUE_ALIMENTS -> {
+                                                                                                AnimalDetailSection.GRAPHIQUE_ALIMENTS -> {
                                                         val availableFoods by viewModel.availableFoods.collectAsState()
                                                         val isLoadingFoods by viewModel.isLoadingFoods.collectAsState()
                                                         
+                                                        // 🔧 Récupération des préférences pour l'espèce dans ce contexte (même logique que layout large)
+                                                        val preferencesStorageLocal: fr.vetbrain.vetnutri_mp.Utils.PreferencesStorage = remember { createPreferencesStorage() }
+                                                        val preferencesRepositoryLocal: PreferencesRepository = remember {
+                                                                PreferencesRepository(preferencesStorageLocal)
+                                                        }
+                                                        var preferencesApplicationLocal by remember {
+                                                                mutableStateOf<fr.vetbrain.vetnutri_mp.Data.PreferencesApplication?>(null)
+                                                        }
+                                                        
+                                                        // Charger les préférences au démarrage
+                                                        LaunchedEffect(Unit) {
+                                                                preferencesRepositoryLocal.loadPreferences()
+                                                                preferencesApplicationLocal = preferencesRepositoryLocal.preferences
+                                                        }
+                                                        
                                                         if (isLoadingFoods) {
-                                                                Column(
-                                                                        modifier = Modifier.fillMaxSize().padding(AppSizes.paddingMedium),
-                                                                        verticalArrangement = Arrangement.Center,
-                                                                        horizontalAlignment = Alignment.CenterHorizontally
-                                                                ) {
+                                                        Column(
+                                                                modifier = Modifier.fillMaxSize().padding(AppSizes.paddingMedium),
+                                                                verticalArrangement = Arrangement.Center,
+                                                                horizontalAlignment = Alignment.CenterHorizontally
+                                                        ) {
                                                                         CircularProgressIndicator(color = VetNutriColors.Primary)
                                                                         Spacer(modifier = Modifier.height(AppSizes.paddingMedium))
-                                                                        Text(
+                                                                Text(
                                                                                 "Chargement des aliments...",
                                                                                 style = MaterialTheme.typography.body1,
                                                                                 color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                                                                         )
                                                                 }
                                                         } else if (availableFoods.isNotEmpty()) {
-                                                                // Utiliser la vue de sélection des aliments avec possibilité d'analyse graphique
-                                                                                                                AnalyseSelectionAlimentsView(
-                                                        aliments = availableFoods,
-                                                        onClose = { /* Retour à la section précédente */ },
-                                                        onAlimentSelected = { /* Gestion de la sélection */ },
-                                                        onAnalyseGraphique = { aliments ->
-                                                                // TODO: Naviguer vers l'analyse graphique
-                                                                println("Aliments sélectionnés pour analyse: ${aliments.size}")
-                                                        },
-                                                        modifier = Modifier.fillMaxSize()
-                                                )
+                                                                // ✨ MÊME LOGIQUE QUE LE LAYOUT LARGE - Utiliser les états du ViewModel pour persister la sélection
+                                                                val showAnalyseGraphique by viewModel.showAnalyseGraphique.collectAsState()
+                                                                val alimentsSelectionnes by viewModel.alimentsSelectionnes.collectAsState()
+                                                                
+                                                                if (showAnalyseGraphique && alimentsSelectionnes.isNotEmpty()) {
+                                                                        // Afficher la vue d'analyse graphique
+                                                                        // Récupérer les aliments complets avec leurs valeurs nutritionnelles
+                                                                        var alimentsComplets by remember { mutableStateOf<List<fr.vetbrain.vetnutri_mp.Data.AlimentEv>>(emptyList()) }
+                                                                        var isLoadingAlimentsComplets by remember { mutableStateOf(true) }
+                                                                        
+                                                                        LaunchedEffect(alimentsSelectionnes) {
+                                                                                isLoadingAlimentsComplets = true
+                                                                                val alimentsAvecValeurs = mutableListOf<fr.vetbrain.vetnutri_mp.Data.AlimentEv>()
+                                                                                
+                                                                                println("🔍 DIAGNOSTIC LOAD: Début chargement aliments complets pour ${alimentsSelectionnes.size} aliments")
+                                                                                
+                                                                                for (aliment in alimentsSelectionnes) {
+                                                                                        try {
+                                                                                                println("🔍 DIAGNOSTIC LOAD: Tentative récupération aliment ${aliment.uuid} - ${aliment.nom}")
+                                                                                                println("🔍 DIAGNOSTIC LOAD: Aliment light - valMap.size: ${aliment.valMap.size}")
+                                                                                                
+                                                                                                // Récupérer l'aliment complet depuis le repository
+                                                                                                val alimentComplet = fr.vetbrain.vetnutri_mp.Repository.AlimentRepository.getAlimentByUUID(aliment.uuid)
+                                                                                                
+                                                                                                if (alimentComplet != null) {
+                                                                                                        println("✅ DIAGNOSTIC LOAD: Aliment complet récupéré - valMap.size: ${alimentComplet.valMap.size}")
+                                                                                                        alimentsAvecValeurs.add(alimentComplet)
+                                                                                                } else {
+                                                                                                        println("❌ DIAGNOSTIC LOAD: Aliment complet NULL - fallback sur light")
+                                                                                                        alimentsAvecValeurs.add(aliment) // Fallback
+                                                                                                }
+                                                                                        } catch (e: Exception) {
+                                                                                                println("❌ DIAGNOSTIC LOAD: Erreur récupération aliment complet: ${e.message}")
+                                                                                                e.printStackTrace()
+                                                                                                alimentsAvecValeurs.add(aliment) // Fallback
+                                                                                        }
+                                                                                }
+                                                                                
+                                                                                println("🔍 DIAGNOSTIC LOAD: Fin chargement - ${alimentsAvecValeurs.size} aliments chargés")
+                                                                                alimentsComplets = alimentsAvecValeurs
+                                                                                isLoadingAlimentsComplets = false
+                                                                        }
+                                                                        
+                                                                        if (isLoadingAlimentsComplets) {
+                                                                                Box(
+                                                                                        modifier = Modifier.fillMaxSize(),
+                                                                                        contentAlignment = Alignment.Center
+                                                                                ) {
+                                                                                        Column(
+                                                                                                horizontalAlignment = Alignment.CenterHorizontally,
+                                                                                                verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
+                                                                                        ) {
+                                                                                                CircularProgressIndicator(color = VetNutriColors.Primary)
+                                                                                                Text(
+                                                                                                        text = "Chargement des valeurs nutritionnelles...",
+                                                                                                        style = MaterialTheme.typography.body1,
+                                                                                                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                                                                                                )
+                                                                                        }
+                                                                                }
+                                                                        } else {
+                                                                                AnalyseGraphiqueAlimentsView(
+                                                                                        aliments = alimentsComplets,
+                                                                                        referenceEv = viewModel.referenceUtilisee.value,
+                                                                                        equationRepository = equationRepository,
+                                                                                        preferencesEspece = animalDetails?.let { animal ->
+                                                                                                preferencesApplicationLocal?.getPreferencesEspece(animal.getEspece())
+                                                                                        },
+                                                                                        onClose = { viewModel.hideAnalyseGraphique() },
+                                                                                        modifier = Modifier.fillMaxSize()
+                                                                                )
+                                                                        }
+                                                                } else {
+                                                                        // Utiliser la vue de sélection des aliments avec possibilité d'analyse graphique
+                                                                        AnalyseSelectionAlimentsView(
+                                                                                aliments = availableFoods,
+                                                                                onClose = { /* Retour à la section précédente */ },
+                                                                                onAlimentSelected = { /* Gestion de la sélection */ },
+                                                                                onAnalyseGraphique = { aliments ->
+                                                                                        viewModel.lancerAnalyseGraphique(aliments)
+                                                                                },
+                                                                                alimentsInitialementSelectionnes = alimentsSelectionnes, // ✨ Passer les aliments déjà sélectionnés
+                                                                                modifier = Modifier.fillMaxSize()
+                                                                        )
+                                                                }
                                                         } else {
                                                                 Column(
                                                                         modifier = Modifier.fillMaxSize().padding(AppSizes.paddingMedium),
@@ -951,14 +1040,14 @@ private fun NarrowScreenLayout(
                                                                 ) {
                                                                         Text(
                                                                                 "Aucun aliment disponible",
-                                                                                style = MaterialTheme.typography.h5,
-                                                                                color = VetNutriColors.Primary
-                                                                        )
-                                                                        Text(
+                                                                        style = MaterialTheme.typography.h5,
+                                                                        color = VetNutriColors.Primary
+                                                                )
+                                                                Text(
                                                                                 "Aucun aliment n'est disponible pour l'analyse graphique",
-                                                                                style = MaterialTheme.typography.body1,
-                                                                                color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
-                                                                        )
+                                                                        style = MaterialTheme.typography.body1,
+                                                                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                                                                )
                                                                 }
                                                         }
                                                 }
