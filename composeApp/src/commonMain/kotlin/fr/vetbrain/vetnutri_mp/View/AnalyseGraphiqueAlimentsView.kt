@@ -206,7 +206,7 @@ fun AnalyseGraphiqueAlimentsView(
     var alimentSelectionne by remember { mutableStateOf<String?>(null) }
     
     // État pour l'onglet actif
-    var ongletActif by remember { mutableStateOf("protein_lipid") }
+    var ongletActif by remember { mutableStateOf("densite_energetique") }
     
     // Calculer les données d'analyse pour chaque aliment de manière asynchrone
     LaunchedEffect(aliments, referenceEv, equationRepository) {
@@ -372,6 +372,18 @@ fun AnalyseGraphiqueAlimentsView(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            // ✨ Onglet Histogramme Densité Énergétique (PREMIER)
+            Button(
+                onClick = { ongletActif = "densite_energetique" },
+                colors = ButtonDefaults.buttonColors(
+                    backgroundColor = if (ongletActif == "densite_energetique") VetNutriColors.Primary else Color.Gray.copy(alpha = 0.3f),
+                    contentColor = if (ongletActif == "densite_energetique") Color.White else Color.Black
+                ),
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("Densité énergétique\n(histogramme)")
+            }
+            
             // Onglet Protéines/Lipides
             Button(
                 onClick = { ongletActif = "protein_lipid" },
@@ -393,19 +405,7 @@ fun AnalyseGraphiqueAlimentsView(
                 ),
                 modifier = Modifier.weight(1f)
             ) {
-                Text("Phosphore/Protéines\n(par 1000 kcal)")
-            }
-            
-            // ✨ Onglet Histogramme Densité Énergétique
-            Button(
-                onClick = { ongletActif = "densite_energetique" },
-                colors = ButtonDefaults.buttonColors(
-                    backgroundColor = if (ongletActif == "densite_energetique") VetNutriColors.Primary else Color.Gray.copy(alpha = 0.3f),
-                    contentColor = if (ongletActif == "densite_energetique") Color.White else Color.Black
-                ),
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("Densité énergétique\n(histogramme)")
+                Text("Phosphore/Protéines\n(g par 1000 kcal)")
             }
         }
 
@@ -445,35 +445,8 @@ fun AnalyseGraphiqueAlimentsView(
                     verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
                 ) {
                     // 🔧 Bouton retour plus visible en mode compact
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        backgroundColor = VetNutriColors.Primary.copy(alpha = 0.1f),
-                        elevation = 2.dp
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(AppSizes.paddingSmall),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
-                        ) {
-                            IconButton(
-                                onClick = onClose,
-                                modifier = Modifier.size(40.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.ArrowBack,
-                                    contentDescription = "Retour à la sélection",
-                                    tint = VetNutriColors.Primary,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                            }
-                            Text(
-                                text = "← Retour à la sélection d'aliments",
-                                style = MaterialTheme.typography.body2,
-                                color = VetNutriColors.Primary,
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
-                    }
+                   
+                    
                     
                     // Graphique principal
                     GraphiqueNuagePoints(
@@ -814,7 +787,7 @@ private fun ListeAlimentsAnalyse(
             modifier = Modifier.padding(AppSizes.paddingMedium)
         ) {
             Text(
-                text = "Liste des aliments (triés par densité énergétique décroissante)",
+                text = "Liste des aliments",
                 style = MaterialTheme.typography.h6,
                 fontWeight = FontWeight.Bold,
                 color = VetNutriColors.Primary
@@ -916,14 +889,9 @@ private fun HistogrammeEnergieAliments(
     }
 
     // Préparer les données pour l'histogramme
-    // Créer les catégories avec les noms des aliments (tronqués) et leurs numéros
+    // Créer les catégories avec seulement les numéros des aliments
     val categories = alimentsAnalyses.map { data ->
-        val nomTronque = if (data.aliment.nom?.length ?: 0 > 10) {
-            "${data.aliment.nom?.take(10)}..."
-        } else {
-            data.aliment.nom ?: "N/A"
-        }
-        "$nomTronque\n(${data.numero})"
+        "${data.numero}"
     }
     
     // Données de densité énergétique
