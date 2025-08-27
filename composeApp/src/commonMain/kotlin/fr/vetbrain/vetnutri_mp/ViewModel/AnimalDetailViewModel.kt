@@ -143,6 +143,13 @@ class AnimalDetailViewModel(
     private val _referenceUtilisee = MutableStateFlow<ReferenceEv?>(null)
     val referenceUtilisee: StateFlow<ReferenceEv?> = _referenceUtilisee.asStateFlow()
 
+    // ✨ États pour l'analyse graphique des aliments
+    private val _alimentsSelectionnes = MutableStateFlow<List<AlimentEv>>(emptyList())
+    val alimentsSelectionnes: StateFlow<List<AlimentEv>> = _alimentsSelectionnes.asStateFlow()
+
+    private val _showAnalyseGraphique = MutableStateFlow(false)
+    val showAnalyseGraphique: StateFlow<Boolean> = _showAnalyseGraphique.asStateFlow()
+
     init {
         // Démarrer automatiquement l'observation des aliments
         loadAvailableFoods()
@@ -1752,5 +1759,63 @@ class AnimalDetailViewModel(
                 }
             } catch (e: Exception) {}
         }
+    }
+
+    // ✨ Méthodes pour l'analyse graphique des aliments
+
+    /**
+     * Définit la liste des aliments sélectionnés pour l'analyse graphique
+     */
+    fun setAlimentsSelectionnes(aliments: List<AlimentEv>) {
+        _alimentsSelectionnes.value = aliments
+    }
+
+    /**
+     * Ajoute un aliment à la liste des aliments sélectionnés
+     */
+    fun ajouterAlimentSelectionne(aliment: AlimentEv) {
+        val current = _alimentsSelectionnes.value.toMutableList()
+        if (!current.any { it.uuid == aliment.uuid }) {
+            current.add(aliment)
+            _alimentsSelectionnes.value = current
+        }
+    }
+
+    /**
+     * Retire un aliment de la liste des aliments sélectionnés
+     */
+    fun retirerAlimentSelectionne(aliment: AlimentEv) {
+        val current = _alimentsSelectionnes.value.toMutableList()
+        current.removeAll { it.uuid == aliment.uuid }
+        _alimentsSelectionnes.value = current
+    }
+
+    /**
+     * Vide la liste des aliments sélectionnés
+     */
+    fun clearAlimentsSelectionnes() {
+        _alimentsSelectionnes.value = emptyList()
+    }
+
+    /**
+     * Affiche l'analyse graphique avec les aliments sélectionnés
+     */
+    fun showAnalyseGraphique() {
+        _showAnalyseGraphique.value = true
+    }
+
+    /**
+     * Cache l'analyse graphique
+     */
+    fun hideAnalyseGraphique() {
+        _showAnalyseGraphique.value = false
+    }
+
+    /**
+     * Lance l'analyse graphique avec une liste d'aliments
+     */
+    fun lancerAnalyseGraphique(aliments: List<AlimentEv>) {
+        setAlimentsSelectionnes(aliments)
+        showAnalyseGraphique()
     }
 }

@@ -561,14 +561,14 @@ private fun GraphiqueNuagePoints(
                 val (xRange, yRange) = when (ongletActif) {
                     "phosphore_protein" -> {
                         // Plages fixes pour une meilleure visibilité du graphique phosphore/protéines
-                        val xRangeFixed = 0f..5f  // Phosphore: 0-5 mg/1000kcal
-                        val yRangeFixed = 40f..100f  // Protéines: 40-100 g/1000kcal
+                        val xRangeFixed = (minX - minX*0.05f)..(maxX+ maxX*0.05f)
+                        val yRangeFixed = (minY - minY*0.05f)..(maxY + maxY*0.05f)
                         Pair(xRangeFixed, yRangeFixed)
                     }
                     else -> {
                         // Plages automatiques avec padding pour le graphique protéines/lipides
-                        val xRangeAuto = (minX - 5f)..(maxX.coerceAtMost(100f) + 5f)
-                        val yRangeAuto = (minY - 5f)..(maxY.coerceAtMost(100f) + 5f)
+                        val xRangeAuto = (minX - minX*0.05f)..(maxX.coerceAtMost(100f) + maxX*0.05f)
+                        val yRangeAuto = (minY - minY*0.05f)..(maxY.coerceAtMost(100f) + maxY*0.05f)
                         Pair(xRangeAuto, yRangeAuto)
                     }
                 }
