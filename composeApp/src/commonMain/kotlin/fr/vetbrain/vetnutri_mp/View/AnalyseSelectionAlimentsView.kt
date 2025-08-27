@@ -54,10 +54,13 @@ fun AnalyseSelectionAlimentsView(
     onClose: () -> Unit,
     onAlimentSelected: ((AlimentEv) -> Unit)? = null,
     onAnalyseGraphique: ((List<AlimentEv>) -> Unit)? = null,
+    alimentsInitialementSelectionnes: List<AlimentEv> = emptyList(), // ✨ Nouveaux aliments déjà sélectionnés
     modifier: Modifier = Modifier
 ) {
-    // État pour les aliments sélectionnés
-    var alimentsSelectionnes by remember { mutableStateOf(listOf<AlimentEv>()) }
+    // État pour les aliments sélectionnés (initialisé avec ceux du ViewModel)
+    var alimentsSelectionnes by remember(alimentsInitialementSelectionnes) { 
+        mutableStateOf(alimentsInitialementSelectionnes.toList()) 
+    }
     
     // État pour les filtres de recherche
     var filters by remember { mutableStateOf(FoodSearchFilters()) }

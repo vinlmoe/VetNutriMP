@@ -435,8 +435,9 @@ private fun WideScreenLayout(
                                                         )
                                                 }
                                         } else if (availableFoods.isNotEmpty()) {
-                                                var showAnalyseGraphique by remember { mutableStateOf(false) }
-                                                var alimentsSelectionnes by remember { mutableStateOf<List<AlimentEv>>(emptyList()) }
+                                                // ✨ Utiliser les états du ViewModel pour persister la sélection
+                                                val showAnalyseGraphique by viewModel.showAnalyseGraphique.collectAsState()
+                                                val alimentsSelectionnes by viewModel.alimentsSelectionnes.collectAsState()
                                                 
                                                 if (showAnalyseGraphique && alimentsSelectionnes.isNotEmpty()) {
                                                         // Afficher la vue d'analyse graphique
@@ -502,7 +503,7 @@ private fun WideScreenLayout(
                                                                         preferencesEspece = animalDetails?.let { animal ->
                                                                                 preferencesApplicationLocal?.getPreferencesEspece(animal.getEspece())
                                                                         },
-                                                                        onClose = { showAnalyseGraphique = false },
+                                                                        onClose = { viewModel.hideAnalyseGraphique() },
                                                                         modifier = Modifier.fillMaxSize()
                                                                 )
                                                         }
@@ -513,9 +514,9 @@ private fun WideScreenLayout(
                                                                 onClose = { /* Retour à la section précédente */ },
                                                                 onAlimentSelected = { /* Gestion de la sélection */ },
                                                                 onAnalyseGraphique = { aliments ->
-                                                                        alimentsSelectionnes = aliments
-                                                                        showAnalyseGraphique = true
+                                                                        viewModel.lancerAnalyseGraphique(aliments)
                                                                 },
+                                                                alimentsInitialementSelectionnes = alimentsSelectionnes, // ✨ Passer les aliments déjà sélectionnés
                                                                 modifier = Modifier.fillMaxSize()
                                                         )
                                                 }
