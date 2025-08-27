@@ -50,7 +50,7 @@ import fr.vetbrain.vetnutri_mp.Localization.translateEnum
  */
 @Composable
 fun AnalyseSelectionAlimentsView(
-    aliments: List<AlimentEv>,
+    aliments: List<AlimentEv>, 
     onClose: () -> Unit,
     onAlimentSelected: ((AlimentEv) -> Unit)? = null,
     onAnalyseGraphique: ((List<AlimentEv>) -> Unit)? = null,
@@ -408,11 +408,11 @@ private fun AlimentItem(
                     style = MaterialTheme.typography.body1,
                     fontWeight = FontWeight.Medium
                 )
-                Text(
+                    Text(
                     text = "${aliment.brand ?: "Sans marque"} - ${aliment.gamme ?: "Sans gamme"}",
                     style = MaterialTheme.typography.caption,
-                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
-                )
+                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                    )
             }
             
             if (showAddButton && onAdd != null) {

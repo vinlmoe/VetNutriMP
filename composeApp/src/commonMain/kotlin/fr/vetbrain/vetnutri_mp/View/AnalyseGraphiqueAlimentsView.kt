@@ -32,6 +32,7 @@ import fr.vetbrain.vetnutri_mp.Data.AlimentEv
 import fr.vetbrain.vetnutri_mp.Data.AlimentRation
 import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientMain
+import fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
@@ -52,7 +53,9 @@ data class AlimentAnalyseData(
     val numero: Int,
     val densiteEnergetique: Double,
     val pourcentageProteines: Double,
-    val pourcentageLipides: Double
+    val pourcentageLipides: Double,
+    val phosphorePer1000Kcal: Double = 0.0,
+    val proteinePer1000Kcal: Double = 0.0
 )
 
 /**
@@ -200,6 +203,9 @@ fun AnalyseGraphiqueAlimentsView(
     // État pour l'aliment sélectionné (UUID de l'aliment)
     var alimentSelectionne by remember { mutableStateOf<String?>(null) }
     
+    // État pour l'onglet actif
+    var ongletActif by remember { mutableStateOf("protein_lipid") }
+    
     // Calculer les données d'analyse pour chaque aliment de manière asynchrone
     LaunchedEffect(aliments, referenceEv, equationRepository) {
         isLoading = true
@@ -259,19 +265,43 @@ fun AnalyseGraphiqueAlimentsView(
                     referenceEv = referenceEv
                 ) ?: 0.0
                 
+                // Récupération du phosphore pour le second graphique
+                val phosphore = alimentRation.getNutrientWithComplementary(
+                    nutrient = NutrientMacro.PHOS,
+                    preferences = preferencesEspece,
+                    equationRepository = equationRepository,
+                    referenceEv = referenceEv
+                ) ?: 0.0
+                
                 println("  - Protéines: $proteines g")
                 println("  - Lipides: $lipides g")
                 println("  - Glucides: $glucides g")
                 println("  - Énergie: $energie kcal")
+                println("  - Phosphore: $phosphore mg")
                 
                 val densiteEnergetique = calculerDensiteEnergetiqueAsync(aliment, referenceEv, equationRepository, preferencesEspece)
                 val pourcentageProteines = calculerPourcentageEnergieProteinesAsync(aliment, densiteEnergetique, equationRepository, preferencesEspece)
                 val pourcentageLipides = calculerPourcentageEnergieLipidesAsync(aliment, densiteEnergetique, equationRepository, preferencesEspece)
                 
+                // Calculs pour le graphique Phosphore/Protéines (par 1000 kcal)
+                val proteinePer1000Kcal = if (densiteEnergetique > 0) {
+                    (proteines * 1000.0) / densiteEnergetique
+                } else {
+                    0.0
+                }
+                
+                val phosphorePer1000Kcal = if (densiteEnergetique > 0) {
+                    (phosphore * 1000.0) / densiteEnergetique  
+                } else {
+                    0.0
+                }
+                
                 // 🔍 LOG DIAGNOSTIC : Vérifier les valeurs calculées
                 println("  - Densité énergétique: $densiteEnergetique kcal/100g")
                 println("  - % Protéines: $pourcentageProteines%")
                 println("  - % Lipides: $pourcentageLipides%")
+                println("  - Protéines/1000kcal: $proteinePer1000Kcal g")
+                println("  - Phosphore/1000kcal: $phosphorePer1000Kcal mg")
                 println("  - Point graphique: ($pourcentageProteines, $pourcentageLipides)")
                 
                 resultat.add(AlimentAnalyseData(
@@ -279,7 +309,9 @@ fun AnalyseGraphiqueAlimentsView(
                     numero = 0, // Numéro temporaire, sera réassigné après le tri
                     densiteEnergetique = densiteEnergetique,
                     pourcentageProteines = pourcentageProteines,
-                    pourcentageLipides = pourcentageLipides
+                    pourcentageLipides = pourcentageLipides,
+                    phosphorePer1000Kcal = phosphorePer1000Kcal,
+                    proteinePer1000Kcal = proteinePer1000Kcal
                 ))
             } catch (e: Exception) {
                 println("❌ DIAGNOSTIC GRAPHIQUE: Erreur pour l'aliment ${index + 1}: ${e.message}")
@@ -333,6 +365,36 @@ fun AnalyseGraphiqueAlimentsView(
             }
         }
 
+        // Onglets pour choisir le type de graphique
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            // Onglet Protéines/Lipides
+            Button(
+                onClick = { ongletActif = "protein_lipid" },
+                colors = ButtonDefaults.buttonColors(
+                    backgroundColor = if (ongletActif == "protein_lipid") VetNutriColors.Primary else Color.Gray.copy(alpha = 0.3f),
+                    contentColor = if (ongletActif == "protein_lipid") Color.White else Color.Black
+                ),
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("Protéines/Lipides (%)")
+            }
+            
+            // Onglet Phosphore/Protéines
+            Button(
+                onClick = { ongletActif = "phosphore_protein" },
+                colors = ButtonDefaults.buttonColors(
+                    backgroundColor = if (ongletActif == "phosphore_protein") VetNutriColors.Primary else Color.Gray.copy(alpha = 0.3f),
+                    contentColor = if (ongletActif == "phosphore_protein") Color.White else Color.Black
+                ),
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("Phosphore/Protéines\n(par 1000 kcal)")
+            }
+        }
+
         // Contenu principal - responsive selon la largeur
         if (isLoading) {
             // Indicateur de chargement
@@ -368,7 +430,8 @@ fun AnalyseGraphiqueAlimentsView(
                 ) {
                     // Graphique principal
                     GraphiqueNuagePoints(
-                        alimentsAnalyses = alimentsAnalyses, 
+                        alimentsAnalyses = alimentsAnalyses,
+                        ongletActif = ongletActif,
                         alimentSelectionne = alimentSelectionne, 
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -406,7 +469,8 @@ fun AnalyseGraphiqueAlimentsView(
                         verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
                     ) {
                         GraphiqueNuagePoints(
-                            alimentsAnalyses = alimentsAnalyses, 
+                            alimentsAnalyses = alimentsAnalyses,
+                            ongletActif = ongletActif,
                             alimentSelectionne = alimentSelectionne, 
                             modifier = Modifier.fillMaxWidth()
                         )
@@ -425,6 +489,7 @@ fun AnalyseGraphiqueAlimentsView(
 @Composable
 private fun GraphiqueNuagePoints(
     alimentsAnalyses: List<AlimentAnalyseData>,
+    ongletActif: String,
     alimentSelectionne: String? = null,
     modifier: Modifier = Modifier
 ) {
@@ -435,8 +500,15 @@ private fun GraphiqueNuagePoints(
         Column(
             modifier = Modifier.padding(AppSizes.paddingMedium)
         ) {
+            // Titre dynamique selon l'onglet
+            val titre = when (ongletActif) {
+                "protein_lipid" -> "Répartition énergétique : Protéines vs Lipides"
+                "phosphore_protein" -> "Phosphore vs Protéines (par 1000 kcal)"
+                else -> "Analyse nutritionnelle"
+            }
+            
             Text(
-                text = "Répartition énergétique : Protéines vs Lipides",
+                text = titre,
                 style = MaterialTheme.typography.h6,
                 fontWeight = FontWeight.Bold,
                 color = VetNutriColors.Primary
@@ -451,22 +523,55 @@ private fun GraphiqueNuagePoints(
             Spacer(modifier = Modifier.height(AppSizes.paddingMedium))
             
             if (alimentsAnalyses.isNotEmpty()) {
-                // Préparer les données pour le graphique
-                val points = alimentsAnalyses.map { data ->
+                // Préparer les données pour le graphique selon l'onglet actif
+                val points = when (ongletActif) {
+                    "protein_lipid" -> {
+                        alimentsAnalyses.map { data ->
+                            Point(
+                                x = data.pourcentageProteines.toFloat(),
+                                y = data.pourcentageLipides.toFloat()
+                            )
+                        }
+                    }
+                    "phosphore_protein" -> {
+                        alimentsAnalyses.map { data ->
+                            Point(
+                                x = data.phosphorePer1000Kcal.toFloat(),
+                                y = data.proteinePer1000Kcal.toFloat()
+                            )
+                        }
+                    }
+                    else -> {
+                        alimentsAnalyses.map { data ->
                     Point(
                         x = data.pourcentageProteines.toFloat(),
                         y = data.pourcentageLipides.toFloat()
                     )
+                        }
+                    }
                 }
                 
-                // Calculer les plages des axes
+                // Calculer les plages des axes selon le type de graphique
                 val minX = points.minOf { it.x }.coerceAtLeast(0f)
-                val maxX = points.maxOf { it.x }.coerceAtMost(100f)
+                val maxX = points.maxOf { it.x }
                 val minY = points.minOf { it.y }.coerceAtLeast(0f)
-                val maxY = points.maxOf { it.y }.coerceAtMost(100f)
+                val maxY = points.maxOf { it.y }
                 
-                val xRange = (minX - 5f)..(maxX + 5f)
-                val yRange = (minY - 5f)..(maxY + 5f)
+                // Ajuster les plages selon le type de graphique
+                val (xRange, yRange) = when (ongletActif) {
+                    "phosphore_protein" -> {
+                        // Plages fixes pour une meilleure visibilité du graphique phosphore/protéines
+                        val xRangeFixed = 0f..5f  // Phosphore: 0-5 mg/1000kcal
+                        val yRangeFixed = 40f..100f  // Protéines: 40-100 g/1000kcal
+                        Pair(xRangeFixed, yRangeFixed)
+                    }
+                    else -> {
+                        // Plages automatiques avec padding pour le graphique protéines/lipides
+                        val xRangeAuto = (minX - 5f)..(maxX.coerceAtMost(100f) + 5f)
+                        val yRangeAuto = (minY - 5f)..(maxY.coerceAtMost(100f) + 5f)
+                        Pair(xRangeAuto, yRangeAuto)
+                    }
+                }
                 
                 // 🎯 Graphique avec numéros superposés
                 BoxWithConstraints(
@@ -479,14 +584,10 @@ private fun GraphiqueNuagePoints(
                         modifier = Modifier.fillMaxSize()
                     ) {
                         // Afficher chaque point individuellement avec LinePlot et symbol
-                        alimentsAnalyses.forEach { data ->
+                        alimentsAnalyses.forEachIndexed { index, data ->
+                            val point = points[index] // Utiliser le point calculé selon l'onglet actif
                             LinePlot(
-                                data = listOf(
-                        Point(
-                            x = data.pourcentageProteines.toFloat(),
-                            y = data.pourcentageLipides.toFloat()
-                        )
-                                ),
+                                data = listOf(point),
                                 symbol = {
                                     // Point principal avec couleur selon sélection
                                     val couleurPoint = if (data.aliment.uuid == alimentSelectionne) {
@@ -510,10 +611,11 @@ private fun GraphiqueNuagePoints(
                     }
                     
                     // 🎯 Numéros superposés directement avec correction des marges d'axes
-                    alimentsAnalyses.forEach { data ->
+                    alimentsAnalyses.forEachIndexed { index, data ->
+                        val point = points[index] // Utiliser le point calculé selon l'onglet actif
                         // Calculer la position du numéro avec les vraies dimensions
-                        val xPosition = ((data.pourcentageProteines.toFloat() - xRange.start) / (xRange.endInclusive - xRange.start))
-                        val yPosition = 1f - ((data.pourcentageLipides.toFloat() - yRange.start) / (yRange.endInclusive - yRange.start))
+                        val xPosition = ((point.x - xRange.start) / (xRange.endInclusive - xRange.start))
+                        val yPosition = 1f - ((point.y - yRange.start) / (yRange.endInclusive - yRange.start))
                         
                         // Marges typiques des axes KoalaPlot (estimation)
                         // 🔧 Marges AJUSTÉES basées sur l'observation des logs (décalage empirique)
@@ -661,37 +763,37 @@ private fun ListeAlimentsAnalyse(
                                     else Color.Transparent
                                 )
                                 .padding(AppSizes.paddingSmall),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "${data.numero}",
-                                modifier = Modifier.weight(0.1f),
-                                style = MaterialTheme.typography.caption,
-                                fontWeight = FontWeight.Bold,
-                                color = VetNutriColors.Primary
-                            )
-                            Text(
-                                text = data.aliment.nom ?: "Sans nom",
-                                modifier = Modifier.weight(0.4f),
-                                style = MaterialTheme.typography.caption
-                            )
-                            Text(
-                                text = data.aliment.gamme ?: "-",
-                                modifier = Modifier.weight(0.25f),
-                                style = MaterialTheme.typography.caption
-                            )
-                            Text(
-                                text = data.aliment.brand ?: "-",
-                                modifier = Modifier.weight(0.25f),
-                                style = MaterialTheme.typography.caption
-                            )
-                        }
-                        
-                        if (alimentsAnalyses.last() != data) {
-                            Divider(
-                                color = MaterialTheme.colors.onSurface.copy(alpha = 0.1f)
-                            )
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "${data.numero}",
+                            modifier = Modifier.weight(0.1f),
+                            style = MaterialTheme.typography.caption,
+                            fontWeight = FontWeight.Bold,
+                            color = VetNutriColors.Primary
+                        )
+                        Text(
+                            text = data.aliment.nom ?: "Sans nom",
+                            modifier = Modifier.weight(0.4f),
+                            style = MaterialTheme.typography.caption
+                        )
+                        Text(
+                            text = data.aliment.gamme ?: "-",
+                            modifier = Modifier.weight(0.25f),
+                            style = MaterialTheme.typography.caption
+                        )
+                        Text(
+                            text = data.aliment.brand ?: "-",
+                            modifier = Modifier.weight(0.25f),
+                            style = MaterialTheme.typography.caption
+                        )
+                    }
+                    
+                    if (alimentsAnalyses.last() != data) {
+                        Divider(
+                            color = MaterialTheme.colors.onSurface.copy(alpha = 0.1f)
+                        )
                         }
                     }
                 }
