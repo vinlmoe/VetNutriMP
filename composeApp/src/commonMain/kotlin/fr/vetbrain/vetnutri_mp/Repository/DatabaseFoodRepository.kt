@@ -743,7 +743,7 @@ class DatabaseFoodRepository(
             // Continuer malgré l'erreur pour tenter l'insertion
         }
 
-        println("\n===== TRAITEMENT DES NUTRIMENTS POUR ${food.nom} (${food.UUID}) =====")
+        
 
         // Vérifier si la carte des valeurs nutritionnelles est vide
         if (food.valMap.isEmpty()) {
@@ -757,7 +757,7 @@ class DatabaseFoodRepository(
                 val value = nutrientQuantity.value
 
                 if (nutrientKey.isNullOrBlank()) {
-                    println("ATTENTION: Clé de nutriment vide pour ${food.nom} (${food.UUID})")
+                    
                     return@forEach
                 }
 
@@ -909,7 +909,7 @@ class DatabaseFoodRepository(
                 }
             }
         } else {
-            println("Aucune valeur nutritionnelle à insérer pour ${food.nom} (${food.UUID})")
+            
         }
     }
     // FIN ZONE PROTÉGÉE
@@ -1133,7 +1133,7 @@ class DatabaseFoodRepository(
                 val updatedFood = food.copy(RefRation = rationId)
                 foodDao.update(updatedFood)
 
-                println("Aliment ${food.name} (${food.uuid}) associé à la ration $rationId")
+                
                 return@withContext true
             } catch (e: Exception) {
                 return@withContext false

@@ -56,9 +56,7 @@ object Mappers {
                                         try {
                                                 LocalDate.parse(dateStr)
                                         } catch (e: Exception) {
-                                                println(
-                                                        "⚠️ WARNING: Impossible de parser la date de naissance '${dateStr}' dans AnimalEntity.toData(): ${e.message}"
-                                                )
+                                                
                                                 null
                                         }
                                 },
@@ -134,9 +132,7 @@ object Mappers {
                                         try {
                                                 LocalDate.parse(this.date)
                                         } catch (e: Exception) {
-                                                println(
-                                                        "⚠️ WARNING: Impossible de parser la date de consultation '${this.date}' dans ConsultationEntity.toData(): ${e.message}"
-                                                )
+                                                
                                                 null
                                         }
                                 } else {
@@ -553,9 +549,7 @@ object Mappers {
                                         try {
                                                 LocalDate.parse(this.date)
                                         } catch (e: Exception) {
-                                                println(
-                                                        "⚠️ WARNING: Impossible de parser la date '${this.date}' dans WeightEntity.toData(): ${e.message}"
-                                                )
+                                                
                                                 LocalDate(
                                                         2000,
                                                         1,

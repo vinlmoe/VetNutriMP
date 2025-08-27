@@ -103,7 +103,7 @@ object EquationEvaluator {
             val v = ration.getNutrient(nutrient)?.toDouble() ?: 0.0
             variables[nutrient.label] = v
             // Log léger pour diagnostiquer en cas de pb d'équations
-            // println("EQDBG var ${nutrient.label}=$v")
+            // 
         }
         NutrientLipid.entries.forEach { nutrient ->
             val v = ration.getNutrient(nutrient)?.toDouble() ?: 0.0
@@ -123,7 +123,7 @@ object EquationEvaluator {
         }
 
         val res = ExpressionMathematique.evaluer(expression, variables)
-        // println("EQDBG eval '${expression}' => ${res}")
+        // 
         return res
     }
 

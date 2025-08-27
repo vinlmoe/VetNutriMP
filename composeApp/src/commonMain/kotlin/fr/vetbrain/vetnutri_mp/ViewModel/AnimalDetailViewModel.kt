@@ -209,7 +209,7 @@ class AnimalDetailViewModel(
     /** Ajoute un aliment à une ration */
     @OptIn(ExperimentalUuidApi::class)
     fun addAlimentToRation(ration: Ration, aliment: AlimentEv, quantite: Double) {
-        println("Ajout de l'aliment ${aliment.nom} (${quantite}g) à la ration ${ration.uuid}")
+        
 
         viewModelScope.launch {
             try {
@@ -259,14 +259,10 @@ class AnimalDetailViewModel(
             _showFullScreenEdit.value = false
 
             // DEBUG: Vérifier l'historique des poids de l'animal reçu
-            println("🔍 DEBUG setAnimal: Animal reçu - ${animal.nom} (${animal.uuid})")
-            println(
-                    "🔍 DEBUG setAnimal: Historique des poids initial: ${animal.weightHistory.size} poids"
-            )
+            
+            
             animal.weightHistory.forEachIndexed { index, weight ->
-                println(
-                        "🔍 DEBUG setAnimal: Poids $index - Date: ${weight.date}, Valeur: ${weight.value}kg"
-                )
+                
             }
 
             // Conserver une référence à l'animal original
@@ -285,13 +281,9 @@ class AnimalDetailViewModel(
                 val preferences = preferencesRepository.getPreferencesForSpecies(animal.getEspece())
                 _speciesPreferences.value = preferences
                 _typeExpressionBesoin.value = preferences.getTypeExpressionBesoinEnum()
-                println(
-                        "✅ DEBUG setAnimal: Préférences chargées pour ${animal.getEspece()}: ${preferences.getTypeExpressionBesoinEnum().displayName}"
-                )
+                
             } catch (e: Exception) {
-                println(
-                        "❌ DEBUG setAnimal: Erreur lors du chargement des préférences: ${e.message}"
-                )
+                
                 _speciesPreferences.value = null
                 _typeExpressionBesoin.value = null
             }
@@ -378,7 +370,7 @@ class AnimalDetailViewModel(
      * @param ration La ration à sélectionner et analyser
      */
     fun selectRation(ration: Ration) {
-        println("DEBUG_ALIMENTS: Début selectRation pour ration ${ration.uuid} (${ration.name})")
+        
 
         ration.alimentMutableList.forEachIndexed { k, a -> }
 
@@ -468,47 +460,39 @@ class AnimalDetailViewModel(
 
     /** Applique une recette (liste d'aliments) à la ration sélectionnée et recharge l'état */
     fun applyRecipeToRation(recipe: Ration) {
-        println("🔍 DEBUG ViewModel: Début applyRecipeToSelectedRation")
-        println("🔍 DEBUG ViewModel: Recipe reçue: ${recipe.name} (${recipe.uuid})")
-        println(
-                "🔍 DEBUG ViewModel: Nombre d'aliments dans la recette: ${recipe.alimentMutableList.size}"
-        )
+        
+        
+        
 
         val rationActuelle = _selectedRation.value
         if (rationActuelle == null) {
-            println("❌ DEBUG ViewModel: Aucune ration sélectionnée")
+            
             return
         }
-        println(
-                "🔍 DEBUG ViewModel: Ration actuelle: ${rationActuelle.name} (${rationActuelle.uuid})"
-        )
-        println(
-                "🔍 DEBUG ViewModel: Nombre d'aliments dans la ration actuelle: ${rationActuelle.alimentMutableList.size}"
-        )
+        
+        
 
         val consultationActuelle = _selectedConsultation.value
         if (consultationActuelle == null) {
-            println("❌ DEBUG ViewModel: Aucune consultation sélectionnée")
+            
             return
         }
-        println("🔍 DEBUG ViewModel: Consultation actuelle: ${consultationActuelle.uuid}")
+        
 
         viewModelScope.launch {
             try {
-                println("🔍 DEBUG ViewModel: Appel à consultationRepository.applyRecipeToRation")
+                
                 consultationRepository.applyRecipeToRation(recipe, rationActuelle.uuid)
-                println("✅ DEBUG ViewModel: applyRecipeToRation terminé avec succès")
+                
 
                 // Recharger la consultation pour refléter les nouveaux aliments
-                println("🔍 DEBUG ViewModel: Rechargement de la consultation...")
+                
                 val refreshed =
                         consultationRepository.getConsultationById(consultationActuelle.uuid)
 
                 if (refreshed != null) {
-                    println("✅ DEBUG ViewModel: Consultation rechargée avec succès")
-                    println(
-                            "🔍 DEBUG ViewModel: Nombre de rations dans la consultation rechargée: ${refreshed.rations.size}"
-                    )
+                    
+                    
 
                     _selectedConsultation.value = refreshed
 
@@ -516,31 +500,23 @@ class AnimalDetailViewModel(
                     val rationMiseAJour =
                             refreshed.rations.firstOrNull { it.uuid == rationActuelle.uuid }
                     if (rationMiseAJour != null) {
-                        println(
-                                "✅ DEBUG ViewModel: Ration mise à jour trouvée: ${rationMiseAJour.name}"
-                        )
-                        println(
-                                "🔍 DEBUG ViewModel: Nombre d'aliments dans la ration mise à jour: ${rationMiseAJour.alimentMutableList.size}"
-                        )
+                        
+                        
 
                         selectRation(rationMiseAJour)
-                        println("✅ DEBUG ViewModel: Ration mise à jour sélectionnée")
+                        
                     } else {
-                        println(
-                                "❌ DEBUG ViewModel: Ration mise à jour non trouvée dans la consultation rechargée"
-                        )
+                        
                     }
                 } else {
-                    println("❌ DEBUG ViewModel: Impossible de recharger la consultation")
+                    
                 }
             } catch (e: Exception) {
-                println(
-                        "❌ DEBUG ViewModel: Erreur lors de l'application de la recette: ${e.message}"
-                )
+                
                 e.printStackTrace()
             }
         }
-        println("🔍 DEBUG ViewModel: Fin applyRecipeToSelectedRation")
+        
     }
 
     /**
@@ -1119,7 +1095,7 @@ class AnimalDetailViewModel(
                     // espèce
                     _availableReferences.value = references
 
-                    references.forEach { ref -> println("- ${ref.nom} (maladie: ${ref.maladie})") }
+                    references.forEach { ref ->  }
                 }
             } catch (e: Exception) {
                 _availableReferences.value = emptyList()
@@ -1330,7 +1306,7 @@ class AnimalDetailViewModel(
                     return@launch
                 }
 
-                println("✅ DEBUG: Référence utilisée: ${reference.nom} (UUID: ${reference.uuid})")
+                
 
                 // 2. Calculer le poids métabolique
                 val poidsMetabolique = calculerPoidsMetabolique(consultation, reference)
@@ -1524,7 +1500,7 @@ class AnimalDetailViewModel(
         mappings.forEach { (originalName, mappedName) ->
             variables[originalName]?.let { value ->
                 variables[mappedName] = value
-                println("🔄 DEBUG: Variable mappée: $originalName ($value) -> $mappedName")
+                
             }
         }
     }

@@ -98,16 +98,12 @@ class ExportImportRepository(
                         equationRepository?.getAllEquations()?.map { it.toApi() } ?: emptyList()
 
                 // Récupérer toutes les recettes
-                println("🔍 DEBUG ExportImportRepository: Début de récupération des recettes")
-                println(
-                        "🔍 DEBUG ExportImportRepository: recipeRepository = ${recipeRepository != null}"
-                )
+                
+                
                 val recipes =
                         recipeRepository?.getAllRecipesAsRecette()?.map { it.toApi() }
                                 ?: emptyList()
-                println(
-                        "🔍 DEBUG ExportImportRepository: ${recipes.size} recettes récupérées pour l'export"
-                )
+                
 
                 // Références et biblios
                 val references =
@@ -206,23 +202,15 @@ class ExportImportRepository(
                         } else emptyList()
 
                 // Récupérer les recettes selon les options
-                println(
-                        "🔍 DEBUG ExportImportRepository: exportWithSelection - Début de récupération des recettes"
-                )
-                println(
-                        "🔍 DEBUG ExportImportRepository: exportWithSelection - recipeRepository = ${recipeRepository != null}"
-                )
-                println(
-                        "🔍 DEBUG ExportImportRepository: exportWithSelection - includeRecipes = ${options.includeRecipes}"
-                )
+                
+                
+                
                 val recipes =
                         if (options.includeRecipes) {
                                 recipeRepository?.getAllRecipesAsRecette()?.map { it.toApi() }
                                         ?: emptyList()
                         } else emptyList()
-                println(
-                        "🔍 DEBUG ExportImportRepository: exportWithSelection - ${recipes.size} recettes récupérées (includeRecipes=${options.includeRecipes})"
-                )
+                
 
                 val biblioRefs =
                         try {
@@ -416,7 +404,7 @@ class ExportImportRepository(
                                             for (nutrientApi in refApi.nutrients) {
                                                 try {
                                                     // 🔍 LOG DIAGNOSTIC : Tracer l'import des nutriments
-                                                    println("🔍 DIAGNOSTIC IMPORT: Import nutriment '${nutrientApi.nutrientLabel}' (${nutrientApi.reflevel}) = ${nutrientApi.quantity}")
+                                                    
                                                     
                                                     // Résoudre le nutriment
                                                     val nutrient = fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver.AllNutrientResolver(nutrientApi.nutrientLabel)
@@ -447,13 +435,13 @@ class ExportImportRepository(
                                                             biblio = biblio
                                                         )
                                                         
-                                                        println("✅ DIAGNOSTIC IMPORT: Nutriment '${nutrientApi.nutrientLabel}' importé avec succès")
+                                                        
                                                     } else {
-                                                        println("❌ DIAGNOSTIC IMPORT: Nutriment '${nutrientApi.nutrientLabel}' non résolu")
+                                                        
                                                         listener?.onLog("⚠️ Nutriment non résolu: ${nutrientApi.nutrientLabel}")
                                                     }
                                                 } catch (e: Exception) {
-                                                    println("❌ DIAGNOSTIC IMPORT: Erreur import nutriment '${nutrientApi.nutrientLabel}': ${e.message}")
+                                                    
                                                     listener?.onLog("Erreur nutriment ${nutrientApi.nutrientLabel}: ${e.message}")
                                                 }
                                             }
@@ -593,13 +581,9 @@ class ExportImportRepository(
                 // 6) Recettes (dépendent des aliments)
                 if (envelope.recipes.isNotEmpty() && recipeRepository != null) {
                         listener?.onLog("Import des recettes (${envelope.recipes.size})…")
-                        println("🔍 DEBUG ExportImportRepository: Début import des recettes")
-                        println(
-                                "🔍 DEBUG ExportImportRepository: Nombre de recettes à importer: ${envelope.recipes.size}"
-                        )
-                        println(
-                                "🔍 DEBUG ExportImportRepository: recipeRepository disponible: ${recipeRepository != null}"
-                        )
+                        
+                        
+                        
 
                         // Construire un cache des aliments existants pour vérifier les références
                         val existingFoodIds: Set<String> =
@@ -610,15 +594,11 @@ class ExportImportRepository(
                                                 emptySet()
                                         }
                                 } else emptySet()
-                        println(
-                                "🔍 DEBUG ExportImportRepository: Nombre d'aliments existants: ${existingFoodIds.size}"
-                        )
+                        
 
                         for (recipeApi in envelope.recipes) {
                                 try {
-                                        println(
-                                                "🔍 DEBUG ExportImportRepository: Import de la recette: ${recipeApi.name} (${recipeApi.uuid})"
-                                        )
+                                        
                                         val recipe = recipeApi.toDomain()
 
                                         // Vérifier et créer les aliments manquants référencés par

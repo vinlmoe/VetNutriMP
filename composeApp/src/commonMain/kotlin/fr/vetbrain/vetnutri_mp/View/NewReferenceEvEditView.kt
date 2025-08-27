@@ -545,8 +545,8 @@ fun ReferenceEvEquationsTab(viewModel: NewReferenceEvViewModel) {
 
         // Débogage: Affichage des informations sur les équations disponibles
         LaunchedEffect(availableEquations) {
-                println("DEBUG: Équations BW (MW): ${bwEquations.size}")
-                println("DEBUG: Équations BEE (ENERGYNEED): ${beeEquations.size}")
+                
+                
                 availableEquations.forEachIndexed { index, equation -> }
         }
 

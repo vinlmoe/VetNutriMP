@@ -125,11 +125,11 @@ fun main(args: Array<String> = emptyArray()) {
                                             // automatique depuis CLI
                                             )
 
-                            println("\n" + "=".repeat(70))
+                            
                             references.forEachIndexed { index, ref -> }
 
                             // Afficher le rapport des résolutions problématiques
-                            println("\n" + ImportUtils.genererRapportResolutionsProblematiques())
+                            
                         } catch (e: Exception) {
                             e.printStackTrace()
                         }
@@ -336,7 +336,7 @@ actual fun importNutritionalRequirementsFromFile(viewModel: ImportViewModel) {
             viewModel.updateNutritionalRequirementImportResultMessage(
                     "❌ Erreur lors de l'importation: ${e.message}"
             )
-            println("Erreur détaillée: ${e.stackTraceToString()}")
+            
         }
     }
 }

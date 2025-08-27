@@ -363,10 +363,8 @@ fun exempleUtilisationAnalyseRation(ration: Ration) {
     nutrimentsImportants.forEach { labelNutriment ->
         val valeur = valeursNutritionnelles[labelNutriment]
         if (valeur != null) {
-            println(
-                    "Valeur totale: ${TextUtils.formatDecimal(valeur.valeur, 2)} ${valeur.unite.label}"
-            )
-            println("Complet: ${if (valeur.complete) "Oui" else "Non"}")
+            
+            
         }
     }
 

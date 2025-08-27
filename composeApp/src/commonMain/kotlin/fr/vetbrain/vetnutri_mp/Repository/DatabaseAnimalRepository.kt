@@ -53,11 +53,9 @@ class DatabaseAnimalRepository(
 
         override suspend fun getAllAnimals(): List<AnimalEv> {
                 return withContext(AppDispatchers.Default) {
-                        println("🔍 DEBUG DatabaseAnimalRepository: getAllAnimals() appelé")
+                        
                         val entities = animalDao.getAllAnimals()
-                        println(
-                                "🔍 DEBUG DatabaseAnimalRepository: ${entities.size} animaux trouvés en base"
-                        )
+                        
 
                         entities.map { entity ->
                                 val animalEv =
@@ -77,9 +75,7 @@ class DatabaseAnimalRepository(
                                                                                         dateStr
                                                                                 )
                                                                         } catch (e: Exception) {
-                                                                                println(
-                                                                                        "⚠️ WARNING: Impossible de parser la date de naissance '${dateStr}' pour l'animal ${entity.uuid}: ${e.message}"
-                                                                                )
+                                                                                
                                                                                 null
                                                                         }
                                                                 } else {
@@ -98,9 +94,7 @@ class DatabaseAnimalRepository(
                                                         // Vérifier que la date n'est pas vide ou
                                                         // null
                                                         if (weightEntity.date.isNullOrBlank()) {
-                                                                println(
-                                                                        "⚠️ WARNING: Date vide pour le poids ${weightEntity.uuid} de l'animal ${entity.uuid}"
-                                                                )
+                                                                
                                                                 null // Ignorer ce poids
                                                         } else {
                                                                 try {
@@ -122,21 +116,15 @@ class DatabaseAnimalRepository(
                                                                                                 .value
                                                                         )
                                                                 } catch (e: Exception) {
-                                                                        println(
-                                                                                "⚠️ WARNING: Impossible de parser la date '${weightEntity.date}' pour le poids ${weightEntity.uuid}: ${e.message}"
-                                                                        )
+                                                                        
                                                                         null // Ignorer ce poids
                                                                 }
                                                         }
                                                 }
                                         )
-                                        println(
-                                                "🔍 DEBUG DatabaseAnimalRepository: ${weightEntities.size} poids chargés pour ${animalEv.nom}"
-                                        )
+                                        
                                 } else {
-                                        println(
-                                                "🔍 DEBUG DatabaseAnimalRepository: Aucun poids pour ${animalEv.nom}"
-                                        )
+                                        
                                 }
 
                                 animalEv
@@ -199,9 +187,7 @@ class DatabaseAnimalRepository(
                                                                 try {
                                                                         LocalDate.parse(dateStr)
                                                                 } catch (e: Exception) {
-                                                                        println(
-                                                                                "⚠️ WARNING: Impossible de parser la date de naissance '${dateStr}' pour l'animal ${entity.uuid}: ${e.message}"
-                                                                        )
+                                                                        
                                                                         null
                                                                 }
                                                         } else {
@@ -231,9 +217,7 @@ class DatabaseAnimalRepository(
                                                                                 } catch (
                                                                                         e:
                                                                                                 Exception) {
-                                                                                        println(
-                                                                                                "⚠️ WARNING: Impossible de parser la date de consultation '${dateStr}' pour la consultation ${consultEntity.uuid}: ${e.message}"
-                                                                                        )
+                                                                                        
                                                                                         null
                                                                                 }
                                                                         } else {
@@ -274,21 +258,15 @@ class DatabaseAnimalRepository(
 
                         // Charger les poids associés
                         val weightEntities = animalDao.getWeightsForAnimal(id)
-                        println(
-                                "🔍 DEBUG DatabaseAnimalRepository: Chargement des poids pour l'animal $id"
-                        )
-                        println(
-                                "🔍 DEBUG DatabaseAnimalRepository: ${weightEntities.size} poids trouvés en base"
-                        )
+                        
+                        
 
                         if (weightEntities.isNotEmpty()) {
                                 animalEv.weightHistory.addAll(
                                         weightEntities.mapNotNull { weightEntity ->
                                                 // Vérifier que la date n'est pas vide ou null
                                                 if (weightEntity.date.isNullOrBlank()) {
-                                                        println(
-                                                                "⚠️ WARNING: Date vide pour le poids ${weightEntity.uuid} de l'animal $id"
-                                                        )
+                                                        
                                                         null // Ignorer ce poids
                                                 } else {
                                                         try {
@@ -305,9 +283,7 @@ class DatabaseAnimalRepository(
                                                                         value = weightEntity.value
                                                                 )
                                                         } catch (e: Exception) {
-                                                                println(
-                                                                        "⚠️ WARNING: Impossible de parser la date '${weightEntity.date}' pour le poids ${weightEntity.uuid}: ${e.message}"
-                                                                )
+                                                                
                                                                 null // Ignorer ce poids
                                                         }
                                                 }
@@ -316,14 +292,10 @@ class DatabaseAnimalRepository(
 
                                 // DEBUG: Afficher les poids chargés
                                 animalEv.weightHistory.forEachIndexed { index, weight ->
-                                        println(
-                                                "🔍 DEBUG DatabaseAnimalRepository: Poids $index chargé - Date: ${weight.date}, Valeur: ${weight.value}kg"
-                                        )
+                                        
                                 }
                         } else {
-                                println(
-                                        "🔍 DEBUG DatabaseAnimalRepository: Aucun poids trouvé pour l'animal $id"
-                                )
+                                
                         }
 
                         animalEv
@@ -1014,7 +986,7 @@ class DatabaseAnimalRepository(
                                         }
 
                                         importedCount++
-                                        println("Animal importé: ${animal.nom} (ID=${animal.uuid})")
+                                        
                                 } catch (e: Exception) {
                                         // Ignorer les erreurs d'importation pour un animal
                                         // spécifique

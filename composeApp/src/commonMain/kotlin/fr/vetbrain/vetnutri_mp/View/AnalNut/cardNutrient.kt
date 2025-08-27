@@ -134,10 +134,7 @@ fun AnalyseNutritionnelleCard(
                 try {
                     if (referenceUtilisee != null) {
                         val selectedEquationUuids = referenceUtilisee.equationsNut.map { it.uuid }
-                        println(
-                                "EQDBG selectedEquationUuids (ReferenceEv): " +
-                                        selectedEquationUuids
-                        )
+                        
                         if (selectedEquationUuids.isNotEmpty()) {
                             val equationRepo = equationRepository
 
@@ -154,25 +151,20 @@ fun AnalyseNutritionnelleCard(
                                                 kotlinx.coroutines.runBlocking {
                                                     equationRepo?.getAllEquations() ?: emptyList()
                                                 }
-                                        println(
-                                                "EQDBG repository loaded equations count=" +
-                                                        all.size
-                                        )
+                                        
                                         all.associateBy { it.uuid }
                                     } catch (e: Exception) {
-                                        println(
-                                                "EQDBG failed to load all equations from repo: " + e
-                                        )
+                                        
                                         emptyMap()
                                     }
 
                             // Pour chaque équation sélectionnée, calculer sa contribution et
                             // l’ajouter au nutriment correspondant
                             selectedEquationUuids.forEach { eqId ->
-                                println("EQDBG fetching equation: " + eqId)
+                                
                                 val eq = eqMap[eqId]
                                 if (eq == null) {
-                                    println("EQDBG equation not found: " + eqId)
+                                    
                                 }
                                 if (eq != null &&
                                                 eq.kind ==
@@ -180,17 +172,7 @@ fun AnalyseNutritionnelleCard(
                                                                 .COMPLEMENTARY_NUTRIENT &&
                                                 eq.nutrient != null
                                 ) {
-                                    println(
-                                            "EQDBG evaluating: name='" +
-                                                    eq.name +
-                                                    "' nutrient=" +
-                                                    eq.nutrient!!.label +
-                                                    " ratio=" +
-                                                    eq.ratio +
-                                                    " expr='" +
-                                                    eq.equationScript +
-                                                    "'"
-                                    )
+                                    
                                     val poids = (animal?.consultations?.lastOrNull()?.weight ?: 0.0)
                                     val bee = (animal?.getBEE() ?: 0.0)
                                     val mw =
@@ -199,14 +181,7 @@ fun AnalyseNutritionnelleCard(
                                                             .calculerPoidsMetabolique(poids)
                                                             .toDouble()
                                             else 0.0
-                                    println(
-                                            "EQDBG inputs: BW=" +
-                                                    poids +
-                                                    " BEE=" +
-                                                    bee +
-                                                    " MW=" +
-                                                    mw
-                                    )
+                                    
                                     val valeur =
                                             if (eq.ratio) {
                                                 fr.vetbrain.vetnutri_mp.Utils.EquationEvaluator
@@ -242,34 +217,22 @@ fun AnalyseNutritionnelleCard(
                                                         )
                                                         ?: 0.0
                                             } else 0.0
-                                    println("EQDBG result: value=" + valeur)
+                                    
                                     val nutrient = eq.nutrient!!
                                     val label = nutrient.translateEnum()
                                     val existante = baseMap[label]
 
                                     if (existante != null) {
                                         if (eq.ratio) {
-                                            println(
-                                                    "EQDBG apply ratio: replace previous=" +
-                                                            existante.valeur +
-                                                            " by=" +
-                                                            valeur
-                                            )
+                                            
                                             baseMap[label] = existante.copy(valeur = valeur)
                                         } else {
                                             // Ne plus additionner au total ici (calcul déjà par
                                             // aliment)
-                                            println(
-                                                    "EQDBG skip add at ration level (handled per-ingredient)"
-                                            )
+                                            
                                         }
                                     } else {
-                                        println(
-                                                "EQDBG apply create: label=" +
-                                                        label +
-                                                        " value=" +
-                                                        valeur
-                                        )
+                                        
                                         if (eq.ratio) {
                                             baseMap[label] =
                                                     ValeurNutritionnelle(
@@ -281,35 +244,28 @@ fun AnalyseNutritionnelleCard(
                                                     )
                                         } else {
                                             // Pas de création au niveau ration pour non-ratio
-                                            println(
-                                                    "EQDBG skip create at ration level for non-ratio"
-                                            )
+                                            
                                         }
                                     }
                                 }
                                 if (eq != null && eq.nutrient == null) {
-                                    println("EQDBG skipped equation without nutrient: " + eq.uuid)
+                                    
                                 }
                                 if (eq != null &&
                                                 eq.kind !=
                                                         fr.vetbrain.vetnutri_mp.Enumer.EquationKind
                                                                 .COMPLEMENTARY_NUTRIENT
                                 ) {
-                                    println(
-                                            "EQDBG skipped equation kind " +
-                                                    eq.kind.name +
-                                                    " for uuid=" +
-                                                    eq.uuid
-                                    )
+                                    
                                 }
                             }
                         } else {
                             val specieName = referenceUtilisee?.espece?.name ?: "?"
-                            println("EQDBG no selected equations for " + specieName)
+                            
                         }
                     }
                 } catch (e: Exception) {
-                    println("EQDBG exception during complementary equations apply: " + e)
+                    
                 }
                 baseMap
             }

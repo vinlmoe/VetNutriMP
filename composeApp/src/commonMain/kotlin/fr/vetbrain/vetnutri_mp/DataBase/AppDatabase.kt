@@ -133,7 +133,7 @@ fun createDatabaseBackup(database: AppDatabase): Boolean {
 fun createMigration17to18(): Migration {
     return object : Migration(17, 18) {
         override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
-            println("🔵 Test de montée de version sécurisée (Room KMP)")
+            
 
             try {
                 // Cette migration ne fait aucune modification de structure
@@ -212,7 +212,7 @@ fun createMigration18to19(): Migration {
 fun createMigration19to20(): Migration {
     return object : Migration(19, 20) {
         override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
-            println("🔵 Migration 19→20 : Ajout du champ nutrient à la table EQUATIONS")
+            
 
             try {
                 // Ajouter la colonne nutrient à la table EQUATIONS
@@ -221,9 +221,9 @@ fun createMigration19to20(): Migration {
                     statement.step()
                 }
 
-                println("✅ Migration 19→20 terminée avec succès")
+                
             } catch (e: Exception) {
-                println("❌ Erreur lors de la migration 19→20 : ${e.message}")
+                
                 throw e
             }
         }
@@ -234,15 +234,15 @@ fun createMigration19to20(): Migration {
 fun createMigration20to21(): Migration {
     return object : Migration(20, 21) {
         override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
-            println("🔵 Migration 20→21 : Ajout du champ ratio à la table EQUATIONS")
+            
             try {
                 connection.prepare(
                                 "ALTER TABLE EQUATIONS ADD COLUMN ratio INTEGER NOT NULL DEFAULT 0"
                         )
                         .use { statement -> statement.step() }
-                println("✅ Migration 20→21 terminée avec succès")
+                
             } catch (e: Exception) {
-                println("❌ Erreur lors de la migration 20→21 : ${e.message}")
+                
                 throw e
             }
         }
@@ -288,7 +288,7 @@ fun createMigration21to22(): Migration {
 fun createMigration22to23(): Migration {
     return object : Migration(22, 23) {
         override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
-            println("🔵 Migration 22→23 : Ajout d'index pour optimiser les performances")
+            
             
             try {
                 // Index pour le filtrage par groupe d'aliment
@@ -321,9 +321,9 @@ fun createMigration22to23(): Migration {
                     "CREATE INDEX IF NOT EXISTS index_FOOD_deprecated ON FOOD(deprecated)"
                 ).use { it.step() }
                 
-                println("✅ Migration 22→23 terminée avec succès : 6 index ajoutés")
+                
             } catch (e: Exception) {
-                println("❌ Erreur lors de la migration 22→23 : ${e.message}")
+                
                 throw e
             }
         }

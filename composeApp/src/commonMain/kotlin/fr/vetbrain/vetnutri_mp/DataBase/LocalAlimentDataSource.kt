@@ -84,7 +84,7 @@ class LocalAlimentDataSource(
         foods.forEach { foodJson ->
             try {
                 // Déboguer la valMap avant conversion
-                println("\nALIMENT: ${foodJson.nom} (${foodJson.UUID})")
+                
                 if (foodJson.valMap.isNotEmpty()) {
                     foodJson.valMap.entries.take(5).forEach { (key, value) ->
                     }

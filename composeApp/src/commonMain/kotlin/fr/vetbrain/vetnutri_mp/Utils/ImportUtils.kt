@@ -181,7 +181,7 @@ object ImportUtils {
 
                 // Vérifier également les consultations dans list
                 animal.list?.consultations?.forEach { consultation ->
-                    println("Traitement de la consultation (via list) du ${consultation.date}")
+                    
                     consultation.rationList.forEach { (_, ration) ->
                         ration.alimentList.forEach { alimentRation ->
                             alimentRation.alime.let { aliment -> allFoods.add(aliment) }
@@ -303,7 +303,7 @@ object ImportUtils {
 
                     // Afficher par ordre de fréquence
                     countByNutrient.forEach { (nutrient, count) ->
-                        println("  - $nutrient (présent dans $count aliments)")
+                        
                     }
                 } else {}
 
@@ -339,7 +339,7 @@ object ImportUtils {
                     if (nonResolvedNutrients.isNotEmpty()) {
                         nonResolvedNutrients.entries.sortedByDescending { it.value }.forEach {
                                 (nutrientKey, count) ->
-                            println("  - $nutrientKey (${count} occurrences)")
+                            
                         }
                     }
 
@@ -382,10 +382,10 @@ object ImportUtils {
 
                 // Afficher les nutriments non résolus
                 if (nonResolvedNutrients.isNotEmpty()) {
-                    println("\nNutriments non résolus dans le JSON (${nonResolvedNutrients.size}):")
+                    
                     nonResolvedNutrients.entries.sortedByDescending { it.value }.forEach {
                             (nutrientKey, count) ->
-                        println("  - $nutrientKey (${count} occurrences)")
+                        
                     }
                 }
 
@@ -421,7 +421,7 @@ object ImportUtils {
                     if (nonResolvedNutrients.isNotEmpty()) {
                         nonResolvedNutrients.entries.sortedByDescending { it.value }.forEach {
                                 (nutrientKey, count) ->
-                            println("  - $nutrientKey (${count} occurrences)")
+                            
                         }
                     }
 
@@ -441,10 +441,10 @@ object ImportUtils {
 
         // Même en cas d'échec, afficher les nutriments non résolus collectés lors de l'analyse
         if (nonResolvedNutrients.isNotEmpty()) {
-            println("\nNutriments non résolus dans le JSON (${nonResolvedNutrients.size}):")
+            
             nonResolvedNutrients.entries.sortedByDescending { it.value }.forEach {
                     (nutrientKey, count) ->
-                println("  - $nutrientKey (${count} occurrences)")
+                
             }
         }
 
@@ -503,7 +503,7 @@ object ImportUtils {
             }
 
             // Au lieu d'écrire dans un fichier, afficher les détails dans la console
-            println(errorReport.toString())
+            
 
             // Note: L'écriture dans un fichier a été supprimée car elle n'est pas compatible
             // multiplateforme
@@ -1586,7 +1586,7 @@ object ImportUtils {
             // Afficher un résumé
             if (references.isNotEmpty()) {
                 references.forEach { ref ->
-                    println("  • ${ref.nom} - ${ref.espece} (${ref.stadePhysio})")
+                    
                     if (ref.maladie) {}
                 }
             }
@@ -1698,7 +1698,7 @@ object ImportUtils {
 
                 // Vérification finale des équations assignées
                 reference.equationsNut.forEach { eq ->
-                    println("    * ${eq.name} (${eq.kind.name})")
+                    
                 }
             } else {}
 
@@ -1724,7 +1724,7 @@ object ImportUtils {
             // Traiter les coefficients de modification si présents
             traiterCoefficientsModification(reference, referenceObj)
 
-            println("🔄 Référence '${nom}' créée avec succès (${espece} - ${stadePhysio})")
+            
 
             return reference
         } catch (e: Exception) {
@@ -1843,7 +1843,7 @@ object ImportUtils {
                             consistent = consistent
                     )
 
-            println("✅ Équation créée: $name (${kind.name}) - UUID: $uuid")
+            
             return equation
         } catch (e: Exception) {
             e.printStackTrace()
@@ -1882,7 +1882,7 @@ object ImportUtils {
                             consistent = consistent
                     )
 
-            println("📚 Bibliographie créée: $firstAuthor ($year) - UUID: $uuid")
+            
             return biblioRef
         } catch (e: Exception) {
             e.printStackTrace()
@@ -1981,7 +1981,7 @@ object ImportUtils {
             val normalizedNutrientString = normaliserNomNutrient(nutrientString)
             
             // 🔍 LOG DIAGNOSTIC : Tracer la résolution des nutriments
-            println("🔍 DIAGNOSTIC NUTRIMENT: '$nutrientString' → '$normalizedNutrientString'")
+            
 
             var finalNutrient =
                     fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver.AllNutrientResolver(
@@ -1990,10 +1990,10 @@ object ImportUtils {
 
             if (finalNutrient != null) {
                 // 🔍 LOG DIAGNOSTIC : Nutriment résolu avec succès
-                println("✅ DIAGNOSTIC NUTRIMENT: '$nutrientString' → '$normalizedNutrientString' → ${finalNutrient::class.simpleName}.${finalNutrient.label}")
+                
             } else {
                 // 🔍 LOG DIAGNOSTIC : Échec de la résolution
-                println("❌ DIAGNOSTIC NUTRIMENT: ÉCHEC '$nutrientString' → '$normalizedNutrientString'")
+                
                 resolutionsProblematiques.add(
                         "ECHEC_RESOLUTION_EXACTE: '$nutrientString' → '$normalizedNutrientString'"
                 )
@@ -2246,7 +2246,7 @@ object ImportUtils {
     ) {
         try {
             // 🔍 LOG DIAGNOSTIC : Tentative d'ajout du nutriment
-            println("🔍 DIAGNOSTIC AJOUT: Ajout de ${nutrientInfo.nutrient.label} (${nutrientInfo.referenceLevel}) = ${nutrientInfo.quantity} ${nutrientInfo.unitRequirement}")
+            
             
             // Créer la référence bibliographique si elle n'existe pas
             val biblio =
@@ -2263,11 +2263,11 @@ object ImportUtils {
             
             // 🔍 LOG DIAGNOSTIC : Vérification après ajout
             val valeurVerifiee = reference.obtenirNutriment(nutrientInfo.nutrient, nutrientInfo.referenceLevel)
-            println("✅ DIAGNOSTIC AJOUT: ${nutrientInfo.nutrient.label} ajouté avec succès, valeur vérifiée: $valeurVerifiee")
+            
             
         } catch (e: Exception) {
             // 🔍 LOG DIAGNOSTIC : Erreur lors de l'ajout
-            println("❌ DIAGNOSTIC AJOUT: Erreur lors de l'ajout de ${nutrientInfo.nutrient.label}: ${e.message}")
+            
             e.printStackTrace()
         }
     }
@@ -2578,7 +2578,7 @@ object ImportUtils {
                             requiredKeys.all { key -> firstElement.containsKey(key) }
 
                     if (hasAllRequiredKeys) {
-                        println("✅ Fichier détecté comme .vbnr.json (format tableau)")
+                        
                         return true
                     }
 
@@ -2600,7 +2600,7 @@ object ImportUtils {
                 val hasAllRequiredKeys = requiredKeys.all { key -> jsonElement.containsKey(key) }
 
                 if (hasAllRequiredKeys) {
-                    println("✅ Fichier détecté comme .vbnr.json (format objet unique)")
+                    
                     return true
                 }
 
@@ -2901,7 +2901,7 @@ object ImportUtils {
                         } else {
                             databaseReferenceEvRepository.saveReferenceEv(reference)
                             referencesAjoutees++
-                            println("➕ Nouvelle référence: ${reference.nom} (${reference.espece})")
+                            
                         }
                     } catch (e: Exception) {
                         erreurs.add("Erreur référence ${reference.nom}: ${e.message}")
@@ -2984,7 +2984,7 @@ object ImportUtils {
             // Afficher un résumé
             if (references.isNotEmpty()) {
                 references.forEach { ref ->
-                    println("  • ${ref.nom} - ${ref.espece} (${ref.stadePhysio})")
+                    
                     if (ref.maladie) {}
                 }
             }

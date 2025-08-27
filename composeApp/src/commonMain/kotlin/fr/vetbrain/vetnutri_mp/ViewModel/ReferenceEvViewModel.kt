@@ -272,10 +272,9 @@ class ReferenceEvViewModel(
                 // Récupération des équations associées
                 // L'appel suivant semble ne pas exister, commentons-le pour l'instant
                 // val associatedEquations = repository.getEquationsForReference(referenceEvId)
-                // println("DEBUG: Associated equations count: ${associatedEquations.size}")
+                // 
                 // associatedEquations.forEach { equation ->
-                //     println("DEBUG: Associated equation - ID: ${equation.uuid}, Name:
-                // ${equation.name}, Type: ${equation.kind}")
+                //     
                 // }
 
                 // Mise à jour des états si la référence est trouvée

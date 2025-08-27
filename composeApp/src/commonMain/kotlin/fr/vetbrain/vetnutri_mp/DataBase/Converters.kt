@@ -21,9 +21,7 @@ class Converters {
                 try {
                     LocalDate.parse(dateStr)
                 } catch (e: Exception) {
-                    println(
-                            "⚠️ WARNING: Impossible de parser la date '$dateStr' dans le convertisseur Room: ${e.message}"
-                    )
+                    
                     null
                 }
             }

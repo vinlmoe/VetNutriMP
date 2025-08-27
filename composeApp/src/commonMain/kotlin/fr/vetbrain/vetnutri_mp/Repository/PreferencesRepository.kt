@@ -56,14 +56,14 @@ class PreferencesRepository(private val preferencesStorage: PreferencesStorage) 
     suspend fun loadPreferences() {
         try {
             val jsonString = preferencesStorage.getString(PREFERENCES_KEY, "{}")
-            println("🔍 PERSISTANCE Repo: loadPreferences() brut=\n$jsonString")
+            
             if (jsonString.isNotBlank() && jsonString != "{}") {
                 // Essayer de parser le JSON manuellement
                 _preferences = parsePreferencesFromJson(jsonString)
             } else {
                 _preferences = PreferencesApplication()
             }
-            println("🔍 PERSISTANCE Repo: loadPreferences() -> ${_preferences}")
+            
         } catch (e: Exception) {
             // En cas d'erreur, utiliser les préférences par défaut
             _preferences = PreferencesApplication.createDefault()
@@ -74,7 +74,7 @@ class PreferencesRepository(private val preferencesStorage: PreferencesStorage) 
     suspend fun savePreferences(preferences: PreferencesApplication) {
         try {
             val jsonString = serializePreferencesToJson(preferences)
-            println("🔍 PERSISTANCE Repo: savePreferences() json=\n$jsonString")
+            
             preferencesStorage.saveString(PREFERENCES_KEY, jsonString)
             _preferences = preferences
         } catch (e: Exception) {

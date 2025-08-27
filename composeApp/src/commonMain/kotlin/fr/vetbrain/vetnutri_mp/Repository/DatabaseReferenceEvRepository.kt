@@ -284,7 +284,7 @@ class DatabaseReferenceEvRepository(
      * @return Le nombre de références supprimées
      */
     suspend fun clearAllReferences(): Int {
-        println("DEBUG DatabaseReferenceEvRepository: clearAllReferences() démarrée")
+        
 
         return try {
             // Obtenir le nombre total de références avant suppression
@@ -718,10 +718,10 @@ class DatabaseReferenceEvRepository(
         val nutrients = referenceEvDao.getNutrientsForReference(referenceEv.uuid)
         
         // 🔍 LOG DIAGNOSTIC : Vérification des nutriments en base
-        println("🔍 DIAGNOSTIC LOAD: Chargement des nutriments pour ${referenceEv.nom} (${referenceEv.uuid})")
-        println("🔍 DIAGNOSTIC LOAD: ${nutrients.size} nutriments trouvés en base")
+        
+        
         nutrients.forEach { nut ->
-            println("  - ${nut.nutrientCode} (${nut.reflevel}): ${nut.quantite}")
+            
         }
 
         // Grouper par niveau de référence

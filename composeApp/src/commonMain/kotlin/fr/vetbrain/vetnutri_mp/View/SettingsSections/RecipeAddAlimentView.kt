@@ -65,20 +65,18 @@ fun RecipeAddAlimentView(
 
     LaunchedEffect(Unit) {
         try {
-            println("🔍 RecipeAddAlimentView: Début du chargement des aliments...")
+            
             kotlinx.coroutines.withContext(fr.vetbrain.vetnutri_mp.Utils.AppDispatchers.IO) {
                 val foods = foodRepository.getAllFoods()
-                println("🔍 RecipeAddAlimentView: ${foods.size} aliments récupérés du repository")
+                
                 kotlinx.coroutines.withContext(fr.vetbrain.vetnutri_mp.Utils.AppDispatchers.Main) {
                     allFoods.clear()
                     allFoods.addAll(foods)
-                    println(
-                            "🔍 RecipeAddAlimentView: ${allFoods.size} aliments ajoutés à la liste locale"
-                    )
+                    
                 }
             }
         } catch (e: Exception) {
-            println("❌ RecipeAddAlimentView: Erreur lors du chargement: ${e.message}")
+            
             e.printStackTrace()
         }
     }
@@ -109,9 +107,7 @@ fun RecipeAddAlimentView(
 
                     matchesSearch && matchesType && matchesGroup && matchesEspece && matchesIndic
                 }
-        println(
-                "🔍 RecipeAddAlimentView: Filtrage - ${allFoods.size} aliments totaux, ${filtered.size} après filtrage"
-        )
+        
         filtered
     }
 
