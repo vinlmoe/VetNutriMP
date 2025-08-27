@@ -93,13 +93,24 @@ fun FoodSearchComponent(
         filters.selectedIndications
     ) {
         foods.filter { aliment ->
-            // Filtre par recherche textuelle
+            // Filtre par recherche textuelle avec recherche multi-mots (AND)
             val matchesSearch =
                 if (filters.searchQuery.isEmpty()) true
                 else {
-                    aliment.nom?.contains(filters.searchQuery, ignoreCase = true) == true ||
-                    aliment.brand?.contains(filters.searchQuery, ignoreCase = true) == true ||
-                    aliment.ingredients?.contains(filters.searchQuery, ignoreCase = true) == true
+                    val searchWords = filters.searchQuery.trim().split("\\s+".toRegex())
+                        .filter { it.isNotEmpty() }
+                        .map { it.lowercase() }
+                    
+                    if (searchWords.isEmpty()) true
+                    else {
+                        // Chaque mot doit être trouvé dans au moins un des champs
+                        searchWords.all { word ->
+                            aliment.nom?.lowercase()?.contains(word) == true ||
+                            aliment.brand?.lowercase()?.contains(word) == true ||
+                            aliment.gamme?.lowercase()?.contains(word) == true ||
+                            aliment.ingredients?.lowercase()?.contains(word) == true
+                        }
+                    }
                 }
 
             // Filtre par type d'aliment (ALL = pas de filtre)
