@@ -194,10 +194,13 @@ fun SectionAlimentsRation(
                                                                                                                         alimentRation
                                                                                                                                 .copy(
                                                                                                                                         quantite =
-                                                                                                                                                (alimentRation
-                                                                                                                                                                .quantite *
-                                                                                                                                                                ratio)
-                                                                                                                                                        .toDouble()
+                                                                                                                                                kotlin.math
+                                                                                                                                                        .round(
+                                                                                                                                                                (alimentRation
+                                                                                                                                                                                .quantite *
+                                                                                                                                                                                ratio)
+                                                                                                                                                                        .toDouble()
+                                                                                                                                                        )
                                                                                                                                 )
                                                                                                                 }
                                                                                                 coroutineScope

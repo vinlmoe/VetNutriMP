@@ -196,7 +196,10 @@ fun AlimentItem(
                                                         val newQuantity =
                                                                 quantityText.toDoubleOrNull()
                                                                         ?: aliment.quantite
-                                                        onQuantityChange(newQuantity)
+                                                        // Arrondir au gramme
+                                                        val newQuantityArrondie =
+                                                                kotlin.math.round(newQuantity)
+                                                        onQuantityChange(newQuantityArrondie)
                                                         onFinishEditing()
                                                 },
                                                 colors =
