@@ -56,14 +56,14 @@ class PerformanceTest {
             }
         }
 
-        println("⏱️ Temps de setup avec 1000 aliments: ${setupTime}ms")
+        
 
         // Test de performance du filtrage
         val filterTime = measureTimeMillis {
             filters = filters.copy(searchQuery = "Test")
         }
 
-        println("🔍 Temps de filtrage avec 1000 aliments: ${filterTime}ms")
+        
         
         // Le filtrage devrait être rapide (< 100ms)
         assert(filterTime < 100) { "Le filtrage est trop lent: ${filterTime}ms" }
@@ -92,7 +92,7 @@ class PerformanceTest {
         val memoryAfter = runtime.totalMemory() - runtime.freeMemory()
         val memoryUsed = memoryAfter - memoryBefore
 
-        println("💾 Utilisation mémoire avec 5000 aliments: ${memoryUsed / 1024 / 1024}MB")
+        
         
         // L'utilisation mémoire devrait être raisonnable (< 100MB)
         assert(memoryUsed < 100 * 1024 * 1024) { "Utilisation mémoire trop élevée: ${memoryUsed / 1024 / 1024}MB" }
@@ -139,7 +139,7 @@ class PerformanceTest {
             }
         }
 
-        println("📱 Temps de rendu - Vertical: ${verticalTime}ms, Horizontal: ${horizontalTime}ms, Compact: ${compactTime}ms")
+        
         
         // Tous les layouts devraient être rapides (< 200ms)
         assert(verticalTime < 200) { "Layout vertical trop lent: ${verticalTime}ms" }
@@ -198,8 +198,8 @@ class PerformanceTest {
         val averageTime = filterChangeTimes.average()
         val maxTime = filterChangeTimes.maxOrNull() ?: 0
 
-        println("⚡ Temps moyen de changement de filtre: ${averageTime.toLong()}ms")
-        println("⚡ Temps maximum de changement de filtre: ${maxTime}ms")
+        
+        
         
         // Les changements de filtres devraient être rapides (< 50ms en moyenne)
         assert(averageTime < 50) { "Changements de filtres trop lents: ${averageTime.toLong()}ms en moyenne" }
@@ -229,7 +229,7 @@ class PerformanceTest {
             }
         }
 
-        println("📜 Temps de défilement avec 2000 aliments: ${scrollTime}ms")
+        
         
         // Le défilement devrait être fluide (< 500ms pour 10 éléments)
         assert(scrollTime < 500) { "Le défilement est trop lent: ${scrollTime}ms" }
@@ -261,7 +261,7 @@ class PerformanceTest {
             )
         }
 
-        println("🔄 Temps de filtrage concurrent: ${concurrentTime}ms")
+        
         
         // Le filtrage concurrent devrait être rapide (< 100ms)
         assert(concurrentTime < 100) { "Filtrage concurrent trop lent: ${concurrentTime}ms" }

@@ -969,21 +969,17 @@ suspend fun calculerAjustement(
                         }
                 }
 
-                println(
-                        "🔍 DEBUG: ${alimentsVerrouilles.size} aliments verrouillés, ${adjustedAliments.size - alimentsVerrouilles.size} aliments mis à 0"
-                )
+                
 
                 // Étape 2: Traiter les nutriments sélectionnés par l'utilisateur, avec ordre
                 // dynamique
                 val nutrimentsTraites = mutableSetOf<String>()
                 val processingOrder = buildProcessingOrderFromSelections(adjustmentData)
 
-                println("🔍 DEBUG: Ordre de traitement des nutriments: $processingOrder")
-                println("🔍 DEBUG: Nutriments sélectionnés dans adjustmentData:")
+                
+                
                 adjustmentData.forEach { data ->
-                        println(
-                                "  - ${data.alimentRation.aliment?.nom}: sélectionné=${data.selectedNutrient}, énergie=${data.isEnergyAdjustable}"
-                        )
+                        
                 }
 
                 // PREMIÈRE ÉTAPE : Ajuster tous les nutriments sauf l'énergie
@@ -991,17 +987,17 @@ suspend fun calculerAjustement(
                 for (nutrientLabel in nutrimentsNonEnergetiques) {
                         val nutrient = findNutrientByLabel(nutrientLabel)
                         if (nutrient == null) {
-                                println("⚠️ DEBUG: Nutriment $nutrientLabel non trouvé")
+                                
                                 continue
                         }
 
-                        println("🔍 DEBUG: === PREMIÈRE ÉTAPE : $nutrientLabel ===")
+                        
 
                         // Calculer le besoin absolu en fonction du nutriment
                         val rl = Reflevel.OPTIMIN
                         val nutrimentRef = referenceUtilisee.obtenirNutrimentRef(nutrient, rl)
                         if (nutrimentRef == null || nutrimentRef.quantite <= 0) {
-                                println("⚠️ DEBUG: Pas de référence pour $nutrientLabel")
+                                
                                 continue
                         }
 
@@ -1014,9 +1010,7 @@ suspend fun calculerAjustement(
                                 )
 
                         if (besoinAbsoluGrammes <= 0) {
-                                println(
-                                        "⚠️ DEBUG: Besoin nul pour $nutrientLabel: $besoinAbsoluGrammes"
-                                )
+                                
                                 continue
                         }
 
@@ -1028,7 +1022,7 @@ suspend fun calculerAjustement(
                                 }
 
                         if (alimentsAjustables.isEmpty()) {
-                                println("⚠️ DEBUG: Aucun aliment ajustable pour $nutrientLabel")
+                                
                                 continue
                         }
 
@@ -1044,14 +1038,10 @@ suspend fun calculerAjustement(
                         }
 
                         val manque = besoinAbsoluGrammes - apportActuel
-                        println(
-                                "🔍 DEBUG: Nutriment $nutrientLabel - Besoin: ${TextUtils.formatDecimal(besoinAbsoluGrammes, 2)}g, Apport actuel: ${TextUtils.formatDecimal(apportActuel, 2)}g, Manque: ${TextUtils.formatDecimal(manque, 2)}g"
-                        )
+                        
 
                         if (manque > 0.01) {
-                                println(
-                                        "🔍 DEBUG: Ajustement nécessaire pour $nutrientLabel - ${alimentsAjustables.size} aliments ajustables"
-                                )
+                                
                                 val result =
                                         ajusterAlimentsPourNutriment(
                                                 nutriment = nutrient,
@@ -1066,19 +1056,13 @@ suspend fun calculerAjustement(
                                         )
 
                                 if (!result.success) {
-                                        println(
-                                                "❌ DEBUG: Échec ajustement $nutrientLabel - ${result.message}"
-                                        )
+                                        
                                         return result
                                 } else {
-                                        println(
-                                                "✅ DEBUG: Succès ajustement $nutrientLabel - ${result.message}"
-                                        )
+                                        
                                 }
                         } else {
-                                println(
-                                        "✅ DEBUG: Aucun ajustement nécessaire pour $nutrientLabel (manque: ${TextUtils.formatDecimal(manque, 2)}g)"
-                                )
+                                
                         }
 
                         nutrimentsTraites.add(nutrientLabel)
@@ -1087,7 +1071,7 @@ suspend fun calculerAjustement(
                 // DEUXIÈME ÉTAPE : Ajuster l'énergie en recalculant l'apport total de la ration
                 // finale
                 if (processingOrder.contains("ENERGIE")) {
-                        println("🔍 DEBUG: === DEUXIÈME ÉTAPE : AJUSTEMENT ÉNERGÉTIQUE ===")
+                        
 
                         // Créer une ration temporaire avec les ajustements effectués
                         val rationTemp = ration.copy()
@@ -1125,23 +1109,15 @@ suspend fun calculerAjustement(
                                                         null
                                                 )
                                         apportEnergetiqueTotal += energieAliment
-                                        println(
-                                                "  - ${alimentRation.aliment?.nom}: ${TextUtils.formatDecimal(alimentRation.quantite, 2)}g → ${TextUtils.formatDecimal(energieAliment, 2)} kcal"
-                                        )
+                                        
                                 }
                         }
 
-                        println(
-                                "🔍 DEBUG: Apport énergétique total de la ration finale: ${TextUtils.formatDecimal(apportEnergetiqueTotal, 2)} kcal"
-                        )
-                        println(
-                                "🔍 DEBUG: Besoin énergétique: ${TextUtils.formatDecimal(besoinEnergetiqueTotal, 2)} kcal"
-                        )
+                        
+                        
 
                         val manqueEnergie = besoinEnergetiqueTotal - apportEnergetiqueTotal
-                        println(
-                                "🔍 DEBUG: Manque énergétique: ${TextUtils.formatDecimal(manqueEnergie, 2)} kcal"
-                        )
+                        
 
                         if (manqueEnergie > 0.01) {
                                 // PRIORITÉ : Utiliser d'abord les aliments qui ont l'énergie comme
@@ -1185,15 +1161,9 @@ suspend fun calculerAjustement(
                                 val alimentsAjustablesEnergie =
                                         alimentsEnergiePrincipale + alimentsEnergieSecondaire
 
-                                println(
-                                        "🔍 DEBUG: Ajustement énergétique nécessaire - ${alimentsAjustablesEnergie.size} aliments ajustables"
-                                )
-                                println(
-                                        "  - Aliments énergie principale: ${alimentsEnergiePrincipale.size}"
-                                )
-                                println(
-                                        "  - Aliments énergie secondaire: ${alimentsEnergieSecondaire.size}"
-                                )
+                                
+                                
+                                
 
                                 val result =
                                         ajusterAlimentsPourNutriment(
@@ -1209,14 +1179,10 @@ suspend fun calculerAjustement(
                                         )
 
                                 if (result.success) {
-                                        println(
-                                                "✅ DEBUG: Succès ajustement énergétique - ${result.message}"
-                                        )
+                                        
                                         nutrimentsTraites.add("ENERGIE")
                                 } else {
-                                        println(
-                                                "❌ DEBUG: Échec ajustement énergétique - ${result.message}"
-                                        )
+                                        
                                         return RationAdjustmentResult(
                                                 success = false,
                                                 message =
@@ -1225,9 +1191,7 @@ suspend fun calculerAjustement(
                                         )
                                 }
                         } else {
-                                println(
-                                        "✅ DEBUG: Aucun ajustement énergétique nécessaire (surplus: ${TextUtils.formatDecimal(-manqueEnergie, 2)} kcal)"
-                                )
+                                
                                 nutrimentsTraites.add("ENERGIE")
                         }
                 }
@@ -1253,7 +1217,7 @@ suspend fun calculerAjustement(
                         adjustedAliments[i] = adjustedAliments[i].copy(quantite = rounded)
                 }
 
-                println("✅ DEBUG: Traitement terminé pour ${nutrimentsTraites.size} nutriments")
+                
 
                 return RationAdjustmentResult(
                         success = true,
@@ -1741,15 +1705,11 @@ private fun adjustRationForMultipleNutrients(
                         val manque = besoinAbsolu - apportActuel
 
                         val unite = if (nutrientLabel == NutrientMain.ENERGIE.label) "kcal" else "g"
-                        println(
-                                "🔍 DEBUG: Nutriment $nutrientLabel - Besoin: ${TextUtils.formatDecimal(besoinAbsolu, 2)}$unite, Apport actuel: ${TextUtils.formatDecimal(apportActuel, 2)}$unite, Manque: ${TextUtils.formatDecimal(manque, 2)}$unite"
-                        )
+                        
 
                         if (manque > 0.01) { // Tolérance de 0.01g
                                 // Étape 5: Ajuster les aliments pour couvrir le manque
-                                println(
-                                        "🔍 DEBUG: Ajustement nécessaire pour $nutrientLabel - ${alimentsAjustables.size} aliments ajustables"
-                                )
+                                
                                 val result =
                                         ajusterAlimentsPourNutriment(
                                                 nutriment = nutrient,
@@ -1760,19 +1720,13 @@ private fun adjustRationForMultipleNutrients(
                                         )
 
                                 if (!result.success) {
-                                        println(
-                                                "❌ DEBUG: Échec ajustement $nutrientLabel - ${result.message}"
-                                        )
+                                        
                                         return result
                                 } else {
-                                        println(
-                                                "✅ DEBUG: Succès ajustement $nutrientLabel - ${result.message}"
-                                        )
+                                        
                                 }
                         } else {
-                                println(
-                                        "✅ DEBUG: Aucun ajustement nécessaire pour $nutrientLabel (manque: ${TextUtils.formatDecimal(manque, 2)}g)"
-                                )
+                                
                         }
 
                         nutrimentsTraites.add(nutrientLabel)

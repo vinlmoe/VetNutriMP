@@ -21,9 +21,7 @@ class MainActivity : ComponentActivity() {
         val primaryLanguage =
                 systemLocale.split("-")[
                         0] // Extraire la langue principale (ex: "de" depuis "de-DE")
-        println(
-                "🌍 DEBUG: Langue du système détectée: $systemLocale -> Langue principale: $primaryLanguage"
-        )
+        
         LocalizationManager.initialize(primaryLanguage)
 
         // Initialisation de la base de données

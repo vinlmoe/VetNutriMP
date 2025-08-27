@@ -317,12 +317,12 @@ class SettingsViewModel(
      * @return Le nombre de références supprimées
      */
     suspend fun clearAllReferences(): Int {
-        println("DEBUG SettingsViewModel: clearAllReferences() appelée")
+        
 
         return if (referenceEvRepository != null) {
-            println("DEBUG SettingsViewModel: Repository non null, appel de clearAllReferences()")
+            
             val result = referenceEvRepository.clearAllReferences()
-            println("DEBUG SettingsViewModel: clearAllReferences() a retourné: $result")
+            
             result
         } else {
             0
@@ -334,12 +334,12 @@ class SettingsViewModel(
      * @return Le nombre d'équations supprimées
      */
     suspend fun clearAllEquations(): Int {
-        println("DEBUG SettingsViewModel: clearAllEquations() appelée")
+        
 
         return if (equationRepository != null) {
-            println("DEBUG SettingsViewModel: Repository non null, appel de clearAllEquations()")
+            
             val result = equationRepository.clearAllEquations()
-            println("DEBUG SettingsViewModel: clearAllEquations() a retourné: $result")
+            
             result
         } else {
             0
@@ -351,12 +351,12 @@ class SettingsViewModel(
      * @return Le nombre de références bibliographiques supprimées
      */
     suspend fun clearAllBiblioRefs(): Int {
-        println("DEBUG SettingsViewModel: clearAllBiblioRefs() appelée")
+        
 
         return if (biblioRefRepository != null) {
-            println("DEBUG SettingsViewModel: Repository non null, appel de clearAllBiblioRefs()")
+            
             val result = biblioRefRepository.clearAllBiblioRefs()
-            println("DEBUG SettingsViewModel: clearAllBiblioRefs() a retourné: $result")
+            
             result
         } else {
             0
@@ -413,11 +413,9 @@ class SettingsViewModel(
                                                     onProgress = { progress ->
                                                         // Mettre à jour la progression si
                                                         // nécessaire
-                                                        println(
-                                                                "IMPORT AUTO: Progression: ${(progress * 100).toInt()}%"
-                                                        )
+                                                        
                                                     },
-                                                    onLog = { msg -> println("IMPORT AUTO: $msg") }
+                                                    onLog = { msg ->  }
                                             )
                     )
 

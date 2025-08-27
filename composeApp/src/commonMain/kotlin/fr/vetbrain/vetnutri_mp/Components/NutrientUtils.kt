@@ -107,7 +107,7 @@ fun calculerValeursNutritionnelles(
                         resultat[nutriment] = nouvelleValeur
 
                     } else {
-                        println("  - Nutriment ${nutriment.label} non trouvé via getNutrient()")
+                        
                     }
                 }
             }

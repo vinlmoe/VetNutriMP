@@ -292,9 +292,7 @@ fun NutrientDetailDialog(
                                         // Section des références maladies (après les références
                                         // générales)
                                         if (referencesMaladies.isNotEmpty()) {
-                                                println(
-                                                        "DEBUG Detail: Références maladies affichées pour $nom -> ${referencesMaladies.joinToString { it.nom }}"
-                                                )
+                                                
                                                 referencesMaladies.forEach { refMaladie ->
                                                         val nutrient: Nutrient =
                                                                 valeurNutritionnelle.nutriment

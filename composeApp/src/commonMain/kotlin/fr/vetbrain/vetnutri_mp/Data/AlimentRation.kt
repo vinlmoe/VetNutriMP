@@ -126,7 +126,7 @@ data class AlimentRation(
                                                                         fr.vetbrain.vetnutri_mp
                                                                                 .Enumer.Espece.CH
                                                 if (!kindOk || !nutrientOk || !specieOk) {
-                                                        println()
+                                                        
                                                 }
                                                 if (kindOk && nutrientOk && specieOk) {
                                                         val res =
@@ -144,7 +144,7 @@ data class AlimentRation(
                                                                                         referenceEv
                                                                         )
                                                                         ?: 0.0
-                                                        println()
+                                                        
                                                         accum =
                                                                 if (eq.ratio) res
                                                                 else (accum ?: 0.0) + res

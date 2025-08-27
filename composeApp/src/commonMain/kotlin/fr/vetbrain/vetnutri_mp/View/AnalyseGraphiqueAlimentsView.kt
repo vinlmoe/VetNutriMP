@@ -216,20 +216,20 @@ fun AnalyseGraphiqueAlimentsView(
         for ((index, aliment) in aliments.withIndex()) {
             try {
                 // 🔍 LOG DIAGNOSTIC : Vérifier les valeurs de base de l'aliment
-                println("🔍 DIAGNOSTIC GRAPHIQUE: Aliment ${index + 1} - ${aliment.nom}")
-                println("  - UUID: ${aliment.uuid}")
-                println("  - Nom: ${aliment.nom}")
-                println("  - Marque: ${aliment.brand}")
-                println("  - Gamme: ${aliment.gamme}")
-                println("  - Valeurs stockées dans valMap:")
-                println("    * Protéines stockées: ${aliment.valMap[NutrientMain.PROTEINE]?.value ?: "null"}")
-                println("    * Lipides stockés: ${aliment.valMap[NutrientMain.LIPIDE]?.value ?: "null"}")
-                println("    * Glucides stockés: ${aliment.valMap[NutrientMain.GLUCIDE]?.value ?: "null"}")
-                println("    * Énergie stockée: ${aliment.valMap[NutrientMain.ENERGIE]?.value ?: "null"}")
-                println("  - Nombre total de nutriments dans valMap: ${aliment.valMap.size}")
-                println("  - ReferenceEv: ${referenceEv?.nom ?: "null"}")
-                println("  - EquationRepository: ${if (equationRepository != null) "disponible" else "null"}")
-                println("  - PreferencesEspece: ${if (preferencesEspece != null) "disponible" else "null"}")
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
                 
                 // ✅ CRÉER UN ALIMENTRATION TRANSITOIRE POUR UTILISER getNutrientWithComplementary
                 val alimentRation = AlimentRation(
@@ -275,11 +275,11 @@ fun AnalyseGraphiqueAlimentsView(
                     referenceEv = referenceEv
                 ) ?: 0.0
                 
-                println("  - Protéines: $proteines g")
-                println("  - Lipides: $lipides g")
-                println("  - Glucides: $glucides g")
-                println("  - Énergie: $energie kcal")
-                println("  - Phosphore: $phosphore mg")
+                
+                
+                
+                
+                
                 
                 val densiteEnergetique = calculerDensiteEnergetiqueAsync(aliment, referenceEv, equationRepository, preferencesEspece)
                 val pourcentageProteines = calculerPourcentageEnergieProteinesAsync(aliment, densiteEnergetique, equationRepository, preferencesEspece)
@@ -299,12 +299,12 @@ fun AnalyseGraphiqueAlimentsView(
                 }
                 
                 // 🔍 LOG DIAGNOSTIC : Vérifier les valeurs calculées
-                println("  - Densité énergétique: $densiteEnergetique kcal/100g")
-                println("  - % Protéines: $pourcentageProteines%")
-                println("  - % Lipides: $pourcentageLipides%")
-                println("  - Protéines/1000kcal: $proteinePer1000Kcal g")
-                println("  - Phosphore/1000kcal: $phosphorePer1000Kcal mg")
-                println("  - Point graphique: ($pourcentageProteines, $pourcentageLipides)")
+                
+                
+                
+                
+                
+                
                 
                 resultat.add(AlimentAnalyseData(
                     aliment = aliment,
@@ -316,7 +316,7 @@ fun AnalyseGraphiqueAlimentsView(
                     proteinePer1000Kcal = proteinePer1000Kcal
                 ))
             } catch (e: Exception) {
-                println("❌ DIAGNOSTIC GRAPHIQUE: Erreur pour l'aliment ${index + 1}: ${e.message}")
+                
                 e.printStackTrace()
             }
         }

@@ -10,7 +10,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Balance
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.Save
-import androidx.compose.material.icons.filled.TuneVertical
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -108,7 +108,7 @@ fun SectionAlimentsRation(
 
                                         // Bouton pour l'ajustement multi-nutriments
                                         Icon(
-                                                imageVector = Icons.Filled.TuneVertical,
+                                                imageVector = Icons.Filled.Tune,
                                                 contentDescription = "Ajustement multi-nutriments",
                                                 tint =
                                                         if (selectedRation?.alimentMutableList

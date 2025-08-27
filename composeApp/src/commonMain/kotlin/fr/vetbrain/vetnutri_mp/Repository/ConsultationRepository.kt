@@ -128,9 +128,6 @@ class DatabaseConsultationRepository(
                                 } else {}
                             }
                         }
-                                ?: println(
-                                        "DEBUG ConsultationRepo - ATTENTION: refAlimUnif est null pour l'AlimentRation ${alimentRation.uuid}"
-                                )
                     }
                 }
 

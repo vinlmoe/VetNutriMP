@@ -37,7 +37,7 @@ class RationAnalyzer {
      * @return Le résultat de l'analyse
      */
     fun analyserRation(ration: Ration, consultation: ConsultationEv? = null): AnalyseResultat {
-        println("Analyse de la ration: ${ration.name} (${ration.uuid})")
+        
 
         if (consultation != null) {
             consultation.suppVarp.forEach { variable -> }

@@ -80,7 +80,7 @@ class BiblioRefViewModel(private val repository: BiblioRefRepository) {
                 validateForm()
             } else {
                 _operationMessage.value = "Référence non trouvée (ID: $biblioRefId)"
-                println("DEBUG BiblioRefViewModel: Référence non trouvée (ID: $biblioRefId)")
+                
             }
         } catch (e: Exception) {
             _operationMessage.value = "Erreur lors du chargement: ${e.message}"

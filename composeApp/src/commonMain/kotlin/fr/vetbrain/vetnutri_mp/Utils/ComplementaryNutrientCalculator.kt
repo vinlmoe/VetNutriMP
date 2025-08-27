@@ -71,7 +71,7 @@ object ComplementaryNutrientCalculator {
             val result = ExpressionMathematique.evaluer(equation.equationScript, variables)
             return result
         } catch (e: Exception) {
-            println("Erreur lors du calcul du nutriment complémentaire: ${e.message}")
+            
             return null
         }
     }

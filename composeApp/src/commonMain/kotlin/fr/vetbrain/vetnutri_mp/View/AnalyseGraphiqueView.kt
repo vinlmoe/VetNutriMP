@@ -116,12 +116,12 @@ private suspend fun calculerPourcentagesEnergieRation(
 ): RationEnergyData? {
         try {
                 // 🔍 LOG DIAGNOSTIC : Vérifier la ration
-                println("  🔍 DIAGNOSTIC RATION: Calcul pour ration ${ration.uuid}")
-                println("    - Nom: ${ration.name}")
-                println("    - Nombre d'aliments: ${ration.alimentMutableList.size}")
+                
+                
+                
                 
                 if (ration.alimentMutableList.isEmpty()) {
-                        println("    ❌ Ration vide, impossible de calculer")
+                        
                         return null
                 }
                 
@@ -136,12 +136,12 @@ private suspend fun calculerPourcentagesEnergieRation(
                         
                         // Vérifier que l'aliment n'est pas null
                         if (aliment == null) {
-                                println("    ⚠️ Aliment null dans la ration, ignoré")
+                                
                                 continue
                         }
                         
                         // 🔍 LOG DIAGNOSTIC : Vérifier l'aliment
-                        println("    🔍 Aliment: ${aliment.nom ?: "Sans nom"} (${quantite}g)")
+                        
                         
                         // Utiliser les valeurs stockées dans valMap
                         val proteines = aliment.valMap[fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.PROTEINE]?.value ?: 0.0
@@ -149,10 +149,10 @@ private suspend fun calculerPourcentagesEnergieRation(
                         val glucides = aliment.valMap[fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.GLUCIDE]?.value ?: 0.0
                         val energie = aliment.valMap[fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.ENERGIE]?.value ?: 0.0
                         
-                        println("      - Protéines stockées: ${proteines}g")
-                        println("      - Lipides stockés: ${lipides}g")
-                        println("      - Glucides stockés: ${glucides}g")
-                        println("      - Énergie stockée: ${energie}kcal")
+                        
+                        
+                        
+                        
                         
                         // Si l'énergie est disponible, l'utiliser directement
                         if (energie > 0) {
@@ -163,7 +163,7 @@ private suspend fun calculerPourcentagesEnergieRation(
                                 energieProteines += (proteines * quantite / 100.0) * 3.5
                                 energieLipides += (lipides * quantite / 100.0) * 8.5
                                 
-                                println("      - Énergie calculée: ${energieAliment}kcal")
+                                
                         } else {
                                 // Fallback : calculer l'énergie à partir des macronutriments
                                 val energieProteinesAliment = (proteines * quantite / 100.0) * 3.5
@@ -175,12 +175,12 @@ private suspend fun calculerPourcentagesEnergieRation(
                                 energieProteines += energieProteinesAliment
                                 energieLipides += energieLipidesAliment
                                 
-                                println("      - Énergie fallback: ${energieAliment}kcal")
+                                
                         }
                 }
                 
                 if (energieTotale <= 0) {
-                        println("    ❌ Énergie totale nulle ou négative")
+                        
                         return null
                 }
                 
@@ -188,10 +188,10 @@ private suspend fun calculerPourcentagesEnergieRation(
                 val pourcentageProteines = (energieProteines / energieTotale) * 100.0
                 val pourcentageLipides = (energieLipides / energieTotale) * 100.0
                 
-                println("    ✅ Résultats:")
-                println("      - Énergie totale: ${energieTotale}kcal")
-                println("      - % Protéines: ${pourcentageProteines}%")
-                println("      - % Lipides: ${pourcentageLipides}%")
+                
+                
+                
+                
                 
                 return RationEnergyData(
                         consultationDate = null, // Sera rempli plus tard
@@ -204,7 +204,7 @@ private suspend fun calculerPourcentagesEnergieRation(
                         energieTotale = energieTotale
                 )
         } catch (e: Exception) {
-                println("❌ Erreur calcul énergie ration ${ration.uuid}: ${e.message}")
+                
                 e.printStackTrace()
                 return null
         }
@@ -722,9 +722,7 @@ private fun EvolutionPoidsChart(viewModel: AnimalDetailViewModel) {
                                                         onClick = {
                                                                 selectedCurveIndex = index
                                                                 expanded = false
-                                                                println(
-                                                                        "DEBUG Courbe sélectionnée: ${courbe.description}"
-                                                                )
+                                                                
                                                         }
                                                 ) { Text(text = courbe.description) }
                                         }
@@ -736,7 +734,7 @@ private fun EvolutionPoidsChart(viewModel: AnimalDetailViewModel) {
                                         checked = showReferenceCurves,
                                         onCheckedChange = {
                                                 showReferenceCurves = it
-                                                println("DEBUG Afficher courbes de référence: $it")
+                                                
                                         }
                                 )
                                 Text(text = "Afficher courbes de référence")
@@ -1090,11 +1088,11 @@ private fun RationsEnergieChart(viewModel: AnimalDetailViewModel) {
                         consultation.rations.forEachIndexed { rationIndex, ration ->
                                 try {
                                         // 🔍 LOG DIAGNOSTIC : Vérifier les données de la ration
-                                        println("🔍 DIAGNOSTIC RATIONS: Consultation ${consultationIndex + 1} - Ration ${rationIndex + 1}")
-                                        println("  - UUID ration: ${ration.uuid}")
-                                        println("  - Nom ration: ${ration.name}")
-                                        println("  - Nombre d'aliments: ${ration.alimentMutableList.size}")
-                                        println("  - Date consultation: ${consultation.date}")
+                                        
+                                        
+                                        
+                                        
+                                        
                                         
                                         val rationData = calculerPourcentagesEnergieRation(
                                                 ration = ration,
@@ -1110,18 +1108,18 @@ private fun RationsEnergieChart(viewModel: AnimalDetailViewModel) {
                                                         numero = consultationIndex * 100 + rationIndex + 1
                                                 )
                                                 resultat.add(dataWithDate)
-                                                println("  ✅ Ration ajoutée: ${data.proteineEnergyPercentage}% protéines, ${data.lipideEnergyPercentage}% lipides")
+                                                
                                         } ?: run {
-                                                println("  ❌ Ration non ajoutée: calcul retourné null")
+                                                
                                         }
                                 } catch (e: Exception) {
-                                        println("❌ Erreur traitement ration ${ration.uuid}: ${e.message}")
+                                        
                                         e.printStackTrace()
                                 }
                         }
                 }
                 
-                println("🔍 DIAGNOSTIC RATIONS: Total rations traitées: ${resultat.size}")
+                
                 rationsEnergieData = resultat
                 isLoading = false
         }

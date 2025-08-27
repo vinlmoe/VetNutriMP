@@ -20,7 +20,7 @@ actual object PdfExporter {
                     defaultFileName = defaultFileName.ifBlank { "document.pdf" }
             )
         } catch (t: Throwable) {
-            println("PDF export failed: ${t.message}")
+            
             false
         }
     }

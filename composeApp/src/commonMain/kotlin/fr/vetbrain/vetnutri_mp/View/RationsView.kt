@@ -104,27 +104,19 @@ fun RationsView(
         val referencesMaladiesResolues =
                 remember(selectedConsultation?.referencesMaladies, availableReferences) {
                         val ids = selectedConsultation?.referencesMaladies ?: emptyList()
-                        println(
-                                "DEBUG RationsView: IDs références maladies sélectionnées: ${ids.joinToString()}"
-                        )
+                        
                         val resolved =
                                 ids.mapNotNull { id ->
                                         availableReferences.firstOrNull { it.uuid == id }
                                 }
                         if (resolved.isEmpty()) {
                                 if (ids.isNotEmpty()) {
-                                        println(
-                                                "DEBUG RationsView: Aucune référence maladie résolue parmi ${ids.size} ID(s)"
-                                        )
+                                        
                                 } else {
-                                        println(
-                                                "DEBUG RationsView: Aucune référence maladie sélectionnée pour la consultation"
-                                        )
+                                        
                                 }
                         } else {
-                                println(
-                                        "DEBUG RationsView: Références maladies résolues (${resolved.size}): ${resolved.joinToString { it.nom }}"
-                                )
+                                
                         }
                         resolved
                 }

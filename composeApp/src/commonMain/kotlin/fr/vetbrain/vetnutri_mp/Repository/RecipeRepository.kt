@@ -105,17 +105,15 @@ class RecipeRepository(private val recipeDao: RecipeDao, private val foodDao: Fo
 
     suspend fun getAllRecipesAsRecette(): List<fr.vetbrain.vetnutri_mp.Data.Recette> {
         return withContext(AppDispatchers.IO) {
-            println("🔍 DEBUG RecipeRepository: getAllRecipesAsRecette() appelé")
+            
             val recipes: List<RecetteEntity> = recipeDao.getAllRecipes()
-            println("🔍 DEBUG RecipeRepository: ${recipes.size} recettes trouvées en base")
+            
 
             val result =
                     recipes.map { recipe ->
                         val aliments: List<AlimentRecetteEntity> =
                                 recipeDao.getAlimentsForRecipe(recipe.uuid)
-                        println(
-                                "🔍 DEBUG RecipeRepository: Recette ${recipe.name} (${recipe.uuid}) a ${aliments.size} ingrédients"
-                        )
+                        
 
                         fr.vetbrain.vetnutri_mp.Data.Recette(
                                 uuid = recipe.uuid,
@@ -126,9 +124,7 @@ class RecipeRepository(private val recipeDao: RecipeDao, private val foodDao: Fo
                                 aliments = aliments.map { it.toDataForRecette() }.toMutableList()
                         )
                     }
-            println(
-                    "🔍 DEBUG RecipeRepository: ${result.size} recettes converties en format Recette"
-            )
+            
             result
         }
     }

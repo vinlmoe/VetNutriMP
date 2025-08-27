@@ -18,36 +18,36 @@ actual open class ResourceReader actual constructor() {
         val resourceName = name.removeSuffix(".json")
         val extension = "json"
 
-        println("iOS ResourceReader: Recherche de ressource")
-        println("iOS ResourceReader: Bundle principal: ${bundle.bundlePath}")
-        println("iOS ResourceReader: Nom de ressource: '$resourceName'")
-        println("iOS ResourceReader: Extension: '$extension'")
+        
+        
+        
+        
 
         val path = bundle.pathForResource(resourceName, extension)
 
         if (path == null) {
-            println("iOS ResourceReader: ❌ Ressource '$name' introuvable")
-            println("iOS ResourceReader: Tentative de lister toutes les ressources...")
+            
+            
 
             // Lister toutes les ressources disponibles
             val allResources = bundle.pathsForResourcesOfType(extension, null)
-            println("iOS ResourceReader: Ressources JSON disponibles: ${allResources?.size ?: 0}")
+            
             allResources?.forEachIndexed { index, resourcePath ->
-                println("iOS ResourceReader:   $index: $resourcePath")
+                
             }
 
             throw IllegalStateException("Resource $name not found")
         }
 
-        println("iOS ResourceReader: ✅ Chemin trouvé: $path")
+        
         val content = NSString.stringWithContentsOfFile(path, NSUTF8StringEncoding, null)
 
         if (content == null) {
-            println("iOS ResourceReader: ❌ Impossible de lire le contenu du fichier")
+            
             throw IllegalStateException("Failed to read resource $name")
         }
 
-        println("iOS ResourceReader: ✅ Contenu lu avec succès (${content.length} caractères)")
+        
         return content
     }
 

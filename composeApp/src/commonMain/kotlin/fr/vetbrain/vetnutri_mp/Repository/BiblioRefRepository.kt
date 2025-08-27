@@ -310,7 +310,7 @@ class DatabaseBiblioRefRepository(private val biblioRefDao: BiblioRefDao) : Bibl
     }
 
     override suspend fun clearAllBiblioRefs(): Int {
-        println("DEBUG DatabaseBiblioRefRepository: clearAllBiblioRefs() démarrée")
+        
 
         return try {
             // Obtenir le nombre total de références bibliographiques avant suppression directement

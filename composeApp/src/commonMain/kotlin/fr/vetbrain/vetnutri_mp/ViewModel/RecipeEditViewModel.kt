@@ -111,7 +111,7 @@ class RecipeEditViewModel(
                 _recipes.clear()
                 _recipes.addAll(loadedRecipes)
             } catch (e: Exception) {
-                println("❌ RecipeEditViewModel: Erreur lors du chargement: ${e.message}")
+                
                 _message.value = "Erreur lors du chargement des recettes: ${e.message}"
             } finally {
                 _isLoading.value = false
@@ -232,7 +232,7 @@ class RecipeEditViewModel(
                     // Vérifier si l'aliment n'est pas déjà dans la liste
                     val existingAliment = _selectedIngredients.find { it.refAlimUnif == aliment.uuid }
                     if (existingAliment != null) {
-                        println("🔍 DEBUG RecipeEditViewModel: Aliment ${aliment.nom} déjà présent dans la recette")
+                        
                         _message.value = "Cet aliment est déjà dans la recette"
                         return
                     }
@@ -252,7 +252,7 @@ class RecipeEditViewModel(
                     _alimentToAdd.value = null
                     _quantityToAdd.value = "100"
                     _targetToAdd.value = 0
-                    println("🔍 DEBUG RecipeEditViewModel: Aliment ${aliment.nom} ajouté à la recette")
+                    
                 }
             } catch (e: NumberFormatException) {
                 _quantityError.value = true
@@ -312,7 +312,7 @@ class RecipeEditViewModel(
         
         // Protection contre les appels multiples
         if (_isLoading.value) {
-            println("🔍 DEBUG RecipeEditViewModel: Sauvegarde déjà en cours, ignoré")
+            
             return
         }
         

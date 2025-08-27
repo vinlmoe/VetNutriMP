@@ -226,7 +226,7 @@ object GraphCalculations {
                 // Pour l'instant, on retourne 0f - sera remplacé par l'injection de dépendances
                 0f
             } catch (e: Exception) {
-                println("🔍 ERREUR GraphCalculations: ${e.message}")
+                
                 0f
             }
         }

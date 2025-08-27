@@ -177,7 +177,7 @@ class DatabaseEquationRepository(
     }
 
     override suspend fun clearAllEquations(): Int {
-        println("DEBUG DatabaseEquationRepository: clearAllEquations() démarrée")
+        
 
         return try {
             // Obtenir le nombre total d'équations avant suppression

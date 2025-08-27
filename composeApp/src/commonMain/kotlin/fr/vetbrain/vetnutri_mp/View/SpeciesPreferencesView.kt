@@ -351,26 +351,20 @@ fun SpeciesPreferencesView(
                                                                 scope.launch {
                                                                         try {
                                                                                 isSaving = true
-                                                                                println(
-                                                                                        "🔍 PERSISTANCE: Début sauvegarde - isSaving = true"
-                                                                                )
+                                                                                
 
                                                                                 val speciesPrefsToSave =
                                                                                         updatedPrefs
                                                                                                 .getPreferencesEspece(
                                                                                                         species
                                                                                                 )
-                                                                                println(
-                                                                                        "🔍 PERSISTANCE: Préférences à sauvegarder pour $species: ${speciesPrefsToSave.equationsComplementaires}"
-                                                                                )
+                                                                                
 
                                                                                 preferencesRepository
                                                                                         .savePreferences(
                                                                                                 updatedPrefs
                                                                                         )
-                                                                                println(
-                                                                                        "🔍 PERSISTANCE: Sauvegarde repository terminée"
-                                                                                )
+                                                                                
 
                                                                                 // Recharger les
                                                                                 // préférences
@@ -386,9 +380,7 @@ fun SpeciesPreferencesView(
 
                                                                                 currentPreferences =
                                                                                         reloadedPrefs
-                                                                                println(
-                                                                                        "🔍 PERSISTANCE: currentPreferences rechargées depuis le repository"
-                                                                                )
+                                                                                
 
                                                                                 // Vérifier que les
                                                                                 // préférences sont
@@ -398,19 +390,13 @@ fun SpeciesPreferencesView(
                                                                                                 ?.getPreferencesEspece(
                                                                                                         species
                                                                                                 )
-                                                                                println(
-                                                                                        "🔍 PERSISTANCE: Vérification après sauvegarde: ${verificationPrefs?.equationsComplementaires}"
-                                                                                )
+                                                                                
                                                                         } catch (e: Exception) {
-                                                                                println(
-                                                                                        "❌ PERSISTANCE: Erreur lors de la sauvegarde: ${e.message}"
-                                                                                )
+                                                                                
                                                                                 e.printStackTrace()
                                                                         } finally {
                                                                                 isSaving = false
-                                                                                println(
-                                                                                        "🔍 PERSISTANCE: Fin sauvegarde - isSaving = false"
-                                                                                )
+                                                                                
                                                                         }
                                                                 }
                                                         }
@@ -479,7 +465,7 @@ private fun ComplementaryNutrientEquationsSection(
         // globales (CH)
         LaunchedEffect(Unit) {
                 val allEquationsFromRepo = equationRepository.getAllEquations()
-                println("🔍 PERSISTANCE: ${allEquationsFromRepo.size} équations totales chargées")
+                
 
                 allEquations =
                         allEquationsFromRepo.filter { equation ->
@@ -495,21 +481,17 @@ private fun ComplementaryNutrientEquationsSection(
                                 isComplementary && isCorrectSpecies
                         }
 
-                println(
-                        "🔍 PERSISTANCE: ${allEquations.size} équations COMPLEMENTARY_NUTRIENT trouvées pour $species"
-                )
+                
                 allEquations.forEach { eq ->
-                        println("  - ${eq.name} (${eq.uuid}) - nutrient: ${eq.nutrient?.label}")
+                        
                 }
 
                 // Vérifier les préférences actuelles
                 currentPreferences?.getPreferencesEspece(species)?.let { prefs ->
                         val selectedUuids = prefs.getSelectedEquationUuids()
-                        println(
-                                "🔍 PERSISTANCE: ${selectedUuids.size} équations sélectionnées dans les préférences: $selectedUuids"
-                        )
+                        
                         val map = prefs.equationsComplementaires
-                        println("🔍 PERSISTANCE: Map complete: $map")
+                        
                 }
         }
 
@@ -519,9 +501,7 @@ private fun ComplementaryNutrientEquationsSection(
                         val speciesPrefs = currentPreferences?.getPreferencesEspece(species)
                         val isSelected = speciesPrefs?.isEquationSelected(equation.uuid) == true
 
-                        println(
-                                "🔍 PERSISTANCE: Affichage équation ${equation.name} (${equation.uuid}) - isSelected: $isSelected"
-                        )
+                        
 
                         Row(
                                 modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
@@ -530,51 +510,37 @@ private fun ComplementaryNutrientEquationsSection(
                                 Checkbox(
                                         checked = isSelected,
                                         onCheckedChange = { checked ->
-                                                println(
-                                                        "EQDBG PREF species=${species.name} equation=${equation.uuid} (${equation.name}) checked=$checked"
-                                                )
+                                                
 
                                                 currentPreferences?.let { prefs ->
-                                                        println(
-                                                                "🔍 PERSISTANCE: Préférences actuelles trouvées"
-                                                        )
+                                                        
                                                         val currentSpeciesPrefs =
                                                                 prefs.getPreferencesEspece(species)
-                                                        println(
-                                                                "🔍 PERSISTANCE: Préférences espèce $species avant modification: ${currentSpeciesPrefs.equationsComplementaires}"
-                                                        )
+                                                        
 
                                                         val updatedSpeciesPrefs =
                                                                 if (checked) {
-                                                                        println(
-                                                                                "EQDBG PREF add uuid=${equation.uuid} for species=${species.name}"
-                                                                        )
+                                                                        
                                                                         currentSpeciesPrefs
                                                                                 .addEquation(
                                                                                         equation.uuid
                                                                                 )
                                                                 } else {
-                                                                        println(
-                                                                                "EQDBG PREF remove uuid=${equation.uuid} for species=${species.name}"
-                                                                        )
+                                                                        
                                                                         currentSpeciesPrefs
                                                                                 .removeEquation(
                                                                                         equation.uuid
                                                                                 )
                                                                 }
 
-                                                        println(
-                                                                "🔍 PERSISTANCE: Préférences espèce après modification: ${updatedSpeciesPrefs.equationsComplementaires}"
-                                                        )
+                                                        
 
                                                         val updatedPrefs =
                                                                 prefs.updatePreferencesEspece(
                                                                         updatedSpeciesPrefs
                                                                 )
 
-                                                        println(
-                                                                "EQDBG PREF call onEquationSelectionChanged for species=${species.name}"
-                                                        )
+                                                        
                                                         onEquationSelectionChanged(updatedPrefs)
                                                 }
                                         },

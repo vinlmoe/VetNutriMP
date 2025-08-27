@@ -59,7 +59,7 @@ class AllNutrient private constructor() {
      */
     val id: Int
         get() {
-            println("ALLnut ID $label ${(mne.toInt() * 1000) + kindnut}")
+            
             return (mne.toInt() * 1000) + kindnut
         }
 
