@@ -401,9 +401,7 @@ fun RationsView(
                                                         "Erreur : aliment non trouvé dans la base complète"
                                                 )
                                         }
-                                        // Fermer la vue d'ajout et revenir à la vue des rations
-                                        showAddAlimentView = false
-                                        rationForAddAliment = null
+                                        // Ne pas fermer la vue pour permettre l'ajout multiple d'aliments
                                 }
                         },
                         modifier = modifier

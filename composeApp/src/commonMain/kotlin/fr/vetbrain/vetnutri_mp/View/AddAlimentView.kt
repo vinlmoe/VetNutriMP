@@ -53,9 +53,23 @@ fun AddAlimentView(
 
         // État pour l'aliment sélectionné
         var selectedFood by remember { mutableStateOf<AlimentEv?>(null) }
+        
+        // État pour le message de confirmation
+        var showConfirmation by remember { mutableStateOf(false) }
+        
+        // Compteur d'aliments ajoutés
+        var alimentsAdded by remember { mutableStateOf(0) }
 
         // Charger les aliments au premier affichage
         LaunchedEffect(Unit) { viewModel.loadAvailableFoods() }
+        
+        // Faire disparaître le message de confirmation après 3 secondes
+        LaunchedEffect(showConfirmation) {
+                if (showConfirmation) {
+                        kotlinx.coroutines.delay(3000)
+                        showConfirmation = false
+                }
+        }
 
         // Observer la liste des aliments depuis le ViewModel
         val availableFoods by viewModel.availableFoods.collectAsState()
@@ -81,6 +95,33 @@ fun AddAlimentView(
                         onBackClick = onNavigateBack,
                         onSettingsClick = { /* Pas de settings pour cette vue */}
                 )
+                
+                // Message de confirmation d'ajout d'aliment
+                if (showConfirmation) {
+                        Card(
+                                modifier = Modifier.fillMaxWidth().padding(AppSizes.paddingMedium),
+                                backgroundColor = VetNutriColors.Primary.copy(alpha = 0.1f),
+                                elevation = AppSizes.elevationSmall
+                        ) {
+                                Row(
+                                        modifier = Modifier.padding(AppSizes.paddingMedium),
+                                        horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall),
+                                        verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                        Icon(
+                                                imageVector = Icons.Default.Check,
+                                                contentDescription = "Succès",
+                                                tint = VetNutriColors.Primary,
+                                                modifier = Modifier.size(20.dp)
+                                        )
+                                        Text(
+                                                text = "Aliment ajouté à la ration avec succès !",
+                                                style = MaterialTheme.typography.body2,
+                                                color = VetNutriColors.Primary
+                                        )
+                                }
+                        }
+                }
 
                 // Contenu principal et bouton d'action superposés
                 Box(modifier = Modifier.fillMaxSize()) {
@@ -111,8 +152,14 @@ fun AddAlimentView(
                                 FloatingActionButton(
                                         onClick = {
                                                 selectedFood?.let { aliment ->
-                                                        // Utiliser une quantité par défaut de 100g
+                                                        // Ajouter l'aliment à la ration avec une quantité par défaut de 100g
                                                         onAddAliment(aliment, 100.0)
+                                                        // Réinitialiser la sélection pour permettre d'ajouter d'autres aliments
+                                                        selectedFood = null
+                                                        // Incrémenter le compteur d'aliments ajoutés
+                                                        alimentsAdded++
+                                                        // Afficher le message de confirmation
+                                                        showConfirmation = true
                                                 }
                                         },
                                         backgroundColor = VetNutriColors.Primary,

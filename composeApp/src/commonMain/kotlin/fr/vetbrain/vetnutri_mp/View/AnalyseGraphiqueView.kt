@@ -1,22 +1,30 @@
 package fr.vetbrain.vetnutri_mp.View
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.runtime.*
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import fr.vetbrain.vetnutri_mp.Components.AppDatePicker
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
@@ -47,6 +55,18 @@ data class ConsultationAgeData(
         val weight: Double,
         val isFromConsultation: Boolean = false,
         val weightUuid: String? = null
+)
+
+// Data class pour stocker les données énergétiques des rations
+data class RationEnergyData(
+        val consultationDate: LocalDate?,
+        val consultationId: String,
+        val rationName: String,
+        val rationId: String,
+        val numero: Int,
+        val proteineEnergyPercentage: Double,
+        val lipideEnergyPercentage: Double,
+        val energieTotale: Double
 )
 
 // Classes pour les courbes de croissance
@@ -85,6 +105,109 @@ private fun generateUuidString(): String {
         return Clock.System.now().toEpochMilliseconds().toString() +
                 "-" +
                 kotlin.random.Random.nextInt()
+}
+
+// Fonction pour calculer les pourcentages d'énergie des rations
+private suspend fun calculerPourcentagesEnergieRation(
+        ration: fr.vetbrain.vetnutri_mp.Data.Ration,
+        referenceEv: fr.vetbrain.vetnutri_mp.Data.ReferenceEv?,
+        preferencesEspece: fr.vetbrain.vetnutri_mp.Data.PreferencesEspece?,
+        equationRepository: fr.vetbrain.vetnutri_mp.Repository.EquationRepository?
+): RationEnergyData? {
+        try {
+                // 🔍 LOG DIAGNOSTIC : Vérifier la ration
+                println("  🔍 DIAGNOSTIC RATION: Calcul pour ration ${ration.uuid}")
+                println("    - Nom: ${ration.name}")
+                println("    - Nombre d'aliments: ${ration.alimentMutableList.size}")
+                
+                if (ration.alimentMutableList.isEmpty()) {
+                        println("    ❌ Ration vide, impossible de calculer")
+                        return null
+                }
+                
+                // Calculer l'énergie totale de la ration en utilisant les valeurs stockées
+                var energieTotale = 0.0
+                var energieProteines = 0.0
+                var energieLipides = 0.0
+                
+                for (alimentRation in ration.alimentMutableList) {
+                        val aliment = alimentRation.aliment
+                        val quantite = alimentRation.quantite
+                        
+                        // Vérifier que l'aliment n'est pas null
+                        if (aliment == null) {
+                                println("    ⚠️ Aliment null dans la ration, ignoré")
+                                continue
+                        }
+                        
+                        // 🔍 LOG DIAGNOSTIC : Vérifier l'aliment
+                        println("    🔍 Aliment: ${aliment.nom ?: "Sans nom"} (${quantite}g)")
+                        
+                        // Utiliser les valeurs stockées dans valMap
+                        val proteines = aliment.valMap[fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.PROTEINE]?.value ?: 0.0
+                        val lipides = aliment.valMap[fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.LIPIDE]?.value ?: 0.0
+                        val glucides = aliment.valMap[fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.GLUCIDE]?.value ?: 0.0
+                        val energie = aliment.valMap[fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.ENERGIE]?.value ?: 0.0
+                        
+                        println("      - Protéines stockées: ${proteines}g")
+                        println("      - Lipides stockés: ${lipides}g")
+                        println("      - Glucides stockés: ${glucides}g")
+                        println("      - Énergie stockée: ${energie}kcal")
+                        
+                        // Si l'énergie est disponible, l'utiliser directement
+                        if (energie > 0) {
+                                val energieAliment = (energie * quantite) / 100.0
+                                energieTotale += energieAliment
+                                
+                                // Calculer l'énergie des macronutriments
+                                energieProteines += (proteines * quantite / 100.0) * 3.5
+                                energieLipides += (lipides * quantite / 100.0) * 8.5
+                                
+                                println("      - Énergie calculée: ${energieAliment}kcal")
+                        } else {
+                                // Fallback : calculer l'énergie à partir des macronutriments
+                                val energieProteinesAliment = (proteines * quantite / 100.0) * 3.5
+                                val energieLipidesAliment = (lipides * quantite / 100.0) * 8.5
+                                val energieGlucidesAliment = (glucides * quantite / 100.0) * 3.5
+                                
+                                val energieAliment = energieProteinesAliment + energieLipidesAliment + energieGlucidesAliment
+                                energieTotale += energieAliment
+                                energieProteines += energieProteinesAliment
+                                energieLipides += energieLipidesAliment
+                                
+                                println("      - Énergie fallback: ${energieAliment}kcal")
+                        }
+                }
+                
+                if (energieTotale <= 0) {
+                        println("    ❌ Énergie totale nulle ou négative")
+                        return null
+                }
+                
+                // Calculer les pourcentages
+                val pourcentageProteines = (energieProteines / energieTotale) * 100.0
+                val pourcentageLipides = (energieLipides / energieTotale) * 100.0
+                
+                println("    ✅ Résultats:")
+                println("      - Énergie totale: ${energieTotale}kcal")
+                println("      - % Protéines: ${pourcentageProteines}%")
+                println("      - % Lipides: ${pourcentageLipides}%")
+                
+                return RationEnergyData(
+                        consultationDate = null, // Sera rempli plus tard
+                        consultationId = ration.idConsult,
+                        rationName = ration.name.ifEmpty { "Ration ${ration.number}" },
+                        rationId = ration.uuid,
+                        numero = ration.number,
+                        proteineEnergyPercentage = pourcentageProteines,
+                        lipideEnergyPercentage = pourcentageLipides,
+                        energieTotale = energieTotale
+                )
+        } catch (e: Exception) {
+                println("❌ Erreur calcul énergie ration ${ration.uuid}: ${e.message}")
+                e.printStackTrace()
+                return null
+        }
 }
 
 // Données des courbes de croissance pour chiens
@@ -313,7 +436,7 @@ fun AnalyseGraphiqueView(viewModel: AnimalDetailViewModel, modifier: Modifier = 
                 // Affichage du graphique sélectionné
                 when (selectedChart) {
                         ChartType.EVOLUTION_POIDS -> EvolutionPoidsChart(viewModel)
-                        ChartType.COMPOSITION_NUTRITIONNELLE -> CompositionNutritionnelleChart()
+                        ChartType.RATIONS_ENERGIE -> RationsEnergieChart(viewModel)
                         ChartType.COMPARAISON_BESOINS -> ComparaisonBesoinsChart()
                         ChartType.REPARTITION_ENERGIE -> RepartitionEnergieChart()
                 }
@@ -429,7 +552,7 @@ private fun AddWeightForm(viewModel: AnimalDetailViewModel) {
 
 enum class ChartType(val displayName: String) {
         EVOLUTION_POIDS("Évolution du poids"),
-        COMPOSITION_NUTRITIONNELLE("Composition nutritionnelle"),
+        RATIONS_ENERGIE("Rations énergétiques"),
         COMPARAISON_BESOINS("Apports vs Besoins"),
         REPARTITION_ENERGIE("Répartition énergétique")
 }
@@ -947,63 +1070,254 @@ private fun PoidsTableau(
         }
 }
 
+@OptIn(ExperimentalKoalaPlotApi::class)
 @Composable
-private fun CompositionNutritionnelleChart() {
-        // Données d'exemple pour la composition sous forme de barres
-        val donneesComposition = remember {
-                mapOf(
-                        "Protéines" to 25f,
-                        "Lipides" to 15f,
-                        "Glucides" to 45f,
-                        "Fibres" to 10.0,
-                        "Cendres" to 5f
-                )
+private fun RationsEnergieChart(viewModel: AnimalDetailViewModel) {
+        val animal by viewModel.animal.collectAsState()
+        val scope = rememberCoroutineScope()
+        
+        // États pour les données des rations
+        var rationsEnergieData by remember { mutableStateOf<List<RationEnergyData>>(emptyList()) }
+        var isLoading by remember { mutableStateOf(true) }
+        var rationSelectionnee by remember { mutableStateOf<String?>(null) }
+        
+        // Calculer les données des rations de manière asynchrone
+        LaunchedEffect(animal?.consultations?.size) {
+                isLoading = true
+                val resultat = mutableListOf<RationEnergyData>()
+                
+                animal?.consultations?.forEachIndexed { consultationIndex, consultation ->
+                        consultation.rations.forEachIndexed { rationIndex, ration ->
+                                try {
+                                        // 🔍 LOG DIAGNOSTIC : Vérifier les données de la ration
+                                        println("🔍 DIAGNOSTIC RATIONS: Consultation ${consultationIndex + 1} - Ration ${rationIndex + 1}")
+                                        println("  - UUID ration: ${ration.uuid}")
+                                        println("  - Nom ration: ${ration.name}")
+                                        println("  - Nombre d'aliments: ${ration.alimentMutableList.size}")
+                                        println("  - Date consultation: ${consultation.date}")
+                                        
+                                        val rationData = calculerPourcentagesEnergieRation(
+                                                ration = ration,
+                                                referenceEv = null,
+                                                preferencesEspece = null,
+                                                equationRepository = null
+                                        )
+                                        
+                                        rationData?.let { data ->
+                                                // Ajouter la date de consultation et un numéro unique
+                                                val dataWithDate = data.copy(
+                                                        consultationDate = consultation.date,
+                                                        numero = consultationIndex * 100 + rationIndex + 1
+                                                )
+                                                resultat.add(dataWithDate)
+                                                println("  ✅ Ration ajoutée: ${data.proteineEnergyPercentage}% protéines, ${data.lipideEnergyPercentage}% lipides")
+                                        } ?: run {
+                                                println("  ❌ Ration non ajoutée: calcul retourné null")
+                                        }
+                                } catch (e: Exception) {
+                                        println("❌ Erreur traitement ration ${ration.uuid}: ${e.message}")
+                                        e.printStackTrace()
+                                }
+                        }
+                }
+                
+                println("🔍 DIAGNOSTIC RATIONS: Total rations traitées: ${resultat.size}")
+                rationsEnergieData = resultat
+                isLoading = false
         }
-
-        val couleurs =
-                listOf(
-                        Color(0xFF2196F3),
-                        Color(0xFF4CAF50),
-                        Color(0xFFFF9800),
-                        Color(0xFF9C27B0),
-                        Color(0xFF607D8B)
-                )
-
-        GraphCard(
-                titre = "Composition nutritionnelle",
-                sousTitre = "Répartition en % de matière sèche"
-        ) {
-                // Implémentation avec des barres de progression
-                Column(
+        
+        if (isLoading) {
+                // Indicateur de chargement
+                Box(
                         modifier = Modifier.height(250.dp).fillMaxWidth(),
-                        verticalArrangement = Arrangement.SpaceEvenly
+                        contentAlignment = Alignment.Center
                 ) {
-                        donneesComposition.entries.forEachIndexed { index, (nutriment, valeur) ->
-                                val couleur = couleurs[index % couleurs.size]
-
-                                Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        verticalAlignment = Alignment.CenterVertically
+                        Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
+                        ) {
+                                CircularProgressIndicator(color = VetNutriColors.Primary)
+                                Text(
+                                        text = "Calcul des données énergétiques des rations...",
+                                        style = MaterialTheme.typography.body2,
+                                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                                )
+                        }
+                }
+        } else if (rationsEnergieData.isEmpty()) {
+                // Aucune donnée disponible
+                Box(
+                        modifier = Modifier.height(250.dp).fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                ) {
+                        Text(
+                                text = "Aucune ration disponible pour l'analyse",
+                                style = MaterialTheme.typography.body2,
+                                color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                        )
+                }
+        } else {
+                // Graphique des rations
+                GraphCard(
+                        titre = "Répartition énergétique des rations",
+                        sousTitre = "Pourcentages d'énergie des protéines vs lipides par ration"
+                ) {
+                        // Préparer les données pour le graphique
+                        val points = rationsEnergieData.map { data ->
+                                Point(
+                                        x = data.proteineEnergyPercentage.toFloat(),
+                                        y = data.lipideEnergyPercentage.toFloat()
+                                )
+                        }
+                        
+                        // Calculer les plages des axes
+                        val minX = points.minOf { it.x }.coerceAtLeast(0f)
+                        val maxX = points.maxOf { it.x }.coerceAtMost(100f)
+                        val minY = points.minOf { it.y }.coerceAtLeast(0f)
+                        val maxY = points.maxOf { it.y }.coerceAtMost(100f)
+                        
+                        val xRange = (minX - minX * 0.05f)..(maxX + maxX * 0.05f)
+                        val yRange = (minY - minY * 0.05f)..(maxY + maxY * 0.05f)
+                        
+                        // Graphique avec numéros superposés
+                        BoxWithConstraints(
+                                modifier = Modifier.height(400.dp)
+                        ) {
+                                // Graphique principal
+                                XYGraph(
+                                        xAxisModel = FloatLinearAxisModel(range = xRange),
+                                        yAxisModel = FloatLinearAxisModel(range = yRange),
+                                        xAxisTitle = "Pourcentage d'énergie des protéines (%)",
+                                        yAxisTitle = "Pourcentage d'énergie des lipides (%)",
+                                        modifier = Modifier.fillMaxSize()
                                 ) {
-                                        Text(
-                                                text = nutriment,
-                                                modifier = Modifier.width(100.dp),
-                                                style = MaterialTheme.typography.caption
-                                        )
-
-                                        LinearProgressIndicator(
-                                                progress = (valeur.toFloat() / 100.0f),
-                                                modifier = Modifier.weight(1.0f).height(20.dp),
-                                                color = couleur,
-                                                backgroundColor = Color.LightGray.copy(alpha = 0.3f)
-                                        )
-
-                                        Text(
-                                                text = "${valeur.toInt()}%",
-                                                modifier = Modifier.width(50.dp),
-                                                style = MaterialTheme.typography.caption,
-                                                color = couleur
-                                        )
+                                        // Afficher chaque point individuellement
+                                        rationsEnergieData.forEachIndexed { index, data ->
+                                                val point = points[index]
+                                                LinePlot(
+                                                        data = listOf(point),
+                                                        symbol = {
+                                                                // Point principal avec couleur selon sélection
+                                                                val couleurPoint = if (data.rationId == rationSelectionnee) {
+                                                                        Color(0xFF9C27B0) // Violet
+                                                                } else {
+                                                                        VetNutriColors.Primary
+                                                                }
+                                                                
+                                                                androidx.compose.foundation.Canvas(
+                                                                        modifier = Modifier.size(12.dp)
+                                                                ) { 
+                                                                        drawCircle(
+                                                                                color = couleurPoint, 
+                                                                                radius = 6f,
+                                                                                center = center
+                                                                        )
+                                                                }
+                                                        }
+                                                )
+                                        }
+                                }
+                                
+                                // Numéros superposés
+                                rationsEnergieData.forEachIndexed { index, data ->
+                                        val point = points[index]
+                                        // Calculer la position du numéro
+                                        val xPosition = ((point.x - xRange.start) / (xRange.endInclusive - xRange.start))
+                                        val yPosition = 1f - ((point.y - yRange.start) / (yRange.endInclusive - yRange.start))
+                                        
+                                        // Marges typiques des axes KoalaPlot
+                                        val leftAxisMargin = 10.dp
+                                        val bottomAxisMargin = 15.dp
+                                        val topMargin = 10.dp
+                                        val rightMargin = 20.dp
+                                        
+                                        // Zone de graphique effective
+                                        val effectiveGraphWidth = maxWidth - leftAxisMargin - rightMargin
+                                        val effectiveGraphHeight = maxHeight - bottomAxisMargin - topMargin
+                                        
+                                        // Couleur selon la sélection
+                                        val numeroColor = if (data.rationId == rationSelectionnee) {
+                                                Color(0xFF9C27B0) // Violet pour sélectionné
+                                        } else {
+                                                VetNutriColors.Primary // Couleur par défaut
+                                        }
+                                        
+                                        Box(
+                                                modifier = Modifier
+                                                        .fillMaxSize()
+                                                        .wrapContentSize(Alignment.TopStart)
+                                                        .offset(
+                                                                x = leftAxisMargin + (xPosition * effectiveGraphWidth.value).dp - 10.dp,
+                                                                y = topMargin + (yPosition * effectiveGraphHeight.value).dp - 30.dp
+                                                        ),
+                                                contentAlignment = Alignment.Center
+                                        ) {
+                                                // Fond du numéro
+                                                androidx.compose.foundation.Canvas(
+                                                        modifier = Modifier.size(20.dp)
+                                                ) {
+                                                        drawCircle(
+                                                                color = Color.White,
+                                                                radius = 10.dp.toPx()
+                                                        )
+                                                        drawCircle(
+                                                                color = numeroColor,
+                                                                radius = 10.dp.toPx(),
+                                                                style = Stroke(width = 2.dp.toPx())
+                                                        )
+                                                }
+                                                
+                                                // Numéro
+                                                Text(
+                                                        text = "${data.numero}",
+                                                        style = MaterialTheme.typography.caption.copy(
+                                                                fontWeight = FontWeight.Bold,
+                                                                fontSize = 12.sp
+                                                        ),
+                                                        color = numeroColor
+                                                )
+                                        }
+                                }
+                        }
+                        
+                        // Légende des rations
+                        Spacer(modifier = Modifier.height(AppSizes.paddingMedium))
+                        Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
+                        ) {
+                                Text(
+                                        text = "Légende des rations :",
+                                        style = MaterialTheme.typography.caption,
+                                        fontWeight = FontWeight.Bold
+                                )
+                                rationsEnergieData.forEach { data ->
+                                        Row(
+                                                modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .clickable { 
+                                                                rationSelectionnee = if (rationSelectionnee == data.rationId) null else data.rationId
+                                                        }
+                                                        .background(
+                                                                if (rationSelectionnee == data.rationId) 
+                                                                        Color(0xFF9C27B0).copy(alpha = 0.1f) 
+                                                                else Color.Transparent
+                                                        )
+                                                        .padding(AppSizes.paddingSmall),
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                                Text(
+                                                        text = "${data.numero}. ${data.rationName}",
+                                                        style = MaterialTheme.typography.caption,
+                                                        modifier = Modifier.weight(1f)
+                                                )
+                                                Text(
+                                                        text = "${data.consultationDate?.toString() ?: "Date inconnue"}",
+                                                        style = MaterialTheme.typography.caption,
+                                                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                                                )
+                                        }
                                 }
                         }
                 }
@@ -1168,8 +1482,8 @@ private fun GraphiqueLegend(selectedChart: ChartType) {
                                 when (selectedChart) {
                                         ChartType.EVOLUTION_POIDS ->
                                                 "Suivez l'évolution du poids de l'animal sur plusieurs mois pour détecter les tendances."
-                                        ChartType.COMPOSITION_NUTRITIONNELLE ->
-                                                "Visualisez la répartition des macronutriments dans la ration actuelle."
+                                        ChartType.RATIONS_ENERGIE ->
+                                                "Analysez la répartition énergétique des rations de chaque consultation. Chaque point représente une ration avec ses pourcentages de protéines et lipides."
                                         ChartType.COMPARAISON_BESOINS ->
                                                 "Comparez les apports nutritionnels aux besoins recommandés. Vert = optimal, Orange = insuffisant, Rouge = carencé, Bleu = excès."
                                         ChartType.REPARTITION_ENERGIE ->
