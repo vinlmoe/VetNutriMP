@@ -21,6 +21,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import fr.vetbrain.vetnutri_mp.Components.BasicAppTextField
+import fr.vetbrain.vetnutri_mp.Utils.TextUtils
 import fr.vetbrain.vetnutri_mp.Components.DropdownField
 import fr.vetbrain.vetnutri_mp.Components.MultiSelectDropdownField
 import fr.vetbrain.vetnutri_mp.Data.AlimentEv
@@ -732,15 +733,143 @@ private fun FoodDetailsPanel(
         modifier = modifier,
         elevation = AppSizes.elevationSmall
     ) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = "Sélectionnez un aliment\npour voir ses détails",
-                style = MaterialTheme.typography.body1,
-                color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+        if (config.selectedFood == null) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Sélectionnez un aliment\npour voir ses détails",
+                    style = MaterialTheme.typography.body1,
+                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                )
+            }
+        } else {
+            AlimentDetailsContent(
+                aliment = config.selectedFood!!,
+                modifier = Modifier.fillMaxSize()
             )
         }
+    }
+}
+
+/**
+ * Contenu des détails de l'aliment
+ */
+@Composable
+private fun AlimentDetailsContent(
+    aliment: AlimentEv,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier.padding(AppSizes.paddingMedium),
+        verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
+    ) {
+        Text(
+            text = "Détails de l'aliment",
+            style = MaterialTheme.typography.h6,
+            color = VetNutriColors.Primary
+        )
+
+        Divider()
+
+        // Informations générales
+        Text(
+            text = aliment.nom ?: "Sans nom",
+            style = MaterialTheme.typography.h6,
+            fontWeight = FontWeight.Bold
+        )
+
+        if (!aliment.brand.isNullOrEmpty()) {
+            DetailRow("Marque", aliment.brand!!)
+        }
+
+        if (!aliment.gamme.isNullOrEmpty()) {
+            DetailRow("Gamme", aliment.gamme!!)
+        }
+
+        aliment.typeAliment?.let { type ->
+            DetailRow("Type", type.translateEnum())
+        }
+
+        aliment.group?.let { group ->
+            DetailRow("Groupe", group.translateEnum())
+        }
+
+        // Espèces ciblées (hors ALL)
+        val species = aliment.getEspecesList()
+            .filter { it != Espece.CH }
+            .map { it.translateEnum() }
+        if (species.isNotEmpty()) {
+            DetailRow("Espèces", species.joinToString(", "))
+        }
+
+        // Indications principales (hors ALL/AUTRE)
+        val indications = aliment.getIndications()
+            .filter { it != AlimIndic.ALL && it != AlimIndic.AUTRE }
+            .map { it.translateEnum() }
+        if (indications.isNotEmpty()) {
+            DetailRow("Indications", indications.joinToString(", "))
+        }
+
+        if (!aliment.ingredients.isNullOrEmpty()) {
+            DetailRow("Ingrédients", aliment.ingredients!!)
+        }
+
+        Divider()
+
+        // Informations nutritionnelles principales (si disponibles)
+        if (aliment.valMap.isNotEmpty()) {
+            Text(
+                text = "Composition nutritionnelle (pour 100g)",
+                style = MaterialTheme.typography.subtitle1,
+                fontWeight = FontWeight.Bold
+            )
+
+            // Afficher quelques nutriments clés
+            val nutrientsToShow = listOf(
+                "PROTEINE",
+                "LIPIDE",
+                "ENA",
+                "CELLULOSE",
+                "CENDRE",
+                "HUMIDITE"
+            )
+            nutrientsToShow.forEach { nutrientLabel ->
+                val nutrient = aliment.valMap.keys.find { it.label == nutrientLabel }
+                if (nutrient != null) {
+                    val value = aliment.valMap[nutrient]
+                    if (value != null) {
+                        DetailRow(
+                            nutrient.label,
+                            "${TextUtils.formatDecimal(value.value.toDouble(), 1)} ${value.unit ?: ""}"
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Composant pour afficher une ligne de détail
+ */
+@Composable
+private fun DetailRow(label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = "$label:",
+            style = MaterialTheme.typography.body2,
+            modifier = Modifier.weight(1f)
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.body2,
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.weight(1f)
+        )
     }
 }
