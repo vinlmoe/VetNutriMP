@@ -47,7 +47,7 @@ import fr.vetbrain.vetnutri_mp.Utils.PreferencesStorage
 import fr.vetbrain.vetnutri_mp.Utils.TextUtils
 import fr.vetbrain.vetnutri_mp.Utils.createPreferencesStorage
 import fr.vetbrain.vetnutri_mp.View.AnalNut.AnalyseNutritionnelleCard
-import fr.vetbrain.vetnutri_mp.View.AnalNut.MultiNutrientAdjustmentDialog
+import fr.vetbrain.vetnutri_mp.View.AnalNut.MultiNutrientAdjustmentView
 import fr.vetbrain.vetnutri_mp.View.AnalNut.NutrientDetailDialog
 import fr.vetbrain.vetnutri_mp.View.AnalNut.SectionAlimentsRation
 import fr.vetbrain.vetnutri_mp.View.AnalNut.SectionBilanEnergetique
@@ -401,7 +401,8 @@ fun RationsView(
                                                         "Erreur : aliment non trouvé dans la base complète"
                                                 )
                                         }
-                                        // Ne pas fermer la vue pour permettre l'ajout multiple d'aliments
+                                        // Ne pas fermer la vue pour permettre l'ajout multiple
+                                        // d'aliments
                                 }
                         },
                         modifier = modifier
@@ -1395,7 +1396,7 @@ fun RationsView(
                         val reference = referenceUtilisee!!
                         val besoinEnergetique = besoinEnergetiqueTotal!!
 
-                        MultiNutrientAdjustmentDialog(
+                        MultiNutrientAdjustmentView(
                                 ration = ration,
                                 referenceUtilisee = reference,
                                 besoinEnergetiqueTotal = besoinEnergetique,

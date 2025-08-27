@@ -77,6 +77,23 @@ class FoodListViewModel(private val foodRepository: DatabaseFoodRepository) {
                 }
         }
 
+        /** Force le rechargement des données depuis le repository */
+        fun forceRefresh() {
+                viewModelScope.launch {
+                        // Forcer le rechargement des données
+                        val allFoods = foodRepository.getAllFoods()
+
+                        // Filtrer les aliments selon les critères actuels
+                        val filteredFoods = filterFoods(allFoods)
+
+                        // Mettre à jour l'état
+                        _foods.value = filteredFoods
+
+                        // Mettre à jour les listes de valeurs disponibles pour les filtres
+                        updateAvailableFilterValues(allFoods)
+                }
+        }
+
         /** Met à jour les listes de valeurs disponibles pour les filtres */
         private fun updateAvailableFilterValues(allFoods: List<AlimentEv>) {
                 // Charger les types d'aliments disponibles

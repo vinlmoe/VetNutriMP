@@ -25,9 +25,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.datetime.Clock
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import kotlinx.datetime.Clock
 
 /**
  * Implémentation de FoodRepository utilisant une base de données SQLite. Cette classe gère les
@@ -42,7 +42,7 @@ class DatabaseFoodRepository(
     // Flow réactif pour notifier les changements
     private val _foodsFlow = MutableStateFlow<List<AlimentEv>>(emptyList())
     private val coroutineScope = CoroutineScope(AppDispatchers.Main)
-    
+
     // Cache en mémoire pour les aliments
     private var cachedFoods: List<AlimentEv>? = null
     private var lastCacheTime: Long = 0
@@ -58,10 +58,8 @@ class DatabaseFoodRepository(
         isBatchMode = false
         coroutineScope.launch { refreshFoodsFlow() }
     }
-    
-    /**
-     * Vide le cache en mémoire pour forcer un rechargement des données
-     */
+
+    /** Vide le cache en mémoire pour forcer un rechargement des données */
     fun clearCache() {
         cachedFoods = null
         lastCacheTime = 0
@@ -259,12 +257,12 @@ class DatabaseFoodRepository(
     override suspend fun getAllFoods(): List<AlimentEv> {
         return withContext(AppDispatchers.IO) {
             val currentTime = Clock.System.now().toEpochMilliseconds()
-            
+
             // Vérifier si le cache est encore valide
             if (cachedFoods != null && (currentTime - lastCacheTime) < cacheValidityDuration) {
                 return@withContext cachedFoods!!
             }
-            
+
             // Récupérer tous les aliments de la base de données
             val foodEntities = foodDao.getAllFoods()
 
@@ -279,7 +277,7 @@ class DatabaseFoodRepository(
                                 }
                         foodEntity.toAlimentEv(nutrientValues = nutrientValues)
                     }
-            
+
             // Mettre à jour le cache
             cachedFoods = result
             lastCacheTime = currentTime
@@ -1162,4 +1160,19 @@ class DatabaseFoodRepository(
             }
         }
     }
+
+    /**
+     * Force le rechargement des données et notifie tous les observateurs Cette méthode est utile
+     * après des opérations d'import en lot
+     */
+    suspend fun forceRefresh() {
+        clearCache()
+        refreshFoodsFlow()
+    }
+
+    /**
+     * Obtient le Flow réactif des aliments Les ViewModels peuvent observer ce Flow pour être
+     * notifiés des changements
+     */
+    fun getFoodsFlow(): Flow<List<AlimentEv>> = _foodsFlow
 }
