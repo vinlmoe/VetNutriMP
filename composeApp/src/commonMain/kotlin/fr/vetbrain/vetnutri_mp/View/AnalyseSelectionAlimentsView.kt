@@ -30,6 +30,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import fr.vetbrain.vetnutri_mp.Data.AlimentEv
@@ -270,18 +271,18 @@ fun AnalyseSelectionAlimentsView(
                     elevation = AppSizes.elevationSmall
                 ) {
                     Column(
-                        modifier = Modifier.padding(AppSizes.paddingMedium)
+                        modifier = Modifier.padding(AppSizes.paddingSmall)
                     ) {
                         Text(
                             text = "Aliments disponibles (${alimentsFiltres.size})",
-                            style = MaterialTheme.typography.subtitle1,
+                            style = MaterialTheme.typography.subtitle2,
                             fontWeight = FontWeight.Bold
                         )
                         Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
                         
                         LazyColumn(
                             modifier = Modifier.weight(1f),
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
                         ) {
                             items(alimentsFiltres) { aliment ->
                                 AlimentItem(
@@ -311,7 +312,7 @@ fun AnalyseSelectionAlimentsView(
                     ) {
                         Icon(Icons.Default.Add, contentDescription = null)
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Tout ajouter")
+                        Text("Tout ajouter", style = MaterialTheme.typography.caption)
                     }
                     
                     Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
@@ -325,7 +326,7 @@ fun AnalyseSelectionAlimentsView(
                     ) {
                         Icon(Icons.Default.Remove, contentDescription = null)
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Tout retirer")
+                        Text("Tout retirer", style = MaterialTheme.typography.caption)
                     }
                 }
 
@@ -335,18 +336,18 @@ fun AnalyseSelectionAlimentsView(
                     elevation = AppSizes.elevationSmall
                 ) {
                     Column(
-                        modifier = Modifier.padding(AppSizes.paddingMedium)
+                        modifier = Modifier.padding(AppSizes.paddingSmall)
                     ) {
                         Text(
                             text = "Aliments sélectionnés (${alimentsSelectionnes.size})",
-                            style = MaterialTheme.typography.subtitle1,
+                            style = MaterialTheme.typography.subtitle2,
                             fontWeight = FontWeight.Bold
                         )
                         Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
                         
                         LazyColumn(
                             modifier = Modifier.weight(1f),
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
                         ) {
                             items(alimentsSelectionnes) { aliment ->
                                 AlimentItem(
@@ -399,23 +400,27 @@ private fun AlimentItem(
         elevation = AppSizes.elevationSmall
     ) {
         Row(
-            modifier = Modifier.padding(AppSizes.paddingSmall),
+            modifier = Modifier.padding(AppSizes.paddingSmall / 2),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(
                 modifier = Modifier.weight(1f)
             ) {
-                Text(
-                    text = aliment.nom ?: "Sans nom",
-                    style = MaterialTheme.typography.body1,
-                    fontWeight = FontWeight.Medium
-                )
                     Text(
+                    text = aliment.nom ?: "Sans nom",
+                        style = MaterialTheme.typography.body2,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
                     text = "${aliment.brand ?: "Sans marque"} - ${aliment.gamme ?: "Sans gamme"}",
-                    style = MaterialTheme.typography.caption,
-                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
-                    )
+                    style = MaterialTheme.typography.caption.copy(fontSize = 11.sp),
+                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
             
             if (showAddButton && onAdd != null) {
