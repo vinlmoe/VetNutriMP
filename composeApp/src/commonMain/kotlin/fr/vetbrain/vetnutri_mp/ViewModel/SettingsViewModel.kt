@@ -362,4 +362,80 @@ class SettingsViewModel(
             0
         }
     }
+
+    /**
+     * Relance l'import automatique des données initiales (aliments et références nutritionnelles)
+     * @return Le résultat de l'importation
+     */
+    suspend fun relaunchAutomaticImport(): ImportResult {
+        return try {
+            // Créer l'ExportImportRepository avec tous les repositories nécessaires
+            val exportImportRepo =
+                    fr.vetbrain.vetnutri_mp.Repository.ExportImportRepository(
+                            animalRepository = animalRepository,
+                            foodRepository = foodRepository,
+                            equationRepository = equationRepository,
+                            referenceRepository = referenceEvRepository,
+                            biblioRepository = biblioRefRepository,
+                            consultationRepository = consultationRepository,
+                            recipeRepository = recipeRepository
+                    )
+
+            // Lire le fichier de ressources pour l'import automatique
+            val json =
+                    try {
+                        // Essayer d'abord le chemin iOS (direct), puis le chemin Android/Desktop
+                        // (data/)
+                        try {
+                            fr.vetbrain.vetnutri_mp.Localization.ResourceReader()
+                                    .readResource("vetnutri_export_init.json")
+                        } catch (e: Exception) {
+                            fr.vetbrain.vetnutri_mp.Localization.ResourceReader()
+                                    .readResource("data/vetnutri_export_init.json")
+                        }
+                    } catch (e: Exception) {
+                        throw IllegalStateException(
+                                "Fichier vetnutri_export_init.json introuvable: ${e.message}"
+                        )
+                    }
+
+            if (json.isEmpty()) {
+                throw IllegalStateException("Le fichier JSON d'import automatique est vide")
+            }
+
+            // Lancer l'import avec un listener de progression
+            val importCounts =
+                    exportImportRepo.importAll(
+                            apiJson = json,
+                            listener =
+                                    fr.vetbrain.vetnutri_mp.Repository.ExportImportRepository
+                                            .ImportProgressListener(
+                                                    onProgress = { progress ->
+                                                        // Mettre à jour la progression si
+                                                        // nécessaire
+                                                        println(
+                                                                "IMPORT AUTO: Progression: ${(progress * 100).toInt()}%"
+                                                        )
+                                                    },
+                                                    onLog = { msg -> println("IMPORT AUTO: $msg") }
+                                            )
+                    )
+
+            // Retourner le résultat de l'importation
+            ImportResult.Success(
+                    count =
+                            importCounts.animals +
+                                    importCounts.foods +
+                                    importCounts.equations +
+                                    importCounts.references,
+                    importedCount =
+                            importCounts.animals +
+                                    importCounts.foods +
+                                    importCounts.equations +
+                                    importCounts.references
+            )
+        } catch (e: Exception) {
+            ImportResult.Error("Erreur lors de l'import automatique: ${e.message}")
+        }
+    }
 }

@@ -68,7 +68,9 @@ fun App(appDatabase: AppDatabase) {
     }
 
     // Repository pour les recettes
-    val recipeRepository = remember { RecipeRepository(appDatabase.recipeDao(), appDatabase.foodDao()) }
+    val recipeRepository = remember {
+        RecipeRepository(appDatabase.recipeDao(), appDatabase.foodDao())
+    }
 
     // Création du repository pour les références bibliographiques - version database directe
     val biblioRefRepository = remember {
@@ -260,7 +262,7 @@ fun App(appDatabase: AppDatabase) {
     }
 
     // Import automatique des aliments ET des références AVANT le thème
-    runBlocking {
+    LaunchedEffect(Unit) {
         // --- ALIMENTS ET REFERENCES ---
         val currentFoodCount = foodRepository.getAllFoods().size
         val currentReferenceCount = databaseReferenceEvRepository.getAllReferenceEv().size
@@ -333,6 +335,23 @@ fun App(appDatabase: AppDatabase) {
                     println(
                             "IMPORT AUTO: Résultats - Animaux: ${importResult.animals}, Aliments: ${importResult.foods}, Références: ${importResult.references}"
                     )
+
+                    // 🔧 CORRECTION : Notifier les ViewModels que les données ont été mises à jour
+                    println("IMPORT AUTO: Notification des ViewModels...")
+
+                    // Invalider le cache du repository des aliments et forcer le rechargement
+                    if (foodRepository is DatabaseFoodRepository) {
+                        foodRepository.forceRefresh()
+                    }
+
+                    // Recharger les données dans les ViewModels
+                    animalListViewModel.loadAnimals()
+                    foodListViewModel.forceRefresh()
+                    equationViewModel.loadEquations()
+                    referenceEvViewModel.loadAllReferences()
+                    biblioRefViewModel.refreshBiblioRefs()
+
+                    println("IMPORT AUTO: ViewModels notifiés et données rechargées")
                 } else {
                     println("IMPORT AUTO: ERREUR - Le fichier JSON est vide!")
                 }

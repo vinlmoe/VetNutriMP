@@ -1,19 +1,30 @@
 package fr.vetbrain.vetnutri_mp.View.components
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Data.Ration
 import fr.vetbrain.vetnutri_mp.Repository.FoodRepository
 import fr.vetbrain.vetnutri_mp.Repository.RecipeRepository
+import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import kotlinx.coroutines.launch
 
 @Composable
@@ -60,7 +71,28 @@ fun RecipeDialog(
                     CircularProgressIndicator()
                 } else {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(onClick = { showCreateDialog = true }) { Text("Créer une recette") }
+                        // Bouton créer une recette avec icône
+                        Row(
+                                modifier =
+                                        Modifier.fillMaxWidth()
+                                                .clickable { showCreateDialog = true }
+                                                .padding(8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                    imageVector = Icons.Default.Add,
+                                    contentDescription = "Créer une recette",
+                                    tint = VetNutriColors.Primary,
+                                    modifier = Modifier.size(24.dp)
+                            )
+                            Text(
+                                    text = "Créer une recette",
+                                    color = VetNutriColors.Primary,
+                                    style = MaterialTheme.typography.button
+                            )
+                        }
+
                         LazyColumn(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
                             items(recipes) { r ->
                                 Card(modifier = Modifier.fillMaxWidth().padding(4.dp)) {
@@ -83,25 +115,47 @@ fun RecipeDialog(
                                                                                 .caption
                                                         )
                                             }
-                                            TextButton(onClick = { onApply(r) }) {
-                                                Text("Appliquer")
-                                            }
-                                            TextButton(
-                                                    onClick = {
-                                                        scope.launch {
-                                                            repository.cloneRecipe(r.uuid)
-                                                            recipes = loadRecipesWithFoodDetails()
-                                                        }
-                                                    }
-                                            ) { Text("Cloner") }
-                                            TextButton(
-                                                    onClick = {
-                                                        scope.launch {
-                                                            repository.deleteRecipe(r.uuid)
-                                                            recipes = loadRecipesWithFoodDetails()
-                                                        }
-                                                    }
-                                            ) { Text("Supprimer") }
+
+                                            // Bouton Appliquer avec icône
+                                            Icon(
+                                                    imageVector = Icons.Default.Check,
+                                                    contentDescription = "Appliquer la recette",
+                                                    tint = VetNutriColors.Primary,
+                                                    modifier =
+                                                            Modifier.size(24.dp).clickable {
+                                                                onApply(r)
+                                                            }
+                                            )
+
+                                            // Bouton Cloner avec icône
+                                            Icon(
+                                                    imageVector = Icons.Default.ContentCopy,
+                                                    contentDescription = "Cloner la recette",
+                                                    tint = VetNutriColors.Secondary,
+                                                    modifier =
+                                                            Modifier.size(24.dp).clickable {
+                                                                scope.launch {
+                                                                    repository.cloneRecipe(r.uuid)
+                                                                    recipes =
+                                                                            loadRecipesWithFoodDetails()
+                                                                }
+                                                            }
+                                            )
+
+                                            // Bouton Supprimer avec icône
+                                            Icon(
+                                                    imageVector = Icons.Default.Delete,
+                                                    contentDescription = "Supprimer la recette",
+                                                    tint = Color.Red,
+                                                    modifier =
+                                                            Modifier.size(24.dp).clickable {
+                                                                scope.launch {
+                                                                    repository.deleteRecipe(r.uuid)
+                                                                    recipes =
+                                                                            loadRecipesWithFoodDetails()
+                                                                }
+                                                            }
+                                            )
                                         }
                                         if (r.alimentMutableList.isNotEmpty()) {
                                             Divider()
@@ -130,7 +184,14 @@ fun RecipeDialog(
                     }
                 }
             },
-            confirmButton = { TextButton(onClick = onClose) { Text("Fermer") } }
+            confirmButton = {
+                Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Fermer",
+                        tint = VetNutriColors.Primary,
+                        modifier = Modifier.size(24.dp).clickable { onClose() }
+                )
+            }
     )
 
     if (showCreateDialog) {
@@ -145,20 +206,36 @@ fun RecipeDialog(
                     )
                 },
                 confirmButton = {
-                    TextButton(
-                            onClick = {
-                                scope.launch {
-                                    repository.createRecipe(newName, null, null)
-                                    recipes = loadRecipesWithFoodDetails()
-                                    newName = ""
-                                    showCreateDialog = false
-                                }
-                            },
-                            enabled = newName.isNotBlank()
-                    ) { Text("Créer") }
+                    Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = "Créer la recette",
+                            tint = if (newName.isNotBlank()) VetNutriColors.Primary else Color.Gray,
+                            modifier =
+                                    Modifier.size(24.dp)
+                                            .clickable(
+                                                    enabled = newName.isNotBlank(),
+                                                    onClick = {
+                                                        scope.launch {
+                                                            repository.createRecipe(
+                                                                    newName,
+                                                                    null,
+                                                                    null
+                                                            )
+                                                            recipes = loadRecipesWithFoodDetails()
+                                                            newName = ""
+                                                            showCreateDialog = false
+                                                        }
+                                                    }
+                                            )
+                    )
                 },
                 dismissButton = {
-                    TextButton(onClick = { showCreateDialog = false }) { Text("Annuler") }
+                    Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Annuler",
+                            tint = Color.Gray,
+                            modifier = Modifier.size(24.dp).clickable { showCreateDialog = false }
+                    )
                 }
         )
     }
