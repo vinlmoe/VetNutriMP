@@ -2,6 +2,7 @@ package fr.vetbrain.vetnutri_mp.View
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -10,6 +11,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.Button
@@ -260,11 +264,55 @@ fun AnalyseSelectionAlimentsView(
                 }
             }
 
-            // Contenu principal avec les deux listes
-            Row(
-                modifier = Modifier.fillMaxWidth().weight(1f),
-                horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
+            // Contenu principal responsive avec détection de largeur
+            BoxWithConstraints(
+                modifier = Modifier.fillMaxWidth().weight(1f)
             ) {
+                val isCompact = maxWidth < 800.dp
+                
+                if (isCompact) {
+                    // ✨ Mode COMPACT : Organisation verticale optimisée
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
+                    ) {
+                        // Section 1: Aliments disponibles (compacte)
+                        AlimentsDisponiblesCompactSection(
+                            alimentsFiltres = alimentsFiltres,
+                            alimentsSelectionnes = alimentsSelectionnes,
+                            onAlimentAdd = { aliment ->
+                                alimentsSelectionnes = alimentsSelectionnes + aliment
+                            }
+                        )
+                        
+                        // Section 2: Boutons d'action (horizontaux)
+                        ActionsRapidesSection(
+                            alimentsFiltres = alimentsFiltres,
+                            alimentsSelectionnes = alimentsSelectionnes,
+                            onToutAjouter = {
+                                alimentsSelectionnes = alimentsSelectionnes + alimentsFiltres
+                            },
+                            onToutRetirer = {
+                                alimentsSelectionnes = emptyList()
+                            }
+                        )
+                        
+                        // Section 3: Aliments sélectionnés (compacte)
+                        AlimentsSelectionnesCompactSection(
+                            alimentsSelectionnes = alimentsSelectionnes,
+                            onAlimentRemove = { aliment ->
+                                alimentsSelectionnes = alimentsSelectionnes.filter { it.uuid != aliment.uuid }
+                            }
+                        )
+                    }
+                } else {
+                    // 🖥️ Mode LARGE : Organisation horizontale conservée
+                    Row(
+                        modifier = Modifier.fillMaxSize(),
+                        horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
+                    ) {
                 // Liste de gauche : Aliments disponibles
                 Card(
                     modifier = Modifier.weight(1f),
@@ -361,7 +409,9 @@ fun AnalyseSelectionAlimentsView(
                         }
                     }
                 }
-            }
+                    } // Fin Row mode large
+                } // Fin else
+            } // Fin BoxWithConstraints
 
             // Bouton d'analyse graphique
             Row(
@@ -432,6 +482,148 @@ private fun AlimentItem(
             if (showRemoveButton && onRemove != null) {
                 IconButton(onClick = onRemove) {
                     Icon(Icons.Default.Remove, contentDescription = "Retirer")
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Section compacte pour les aliments disponibles
+ */
+@Composable
+private fun AlimentsDisponiblesCompactSection(
+    alimentsFiltres: List<AlimentEv>,
+    alimentsSelectionnes: List<AlimentEv>,
+    onAlimentAdd: (AlimentEv) -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = 2.dp
+    ) {
+        Column(
+            modifier = Modifier.padding(AppSizes.paddingSmall)
+        ) {
+            Text(
+                text = "Aliments disponibles (${alimentsFiltres.size})",
+                style = MaterialTheme.typography.subtitle2,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            
+            // Liste avec hauteur limitée pour mode compact
+            LazyColumn(
+                modifier = Modifier.height(180.dp), // Hauteur fixe compact
+                verticalArrangement = Arrangement.spacedBy(1.dp)
+            ) {
+                items(alimentsFiltres) { aliment ->
+                    AlimentItem(
+                        aliment = aliment,
+                        onAdd = { onAlimentAdd(aliment) },
+                        showAddButton = true
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Section compacte pour les actions rapides
+ */
+@Composable
+private fun ActionsRapidesSection(
+    alimentsFiltres: List<AlimentEv>,
+    alimentsSelectionnes: List<AlimentEv>,
+    onToutAjouter: () -> Unit,
+    onToutRetirer: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = 1.dp
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(AppSizes.paddingSmall),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Button(
+                onClick = onToutAjouter,
+                enabled = alimentsFiltres.isNotEmpty(),
+                modifier = Modifier.weight(1f)
+            ) {
+                Icon(
+                    Icons.Default.Add, 
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Tout ajouter", style = MaterialTheme.typography.caption)
+            }
+            
+            Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
+            
+            Button(
+                onClick = onToutRetirer,
+                enabled = alimentsSelectionnes.isNotEmpty(),
+                modifier = Modifier.weight(1f)
+            ) {
+                Icon(
+                    Icons.Default.Remove, 
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Tout retirer", style = MaterialTheme.typography.caption)
+            }
+        }
+    }
+}
+
+/**
+ * Section compacte pour les aliments sélectionnés
+ */
+@Composable
+private fun AlimentsSelectionnesCompactSection(
+    alimentsSelectionnes: List<AlimentEv>,
+    onAlimentRemove: (AlimentEv) -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = 2.dp
+    ) {
+        Column(
+            modifier = Modifier.padding(AppSizes.paddingSmall)
+        ) {
+            Text(
+                text = "Aliments sélectionnés (${alimentsSelectionnes.size})",
+                style = MaterialTheme.typography.subtitle2,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            
+            if (alimentsSelectionnes.isEmpty()) {
+                Text(
+                    text = "Aucun aliment sélectionné",
+                    style = MaterialTheme.typography.caption,
+                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f),
+                    modifier = Modifier.padding(AppSizes.paddingSmall)
+                )
+            } else {
+                // Liste avec hauteur limitée pour mode compact
+                LazyColumn(
+                    modifier = Modifier.height(120.dp), // Hauteur fixe plus petite
+                    verticalArrangement = Arrangement.spacedBy(1.dp)
+                ) {
+                    items(alimentsSelectionnes) { aliment ->
+                        AlimentItem(
+                            aliment = aliment,
+                            onRemove = { onAlimentRemove(aliment) },
+                            showRemoveButton = true
+                        )
+                    }
                 }
             }
         }
