@@ -134,14 +134,11 @@ data class PreferencesEspece(
     companion object {
         /** Crée des préférences par défaut pour une espèce */
         fun createDefault(espece: Espece): PreferencesEspece {
-            return PreferencesEspece(
-                    espece = espece.name,
-                    typeExpressionBesoinId = TypeExpressionBesoin.DEFAULT.id,
-                    nutrimentsSelectionnes = getDefaultNutrients()
-            )
+            return DefaultPreferencesConfig.getDefaultPreferencesForSpecies(espece)
         }
 
-        /** Nutriments par défaut sélectionnés */
+        /** Nutriments par défaut sélectionnés (maintenant gérés par DefaultPreferencesConfig) */
+        @Deprecated("Utiliser DefaultPreferencesConfig.DefaultNutrients à la place")
         private fun getDefaultNutrients(): Map<String, List<Int>> {
             return mapOf(
                     "BASE" to listOf(1, 2, 4, 5, 8, 0), // MS, PB, MG, FB, Cendres, ENA
@@ -160,7 +157,7 @@ data class PreferencesEspece(
 /** Ensemble des préférences de toutes les espèces */
 data class PreferencesApplication(
         val preferencesParEspece: Map<String, PreferencesEspece> = emptyMap(),
-        val versionPreferences: Int = 1
+        val versionPreferences: Int = DefaultPreferencesConfig.DEFAULT_VERSION
 ) {
     /** Obtient les préférences pour une espèce donnée */
     fun getPreferencesEspece(espece: Espece): PreferencesEspece {
@@ -172,5 +169,12 @@ data class PreferencesApplication(
         val nouvellesPreferences = preferencesParEspece.toMutableMap()
         nouvellesPreferences[preferences.espece] = preferences
         return copy(preferencesParEspece = nouvellesPreferences)
+    }
+    
+    companion object {
+        /** Crée une instance avec toutes les préférences par défaut */
+        fun createDefault(): PreferencesApplication {
+            return DefaultPreferencesConfig.createDefaultPreferencesApplication()
+        }
     }
 }

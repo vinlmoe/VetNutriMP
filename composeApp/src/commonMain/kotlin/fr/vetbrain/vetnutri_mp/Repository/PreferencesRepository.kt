@@ -32,7 +32,7 @@ class PreferencesRepository(private val preferencesStorage: PreferencesStorage) 
     }
 
     // État des préférences
-    private var _preferences = PreferencesApplication()
+    private var _preferences = PreferencesApplication.createDefault()
     val preferences: PreferencesApplication
         get() = _preferences
 
@@ -66,7 +66,7 @@ class PreferencesRepository(private val preferencesStorage: PreferencesStorage) 
             println("🔍 PERSISTANCE Repo: loadPreferences() -> ${_preferences}")
         } catch (e: Exception) {
             // En cas d'erreur, utiliser les préférences par défaut
-            _preferences = PreferencesApplication()
+            _preferences = PreferencesApplication.createDefault()
         }
     }
 
@@ -198,7 +198,7 @@ class PreferencesRepository(private val preferencesStorage: PreferencesStorage) 
 
             return PreferencesApplication(preferencesParEspece = preferencesMap)
         } catch (e: Exception) {
-            return PreferencesApplication()
+            return PreferencesApplication.createDefault()
         }
     }
 

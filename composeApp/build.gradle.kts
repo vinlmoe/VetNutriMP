@@ -130,10 +130,7 @@ android {
     }
 }
 
-dependencies {
-    debugImplementation(compose.uiTooling)
-
-}
+dependencies { debugImplementation(compose.uiTooling) }
 
 compose.desktop {
     application {
@@ -143,12 +140,22 @@ compose.desktop {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "fr.vetbrain.vetnutri_mp"
             packageVersion = "1.0.4"
+            
+            // Configuration des icônes par plateforme
+            macOS {
+                iconFile.set(project.file("src/desktopMain/resources/icon.icns"))
+            }
+            windows {
+                iconFile.set(project.file("src/desktopMain/resources/icon.ico"))
+            }
+            linux {
+                iconFile.set(project.file("src/desktopMain/resources/icon.png"))
+            }
         }
     }
 }
 
 dependencies {
-
     implementation("org.jetbrains.compose.material:material-icons-extended:1.7.3")
     implementation(libs.skiko.awt)
     implementation(libs.androidx.sqlite.bundled)

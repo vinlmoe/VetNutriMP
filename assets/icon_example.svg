@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <!-- Fond circulaire -->
+  <circle cx="512" cy="512" r="480" fill="#4CAF50" stroke="#2E7D32" stroke-width="32"/>
+  
+  <!-- Symbole de nutrition/vétérinaire -->
+  <g fill="white">
+    <!-- Bol de nourriture -->
+    <ellipse cx="512" cy="600" rx="200" ry="80" fill="white"/>
+    <ellipse cx="512" cy="600" rx="180" ry="60" fill="#4CAF50"/>
+    
+    <!-- Cuillère -->
+    <rect x="480" y="400" width="64" height="200" rx="32" fill="white"/>
+    <ellipse cx="512" cy="400" rx="40" ry="20" fill="white"/>
+    
+    <!-- Symbole médical -->
+    <circle cx="512" cy="300" r="60" fill="white"/>
+    <rect x="492" y="260" width="40" height="80" fill="#4CAF50"/>
+    <rect x="472" y="280" width="80" height="40" fill="#4CAF50"/>
+  </g>
+  
+  <!-- Texte VetNutri -->
+  <text x="512" y="750" font-family="Arial, sans-serif" font-size="80" font-weight="bold" text-anchor="middle" fill="white">VetNutri</text>
+</svg>
