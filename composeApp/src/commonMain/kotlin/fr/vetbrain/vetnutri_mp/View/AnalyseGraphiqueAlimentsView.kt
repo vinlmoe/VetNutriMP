@@ -44,6 +44,8 @@ import io.github.koalaplot.core.xygraph.Point
 import io.github.koalaplot.core.xygraph.XYGraph
 
 import io.github.koalaplot.core.util.ExperimentalKoalaPlotApi
+import io.github.koalaplot.core.bar.DefaultVerticalBar
+import io.github.koalaplot.core.bar.VerticalBarPlot
 
 /**
  * Données calculées pour un aliment avec sa densité énergétique et pourcentages
@@ -393,6 +395,18 @@ fun AnalyseGraphiqueAlimentsView(
             ) {
                 Text("Phosphore/Protéines\n(par 1000 kcal)")
             }
+            
+            // ✨ Onglet Histogramme Densité Énergétique
+            Button(
+                onClick = { ongletActif = "densite_energetique" },
+                colors = ButtonDefaults.buttonColors(
+                    backgroundColor = if (ongletActif == "densite_energetique") VetNutriColors.Primary else Color.Gray.copy(alpha = 0.3f),
+                    contentColor = if (ongletActif == "densite_energetique") Color.White else Color.Black
+                ),
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("Densité énergétique\n(histogramme)")
+            }
         }
 
         // Contenu principal - responsive selon la largeur
@@ -558,32 +572,44 @@ private fun GraphiqueNuagePoints(
             Spacer(modifier = Modifier.height(AppSizes.paddingMedium))
             
             if (alimentsAnalyses.isNotEmpty()) {
-                // Préparer les données pour le graphique selon l'onglet actif
-                val points = when (ongletActif) {
-                    "protein_lipid" -> {
-                        alimentsAnalyses.map { data ->
-                            Point(
-                                x = data.pourcentageProteines.toFloat(),
-                                y = data.pourcentageLipides.toFloat()
-                            )
+                // Affichage selon le type de graphique
+                if (ongletActif == "densite_energetique") {
+                    // 📊 HISTOGRAMME DENSITÉ ÉNERGÉTIQUE
+                    HistogrammeEnergieAliments(
+                        alimentsAnalyses = alimentsAnalyses,
+                        alimentSelectionne = alimentSelectionne,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(400.dp)
+                    )
+                } else {
+                    // 📈 SCATTER PLOTS (PROTÉINES/LIPIDES et PHOSPHORE/PROTÉINES)
+                    // Préparer les données pour le graphique selon l'onglet actif
+                    val points = when (ongletActif) {
+                        "protein_lipid" -> {
+                            alimentsAnalyses.map { data ->
+                                Point(
+                                    x = data.pourcentageProteines.toFloat(),
+                                    y = data.pourcentageLipides.toFloat()
+                                )
+                            }
                         }
-                    }
-                    "phosphore_protein" -> {
-                        alimentsAnalyses.map { data ->
-                            Point(
-                                x = data.phosphorePer1000Kcal.toFloat(),
-                                y = data.proteinePer1000Kcal.toFloat()
-                            )
+                        "phosphore_protein" -> {
+                            alimentsAnalyses.map { data ->
+                                Point(
+                                    x = data.phosphorePer1000Kcal.toFloat(),
+                                    y = data.proteinePer1000Kcal.toFloat()
+                                )
+                            }
                         }
-                    }
-                    else -> {
-                        alimentsAnalyses.map { data ->
+                        else -> {
+                            alimentsAnalyses.map { data ->
                     Point(
                         x = data.pourcentageProteines.toFloat(),
                         y = data.pourcentageLipides.toFloat()
                     )
+                            }
                         }
-                    }
                 }
                 
                 // Calculer les plages des axes selon le type de graphique
@@ -707,6 +733,7 @@ private fun GraphiqueNuagePoints(
                         }
                     }
                 }
+                } // Fin du bloc else (scatter plots)
             } else {
                 Text(
                     text = "Aucune donnée disponible pour l'analyse",
@@ -866,5 +893,67 @@ private fun ListeAlimentsAnalyse(
                 )
             }
         }
+    }
+}
+
+/**
+ * Composant graphique pour afficher un histogramme de densité énergétique
+ */
+@OptIn(ExperimentalKoalaPlotApi::class)
+@Composable
+private fun HistogrammeEnergieAliments(
+    alimentsAnalyses: List<AlimentAnalyseData>,
+    alimentSelectionne: String? = null,
+    modifier: Modifier = Modifier
+) {
+    if (alimentsAnalyses.isEmpty()) {
+        Text(
+            text = "Aucune donnée disponible pour l'histogramme",
+            style = MaterialTheme.typography.body1,
+            color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+        )
+        return
+    }
+
+    // Préparer les données pour l'histogramme
+    // Créer les catégories avec les noms des aliments (tronqués) et leurs numéros
+    val categories = alimentsAnalyses.map { data ->
+        val nomTronque = if (data.aliment.nom?.length ?: 0 > 10) {
+            "${data.aliment.nom?.take(10)}..."
+        } else {
+            data.aliment.nom ?: "N/A"
+        }
+        "$nomTronque\n(${data.numero})"
+    }
+    
+    // Données de densité énergétique
+    val densiteEnergetique = alimentsAnalyses.map { it.densiteEnergetique.toFloat() }
+    
+    // Plage pour l'axe Y basée sur les données
+    val minDensite = densiteEnergetique.minOfOrNull { it } ?: 0f
+    val maxDensite = densiteEnergetique.maxOfOrNull { it } ?: 100f
+    val yRange = (minDensite - minDensite * 0.05f).coerceAtLeast(0f)..(maxDensite + maxDensite * 0.1f)
+
+    // Créer le graphique
+    XYGraph(
+        xAxisModel = remember { CategoryAxisModel(categories) },
+        yAxisModel = remember { FloatLinearAxisModel(yRange) },
+        yAxisTitle = "Densité énergétique (kcal/100g)",
+        modifier = modifier
+    ) {
+        VerticalBarPlot(
+            xData = categories,
+            yData = densiteEnergetique,
+            bar = { index ->
+                // Couleur de la barre selon si l'aliment est sélectionné
+                val aliment = alimentsAnalyses[index]
+                val couleur = if (aliment.aliment.uuid == alimentSelectionne) {
+                    Color(0xFF9C27B0) // Violet pour l'aliment sélectionné
+                } else {
+                    VetNutriColors.Primary // Couleur par défaut
+                }
+                DefaultVerticalBar(SolidColor(couleur))
+            }
+        )
     }
 }
