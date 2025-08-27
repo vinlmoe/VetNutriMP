@@ -345,7 +345,7 @@ fun AnalyseGraphiqueAlimentsView(
                 IconButton(onClick = onClose) {
                     Icon(
                         imageVector = Icons.Default.ArrowBack,
-                        contentDescription = "Retour",
+                        contentDescription = "Retour à la sélection d'aliments",
                         tint = VetNutriColors.Primary
                     )
                 }
@@ -423,11 +423,44 @@ fun AnalyseGraphiqueAlimentsView(
             val isCompact = maxWidth < 800.dp
             
             if (isCompact) {
-                // Vue compacte : graphiques puis liste
+                // Vue compacte : graphiques puis liste avec bouton retour plus visible ET SCROLLABLE
                 Column(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState()), // ✨ Rendre la vue principale scrollable
                     verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
                 ) {
+                    // 🔧 Bouton retour plus visible en mode compact
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        backgroundColor = VetNutriColors.Primary.copy(alpha = 0.1f),
+                        elevation = 2.dp
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(AppSizes.paddingSmall),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
+                        ) {
+                            IconButton(
+                                onClick = onClose,
+                                modifier = Modifier.size(40.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.ArrowBack,
+                                    contentDescription = "Retour à la sélection",
+                                    tint = VetNutriColors.Primary,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                            Text(
+                                text = "← Retour à la sélection d'aliments",
+                                style = MaterialTheme.typography.body2,
+                                color = VetNutriColors.Primary,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                    
                     // Graphique principal
                     GraphiqueNuagePoints(
                         alimentsAnalyses = alimentsAnalyses,
@@ -436,11 +469,12 @@ fun AnalyseGraphiqueAlimentsView(
                         modifier = Modifier.fillMaxWidth()
                     )
                     
-                    // Liste des aliments
+                    // Liste des aliments (sans LazyColumn en mode compact)
                     ListeAlimentsAnalyse(
                         alimentsAnalyses = alimentsAnalyses, 
                         alimentSelectionne = alimentSelectionne,
                         onAlimentSelected = { uuid -> alimentSelectionne = uuid },
+                        isCompactMode = true, // ✨ Mode compact = pas de LazyColumn
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
@@ -459,6 +493,7 @@ fun AnalyseGraphiqueAlimentsView(
                             alimentsAnalyses = alimentsAnalyses, 
                             alimentSelectionne = alimentSelectionne,
                             onAlimentSelected = { uuid -> alimentSelectionne = uuid },
+                            isCompactMode = false, // ✨ Mode large = avec LazyColumn
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
@@ -684,6 +719,56 @@ private fun GraphiqueNuagePoints(
 }
 
 /**
+ * Ligne d'aliment dans le tableau
+ */
+@Composable
+private fun AlimentRow(
+    data: AlimentAnalyseData,
+    isSelected: Boolean,
+    onAlimentSelected: (String?) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { 
+                onAlimentSelected(
+                    if (isSelected) null else data.aliment.uuid
+                ) 
+            }
+            .background(
+                if (isSelected) Color(0xFF9C27B0).copy(alpha = 0.1f) 
+                else Color.Transparent
+            )
+            .padding(AppSizes.paddingSmall),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = "${data.numero}",
+            modifier = Modifier.weight(0.1f),
+            style = MaterialTheme.typography.caption,
+            fontWeight = FontWeight.Bold,
+            color = VetNutriColors.Primary
+        )
+        Text(
+            text = data.aliment.nom ?: "Sans nom",
+            modifier = Modifier.weight(0.4f),
+            style = MaterialTheme.typography.caption
+        )
+        Text(
+            text = data.aliment.gamme ?: "-",
+            modifier = Modifier.weight(0.25f),
+            style = MaterialTheme.typography.caption
+        )
+        Text(
+            text = data.aliment.brand ?: "-",
+            modifier = Modifier.weight(0.25f),
+            style = MaterialTheme.typography.caption
+        )
+    }
+}
+
+/**
  * Liste des aliments avec leurs données d'analyse
  */
 @Composable
@@ -691,6 +776,7 @@ private fun ListeAlimentsAnalyse(
     alimentsAnalyses: List<AlimentAnalyseData>,
     alimentSelectionne: String? = null,
     onAlimentSelected: (String?) -> Unit = {},
+    isCompactMode: Boolean = false, // ✨ Mode compact pour éviter les conflits de scroll
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -743,57 +829,32 @@ private fun ListeAlimentsAnalyse(
                 
                 Divider(modifier = Modifier.padding(vertical = AppSizes.paddingSmall))
                 
-                // Liste scrollable des aliments
-                LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall / 2),
-                    modifier = Modifier.fillMaxHeight()
-                ) {
-                    items(alimentsAnalyses) { data ->
-                        val isSelected = data.aliment.uuid == alimentSelectionne
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { 
-                                    onAlimentSelected(
-                                        if (isSelected) null else data.aliment.uuid
-                                    ) 
-                                }
-                                .background(
-                                    if (isSelected) Color(0xFF9C27B0).copy(alpha = 0.1f) 
-                                    else Color.Transparent
-                                )
-                                .padding(AppSizes.paddingSmall),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                // Liste des aliments - LazyColumn en mode large, Column normale en mode compact
+                if (isCompactMode) {
+                    // ✨ Mode compact : Column normale (pas de scroll interne)
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall / 2)
                     ) {
-                        Text(
-                            text = "${data.numero}",
-                            modifier = Modifier.weight(0.1f),
-                            style = MaterialTheme.typography.caption,
-                            fontWeight = FontWeight.Bold,
-                            color = VetNutriColors.Primary
-                        )
-                        Text(
-                            text = data.aliment.nom ?: "Sans nom",
-                            modifier = Modifier.weight(0.4f),
-                            style = MaterialTheme.typography.caption
-                        )
-                        Text(
-                            text = data.aliment.gamme ?: "-",
-                            modifier = Modifier.weight(0.25f),
-                            style = MaterialTheme.typography.caption
-                        )
-                        Text(
-                            text = data.aliment.brand ?: "-",
-                            modifier = Modifier.weight(0.25f),
-                            style = MaterialTheme.typography.caption
-                        )
+                        alimentsAnalyses.forEach { data ->
+                            AlimentRow(
+                                data = data,
+                                isSelected = data.aliment.uuid == alimentSelectionne,
+                                onAlimentSelected = onAlimentSelected
+                            )
+                        }
                     }
-                    
-                    if (alimentsAnalyses.last() != data) {
-                        Divider(
-                            color = MaterialTheme.colors.onSurface.copy(alpha = 0.1f)
-                        )
+                } else {
+                    // ✨ Mode large : LazyColumn pour performance
+                    LazyColumn(
+                        verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall / 2),
+                        modifier = Modifier.fillMaxHeight()
+                    ) {
+                        items(alimentsAnalyses) { data ->
+                            AlimentRow(
+                                data = data,
+                                isSelected = data.aliment.uuid == alimentSelectionne,
+                                onAlimentSelected = onAlimentSelected
+                            )
                         }
                     }
                 }
