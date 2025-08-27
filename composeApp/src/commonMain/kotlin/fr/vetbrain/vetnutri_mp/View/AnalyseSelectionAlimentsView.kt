@@ -55,16 +55,27 @@ import fr.vetbrain.vetnutri_mp.Localization.translateEnum
  */
 @Composable
 fun AnalyseSelectionAlimentsView(
-    aliments: List<AlimentEv>, 
+    aliments: List<AlimentEv>,
     onClose: () -> Unit,
     onAlimentSelected: ((AlimentEv) -> Unit)? = null,
     onAnalyseGraphique: ((List<AlimentEv>) -> Unit)? = null,
-    alimentsInitialementSelectionnes: List<AlimentEv> = emptyList(), // ✨ Nouveaux aliments déjà sélectionnés
+    alimentsInitialementSelectionnes: List<AlimentEv> = emptyList(),
+    onSelectionChanged: ((List<AlimentEv>) -> Unit)? = null, // ✨ Callback pour synchroniser les changements
     modifier: Modifier = Modifier
 ) {
-    // État pour les aliments sélectionnés (initialisé avec ceux du ViewModel)
-    var alimentsSelectionnes by remember(alimentsInitialementSelectionnes) { 
+    // État pour les aliments sélectionnés (synchronisé avec le ViewModel)
+    var alimentsSelectionnes by remember { 
         mutableStateOf(alimentsInitialementSelectionnes.toList()) 
+    }
+    
+    // Synchroniser les changements avec le ViewModel
+    LaunchedEffect(alimentsSelectionnes) {
+        onSelectionChanged?.invoke(alimentsSelectionnes)
+    }
+    
+    // Synchroniser avec les changements externes (redimensionnement)
+    LaunchedEffect(alimentsInitialementSelectionnes) {
+        alimentsSelectionnes = alimentsInitialementSelectionnes.toList()
     }
     
     // État pour les filtres de recherche

@@ -516,7 +516,10 @@ private fun WideScreenLayout(
                                                                 onAnalyseGraphique = { aliments ->
                                                                         viewModel.lancerAnalyseGraphique(aliments)
                                                                 },
-                                                                alimentsInitialementSelectionnes = alimentsSelectionnes, // ✨ Passer les aliments déjà sélectionnés
+                                                                alimentsInitialementSelectionnes = alimentsSelectionnes,
+                                                                onSelectionChanged = { nouvelleSelection ->
+                                                                        viewModel.setAlimentsSelectionnes(nouvelleSelection)
+                                                                }, // ✨ Synchroniser avec le ViewModel
                                                                 modifier = Modifier.fillMaxSize()
                                                         )
                                                 }
@@ -913,7 +916,7 @@ private fun NarrowScreenLayout(
                                                                 modifier = Modifier.fillMaxSize()
                                                         )
                                                 }
-                                                                                                AnimalDetailSection.GRAPHIQUE_ALIMENTS -> {
+                                                AnimalDetailSection.GRAPHIQUE_ALIMENTS -> {
                                                         val availableFoods by viewModel.availableFoods.collectAsState()
                                                         val isLoadingFoods by viewModel.isLoadingFoods.collectAsState()
                                                         
@@ -1028,7 +1031,10 @@ private fun NarrowScreenLayout(
                                                                                 onAnalyseGraphique = { aliments ->
                                                                                         viewModel.lancerAnalyseGraphique(aliments)
                                                                                 },
-                                                                                alimentsInitialementSelectionnes = alimentsSelectionnes, // ✨ Passer les aliments déjà sélectionnés
+                                                                                alimentsInitialementSelectionnes = alimentsSelectionnes,
+                                                                                onSelectionChanged = { nouvelleSelection ->
+                                                                                        viewModel.setAlimentsSelectionnes(nouvelleSelection)
+                                                                                }, // ✨ Synchroniser avec le ViewModel
                                                                                 modifier = Modifier.fillMaxSize()
                                                                         )
                                                                 }
