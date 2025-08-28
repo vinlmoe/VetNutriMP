@@ -317,12 +317,11 @@ class SettingsViewModel(
      * @return Le nombre de références supprimées
      */
     suspend fun clearAllReferences(): Int {
-        
 
         return if (referenceEvRepository != null) {
-            
+
             val result = referenceEvRepository.clearAllReferences()
-            
+
             result
         } else {
             0
@@ -334,12 +333,11 @@ class SettingsViewModel(
      * @return Le nombre d'équations supprimées
      */
     suspend fun clearAllEquations(): Int {
-        
 
         return if (equationRepository != null) {
-            
+
             val result = equationRepository.clearAllEquations()
-            
+
             result
         } else {
             0
@@ -351,12 +349,11 @@ class SettingsViewModel(
      * @return Le nombre de références bibliographiques supprimées
      */
     suspend fun clearAllBiblioRefs(): Int {
-        
 
         return if (biblioRefRepository != null) {
-            
+
             val result = biblioRefRepository.clearAllBiblioRefs()
-            
+
             result
         } else {
             0
@@ -413,9 +410,9 @@ class SettingsViewModel(
                                                     onProgress = { progress ->
                                                         // Mettre à jour la progression si
                                                         // nécessaire
-                                                        
+
                                                     },
-                                                    onLog = { msg ->  }
+                                                    onLog = { msg -> }
                                             )
                     )
 

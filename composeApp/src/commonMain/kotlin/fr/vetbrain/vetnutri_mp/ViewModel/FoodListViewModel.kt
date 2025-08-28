@@ -11,13 +11,19 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 
 class FoodListViewModel(private val foodRepository: DatabaseFoodRepository) {
         // Scope pour les coroutines du ViewModel
         private val viewModelScope = CoroutineScope(AppDispatchers.Main)
 
-        // Liste des aliments
+        // Liste des aliments (non filtrée)
+        private val _allFoods = MutableStateFlow<List<AlimentEv>>(emptyList())
+        
+        // Liste des aliments filtrés
         private val _foods = MutableStateFlow<List<AlimentEv>>(emptyList())
         val foods: StateFlow<List<AlimentEv>> = _foods.asStateFlow()
 
@@ -57,19 +63,41 @@ class FoodListViewModel(private val foodRepository: DatabaseFoodRepository) {
         val availableEspeces: List<Espece?> = listOf(null) + Espece.entries
 
         init {
-                // Charger les aliments dès l'initialisation
-                viewModelScope.launch { loadFoods() }
+                // S'abonner au Flow réactif des aliments pour des mises à jour automatiques
+                foodRepository.observeAllFoods()
+                        .onEach { allFoods ->
+                                // Stocker tous les aliments non filtrés
+                                _allFoods.value = allFoods
+                                
+                                // Filtrer les aliments selon les critères actuels
+                                val filteredFoods = filterFoods(allFoods)
+                                
+                                // Mettre à jour l'état filtré
+                                _foods.value = filteredFoods
+                                
+                                // Mettre à jour les listes de valeurs disponibles pour les filtres
+                                updateAvailableFilterValues(allFoods)
+                        }
+                        .catch { e ->
+                                e.printStackTrace()
+                                _allFoods.value = emptyList()
+                                _foods.value = emptyList()
+                        }
+                        .launchIn(viewModelScope)
         }
 
-        /** Charge la liste des aliments depuis le repository */
+        /** Charge la liste des aliments depuis le repository (maintenu pour compatibilité) */
         fun loadFoods() {
                 viewModelScope.launch {
                         val allFoods = foodRepository.getAllFoods()
 
+                        // Stocker tous les aliments non filtrés
+                        _allFoods.value = allFoods
+
                         // Filtrer les aliments selon les critères actuels
                         val filteredFoods = filterFoods(allFoods)
 
-                        // Mettre à jour l'état
+                        // Mettre à jour l'état filtré
                         _foods.value = filteredFoods
 
                         // Mettre à jour les listes de valeurs disponibles pour les filtres
@@ -83,10 +111,13 @@ class FoodListViewModel(private val foodRepository: DatabaseFoodRepository) {
                         // Forcer le rechargement des données
                         val allFoods = foodRepository.getAllFoods()
 
+                        // Stocker tous les aliments non filtrés
+                        _allFoods.value = allFoods
+
                         // Filtrer les aliments selon les critères actuels
                         val filteredFoods = filterFoods(allFoods)
 
-                        // Mettre à jour l'état
+                        // Mettre à jour l'état filtré
                         _foods.value = filteredFoods
 
                         // Mettre à jour les listes de valeurs disponibles pour les filtres
@@ -141,8 +172,8 @@ class FoodListViewModel(private val foodRepository: DatabaseFoodRepository) {
 
         /** Rafraîchit la liste filtrée des aliments */
         private suspend fun refreshFilteredFoods() {
-                val allFoods = foodRepository.getAllFoods()
-                _foods.value = filterFoods(allFoods)
+                // Appliquer les filtres sur les données stockées localement
+                _foods.value = filterFoods(_allFoods.value)
         }
 
         /** Filtre les aliments selon les critères de recherche */
@@ -296,7 +327,7 @@ class FoodListViewModel(private val foodRepository: DatabaseFoodRepository) {
         fun deleteFood(food: AlimentEv) {
                 viewModelScope.launch {
                         foodRepository.deleteFood(food.uuid)
-                        loadFoods()
+                        // Plus besoin d'appeler loadFoods() car le Flow se met à jour automatiquement
                 }
         }
 }
