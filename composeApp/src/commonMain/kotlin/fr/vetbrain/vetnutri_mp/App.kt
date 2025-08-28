@@ -15,7 +15,6 @@ import fr.vetbrain.vetnutri_mp.Data.AnimalEv
 import fr.vetbrain.vetnutri_mp.DataBase.AppDatabase
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationManager
-import fr.vetbrain.vetnutri_mp.Localization.ResourceReader
 import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Repository.*
@@ -23,6 +22,7 @@ import fr.vetbrain.vetnutri_mp.Theme.VetNutriTheme
 import fr.vetbrain.vetnutri_mp.Utils.PlatformDispatcher
 import fr.vetbrain.vetnutri_mp.Utils.createPreferencesStorage
 import fr.vetbrain.vetnutri_mp.View.*
+import fr.vetbrain.vetnutri_mp.View.StartupScreen
 import fr.vetbrain.vetnutri_mp.ViewModel.*
 import kotlinx.coroutines.runBlocking
 
@@ -261,434 +261,349 @@ fun App(appDatabase: AppDatabase) {
         settingsViewModel.importFoodsFromFileUI()
     }
 
-    // Import automatique des aliments ET des références AVANT le thème
-    LaunchedEffect(Unit) {
-        // --- ALIMENTS ET REFERENCES ---
-        val currentFoodCount = foodRepository.getAllFoods().size
-        val currentReferenceCount = databaseReferenceEvRepository.getAllReferenceEv().size
+    // Écran de démarrage pour vérifier l'état de la base de données
+    var showStartupScreen by remember { mutableStateOf(true) }
 
-        if (currentFoodCount == 0 || currentReferenceCount == 0) {
-            try {
-                
-                
-
-                // Essayer d'abord le chemin iOS (direct), puis le chemin Android/Desktop (data/)
-                val json =
-                        try {
-                            
-                            val result = ResourceReader().readResource("vetnutri_export_init.json")
-                            
-                            result
-                        } catch (e: Exception) {
-                            
-                            try {
-                                
-                                val result =
-                                        ResourceReader()
-                                                .readResource("data/vetnutri_export_init.json")
-                                
-                                result
-                            } catch (e2: Exception) {
-                                
-                                throw IllegalStateException(
-                                        "Fichier vetnutri_export_init.json introuvable sur iOS (vetnutri_export_init.json) et Android/Desktop (data/vetnutri_export_init.json). Erreurs: iOS=${e.message}, Android/Desktop=${e2.message}"
-                                )
-                            }
-                        }
-                if (json.isNotEmpty()) {
-                    
-
-                    val exportImportRepo =
-                            ExportImportRepository(
-                                    animalRepository = animalRepository,
-                                    foodRepository = foodRepository,
-                                    equationRepository = equationRepository,
-                                    referenceRepository = databaseReferenceEvRepository,
-                                    biblioRepository = biblioRefRepository,
-                                    consultationRepository = consultationRepository,
-                                    recipeRepository = recipeRepository
-                            )
-
-                    
-
-                    val importResult =
-                            exportImportRepo.importAll(
-                                    apiJson = json,
-                                    listener =
-                                            ExportImportRepository.ImportProgressListener(
-                                                    onProgress = { progress ->
-                                                        
-                                                    },
-                                                    onLog = { msg ->  }
-                                            )
-                            )
-
-                    
-                    
-
-                    // 🔧 CORRECTION : Notifier les ViewModels que les données ont été mises à jour
-                    
-
-                    // Invalider le cache du repository des aliments et forcer le rechargement
-                    if (foodRepository is DatabaseFoodRepository) {
-                        foodRepository.forceRefresh()
-                    }
-
-                    // Recharger les données dans les ViewModels
-                    animalListViewModel.loadAnimals()
-                    foodListViewModel.forceRefresh()
-                    equationViewModel.loadEquations()
-                    referenceEvViewModel.loadAllReferences()
-                    biblioRefViewModel.refreshBiblioRefs()
-
-                    
-                } else {
-                    
-                }
-            } catch (e: Exception) {
-                
-                
-                
-                
-
-                // Afficher des informations de débogage supplémentaires
-                try {
-                    
-                    val resourceReader = ResourceReader()
-                    
-                } catch (resourceError: Exception) {
-                    
-                    
-                }
-            }
-        } else {
-            
-        }
-    }
+    // Fonction appelée quand la base de données est prête
+    val onDatabaseReady: () -> Unit = { showStartupScreen = false }
 
     VetNutriTheme {
         Box(modifier = Modifier.fillMaxSize()) {
-            Column(modifier = Modifier.fillMaxSize()) {
-                when (currentScreen) {
-                    Screen.List -> {
-                        Column(modifier = Modifier.fillMaxSize()) {
-                            TopBar(
-                                    title = "Liste des animaux",
-                                    onSettingsClick = { currentScreen = Screen.Settings }
-                            ) {
-                                // Boutons supprimés
-                            }
-
-                            // Ajout d'un LaunchedEffect pour recharger la liste lorsque l'écran
-                            // devient visible
-                            LaunchedEffect(currentScreen) {
-                                if (currentScreen == Screen.List) {
-                                    animalListViewModel.loadAnimals()
+            if (showStartupScreen) {
+                // Afficher l'écran de démarrage
+                StartupScreen(
+                        foodRepository = foodRepository,
+                        referenceRepository = databaseReferenceEvRepository,
+                        settingsViewModel = settingsViewModel,
+                        onDatabaseReady = onDatabaseReady
+                )
+            } else {
+                // Afficher l'application principale
+                Column(modifier = Modifier.fillMaxSize()) {
+                    when (currentScreen) {
+                        Screen.List -> {
+                            Column(modifier = Modifier.fillMaxSize()) {
+                                TopBar(
+                                        title = "Liste des animaux",
+                                        onSettingsClick = { currentScreen = Screen.Settings }
+                                ) {
+                                    // Boutons supprimés
                                 }
-                            }
 
-                            AnimalListView(
-                                    viewModel = animalListViewModel,
-                                    onAddAnimal = {
-                                        isEditing = false
-                                        selectedAnimal = null
-                                        createAnimalViewModel.resetAnimal()
-                                        currentScreen = Screen.Create
-                                    },
-                                    onSelectAnimal = { animal: AnimalEv ->
-                                        selectedAnimal = animal
-                                        animalDetailViewModel.setAnimal(animal)
-                                        currentScreen = Screen.Detail
-                                    },
-                                    onEditAnimal = { animal: AnimalEv ->
-                                        selectedAnimal = animal
-                                        createAnimalViewModel.updateAnimal(animal)
-                                        isEditing = true
-                                        currentScreen = Screen.Create
-                                    },
-                                    onShowFoodList = { currentScreen = Screen.FoodList },
-                                    onShowCalculationTabs = {
-                                        currentScreen = Screen.CalculationTabs
-                                    },
-                                    modifier = Modifier.fillMaxWidth().weight(1f)
-                            )
+                                // Ajout d'un LaunchedEffect pour recharger la liste lorsque l'écran
+                                // devient visible
+                                LaunchedEffect(currentScreen) {
+                                    if (currentScreen == Screen.List) {
+                                        animalListViewModel.loadAnimals()
+                                    }
+                                }
+
+                                AnimalListView(
+                                        viewModel = animalListViewModel,
+                                        onAddAnimal = {
+                                            isEditing = false
+                                            selectedAnimal = null
+                                            createAnimalViewModel.resetAnimal()
+                                            currentScreen = Screen.Create
+                                        },
+                                        onSelectAnimal = { animal: AnimalEv ->
+                                            selectedAnimal = animal
+                                            animalDetailViewModel.setAnimal(animal)
+                                            currentScreen = Screen.Detail
+                                        },
+                                        onEditAnimal = { animal: AnimalEv ->
+                                            selectedAnimal = animal
+                                            createAnimalViewModel.updateAnimal(animal)
+                                            isEditing = true
+                                            currentScreen = Screen.Create
+                                        },
+                                        onShowFoodList = { currentScreen = Screen.FoodList },
+                                        onShowCalculationTabs = {
+                                            currentScreen = Screen.CalculationTabs
+                                        },
+                                        modifier = Modifier.fillMaxWidth().weight(1f)
+                                )
+                            }
                         }
-                    }
-                    Screen.Create -> {
-                        Column(modifier = Modifier.fillMaxSize()) {
-                            TopBar(
-                                    title =
-                                            if (isEditing) "Modifier un animal"
-                                            else "Ajouter un animal",
-                                    onBackClick = {
-                                        isEditing = false
-                                        selectedAnimal = null
-                                        currentScreen = Screen.List
-                                    },
-                                    onSettingsClick = { currentScreen = Screen.Settings }
-                            )
-                            CreateAnimalView(
-                                    viewModel = createAnimalViewModel,
-                                    onNavigateBack = {
-                                        isEditing = false
-                                        selectedAnimal = null
-                                        currentScreen = Screen.List
-                                    },
-                                    isEditing = isEditing,
-                                    modifier = Modifier.fillMaxWidth().weight(1f)
-                            )
+                        Screen.Create -> {
+                            Column(modifier = Modifier.fillMaxSize()) {
+                                TopBar(
+                                        title =
+                                                if (isEditing) "Modifier un animal"
+                                                else "Ajouter un animal",
+                                        onBackClick = {
+                                            isEditing = false
+                                            selectedAnimal = null
+                                            currentScreen = Screen.List
+                                        },
+                                        onSettingsClick = { currentScreen = Screen.Settings }
+                                )
+                                CreateAnimalView(
+                                        viewModel = createAnimalViewModel,
+                                        onNavigateBack = {
+                                            isEditing = false
+                                            selectedAnimal = null
+                                            currentScreen = Screen.List
+                                        },
+                                        isEditing = isEditing,
+                                        modifier = Modifier.fillMaxWidth().weight(1f)
+                                )
+                            }
                         }
-                    }
-                    Screen.Detail -> {
-                        Column(modifier = Modifier.fillMaxSize()) {
-                            AnimalDetailView(
-                                    viewModel = animalDetailViewModel,
-                                    settingsViewModel = settingsViewModel,
+                        Screen.Detail -> {
+                            Column(modifier = Modifier.fillMaxSize()) {
+                                AnimalDetailView(
+                                        viewModel = animalDetailViewModel,
+                                        settingsViewModel = settingsViewModel,
+                                        onNavigateBack = { currentScreen = Screen.List },
+                                        onOpenSettings = { currentScreen = Screen.Settings },
+                                        modifier = Modifier.fillMaxWidth().weight(1f),
+                                        equationRepository = equationRepository,
+                                        recipeRepository = recipeRepository,
+                                        foodRepository = foodRepository
+                                )
+                            }
+                        }
+                        Screen.FoodList -> {
+                            FoodListView(
+                                    viewModel = foodListViewModel,
                                     onNavigateBack = { currentScreen = Screen.List },
                                     onOpenSettings = { currentScreen = Screen.Settings },
-                                    modifier = Modifier.fillMaxWidth().weight(1f),
-                                    equationRepository = equationRepository,
-                                    recipeRepository = recipeRepository,
-                                    foodRepository = foodRepository
+                                    onEditFood = { foodUuid ->
+                                        selectedFoodUuid = foodUuid
+                                        currentScreen = Screen.FoodEdit
+                                    },
+                                    onCreateFood = {
+                                        selectedFoodUuid = null
+                                        currentScreen = Screen.FoodEdit
+                                    },
+                                    modifier = Modifier.fillMaxSize()
                             )
                         }
-                    }
-                    Screen.FoodList -> {
-                        FoodListView(
-                                viewModel = foodListViewModel,
-                                onNavigateBack = { currentScreen = Screen.List },
-                                onOpenSettings = { currentScreen = Screen.Settings },
-                                onEditFood = { foodUuid ->
-                                    selectedFoodUuid = foodUuid
-                                    currentScreen = Screen.FoodEdit
-                                },
-                                onCreateFood = {
-                                    selectedFoodUuid = null
-                                    currentScreen = Screen.FoodEdit
-                                },
-                                modifier = Modifier.fillMaxSize()
-                        )
-                    }
-                    Screen.FoodEdit -> {
-                        FoodEditView(
-                                viewModel = foodEditViewModel,
-                                onNavigateBack = {
-                                    selectedFoodUuid = null
-                                    currentScreen = Screen.FoodList
-                                },
-                                onNavigateToSettings = { currentScreen = Screen.Settings },
-                                modifier = Modifier.fillMaxSize()
-                        )
-                    }
-                    Screen.CalculationTabs -> {
-                        CalculationTabsView(
-                                equationViewModel = equationViewModel,
-                                biblioRefViewModel = biblioRefViewModel,
-                                referenceEvViewModel = referenceEvViewModel,
-                                onNavigateBack = { currentScreen = Screen.List },
-                                onEditReferenceEv = { referenceEvId ->
-                                    selectedReferenceEvId = referenceEvId
-                                    currentScreen = Screen.NewReferenceEvEdit
-                                },
-                                onCreateReferenceEv = {
-                                    selectedReferenceEvId = null
-                                    currentScreen = Screen.NewReferenceEvEdit
-                                },
-                                selectedTab = selectedCalculationTab,
-                                onTabChanged = { selectedCalculationTab = it },
-                                modifier = Modifier.fillMaxSize(),
-                                biblioRefRepository = biblioRefRepository,
-                                equationRepository = equationRepository,
-                                referenceEvRepository = databaseReferenceEvRepository,
-                                platformDispatcher = platformDispatcher
-                        )
-                    }
-                    Screen.BiblioRefList -> {
-                        BiblioRefListView(
-                                viewModel = biblioRefViewModel,
-                                onEditBiblioRef = { biblioRefId ->
-                                    selectedBiblioRefId = biblioRefId
-                                    currentScreen = Screen.BiblioRefEdit
-                                },
-                                onCreateBiblioRef = {
-                                    selectedBiblioRefId = null
-                                    currentScreen = Screen.BiblioRefEdit
-                                },
-                                modifier = Modifier.fillMaxSize()
-                        )
-                    }
-                    Screen.BiblioRefEdit -> {
-                        BiblioRefEditView(
-                                viewModel = biblioRefViewModel,
-                                biblioRefId = selectedBiblioRefId,
-                                onNavigateBack = {
-                                    selectedBiblioRefId = null
-                                    currentScreen = Screen.BiblioRefList
-                                },
-                                modifier = Modifier.fillMaxSize()
-                        )
-                    }
-                    Screen.EquationList -> {
-                        EquationListView(
-                                viewModel = equationViewModel,
-                                onEditEquation = { equationId ->
-                                    selectedEquationId = equationId
-                                    equationViewModel.clearOperationMessage()
-                                    currentScreen = Screen.EquationEdit
-                                },
-                                onCreateEquation = {
-                                    selectedEquationId = null
-                                    equationViewModel.clearOperationMessage()
-                                    currentScreen = Screen.EquationEdit
-                                },
-                                modifier = Modifier.fillMaxSize()
-                        )
-                    }
-                    Screen.EquationEdit -> {
-                        EquationEditView(
-                                viewModel = equationViewModel,
-                                equationId = selectedEquationId,
-                                onNavigateBack = {
-                                    selectedEquationId = null
-                                    currentScreen = Screen.EquationList
-                                },
-                                modifier = Modifier.fillMaxSize()
-                        )
-                    }
-                    Screen.ReferenceEvList -> {
-                        NutrientRequirementView(
-                                viewModel = referenceEvViewModel,
-                                onEditReference = { referenceEvId ->
-                                    selectedReferenceEvId = referenceEvId
-                                    currentScreen = Screen.NewReferenceEvEdit
-                                },
-                                onCreateReference = {
-                                    selectedReferenceEvId = null
-                                    currentScreen = Screen.NewReferenceEvEdit
-                                },
-                                onEditNutrients = { referenceEvId ->
-                                    selectedReferenceEvId = referenceEvId
-                                    currentScreen = Screen.ReferenceEvNutrient
-                                },
-                                modifier = Modifier.fillMaxSize()
-                        )
-                    }
-                    Screen.ReferenceEvNutrient -> {
-                        ReferenceEvNutrientView(
-                                referenceEvViewModel = referenceEvViewModel,
-                                biblioRefRepository = biblioRefRepository,
-                                referenceEvRepository = databaseReferenceEvRepository,
-                                platformDispatcher = platformDispatcher,
-                                referenceEvId = selectedReferenceEvId ?: "",
-                                onNavigateBack = { currentScreen = Screen.EquationList },
-                                modifier = Modifier.fillMaxSize()
-                        )
-                    }
-                    Screen.ReferenceEvTabs -> {
-                        NewReferenceEvEditView(
-                                viewModel = newReferenceEvViewModel,
-                                referenceId = selectedReferenceEvId,
-                                onNavigateBack = { currentScreen = Screen.ReferenceEvList },
-                                modifier = Modifier.fillMaxSize()
-                        )
-                    }
-                    Screen.TestYellowBox -> {
-                        // Interface de test ultra-visible
-                        Box(modifier = Modifier.fillMaxSize().background(Color.Yellow)) {
-                            Column(
+                        Screen.FoodEdit -> {
+                            FoodEditView(
+                                    viewModel = foodEditViewModel,
+                                    onNavigateBack = {
+                                        selectedFoodUuid = null
+                                        currentScreen = Screen.FoodList
+                                    },
+                                    onNavigateToSettings = { currentScreen = Screen.Settings },
+                                    modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                        Screen.CalculationTabs -> {
+                            CalculationTabsView(
+                                    equationViewModel = equationViewModel,
+                                    biblioRefViewModel = biblioRefViewModel,
+                                    referenceEvViewModel = referenceEvViewModel,
+                                    onNavigateBack = { currentScreen = Screen.List },
+                                    onEditReferenceEv = { referenceEvId ->
+                                        selectedReferenceEvId = referenceEvId
+                                        currentScreen = Screen.NewReferenceEvEdit
+                                    },
+                                    onCreateReferenceEv = {
+                                        selectedReferenceEvId = null
+                                        currentScreen = Screen.NewReferenceEvEdit
+                                    },
+                                    selectedTab = selectedCalculationTab,
+                                    onTabChanged = { selectedCalculationTab = it },
                                     modifier = Modifier.fillMaxSize(),
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.Center
-                            ) {
-                                Text(
-                                        "TEST BOÎTE JAUNE\nCeci est un test de visibilité",
-                                        style = MaterialTheme.typography.h4,
-                                        color = Color.Red,
-                                        textAlign = TextAlign.Center,
-                                        modifier = Modifier.padding(24.dp)
-                                )
+                                    biblioRefRepository = biblioRefRepository,
+                                    equationRepository = equationRepository,
+                                    referenceEvRepository = databaseReferenceEvRepository,
+                                    platformDispatcher = platformDispatcher
+                            )
+                        }
+                        Screen.BiblioRefList -> {
+                            BiblioRefListView(
+                                    viewModel = biblioRefViewModel,
+                                    onEditBiblioRef = { biblioRefId ->
+                                        selectedBiblioRefId = biblioRefId
+                                        currentScreen = Screen.BiblioRefEdit
+                                    },
+                                    onCreateBiblioRef = {
+                                        selectedBiblioRefId = null
+                                        currentScreen = Screen.BiblioRefEdit
+                                    },
+                                    modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                        Screen.BiblioRefEdit -> {
+                            BiblioRefEditView(
+                                    viewModel = biblioRefViewModel,
+                                    biblioRefId = selectedBiblioRefId,
+                                    onNavigateBack = {
+                                        selectedBiblioRefId = null
+                                        currentScreen = Screen.BiblioRefList
+                                    },
+                                    modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                        Screen.EquationList -> {
+                            EquationListView(
+                                    viewModel = equationViewModel,
+                                    onEditEquation = { equationId ->
+                                        selectedEquationId = equationId
+                                        equationViewModel.clearOperationMessage()
+                                        currentScreen = Screen.EquationEdit
+                                    },
+                                    onCreateEquation = {
+                                        selectedEquationId = null
+                                        equationViewModel.clearOperationMessage()
+                                        currentScreen = Screen.EquationEdit
+                                    },
+                                    modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                        Screen.EquationEdit -> {
+                            EquationEditView(
+                                    viewModel = equationViewModel,
+                                    equationId = selectedEquationId,
+                                    onNavigateBack = {
+                                        selectedEquationId = null
+                                        currentScreen = Screen.EquationList
+                                    },
+                                    modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                        Screen.ReferenceEvList -> {
+                            NutrientRequirementView(
+                                    viewModel = referenceEvViewModel,
+                                    onEditReference = { referenceEvId ->
+                                        selectedReferenceEvId = referenceEvId
+                                        currentScreen = Screen.NewReferenceEvEdit
+                                    },
+                                    onCreateReference = {
+                                        selectedReferenceEvId = null
+                                        currentScreen = Screen.NewReferenceEvEdit
+                                    },
+                                    onEditNutrients = { referenceEvId ->
+                                        selectedReferenceEvId = referenceEvId
+                                        currentScreen = Screen.ReferenceEvNutrient
+                                    },
+                                    modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                        Screen.ReferenceEvNutrient -> {
+                            ReferenceEvNutrientView(
+                                    referenceEvViewModel = referenceEvViewModel,
+                                    biblioRefRepository = biblioRefRepository,
+                                    referenceEvRepository = databaseReferenceEvRepository,
+                                    platformDispatcher = platformDispatcher,
+                                    referenceEvId = selectedReferenceEvId ?: "",
+                                    onNavigateBack = { currentScreen = Screen.EquationList },
+                                    modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                        Screen.ReferenceEvTabs -> {
+                            NewReferenceEvEditView(
+                                    viewModel = newReferenceEvViewModel,
+                                    referenceId = selectedReferenceEvId,
+                                    onNavigateBack = { currentScreen = Screen.ReferenceEvList },
+                                    modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                        Screen.TestYellowBox -> {
+                            // Interface de test ultra-visible
+                            Box(modifier = Modifier.fillMaxSize().background(Color.Yellow)) {
+                                Column(
+                                        modifier = Modifier.fillMaxSize(),
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.Center
+                                ) {
+                                    Text(
+                                            "TEST BOÎTE JAUNE\nCeci est un test de visibilité",
+                                            style = MaterialTheme.typography.h4,
+                                            color = Color.Red,
+                                            textAlign = TextAlign.Center,
+                                            modifier = Modifier.padding(24.dp)
+                                    )
 
-                                Spacer(modifier = Modifier.height(24.dp))
+                                    Spacer(modifier = Modifier.height(24.dp))
 
-                                Button(
-                                        onClick = { currentScreen = Screen.List },
-                                        colors =
-                                                ButtonDefaults.buttonColors(
-                                                        backgroundColor = Color.Blue
-                                                )
-                                ) { Text("Retour à la liste", color = Color.White) }
+                                    Button(
+                                            onClick = { currentScreen = Screen.List },
+                                            colors =
+                                                    ButtonDefaults.buttonColors(
+                                                            backgroundColor = Color.Blue
+                                                    )
+                                    ) { Text("Retour à la liste", color = Color.White) }
+                                }
                             }
                         }
-                    }
-                    Screen.NewReferenceEvEdit -> {
-                        NewReferenceEvEditView(
-                                viewModel = newReferenceEvViewModel,
-                                referenceId = selectedReferenceEvId,
-                                onNavigateBack = {
-                                    selectedReferenceEvId = null
-                                    selectedCalculationTab = 2 // Sélectionner l'onglet "Besoins"
-                                    currentScreen = Screen.CalculationTabs
-                                },
-                                modifier = Modifier.fillMaxSize()
-                        )
-                    }
-                    Screen.Settings -> {
-                        Scaffold(
-                                topBar = {
-                                    TopBarSimple(
-                                            title = "Paramètres",
-                                            onNavigateBack = { currentScreen = Screen.List }
-                                    )
-                                }
-                        ) { paddingValues ->
-                            SettingsView(
-                                    viewModel = settingsViewModel,
-                                    importViewModel = importViewModel,
-                                    onImportAnimals = {
-                                        // Lancer l'importation
-                                        importViewModel.importAnimalsFromFileUI()
+                        Screen.NewReferenceEvEdit -> {
+                            NewReferenceEvEditView(
+                                    viewModel = newReferenceEvViewModel,
+                                    referenceId = selectedReferenceEvId,
+                                    onNavigateBack = {
+                                        selectedReferenceEvId = null
+                                        selectedCalculationTab =
+                                                2 // Sélectionner l'onglet "Besoins"
+                                        currentScreen = Screen.CalculationTabs
                                     },
-                                    onBack = { currentScreen = Screen.List },
-                                    onAnimalListRefresh = {
-                                        // Rafraîchir la liste des animaux
-                                        animalListViewModel.loadAnimals()
-                                    },
-                                    onFoodListRefresh = {
-                                        // Rafraîchir la liste des aliments
-                                        // TODO: implémenter le rafraîchissement de la liste des
-                                        // aliments
-                                    },
-                                    modifier = Modifier.padding(paddingValues),
-                                    onSpeciesClick = { species ->
-                                        selectedSpecies = species
-                                        currentScreen = Screen.SpeciesPreferences
-                                    }
+                                    modifier = Modifier.fillMaxSize()
                             )
                         }
-                    }
-                    Screen.SpeciesPreferences -> {
-                        selectedSpecies?.let { species ->
+                        Screen.Settings -> {
                             Scaffold(
                                     topBar = {
                                         TopBarSimple(
-                                                title =
-                                                        "${"preferences.title".translate()} ${species.translateEnum()}",
-                                                onNavigateBack = { currentScreen = Screen.Settings }
+                                                title = "Paramètres",
+                                                onNavigateBack = { currentScreen = Screen.List }
                                         )
                                     }
                             ) { paddingValues ->
-                                fr.vetbrain.vetnutri_mp.View.SpeciesPreferencesView(
-                                        species = species,
-                                        preferencesRepository = preferencesRepository,
-                                        equationRepository = equationRepository,
-                                        modifier = Modifier.padding(paddingValues)
+                                SettingsView(
+                                        viewModel = settingsViewModel,
+                                        importViewModel = importViewModel,
+                                        onImportAnimals = {
+                                            // Lancer l'importation
+                                            importViewModel.importAnimalsFromFileUI()
+                                        },
+                                        onBack = { currentScreen = Screen.List },
+                                        onAnimalListRefresh = {
+                                            // Rafraîchir la liste des animaux
+                                            animalListViewModel.loadAnimals()
+                                        },
+                                        onFoodListRefresh = {
+                                            // Rafraîchir la liste des aliments
+                                            // TODO: implémenter le rafraîchissement de la liste des
+                                            // aliments
+                                        },
+                                        modifier = Modifier.padding(paddingValues),
+                                        onSpeciesClick = { species ->
+                                            selectedSpecies = species
+                                            currentScreen = Screen.SpeciesPreferences
+                                        }
                                 )
                             }
                         }
-                                ?: run {
-                                    // Fallback si aucune espèce n'est sélectionnée
-                                    currentScreen = Screen.Settings
+                        Screen.SpeciesPreferences -> {
+                            selectedSpecies?.let { species ->
+                                Scaffold(
+                                        topBar = {
+                                            TopBarSimple(
+                                                    title =
+                                                            "${"preferences.title".translate()} ${species.translateEnum()}",
+                                                    onNavigateBack = {
+                                                        currentScreen = Screen.Settings
+                                                    }
+                                            )
+                                        }
+                                ) { paddingValues ->
+                                    fr.vetbrain.vetnutri_mp.View.SpeciesPreferencesView(
+                                            species = species,
+                                            preferencesRepository = preferencesRepository,
+                                            equationRepository = equationRepository,
+                                            modifier = Modifier.padding(paddingValues)
+                                    )
                                 }
+                            }
+                                    ?: run {
+                                        // Fallback si aucune espèce n'est sélectionnée
+                                        currentScreen = Screen.Settings
+                                    }
+                        }
                     }
                 }
             }

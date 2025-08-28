@@ -53,9 +53,7 @@ class DatabaseAnimalRepository(
 
         override suspend fun getAllAnimals(): List<AnimalEv> {
                 return withContext(AppDispatchers.Default) {
-                        
                         val entities = animalDao.getAllAnimals()
-                        
 
                         entities.map { entity ->
                                 val animalEv =
@@ -75,7 +73,7 @@ class DatabaseAnimalRepository(
                                                                                         dateStr
                                                                                 )
                                                                         } catch (e: Exception) {
-                                                                                
+
                                                                                 null
                                                                         }
                                                                 } else {
@@ -94,7 +92,7 @@ class DatabaseAnimalRepository(
                                                         // Vérifier que la date n'est pas vide ou
                                                         // null
                                                         if (weightEntity.date.isNullOrBlank()) {
-                                                                
+
                                                                 null // Ignorer ce poids
                                                         } else {
                                                                 try {
@@ -116,16 +114,13 @@ class DatabaseAnimalRepository(
                                                                                                 .value
                                                                         )
                                                                 } catch (e: Exception) {
-                                                                        
+
                                                                         null // Ignorer ce poids
                                                                 }
                                                         }
                                                 }
                                         )
-                                        
-                                } else {
-                                        
-                                }
+                                } else {}
 
                                 animalEv
                         }
@@ -187,7 +182,7 @@ class DatabaseAnimalRepository(
                                                                 try {
                                                                         LocalDate.parse(dateStr)
                                                                 } catch (e: Exception) {
-                                                                        
+
                                                                         null
                                                                 }
                                                         } else {
@@ -217,7 +212,7 @@ class DatabaseAnimalRepository(
                                                                                 } catch (
                                                                                         e:
                                                                                                 Exception) {
-                                                                                        
+
                                                                                         null
                                                                                 }
                                                                         } else {
@@ -258,15 +253,13 @@ class DatabaseAnimalRepository(
 
                         // Charger les poids associés
                         val weightEntities = animalDao.getWeightsForAnimal(id)
-                        
-                        
 
                         if (weightEntities.isNotEmpty()) {
                                 animalEv.weightHistory.addAll(
                                         weightEntities.mapNotNull { weightEntity ->
                                                 // Vérifier que la date n'est pas vide ou null
                                                 if (weightEntity.date.isNullOrBlank()) {
-                                                        
+
                                                         null // Ignorer ce poids
                                                 } else {
                                                         try {
@@ -283,7 +276,7 @@ class DatabaseAnimalRepository(
                                                                         value = weightEntity.value
                                                                 )
                                                         } catch (e: Exception) {
-                                                                
+
                                                                 null // Ignorer ce poids
                                                         }
                                                 }
@@ -291,12 +284,8 @@ class DatabaseAnimalRepository(
                                 )
 
                                 // DEBUG: Afficher les poids chargés
-                                animalEv.weightHistory.forEachIndexed { index, weight ->
-                                        
-                                }
-                        } else {
-                                
-                        }
+                                animalEv.weightHistory.forEachIndexed { index, weight -> }
+                        } else {}
 
                         animalEv
                 }
@@ -471,7 +460,7 @@ class DatabaseAnimalRepository(
                                                 )
 
                                         // Insérer l'aliment dans la base de données
-                                        foodDao.insert(foodEntity)
+                                        foodDao.insertFood(foodEntity)
                                         availableFoodUUIDs.add(uuid)
                                         importedFoodsCount++
                                 } catch (e: Exception) {
@@ -879,7 +868,7 @@ class DatabaseAnimalRepository(
                                                                                         // dans la
                                                                                         // table
                                                                                         // FOOD
-                                                                                        foodDao.insert(
+                                                                                        foodDao.insertFood(
                                                                                                 foodEntity
                                                                                         )
                                                                                         availableFoodUUIDs
@@ -986,7 +975,6 @@ class DatabaseAnimalRepository(
                                         }
 
                                         importedCount++
-                                        
                                 } catch (e: Exception) {
                                         // Ignorer les erreurs d'importation pour un animal
                                         // spécifique

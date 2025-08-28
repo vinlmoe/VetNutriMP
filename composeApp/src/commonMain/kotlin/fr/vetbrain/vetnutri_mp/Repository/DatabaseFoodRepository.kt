@@ -19,6 +19,7 @@ import fr.vetbrain.vetnutri_mp.Enumer.NutrientLipid
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientMain
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientVitam
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
+import fr.vetbrain.vetnutri_mp.Utils.DatabaseChangeNotifier
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -184,6 +185,18 @@ class DatabaseFoodRepository(
                 }
             } finally {
                 endBatch()
+
+                // Invalider le cache après l'import
+                clearCache()
+
+                // Notifier les changements de base de données
+                val totalImported = importCount + updateCount
+                if (totalImported > 0) {
+                    DatabaseChangeNotifier.notifyFoodImport(
+                            count = totalImported,
+                            source = "importFoodsDomain"
+                    )
+                }
             }
             return@withContext FoodImportResult(
                     importedCount = importCount,
@@ -222,7 +235,9 @@ class DatabaseFoodRepository(
      * @param food L'aliment à insérer
      */
     override suspend fun insert(food: AlimentEv) {
-        withContext(AppDispatchers.IO) { foodDao.insert(food.toFoodEntity()) }
+        withContext(AppDispatchers.IO) { foodDao.insertFood(food.toFoodEntity()) }
+        // Invalider le cache après insertion
+        clearCache()
         if (!isBatchMode) {
             refreshFoodsFlow()
         }
@@ -234,6 +249,8 @@ class DatabaseFoodRepository(
      */
     override suspend fun update(food: AlimentEv) {
         withContext(AppDispatchers.IO) { foodDao.update(food.toFoodEntity()) }
+        // Invalider le cache après mise à jour
+        clearCache()
         if (!isBatchMode) {
             refreshFoodsFlow()
         }
@@ -245,6 +262,8 @@ class DatabaseFoodRepository(
      */
     override suspend fun delete(food: AlimentEv) {
         withContext(AppDispatchers.IO) { foodDao.delete(food.toFoodEntity()) }
+        // Invalider le cache après suppression
+        clearCache()
         if (!isBatchMode) {
             refreshFoodsFlow()
         }
@@ -743,8 +762,6 @@ class DatabaseFoodRepository(
             // Continuer malgré l'erreur pour tenter l'insertion
         }
 
-        
-
         // Vérifier si la carte des valeurs nutritionnelles est vide
         if (food.valMap.isEmpty()) {
             return
@@ -757,7 +774,7 @@ class DatabaseFoodRepository(
                 val value = nutrientQuantity.value
 
                 if (nutrientKey.isNullOrBlank()) {
-                    
+
                     return@forEach
                 }
 
@@ -908,9 +925,7 @@ class DatabaseFoodRepository(
                     }
                 }
             }
-        } else {
-            
-        }
+        } else {}
     }
     // FIN ZONE PROTÉGÉE
 
@@ -923,7 +938,7 @@ class DatabaseFoodRepository(
             try {
                 // Convertir en FoodEntity et insérer
                 val foodEntity = food.toFoodEntity().copy(RefRation = null)
-                foodDao.insert(foodEntity)
+                foodDao.insertFood(foodEntity)
 
                 // Ajout d'un espèce par défaut "AUTRE" si la liste est vide pour éviter l'erreur de
                 // clé étrangère
@@ -1092,7 +1107,12 @@ class DatabaseFoodRepository(
     /**
      * Supprime tous les aliments de la base de données, ainsi que leurs valeurs nutritionnelles
      * associées.
+     *
+     * ⚠️ MÉTHODE DANGEREUSE - Nécessite une confirmation explicite de l'utilisateur Cette méthode
+     * ne doit JAMAIS être appelée automatiquement ou sans action de l'utilisateur.
+     *
      * @return Le nombre d'aliments supprimés
+     * @throws SecurityException Si la méthode est appelée sans autorisation explicite
      */
     override suspend fun clearAllFoods(): Int {
         return withContext(AppDispatchers.IO) {
@@ -1108,6 +1128,16 @@ class DatabaseFoodRepository(
 
             // Supprimer tous les aliments
             foodDao.deleteAllFoods()
+
+            // Invalider le cache après la suppression
+            clearCache()
+
+            // Notifier les changements de base de données
+            DatabaseChangeNotifier.notifyChange(
+                    DatabaseChangeNotifier.ChangeType.FOOD_DELETED,
+                    "Tous les aliments ont été supprimés",
+                    count
+            )
 
             return@withContext count
         }
@@ -1133,7 +1163,9 @@ class DatabaseFoodRepository(
                 val updatedFood = food.copy(RefRation = rationId)
                 foodDao.update(updatedFood)
 
-                
+                // Invalider le cache après la mise à jour
+                clearCache()
+
                 return@withContext true
             } catch (e: Exception) {
                 return@withContext false

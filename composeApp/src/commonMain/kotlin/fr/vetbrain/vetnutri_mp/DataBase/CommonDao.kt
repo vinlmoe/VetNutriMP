@@ -113,7 +113,7 @@ interface RecipeDao {
 
 @Dao
 interface FoodDao {
-        @Insert suspend fun insert(food: FoodEntity)
+        @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun insert(food: FoodEntity)
 
         @Update suspend fun update(food: FoodEntity)
 
@@ -134,14 +134,18 @@ interface FoodDao {
         suspend fun getFood(uuid: String): FoodEntity?
 
         @Query("SELECT * FROM FOOD") suspend fun getAllFoods(): List<FoodEntity>
-        
-        // Requêtes optimisées avec pagination
-        @Query("SELECT * FROM FOOD LIMIT :limit OFFSET :offset") 
-        suspend fun getFoodsPaginated(limit: Int, offset: Int): List<FoodEntity>
-        
-        @Query("SELECT COUNT(*) FROM FOOD") 
-        suspend fun getFoodsCount(): Int
 
+        // Requêtes optimisées avec pagination
+        @Query("SELECT * FROM FOOD LIMIT :limit OFFSET :offset")
+        suspend fun getFoodsPaginated(limit: Int, offset: Int): List<FoodEntity>
+
+        @Query("SELECT COUNT(*) FROM FOOD") suspend fun getFoodsCount(): Int
+
+        /**
+         * ⚠️ MÉTHODE DANGEREUSE - Supprime TOUS les aliments de la base Cette méthode ne doit
+         * JAMAIS être appelée automatiquement Utiliser uniquement avec une confirmation explicite
+         * de l'utilisateur
+         */
         @Query("DELETE FROM FOOD") suspend fun deleteAllFoods()
 
         // Optimisations pour import en lot
@@ -172,17 +176,19 @@ interface FoodDao {
 
         @Query("DELETE FROM ESPECES_ALIMENTS WHERE refAliment = :alimentUuid")
         suspend fun deleteEspecesForAliment(alimentUuid: String)
-        
+
         // Requêtes optimisées pour la recherche et le filtrage
-        @Query("SELECT * FROM FOOD WHERE name LIKE '%' || :query || '%' OR brand LIKE '%' || :query || '%' LIMIT :limit")
+        @Query(
+                "SELECT * FROM FOOD WHERE name LIKE '%' || :query || '%' OR brand LIKE '%' || :query || '%' LIMIT :limit"
+        )
         suspend fun searchFoodsByNameOrBrand(query: String, limit: Int = 100): List<FoodEntity>
-        
+
         @Query("SELECT * FROM FOOD WHERE groupAlim = :group LIMIT :limit")
         suspend fun getFoodsByGroup(group: Int, limit: Int = 100): List<FoodEntity>
-        
+
         @Query("SELECT * FROM FOOD WHERE typeAlim = :type LIMIT :limit")
         suspend fun getFoodsByType(type: Int, limit: Int = 100): List<FoodEntity>
-        
+
         @Query("SELECT * FROM FOOD WHERE deprecated = 0 LIMIT :limit")
         suspend fun getActiveFoods(limit: Int = 100): List<FoodEntity>
 }

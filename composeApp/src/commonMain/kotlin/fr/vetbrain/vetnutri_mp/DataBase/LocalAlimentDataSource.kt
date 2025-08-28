@@ -31,7 +31,7 @@ class LocalAlimentDataSource(
 
     override suspend fun insert(food: AlimentEv) {
         val foodEntity = food.toFoodEntity()
-        foodDao.insert(foodEntity)
+        foodDao.insertFood(foodEntity)
         refreshFoodsFlow()
     }
 
@@ -80,26 +80,21 @@ class LocalAlimentDataSource(
         var imported = 0
         var errors = 0
 
-
         foods.forEach { foodJson ->
             try {
                 // Déboguer la valMap avant conversion
-                
+
                 if (foodJson.valMap.isNotEmpty()) {
-                    foodJson.valMap.entries.take(5).forEach { (key, value) ->
-                    }
-                } else {
-                }
+                    foodJson.valMap.entries.take(5).forEach { (key, value) -> }
+                } else {}
 
                 // Utiliser la fonction d'extension toData() définie dans JsonMappers.kt
                 val alimentEv = foodJson.toData()
 
                 // Déboguer la carte des nutriments après conversion
                 if (alimentEv.valMap.isNotEmpty()) {
-                    alimentEv.valMap.entries.take(5).forEach { (nutrient, value) ->
-                    }
-                } else {
-                }
+                    alimentEv.valMap.entries.take(5).forEach { (nutrient, value) -> }
+                } else {}
 
                 // Vérifier si l'aliment existe déjà
                 val existingFood = getFood(alimentEv.uuid)

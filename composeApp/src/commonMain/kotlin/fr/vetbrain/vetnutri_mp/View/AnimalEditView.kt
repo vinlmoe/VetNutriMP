@@ -5,22 +5,22 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import fr.vetbrain.vetnutri_mp.Components.ComboBox
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.Sex
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Animal
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.General
 import fr.vetbrain.vetnutri_mp.Localization.translate
+import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import kotlinx.datetime.LocalDate
@@ -41,11 +41,6 @@ fun AnimalEditView(
         var birthDateText by remember { mutableStateOf(animal.birthdate?.toString() ?: "") }
         var isDateValid by remember { mutableStateOf(true) }
         var isDead by remember { mutableStateOf(animal.dead) }
-
-        // État pour le dropdown du sexe
-        var sexDropdownExpanded by remember { mutableStateOf(false) }
-        // État pour le dropdown de l'espèce
-        var especeDropdownExpanded by remember { mutableStateOf(false) }
 
         val scrollState = rememberScrollState()
 
@@ -147,88 +142,33 @@ fun AnimalEditView(
                                 )
                         }
 
-                        // Sexe avec DropdownMenu
-                        Box(modifier = Modifier.fillMaxWidth()) {
-                                OutlinedTextField(
-                                        value = selectedSex.displayName,
-                                        onValueChange = {},
-                                        label = { Text(Animal.SEX.translate()) },
-                                        modifier =
-                                                Modifier.fillMaxWidth().onFocusChanged {
-                                                        if (it.isFocused) sexDropdownExpanded = true
-                                                },
-                                        readOnly = true,
-                                        trailingIcon = {
-                                                IconButton(
-                                                        onClick = { sexDropdownExpanded = true }
-                                                ) {
-                                                        Icon(
-                                                                imageVector =
-                                                                        Icons.Default.ArrowDropDown,
-                                                                contentDescription =
-                                                                        "Sélectionner le sexe"
-                                                        )
-                                                }
-                                        }
-                                )
+                        // Sexe avec ComboBox
+                        ComboBox(
+                                items = Sex.values().toList(),
+                                init = selectedSex,
+                                label = Animal.SEX.translate(),
+                                onItemSelected = { selectedLabel ->
+                                        val newSelectedSex =
+                                                Sex.values().find { it.label == selectedLabel }
+                                        newSelectedSex?.let { selectedSex = it }
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                itemLabelProvider = { it.translateEnum() }
+                        )
 
-                                DropdownMenu(
-                                        expanded = sexDropdownExpanded,
-                                        onDismissRequest = { sexDropdownExpanded = false },
-                                        modifier = Modifier.fillMaxWidth(0.9f)
-                                ) {
-                                        Sex.entries.forEach { sex ->
-                                                DropdownMenuItem(
-                                                        onClick = {
-                                                                selectedSex = sex
-                                                                sexDropdownExpanded = false
-                                                        }
-                                                ) { Text(text = sex.displayName) }
-                                        }
-                                }
-                        }
-
-                        // Espèce avec DropdownMenu
-                        Box(modifier = Modifier.fillMaxWidth()) {
-                                OutlinedTextField(
-                                        value = selectedEspece.label,
-                                        onValueChange = {},
-                                        label = { Text(Animal.SPECIES.translate()) },
-                                        modifier =
-                                                Modifier.fillMaxWidth().onFocusChanged {
-                                                        if (it.isFocused)
-                                                                especeDropdownExpanded = true
-                                                },
-                                        readOnly = true,
-                                        trailingIcon = {
-                                                IconButton(
-                                                        onClick = { especeDropdownExpanded = true }
-                                                ) {
-                                                        Icon(
-                                                                imageVector =
-                                                                        Icons.Default.ArrowDropDown,
-                                                                contentDescription =
-                                                                        "Sélectionner l'espèce"
-                                                        )
-                                                }
-                                        }
-                                )
-
-                                DropdownMenu(
-                                        expanded = especeDropdownExpanded,
-                                        onDismissRequest = { especeDropdownExpanded = false },
-                                        modifier = Modifier.fillMaxWidth(0.9f)
-                                ) {
-                                        Espece.valuesExcept(Espece.CH).forEach { espece ->
-                                                DropdownMenuItem(
-                                                        onClick = {
-                                                                selectedEspece = espece
-                                                                especeDropdownExpanded = false
-                                                        }
-                                                ) { Text(text = espece.label) }
-                                        }
-                                }
-                        }
+                        // Espèce avec ComboBox
+                        ComboBox(
+                                items = Espece.valuesExcept(Espece.CH).toList(),
+                                init = selectedEspece,
+                                label = Animal.SPECIES.translate(),
+                                onItemSelected = { selectedLabel ->
+                                        val newSelectedEspece =
+                                                Espece.values().find { it.label == selectedLabel }
+                                        newSelectedEspece?.let { selectedEspece = it }
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                itemLabelProvider = { it.translateEnum() }
+                        )
 
                         // Animal décédé
                         Row(

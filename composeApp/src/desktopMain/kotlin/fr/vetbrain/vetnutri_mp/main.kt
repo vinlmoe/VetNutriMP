@@ -160,7 +160,7 @@ fun main(args: Array<String> = emptyArray()) {
             Window(
                     onCloseRequest = ::exitApplication,
                     title = "VetNutri",
-                    state = rememberWindowState(width = 1200.dp, height = 800.dp)
+                    state = rememberWindowState(width = 1200.dp, height = 800.dp),
             ) { App(appDatabase) }
         }
     }

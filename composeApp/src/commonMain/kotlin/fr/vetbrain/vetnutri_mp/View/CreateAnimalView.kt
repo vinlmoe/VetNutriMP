@@ -175,26 +175,22 @@ fun CreateAnimalView(
                                 itemLabelProvider = { it.translateEnum() }
                         )
 
-                        Row(
+                        ComboBox(
+                                items = Sex.values().toList(),
+                                init = animal.getSex(),
+                                label = AnimalKeys.SEX.translate(),
+                                onItemSelected = { selectedLabel ->
+                                        val selectedSex =
+                                                Sex.values().find { it.label == selectedLabel }
+                                        selectedSex?.let {
+                                                val newAnimal = animal.copy()
+                                                newAnimal.sexId = it.id
+                                                viewModel.updateAnimal(newAnimal)
+                                        }
+                                },
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
-                        ) {
-                                Sex.values().forEach { sexe ->
-                                        RadioButton(
-                                                selected = animal.getSex() == sexe,
-                                                onClick = {
-                                                        val newAnimal = animal.copy()
-                                                        newAnimal.sexId = sexe.id
-                                                        viewModel.updateAnimal(newAnimal)
-                                                }
-                                        )
-                                        Text(
-                                                text = sexe.translateEnum(),
-                                                modifier =
-                                                        Modifier.align(Alignment.CenterVertically)
-                                        )
-                                }
-                        }
+                                itemLabelProvider = { it.translateEnum() }
+                        )
 
                         OutlinedTextField(
                                 value = animal.summary,
