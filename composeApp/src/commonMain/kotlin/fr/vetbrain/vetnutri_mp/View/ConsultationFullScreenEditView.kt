@@ -41,8 +41,22 @@ fun ConsultationFullScreenEditView(
         onCancel: () -> Unit,
         onLoadReferences: () -> Unit = {}
 ) {
-        var editedConsultation by
-                remember(consultation) { mutableStateOf(consultation ?: ConsultationEv()) }
+        var editedConsultation by remember(consultation) {
+                val newConsultation = consultation ?: ConsultationEv()
+
+                // Si c'est une nouvelle consultation, créer automatiquement une ration par défaut
+                if (consultation == null && newConsultation.rations.isEmpty()) {
+                        val defaultRation = fr.vetbrain.vetnutri_mp.Data.Ration(
+                                idConsult = newConsultation.uuid,
+                                name = "Ration principale",
+                                actual = true, // Marquer comme ration actuelle par défaut
+                                number = 1
+                        )
+                        newConsultation.rations.add(defaultRation)
+                }
+
+                mutableStateOf(newConsultation)
+        }
         var weightText by
                 remember(consultation) { mutableStateOf(consultation?.weight?.toString() ?: "") }
         var showDateError by remember(consultation) { mutableStateOf(false) }
@@ -114,10 +128,9 @@ fun ConsultationFullScreenEditView(
                         variablesManquantes.isEmpty()) {
                         // S'assurer que l'UUID est généré si c'est une nouvelle consultation
                         if (editedConsultation.uuid.isEmpty()) {
+                                // Générer un UUID unique avec timestamp pour éviter les conflits
                                 editedConsultation =
-                                        editedConsultation.copy(
-                                                uuid = kotlin.uuid.Uuid.random().toString()
-                                        )
+                                        editedConsultation.copy(uuid = fr.vetbrain.vetnutri_mp.Utils.genUniqueUUID())
                         }
                         onBackPressed(editedConsultation)
                 } else {
@@ -137,7 +150,7 @@ fun ConsultationFullScreenEditView(
                 // S'assurer que l'UUID est généré si c'est une nouvelle consultation
                 val consultationToSave =
                         if (editedConsultation.uuid.isEmpty()) {
-                                editedConsultation.copy(uuid = kotlin.uuid.Uuid.random().toString())
+                                editedConsultation.copy(uuid = fr.vetbrain.vetnutri_mp.Utils.genUniqueUUID())
                         } else {
                                 editedConsultation
                         }

@@ -52,7 +52,7 @@ interface AnimalDao {
 
 @Dao
 interface ConsultationDao {
-        @Insert suspend fun insert(consultation: ConsultationEntity)
+        @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun insert(consultation: ConsultationEntity)
 
         @Update suspend fun update(consultation: ConsultationEntity)
 
@@ -75,12 +75,12 @@ interface ConsultationDao {
         @Query("SELECT * FROM ALIMENTS WHERE refRation = :rationId")
         suspend fun getAlimentsForRation(rationId: String): List<AlimentRationEntity>
 
-        @Insert
+        @Insert(onConflict = OnConflictStrategy.REPLACE)
         suspend fun insertSupplementalVariable(supplementalVariable: SupplementalVariableEntity)
 
-        @Insert suspend fun insertRation(ration: RationEntity)
+        @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun insertRation(ration: RationEntity)
 
-        @Insert suspend fun insertAlimentRation(aliment: AlimentRationEntity)
+        @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun insertAlimentRation(aliment: AlimentRationEntity)
 
         @Query("DELETE FROM RATIONS WHERE idConsult = :consultationId")
         suspend fun deleteRationsForConsultation(consultationId: String)

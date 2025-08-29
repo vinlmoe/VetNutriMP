@@ -63,6 +63,15 @@ actual class PreferencesStorage {
 
 /** Fonction helper pour créer une instance de PreferencesStorage sur Desktop */
 actual fun createPreferencesStorage(): PreferencesStorage {
-    return PreferencesStorage()
+    println("🔄 [Desktop] Création de PreferencesStorage")
+    try {
+        val storage = PreferencesStorage()
+        println("✅ [Desktop] PreferencesStorage créé avec succès")
+        return storage
+    } catch (e: Exception) {
+        println("💥 [Desktop] Exception lors de la création de PreferencesStorage: ${e.message}")
+        e.printStackTrace()
+        throw e
+    }
 }
  

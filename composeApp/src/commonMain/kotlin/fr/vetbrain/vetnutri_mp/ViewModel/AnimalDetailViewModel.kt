@@ -1269,19 +1269,32 @@ class AnimalDetailViewModel(
     fun saveFromFullScreen(consultation: ConsultationEv) {
         viewModelScope.launch {
             try {
-                if (_selectedConsultation.value?.uuid?.isEmpty() == true) {
-                    // Nouvelle consultation
-                    addConsultation(consultation)
+                // S'assurer que l'UUID est valide et unique
+                var consultationToSave = consultation
+                if (consultation.uuid.isEmpty()) {
+                    // Générer un nouvel UUID unique avec timestamp pour éviter les conflits
+                    consultationToSave = consultation.copy(uuid = fr.vetbrain.vetnutri_mp.Utils.genUniqueUUID())
+                }
+                
+                // Vérifier si la consultation existe déjà dans la base de données
+                val existingConsultation = consultationRepository.getConsultationById(consultationToSave.uuid)
+
+                if (existingConsultation == null) {
+                    // Nouvelle consultation (n'existe pas encore en base)
+                    addConsultation(consultationToSave)
                 } else {
                     // Mise à jour d'une consultation existante
-                    updateConsultation(consultation)
+                    updateConsultation(consultationToSave)
                 }
                 stopEditingConsultation()
                 closeFullScreenEdit()
 
                 // Recalculer les valeurs métaboliques après la sauvegarde
-                calculerValeursMetaboliques(consultation)
-            } catch (e: Exception) {}
+                calculerValeursMetaboliques(consultationToSave)
+            } catch (e: Exception) {
+                println("Erreur lors de la sauvegarde depuis la vue plein écran: ${e.message}")
+                e.printStackTrace()
+            }
         }
     }
 

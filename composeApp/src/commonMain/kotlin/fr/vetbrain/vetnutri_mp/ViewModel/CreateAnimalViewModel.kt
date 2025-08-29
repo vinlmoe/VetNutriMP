@@ -9,11 +9,18 @@ import kotlin.uuid.ExperimentalUuidApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 
 @OptIn(ExperimentalUuidApi::class)
 class CreateAnimalViewModel(private val animalRepository: AnimalRepository) : ViewModel() {
     private val _animal = MutableStateFlow(AnimalEv(specieId = Espece.CHIEN.label))
     val animal: StateFlow<AnimalEv> = _animal
+
+    init {
+        definirDateAujourdhui()
+    }
 
     private val _isSaving = MutableStateFlow(false)
     val isSaving: StateFlow<Boolean> = _isSaving
@@ -45,5 +52,15 @@ class CreateAnimalViewModel(private val animalRepository: AnimalRepository) : Vi
 
     fun resetAnimal() {
         _animal.value = AnimalEv(specieId = Espece.CHIEN.label)
+        definirDateAujourdhui()
+    }
+
+    fun definirDateAujourdhui() {
+        val today = Clock.System.now()
+            .toLocalDateTime(TimeZone.currentSystemDefault())
+            .date
+        
+        val animalActuel = _animal.value
+        _animal.value = animalActuel.copy(birthdate = today)
     }
 }
