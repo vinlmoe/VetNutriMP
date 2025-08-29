@@ -569,25 +569,35 @@ fun StartupScreen(
         if (showUpdateDialog) {
             UpdateConfirmationDialog(
                     onConfirm = {
+                        println("🔄 [STARTUP] Début de la mise à jour de la base de données")
                         showUpdateDialog = false
                         isUpdatingDatabase = true
 
                         coroutineScope.launch {
                             try {
+                                println("🔄 [STARTUP] Lancement de l'import automatique...")
                                 // Lancer la mise à jour de la base de données
                                 val result = settingsViewModel.relaunchAutomaticImport()
+                                println("🔄 [STARTUP] Import terminé, résultat: $result")
 
                                 // Mettre à jour le statut
                                 when (result) {
-                                    is ImportResult.Success -> {
+                                    is SettingsViewModel.ImportResult.Success -> {
+                                        println("✅ [STARTUP] Import réussi: ${result.count} éléments")
                                         databaseStatus =
                                                 databaseStatus?.copy(
                                                         foodCount = result.count,
                                                         referenceCount = result.count,
                                                         needsUpdate = false
                                                 )
+                                        isUpdatingDatabase = false
+                                        
+                                        // Passer à l'application après la mise à jour
+                                        showStartupScreen = false
+                                        onDatabaseReady()
                                     }
-                                    is ImportResult.Error -> {
+                                    is SettingsViewModel.ImportResult.Error -> {
+                                        println("❌ [STARTUP] Erreur lors de l'import: ${result.message}")
                                         databaseStatus =
                                                 databaseStatus?.copy(
                                                         error =
@@ -597,11 +607,9 @@ fun StartupScreen(
                                         return@launch
                                     }
                                 }
-
-                                // Passer à l'application
-                                showStartupScreen = false
-                                onDatabaseReady()
                             } catch (e: Exception) {
+                                println("💥 [STARTUP] Exception lors de l'import: ${e.message}")
+                                println("💥 [STARTUP] Stack trace: ${e.stackTraceToString()}")
                                 // En cas d'erreur, afficher le message et permettre de continuer
                                 databaseStatus =
                                         databaseStatus?.copy(

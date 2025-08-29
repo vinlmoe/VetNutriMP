@@ -56,14 +56,9 @@ fun AppConsultationDetailView(
                                                                 editedConsultation.date != null
                                                 ) {
                                                         if (editedConsultation.uuid.isEmpty()) {
+                                                                // Générer un UUID unique avec timestamp pour éviter les conflits
                                                                 editedConsultation =
-                                                                        editedConsultation.copy(
-                                                                                uuid =
-                                                                                        kotlin.uuid
-                                                                                                .Uuid
-                                                                                                .random()
-                                                                                                .toString()
-                                                                        )
+                                                                        editedConsultation.copy(uuid = fr.vetbrain.vetnutri_mp.Utils.genUniqueUUID())
                                                         }
                                                         onSave(editedConsultation)
                                                 } else if (editedConsultation.date == null) {
