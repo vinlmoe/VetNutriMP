@@ -89,8 +89,15 @@ class DatabaseReferenceEvRepository(
     }
 
     suspend fun updateReferenceEv(referenceEv: ReferenceEv) {
+        println("🔄 [UPDATE_REPO] Début de la mise à jour pour référence: ${referenceEv.nom} (UUID: ${referenceEv.uuid})")
+        println("🔄 [UPDATE_REPO] Vérification des données présentes:")
+        println("🔄 [UPDATE_REPO] - Équations: BW=${referenceEv.equationBW != null}, BEE=${referenceEv.equationBEE != null}, DEcom=${referenceEv.equationDEcom != null}")
+        println("🔄 [UPDATE_REPO] - Coefficients: K1=${referenceEv.getModk1().size}, K2=${referenceEv.getModk2().size}")
+        println("🔄 [UPDATE_REPO] - Nutriments: MIN=${referenceEv.getRefMapMin().size}, MAX=${referenceEv.getRefMapMax().size}")
+
         try {
             // 1. Mettre à jour l'entité principale
+            println("🔄 [UPDATE_REPO] Étape 1: Mise à jour de l'entité principale")
             val entity = convertReferenceEvToEntity(referenceEv)
             referenceEvDao.updateReferenceEv(entity)
 
@@ -99,15 +106,20 @@ class DatabaseReferenceEvRepository(
             // 3. Les équations existent déjà, pas besoin de les sauvegarder à nouveau
 
             // 4. Supprimer les anciennes relations
+            println("🔄 [UPDATE_REPO] Étape 4: Suppression des anciennes relations")
             referenceEvDao.deleteEquationsForReference(referenceEv.uuid)
             referenceEvDao.deleteCoefficientsForReference(referenceEv.uuid)
             referenceEvDao.deleteNutrientsForReference(referenceEv.uuid)
 
             // 5. Sauvegarder les nouvelles relations
+            println("🔄 [UPDATE_REPO] Étape 5: Recréation des relations")
             saveEquationRelations(referenceEv)
             saveCoefficients(referenceEv)
             saveNutrients(referenceEv)
+
+            println("✅ [UPDATE_REPO] Mise à jour terminée avec succès")
         } catch (e: Exception) {
+            println("❌ [UPDATE_REPO] Erreur lors de la mise à jour: ${e.message}")
             throw e
         }
     }

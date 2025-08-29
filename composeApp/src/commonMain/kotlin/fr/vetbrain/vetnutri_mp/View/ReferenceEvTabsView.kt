@@ -62,6 +62,7 @@ fun ReferenceEvTabsView(
     LaunchedEffect(selectedTabIndex, referenceEvId) {
 
         // Toujours charger la référence
+        println("🔄 [TABS_VIEW] Chargement référence: $referenceEvId")
         referenceEvViewModel.loadReferenceEvById(referenceEvId)
 
         // Définir l'ID de référence courante dans le EquationViewModel
@@ -99,6 +100,7 @@ fun ReferenceEvTabsView(
             when (selectedTabIndex) {
                 0 -> {
                     // Onglet Informations
+                    println("🔄 [TABS_VIEW] Affichage onglet Informations pour référence: $referenceEvId")
                     NewReferenceEvEditView(
                             viewModel = newReferenceEvViewModel,
                             referenceId = referenceEvId,

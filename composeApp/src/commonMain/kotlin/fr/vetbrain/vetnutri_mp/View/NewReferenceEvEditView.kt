@@ -82,6 +82,8 @@ fun NewReferenceEvEditView(
         onNavigateBack: () -> Unit,
         modifier: Modifier = Modifier
 ) {
+        println("🔄 [EDIT_VIEW] NewReferenceEvEditView créée - referenceId: $referenceId")
+
         // État local pour suivre l'onglet sélectionné
         var selectedTabIndex by remember { mutableStateOf(0) }
 
@@ -90,6 +92,16 @@ fun NewReferenceEvEditView(
         val isEditMode by viewModel.isEditMode.collectAsState()
         val errorMessage by viewModel.errorMessage.collectAsState()
         val operationSuccess by viewModel.operationSuccess.collectAsState()
+
+        // Log quand la référence change
+        LaunchedEffect(currentReference) {
+            println("🔄 [EDIT_VIEW] RECOMPOSITION - currentReference changé:")
+            println("🔄 [EDIT_VIEW] RECOMPOSITION - UUID: ${currentReference.uuid}")
+            println("🔄 [EDIT_VIEW] RECOMPOSITION - Nom: ${currentReference.nom}")
+            println("🔄 [EDIT_VIEW] RECOMPOSITION - Équations: BW=${currentReference.equationBW != null}, BEE=${currentReference.equationBEE != null}")
+            println("🔄 [EDIT_VIEW] RECOMPOSITION - Coefficients: K1=${currentReference.getModk1().size}, K2=${currentReference.getModk2().size}")
+            println("🔄 [EDIT_VIEW] RECOMPOSITION - Nutriments: MIN=${currentReference.getRefMapMin().size}, MAX=${currentReference.getRefMapMax().size}")
+        }
 
         // Scope pour les coroutines
         val coroutineScope = rememberCoroutineScope()
@@ -197,7 +209,14 @@ fun ReferenceEvInfoTab(viewModel: NewReferenceEvViewModel, currentReference: Ref
                 // Champ pour le nom
                 OutlinedTextField(
                         value = currentReference.nom,
-                        onValueChange = { viewModel.updateReferenceProperty("nom", it) },
+                        onValueChange = {
+                            println("🔄 [EDIT_VIEW] Changement du nom: '$it'")
+                            println("🔄 [EDIT_VIEW] Données actuelles avant changement:")
+                            println("🔄 [EDIT_VIEW] - Équations: BW=${currentReference.equationBW != null}, BEE=${currentReference.equationBEE != null}")
+                            println("🔄 [EDIT_VIEW] - Coefficients: K1=${currentReference.getModk1().size}, K2=${currentReference.getModk2().size}")
+                            println("🔄 [EDIT_VIEW] - Nutriments: MIN=${currentReference.getRefMapMin().size}, MAX=${currentReference.getRefMapMax().size}")
+                            viewModel.updateReferenceProperty("nom", it)
+                        },
                         label = { Text("Nom de la référence") },
                         modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
                 )
@@ -337,7 +356,10 @@ fun ReferenceEvInfoTab(viewModel: NewReferenceEvViewModel, currentReference: Ref
 
                 // Bouton de sauvegarde
                 Button(
-                        onClick = { viewModel.saveReference() },
+                        onClick = {
+                            println("🔄 [EDIT_VIEW] Clic sur Enregistrer - Appel saveReference()")
+                            viewModel.saveReference()
+                        },
                         modifier = Modifier.fillMaxWidth().padding(top = 16.dp)
                 ) { Text("Enregistrer") }
         }
