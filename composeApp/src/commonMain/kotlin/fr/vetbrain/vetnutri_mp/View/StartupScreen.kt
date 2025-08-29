@@ -5,6 +5,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Storage
@@ -57,10 +58,17 @@ fun StartupScreen(
     var showVersionUpdateDialog by remember { mutableStateOf(false) }
     var newVersionAvailable by remember { mutableStateOf<String?>(null) }
 
+    // Informations sur les versions JSON
+    var currentJsonVersion by remember { mutableStateOf<String?>(null) }
+    var embeddedJsonVersion by remember { mutableStateOf<String?>(null) }
+    var jsonUpdateAvailable by remember { mutableStateOf(false) }
+    var showJsonUpdateDialog by remember { mutableStateOf(false) }
+
     val coroutineScope = rememberCoroutineScope()
 
                     // Vérifier l'état de la base de données, des CGU et des versions au démarrage
                 LaunchedEffect(Unit) {
+                    println("🚀 [STARTUP] LaunchedEffect démarré - vérification des versions")
                     try {
                         val foodCount = foodRepository.getAllFoods().size
                         val referenceCount = referenceRepository?.getAllReferenceEv()?.size ?: 0
@@ -78,6 +86,37 @@ fun StartupScreen(
                         // Charger les informations de version de la base de données
                         currentDatabaseVersion = databaseVersionManager.getCurrentDatabaseVersion()
                         lastUpdateDate = databaseVersionManager.getLastUpdateDate()
+
+                        // Charger les informations de version JSON
+                        currentJsonVersion = databaseVersionManager.getStoredJsonVersion()
+
+                        // Lire et vérifier la version du JSON intégré
+                        try {
+                            val embeddedJson = try {
+                                fr.vetbrain.vetnutri_mp.Localization.ResourceReader()
+                                        .readResource("vetnutri_export_init.json")
+                            } catch (e: Exception) {
+                                fr.vetbrain.vetnutri_mp.Localization.ResourceReader()
+                                        .readResource("data/vetnutri_export_init.json")
+                            }
+
+                            if (embeddedJson.isNotEmpty()) {
+                                databaseVersionManager.readEmbeddedJsonVersion(embeddedJson)
+                                embeddedJsonVersion = databaseVersionManager.jsonVersion.value
+
+                                // Vérifier si une mise à jour JSON est nécessaire
+                                jsonUpdateAvailable = databaseVersionManager.isJsonUpdateNeeded(embeddedJson)
+
+                                // Afficher automatiquement le dialogue de mise à jour si nécessaire
+                                // (seulement si aucune autre mise à jour n'est en cours)
+                                if (jsonUpdateAvailable && !isUpdatingDatabase) {
+                                    showJsonUpdateDialog = true
+                                }
+                            }
+                        } catch (e: Exception) {
+                            // En cas d'erreur, on considère qu'aucune mise à jour n'est nécessaire
+                            jsonUpdateAvailable = false
+                        }
 
                         // Attendre un peu pour montrer l'écran de démarrage
                         kotlinx.coroutines.delay(2000)
@@ -240,10 +279,76 @@ fun StartupScreen(
                     databaseStatus?.let { status ->
                         DatabaseStatusCard(status = status)
 
+                        // Informations sur les versions JSON
+                        if (currentJsonVersion != null || embeddedJsonVersion != null) {
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            Card(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    elevation = 2.dp
+                            ) {
+                                Column(modifier = Modifier.padding(16.dp)) {
+                                    Text(
+                                            text = "Versions des données",
+                                            style = MaterialTheme.typography.subtitle1,
+                                            fontWeight = FontWeight.Bold,
+                                            color = VetNutriColors.Primary
+                                    )
+
+                                    Spacer(modifier = Modifier.height(8.dp))
+
+                                    // Version actuelle importée
+                                    if (currentJsonVersion != null) {
+                                        Text(
+                                                text = "Version actuelle : ${databaseVersionManager.formatVersion(currentJsonVersion!!)}",
+                                                style = MaterialTheme.typography.body2
+                                        )
+                                    } else {
+                                        Text(
+                                                text = "Aucune version importée",
+                                                style = MaterialTheme.typography.body2,
+                                                color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                                        )
+                                    }
+
+                                    // Version intégrée
+                                    if (embeddedJsonVersion != null) {
+                                        Text(
+                                                text = "Version intégrée : ${databaseVersionManager.formatVersion(embeddedJsonVersion!!)}",
+                                                style = MaterialTheme.typography.body2
+                                        )
+                                    }
+
+                                    // Indicateur de mise à jour disponible
+                                    if (jsonUpdateAvailable) {
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Icon(
+                                                    imageVector = Icons.Default.Info,
+                                                    contentDescription = null,
+                                                    tint = MaterialTheme.colors.secondary,
+                                                    modifier = Modifier.size(16.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text(
+                                                    text = "Nouvelle version disponible",
+                                                    style = MaterialTheme.typography.body2,
+                                                    color = MaterialTheme.colors.secondary,
+                                                    fontWeight = FontWeight.Medium
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
                         Spacer(modifier = Modifier.height(32.dp))
 
                         // Boutons d'action
-                        if (status.needsUpdate) {
+                        if (status.needsUpdate || jsonUpdateAvailable) {
                             Button(
                                     onClick = { showUpdateDialog = true },
                                     modifier = Modifier.fillMaxWidth().height(56.dp),
@@ -258,7 +363,10 @@ fun StartupScreen(
                                         modifier = Modifier.size(20.dp)
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text(text = "Mettre à jour la base de données", fontSize = 16.sp)
+                                Text(
+                                    text = if (jsonUpdateAvailable) "Mettre à jour les données" else "Mettre à jour la base de données",
+                                    fontSize = 16.sp
+                                )
                             }
 
                             Spacer(modifier = Modifier.height(16.dp))
@@ -394,6 +502,67 @@ fun StartupScreen(
                     )
                 }
             }
+        }
+
+        // Dialogue automatique de mise à jour JSON (priorité haute)
+        if (showJsonUpdateDialog && !isUpdatingDatabase && !showUpdateDialog) {
+            JsonUpdateDialog(
+                    currentJsonVersion = currentJsonVersion,
+                    newJsonVersion = embeddedJsonVersion,
+                    onConfirm = {
+                        showJsonUpdateDialog = false
+                        isUpdatingDatabase = true
+
+                        coroutineScope.launch {
+                            try {
+                                // Lancer la mise à jour automatique des données JSON
+                                val result = settingsViewModel.relaunchAutomaticImport()
+
+                                // Mettre à jour le statut
+                                when (result) {
+                                    is ImportResult.Success -> {
+                                        databaseStatus =
+                                                databaseStatus?.copy(
+                                                        foodCount = result.count,
+                                                        referenceCount = result.count,
+                                                        needsUpdate = false
+                                                )
+                                        isUpdatingDatabase = false
+
+                                        // Recharger les informations de version après la mise à jour
+                                        currentJsonVersion = databaseVersionManager.getStoredJsonVersion()
+                                        jsonUpdateAvailable = false
+                                    }
+                                    is ImportResult.Error -> {
+                                        databaseStatus =
+                                                databaseStatus?.copy(
+                                                        error =
+                                                                "Erreur lors de la mise à jour JSON : ${result.message}"
+                                                )
+                                        isUpdatingDatabase = false
+                                        return@launch
+                                    }
+                                }
+
+                                // Passer à l'application après la mise à jour
+                                showStartupScreen = false
+                                onDatabaseReady()
+                            } catch (e: Exception) {
+                                // En cas d'erreur, afficher le message et permettre de continuer
+                                databaseStatus =
+                                        databaseStatus?.copy(
+                                                error =
+                                                        "Erreur lors de la mise à jour JSON : ${e.message}"
+                                        )
+                                isUpdatingDatabase = false
+                            }
+                        }
+                    },
+                    onDismiss = {
+                        showJsonUpdateDialog = false
+                        // L'utilisateur peut continuer sans mettre à jour
+                    }
+            )
         }
 
         // Dialogue de confirmation de mise à jour
@@ -617,23 +786,160 @@ private fun StatisticItem(
     }
 }
 
+/** Dialogue automatique de mise à jour des données JSON */
+@Composable
+private fun JsonUpdateDialog(
+    currentJsonVersion: String?,
+    newJsonVersion: String?,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+            onDismissRequest = onDismiss,
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                            imageVector = Icons.Default.Info,
+                            contentDescription = null,
+                            tint = MaterialTheme.colors.primary,
+                            modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                            text = "Nouvelle version des données disponible",
+                            style = MaterialTheme.typography.h6
+                    )
+                }
+            },
+            text = {
+                Column {
+                    Text(
+                            text = "Une nouvelle version du fichier de données a été détectée dans l'application :",
+                            style = MaterialTheme.typography.body1,
+                            modifier = Modifier.padding(bottom = 12.dp)
+                    )
+
+                    // Informations sur les versions
+                    Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            backgroundColor = MaterialTheme.colors.surface,
+                            elevation = 2.dp
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text(
+                                    text = "Versions :",
+                                    style = MaterialTheme.typography.subtitle2,
+                                    fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+
+                            Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                        text = "Actuelle :",
+                                        style = MaterialTheme.typography.body2
+                                )
+                                Text(
+                                        text = currentJsonVersion ?: "Aucune",
+                                        style = MaterialTheme.typography.body2,
+                                        fontWeight = FontWeight.Medium
+                                )
+                            }
+
+                            Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                        text = "Nouvelle :",
+                                        style = MaterialTheme.typography.body2,
+                                        color = MaterialTheme.colors.primary
+                                )
+                                Text(
+                                        text = newJsonVersion ?: "Inconnue",
+                                        style = MaterialTheme.typography.body2,
+                                        fontWeight = FontWeight.Medium,
+                                        color = MaterialTheme.colors.primary
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                            text = "Cette mise à jour inclut les dernières données (aliments, références nutritionnelles, etc.) et améliore les fonctionnalités de l'application.",
+                            style = MaterialTheme.typography.body2
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                            text = "Voulez-vous installer cette mise à jour maintenant ?",
+                            style = MaterialTheme.typography.body2,
+                            fontWeight = FontWeight.Medium
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                        onClick = onConfirm,
+                        colors = ButtonDefaults.buttonColors(
+                                backgroundColor = VetNutriColors.Primary
+                        )
+                ) {
+                    Icon(
+                            imageVector = Icons.Default.Download,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Installer la mise à jour")
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = onDismiss) {
+                    Text("Plus tard")
+                }
+            }
+    )
+}
+
 /** Dialogue de confirmation de mise à jour */
 @Composable
-private fun UpdateConfirmationDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
+private fun UpdateConfirmationDialog(
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+    isJsonUpdate: Boolean = false,
+    currentJsonVersion: String? = null,
+    newJsonVersion: String? = null
+) {
+    val title = if (isJsonUpdate) "Mise à jour des données" else "Mise à jour de la base de données"
+    val message = if (isJsonUpdate) {
+        "Une nouvelle version des données est disponible :\n" +
+                "• Version actuelle : ${currentJsonVersion ?: "Aucune"}\n" +
+                "• Nouvelle version : ${newJsonVersion ?: "Inconnue"}\n\n" +
+                "Cette action va importer la nouvelle version des données. Cela peut prendre quelques instants.\n\n" +
+                "Voulez-vous continuer ?"
+    } else {
+        "Cette action va importer les données de base (aliments et références nutritionnelles) " +
+                "depuis le fichier de ressources. Cela peut prendre quelques instants.\n\n" +
+                "Voulez-vous continuer ?"
+    }
+
     AlertDialog(
             onDismissRequest = onDismiss,
             title = {
                 Text(
-                        text = "Mise à jour de la base de données",
+                        text = title,
                         style = MaterialTheme.typography.h6
                 )
             },
             text = {
                 Text(
-                        text =
-                                "Cette action va importer les données de base (aliments et références nutritionnelles) " +
-                                        "depuis le fichier de ressources. Cela peut prendre quelques instants.\n\n" +
-                                        "Voulez-vous continuer ?",
+                        text = message,
                         style = MaterialTheme.typography.body1
                 )
             },

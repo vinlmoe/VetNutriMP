@@ -400,6 +400,19 @@ class SettingsViewModel(
                 throw IllegalStateException("Le fichier JSON d'import automatique est vide")
             }
 
+            // Vérifier si une mise à jour est nécessaire
+            val databaseVersionManager = fr.vetbrain.vetnutri_mp.Utils.DatabaseVersionManager()
+            val updateNeeded = databaseVersionManager.isJsonUpdateNeeded(json)
+
+            if (!updateNeeded) {
+                // Aucune mise à jour nécessaire
+                val currentJsonVersion = databaseVersionManager.getStoredJsonVersion()
+                return ImportResult.Success(
+                        count = 0,
+                        importedCount = 0
+                )
+            }
+
             // Lancer l'import avec un listener de progression
             val importCounts =
                     exportImportRepo.importAll(
@@ -416,18 +429,14 @@ class SettingsViewModel(
                                             )
                     )
 
+            // Mettre à jour la version JSON après import réussi
+            databaseVersionManager.updateJsonVersionAfterImport(json)
+
             // Retourner le résultat de l'importation
+            val totalCount = importCounts.animals + importCounts.foods + importCounts.equations + importCounts.references
             ImportResult.Success(
-                    count =
-                            importCounts.animals +
-                                    importCounts.foods +
-                                    importCounts.equations +
-                                    importCounts.references,
-                    importedCount =
-                            importCounts.animals +
-                                    importCounts.foods +
-                                    importCounts.equations +
-                                    importCounts.references
+                    count = totalCount,
+                    importedCount = totalCount
             )
         } catch (e: Exception) {
             ImportResult.Error("Erreur lors de l'import automatique: ${e.message}")

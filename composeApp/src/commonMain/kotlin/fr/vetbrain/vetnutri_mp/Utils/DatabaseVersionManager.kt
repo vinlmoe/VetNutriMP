@@ -3,6 +3,7 @@ package fr.vetbrain.vetnutri_mp.Utils
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.serialization.json.Json
 
 /**
  * Gestionnaire des versions de la base de données
@@ -14,7 +15,9 @@ class DatabaseVersionManager {
         private const val KEY_DB_VERSION = "database_version"
         private const val KEY_DB_LAST_UPDATE = "database_last_update"
         private const val KEY_DB_IMPORT_SOURCE = "database_import_source"
-        
+        private const val KEY_JSON_VERSION = "json_version"
+        private const val KEY_JSON_TIMESTAMP = "json_timestamp"
+
         // Version par défaut si aucune n'est définie
         const val DEFAULT_VERSION = "1.0.0"
     }
@@ -27,6 +30,12 @@ class DatabaseVersionManager {
     
     private val _importSource = MutableStateFlow<String?>(null)
     val importSource: StateFlow<String?> = _importSource.asStateFlow()
+
+    private val _jsonVersion = MutableStateFlow<String?>(null)
+    val jsonVersion: StateFlow<String?> = _jsonVersion.asStateFlow()
+
+    private val _jsonTimestamp = MutableStateFlow<Long?>(null)
+    val jsonTimestamp: StateFlow<Long?> = _jsonTimestamp.asStateFlow()
     
     /**
      * Vérifie si une mise à jour est disponible
@@ -103,7 +112,7 @@ class DatabaseVersionManager {
      * @param version2 Deuxième version
      * @return -1 si version1 < version2, 0 si égales, 1 si version1 > version2
      */
-    private fun compareVersions(version1: String, version2: String): Int {
+    fun compareVersions(version1: String, version2: String): Int {
         val parts1 = version1.split(".").map { it.toIntOrNull() ?: 0 }
         val parts2 = version2.split(".").map { it.toIntOrNull() ?: 0 }
         
@@ -131,6 +140,153 @@ class DatabaseVersionManager {
         return "v$version"
     }
     
+    /**
+     * Lit et stocke la version du fichier JSON intégré
+     * @param jsonContent Le contenu du fichier JSON
+     */
+    suspend fun readEmbeddedJsonVersion(jsonContent: String) {
+        try {
+            val jsonElement = kotlinx.serialization.json.Json.parseToJsonElement(jsonContent)
+            if (jsonElement is kotlinx.serialization.json.JsonObject) {
+                val version = jsonElement["version"]?.toString()?.removeSurrounding("\"")
+                val timestamp = jsonElement["generatedAtEpochMs"]?.toString()?.toLongOrNull()
+
+                if (version != null) {
+                    _jsonVersion.value = version
+                    // Sauvegarder la version JSON lue
+                    val storage = createPreferencesStorage()
+                    storage.saveString(KEY_JSON_VERSION, version)
+
+                    if (timestamp != null) {
+                        _jsonTimestamp.value = timestamp
+                        storage.saveString(KEY_JSON_TIMESTAMP, timestamp.toString())
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    /**
+     * Récupère la version du JSON stockée localement
+     * @return La version du JSON ou null
+     */
+    suspend fun getStoredJsonVersion(): String? {
+        val storage = createPreferencesStorage()
+        val version = storage.getString(KEY_JSON_VERSION, "")
+        return if (version.isNotBlank()) version else null
+    }
+
+    /**
+     * Récupère le timestamp du JSON stockée localement
+     * @return Le timestamp du JSON ou null
+     */
+    suspend fun getStoredJsonTimestamp(): Long? {
+        val storage = createPreferencesStorage()
+        val timestamp = storage.getString(KEY_JSON_TIMESTAMP, "")
+        return if (timestamp.isNotBlank()) timestamp.toLongOrNull() else null
+    }
+
+    /**
+     * Vérifie si le JSON intégré est plus récent que celui déjà importé
+     * @param jsonContent Le contenu du fichier JSON intégré
+     * @return true si une mise à jour est nécessaire
+     */
+    suspend fun isJsonUpdateNeeded(jsonContent: String): Boolean {
+        try {
+            // Lire la version du JSON intégré
+            val jsonElement = kotlinx.serialization.json.Json.parseToJsonElement(jsonContent)
+            if (jsonElement is kotlinx.serialization.json.JsonObject) {
+                val embeddedVersion = jsonElement["version"]?.toString()?.removeSurrounding("\"")
+                val embeddedTimestamp = jsonElement["generatedAtEpochMs"]?.toString()?.toLongOrNull()
+
+                if (embeddedVersion != null) {
+                    // Récupérer la version déjà importée
+                    val storedVersion = getStoredJsonVersion()
+                    val storedTimestamp = getStoredJsonTimestamp()
+
+                    // Si aucune version n'a été importée, une mise à jour est nécessaire
+                    if (storedVersion == null) {
+                        return true
+                    }
+
+                    // Comparer les versions
+                    val versionComparison = compareVersions(embeddedVersion, storedVersion)
+
+                    // Si les versions sont différentes
+                    if (versionComparison > 0) {
+                        return true
+                    }
+
+                    // Si les versions sont identiques, comparer les timestamps
+                    if (versionComparison == 0 && embeddedTimestamp != null && storedTimestamp != null) {
+                        return embeddedTimestamp > storedTimestamp
+                    }
+                }
+            }
+
+            return false
+        } catch (e: Exception) {
+            e.printStackTrace()
+            // En cas d'erreur, considérer qu'une mise à jour est nécessaire
+            return true
+        }
+    }
+
+    /**
+     * Met à jour la version du JSON après un import réussi
+     * @param jsonContent Le contenu du fichier JSON importé
+     */
+    suspend fun updateJsonVersionAfterImport(jsonContent: String) {
+        try {
+            val jsonElement = kotlinx.serialization.json.Json.parseToJsonElement(jsonContent)
+            if (jsonElement is kotlinx.serialization.json.JsonObject) {
+                val version = jsonElement["version"]?.toString()?.removeSurrounding("\"")
+                val timestamp = jsonElement["generatedAtEpochMs"]?.toString()?.toLongOrNull()
+
+                if (version != null) {
+                    val storage = createPreferencesStorage()
+                    storage.saveString(KEY_JSON_VERSION, version)
+                    _jsonVersion.value = version
+
+                    if (timestamp != null) {
+                        storage.saveString(KEY_JSON_TIMESTAMP, timestamp.toString())
+                        _jsonTimestamp.value = timestamp
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    /**
+     * Réinitialise les versions JSON stockées (pour les tests)
+     */
+    suspend fun resetJsonVersions() {
+        val storage = createPreferencesStorage()
+        storage.saveString(KEY_JSON_VERSION, "")
+        storage.saveString(KEY_JSON_TIMESTAMP, "")
+        _jsonVersion.value = null
+        _jsonTimestamp.value = null
+    }
+
+
+
+    /**
+     * Génère un message de mise à jour pour le JSON
+     * @param currentJsonVersion Version actuelle du JSON importé
+     * @param newJsonVersion Nouvelle version du JSON intégré
+     * @return Message formaté
+     */
+    fun generateJsonUpdateMessage(currentJsonVersion: String?, newJsonVersion: String?): String {
+        return "Une nouvelle version du fichier de données est disponible :\n" +
+                "• Version actuelle : ${currentJsonVersion ?: "Aucune"} → ${formatVersion(newJsonVersion ?: "Inconnue")}\n" +
+                "• Nouvelle version : ${formatVersion(newJsonVersion ?: "Inconnue")}\n" +
+                "• Source : Fichier intégré à l'application"
+    }
+
     /**
      * Génère un message de mise à jour
      * @param currentVersion Version actuelle

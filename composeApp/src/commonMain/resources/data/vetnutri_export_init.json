@@ -1,11 +1,11 @@
 {
-    "version": "1.0.1",
-    "generatedAtEpochMs": 1756470582314,
+    "version": "1.1.9",
+    "generatedAtEpochMs": 1756470582348,
     "animals": [],
     "foods": [
         {
             "uuid": "C49",
-            "name": "Megaderm < 10kg",
+            "name": "Megadermo < 10kg",
             "group": "ALL",
             "kind": "COMPLEMENTAIRE",
             "brand": "Virbac",
