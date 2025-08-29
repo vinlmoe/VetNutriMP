@@ -125,16 +125,13 @@ class ReferenceEvViewModel(
 
     /** Charge toutes les références depuis le repository */
     fun loadAllReferences() {
-        println("🔄 [LOAD] Chargement de toutes les références...")
         scope.launch {
             try {
                 _loading.value = true
                 _error.value = ""
 
                 val references = repository.getAll()
-                println("🔄 [LOAD] ${references.size} références chargées")
                 references.forEach { ref ->
-                    println("🔄 [LOAD] Référence trouvée: ${ref.nom} (UUID: ${ref.uuid})")
                 }
                 _allReferences.value = references
                 println("✅ [LOAD] Chargement terminé avec succès")
@@ -198,10 +195,6 @@ class ReferenceEvViewModel(
         _loading.value = true
 
         try {
-            println("🔄 [UPDATE_REF] Début de la mise à jour de la référence: ${reference.nom} (UUID: ${reference.uuid})")
-            println("🔄 [UPDATE_REF] Données reçues - Équations: BW=${reference.equationBW != null}, BEE=${reference.equationBEE != null}")
-            println("🔄 [UPDATE_REF] Données reçues - Coefficients: K1=${reference.getModk1().size}, K2=${reference.getModk2().size}")
-            println("🔄 [UPDATE_REF] Données reçues - Nutriments: MIN=${reference.getRefMapMin().size}, MAX=${reference.getRefMapMax().size}")
 
             repository.update(reference)
             println("✅ [UPDATE_REF] Mise à jour réussie, rechargement de la liste...")
@@ -235,12 +228,10 @@ class ReferenceEvViewModel(
 
     /** Duplique une référence en base (copie intégrale sans conserver l'UUID) */
     suspend fun duplicateReference(source: ReferenceEv) {
-        println("🔄 [DUPLICATION] Début de la duplication pour référence: ${source.nom} (UUID: ${source.uuid})")
         _loading.value = true
         try {
             // Créer une nouvelle référence avec un nouvel UUID
             val newUuid = fr.vetbrain.vetnutri_mp.Utils.genUUID()
-            println("🔄 [DUPLICATION] Nouveau UUID généré: $newUuid")
 
             val duplicated = ReferenceEv(
                 uuid = newUuid,
@@ -254,49 +245,37 @@ class ReferenceEvViewModel(
                 stadePhysio = source.stadePhysio
             )
 
-            println("🔄 [DUPLICATION] Nouvelle référence créée: ${duplicated.nom} (UUID: ${duplicated.uuid})")
 
             // Référencer les équations associées (pas de duplication)
-            println("🔄 [DUPLICATION] Référencement des équations principales...")
             duplicated.equationBW = source.equationBW?.let {
-                println("🔄 [DUPLICATION] Référence equationBW: ${it.name} (UUID: ${it.uuid})")
                 it
             }
             duplicated.equationBEE = source.equationBEE?.let {
-                println("🔄 [DUPLICATION] Référence equationBEE: ${it.name} (UUID: ${it.uuid})")
                 it
             }
             duplicated.equationDEcom = source.equationDEcom?.let {
-                println("🔄 [DUPLICATION] Référence equationDEcom: ${it.name} (UUID: ${it.uuid})")
                 it
             }
             duplicated.equationDEraw = source.equationDEraw?.let {
-                println("🔄 [DUPLICATION] Référence equationDEraw: ${it.name} (UUID: ${it.uuid})")
                 it
             }
             duplicated.equationME = source.equationME?.let {
-                println("🔄 [DUPLICATION] Référence equationME: ${it.name} (UUID: ${it.uuid})")
                 it
             }
 
             // Référencer les équations nutritionnelles (pas de duplication)
-            println("🔄 [DUPLICATION] Référencement des équations nutritionnelles: ${source.equationsNut.size} équations")
             duplicated.equationsNut = ArrayList(source.equationsNut.map { equation ->
-                println("🔄 [DUPLICATION] Référence equation nutritionnelle: ${equation.name} (UUID: ${equation.uuid})")
                 equation
             })
 
             // Référencer les nutriments avec leurs références bibliographiques existantes
-            println("🔄 [DUPLICATION] Référencement des nutriments...")
             val minCount = source.getRefMapMin().size
             val maxCount = source.getRefMapMax().size
             val ominCount = source.getRefMapOMin().size
             val omaxCount = source.getRefMapOMax().size
-            println("🔄 [DUPLICATION] Nutriments à référencer - MIN: $minCount, MAX: $maxCount, OPTIMIN: $ominCount, OPTIMAX: $omaxCount")
 
             // MIN
             source.getRefMapMin().forEach { (nutrient, nutRef) ->
-                println("🔄 [DUPLICATION] Référence nutriment MIN: ${nutrient.label} = ${nutRef.quantite} (biblio: ${nutRef.biblio.firstAuthor})")
                 duplicated.definirNutriment(
                     valeur = nutRef.quantite,
                     nutrient = nutrient,
@@ -308,7 +287,6 @@ class ReferenceEvViewModel(
             }
             // MAX
             source.getRefMapMax().forEach { (nutrient, nutRef) ->
-                println("🔄 [DUPLICATION] Référence nutriment MAX: ${nutrient.label} = ${nutRef.quantite} (biblio: ${nutRef.biblio.firstAuthor})")
                 duplicated.definirNutriment(
                     valeur = nutRef.quantite,
                     nutrient = nutrient,
@@ -320,7 +298,6 @@ class ReferenceEvViewModel(
             }
             // OPTIMIN
             source.getRefMapOMin().forEach { (nutrient, nutRef) ->
-                println("🔄 [DUPLICATION] Référence nutriment OPTIMIN: ${nutrient.label} = ${nutRef.quantite} (biblio: ${nutRef.biblio.firstAuthor})")
                 duplicated.definirNutriment(
                     valeur = nutRef.quantite,
                     nutrient = nutrient,
@@ -332,7 +309,6 @@ class ReferenceEvViewModel(
             }
             // OPTIMAX
             source.getRefMapOMax().forEach { (nutrient, nutRef) ->
-                println("🔄 [DUPLICATION] Référence nutriment OPTIMAX: ${nutrient.label} = ${nutRef.quantite} (biblio: ${nutRef.biblio.firstAuthor})")
                 duplicated.definirNutriment(
                     valeur = nutRef.quantite,
                     nutrient = nutrient,
@@ -344,13 +320,11 @@ class ReferenceEvViewModel(
             }
 
             // Référencer les coefficients modificateurs (pas de duplication)
-            println("🔄 [DUPLICATION] Référencement des coefficients modificateurs...")
             val k1Count = source.getModk1().size
             val k2Count = source.getModk2().size
             val k3Count = source.getModk3().size
             val k4Count = source.getModk4().size
             val k5Count = source.getModk5().size
-            println("🔄 [DUPLICATION] Coefficients à référencer - K1: $k1Count, K2: $k2Count, K3: $k3Count, K4: $k4Count, K5: $k5Count")
 
             duplicated.getModk1().clear()
             duplicated.getModk1().addAll(source.getModk1()) // Référence directe
@@ -370,12 +344,9 @@ class ReferenceEvViewModel(
             duplicated.nomk4 = source.nomk4
             duplicated.nomk5 = source.nomk5
 
-            println("🔄 [DUPLICATION] Sauvegarde dans la base de données...")
             val saveResult = repository.create(duplicated)
-            println("🔄 [DUPLICATION] Résultat de la sauvegarde: $saveResult")
 
             if (saveResult) {
-                println("🔄 [DUPLICATION] Rechargement de la liste des références...")
                 loadAllReferences()
                 _operationMessage.value = "Référence dupliquée avec succès"
                 println("✅ [DUPLICATION] Duplication terminée avec succès")
@@ -558,10 +529,6 @@ class ReferenceEvViewModel(
             } else {
                 // Mise à jour - préserver toutes les données existantes
                 val currentRef = _currentReferenceEv.value
-                println("🔄 [UPDATE] Mise à jour de la référence: ${currentRef.nom} -> ${referenceEv.nom}")
-                println("🔄 [UPDATE] Équations préservées: BW=${currentRef.equationBW?.name}, BEE=${currentRef.equationBEE?.name}")
-                println("🔄 [UPDATE] Coefficients préservés: ${currentRef.getModk1().size} K1, ${currentRef.getModk2().size} K2")
-                println("🔄 [UPDATE] Nutriments préservés: ${currentRef.getRefMapMin().size} MIN, ${currentRef.getRefMapMax().size} MAX")
 
                 val updatedReference = currentRef.copy(
                         nom = referenceEv.nom,
@@ -574,18 +541,7 @@ class ReferenceEvViewModel(
                         // Tous les autres champs (équations, coefficients, nutriments) sont préservés
                 )
 
-                println("🔄 [UPDATE] Vérification de la référence mise à jour:")
-                println("🔄 [UPDATE] - Nom: ${updatedReference.nom}")
-                println("🔄 [UPDATE] - Équations: BW=${updatedReference.equationBW != null}, BEE=${updatedReference.equationBEE != null}")
-                println("🔄 [UPDATE] - Coefficients: K1=${updatedReference.getModk1().size}, K2=${updatedReference.getModk2().size}")
-                println("🔄 [UPDATE] - Nutriments: MIN=${updatedReference.getRefMapMin().size}, MAX=${updatedReference.getRefMapMax().size}")
 
-                println("🔄 [SAVE] Appel de updateReference avec:")
-                println("🔄 [SAVE] - Nom: ${updatedReference.nom}")
-                println("🔄 [SAVE] - UUID: ${updatedReference.uuid}")
-                println("🔄 [SAVE] - Équations: BW=${updatedReference.equationBW != null}, BEE=${updatedReference.equationBEE != null}")
-                println("🔄 [SAVE] - Coefficients: K1=${updatedReference.getModk1().size}, K2=${updatedReference.getModk2().size}")
-                println("🔄 [SAVE] - Nutriments: MIN=${updatedReference.getRefMapMin().size}, MAX=${updatedReference.getRefMapMax().size}")
 
                 updateReference(updatedReference)
             }
