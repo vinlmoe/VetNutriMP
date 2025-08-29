@@ -135,14 +135,8 @@ fun BiblioRefListView(
                                 onEdit = { onEditBiblioRef(biblioRef.uuid) },
                                 onDuplicate = {
                                     coroutineScope.launch {
-                                        // Dupliquer la biblio (sans l'uuid)
-                                        val duplicated =
-                                                biblioRef.copy(
-                                                        uuid =
-                                                                fr.vetbrain.vetnutri_mp.Utils
-                                                                        .genUUID()
-                                                )
-                                        viewModel.saveBiblioRefDuplicated(duplicated)
+                                        // Utiliser la méthode de duplication du ViewModel qui gère tout correctement
+                                        viewModel.saveBiblioRefDuplicated(biblioRef)
                                     }
                                 }
                         )

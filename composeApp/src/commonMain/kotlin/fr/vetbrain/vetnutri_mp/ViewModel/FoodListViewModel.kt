@@ -182,39 +182,43 @@ class FoodListViewModel(private val foodRepository: DatabaseFoodRepository) {
         /** Filtre les aliments selon les critères de recherche */
         private fun filterFoods(foods: List<AlimentEv>): List<AlimentEv> {
                 return foods
-                        .filter { food ->
-                                // Filtre par recherche textuelle
+                        .filter { aliment ->
+                                // Filtre par recherche textuelle avec recherche multi-mots (OR)
                                 val matchesSearch =
-                                        searchQuery.value.isEmpty() ||
-                                                food.nom?.contains(
-                                                        searchQuery.value,
-                                                        ignoreCase = true
-                                                ) == true ||
-                                                food.brand?.contains(
-                                                        searchQuery.value,
-                                                        ignoreCase = true
-                                                ) == true ||
-                                                food.ingredients?.contains(
-                                                        searchQuery.value,
-                                                        ignoreCase = true
-                                                ) == true
+                                        if (searchQuery.value.isEmpty()) true
+                                        else {
+                                                val searchWords = searchQuery.value.trim().split("\\s+".toRegex())
+                                                        .filter { it.isNotEmpty() }
+                                                        .map { it.lowercase() }
+
+                                                if (searchWords.isEmpty()) true
+                                                else {
+                                                        // Au moins un mot doit être trouvé dans au moins un des champs
+                                                        searchWords.any { word ->
+                                                                aliment.nom?.lowercase()?.contains(word) == true ||
+                                                                aliment.brand?.lowercase()?.contains(word) == true ||
+                                                                aliment.gamme?.lowercase()?.contains(word) == true ||
+                                                                aliment.ingredients?.lowercase()?.contains(word) == true
+                                                        }
+                                                }
+                                        }
 
                                 // Filtre par type d'aliment
                                 val matchesFoodType =
                                         selectedFoodType.value == null ||
-                                                food.typeAliment == selectedFoodType.value
+                                                aliment.typeAliment == selectedFoodType.value
 
                                 // Filtre par groupe d'aliment
                                 val matchesFoodGroup =
                                         selectedFoodGroup.value == null ||
-                                                food.group == selectedFoodGroup.value
+                                                aliment.group == selectedFoodGroup.value
 
                                 // Filtre par espèce avec traitement amélioré
                                 val matchesEspece =
                                         if (selectedEspece.value == null) {
                                                 true // Aucun filtre d'espèce sélectionné
                                         } else {
-                                                food.especes.any { especeStr ->
+                                                aliment.especes.any { especeStr ->
                                                         try {
                                                                 // 1. Vérifier correspondance
                                                                 // directe avec le nom de l'enum ou
@@ -312,7 +316,7 @@ class FoodListViewModel(private val foodRepository: DatabaseFoodRepository) {
                                         if (selectedIndication.value == null) {
                                                 true // Aucun filtre d'indication sélectionné
                                         } else {
-                                                food.indicat.any { indication ->
+                                                aliment.indicat.any { indication ->
                                                         indication == selectedIndication.value
                                                 }
                                         }

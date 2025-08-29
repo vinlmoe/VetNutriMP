@@ -251,10 +251,28 @@ class EquationViewModel(
     fun duplicateEquation(source: Equation) {
         coroutineScope.launch(AppDispatchers.IO) {
             try {
-                val duplicated = source.copy(uuid = genUUID(), name = source.name + " (Duplicate)")
+                // Créer une duplication complète de l'équation avec un nouvel UUID
+                val duplicated = source.copy(
+                    uuid = genUUID(),
+                    name = source.name + " (Copie)",
+                    // Conserver tous les autres champs :
+                    description = source.description,
+                    equationScript = source.equationScript,
+                    bib = source.bib, // Garder la même référence bibliographique
+                    specie = source.specie,
+                    kind = source.kind,
+                    nutrient = source.nutrient,
+                    consistent = source.consistent,
+                    variables = source.variables.toMutableList(), // Copier la liste des variables
+                    correctionFactor = source.correctionFactor,
+                    ratio = source.ratio,
+                    creationDate = source.creationDate, // Garder la date de création originale
+                    lastUpdate = source.lastUpdate // Garder la dernière mise à jour originale
+                )
+
                 equationRepository.saveEquation(duplicated)
                 loadEquations()
-                _operationMessage.value = "Équation dupliquée"
+                _operationMessage.value = "Équation dupliquée avec succès"
             } catch (e: Exception) {
                 _operationMessage.value = "Erreur lors de la duplication: ${e.message}"
             }

@@ -215,8 +215,17 @@ class BiblioRefViewModel(private val repository: BiblioRefRepository) {
     fun saveBiblioRefDuplicated(biblioRef: BiblioRef) {
         viewModelScope.launch {
             try {
-                val toSave = biblioRef.copy(firstAuthor = biblioRef.firstAuthor + " (Duplicate)")
-                repository.insertBiblioRef(toSave)
+                // Créer une duplication complète avec un nouvel UUID
+                val duplicated = BiblioRef(
+                    uuid = genUUID(),
+                    firstAuthor = biblioRef.firstAuthor + " (Copie)",
+                    year = biblioRef.year,
+                    completeRef = biblioRef.completeRef,
+                    comments = biblioRef.comments,
+                    bibtex = biblioRef.bibtex,
+                    consistent = biblioRef.consistent
+                )
+                repository.insertBiblioRef(duplicated)
                 refreshBiblioRefs()
                 _operationMessage.value = "Référence dupliquée avec succès"
             } catch (e: Exception) {
