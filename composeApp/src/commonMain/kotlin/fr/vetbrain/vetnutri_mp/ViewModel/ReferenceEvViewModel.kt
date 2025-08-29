@@ -220,12 +220,92 @@ class ReferenceEvViewModel(
     suspend fun duplicateReference(source: ReferenceEv) {
         _loading.value = true
         try {
-            // Créer une copie avec un nouvel UUID
-            val duplicated =
-                    source.copy(
-                            uuid = fr.vetbrain.vetnutri_mp.Utils.genUUID(),
-                            nom = source.nom + " (Duplicate)"
-                    )
+            // Créer une nouvelle référence avec un nouvel UUID
+            val duplicated = ReferenceEv(
+                uuid = fr.vetbrain.vetnutri_mp.Utils.genUUID(),
+                nom = source.nom + " (Copie)",
+                description = source.description,
+                maladie = source.maladie,
+                nomMaladie = source.nomMaladie,
+                nomEnergie = source.nomEnergie,
+                consistent = source.consistent,
+                espece = source.espece,
+                stadePhysio = source.stadePhysio
+            )
+
+            // Copier les équations associées
+            duplicated.equationBW = source.equationBW
+            duplicated.equationBEE = source.equationBEE
+            duplicated.equationDEcom = source.equationDEcom
+            duplicated.equationDEraw = source.equationDEraw
+            duplicated.equationME = source.equationME
+            duplicated.equationsNut = ArrayList(source.equationsNut)
+
+            // Copier les références nutritionnelles (maps des nutriments)
+            // MIN
+            source.getRefMapMin().forEach { (nutrient, nutRef) ->
+                duplicated.definirNutriment(
+                    valeur = nutRef.quantite,
+                    nutrient = nutrient,
+                    niveauRef = nutRef.niveauRelatif,
+                    uniteReq = nutRef.uniteReq,
+                    biblio = nutRef.biblio,
+                    unitEnum = nutRef.unite
+                )
+            }
+            // MAX
+            source.getRefMapMax().forEach { (nutrient, nutRef) ->
+                duplicated.definirNutriment(
+                    valeur = nutRef.quantite,
+                    nutrient = nutrient,
+                    niveauRef = nutRef.niveauRelatif,
+                    uniteReq = nutRef.uniteReq,
+                    biblio = nutRef.biblio,
+                    unitEnum = nutRef.unite
+                )
+            }
+            // OPTIMIN
+            source.getRefMapOMin().forEach { (nutrient, nutRef) ->
+                duplicated.definirNutriment(
+                    valeur = nutRef.quantite,
+                    nutrient = nutrient,
+                    niveauRef = nutRef.niveauRelatif,
+                    uniteReq = nutRef.uniteReq,
+                    biblio = nutRef.biblio,
+                    unitEnum = nutRef.unite
+                )
+            }
+            // OPTIMAX
+            source.getRefMapOMax().forEach { (nutrient, nutRef) ->
+                duplicated.definirNutriment(
+                    valeur = nutRef.quantite,
+                    nutrient = nutrient,
+                    niveauRef = nutRef.niveauRelatif,
+                    uniteReq = nutRef.uniteReq,
+                    biblio = nutRef.biblio,
+                    unitEnum = nutRef.unite
+                )
+            }
+
+            // Copier les coefficients modificateurs
+            duplicated.getModk1().clear()
+            duplicated.getModk1().addAll(source.getModk1())
+            duplicated.getModk2().clear()
+            duplicated.getModk2().addAll(source.getModk2())
+            duplicated.getModk3().clear()
+            duplicated.getModk3().addAll(source.getModk3())
+            duplicated.getModk4().clear()
+            duplicated.getModk4().addAll(source.getModk4())
+            duplicated.getModk5().clear()
+            duplicated.getModk5().addAll(source.getModk5())
+
+            // Copier les noms des coefficients
+            duplicated.nomk1 = source.nomk1
+            duplicated.nomk2 = source.nomk2
+            duplicated.nomk3 = source.nomk3
+            duplicated.nomk4 = source.nomk4
+            duplicated.nomk5 = source.nomk5
+
             repository.create(duplicated)
             loadAllReferences()
             _operationMessage.value = "Référence dupliquée avec succès"
