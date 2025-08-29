@@ -37,22 +37,53 @@ class DatabaseReferenceEvRepository(
     }
 
     suspend fun saveReferenceEv(referenceEv: ReferenceEv): String {
+        println("💾 [SAVE] Début de la sauvegarde de la référence: ${referenceEv.nom} (UUID: ${referenceEv.uuid})")
         try {
             // 1. Sauvegarder l'entité principale
+            println("💾 [SAVE] Étape 1: Sauvegarde de l'entité principale")
             val entity = convertReferenceEvToEntity(referenceEv)
             referenceEvDao.insertReferenceEv(entity)
 
-            // 2. Sauvegarder les relations avec les équations
-            saveEquationRelations(referenceEv)
+            // 2. Les références bibliographiques existent déjà, pas besoin de les sauvegarder à nouveau
+            println("💾 [SAVE] Étape 2: Références bibliographiques déjà existantes - pas de sauvegarde nécessaire")
 
-            // 3. Sauvegarder les coefficients
-            saveCoefficients(referenceEv)
+            // 3. Les équations existent déjà, pas besoin de les sauvegarder à nouveau
+            println("💾 [SAVE] Étape 3: Équations déjà existantes - pas de sauvegarde nécessaire")
 
-            // 4. Sauvegarder les nutriments
-            saveNutrients(referenceEv)
+            // 4. Sauvegarder les relations avec les équations existantes
+            println("💾 [SAVE] Étape 4: Sauvegarde des relations équations")
+            try {
+                saveEquationRelations(referenceEv)
+                println("💾 [SAVE] Relations équations sauvegardées avec succès")
+            } catch (e: Exception) {
+                println("❌ [SAVE] Erreur lors de la sauvegarde des relations équations: ${e.message}")
+                throw e
+            }
 
+            // 5. Sauvegarder les coefficients
+            println("💾 [SAVE] Étape 5: Sauvegarde des coefficients")
+            try {
+                saveCoefficients(referenceEv)
+                println("💾 [SAVE] Coefficients sauvegardés avec succès")
+            } catch (e: Exception) {
+                println("❌ [SAVE] Erreur lors de la sauvegarde des coefficients: ${e.message}")
+                throw e
+            }
+
+            // 6. Sauvegarder les nutriments
+            println("💾 [SAVE] Étape 6: Sauvegarde des nutriments")
+            try {
+                saveNutrients(referenceEv)
+                println("💾 [SAVE] Nutriments sauvegardés avec succès")
+            } catch (e: Exception) {
+                println("❌ [SAVE] Erreur lors de la sauvegarde des nutriments: ${e.message}")
+                throw e
+            }
+
+            println("✅ [SAVE] Sauvegarde terminée avec succès pour UUID: ${referenceEv.uuid}")
             return referenceEv.uuid
         } catch (e: Exception) {
+            println("❌ [SAVE] Erreur lors de la sauvegarde: ${e.message}")
             throw e
         }
     }
@@ -63,12 +94,16 @@ class DatabaseReferenceEvRepository(
             val entity = convertReferenceEvToEntity(referenceEv)
             referenceEvDao.updateReferenceEv(entity)
 
-            // 2. Supprimer les anciennes relations
+            // 2. Les références bibliographiques existent déjà, pas besoin de les sauvegarder à nouveau
+
+            // 3. Les équations existent déjà, pas besoin de les sauvegarder à nouveau
+
+            // 4. Supprimer les anciennes relations
             referenceEvDao.deleteEquationsForReference(referenceEv.uuid)
             referenceEvDao.deleteCoefficientsForReference(referenceEv.uuid)
             referenceEvDao.deleteNutrientsForReference(referenceEv.uuid)
 
-            // 3. Sauvegarder les nouvelles relations
+            // 5. Sauvegarder les nouvelles relations
             saveEquationRelations(referenceEv)
             saveCoefficients(referenceEv)
             saveNutrients(referenceEv)
@@ -388,6 +423,7 @@ class DatabaseReferenceEvRepository(
     // Méthodes privées pour sauvegarder les relations
 
     private suspend fun saveEquationRelations(referenceEv: ReferenceEv) {
+        println("🔗 [SAVE_RELATIONS] Début de la sauvegarde des relations pour référence: ${referenceEv.uuid}")
         val relations = mutableListOf<ReferenceEvEquationEntity>()
 
         referenceEv.equationBW?.let { equation ->
@@ -458,6 +494,7 @@ class DatabaseReferenceEvRepository(
     }
 
     private suspend fun saveCoefficients(referenceEv: ReferenceEv) {
+        println("📊 [SAVE_COEFF] Début de la sauvegarde des coefficients pour référence: ${referenceEv.uuid}")
         val coefficients = mutableListOf<ReferenceEvCoefficientEntity>()
 
         // Sauvegarder les coefficients k1-k5
@@ -530,6 +567,7 @@ class DatabaseReferenceEvRepository(
     }
 
     private suspend fun saveNutrients(referenceEv: ReferenceEv) {
+        println("🥗 [SAVE_NUT] Début de la sauvegarde des nutriments pour référence: ${referenceEv.uuid}")
         val nutrients = mutableListOf<ReferenceEvNutrientEntity>()
 
         // Sauvegarder les nutriments MIN
@@ -879,4 +917,8 @@ class DatabaseReferenceEvRepository(
             null
         }
     }
+
+    // Méthode saveAssociatedEquations supprimée - on référence directement les équations existantes
+
+    // Méthode saveAssociatedBiblioRefs supprimée - on référence directement les bibliographies existantes
 }

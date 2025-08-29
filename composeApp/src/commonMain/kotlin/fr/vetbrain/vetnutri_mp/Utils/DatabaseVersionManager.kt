@@ -196,12 +196,10 @@ class DatabaseVersionManager {
     private fun getCurrentDate(): String {
         return try {
             // Format simple : YYYY-MM-DD
-            val now = java.util.Date()
-            val calendar = java.util.Calendar.getInstance()
-            calendar.time = now
-            "${calendar.get(java.util.Calendar.YEAR)}-" +
-                    "${(calendar.get(java.util.Calendar.MONTH) + 1).toString().padStart(2, '0')}-" +
-                    "${calendar.get(java.util.Calendar.DAY_OF_MONTH).toString().padStart(2, '0')}"
+            val now = today()
+            "${now.year}-" +
+                    "${now.monthNumber.toString().padStart(2, '0')}-" +
+                    "${now.dayOfMonth.toString().padStart(2, '0')}"
         } catch (e: Exception) {
             // Fallback très simple
             "Unknown"

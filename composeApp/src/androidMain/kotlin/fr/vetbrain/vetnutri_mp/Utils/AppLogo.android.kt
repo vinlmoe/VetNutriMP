@@ -21,7 +21,7 @@ actual fun AppLogo(
     contentDescription: String?
 ) {
     Image(
-        painter = painterResource(R.drawable.ic_launcher),
+        painter = painterResource(R.mipmap.ic_launcher),
         contentDescription = contentDescription,
         modifier = modifier.size(size)
     )

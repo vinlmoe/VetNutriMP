@@ -30,7 +30,7 @@ object DatabaseChangeNotifier {
 
     data class DatabaseChangeEvent(
             val type: ChangeType,
-            val timestamp: Long = System.currentTimeMillis(),
+            val timestamp: Long = instantNow().toEpochMilliseconds(),
             val details: String? = null,
             val count: Int? = null
     )
@@ -43,7 +43,7 @@ object DatabaseChangeNotifier {
 
     /** Notifie d'un changement dans la base de données */
     fun notifyChange(type: ChangeType, details: String? = null, count: Int? = null) {
-        val event = DatabaseChangeEvent(type, System.currentTimeMillis(), details, count)
+        val event = DatabaseChangeEvent(type, instantNow().toEpochMilliseconds(), details, count)
         _changeEvents.value = event
         _lastChangeTimestamp.value = event.timestamp
     }
