@@ -198,9 +198,17 @@ class ReferenceEvViewModel(
         _loading.value = true
 
         try {
+            println("🔄 [UPDATE_REF] Début de la mise à jour de la référence: ${reference.nom} (UUID: ${reference.uuid})")
+            println("🔄 [UPDATE_REF] Données reçues - Équations: BW=${reference.equationBW != null}, BEE=${reference.equationBEE != null}")
+            println("🔄 [UPDATE_REF] Données reçues - Coefficients: K1=${reference.getModk1().size}, K2=${reference.getModk2().size}")
+            println("🔄 [UPDATE_REF] Données reçues - Nutriments: MIN=${reference.getRefMapMin().size}, MAX=${reference.getRefMapMax().size}")
+
             repository.update(reference)
+            println("✅ [UPDATE_REF] Mise à jour réussie, rechargement de la liste...")
             loadAllReferences() // Recharger la liste
+            println("✅ [UPDATE_REF] Liste rechargée avec succès")
         } catch (e: Exception) {
+            println("❌ [UPDATE_REF] Erreur lors de la mise à jour: ${e.message}")
             _error.value =
                     "Erreur lors de la mise à jour de la référence: ${e.message ?: "Erreur inconnue"}"
             throw e
@@ -548,17 +556,37 @@ class ReferenceEvViewModel(
                         )
                 _currentReferenceEv.value = newReference
             } else {
-                // Mise à jour
-                val updatedReference =
-                        _currentReferenceEv.value.copy(
-                                nom = referenceEv.nom,
-                                description = referenceEv.description,
-                                espece = referenceEv.espece,
-                                stadePhysio = referenceEv.stadePhysio,
-                                nomEnergie = referenceEv.nomEnergie,
-                                maladie = referenceEv.maladie,
-                                nomMaladie = referenceEv.nomMaladie
-                        )
+                // Mise à jour - préserver toutes les données existantes
+                val currentRef = _currentReferenceEv.value
+                println("🔄 [UPDATE] Mise à jour de la référence: ${currentRef.nom} -> ${referenceEv.nom}")
+                println("🔄 [UPDATE] Équations préservées: BW=${currentRef.equationBW?.name}, BEE=${currentRef.equationBEE?.name}")
+                println("🔄 [UPDATE] Coefficients préservés: ${currentRef.getModk1().size} K1, ${currentRef.getModk2().size} K2")
+                println("🔄 [UPDATE] Nutriments préservés: ${currentRef.getRefMapMin().size} MIN, ${currentRef.getRefMapMax().size} MAX")
+
+                val updatedReference = currentRef.copy(
+                        nom = referenceEv.nom,
+                        description = referenceEv.description,
+                        espece = referenceEv.espece,
+                        stadePhysio = referenceEv.stadePhysio,
+                        nomEnergie = referenceEv.nomEnergie,
+                        maladie = referenceEv.maladie,
+                        nomMaladie = referenceEv.nomMaladie
+                        // Tous les autres champs (équations, coefficients, nutriments) sont préservés
+                )
+
+                println("🔄 [UPDATE] Vérification de la référence mise à jour:")
+                println("🔄 [UPDATE] - Nom: ${updatedReference.nom}")
+                println("🔄 [UPDATE] - Équations: BW=${updatedReference.equationBW != null}, BEE=${updatedReference.equationBEE != null}")
+                println("🔄 [UPDATE] - Coefficients: K1=${updatedReference.getModk1().size}, K2=${updatedReference.getModk2().size}")
+                println("🔄 [UPDATE] - Nutriments: MIN=${updatedReference.getRefMapMin().size}, MAX=${updatedReference.getRefMapMax().size}")
+
+                println("🔄 [SAVE] Appel de updateReference avec:")
+                println("🔄 [SAVE] - Nom: ${updatedReference.nom}")
+                println("🔄 [SAVE] - UUID: ${updatedReference.uuid}")
+                println("🔄 [SAVE] - Équations: BW=${updatedReference.equationBW != null}, BEE=${updatedReference.equationBEE != null}")
+                println("🔄 [SAVE] - Coefficients: K1=${updatedReference.getModk1().size}, K2=${updatedReference.getModk2().size}")
+                println("🔄 [SAVE] - Nutriments: MIN=${updatedReference.getRefMapMin().size}, MAX=${updatedReference.getRefMapMax().size}")
+
                 updateReference(updatedReference)
             }
 

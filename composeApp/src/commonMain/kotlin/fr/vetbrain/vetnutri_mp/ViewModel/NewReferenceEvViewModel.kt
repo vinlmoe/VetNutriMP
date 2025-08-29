@@ -139,14 +139,27 @@ class NewReferenceEvViewModel(
 
         coroutineScope.launch {
             val reference = repository.getById(referenceId)
+            println("🔄 [NEW_REF_VM] initForEdit - Chargement référence: $referenceId")
             if (reference != null) {
+                println("🔄 [NEW_REF_VM] initForEdit - Référence trouvée:")
+                println("🔄 [NEW_REF_VM] initForEdit - UUID: ${reference.uuid}")
+                println("🔄 [NEW_REF_VM] initForEdit - Équations: BW=${reference.equationBW != null}, BEE=${reference.equationBEE != null}")
+                println("🔄 [NEW_REF_VM] initForEdit - Coefficients: K1=${reference.getModk1().size}, K2=${reference.getModk2().size}")
+                println("🔄 [NEW_REF_VM] initForEdit - Nutriments: MIN=${reference.getRefMapMin().size}, MAX=${reference.getRefMapMax().size}")
+
                 _currentReference.value = reference
+                println("🔄 [NEW_REF_VM] initForEdit - _currentReference.value défini")
+
                 _isEditMode.value = true
                 updateDefinedNutrients(reference)
+                println("🔄 [NEW_REF_VM] initForEdit - updateDefinedNutrients() appelée")
+
                 syncCoefficientsFromReference()
+                println("🔄 [NEW_REF_VM] initForEdit - syncCoefficientsFromReference() appelée")
 
                 // Charger les équations associées depuis la base de données
                 loadEquationsForReference(reference)
+                println("🔄 [NEW_REF_VM] initForEdit - loadEquationsForReference() appelée")
             } else {
                 _errorMessage.value = "Référence non trouvée"
                 _currentReference.value = ReferenceEv()
@@ -161,6 +174,10 @@ class NewReferenceEvViewModel(
     /** Synchronise les StateFlow des coefficients avec la référence actuelle */
     private fun syncCoefficientsFromReference() {
         val reference = _currentReference.value
+        println("🔄 [NEW_REF_VM] syncCoefficientsFromReference() appelée")
+        println("🔄 [NEW_REF_VM] SYNC - UUID: ${reference.uuid}")
+        println("🔄 [NEW_REF_VM] SYNC - Coefficients originaux: K1=${reference.getModk1().size}, K2=${reference.getModk2().size}")
+        println("🔄 [NEW_REF_VM] SYNC - StateFlow avant: K1=${_coefficientsK1.value.size}, K2=${_coefficientsK2.value.size}")
 
         // Synchroniser les listes de coefficients
         _coefficientsK1.value = reference.getModk1().toList()
@@ -178,6 +195,8 @@ class NewReferenceEvViewModel(
                         reference.nomk4,
                         reference.nomk5
                 )
+
+        println("🔄 [NEW_REF_VM] SYNC - StateFlow après: K1=${_coefficientsK1.value.size}, K2=${_coefficientsK2.value.size}")
     }
 
     /** Charge les équations disponibles dans le repository. */
@@ -239,19 +258,75 @@ class NewReferenceEvViewModel(
      */
     fun updateReferenceProperty(propertyName: String, value: Any) {
         val currentRef = _currentReference.value
-        val updatedRef =
-                when (propertyName) {
-                    "nom" -> currentRef.copy(nom = value as String)
-                    "description" -> currentRef.copy(description = value as String)
-                    "maladie" -> currentRef.copy(maladie = value as Boolean)
-                    "nomMaladie" -> currentRef.copy(nomMaladie = value as String)
-                    "nomEnergie" -> currentRef.copy(nomEnergie = value as String)
-                    "consistent" -> currentRef.copy(consistent = value as Int)
-                    "espece" -> currentRef.copy(espece = value as Espece)
-                    "stadePhysio" -> currentRef.copy(stadePhysio = value as StadePhysio)
-                    else -> currentRef
-                }
+        println("🔄 [NEW_REF_VM] updateReferenceProperty: $propertyName = $value")
+        println("🔄 [NEW_REF_VM] AVANT copy - UUID: ${currentRef.uuid}")
+        println("🔄 [NEW_REF_VM] AVANT copy - Équations: BW=${currentRef.equationBW != null}, BEE=${currentRef.equationBEE != null}")
+        println("🔄 [NEW_REF_VM] AVANT copy - Coefficients: K1=${currentRef.getModk1().size}, K2=${currentRef.getModk2().size}")
+        println("🔄 [NEW_REF_VM] AVANT copy - Nutriments: MIN=${currentRef.getRefMapMin().size}, MAX=${currentRef.getRefMapMax().size}")
+
+        // SOLUTION HYBRIDE: Utiliser copy() avec les paramètres du constructeur primaire seulement
+        // et préserver manuellement les données complexes
+        val updatedRef = when (propertyName) {
+            "nom" -> {
+                println("🔄 [NEW_REF_VM] Création copy() hybride pour nom: '${value as String}'")
+                currentRef.copy(nom = value as String)
+            }
+            "description" -> currentRef.copy(description = value as String)
+            "maladie" -> currentRef.copy(maladie = value as Boolean)
+            "nomMaladie" -> currentRef.copy(nomMaladie = value as String)
+            "nomEnergie" -> currentRef.copy(nomEnergie = value as String)
+            "consistent" -> currentRef.copy(consistent = value as Int)
+            "espece" -> currentRef.copy(espece = value as Espece)
+            "stadePhysio" -> currentRef.copy(stadePhysio = value as StadePhysio)
+            else -> currentRef
+        }
+
+        // PRÉSERVER LES DONNÉES COMPLEXES après copy() pour TOUS les cas
+        // Restaurer les données complexes depuis l'original
+        updatedRef.equationBW = currentRef.equationBW
+        updatedRef.equationBEE = currentRef.equationBEE
+        updatedRef.equationDEcom = currentRef.equationDEcom
+        updatedRef.equationDEraw = currentRef.equationDEraw
+        updatedRef.equationME = currentRef.equationME
+        updatedRef.equationsNut = currentRef.equationsNut
+
+        // Copier les coefficients (MutableList)
+        updatedRef.getModk1().clear()
+        updatedRef.getModk1().addAll(currentRef.getModk1())
+        updatedRef.getModk2().clear()
+        updatedRef.getModk2().addAll(currentRef.getModk2())
+        updatedRef.getModk3().clear()
+        updatedRef.getModk3().addAll(currentRef.getModk3())
+        updatedRef.getModk4().clear()
+        updatedRef.getModk4().addAll(currentRef.getModk4())
+        updatedRef.getModk5().clear()
+        updatedRef.getModk5().addAll(currentRef.getModk5())
+
+        // Copier les noms des coefficients
+        updatedRef.nomk1 = currentRef.nomk1
+        updatedRef.nomk2 = currentRef.nomk2
+        updatedRef.nomk3 = currentRef.nomk3
+        updatedRef.nomk4 = currentRef.nomk4
+        updatedRef.nomk5 = currentRef.nomk5
+
+        // Copier les nutriments (MutableMap)
+        updatedRef.getRefMapMin().clear()
+        updatedRef.getRefMapMin().putAll(currentRef.getRefMapMin())
+        updatedRef.getRefMapMax().clear()
+        updatedRef.getRefMapMax().putAll(currentRef.getRefMapMax())
+        updatedRef.getRefMapOMin().clear()
+        updatedRef.getRefMapOMin().putAll(currentRef.getRefMapOMin())
+        updatedRef.getRefMapOMax().clear()
+        updatedRef.getRefMapOMax().putAll(currentRef.getRefMapOMax())
+
         _currentReference.value = updatedRef
+
+        println("🔄 [NEW_REF_VM] APRÈS copy hybride - UUID: ${updatedRef.uuid}")
+        println("🔄 [NEW_REF_VM] APRÈS copy hybride - Nom: ${updatedRef.nom}")
+        println("🔄 [NEW_REF_VM] APRÈS copy hybride - Équations: BW=${updatedRef.equationBW != null}, BEE=${updatedRef.equationBEE != null}")
+        println("🔄 [NEW_REF_VM] APRÈS copy hybride - Coefficients: K1=${updatedRef.getModk1().size}, K2=${updatedRef.getModk2().size}")
+        println("🔄 [NEW_REF_VM] APRÈS copy hybride - Nutriments: MIN=${updatedRef.getRefMapMin().size}, MAX=${updatedRef.getRefMapMax().size}")
+        println("🔄 [NEW_REF_VM] _currentReference.value mis à jour avec copy hybride")
     }
 
     /**
@@ -322,6 +397,14 @@ class NewReferenceEvViewModel(
     /** Sauvegarde la référence dans le repository */
     fun saveReference() {
         val reference = _currentReference.value
+        println("🔄 [NEW_REF_VM] Début de saveReference()")
+        println("🔄 [NEW_REF_VM] Mode: ${if (_isEditMode.value) "EDIT" else "CREATE"}")
+        println("🔄 [NEW_REF_VM] Référence UUID: ${reference.uuid}")
+        println("🔄 [NEW_REF_VM] Nom: ${reference.nom}")
+        println("🔄 [NEW_REF_VM] Équations: BW=${reference.equationBW != null}, BEE=${reference.equationBEE != null}")
+        println("🔄 [NEW_REF_VM] Coefficients: K1=${reference.getModk1().size}, K2=${reference.getModk2().size}")
+        println("🔄 [NEW_REF_VM] Nutriments: MIN=${reference.getRefMapMin().size}, MAX=${reference.getRefMapMax().size}")
+
         if (reference.nom.isBlank()) {
             _errorMessage.value = "Le nom de la référence est requis"
             return
@@ -331,8 +414,10 @@ class NewReferenceEvViewModel(
             try {
                 val success =
                         if (_isEditMode.value) {
+                            println("🔄 [NEW_REF_VM] Appel repository.update()")
                             repository.update(reference)
                         } else {
+                            println("🔄 [NEW_REF_VM] Appel repository.create()")
                             repository.create(reference)
                         }
 
