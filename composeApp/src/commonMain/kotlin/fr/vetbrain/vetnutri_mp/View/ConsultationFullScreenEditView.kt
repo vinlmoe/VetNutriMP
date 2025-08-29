@@ -50,6 +50,10 @@ fun ConsultationFullScreenEditView(
         var dateErrorMessage by remember(consultation) { mutableStateOf<String?>(null) }
         var weightErrorMessage by remember(consultation) { mutableStateOf<String?>(null) }
 
+        // États pour les dialogues de validation
+        var showMissingVariablesDialog by remember { mutableStateOf(false) }
+        var missingVariables by remember { mutableStateOf<List<String>>(emptyList()) }
+
         // États pour les dialogues de sélection de références
         var showReferenceGeneraleDialog by remember(consultation) { mutableStateOf(false) }
         var showReferenceMaladieDialog by remember(consultation) { mutableStateOf(false) }
@@ -73,9 +77,17 @@ fun ConsultationFullScreenEditView(
                         }
                 }
 
-        // Garder toutes les références de maladies (pas de filtrage par espèce)
+        // Filtrer les références de maladies par espèce
         val referencesMaladies =
-                remember(availableReferences) { availableReferences.filter { it.maladie } }
+                remember(availableReferences, animalEspece) {
+                        if (animalEspece != null) {
+                                availableReferences.filter {
+                                        it.maladie && it.espece == animalEspece
+                                }
+                        } else {
+                                availableReferences.filter { it.maladie }
+                        }
+                }
 
         // Trouver la référence générale sélectionnée
         val referenceGeneraleSelectionnee =
@@ -90,7 +102,16 @@ fun ConsultationFullScreenEditView(
 
         // Fonction pour sauvegarder et retourner
         val saveAndGoBack = {
-                if (!showDateError && !showWeightError && editedConsultation.date != null) {
+                // Extraire les variables requises
+                val variablesRequises = extraireVariablesRequises(referenceGeneraleSelectionnee)
+
+                // Vérifier les variables supplémentaires manquantes
+                val variablesManquantes = variablesRequises.filter { variableKind ->
+                        editedConsultation.suppVarp.none { it.variable == variableKind }
+                }
+
+                if (!showDateError && !showWeightError && editedConsultation.date != null &&
+                        variablesManquantes.isEmpty()) {
                         // S'assurer que l'UUID est généré si c'est une nouvelle consultation
                         if (editedConsultation.uuid.isEmpty()) {
                                 editedConsultation =
@@ -99,9 +120,15 @@ fun ConsultationFullScreenEditView(
                                         )
                         }
                         onBackPressed(editedConsultation)
-                } else if (editedConsultation.date == null) {
-                        showDateError = true
-                        dateErrorMessage = "La date est obligatoire"
+                } else {
+                        if (editedConsultation.date == null) {
+                                showDateError = true
+                                dateErrorMessage = "La date est obligatoire"
+                        }
+                        if (variablesManquantes.isNotEmpty()) {
+                                missingVariables = variablesManquantes.map { it.label }
+                                showMissingVariablesDialog = true
+                        }
                 }
         }
 
@@ -834,7 +861,7 @@ fun ConsultationFullScreenEditView(
         if (showReferenceMaladieDialog) {
                 ReferenceMaladieDialog(
                         references = editedConsultation.referencesMaladies,
-                        availableReferences = availableReferences,
+                        availableReferences = referencesMaladies,
                         onReferenceSelected = { referenceId ->
                                 editedConsultation =
                                         editedConsultation.copy(
@@ -848,6 +875,40 @@ fun ConsultationFullScreenEditView(
                                                 referencesMaladies = referenceId.toMutableList()
                                         )
                                 showReferenceMaladieDialog = false
+                        }
+                )
+        }
+
+        // Dialogue pour les variables supplémentaires manquantes
+        if (showMissingVariablesDialog) {
+                AlertDialog(
+                        onDismissRequest = { showMissingVariablesDialog = false },
+                        title = { Text("Variables supplémentaires requises") },
+                        text = {
+                                Column {
+                                        Text(
+                                                "Les variables supplémentaires suivantes sont requises par la référence sélectionnée :"
+                                        )
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        missingVariables.forEach { variableName ->
+                                                Text(
+                                                        text = "• $variableName",
+                                                        style = MaterialTheme.typography.body2,
+                                                        color = MaterialTheme.colors.primary
+                                                )
+                                        }
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Text(
+                                                "Veuillez saisir ces valeurs avant de pouvoir sauvegarder la consultation.",
+                                                style = MaterialTheme.typography.body2,
+                                                color = Color.Gray
+                                        )
+                                }
+                        },
+                        confirmButton = {
+                                TextButton(onClick = { showMissingVariablesDialog = false }) {
+                                        Text("OK")
+                                }
                         }
                 )
         }
@@ -1253,16 +1314,16 @@ private fun ReferenceMaladieDialog(
         onReferenceSelected: (List<String>) -> Unit,
         onReferenceRemoved: (List<String>) -> Unit
 ) {
-        val referencesMaladies = availableReferences.filter { it.maladie }
+        // Les références arrivent déjà filtrées par espèce et maladie
         var searchText by remember { mutableStateOf("") }
 
         // Filtrer les références selon le texte de recherche
         val filteredReferences =
-                remember(referencesMaladies, searchText) {
+                remember(availableReferences, searchText) {
                         if (searchText.isBlank()) {
-                                referencesMaladies
+                                availableReferences
                         } else {
-                                referencesMaladies.filter { reference ->
+                                availableReferences.filter { reference ->
                                         reference.nom.contains(searchText, ignoreCase = true) ||
                                                 reference.description?.contains(
                                                         searchText,
