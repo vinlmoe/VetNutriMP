@@ -23,6 +23,15 @@ kotlin {
     }
 
     jvm("desktop")
+    
+    // 🔧 AJOUT : Support Windows pour la compilation cross-platform
+    mingwX64("windows") {
+        binaries {
+            executable {
+                entryPoint = "fr.vetbrain.vetnutri_mp.MainKt.main"
+            }
+        }
+    }
 
     sourceSets {
         sourceSets.iosMain { kotlin.srcDir("build/generated/ksp/metadata") }
@@ -82,6 +91,18 @@ kotlin {
                 implementation("com.openhtmltopdf:openhtmltopdf-pdfbox:1.0.10")
             }
         }
+        
+        // 🔧 AJOUT : Source set Windows
+        val windowsMain by getting {
+            dependencies {
+                implementation(libs.kotlinx.coroutines.core)
+                implementation(libs.kotlinx.coroutines.test)
+                implementation(compose.desktop.windows_x64)
+                implementation(libs.skiko.awt)
+                implementation("com.openhtmltopdf:openhtmltopdf-core:1.0.10")
+                implementation("com.openhtmltopdf:openhtmltopdf-pdfbox:1.0.10")
+            }
+        }
 
         val iosMain by getting {
             kotlin.srcDir("build/generated/ksp/metadata")
@@ -106,8 +127,8 @@ android {
         applicationId = "fr.vetbrain.vetnutri_mp"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 8
-        versionName = "0.0.8"
+        versionCode = 11
+        versionName = "0.1.2"
 
         // Configuration de Room
 
@@ -139,7 +160,7 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "fr.vetbrain.vetnutri_mp"
-            packageVersion = "1.0.4"
+            packageVersion = "1.1.0"
             
             // Configuration des icônes pour chaque plateforme
             macOS {
