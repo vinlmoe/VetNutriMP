@@ -649,6 +649,8 @@ fun RationsView(
                                                                         referenceUtilisee,
                                                                 besoinEnergetiqueTotal =
                                                                         besoinEnergetiqueTotal,
+                                                                besoinEnergetiqueStandard =
+                                                                        besoinEnergetiqueStandard,
                                                                 viewModel = viewModel,
                                                                 onAddAliment = {
                                                                         if (selectedRation != null
@@ -1082,6 +1084,8 @@ fun RationsView(
                                                         referenceUtilisee = referenceUtilisee,
                                                         besoinEnergetiqueTotal =
                                                                 besoinEnergetiqueTotal,
+                                                        besoinEnergetiqueStandard =
+                                                                besoinEnergetiqueStandard,
                                                         viewModel = viewModel,
                                                         onAddAliment = {
                                                                 if (selectedRation != null) {

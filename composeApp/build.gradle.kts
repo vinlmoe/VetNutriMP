@@ -23,14 +23,10 @@ kotlin {
     }
 
     jvm("desktop")
-    
+
     // 🔧 AJOUT : Support Windows pour la compilation cross-platform
     mingwX64("windows") {
-        binaries {
-            executable {
-                entryPoint = "fr.vetbrain.vetnutri_mp.MainKt.main"
-            }
-        }
+        binaries { executable { entryPoint = "fr.vetbrain.vetnutri_mp.MainKt.main" } }
     }
 
     sourceSets {
@@ -91,7 +87,7 @@ kotlin {
                 implementation("com.openhtmltopdf:openhtmltopdf-pdfbox:1.0.10")
             }
         }
-        
+
         // 🔧 AJOUT : Source set Windows
         val windowsMain by getting {
             dependencies {
@@ -161,17 +157,11 @@ compose.desktop {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "fr.vetbrain.vetnutri_mp"
             packageVersion = "1.1.0"
-            
+
             // Configuration des icônes pour chaque plateforme
-            macOS {
-                iconFile.set(project.file("src/desktopMain/resources/icon.icns"))
-            }
-            windows {
-                iconFile.set(project.file("src/desktopMain/resources/icon.ico"))
-            }
-            linux {
-                iconFile.set(project.file("src/desktopMain/resources/icon.png"))
-            }
+            macOS { iconFile.set(project.file("src/desktopMain/resources/icon.icns")) }
+            windows { iconFile.set(project.file("src/desktopMain/resources/icon.ico")) }
+            linux { iconFile.set(project.file("src/desktopMain/resources/icon.png")) }
         }
     }
 }

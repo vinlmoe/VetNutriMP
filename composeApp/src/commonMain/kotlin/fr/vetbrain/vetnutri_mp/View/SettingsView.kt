@@ -779,7 +779,15 @@ fun SettingsView(
                                                 }
                                         }
                                 }
-                                3 -> { // Recettes
+                                3 -> { // Excel Import/Export
+                                        // Section pour l'import/export Excel des aliments
+                                        Section(title = "Import/Export Excel Aliments") {
+                                                ExcelImportExportSection(
+                                                        modifier = Modifier.fillMaxWidth()
+                                                )
+                                        }
+                                }
+                                4 -> { // Recettes
                                         RecipeEditView(
                                                 viewModel =
                                                         RecipeEditViewModel(
@@ -795,7 +803,7 @@ fun SettingsView(
                                                 modifier = Modifier.fillMaxWidth()
                                         )
                                 }
-                                4 -> { // Administration
+                                5 -> { // Administration
                                         AdministrationSettings(
                                                 viewModel = viewModel,
                                                 onAnimalListRefresh = onAnimalListRefresh,
@@ -850,6 +858,7 @@ enum class SettingsSection(val title: String) {
         INTERFACE("Interface"),
         PREFERENCES("Préférences"),
         IMPORTATION("Importation"),
+        EXCEL("Import/Export Excel"),
         RECIPES("Recettes"),
         ADMINISTRATION("Administration")
 }
