@@ -141,23 +141,17 @@ private suspend fun calculerPourcentagesEnergieRation(
                                 aliment.valMap[fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.LIPIDE]
                                         ?.value
                                         ?: 0.0
-                        val glucides =
-                                aliment.valMap[fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.GLUCIDE]
-                                        ?.value
-                                        ?: 0.0
+                        
 
                         // Calculer l'énergie des macronutriments (en kcal pour 100g)
                         val energieProteinesAliment = (proteines * quantite / 100.0) * 3.5
                         val energieLipidesAliment = (lipides * quantite / 100.0) * 8.5
-                        val energieGlucidesAliment = (glucides * quantite / 100.0) * 3.5
-
+                       
                         // Ajouter à l'énergie totale
                         energieProteines += energieProteinesAliment
                         energieLipides += energieLipidesAliment
-                        energieTotale +=
-                                energieProteinesAliment +
-                                        energieLipidesAliment +
-                                        energieGlucidesAliment
+                        energieTotale += alimentRation.getEnergie(referenceEv, preferencesEspece, equationRepository)
+                println("energieTotale: $energieTotale")
                 }
 
                 if (energieTotale <= 0) {
