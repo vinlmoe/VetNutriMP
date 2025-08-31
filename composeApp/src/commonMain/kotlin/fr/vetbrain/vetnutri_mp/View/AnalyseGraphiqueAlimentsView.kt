@@ -711,7 +711,7 @@ private fun GraphiqueNuagePoints(
                     Text(
                         text = "40% ENA",
                         style = MaterialTheme.typography.caption,
-                        color = Color.Cyan.copy(alpha = 0.7f)
+                        color = Color.Blue.copy(alpha = 0.7f)
                     )
 
                     Spacer(modifier = Modifier.width(AppSizes.paddingMedium))
@@ -731,7 +731,7 @@ private fun GraphiqueNuagePoints(
                     Text(
                         text = "60% ENA",
                         style = MaterialTheme.typography.caption,
-                        color = Color.Yellow.copy(alpha = 0.7f)
+                        color = Color.Green.copy(alpha = 0.7f)
                     )
                 }
             }
