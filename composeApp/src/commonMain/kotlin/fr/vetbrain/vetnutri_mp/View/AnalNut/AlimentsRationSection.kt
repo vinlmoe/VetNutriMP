@@ -44,6 +44,7 @@ fun SectionAlimentsRation(
         selectedRation: Ration?,
         referenceUtilisee: ReferenceEv?,
         besoinEnergetiqueTotal: Double?,
+        besoinEnergetiqueStandard: Double?,
         viewModel: AnimalDetailViewModel,
         onAddAliment: () -> Unit,
         onMultiNutrientAdjustment: () -> Unit,
@@ -206,7 +207,7 @@ fun SectionAlimentsRation(
                                                                                                                                         besoinEnergetiqueTotal
                                                                                                                                                 ?: 0.0,
                                                                                                                                 besoinEnergetiqueStandard =
-                                                                                                                                        besoinEnergetiqueTotal
+                                                                                                                                        besoinEnergetiqueStandard
                                                                                                                                                 ?: 0.0,
                                                                                                                                 poidsAnimal =
                                                                                                                                         null, // Valeur par défaut

@@ -535,7 +535,7 @@ fun MultiNutrientAdjustmentView(
                                                                                         besoinEnergetiqueTotal =
                                                                                                 besoinEnergetiqueTotal,
                                                                                         besoinEnergetiqueStandard =
-                                                                                                besoinEnergetiqueTotal,
+                                                                                                besoinEnergetiqueStandard,
                                                                                         poidsAnimal =
                                                                                                 poidsAnimal,
                                                                                         poidsMetabolique =
@@ -969,35 +969,27 @@ suspend fun calculerAjustement(
                         }
                 }
 
-                
-
                 // Étape 2: Traiter les nutriments sélectionnés par l'utilisateur, avec ordre
                 // dynamique
                 val nutrimentsTraites = mutableSetOf<String>()
                 val processingOrder = buildProcessingOrderFromSelections(adjustmentData)
 
-                
-                
-                adjustmentData.forEach { data ->
-                        
-                }
+                adjustmentData.forEach { data -> }
 
                 // PREMIÈRE ÉTAPE : Ajuster tous les nutriments sauf l'énergie
                 val nutrimentsNonEnergetiques = processingOrder.filter { it != "ENERGIE" }
                 for (nutrientLabel in nutrimentsNonEnergetiques) {
                         val nutrient = findNutrientByLabel(nutrientLabel)
                         if (nutrient == null) {
-                                
+
                                 continue
                         }
-
-                        
 
                         // Calculer le besoin absolu en fonction du nutriment
                         val rl = Reflevel.OPTIMIN
                         val nutrimentRef = referenceUtilisee.obtenirNutrimentRef(nutrient, rl)
                         if (nutrimentRef == null || nutrimentRef.quantite <= 0) {
-                                
+
                                 continue
                         }
 
@@ -1006,11 +998,11 @@ suspend fun calculerAjustement(
                                         nutrimentRef = nutrimentRef,
                                         poidsAnimal = poidsAnimal,
                                         poidsMetabolique = poidsMetabolique,
-                                        besoinEnergetiqueTotal = besoinEnergetiqueStandard
+                                        besoinEnergetiqueReference = besoinEnergetiqueStandard
                                 )
 
                         if (besoinAbsoluGrammes <= 0) {
-                                
+
                                 continue
                         }
 
@@ -1022,7 +1014,7 @@ suspend fun calculerAjustement(
                                 }
 
                         if (alimentsAjustables.isEmpty()) {
-                                
+
                                 continue
                         }
 
@@ -1038,10 +1030,9 @@ suspend fun calculerAjustement(
                         }
 
                         val manque = besoinAbsoluGrammes - apportActuel
-                        
 
                         if (manque > 0.01) {
-                                
+
                                 val result =
                                         ajusterAlimentsPourNutriment(
                                                 nutriment = nutrient,
@@ -1056,14 +1047,10 @@ suspend fun calculerAjustement(
                                         )
 
                                 if (!result.success) {
-                                        
+
                                         return result
-                                } else {
-                                        
-                                }
-                        } else {
-                                
-                        }
+                                } else {}
+                        } else {}
 
                         nutrimentsTraites.add(nutrientLabel)
                 }
@@ -1071,7 +1058,6 @@ suspend fun calculerAjustement(
                 // DEUXIÈME ÉTAPE : Ajuster l'énergie en recalculant l'apport total de la ration
                 // finale
                 if (processingOrder.contains("ENERGIE")) {
-                        
 
                         // Créer une ration temporaire avec les ajustements effectués
                         val rationTemp = ration.copy()
@@ -1109,15 +1095,10 @@ suspend fun calculerAjustement(
                                                         null
                                                 )
                                         apportEnergetiqueTotal += energieAliment
-                                        
                                 }
                         }
 
-                        
-                        
-
                         val manqueEnergie = besoinEnergetiqueTotal - apportEnergetiqueTotal
-                        
 
                         if (manqueEnergie > 0.01) {
                                 // PRIORITÉ : Utiliser d'abord les aliments qui ont l'énergie comme
@@ -1161,10 +1142,6 @@ suspend fun calculerAjustement(
                                 val alimentsAjustablesEnergie =
                                         alimentsEnergiePrincipale + alimentsEnergieSecondaire
 
-                                
-                                
-                                
-
                                 val result =
                                         ajusterAlimentsPourNutriment(
                                                 nutriment = NutrientMain.ENERGIE,
@@ -1179,10 +1156,10 @@ suspend fun calculerAjustement(
                                         )
 
                                 if (result.success) {
-                                        
+
                                         nutrimentsTraites.add("ENERGIE")
                                 } else {
-                                        
+
                                         return RationAdjustmentResult(
                                                 success = false,
                                                 message =
@@ -1191,7 +1168,7 @@ suspend fun calculerAjustement(
                                         )
                                 }
                         } else {
-                                
+
                                 nutrimentsTraites.add("ENERGIE")
                         }
                 }
@@ -1217,8 +1194,6 @@ suspend fun calculerAjustement(
                         adjustedAliments[i] = adjustedAliments[i].copy(quantite = rounded)
                 }
 
-                
-
                 return RationAdjustmentResult(
                         success = true,
                         message =
@@ -1238,7 +1213,7 @@ private fun calculerBesoinAbsoluGrammes(
         nutrimentRef: ReferenceEv.Nut4Ref,
         poidsAnimal: Double?,
         poidsMetabolique: Double?,
-        besoinEnergetiqueTotal: Double
+        besoinEnergetiqueReference: Double
 ): Double {
         val quantite = nutrimentRef.quantite.toDouble()
         val uniteBase = nutrimentRef.unite
@@ -1251,7 +1226,7 @@ private fun calculerBesoinAbsoluGrammes(
         return when (uniteRequis) {
                 UnitReqEnum.PERKG -> quantiteEnGrammes * (poidsAnimal ?: 0.0)
                 UnitReqEnum.PERMS -> quantiteEnGrammes * (poidsMetabolique ?: 0.0)
-                UnitReqEnum.PERKCAL -> (quantiteEnGrammes / 1000.0) * besoinEnergetiqueTotal
+                UnitReqEnum.PERKCAL -> (quantiteEnGrammes / 1000.0) * besoinEnergetiqueReference
                 else -> quantiteEnGrammes // Si c'est déjà en besoin journalier
         }
 }
@@ -1705,11 +1680,10 @@ private fun adjustRationForMultipleNutrients(
                         val manque = besoinAbsolu - apportActuel
 
                         val unite = if (nutrientLabel == NutrientMain.ENERGIE.label) "kcal" else "g"
-                        
 
                         if (manque > 0.01) { // Tolérance de 0.01g
                                 // Étape 5: Ajuster les aliments pour couvrir le manque
-                                
+
                                 val result =
                                         ajusterAlimentsPourNutriment(
                                                 nutriment = nutrient,
@@ -1720,14 +1694,10 @@ private fun adjustRationForMultipleNutrients(
                                         )
 
                                 if (!result.success) {
-                                        
+
                                         return result
-                                } else {
-                                        
-                                }
-                        } else {
-                                
-                        }
+                                } else {}
+                        } else {}
 
                         nutrimentsTraites.add(nutrientLabel)
                 }
