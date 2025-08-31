@@ -1160,6 +1160,46 @@ private fun RationsEnergieChart(
                                         yAxisTitle = "Pourcentage d'énergie des lipides (%)",
                                         modifier = Modifier.fillMaxSize()
                                 ) {
+                                        // 🔸 LIGNES DE RÉFÉRENCE pour la répartition énergétique
+                                        // Ligne 80-x : Protéines + Lipides = 80% (ENA = 20%)
+                                        val ligne80MinusX = listOf(
+                                                Point(x = xRange.start, y = 80f - xRange.start),
+                                                Point(x = xRange.endInclusive, y = 80f - xRange.endInclusive)
+                                        )
+                                        LinePlot(
+                                                data = ligne80MinusX,
+                                                lineStyle = LineStyle(
+                                                        brush = SolidColor(Color.Magenta.copy(alpha = 0.7f)),
+                                                        strokeWidth = 2.dp
+                                                )
+                                        )
+
+                                        // Ligne 60-x : Protéines + Lipides = 60% (ENA = 40%)
+                                        val ligne60MinusX = listOf(
+                                                Point(x = xRange.start, y = 60f - xRange.start),
+                                                Point(x = xRange.endInclusive, y = 60f - xRange.endInclusive)
+                                        )
+                                        LinePlot(
+                                                data = ligne60MinusX,
+                                                lineStyle = LineStyle(
+                                                        brush = SolidColor(Color.Cyan.copy(alpha = 0.7f)),
+                                                        strokeWidth = 2.dp
+                                                )
+                                        )
+
+                                        // Ligne 40-x : Protéines + Lipides = 40% (ENA = 60%)
+                                        val ligne40MinusX = listOf(
+                                                Point(x = xRange.start, y = 40f - xRange.start),
+                                                Point(x = xRange.endInclusive, y = 40f - xRange.endInclusive)
+                                        )
+                                        LinePlot(
+                                                data = ligne40MinusX,
+                                                lineStyle = LineStyle(
+                                                        brush = SolidColor(Color.Yellow.copy(alpha = 0.7f)),
+                                                        strokeWidth = 2.dp
+                                                )
+                                        )
+
                                         // Afficher chaque point individuellement
                                         rationsEnergieData.forEachIndexed { index, data ->
                                                 val point = points[index]
@@ -1281,6 +1321,72 @@ private fun RationsEnergieChart(
                                                 )
                                         }
                                 }
+                        }
+
+                        // Légende des lignes de référence
+                        Spacer(modifier = Modifier.height(AppSizes.paddingMedium))
+                        Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                        ) {
+                                // Ligne magenta 80-x
+                                androidx.compose.foundation.Canvas(
+                                        modifier = Modifier.size(20.dp, 2.dp)
+                                ) {
+                                        drawLine(
+                                                color = Color.Magenta.copy(alpha = 0.7f),
+                                                start = androidx.compose.ui.geometry.Offset(0f, size.height / 2),
+                                                end = androidx.compose.ui.geometry.Offset(size.width, size.height / 2),
+                                                strokeWidth = 2.dp.toPx()
+                                        )
+                                }
+                                Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
+                                Text(
+                                        text = "80-x: 20% ENA",
+                                        style = MaterialTheme.typography.caption,
+                                        color = Color.Magenta.copy(alpha = 0.7f)
+                                )
+
+                                Spacer(modifier = Modifier.width(AppSizes.paddingMedium))
+
+                                // Ligne cyan 60-x
+                                androidx.compose.foundation.Canvas(
+                                        modifier = Modifier.size(20.dp, 2.dp)
+                                ) {
+                                        drawLine(
+                                                color = Color.Cyan.copy(alpha = 0.7f),
+                                                start = androidx.compose.ui.geometry.Offset(0f, size.height / 2),
+                                                end = androidx.compose.ui.geometry.Offset(size.width, size.height / 2),
+                                                strokeWidth = 2.dp.toPx()
+                                        )
+                                }
+                                Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
+                                Text(
+                                        text = "60-x: 40% ENA",
+                                        style = MaterialTheme.typography.caption,
+                                        color = Color.Cyan.copy(alpha = 0.7f)
+                                )
+
+                                Spacer(modifier = Modifier.width(AppSizes.paddingMedium))
+
+                                // Ligne jaune 40-x
+                                androidx.compose.foundation.Canvas(
+                                        modifier = Modifier.size(20.dp, 2.dp)
+                                ) {
+                                        drawLine(
+                                                color = Color.Yellow.copy(alpha = 0.7f),
+                                                start = androidx.compose.ui.geometry.Offset(0f, size.height / 2),
+                                                end = androidx.compose.ui.geometry.Offset(size.width, size.height / 2),
+                                                strokeWidth = 2.dp.toPx()
+                                        )
+                                }
+                                Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
+                                Text(
+                                        text = "40-x: 60% ENA",
+                                        style = MaterialTheme.typography.caption,
+                                        color = Color.Yellow.copy(alpha = 0.7f)
+                                )
                         }
 
                         // Légende des rations

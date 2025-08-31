@@ -46,6 +46,7 @@ import io.github.koalaplot.core.xygraph.XYGraph
 import io.github.koalaplot.core.util.ExperimentalKoalaPlotApi
 import io.github.koalaplot.core.bar.DefaultVerticalBar
 import io.github.koalaplot.core.bar.VerticalBarPlot
+import io.github.koalaplot.core.style.LineStyle
 
 /**
  * Données calculées pour un aliment avec sa densité énergétique et pourcentages
@@ -57,7 +58,8 @@ data class AlimentAnalyseData(
     val pourcentageProteines: Double,
     val pourcentageLipides: Double,
     val phosphorePer1000Kcal: Double = 0.0,
-    val proteinePer1000Kcal: Double = 0.0
+    val proteinePer1000Kcal: Double = 0.0,
+    val calciumPer1000Kcal: Double = 0.0
 )
 
 /**
@@ -281,6 +283,14 @@ fun AnalyseGraphiqueAlimentsView(
                 
                 
                 
+                // Récupération du calcium pour le troisième graphique
+                val calcium = alimentRation.getNutrientWithComplementary(
+                    nutrient = NutrientMacro.CAL,
+                    preferences = preferencesEspece,
+                    equationRepository = equationRepository,
+                    referenceEv = referenceEv
+                ) ?: 0.0
+
                 val densiteEnergetique = calculerDensiteEnergetiqueAsync(aliment, referenceEv, equationRepository, preferencesEspece)
                 val pourcentageProteines = calculerPourcentageEnergieProteinesAsync(aliment, densiteEnergetique, equationRepository, preferencesEspece)
                 val pourcentageLipides = calculerPourcentageEnergieLipidesAsync(aliment, densiteEnergetique, equationRepository, preferencesEspece)
@@ -293,7 +303,13 @@ fun AnalyseGraphiqueAlimentsView(
                 }
                 
                 val phosphorePer1000Kcal = if (densiteEnergetique > 0) {
-                    (phosphore * 1000.0) / densiteEnergetique  
+                    (phosphore * 1000.0) / densiteEnergetique
+                } else {
+                    0.0
+                }
+
+                val calciumPer1000Kcal = if (densiteEnergetique > 0) {
+                    (calcium * 1000.0) / densiteEnergetique
                 } else {
                     0.0
                 }
@@ -313,7 +329,8 @@ fun AnalyseGraphiqueAlimentsView(
                     pourcentageProteines = pourcentageProteines,
                     pourcentageLipides = pourcentageLipides,
                     phosphorePer1000Kcal = phosphorePer1000Kcal,
-                    proteinePer1000Kcal = proteinePer1000Kcal
+                    proteinePer1000Kcal = proteinePer1000Kcal,
+                    calciumPer1000Kcal = calciumPer1000Kcal
                 ))
             } catch (e: Exception) {
                 
@@ -406,6 +423,18 @@ fun AnalyseGraphiqueAlimentsView(
                 modifier = Modifier.weight(1f)
             ) {
                 Text("Phosphore/Protéines\n(g par 1000 kcal)")
+            }
+
+            // Onglet Calcium/Phosphore
+            Button(
+                onClick = { ongletActif = "calcium_phosphore" },
+                colors = ButtonDefaults.buttonColors(
+                    backgroundColor = if (ongletActif == "calcium_phosphore") VetNutriColors.Primary else Color.Gray.copy(alpha = 0.3f),
+                    contentColor = if (ongletActif == "calcium_phosphore") Color.White else Color.Black
+                ),
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("Calcium/Phosphore\n(g par 1000 kcal)")
             }
         }
 
@@ -526,6 +555,7 @@ private fun GraphiqueNuagePoints(
             val titre = when (ongletActif) {
                 "protein_lipid" -> "Répartition énergétique : Protéines vs Lipides"
                 "phosphore_protein" -> "Phosphore vs Protéines (par 1000 kcal)"
+                "calcium_phosphore" -> "Calcium vs Phosphore (par 1000 kcal)"
                 else -> "Analyse nutritionnelle"
             }
             
@@ -541,7 +571,171 @@ private fun GraphiqueNuagePoints(
                 style = MaterialTheme.typography.caption,
                 color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
             )
-            
+
+            // Légende des lignes de référence pour le graphique Calcium/Phosphore
+            if (ongletActif == "calcium_phosphore") {
+                Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Ligne rouge 1:1
+                    androidx.compose.foundation.Canvas(
+                        modifier = Modifier.size(20.dp, 2.dp)
+                    ) {
+                        drawLine(
+                            color = Color.Red.copy(alpha = 0.7f),
+                            start = androidx.compose.ui.geometry.Offset(0f, size.height / 2),
+                            end = androidx.compose.ui.geometry.Offset(size.width, size.height / 2),
+                            strokeWidth = 2.dp.toPx()
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
+                    Text(
+                        text = "Ratio 1:1",
+                        style = MaterialTheme.typography.caption,
+                        color = Color.Red.copy(alpha = 0.7f)
+                    )
+
+                    Spacer(modifier = Modifier.width(AppSizes.paddingMedium))
+
+                    // Ligne bleue 2:1
+                    androidx.compose.foundation.Canvas(
+                        modifier = Modifier.size(20.dp, 2.dp)
+                    ) {
+                        drawLine(
+                            color = Color.Magenta.copy(alpha = 0.7f),
+                            start = androidx.compose.ui.geometry.Offset(0f, size.height / 2),
+                            end = androidx.compose.ui.geometry.Offset(size.width, size.height / 2),
+                            strokeWidth = 2.dp.toPx()
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
+                    Text(
+                        text = "Ratio 2:1",
+                        style = MaterialTheme.typography.caption,
+                        color = Color.Blue.copy(alpha = 0.7f)
+                    )
+                }
+            }
+
+            // Légende des lignes de référence pour le graphique Protéines/Phosphore
+            if (ongletActif == "phosphore_protein") {
+                Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Ligne verte 35:1
+                    androidx.compose.foundation.Canvas(
+                        modifier = Modifier.size(20.dp, 2.dp)
+                    ) {
+                        drawLine(
+                            color = Color.Green.copy(alpha = 0.7f),
+                            start = androidx.compose.ui.geometry.Offset(0f, size.height / 2),
+                            end = androidx.compose.ui.geometry.Offset(size.width, size.height / 2),
+                            strokeWidth = 2.dp.toPx()
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
+                    Text(
+                        text = "Ratio 35:1",
+                        style = MaterialTheme.typography.caption,
+                        color = Color.Green.copy(alpha = 0.7f)
+                    )
+
+                    Spacer(modifier = Modifier.width(AppSizes.paddingMedium))
+
+                    // Ligne orange 25:1
+                    androidx.compose.foundation.Canvas(
+                        modifier = Modifier.size(20.dp, 2.dp)
+                    ) {
+                        drawLine(
+                            color = Color.Blue.copy(alpha = 0.7f),
+                            start = androidx.compose.ui.geometry.Offset(0f, size.height / 2),
+                            end = androidx.compose.ui.geometry.Offset(size.width, size.height / 2),
+                            strokeWidth = 2.dp.toPx()
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
+                    Text(
+                        text = "Ratio 25:1",
+                        style = MaterialTheme.typography.caption,
+                        color = Color(0xFFFF9800).copy(alpha = 0.7f)
+                    )
+                }
+            }
+
+            // Légende des lignes de référence pour le graphique Répartition énergétique
+            if (ongletActif == "protein_lipid") {
+                Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Ligne magenta 80-x
+                    androidx.compose.foundation.Canvas(
+                        modifier = Modifier.size(20.dp, 2.dp)
+                    ) {
+                        drawLine(
+                            color = Color.Magenta.copy(alpha = 0.7f),
+                            start = androidx.compose.ui.geometry.Offset(0f, size.height / 2),
+                            end = androidx.compose.ui.geometry.Offset(size.width, size.height / 2),
+                            strokeWidth = 2.dp.toPx()
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
+                    Text(
+                        text = "20% ENA",
+                        style = MaterialTheme.typography.caption,
+                        color = Color.Magenta.copy(alpha = 0.7f)
+                    )
+
+                    Spacer(modifier = Modifier.width(AppSizes.paddingMedium))
+
+                    // Ligne cyan 60-x
+                    androidx.compose.foundation.Canvas(
+                        modifier = Modifier.size(20.dp, 2.dp)
+                    ) {
+                        drawLine(
+                            color = Color.Blue.copy(alpha = 0.7f),
+                            start = androidx.compose.ui.geometry.Offset(0f, size.height / 2),
+                            end = androidx.compose.ui.geometry.Offset(size.width, size.height / 2),
+                            strokeWidth = 2.dp.toPx()
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
+                    Text(
+                        text = "40% ENA",
+                        style = MaterialTheme.typography.caption,
+                        color = Color.Cyan.copy(alpha = 0.7f)
+                    )
+
+                    Spacer(modifier = Modifier.width(AppSizes.paddingMedium))
+
+                    // Ligne jaune 40-x
+                    androidx.compose.foundation.Canvas(
+                        modifier = Modifier.size(20.dp, 2.dp)
+                    ) {
+                        drawLine(
+                            color = Color.Green.copy(alpha = 0.7f),
+                            start = androidx.compose.ui.geometry.Offset(0f, size.height / 2),
+                            end = androidx.compose.ui.geometry.Offset(size.width, size.height / 2),
+                            strokeWidth = 2.dp.toPx()
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
+                    Text(
+                        text = "60% ENA",
+                        style = MaterialTheme.typography.caption,
+                        color = Color.Yellow.copy(alpha = 0.7f)
+                    )
+                }
+            }
+
             Spacer(modifier = Modifier.height(AppSizes.paddingMedium))
             
             if (alimentsAnalyses.isNotEmpty()) {
@@ -572,6 +766,14 @@ private fun GraphiqueNuagePoints(
                                 Point(
                                     x = data.phosphorePer1000Kcal.toFloat(),
                                     y = data.proteinePer1000Kcal.toFloat()
+                                )
+                            }
+                        }
+                        "calcium_phosphore" -> {
+                            alimentsAnalyses.map { data ->
+                                Point(
+                                    x = data.phosphorePer1000Kcal.toFloat(),
+                                    y = data.calciumPer1000Kcal.toFloat()
                                 )
                             }
                         }
@@ -642,33 +844,133 @@ private fun GraphiqueNuagePoints(
                                 }
                             )
                         }
+
+                        // 🔸 LIGNES DE RÉFÉRENCE pour le graphique Calcium/Phosphore
+                        if (ongletActif == "calcium_phosphore") {
+                            // Ligne 1:1 (Calcium = Phosphore)
+                            val ligne1to1 = listOf(
+                                Point(x = xRange.start, y = xRange.start),
+                                Point(x = xRange.endInclusive, y = xRange.endInclusive)
+                            )
+                            LinePlot(
+                                data = ligne1to1,
+                                lineStyle = LineStyle(
+                                    brush = SolidColor(Color.Red.copy(alpha = 0.7f)),
+                                    strokeWidth = 2.dp
+                                )
+                            )
+
+                            // Ligne 2:1 (Calcium = 2 × Phosphore)
+                            val ligne2to1 = listOf(
+                                Point(x = xRange.start, y = xRange.start * 2),
+                                Point(x = xRange.endInclusive, y = xRange.endInclusive * 2)
+                            )
+                            LinePlot(
+                                data = ligne2to1,
+                                lineStyle = LineStyle(
+                                    brush = SolidColor(Color.Blue.copy(alpha = 0.7f)),
+                                    strokeWidth = 2.dp
+                                )
+                            )
+                        }
+
+                        // 🔸 LIGNES DE RÉFÉRENCE pour le graphique Protéines/Phosphore
+                        if (ongletActif == "phosphore_protein") {
+                            // Ligne 35:1 (Protéines = 35 × Phosphore)
+                            val ligne35to1 = listOf(
+                                Point(x = xRange.start, y = xRange.start * 35),
+                                Point(x = xRange.endInclusive, y = xRange.endInclusive * 35)
+                            )
+                            LinePlot(
+                                data = ligne35to1,
+                                lineStyle = LineStyle(
+                                    brush = SolidColor(Color.Green.copy(alpha = 0.7f)),
+                                    strokeWidth = 2.dp
+                                )
+                            )
+
+                            // Ligne 25:1 (Protéines = 25 × Phosphore)
+                            val ligne25to1 = listOf(
+                                Point(x = xRange.start, y = xRange.start * 25),
+                                Point(x = xRange.endInclusive, y = xRange.endInclusive * 25)
+                            )
+                            LinePlot(
+                                data = ligne25to1,
+                                lineStyle = LineStyle(
+                                    brush = SolidColor(Color(0xFFFF9800).copy(alpha = 0.7f)),
+                                    strokeWidth = 2.dp
+                                )
+                            )
+                        }
+
+                        // 🔸 LIGNES DE RÉFÉRENCE pour le graphique Répartition énergétique (Protéines/Lipides)
+                        if (ongletActif == "protein_lipid") {
+                            // Ligne 80-x : Protéines + Lipides = 80% (reste = glucides)
+                            val ligne80MinusX = listOf(
+                                Point(x = xRange.start, y = 80f - xRange.start),
+                                Point(x = xRange.endInclusive, y = 80f - xRange.endInclusive)
+                            )
+                            LinePlot(
+                                data = ligne80MinusX,
+                                lineStyle = LineStyle(
+                                    brush = SolidColor(Color.Magenta.copy(alpha = 0.7f)),
+                                    strokeWidth = 2.dp
+                                )
+                            )
+
+                            // Ligne 60-x : Protéines + Lipides = 60% (reste = glucides)
+                            val ligne60MinusX = listOf(
+                                Point(x = xRange.start, y = 60f - xRange.start),
+                                Point(x = xRange.endInclusive, y = 60f - xRange.endInclusive)
+                            )
+                            LinePlot(
+                                data = ligne60MinusX,
+                                lineStyle = LineStyle(
+                                    brush = SolidColor(Color.Cyan.copy(alpha = 0.7f)),
+                                    strokeWidth = 2.dp
+                                )
+                            )
+
+                            // Ligne 40-x : Protéines + Lipides = 40% (reste = glucides)
+                            val ligne40MinusX = listOf(
+                                Point(x = xRange.start, y = 40f - xRange.start),
+                                Point(x = xRange.endInclusive, y = 40f - xRange.endInclusive)
+                            )
+                            LinePlot(
+                                data = ligne40MinusX,
+                                lineStyle = LineStyle(
+                                    brush = SolidColor(Color.Yellow.copy(alpha = 0.7f)),
+                                    strokeWidth = 2.dp
+                                )
+                            )
+                        }
                     }
-                    
+
                     // 🎯 Numéros superposés directement avec correction des marges d'axes
                     alimentsAnalyses.forEachIndexed { index, data ->
                         val point = points[index] // Utiliser le point calculé selon l'onglet actif
                         // Calculer la position du numéro avec les vraies dimensions
                         val xPosition = ((point.x - xRange.start) / (xRange.endInclusive - xRange.start))
                         val yPosition = 1f - ((point.y - yRange.start) / (yRange.endInclusive - yRange.start))
-                        
+
                         // Marges typiques des axes KoalaPlot (estimation)
                         // 🔧 Marges AJUSTÉES basées sur l'observation des logs (décalage empirique)
                         val leftAxisMargin = 10.dp  // Marge pour les labels de l'axe Y (augmentée)
                         val bottomAxisMargin = 15.dp  // Marge pour les labels de l'axe X (augmentée)
                         val topMargin = 10.dp  // Marge supérieure
                         val rightMargin = 20.dp  // Marge droite
-                        
+
                         // Zone de graphique effective
                         val effectiveGraphWidth = maxWidth - leftAxisMargin - rightMargin
                         val effectiveGraphHeight = maxHeight  - bottomAxisMargin - topMargin
-                        
+
                         // Couleur selon la sélection (même logique que les points)
                         val numeroColor = if (data.aliment.uuid == alimentSelectionne) {
                             Color(0xFF9C27B0) // Violet pour sélectionné
                         } else {
                             VetNutriColors.Primary // Couleur par défaut pour tous
                         }
-                        
+
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -693,7 +995,7 @@ private fun GraphiqueNuagePoints(
                                     style = Stroke(width = 2.dp.toPx())
                                 )
                             }
-                            
+
                             // Numéro
                             Text(
                                 text = "${data.numero}",
