@@ -384,7 +384,11 @@ private fun formatAge(ageInYears: Double, ageInMonths: Double): String {
 
 @OptIn(ExperimentalKoalaPlotApi::class)
 @Composable
-fun AnalyseGraphiqueView(viewModel: AnimalDetailViewModel, modifier: Modifier = Modifier) {
+fun AnalyseGraphiqueView(
+        viewModel: AnimalDetailViewModel,
+        equationRepository: fr.vetbrain.vetnutri_mp.Repository.EquationRepository? = null,
+        modifier: Modifier = Modifier
+) {
         var selectedChart by remember { mutableStateOf(ChartType.EVOLUTION_POIDS) }
 
         Column(
@@ -404,7 +408,7 @@ fun AnalyseGraphiqueView(viewModel: AnimalDetailViewModel, modifier: Modifier = 
                 // Affichage du graphique sélectionné
                 when (selectedChart) {
                         ChartType.EVOLUTION_POIDS -> EvolutionPoidsChart(viewModel)
-                        ChartType.RATIONS_ENERGIE -> RationsEnergieChart(viewModel)
+                        ChartType.RATIONS_ENERGIE -> RationsEnergieChart(viewModel, equationRepository)
                         ChartType.COMPARAISON_BESOINS -> ComparaisonBesoinsChart()
                         ChartType.REPARTITION_ENERGIE -> RepartitionEnergieChart()
                 }
@@ -1034,8 +1038,13 @@ private fun PoidsTableau(
 
 @OptIn(ExperimentalKoalaPlotApi::class)
 @Composable
-private fun RationsEnergieChart(viewModel: AnimalDetailViewModel) {
+private fun RationsEnergieChart(
+        viewModel: AnimalDetailViewModel,
+        equationRepository: fr.vetbrain.vetnutri_mp.Repository.EquationRepository? = null
+) {
         val animal by viewModel.animal.collectAsState()
+        val referenceUtilisee by viewModel.referenceUtilisee.collectAsState()
+        val speciesPreferences by viewModel.speciesPreferences.collectAsState()
         val scope = rememberCoroutineScope()
 
         // États pour les données des rations
@@ -1044,7 +1053,7 @@ private fun RationsEnergieChart(viewModel: AnimalDetailViewModel) {
         var rationSelectionnee by remember { mutableStateOf<String?>(null) }
 
         // Calculer les données des rations de manière asynchrone
-        LaunchedEffect(animal?.consultations?.size) {
+        LaunchedEffect(animal?.consultations?.size, referenceUtilisee, speciesPreferences) {
                 isLoading = true
                 val resultat = mutableListOf<RationEnergyData>()
 
@@ -1056,9 +1065,9 @@ private fun RationsEnergieChart(viewModel: AnimalDetailViewModel) {
                                         val rationData =
                                                 calculerPourcentagesEnergieRation(
                                                         ration = ration,
-                                                        referenceEv = null,
-                                                        preferencesEspece = null,
-                                                        equationRepository = null
+                                                        referenceEv = referenceUtilisee,
+                                                        preferencesEspece = speciesPreferences,
+                                                        equationRepository = equationRepository
                                                 )
 
                                         rationData?.let { data ->

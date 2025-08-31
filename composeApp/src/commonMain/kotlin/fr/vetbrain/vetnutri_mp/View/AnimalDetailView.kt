@@ -398,6 +398,7 @@ private fun WideScreenLayout(
                                 AnimalDetailSection.GRAPHIQUE -> {
                                         AnalyseGraphiqueView(
                                                 viewModel = viewModel,
+                                                equationRepository = equationRepository,
                                                 modifier = Modifier.fillMaxSize()
                                         )
                                 }
@@ -913,6 +914,7 @@ private fun NarrowScreenLayout(
                                                 AnimalDetailSection.GRAPHIQUE -> {
                                                         AnalyseGraphiqueView(
                                                                 viewModel = viewModel,
+                                                                equationRepository = equationRepository,
                                                                 modifier = Modifier.fillMaxSize()
                                                         )
                                                 }
