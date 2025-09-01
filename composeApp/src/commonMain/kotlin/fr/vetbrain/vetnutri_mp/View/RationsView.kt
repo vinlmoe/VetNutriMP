@@ -104,20 +104,14 @@ fun RationsView(
         val referencesMaladiesResolues =
                 remember(selectedConsultation?.referencesMaladies, availableReferences) {
                         val ids = selectedConsultation?.referencesMaladies ?: emptyList()
-                        
+
                         val resolved =
                                 ids.mapNotNull { id ->
                                         availableReferences.firstOrNull { it.uuid == id }
                                 }
                         if (resolved.isEmpty()) {
-                                if (ids.isNotEmpty()) {
-                                        
-                                } else {
-                                        
-                                }
-                        } else {
-                                
-                        }
+                                if (ids.isNotEmpty()) {} else {}
+                        } else {}
                         resolved
                 }
 
@@ -146,6 +140,21 @@ fun RationsView(
                                 if (besoin > 0) energieApportee / besoin else 0.0
                         }
                                 ?: 0.0
+                }
+
+        // Calcul du K calculé (produit de tous les coefficients K + coefficient d'ajustement)
+        val kCalcule =
+                remember(selectedConsultation) {
+                        selectedConsultation?.let { consultation ->
+                                val k1 = consultation.k1Value ?: 1.0
+                                val k2 = consultation.k2Value ?: 1.0
+                                val k3 = consultation.k3Value ?: 1.0
+                                val k4 = consultation.k4Value ?: 1.0
+                                val k5 = consultation.k5Value ?: 1.0
+                                val coeffAjustement = consultation.coefficientAjustement ?: 1.0
+                                (k1 * k2 * k3 * k4 * k5) * coeffAjustement
+                        }
+                                ?: 1.0
                 }
 
         // Système de préférences pour le filtrage des nutriments avec logs de debug
@@ -478,6 +487,8 @@ fun RationsView(
                                                                         besoinEnergetiqueStandard,
                                                                 besoinEnergetiqueTotal =
                                                                         besoinEnergetiqueTotal,
+                                                                kObserve = kObserve,
+                                                                kCalcule = kCalcule,
                                                                 onExpand = {
                                                                         showMetabolicValuesDialog =
                                                                                 true
@@ -505,6 +516,7 @@ fun RationsView(
                                                                 pourcentageCouverture =
                                                                         pourcentageCouverture,
                                                                 kObserve = kObserve,
+                                                                kCalcule = kCalcule,
                                                                 modifier = Modifier.fillMaxWidth()
                                                         )
                                                         Divider()
@@ -879,6 +891,8 @@ fun RationsView(
                                                                         besoinEnergetiqueStandard,
                                                                 besoinEnergetiqueTotal =
                                                                         besoinEnergetiqueTotal,
+                                                                kObserve = kObserve,
+                                                                kCalcule = kCalcule,
                                                                 onExpand = {
                                                                         showMetabolicValuesDialog =
                                                                                 true
@@ -910,6 +924,7 @@ fun RationsView(
                                                                 pourcentageCouverture =
                                                                         pourcentageCouverture,
                                                                 kObserve = kObserve,
+                                                                kCalcule = kCalcule,
                                                                 modifier = Modifier.weight(1f)
                                                         )
                                                 }
@@ -1207,7 +1222,8 @@ fun RationsView(
                                                                 besoinEnergetiqueEntretien =
                                                                         besoinEnergetiqueStandard,
                                                                 poidsAnimal =
-                                                                        selectedConsultation?.weight
+                                                                        selectedConsultation
+                                                                                ?.effectiveWeight
                                                                                 ?.toDouble(),
                                                                 modifier = Modifier.fillMaxWidth(),
                                                                 nutrimentsSelectionnes =
@@ -1346,6 +1362,8 @@ fun RationsView(
                                         poidsMetabolique = poidsMetabolique,
                                         besoinEnergetiqueStandard = besoinEnergetiqueStandard,
                                         besoinEnergetiqueTotal = besoinEnergetiqueTotal,
+                                        kObserve = kObserve,
+                                        kCalcule = kCalcule,
                                         referenceUtilisee = referenceUtilisee,
                                         onDismiss = { showMetabolicValuesDialog = false }
                                 )
@@ -1370,7 +1388,7 @@ fun RationsView(
                                 poidsMetabolique = poidsMetabolique,
                                 referenceUtilisee = referenceUtilisee,
                                 besoinEnergetiqueEntretien = besoinEnergetiqueStandard,
-                                poidsAnimal = selectedConsultation?.weight?.toDouble(),
+                                poidsAnimal = selectedConsultation?.effectiveWeight?.toDouble(),
                                 espece = animal?.getEspece() ?: Espece.CHIEN,
                                 preferencesStorage = preferencesStorage,
                                 equationRepository = equationRepository,
@@ -1397,7 +1415,7 @@ fun RationsView(
                                 referenceUtilisee = reference,
                                 besoinEnergetiqueTotal = besoinEnergetique,
                                 besoinEnergetiqueStandard = besoinEnergetiqueStandard!!,
-                                poidsAnimal = selectedConsultation?.weight?.toDouble(),
+                                poidsAnimal = selectedConsultation?.effectiveWeight?.toDouble(),
                                 poidsMetabolique = poidsMetabolique,
                                 onConfirm = { result ->
                                         if (result.success) {
@@ -1637,6 +1655,8 @@ private fun MetabolicValuesDialog(
         poidsMetabolique: Double?,
         besoinEnergetiqueStandard: Double?,
         besoinEnergetiqueTotal: Double?,
+        kObserve: Double,
+        kCalcule: Double,
         referenceUtilisee: ReferenceEv?,
         onDismiss: () -> Unit
 ) {
@@ -1652,12 +1672,21 @@ private fun MetabolicValuesDialog(
                 text = {
                         Column(verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)) {
                                 LocalInfoRow(
-                                        label = "Poids corporel",
+                                        label = "Poids actuel",
                                         value =
                                                 selectedConsultation?.weight?.let {
                                                         "${fr.vetbrain.vetnutri_mp.Utils.TextUtils.formatDecimal(it.toDouble(), 1)} kg"
                                                 }
                                                         ?: "Non renseigné"
+                                )
+
+                                LocalInfoRow(
+                                        label = "Poids idéal",
+                                        value =
+                                                selectedConsultation?.effectiveWeight?.let {
+                                                        "${fr.vetbrain.vetnutri_mp.Utils.TextUtils.formatDecimal(it.toDouble(), 1)} kg"
+                                                }
+                                                        ?: "Non calculé"
                                 )
 
                                 LocalInfoRow(
@@ -1685,6 +1714,22 @@ private fun MetabolicValuesDialog(
                                                         "${fr.vetbrain.vetnutri_mp.Utils.TextUtils.formatDecimal(it.toDouble(), 1)} kcal/jour"
                                                 }
                                                         ?: "Non calculé"
+                                )
+
+                                Divider()
+
+                                LocalInfoRow(
+                                        label = "K Observé",
+                                        value =
+                                                fr.vetbrain.vetnutri_mp.Utils.TextUtils
+                                                        .formatDecimal(kObserve, 2)
+                                )
+
+                                LocalInfoRow(
+                                        label = "K Calculé",
+                                        value =
+                                                fr.vetbrain.vetnutri_mp.Utils.TextUtils
+                                                        .formatDecimal(kCalcule, 2)
                                 )
 
                                 referenceUtilisee?.let { reference ->

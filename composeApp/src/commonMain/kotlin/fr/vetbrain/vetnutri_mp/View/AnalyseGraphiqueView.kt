@@ -637,7 +637,7 @@ private fun EvolutionPoidsChart(viewModel: AnimalDetailViewModel) {
                                 consultations.forEach { consultation ->
                                         val birthDate = animal?.birthdate
                                         val consultationDate = consultation.date
-                                        val weight = consultation.weight
+                                        val weight = consultation.effectiveWeight
 
                                         if (birthDate != null &&
                                                         consultationDate != null &&
