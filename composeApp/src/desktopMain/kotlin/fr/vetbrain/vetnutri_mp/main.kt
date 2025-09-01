@@ -125,11 +125,10 @@ fun main(args: Array<String> = emptyArray()) {
                                             // automatique depuis CLI
                                             )
 
-                            
                             references.forEachIndexed { index, ref -> }
 
                             // Afficher le rapport des résolutions problématiques
-                            
+
                         } catch (e: Exception) {
                             e.printStackTrace()
                         }
@@ -160,7 +159,7 @@ fun main(args: Array<String> = emptyArray()) {
             Window(
                     onCloseRequest = ::exitApplication,
                     title = "VetNutri",
-                    state = rememberWindowState(width = 1200.dp, height = 800.dp),
+                    state = rememberWindowState(width = 1200.dp, height = 800.dp)
             ) { App(appDatabase) }
         }
     }
@@ -336,7 +335,6 @@ actual fun importNutritionalRequirementsFromFile(viewModel: ImportViewModel) {
             viewModel.updateNutritionalRequirementImportResultMessage(
                     "❌ Erreur lors de l'importation: ${e.message}"
             )
-            
         }
     }
 }

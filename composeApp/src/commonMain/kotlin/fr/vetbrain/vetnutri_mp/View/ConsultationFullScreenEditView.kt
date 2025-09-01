@@ -41,22 +41,26 @@ fun ConsultationFullScreenEditView(
         onCancel: () -> Unit,
         onLoadReferences: () -> Unit = {}
 ) {
-        var editedConsultation by remember(consultation) {
-                val newConsultation = consultation ?: ConsultationEv()
+        var editedConsultation by
+                remember(consultation) {
+                        val newConsultation = consultation ?: ConsultationEv()
 
-                // Si c'est une nouvelle consultation, créer automatiquement une ration par défaut
-                if (consultation == null && newConsultation.rations.isEmpty()) {
-                        val defaultRation = fr.vetbrain.vetnutri_mp.Data.Ration(
-                                idConsult = newConsultation.uuid,
-                                name = "Ration principale",
-                                actual = true, // Marquer comme ration actuelle par défaut
-                                number = 1
-                        )
-                        newConsultation.rations.add(defaultRation)
+                        // Si c'est une nouvelle consultation, créer automatiquement une ration par
+                        // défaut
+                        if (consultation == null && newConsultation.rations.isEmpty()) {
+                                val defaultRation =
+                                        fr.vetbrain.vetnutri_mp.Data.Ration(
+                                                idConsult = newConsultation.uuid,
+                                                name = "Ration principale",
+                                                actual = true, // Marquer comme ration actuelle par
+                                                // défaut
+                                                number = 1
+                                        )
+                                newConsultation.rations.add(defaultRation)
+                        }
+
+                        mutableStateOf(newConsultation)
                 }
-
-                mutableStateOf(newConsultation)
-        }
         var weightText by
                 remember(consultation) { mutableStateOf(consultation?.weight?.toString() ?: "") }
         var showDateError by remember(consultation) { mutableStateOf(false) }
@@ -120,17 +124,23 @@ fun ConsultationFullScreenEditView(
                 val variablesRequises = extraireVariablesRequises(referenceGeneraleSelectionnee)
 
                 // Vérifier les variables supplémentaires manquantes
-                val variablesManquantes = variablesRequises.filter { variableKind ->
-                        editedConsultation.suppVarp.none { it.variable == variableKind }
-                }
+                val variablesManquantes =
+                        variablesRequises.filter { variableKind ->
+                                editedConsultation.suppVarp.none { it.variable == variableKind }
+                        }
 
-                if (!showDateError && !showWeightError && editedConsultation.date != null &&
-                        variablesManquantes.isEmpty()) {
+                if (!showDateError &&
+                                !showWeightError &&
+                                editedConsultation.date != null &&
+                                variablesManquantes.isEmpty()
+                ) {
                         // S'assurer que l'UUID est généré si c'est une nouvelle consultation
                         if (editedConsultation.uuid.isEmpty()) {
                                 // Générer un UUID unique avec timestamp pour éviter les conflits
                                 editedConsultation =
-                                        editedConsultation.copy(uuid = fr.vetbrain.vetnutri_mp.Utils.genUniqueUUID())
+                                        editedConsultation.copy(
+                                                uuid = fr.vetbrain.vetnutri_mp.Utils.genUniqueUUID()
+                                        )
                         }
                         onBackPressed(editedConsultation)
                 } else {
@@ -150,7 +160,9 @@ fun ConsultationFullScreenEditView(
                 // S'assurer que l'UUID est généré si c'est une nouvelle consultation
                 val consultationToSave =
                         if (editedConsultation.uuid.isEmpty()) {
-                                editedConsultation.copy(uuid = fr.vetbrain.vetnutri_mp.Utils.genUniqueUUID())
+                                editedConsultation.copy(
+                                        uuid = fr.vetbrain.vetnutri_mp.Utils.genUniqueUUID()
+                                )
                         } else {
                                 editedConsultation
                         }
@@ -299,6 +311,140 @@ fun ConsultationFullScreenEditView(
                                 errorMessage = weightErrorMessage,
                                 modifier = Modifier.fillMaxWidth()
                         )
+
+                        // Poids idéal
+                        var idealWeightText by
+                                remember(consultation) {
+                                        mutableStateOf(consultation?.idealWeight?.toString() ?: "")
+                                }
+                        var showIdealWeightError by remember(consultation) { mutableStateOf(false) }
+                        var idealWeightErrorMessage by
+                                remember(consultation) { mutableStateOf<String?>(null) }
+
+                        // Calcul de l'estimation du poids idéal
+                        val estimatedIdealWeight =
+                                remember(editedConsultation.weight, editedConsultation.BCS) {
+                                        if (editedConsultation.weight != null &&
+                                                        editedConsultation.BCS != null
+                                        ) {
+                                                val poids = editedConsultation.weight!!
+                                                val nec = editedConsultation.BCS!!
+                                                val estimation =
+                                                        poids * 100 / (100 + (nec - 5) * 10)
+                                                estimation
+                                        } else {
+                                                null
+                                        }
+                                }
+
+                        Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
+                        ) {
+                                // Champ de saisie du poids idéal
+                                NumberTextField(
+                                        value = idealWeightText,
+                                        onValueChange = { newValue: String ->
+                                                idealWeightText = newValue
+                                                try {
+                                                        if (newValue.isNotEmpty()) {
+                                                                val idealWeight =
+                                                                        newValue.toDouble()
+                                                                editedConsultation =
+                                                                        editedConsultation.copy(
+                                                                                idealWeight =
+                                                                                        idealWeight
+                                                                        )
+                                                                showIdealWeightError = false
+                                                                idealWeightErrorMessage = null
+                                                        } else {
+                                                                editedConsultation =
+                                                                        editedConsultation.copy(
+                                                                                idealWeight = null
+                                                                        )
+                                                                showIdealWeightError = false
+                                                                idealWeightErrorMessage = null
+                                                        }
+                                                } catch (e: Exception) {
+                                                        showIdealWeightError = true
+                                                        idealWeightErrorMessage =
+                                                                "Format de poids idéal invalide (nombre décimal)"
+                                                }
+                                        },
+                                        label = "Poids idéal (kg)",
+                                        leadingIcon = AppIcons.Weight,
+                                        isError = showIdealWeightError,
+                                        errorMessage = idealWeightErrorMessage,
+                                        modifier = Modifier.weight(1f)
+                                )
+
+                                // Affichage de l'estimation
+                                if (estimatedIdealWeight != null) {
+                                        Card(
+                                                modifier = Modifier.weight(1f).padding(top = 8.dp),
+                                                backgroundColor =
+                                                        VetNutriColors.Surface.copy(alpha = 0.7f),
+                                                elevation = 1.dp
+                                        ) {
+                                                Column(
+                                                        modifier =
+                                                                Modifier.padding(
+                                                                        AppSizes.paddingMedium
+                                                                ),
+                                                        horizontalAlignment =
+                                                                Alignment.CenterHorizontally
+                                                ) {
+                                                        Text(
+                                                                text = "Estimation",
+                                                                style =
+                                                                        MaterialTheme.typography
+                                                                                .caption,
+                                                                color = Color.Gray
+                                                        )
+                                                        Text(
+                                                                text =
+                                                                        "${fr.vetbrain.vetnutri_mp.Utils.TextUtils.formatDecimal(estimatedIdealWeight, 2)} kg",
+                                                                style =
+                                                                        MaterialTheme.typography
+                                                                                .body1,
+                                                                fontWeight = FontWeight.Bold,
+                                                                color = VetNutriColors.Primary
+                                                        )
+                                                }
+                                        }
+                                } else {
+                                        Card(
+                                                modifier = Modifier.weight(1f).padding(top = 8.dp),
+                                                backgroundColor =
+                                                        VetNutriColors.Surface.copy(alpha = 0.3f),
+                                                elevation = 1.dp
+                                        ) {
+                                                Column(
+                                                        modifier =
+                                                                Modifier.padding(
+                                                                        AppSizes.paddingMedium
+                                                                ),
+                                                        horizontalAlignment =
+                                                                Alignment.CenterHorizontally
+                                                ) {
+                                                        Text(
+                                                                text = "Estimation",
+                                                                style =
+                                                                        MaterialTheme.typography
+                                                                                .caption,
+                                                                color = Color.Gray
+                                                        )
+                                                        Text(
+                                                                text = "Nécessite poids + BCS",
+                                                                style =
+                                                                        MaterialTheme.typography
+                                                                                .caption,
+                                                                color = Color.Gray
+                                                        )
+                                                }
+                                        }
+                                }
+                        }
 
                         // Objectif
                         AppTextField(
@@ -517,23 +663,32 @@ fun ConsultationFullScreenEditView(
                                                                                                         )
                                                                                                 }
                                                                                         }
-                                                                                                                                                IconButton(
-                                                                onClick = {
-                                                                        val nouvellesReferences = editedConsultation.referencesMaladies.toMutableList()
-                                                                        nouvellesReferences.remove(referenceId)
-                                                                        editedConsultation = editedConsultation.copy(
-                                                                                referencesMaladies = nouvellesReferences
-                                                                        )
-                                                                }
-                                                        ) {
-                                                                Icon(
-                                                                        AppIcons.Delete,
-                                                                        contentDescription =
-                                                                                "Supprimer la référence",
-                                                                        tint =
-                                                                                Color.Red
-                                                                )
-                                                        }
+                                                                                        IconButton(
+                                                                                                onClick = {
+                                                                                                        val nouvellesReferences =
+                                                                                                                editedConsultation
+                                                                                                                        .referencesMaladies
+                                                                                                                        .toMutableList()
+                                                                                                        nouvellesReferences
+                                                                                                                .remove(
+                                                                                                                        referenceId
+                                                                                                                )
+                                                                                                        editedConsultation =
+                                                                                                                editedConsultation
+                                                                                                                        .copy(
+                                                                                                                                referencesMaladies =
+                                                                                                                                        nouvellesReferences
+                                                                                                                        )
+                                                                                                }
+                                                                                        ) {
+                                                                                                Icon(
+                                                                                                        AppIcons.Delete,
+                                                                                                        contentDescription =
+                                                                                                                "Supprimer la référence",
+                                                                                                        tint =
+                                                                                                                Color.Red
+                                                                                                )
+                                                                                        }
                                                                                 }
                                                                         }
                                                                 }
