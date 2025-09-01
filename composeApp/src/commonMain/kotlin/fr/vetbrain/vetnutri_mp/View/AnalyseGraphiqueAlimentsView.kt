@@ -1157,9 +1157,23 @@ private fun GraphiqueNuagePoints(
                                             // Point principal avec couleur selon sélection
                                             val couleurPoint =
                                                     if (data.aliment.uuid == alimentSelectionne) {
-                                                        Color(0xFF9C27B0) // Violet
+                                                        Color(0xFF9C27B0) // Violet pour sélectionné
                                                     } else {
-                                                        VetNutriColors.Primary
+                                                        // Vérifier l'humidité pour les aliments non
+                                                        // sélectionnés
+                                                        val humidite =
+                                                                data.aliment.getNutrient(
+                                                                        NutrientMain.HUMIDITE
+                                                                )
+                                                        if (humidite == null || humidite < 20.0) {
+                                                            Color(
+                                                                    0xFFFF9800
+                                                            ) // Orange pour aliments sans humidité
+                                                            // ou < 20%
+                                                        } else {
+                                                            VetNutriColors
+                                                                    .Primary // Couleur normale
+                                                        }
                                                     }
 
                                             androidx.compose.foundation.Canvas(
@@ -1371,12 +1385,21 @@ private fun GraphiqueNuagePoints(
                             val effectiveGraphWidth = maxWidth - leftAxisMargin - rightMargin
                             val effectiveGraphHeight = maxHeight - bottomAxisMargin - topMargin
 
-                            // Couleur selon la sélection (même logique que les points)
+                            // Couleur selon la sélection et l'humidité
                             val numeroColor =
                                     if (data.aliment.uuid == alimentSelectionne) {
                                         Color(0xFF9C27B0) // Violet pour sélectionné
                                     } else {
-                                        VetNutriColors.Primary // Couleur par défaut pour tous
+                                        // Vérifier l'humidité pour les aliments non sélectionnés
+                                        val humidite =
+                                                data.aliment.getNutrient(NutrientMain.HUMIDITE)
+                                        if (humidite == null || humidite < 20.0) {
+                                            Color(
+                                                    0xFFFF9800
+                                            ) // Orange pour aliments sans humidité ou < 20%
+                                        } else {
+                                            VetNutriColors.Primary // Couleur par défaut
+                                        }
                                     }
 
                             Box(
@@ -1674,9 +1697,18 @@ private fun GraphiqueNutrimentsPersonnalise(
                         symbol = {
                             val couleurPoint =
                                     if (data.aliment.uuid == alimentSelectionne) {
-                                        Color(0xFF9C27B0) // Violet
+                                        Color(0xFF9C27B0) // Violet pour sélectionné
                                     } else {
-                                        VetNutriColors.Primary
+                                        // Vérifier l'humidité pour les aliments non sélectionnés
+                                        val humidite =
+                                                data.aliment.getNutrient(NutrientMain.HUMIDITE)
+                                        if (humidite == null || humidite < 20.0) {
+                                            Color(
+                                                    0xFFFF9800
+                                            ) // Orange pour aliments sans humidité ou < 20%
+                                        } else {
+                                            VetNutriColors.Primary // Couleur normale
+                                        }
                                     }
 
                             androidx.compose.foundation.Canvas(modifier = Modifier.size(10.dp)) {
@@ -1708,9 +1740,15 @@ private fun GraphiqueNutrimentsPersonnalise(
 
                     val numeroColor =
                             if (data.aliment.uuid == alimentSelectionne) {
-                                Color(0xFF9C27B0)
+                                Color(0xFF9C27B0) // Violet pour sélectionné
                             } else {
-                                VetNutriColors.Primary
+                                // Vérifier l'humidité pour les aliments non sélectionnés
+                                val humidite = data.aliment.getNutrient(NutrientMain.HUMIDITE)
+                                if (humidite == null || humidite < 20.0) {
+                                    Color(0xFFFF9800) // Orange pour aliments sans humidité ou < 20%
+                                } else {
+                                    VetNutriColors.Primary // Couleur par défaut
+                                }
                             }
 
                     Box(
@@ -1799,9 +1837,18 @@ private fun GraphiqueNutrimentsPersonnalise(
                         val aliment = alimentsAnalyses[index]
                         val couleur =
                                 if (aliment.aliment.uuid == alimentSelectionne) {
-                                    Color(0xFF9C27B0)
+                                    Color(0xFF9C27B0) // Violet pour sélectionné
                                 } else {
-                                    VetNutriColors.Primary
+                                    // Vérifier l'humidité pour les aliments non sélectionnés
+                                    val humidite =
+                                            aliment.aliment.getNutrient(NutrientMain.HUMIDITE)
+                                    if (humidite == null || humidite < 20.0) {
+                                        Color(
+                                                0xFFFF9800
+                                        ) // Orange pour aliments sans humidité ou < 20%
+                                    } else {
+                                        VetNutriColors.Primary // Couleur normale
+                                    }
                                 }
                         DefaultVerticalBar(SolidColor(couleur))
                     }
@@ -1873,7 +1920,13 @@ private fun HistogrammeEnergieAliments(
                             if (aliment.aliment.uuid == alimentSelectionne) {
                                 Color(0xFF9C27B0) // Violet pour l'aliment sélectionné
                             } else {
-                                VetNutriColors.Primary // Couleur par défaut
+                                // Vérifier l'humidité pour les aliments non sélectionnés
+                                val humidite = aliment.aliment.getNutrient(NutrientMain.HUMIDITE)
+                                if (humidite == null || humidite < 20.0) {
+                                    Color(0xFFFF9800) // Orange pour aliments sans humidité ou < 20%
+                                } else {
+                                    VetNutriColors.Primary // Couleur par défaut
+                                }
                             }
                     DefaultVerticalBar(SolidColor(couleur))
                 }
