@@ -37,6 +37,10 @@ data class ConsultationEv(
         var referencesMaladies: MutableList<String> = mutableListOf(),
         var coefficientAjustement: Double = 1.0
 ) {
+
+        // Propriété calculée qui retourne le poids idéal si défini, sinon le poids actuel
+        val effectiveWeight: Double?
+                get() = idealWeight ?: weight
         constructor() :
                 this(
                         uuid = genUUID(),

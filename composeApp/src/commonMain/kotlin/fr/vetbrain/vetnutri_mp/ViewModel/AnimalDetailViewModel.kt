@@ -209,7 +209,6 @@ class AnimalDetailViewModel(
     /** Ajoute un aliment à une ration */
     @OptIn(ExperimentalUuidApi::class)
     fun addAlimentToRation(ration: Ration, aliment: AlimentEv, quantite: Double) {
-        
 
         viewModelScope.launch {
             try {
@@ -259,11 +258,8 @@ class AnimalDetailViewModel(
             _showFullScreenEdit.value = false
 
             // DEBUG: Vérifier l'historique des poids de l'animal reçu
-            
-            
-            animal.weightHistory.forEachIndexed { index, weight ->
-                
-            }
+
+            animal.weightHistory.forEachIndexed { index, weight -> }
 
             // Conserver une référence à l'animal original
             val originalAnimal =
@@ -281,9 +277,8 @@ class AnimalDetailViewModel(
                 val preferences = preferencesRepository.getPreferencesForSpecies(animal.getEspece())
                 _speciesPreferences.value = preferences
                 _typeExpressionBesoin.value = preferences.getTypeExpressionBesoinEnum()
-                
             } catch (e: Exception) {
-                
+
                 _speciesPreferences.value = null
                 _typeExpressionBesoin.value = null
             }
@@ -370,7 +365,6 @@ class AnimalDetailViewModel(
      * @param ration La ration à sélectionner et analyser
      */
     fun selectRation(ration: Ration) {
-        
 
         ration.alimentMutableList.forEachIndexed { k, a -> }
 
@@ -460,39 +454,30 @@ class AnimalDetailViewModel(
 
     /** Applique une recette (liste d'aliments) à la ration sélectionnée et recharge l'état */
     fun applyRecipeToRation(recipe: Ration) {
-        
-        
-        
 
         val rationActuelle = _selectedRation.value
         if (rationActuelle == null) {
-            
+
             return
         }
-        
-        
 
         val consultationActuelle = _selectedConsultation.value
         if (consultationActuelle == null) {
-            
+
             return
         }
-        
 
         viewModelScope.launch {
             try {
-                
+
                 consultationRepository.applyRecipeToRation(recipe, rationActuelle.uuid)
-                
 
                 // Recharger la consultation pour refléter les nouveaux aliments
-                
+
                 val refreshed =
                         consultationRepository.getConsultationById(consultationActuelle.uuid)
 
                 if (refreshed != null) {
-                    
-                    
 
                     _selectedConsultation.value = refreshed
 
@@ -500,23 +485,15 @@ class AnimalDetailViewModel(
                     val rationMiseAJour =
                             refreshed.rations.firstOrNull { it.uuid == rationActuelle.uuid }
                     if (rationMiseAJour != null) {
-                        
-                        
 
                         selectRation(rationMiseAJour)
-                        
-                    } else {
-                        
-                    }
-                } else {
-                    
-                }
+                    } else {}
+                } else {}
             } catch (e: Exception) {
-                
+
                 e.printStackTrace()
             }
         }
-        
     }
 
     /**
@@ -1095,7 +1072,7 @@ class AnimalDetailViewModel(
                     // espèce
                     _availableReferences.value = references
 
-                    references.forEach { ref ->  }
+                    references.forEach { ref -> }
                 }
             } catch (e: Exception) {
                 _availableReferences.value = emptyList()
@@ -1273,11 +1250,13 @@ class AnimalDetailViewModel(
                 var consultationToSave = consultation
                 if (consultation.uuid.isEmpty()) {
                     // Générer un nouvel UUID unique avec timestamp pour éviter les conflits
-                    consultationToSave = consultation.copy(uuid = fr.vetbrain.vetnutri_mp.Utils.genUniqueUUID())
+                    consultationToSave =
+                            consultation.copy(uuid = fr.vetbrain.vetnutri_mp.Utils.genUniqueUUID())
                 }
-                
+
                 // Vérifier si la consultation existe déjà dans la base de données
-                val existingConsultation = consultationRepository.getConsultationById(consultationToSave.uuid)
+                val existingConsultation =
+                        consultationRepository.getConsultationById(consultationToSave.uuid)
 
                 if (existingConsultation == null) {
                     // Nouvelle consultation (n'existe pas encore en base)
@@ -1319,8 +1298,6 @@ class AnimalDetailViewModel(
                     return@launch
                 }
 
-                
-
                 // 2. Calculer le poids métabolique
                 val poidsMetabolique = calculerPoidsMetabolique(consultation, reference)
                 _poidsMetabolique.value = poidsMetabolique
@@ -1350,7 +1327,7 @@ class AnimalDetailViewModel(
             reference: ReferenceEv
     ): Double? {
         try {
-            val poids = consultation.weight ?: return null
+            val poids = consultation.effectiveWeight ?: return null
             val equationBW = reference.equationBW
 
             if (equationBW == null || equationBW.equationScript.isEmpty()) {
@@ -1390,7 +1367,7 @@ class AnimalDetailViewModel(
             reference: ReferenceEv
     ): Double? {
         try {
-            val poids = consultation.weight ?: return null
+            val poids = consultation.effectiveWeight ?: return null
             val equationBEE = reference.equationBEE
 
             if (equationBEE == null || equationBEE.equationScript.isEmpty()) {
@@ -1511,10 +1488,7 @@ class AnimalDetailViewModel(
                 )
 
         mappings.forEach { (originalName, mappedName) ->
-            variables[originalName]?.let { value ->
-                variables[mappedName] = value
-                
-            }
+            variables[originalName]?.let { value -> variables[mappedName] = value }
         }
     }
 
@@ -1752,16 +1726,12 @@ class AnimalDetailViewModel(
 
     // ✨ Méthodes pour l'analyse graphique des aliments
 
-    /**
-     * Définit la liste des aliments sélectionnés pour l'analyse graphique
-     */
+    /** Définit la liste des aliments sélectionnés pour l'analyse graphique */
     fun setAlimentsSelectionnes(aliments: List<AlimentEv>) {
         _alimentsSelectionnes.value = aliments
     }
 
-    /**
-     * Ajoute un aliment à la liste des aliments sélectionnés
-     */
+    /** Ajoute un aliment à la liste des aliments sélectionnés */
     fun ajouterAlimentSelectionne(aliment: AlimentEv) {
         val current = _alimentsSelectionnes.value.toMutableList()
         if (!current.any { it.uuid == aliment.uuid }) {
@@ -1770,39 +1740,29 @@ class AnimalDetailViewModel(
         }
     }
 
-    /**
-     * Retire un aliment de la liste des aliments sélectionnés
-     */
+    /** Retire un aliment de la liste des aliments sélectionnés */
     fun retirerAlimentSelectionne(aliment: AlimentEv) {
         val current = _alimentsSelectionnes.value.toMutableList()
         current.removeAll { it.uuid == aliment.uuid }
         _alimentsSelectionnes.value = current
     }
 
-    /**
-     * Vide la liste des aliments sélectionnés
-     */
+    /** Vide la liste des aliments sélectionnés */
     fun clearAlimentsSelectionnes() {
         _alimentsSelectionnes.value = emptyList()
     }
 
-    /**
-     * Affiche l'analyse graphique avec les aliments sélectionnés
-     */
+    /** Affiche l'analyse graphique avec les aliments sélectionnés */
     fun showAnalyseGraphique() {
         _showAnalyseGraphique.value = true
     }
 
-    /**
-     * Cache l'analyse graphique
-     */
+    /** Cache l'analyse graphique */
     fun hideAnalyseGraphique() {
         _showAnalyseGraphique.value = false
     }
 
-    /**
-     * Lance l'analyse graphique avec une liste d'aliments
-     */
+    /** Lance l'analyse graphique avec une liste d'aliments */
     fun lancerAnalyseGraphique(aliments: List<AlimentEv>) {
         setAlimentsSelectionnes(aliments)
         showAnalyseGraphique()
