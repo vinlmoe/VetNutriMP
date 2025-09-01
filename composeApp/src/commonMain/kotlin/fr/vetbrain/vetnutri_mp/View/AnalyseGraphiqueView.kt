@@ -1562,12 +1562,12 @@ private fun DensiteRationsChart(
         val animal by viewModel.animal.collectAsState()
         val referenceUtilisee by viewModel.referenceUtilisee.collectAsState()
         val speciesPreferences by viewModel.speciesPreferences.collectAsState()
-        val scope = rememberCoroutineScope()
 
         // États pour les données des rations
         var rationsEnergieData by remember { mutableStateOf<List<RationEnergyData>>(emptyList()) }
         var isLoading by remember { mutableStateOf(true) }
         var rationSelectionnee by remember { mutableStateOf<String?>(null) }
+        var isMatiereSeche by remember { mutableStateOf(false) }
 
         // Calculer les données des rations de manière asynchrone
         LaunchedEffect(animal?.consultations?.size, referenceUtilisee, speciesPreferences) {
@@ -1650,15 +1650,58 @@ private fun DensiteRationsChart(
                                 .map { it.rationId }
                                 .toSet()
 
+                // Contrôles pour le graphique
+                Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                ) {
+                        Text(
+                                text = "Base de calcul :",
+                                style = MaterialTheme.typography.caption,
+                                fontWeight = FontWeight.Bold
+                        )
+
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                        text = "Matière totale",
+                                        style = MaterialTheme.typography.caption,
+                                        color =
+                                                if (!isMatiereSeche) VetNutriColors.Primary
+                                                else
+                                                        MaterialTheme.colors.onSurface.copy(
+                                                                alpha = 0.7f
+                                                        )
+                                )
+                                Switch(
+                                        checked = isMatiereSeche,
+                                        onCheckedChange = { isMatiereSeche = it }
+                                )
+                                Text(
+                                        text = "Matière sèche",
+                                        style = MaterialTheme.typography.caption,
+                                        color =
+                                                if (isMatiereSeche) VetNutriColors.Primary
+                                                else
+                                                        MaterialTheme.colors.onSurface.copy(
+                                                                alpha = 0.7f
+                                                        )
+                                )
+                        }
+                }
+
+           
                 // Préparer les données pour l'histogramme
                 val categories = rationsEnergieData.map { "${it.numero}" }
                 val densiteEnergetique =
                         rationsEnergieData.map {
-                                if (it.poidsTotal > 0) {
-                                        (it.energieTotale / it.poidsTotal * 100.0)
+                                val poidsBase =
+                                        if (isMatiereSeche) it.matiereSeche else it.poidsTotal
+                                if (poidsBase > 0) {
+                                        (it.energieTotale / poidsBase * 100.0)
                                                 .toFloat() // kcal pour 100g
                                 } else {
-                                        0f // Si poids total = 0, densité = 0
+                                        0f // Si poids = 0, densité = 0
                                 }
                         }
 
@@ -1679,12 +1722,17 @@ private fun DensiteRationsChart(
                 // Graphique d'histogramme
                 GraphCard(
                         titre = "Densité énergétique des rations",
-                        sousTitre = "Énergie pour 100g (kcal/100g)"
+                        sousTitre =
+                                if (isMatiereSeche)
+                                        "Énergie pour 100g de matière sèche (kcal/100g MS)"
+                                else "Énergie pour 100g (kcal/100g)"
                 ) {
                         XYGraph(
                                 xAxisModel = remember(categories) { CategoryAxisModel(categories) },
                                 yAxisModel = remember(yRange) { FloatLinearAxisModel(yRange) },
-                                yAxisTitle = "Densité énergétique (kcal/100g)",
+                                yAxisTitle =
+                                        if (isMatiereSeche) "Densité énergétique (kcal/100g MS)"
+                                        else "Densité énergétique (kcal/100g)",
                                 modifier = Modifier.height(400.dp)
                         ) {
                                 VerticalBarPlot(
