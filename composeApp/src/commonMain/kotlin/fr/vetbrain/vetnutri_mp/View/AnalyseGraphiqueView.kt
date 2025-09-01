@@ -1690,7 +1690,6 @@ private fun DensiteRationsChart(
                         }
                 }
 
-           
                 // Préparer les données pour l'histogramme
                 val categories = rationsEnergieData.map { "${it.numero}" }
                 val densiteEnergetique =
