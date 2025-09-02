@@ -215,18 +215,18 @@ class FoodListViewModel(private val foodRepository: DatabaseFoodRepository) {
 
                                 // Filtre par type d'aliment
                                 val matchesFoodType =
-                                        selectedFoodType.value == null ||
+                                        selectedFoodType.value == null || selectedFoodType.value == FoodKind.ALL ||
                                                 aliment.typeAliment == selectedFoodType.value
 
                                 // Filtre par groupe d'aliment
                                 val matchesFoodGroup =
-                                        selectedFoodGroup.value == null ||
+                                        selectedFoodGroup.value == null || selectedFoodGroup.value == GroupAlim.ALL ||
                                                 aliment.group == selectedFoodGroup.value
 
                                 // Filtre par espèce avec traitement amélioré
                                 val matchesEspece =
-                                        if (selectedEspece.value == null) {
-                                                true // Aucun filtre d'espèce sélectionné
+                                        if (selectedEspece.value == null || selectedEspece.value == Espece.CH) {
+                                                true // Aucun filtre d'espèce sélectionné ou toutes les espèces acceptées
                                         } else {
                                                 aliment.especes.any { especeStr ->
                                                         try {
@@ -323,8 +323,8 @@ class FoodListViewModel(private val foodRepository: DatabaseFoodRepository) {
 
                                 // Filtre par indication
                                 val matchesIndication =
-                                        if (selectedIndication.value == null) {
-                                                true // Aucun filtre d'indication sélectionné
+                                        if (selectedIndication.value == null || selectedIndication.value == AlimIndic.ALL) {
+                                                true // Aucun filtre d'indication sélectionné ou toutes les indications acceptées
                                         } else {
                                                 aliment.indicat.any { indication ->
                                                         indication == selectedIndication.value
