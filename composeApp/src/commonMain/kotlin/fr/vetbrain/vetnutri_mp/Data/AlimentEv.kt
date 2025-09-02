@@ -4,6 +4,7 @@ import fr.vetbrain.vetnutri_mp.Enumer.*
 import fr.vetbrain.vetnutri_mp.Enumer.AlimIndic
 import fr.vetbrain.vetnutri_mp.Enumer.FoodKind
 import fr.vetbrain.vetnutri_mp.Enumer.GroupAlim
+import fr.vetbrain.vetnutri_mp.Enumer.MainNutrientEnum
 import fr.vetbrain.vetnutri_mp.Utils.ExpressionMathematique
 import fr.vetbrain.vetnutri_mp.Utils.genUUID
 
@@ -29,6 +30,31 @@ data class AlimentEv(
         val rationUUID: String? = null
 ) {
         /**
+         * Vérifie si un nutriment est un acide aminé
+         *
+         * @param nutrient Le nutriment à vérifier
+         * @return true si c'est un acide aminé, false sinon
+         */
+        private fun isAminoAcid(nutrient: Nutrient): Boolean {
+                return nutrient.getMNE() == MainNutrientEnum.AMA
+        }
+
+        /**
+         * Convertit un pourcentage d'acide aminé en grammes absolus
+         *
+         * @param percentageValue La valeur en pourcentage des protéines
+         * @return La valeur en grammes ou null si les protéines ne sont pas disponibles
+         */
+        private fun convertAminoAcidPercentageToGrams(percentageValue: Double): Double? {
+                // Obtenir la quantité de protéines dans l'aliment
+                val proteinQuantity = valMap[NutrientMain.PROTEINE]
+                val proteinValue = proteinQuantity?.value ?: return null
+
+                // Convertir le pourcentage en grammes : grammes = (pourcentage / 100) * protéines
+                return (percentageValue / 100.0) * proteinValue
+        }
+
+        /**
          * Obtient la valeur d'un nutriment dans cet aliment
          *
          * @param nutrient Le nutriment à rechercher
@@ -46,7 +72,14 @@ data class AlimentEv(
 
                 // Sinon, retourner la valeur stockée
                 val quantity = valMap[nutrient]
-                return quantity?.value
+                val rawValue = quantity?.value ?: return null
+
+                // Si c'est un acide aminé, convertir le pourcentage des protéines en grammes
+                return if (isAminoAcid(nutrient)) {
+                        convertAminoAcidPercentageToGrams(rawValue)
+                } else {
+                        rawValue
+                }
         }
 
         /** Calcule l'énergie via les équations de ReferenceEv */

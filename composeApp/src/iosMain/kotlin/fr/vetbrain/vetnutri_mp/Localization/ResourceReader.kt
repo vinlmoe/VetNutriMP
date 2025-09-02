@@ -18,36 +18,25 @@ actual open class ResourceReader actual constructor() {
         val resourceName = name.removeSuffix(".json")
         val extension = "json"
 
-        
-        
-        
-        
-
         val path = bundle.pathForResource(resourceName, extension)
 
         if (path == null) {
-            
-            
 
             // Lister toutes les ressources disponibles
             val allResources = bundle.pathsForResourcesOfType(extension, null)
-            
-            allResources?.forEachIndexed { index, resourcePath ->
-                
-            }
+
+            allResources?.forEachIndexed { index, resourcePath -> }
 
             throw IllegalStateException("Resource $name not found")
         }
 
-        
         val content = NSString.stringWithContentsOfFile(path, NSUTF8StringEncoding, null)
 
         if (content == null) {
-            
+
             throw IllegalStateException("Failed to read resource $name")
         }
 
-        
         return content
     }
 

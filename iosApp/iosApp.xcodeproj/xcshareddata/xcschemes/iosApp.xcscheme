@@ -17,7 +17,7 @@
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "7555FF7A242A565900829871"
                BuildableName = "VetNutri MP.app"
-               BlueprintName = "iosApp"
+               BlueprintName = "VetNutri ios"
                ReferencedContainer = "container:iosApp.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -30,7 +30,8 @@
       shouldUseLaunchSchemeArgsEnv = "YES">
       <TestPlans>
          <TestPlanReference
-            reference = "container:TestPlan.xctestplan">
+            reference = "container:TestPlan.xctestplan"
+            default = "YES">
          </TestPlanReference>
       </TestPlans>
    </TestAction>
@@ -50,7 +51,7 @@
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "7555FF7A242A565900829871"
             BuildableName = "VetNutri MP.app"
-            BlueprintName = "iosApp"
+            BlueprintName = "VetNutri ios"
             ReferencedContainer = "container:iosApp.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
@@ -67,7 +68,7 @@
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "7555FF7A242A565900829871"
             BuildableName = "VetNutri MP.app"
-            BlueprintName = "iosApp"
+            BlueprintName = "VetNutri ios"
             ReferencedContainer = "container:iosApp.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>

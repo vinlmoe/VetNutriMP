@@ -10,7 +10,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
@@ -23,96 +22,96 @@ import fr.vetbrain.vetnutri_mp.View.SettingsSection
  * @param modifier Modificateur appliqué au composant
  */
 @Composable
-fun SettingsTabs(
-    selectedTab: Int,
-    onTabSelected: (Int) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val tabs = listOf(
-        TabInfo(
-            title = "Interface",
-            icon = Icons.Default.Settings,
-            section = SettingsSection.INTERFACE
-        ),
-        TabInfo(
-            title = "Préférences",
-            icon = Icons.Default.Person,
-            section = SettingsSection.PREFERENCES
-        ),
-        TabInfo(
-            title = "Import/Export",
-            icon = Icons.Default.Build,
-            section = SettingsSection.IMPORTATION
-        ),
-        TabInfo(
-            title = "Recettes",
-            icon = Icons.Default.Restaurant,
-            section = SettingsSection.RECIPES
-        ),
-        TabInfo(
-            title = "Administration",
-            icon = Icons.Default.AdminPanelSettings,
-            section = SettingsSection.ADMINISTRATION
-        )
-    )
+fun SettingsTabs(selectedTab: Int, onTabSelected: (Int) -> Unit, modifier: Modifier = Modifier) {
+    val tabs =
+            listOf(
+                    TabInfo(
+                            title = "Interface",
+                            icon = Icons.Default.Settings,
+                            section = SettingsSection.INTERFACE
+                    ),
+                    TabInfo(
+                            title = "Préférences",
+                            icon = Icons.Default.Person,
+                            section = SettingsSection.PREFERENCES
+                    ),
+                    TabInfo(
+                            title = "Import/Export",
+                            icon = Icons.Default.Build,
+                            section = SettingsSection.IMPORTATION
+                    ),
+                    TabInfo(
+                            title = "Excel",
+                            icon = Icons.Default.TableChart,
+                            section = SettingsSection.EXCEL
+                    ),
+                    TabInfo(
+                            title = "Recettes",
+                            icon = Icons.Default.Restaurant,
+                            section = SettingsSection.RECIPES
+                    ),
+                    TabInfo(
+                            title = "Administration",
+                            icon = Icons.Default.AdminPanelSettings,
+                            section = SettingsSection.ADMINISTRATION
+                    )
+            )
 
     Column(modifier = modifier) {
         // En-tête avec titre principal
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                imageVector = Icons.Default.Settings,
-                contentDescription = null,
-                tint = VetNutriColors.Primary,
-                modifier = Modifier.size(32.dp)
+                    imageVector = Icons.Default.Settings,
+                    contentDescription = null,
+                    tint = VetNutriColors.Primary,
+                    modifier = Modifier.size(32.dp)
             )
             Spacer(modifier = Modifier.width(12.dp))
             Text(
-                text = "Paramètres",
-                style = MaterialTheme.typography.h5,
-                color = VetNutriColors.Primary,
-                fontWeight = FontWeight.Bold
+                    text = "Paramètres",
+                    style = MaterialTheme.typography.h5,
+                    color = VetNutriColors.Primary,
+                    fontWeight = FontWeight.Bold
             )
         }
 
         // Navigation par onglets avec animations
         TabRow(
-            selectedTabIndex = selectedTab,
-            backgroundColor = MaterialTheme.colors.surface,
-            contentColor = VetNutriColors.Primary
+                selectedTabIndex = selectedTab,
+                backgroundColor = MaterialTheme.colors.surface,
+                contentColor = VetNutriColors.Primary
         ) {
             tabs.forEachIndexed { index, tab ->
                 val isSelected = selectedTab == index
-                val scale by animateFloatAsState(
-                    targetValue = if (isSelected) 1.05f else 1.0f,
-                    animationSpec = tween(durationMillis = 200),
-                    label = "tab_scale"
-                )
-                
+                val scale by
+                        animateFloatAsState(
+                                targetValue = if (isSelected) 1.05f else 1.0f,
+                                animationSpec = tween(durationMillis = 200),
+                                label = "tab_scale"
+                        )
+
                 Tab(
-                    selected = isSelected,
-                    onClick = { onTabSelected(index) },
-                    modifier = Modifier
-                        .padding(vertical = 8.dp)
-                        .scale(scale)
+                        selected = isSelected,
+                        onClick = { onTabSelected(index) },
+                        modifier = Modifier.padding(vertical = 8.dp).scale(scale)
                 ) {
                     Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Icon(
-                            imageVector = tab.icon,
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp)
+                                imageVector = tab.icon,
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp)
                         )
                         Text(
-                            text = tab.title,
-                            style = MaterialTheme.typography.body2,
-                            fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal
+                                text = tab.title,
+                                style = MaterialTheme.typography.body2,
+                                fontWeight =
+                                        if (isSelected) FontWeight.Medium else FontWeight.Normal
                         )
                     }
                 }
@@ -120,10 +119,7 @@ fun SettingsTabs(
         }
 
         // Ligne de séparation avec animation
-        Divider(
-            color = VetNutriColors.Primary.copy(alpha = 0.2f),
-            thickness = 1.dp
-        )
+        Divider(color = VetNutriColors.Primary.copy(alpha = 0.2f), thickness = 1.dp)
     }
 }
 
@@ -134,7 +130,7 @@ fun SettingsTabs(
  * @param section Section correspondante
  */
 private data class TabInfo(
-    val title: String,
-    val icon: androidx.compose.ui.graphics.vector.ImageVector,
-    val section: SettingsSection
+        val title: String,
+        val icon: androidx.compose.ui.graphics.vector.ImageVector,
+        val section: SettingsSection
 )

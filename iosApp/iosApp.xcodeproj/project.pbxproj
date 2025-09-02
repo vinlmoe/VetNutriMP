@@ -143,9 +143,9 @@
 			productReference = 6A2107072E62300B00FE13EF /* vetnutri.app */;
 			productType = "com.apple.product-type.application";
 		};
-		7555FF7A242A565900829871 /* iosApp */ = {
+		7555FF7A242A565900829871 /* VetNutri ios */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 7555FFA5242A565B00829871 /* Build configuration list for PBXNativeTarget "iosApp" */;
+			buildConfigurationList = 7555FFA5242A565B00829871 /* Build configuration list for PBXNativeTarget "VetNutri ios" */;
 			buildPhases = (
 				F36B1CEB2AD83DDC00CB74D5 /* Compile Kotlin Framework */,
 				7555FF77242A565900829871 /* Sources */,
@@ -156,7 +156,7 @@
 			);
 			dependencies = (
 			);
-			name = iosApp;
+			name = "VetNutri ios";
 			packageProductDependencies = (
 			);
 			productName = iosApp;
@@ -198,7 +198,7 @@
 			projectRoot = "";
 			targets = (
 				6A2107062E62300B00FE13EF /* vetnutri */,
-				7555FF7A242A565900829871 /* iosApp */,
+				7555FF7A242A565900829871 /* VetNutri ios */,
 			);
 		};
 /* End PBXProject section */
@@ -491,7 +491,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.1;
+				MARKETING_VERSION = 1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = fr.vetbrain.vetnutri;
 				"PRODUCT_BUNDLE_IDENTIFIER[sdk=*]" = fr.vetbrain.vetnutri;
 				PRODUCT_NAME = "${APP_NAME}";
@@ -536,7 +536,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 0.1;
-				"MARKETING_VERSION[sdk=iphoneos*]" = 0.1;
+				"MARKETING_VERSION[sdk=iphoneos*]" = 1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = fr.vetbrain.vetnutri;
 				"PRODUCT_BUNDLE_IDENTIFIER[sdk=*]" = fr.vetbrain.vetnutri;
 				"PRODUCT_BUNDLE_IDENTIFIER[sdk=iphoneos*]" = fr.vetbrain.vetnutri;
@@ -576,7 +576,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		7555FFA5242A565B00829871 /* Build configuration list for PBXNativeTarget "iosApp" */ = {
+		7555FFA5242A565B00829871 /* Build configuration list for PBXNativeTarget "VetNutri ios" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				7555FFA6242A565B00829871 /* Debug */,
