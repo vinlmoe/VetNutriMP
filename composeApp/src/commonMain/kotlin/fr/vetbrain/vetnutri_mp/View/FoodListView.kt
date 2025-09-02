@@ -49,6 +49,7 @@ fun FoodListView(
         val selectedFoodGroup = viewModel.selectedFoodGroup.collectAsState().value
         val selectedEspece = viewModel.selectedEspece.collectAsState().value
         val selectedIndication = viewModel.selectedIndication.collectAsState().value
+        val selectedDataB = viewModel.selectedDataB.collectAsState().value
         val availableFoodTypes = viewModel.availableFoodTypes.collectAsState().value
         val availableFoodGroups = viewModel.availableFoodGroups.collectAsState().value
         val availableIndications = viewModel.availableIndications.collectAsState().value
@@ -61,14 +62,16 @@ fun FoodListView(
                 selectedFoodType,
                 selectedFoodGroup,
                 selectedEspece,
-                selectedIndication
+                selectedIndication,
+                selectedDataB
         ) {
                 FoodSearchFilters(
                         searchQuery = searchQuery,
                         selectedFoodType = selectedFoodType,
                         selectedFoodGroup = selectedFoodGroup,
                         selectedEspece = selectedEspece,
-                        selectedIndications = if (selectedIndication != null) setOf(selectedIndication) else emptySet()
+                        selectedIndications = if (selectedIndication != null) setOf(selectedIndication) else emptySet(),
+                        dataB = selectedDataB
                 )
         }
 
@@ -129,6 +132,7 @@ fun FoodListView(
                                 filters = filters,
                                 onFiltersChange = { newFilters ->
                                         // Mettre à jour le ViewModel avec les nouveaux filtres
+                                        println("DEBUG FoodListView - onFiltersChange appelé avec dataB: ${newFilters.dataB}")
                                         viewModel.setSearchQuery(newFilters.searchQuery)
                                         viewModel.setSelectedFoodType(newFilters.selectedFoodType)
                                         viewModel.setSelectedFoodGroup(newFilters.selectedFoodGroup)
@@ -136,6 +140,8 @@ fun FoodListView(
                                         newFilters.selectedIndications.firstOrNull()?.let { indication ->
                                                 viewModel.setSelectedIndication(indication)
                                         } ?: viewModel.setSelectedIndication(null)
+                                        viewModel.setSelectedDataB(newFilters.dataB)
+                                        println("DEBUG FoodListView - Mise à jour ViewModel terminée")
                                 },
                                 config = searchConfig,
                                         modifier = Modifier.fillMaxWidth()

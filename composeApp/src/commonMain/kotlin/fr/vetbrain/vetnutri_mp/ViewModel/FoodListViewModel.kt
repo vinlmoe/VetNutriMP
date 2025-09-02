@@ -47,6 +47,10 @@ class FoodListViewModel(private val foodRepository: DatabaseFoodRepository) {
         private val _selectedIndication = MutableStateFlow<AlimIndic?>(null)
         val selectedIndication: StateFlow<AlimIndic?> = _selectedIndication.asStateFlow()
 
+        // Filtre par base de données
+        private val _selectedDataB = MutableStateFlow<String?>(null)
+        val selectedDataB: StateFlow<String?> = _selectedDataB.asStateFlow()
+
         // Liste des types d'aliments disponibles
         private val _availableFoodTypes = MutableStateFlow<List<FoodKind?>>(emptyList())
         val availableFoodTypes: StateFlow<List<FoodKind?>> = _availableFoodTypes.asStateFlow()
@@ -170,6 +174,12 @@ class FoodListViewModel(private val foodRepository: DatabaseFoodRepository) {
         /** Définit le filtre par indication */
         fun setSelectedIndication(indication: AlimIndic?) {
                 _selectedIndication.value = indication
+                viewModelScope.launch { refreshFilteredFoods() }
+        }
+
+        /** Définit le filtre par base de données */
+        fun setSelectedDataB(dataB: String?) {
+                _selectedDataB.value = dataB
                 viewModelScope.launch { refreshFilteredFoods() }
         }
 
@@ -321,11 +331,20 @@ class FoodListViewModel(private val foodRepository: DatabaseFoodRepository) {
                                                 }
                                         }
 
+                                // Filtre par base de données
+                                val matchesDataB =
+                                        if (selectedDataB.value == null || selectedDataB.value == "") {
+                                                true // Aucun filtre de base de données sélectionné
+                                        } else {
+                                                aliment.dataB?.trim() == selectedDataB.value?.trim()
+                                        }
+
                                 matchesSearch &&
                                         matchesFoodType &&
                                         matchesFoodGroup &&
                                         matchesEspece &&
-                                        matchesIndication
+                                        matchesIndication &&
+                                        matchesDataB
                         }
                         .sortedBy { it.nom }
         }

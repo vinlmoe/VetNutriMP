@@ -145,6 +145,10 @@
         "barf": "BARF",
         "cracker": "Keks",
         "can": "Dose",
-        "dosette": "Portionslöffel"
+        "dosette": "Portionslöffel",
+        "enum.Espece.ALL": "Alle Arten",
+        "enum.FoodKind.all": "Alle Typen",
+        "enum.GroupAlim.all": "Alle Gruppen",
+        "enum.AlimIndic.All": "Alle Indikationen"
     }
 }

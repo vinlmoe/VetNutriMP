@@ -1,0 +1,11 @@
+{
+  "mappings": {
+    "0": "CIQUAL",
+    "1": "FCEN",
+    "2": "PetFood Divers",
+    "4": "Générique",
+    "5": "Aliment Barf",
+    "VF24": "VetFood 2024"
+  },
+  "default": "Base de données inconnue"
+}

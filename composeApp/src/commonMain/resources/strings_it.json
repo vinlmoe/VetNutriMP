@@ -145,6 +145,10 @@
         "barf": "BARF",
         "cracker": "Biscotto",
         "can": "Lattina",
-        "dosette": "Misurino"
+        "dosette": "Misurino",
+        "enum.Espece.ALL": "Tutte specie",
+        "enum.FoodKind.all": "Tutti tipi",
+        "enum.GroupAlim.all": "Tutti gruppi",
+        "enum.AlimIndic.All": "Tutte indicazioni"
     }
 }
