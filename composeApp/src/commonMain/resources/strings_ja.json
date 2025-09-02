@@ -145,6 +145,10 @@
         "barf": "BARF",
         "cracker": "クラッカー",
         "can": "缶詰",
-        "dosette": "計量スプーン"
+        "dosette": "計量スプーン",
+        "enum.Espece.ALL": "すべての種",
+        "enum.FoodKind.all": "すべての種類",
+        "enum.GroupAlim.all": "すべてのグループ",
+        "enum.AlimIndic.All": "すべての適応症"
     }
 }

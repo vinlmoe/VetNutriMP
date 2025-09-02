@@ -50,7 +50,9 @@ fun <T> DropdownField(
         borderWidth: Dp = 0.5.dp
 ) {
         var expanded by remember { mutableStateOf(false) }
-        val displayValue = selectedValue?.let { valueToString(it) } ?: "Sélectionner"
+        val displayValue = remember(selectedValue) { 
+            selectedValue?.let { valueToString(it) } ?: "Sélectionner" 
+        }
 
         Column(modifier = modifier) {
                 Box {

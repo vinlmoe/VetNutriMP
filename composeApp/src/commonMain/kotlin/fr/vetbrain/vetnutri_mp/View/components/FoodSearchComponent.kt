@@ -10,6 +10,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Analytics
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Compare
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
@@ -28,7 +29,10 @@ import fr.vetbrain.vetnutri_mp.Enumer.*
 import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
+import fr.vetbrain.vetnutri_mp.Utils.DataBMapping
 import fr.vetbrain.vetnutri_mp.Utils.TextUtils
+
+
 
 /** État partagé pour les filtres de recherche d'aliments */
 data class FoodSearchFilters(
@@ -36,7 +40,8 @@ data class FoodSearchFilters(
         val selectedFoodType: FoodKind? = null,
         val selectedFoodGroup: GroupAlim? = null,
         val selectedEspece: Espece? = null,
-        val selectedIndications: Set<AlimIndic> = emptySet()
+        val selectedIndications: Set<AlimIndic> = emptySet(),
+        val dataB: String? = null
 )
 
 /** Configuration du composant de recherche d'aliments */
@@ -77,6 +82,14 @@ fun FoodSearchComponent(
         config: FoodSearchConfig = FoodSearchConfig(),
         modifier: Modifier = Modifier
 ) {
+    println("DEBUG FoodSearchComponent - filters.dataB: ${filters.dataB}")
+    println("DEBUG FoodSearchComponent - filters.hashCode: ${filters.hashCode()}")
+    println("DEBUG FoodSearchComponent - RERENDER")
+
+
+
+
+
     // Filtrer les aliments selon les critères
     val filteredFoods =
             remember(
@@ -85,9 +98,12 @@ fun FoodSearchComponent(
                     filters.selectedFoodType,
                     filters.selectedFoodGroup,
                     filters.selectedEspece,
-                    filters.selectedIndications
+                    filters.selectedIndications,
+                    filters.dataB
             ) {
-                foods.filter { aliment ->
+
+
+                val result = foods.filter { aliment ->
                     // Filtre par recherche textuelle avec recherche multi-mots (AND)
                     val matchesSearch =
                             if (filters.searchQuery.isEmpty()) true
@@ -114,11 +130,11 @@ fun FoodSearchComponent(
                                 }
                             }
 
-                    // Filtre par type d'aliment (ALL = pas de filtre)
+                                        // Filtre par type d'aliment (ALL = pas de filtre)
                     val matchesType =
                             when (val sel = filters.selectedFoodType) {
                                 null -> true
-                                FoodKind.ALL -> true
+                                FoodKind.ALL -> true  // "ALL" = pas de filtre, tous les types acceptés
                                 else -> aliment.typeAliment == sel
                             }
 
@@ -126,46 +142,74 @@ fun FoodSearchComponent(
                     val matchesGroup =
                             when (val sel = filters.selectedFoodGroup) {
                                 null -> true
-                                GroupAlim.ALL -> true
+                                GroupAlim.ALL -> true  // "ALL" = pas de filtre, tous les groupes acceptés
                                 else -> aliment.group == sel
                             }
 
-                    // Filtre par espèce
+                    // Filtre par espèce (CH = "ALL" = pas de filtre)
                     val matchesEspece =
                             when (val sel = filters.selectedEspece) {
                                 null -> true
-                                Espece.CH -> true
+                                Espece.CH -> true  // "CH" (avec label "ALL") = pas de filtre, toutes les espèces acceptées
                                 else -> {
                                     val foodSpecies = aliment.getEspecesList()
                                     foodSpecies.isEmpty() ||
-                                            foodSpecies.contains(Espece.CH) ||
+                                            foodSpecies.contains(Espece.CH) ||  // Aliment compatible avec toutes les espèces
                                             foodSpecies.contains(sel)
                                 }
                             }
 
-                    // Filtre par indications
+                    // Filtre par indications (ALL = pas de filtre)
                     val matchesIndications =
                             if (filters.selectedIndications.isEmpty() ||
-                                            filters.selectedIndications.contains(AlimIndic.ALL)
+                                            filters.selectedIndications.contains(AlimIndic.ALL)  // "ALL" = pas de filtre, toutes les indications acceptées
                             )
                                     true
                             else
                                     filters.selectedIndications.any { indication ->
-                                        aliment.indicat.contains(indication)
+                                            aliment.indicat.contains(indication)
                                     }
+
+                    // Filtre par base de données (null/"" = pas de filtre)
+                    val matchesDataB =
+                            when (val dataBFilter = filters.dataB) {
+                                    null -> {
+                                        if (aliment.nom?.contains("test") == true) {
+                                            println("DEBUG DataB Filter - Aliment: ${aliment.nom}, dataB: ${aliment.dataB}, filter: null -> true")
+                                        }
+                                        true  // null = pas de filtre
+                                    }
+                                    "" -> {
+                                        if (aliment.nom?.contains("test") == true) {
+                                            println("DEBUG DataB Filter - Aliment: ${aliment.nom}, dataB: ${aliment.dataB}, filter: \"\" -> true")
+                                        }
+                                        true    // chaîne vide = pas de filtre
+                                    }
+                                    else -> {
+                                        val result = aliment.dataB?.trim() == dataBFilter.trim()  // Comparaison exacte
+                                        if (aliment.nom?.contains("test") == true) {
+                                            println("DEBUG DataB Filter - Aliment: ${aliment.nom}, dataB: ${aliment.dataB}, filter: $dataBFilter -> $result")
+                                        }
+                                        result
+                                    }
+                            }
 
                     matchesSearch &&
                             matchesType &&
                             matchesGroup &&
                             matchesEspece &&
-                            matchesIndications
+                            matchesIndications &&
+                            matchesDataB
                 }
+
+                result
             }
 
     when (config.layout) {
         FoodSearchLayout.VERTICAL ->
                 VerticalLayout(
-                        foods = filteredFoods,
+                        allFoods = foods,
+                        filteredFoods = filteredFoods,
                         filters = filters,
                         onFiltersChange = onFiltersChange,
                         config = config,
@@ -173,7 +217,8 @@ fun FoodSearchComponent(
                 )
         FoodSearchLayout.HORIZONTAL ->
                 HorizontalLayout(
-                        foods = filteredFoods,
+                        allFoods = foods,
+                        filteredFoods = filteredFoods,
                         filters = filters,
                         onFiltersChange = onFiltersChange,
                         config = config,
@@ -181,7 +226,8 @@ fun FoodSearchComponent(
                 )
         FoodSearchLayout.COMPACT ->
                 CompactLayout(
-                        foods = filteredFoods,
+                        allFoods = foods,
+                        filteredFoods = filteredFoods,
                         filters = filters,
                         onFiltersChange = onFiltersChange,
                         config = config,
@@ -193,7 +239,8 @@ fun FoodSearchComponent(
 /** Layout vertical simple (comme FoodListView) */
 @Composable
 private fun VerticalLayout(
-        foods: List<AlimentEv>,
+        allFoods: List<AlimentEv>,
+        filteredFoods: List<AlimentEv>,
         filters: FoodSearchFilters,
         onFiltersChange: (FoodSearchFilters) -> Unit,
         config: FoodSearchConfig,
@@ -215,6 +262,7 @@ private fun VerticalLayout(
         // Filtres
         if (config.showFilters) {
             FiltersSection(
+                    foods = allFoods,
                     filters = filters,
                     onFiltersChange = onFiltersChange,
                     modifier = Modifier.fillMaxWidth()
@@ -224,21 +272,22 @@ private fun VerticalLayout(
         // Compteur de résultats
         if (config.showResultsCount) {
             ResultsCount(
-                    totalCount = foods.size,
-                    filteredCount = foods.size,
+                    totalCount = allFoods.size,
+                    filteredCount = filteredFoods.size,
                     modifier = Modifier.fillMaxWidth()
             )
         }
 
         // Liste des résultats
-        FoodSearchResults(foods = foods, config = config, modifier = Modifier.fillMaxWidth())
+        FoodSearchResults(foods = filteredFoods, config = config, modifier = Modifier.fillMaxWidth())
     }
 }
 
 /** Layout horizontal à deux colonnes (comme AddAlimentView) */
 @Composable
 private fun HorizontalLayout(
-        foods: List<AlimentEv>,
+        allFoods: List<AlimentEv>,
+        filteredFoods: List<AlimentEv>,
         filters: FoodSearchFilters,
         onFiltersChange: (FoodSearchFilters) -> Unit,
         config: FoodSearchConfig,
@@ -256,6 +305,7 @@ private fun HorizontalLayout(
             // Section des filtres
             if (config.showFilters) {
                 FiltersCard(
+                        foods = allFoods,
                         filters = filters,
                         onFiltersChange = onFiltersChange,
                         modifier = Modifier.fillMaxWidth()
@@ -264,7 +314,7 @@ private fun HorizontalLayout(
 
             // Liste des aliments
             FoodSearchResults(
-                    foods = foods,
+                    foods = filteredFoods,
                     config = config,
                     modifier = Modifier.fillMaxWidth().weight(1f)
             )
@@ -273,7 +323,7 @@ private fun HorizontalLayout(
         // Colonne droite - Détails ou espace réservé (40% de l'espace)
         if (config.onFoodSelected != null) {
             FoodDetailsPanel(
-                    foods = foods,
+                    foods = filteredFoods,
                     config = config,
                     modifier = Modifier.weight(0.4f).fillMaxHeight()
             )
@@ -284,7 +334,8 @@ private fun HorizontalLayout(
 /** Layout compact pour les petits espaces */
 @Composable
 private fun CompactLayout(
-        foods: List<AlimentEv>,
+        allFoods: List<AlimentEv>,
+        filteredFoods: List<AlimentEv>,
         filters: FoodSearchFilters,
         onFiltersChange: (FoodSearchFilters) -> Unit,
         config: FoodSearchConfig,
@@ -309,6 +360,7 @@ private fun CompactLayout(
 
             if (config.showFilters) {
                 CompactFilters(
+                        foods = allFoods,
                         filters = filters,
                         onFiltersChange = onFiltersChange,
                         modifier = Modifier.weight(1f)
@@ -317,7 +369,7 @@ private fun CompactLayout(
         }
 
         // Liste des résultats
-        FoodSearchResults(foods = foods, config = config, modifier = Modifier.fillMaxWidth())
+        FoodSearchResults(foods = filteredFoods, config = config, modifier = Modifier.fillMaxWidth())
     }
 }
 
@@ -342,12 +394,13 @@ private fun SearchBar(
 /** Section des filtres */
 @Composable
 private fun FiltersSection(
+        foods: List<AlimentEv>,
         filters: FoodSearchFilters,
         onFiltersChange: (FoodSearchFilters) -> Unit,
         modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)) {
-        // Filtres par dropdowns en grille 2x2
+        // Première ligne : Type d'aliment et Groupe d'aliment
         Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
@@ -385,6 +438,7 @@ private fun FiltersSection(
             }
         }
 
+        // Deuxième ligne : Espèce et Base de données
         Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
@@ -405,23 +459,88 @@ private fun FiltersSection(
                 )
             }
 
-            // Indications (multi-sélection)
+            // Base de données
             Box(modifier = Modifier.weight(1f)) {
-                MultiSelectDropdownField(
-                        label = "Indications",
-                        selectedValues = filters.selectedIndications,
-                        options = AlimIndic.entries,
-                        onValuesChange = {
-                            onFiltersChange(filters.copy(selectedIndications = it))
-                        },
-                        valueToString = { it.translateEnum() },
-                        modifier = Modifier.fillMaxWidth(),
-                        height = 40.dp,
-                        fontSize = 12.sp,
-                        labelFontSize = 10.sp,
-                        borderWidth = 0.5.dp
+                val dataBOptions = remember(foods) { 
+                    val options = listOf("") + foods.mapNotNull { it.dataB?.trim() }.filter { it.isNotEmpty() }.distinct().sorted()
+                    println("DEBUG DataB - Options générées: $options")
+                    options
+                }
+                val selectedDataB = filters.dataB ?: ""
+                println("DEBUG DataB - Valeur sélectionnée: '$selectedDataB' (filters.dataB = ${filters.dataB})")
+                println("DEBUG DataB - filters.hashCode: ${filters.hashCode()}")
+                
+                DropdownField(
+                    label = "Base de données",
+                    selectedValue = selectedDataB,
+                    options = dataBOptions,
+                    onValueChange = {
+                        println("DEBUG DataB - Changement de valeur: '$it'")
+                        val newDataB = if (it.isEmpty()) null else it
+                        println("DEBUG DataB - Ancien filters.dataB: ${filters.dataB}")
+                        // Créer un nouvel objet complètement différent pour forcer le re-rendu
+                        val newFilters = FoodSearchFilters(
+                            searchQuery = filters.searchQuery,
+                            selectedFoodType = filters.selectedFoodType,
+                            selectedFoodGroup = filters.selectedFoodGroup,
+                            selectedEspece = filters.selectedEspece,
+                            selectedIndications = filters.selectedIndications,
+                            dataB = newDataB
+                        )
+                        println("DEBUG DataB - Nouveau filters.dataB: ${newFilters.dataB}")
+                        println("DEBUG DataB - NOUVEAU OBJET créé: ${newFilters.hashCode()}")
+                        println("DEBUG DataB - APPEL onFiltersChange avec: ${newFilters.dataB}")
+                        onFiltersChange(newFilters)
+                    },
+                    valueToString = { 
+                        val result = if (it.isEmpty()) "Toutes" else {
+                            val displayName = DataBMapping.getDisplayName(it)
+                            println("DEBUG DataB - getDisplayName('$it') = '$displayName'")
+                            // Fallback si DataBMapping ne fonctionne pas
+                            if (displayName == it) {
+                                val fallbackName = when (it) {
+                                    "0" -> "CIQUAL"
+                                    "1" -> "FCEN"
+                                    "2" -> "PetFood Divers"
+                                    "4" -> "Générique"
+                                    "5" -> "Aliment Barf"
+                                    "VF24" -> "VetFood 2024"
+                                    else -> it
+                                }
+                                println("DEBUG DataB - Fallback: '$it' -> '$fallbackName'")
+                                fallbackName
+                            } else {
+                                displayName
+                            }
+                        }
+                        println("DEBUG DataB - valueToString: '$it' -> '$result'")
+                        result
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    height = 40.dp,
+                    fontSize = 12.sp,
+                    labelFontSize = 10.sp,
+                    borderWidth = 0.5.dp
                 )
             }
+        }
+
+        // Troisième ligne : Indications (pleine largeur)
+        Box(modifier = Modifier.fillMaxWidth()) {
+            MultiSelectDropdownField(
+                    label = "Indications",
+                    selectedValues = filters.selectedIndications,
+                    options = AlimIndic.entries,
+                    onValuesChange = {
+                        onFiltersChange(filters.copy(selectedIndications = it))
+                    },
+                    valueToString = { it.translateEnum() },
+                    modifier = Modifier.fillMaxWidth(),
+                    height = 40.dp,
+                    fontSize = 12.sp,
+                    labelFontSize = 10.sp,
+                    borderWidth = 0.5.dp
+            )
         }
     }
 }
@@ -429,6 +548,7 @@ private fun FiltersSection(
 /** Carte des filtres (pour le layout horizontal) */
 @Composable
 private fun FiltersCard(
+        foods: List<AlimentEv>,
         filters: FoodSearchFilters,
         onFiltersChange: (FoodSearchFilters) -> Unit,
         modifier: Modifier = Modifier
@@ -453,6 +573,7 @@ private fun FiltersCard(
 
             // Filtres
             FiltersSection(
+                    foods = foods,
                     filters = filters,
                     onFiltersChange = onFiltersChange,
                     modifier = Modifier.fillMaxWidth()
@@ -462,7 +583,8 @@ private fun FiltersCard(
             if (filters.selectedFoodType != null ||
                             filters.selectedFoodGroup != null ||
                             filters.selectedEspece != null ||
-                            filters.selectedIndications.isNotEmpty()
+                            filters.selectedIndications.isNotEmpty() ||
+                            !filters.dataB.isNullOrEmpty()
             ) {
                 Text(
                         text = "Filtres actifs",
@@ -477,6 +599,7 @@ private fun FiltersCard(
 /** Filtres compacts (pour le layout compact) */
 @Composable
 private fun CompactFilters(
+        foods: List<AlimentEv>,
         filters: FoodSearchFilters,
         onFiltersChange: (FoodSearchFilters) -> Unit,
         modifier: Modifier = Modifier
@@ -509,6 +632,68 @@ private fun CompactFilters(
                 fontSize = 12.sp,
                 labelFontSize = 10.sp,
                 borderWidth = 0.5.dp
+        )
+
+        // Base de données
+        val dataBOptions = remember(foods) { 
+            val options = listOf("") + foods.mapNotNull { it.dataB?.trim() }.filter { it.isNotEmpty() }.distinct().sorted()
+            println("DEBUG DataB Compact - Options générées: $options")
+            options
+        }
+        val selectedDataB = filters.dataB ?: ""
+        println("DEBUG DataB Compact - Valeur sélectionnée: '$selectedDataB' (filters.dataB = ${filters.dataB})")
+        
+        DropdownField(
+            label = "Base",
+            selectedValue = selectedDataB,
+            options = dataBOptions,
+            onValueChange = {
+                println("DEBUG DataB Compact - Changement de valeur: '$it'")
+                val newDataB = if (it.isEmpty()) null else it
+                println("DEBUG DataB Compact - Ancien filters.dataB: ${filters.dataB}")
+                // Créer un nouvel objet complètement différent pour forcer le re-rendu
+                val newFilters = FoodSearchFilters(
+                    searchQuery = filters.searchQuery,
+                    selectedFoodType = filters.selectedFoodType,
+                    selectedFoodGroup = filters.selectedFoodGroup,
+                    selectedEspece = filters.selectedEspece,
+                    selectedIndications = filters.selectedIndications,
+                    dataB = newDataB
+                )
+                println("DEBUG DataB Compact - Nouveau filters.dataB: ${newFilters.dataB}")
+                println("DEBUG DataB Compact - NOUVEAU OBJET créé: ${newFilters.hashCode()}")
+                println("DEBUG DataB Compact - APPEL onFiltersChange avec: ${newFilters.dataB}")
+                onFiltersChange(newFilters)
+            },
+            valueToString = { 
+                val result = if (it.isEmpty()) "Toutes" else {
+                    val displayName = DataBMapping.getDisplayName(it)
+                    println("DEBUG DataB Compact - getDisplayName('$it') = '$displayName'")
+                    // Fallback si DataBMapping ne fonctionne pas
+                    if (displayName == it) {
+                        val fallbackName = when (it) {
+                            "0" -> "CIQUAL"
+                            "1" -> "FCEN"
+                            "2" -> "PetFood Divers"
+                            "4" -> "Générique"
+                            "5" -> "Aliment Barf"
+                            "VF24" -> "VetFood 2024"
+                            else -> it
+                        }
+                        println("DEBUG DataB Compact - Fallback: '$it' -> '$fallbackName'")
+                        fallbackName
+                    } else {
+                        displayName
+                    }
+                }
+                println("DEBUG DataB Compact - valueToString: '$it' -> '$result'")
+                result
+            },
+            modifier = Modifier.weight(1f),
+            height = 40.dp,
+            fontSize = 12.sp,
+            labelFontSize = 10.sp,
+            borderWidth = 0.5.dp
         )
     }
 }

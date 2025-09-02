@@ -13,11 +13,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import fr.vetbrain.vetnutri_mp.Components.BasicAppTextField
+import fr.vetbrain.vetnutri_mp.Components.DropdownField
 import fr.vetbrain.vetnutri_mp.Components.MultiSelectionCard
 import fr.vetbrain.vetnutri_mp.Components.NutrientSection
 import fr.vetbrain.vetnutri_mp.Components.TopBar
 import fr.vetbrain.vetnutri_mp.Enumer.*
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
+import fr.vetbrain.vetnutri_mp.Utils.DataBMapping
 import fr.vetbrain.vetnutri_mp.ViewModel.FoodEditViewModel
 import kotlinx.coroutines.launch
 
@@ -48,6 +52,7 @@ fun FoodEditView(
         val quantIntState = remember { mutableStateOf("") }
         val contState = remember { mutableStateOf("") }
         val consistentState = remember { mutableStateOf(false) }
+        val dataBState = remember { mutableStateOf("") }
 
         val selectedFoodType = remember { mutableStateOf<FoodKind?>(null) }
         val selectedFoodGroup = remember { mutableStateOf<GroupAlim?>(null) }
@@ -95,6 +100,7 @@ fun FoodEditView(
                 quantIntState.value = aliment.quantInt?.toString() ?: ""
                 contState.value = aliment.cont?.toString() ?: ""
                 consistentState.value = aliment.consistent
+                dataBState.value = aliment.dataB ?: ""
                 selectedFoodType.value = aliment.typeAliment
                 selectedFoodGroup.value = aliment.group
 
@@ -297,6 +303,11 @@ fun FoodEditView(
                                                                         consistent =
                                                                                 consistentState
                                                                                         .value,
+                                                                        dataB =
+                                                                                dataBState.value
+                                                                                        .takeIf {
+                                                                                                it.isNotBlank()
+                                                                                        },
                                                                         typeAliment =
                                                                                 selectedFoodType
                                                                                         .value,
@@ -383,6 +394,7 @@ fun FoodEditView(
                                                         quantIntState = quantIntState,
                                                         contState = contState,
                                                         consistentState = consistentState,
+                                                        dataBState = dataBState,
                                                         selectedFoodType = selectedFoodType,
                                                         selectedFoodGroup = selectedFoodGroup,
                                                         selectedEspecesState = selectedEspecesState,
@@ -419,6 +431,7 @@ private fun GeneralInfoTab(
         quantIntState: MutableState<String>,
         contState: MutableState<String>,
         consistentState: MutableState<Boolean>,
+        dataBState: MutableState<String>,
         selectedFoodType: MutableState<FoodKind?>,
         selectedFoodGroup: MutableState<GroupAlim?>,
         selectedEspecesState: MutableState<MutableList<Espece>>,
@@ -479,6 +492,26 @@ private fun GeneralInfoTab(
                                                         focusedBorderColor = VetNutriColors.Primary,
                                                         unfocusedBorderColor = Color.Gray
                                                 )
+                                )
+
+                                DropdownField(
+                                        label = "Base de données",
+                                        selectedValue = dataBState.value.ifBlank { "" },
+                                        options = buildList {
+                                            add("") // Valeur vide pour "Sélectionner..."
+                                            addAll(DataBMapping.getAllMappings().keys.sorted())
+                                            // Ajouter la valeur actuelle si elle n'est pas dans la liste
+                                            if (dataBState.value.isNotBlank() && !DataBMapping.hasMapping(dataBState.value)) {
+                                                add(dataBState.value)
+                                            }
+                                        },
+                                        onValueChange = { dataBState.value = it },
+                                        valueToString = { if (it.isBlank()) "Sélectionner..." else DataBMapping.getDisplayName(it) },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        height = 40.dp,
+                                        fontSize = 14.sp,
+                                        labelFontSize = 12.sp,
+                                        borderWidth = 1.dp
                                 )
 
                                 Row(

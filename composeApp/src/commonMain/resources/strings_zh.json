@@ -168,6 +168,10 @@
         "barf": "生食",
         "cracker": "饼干",
         "can": "罐头",
-        "dosette": "量勺"
+        "dosette": "量勺",
+        "enum.Espece.ALL": "所有物种",
+        "enum.FoodKind.all": "所有类型",
+        "enum.GroupAlim.all": "所有组",
+        "enum.AlimIndic.All": "所有适应症"
     }
 }

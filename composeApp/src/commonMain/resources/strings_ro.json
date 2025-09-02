@@ -145,6 +145,10 @@
         "barf": "BARF",
         "cracker": "Biscuit",
         "can": "Conservă",
-        "dosette": "Dozator"
+        "dosette": "Dozator",
+        "enum.Espece.ALL": "Toate speciile",
+        "enum.FoodKind.all": "Toate tipurile",
+        "enum.GroupAlim.all": "Toate grupurile",
+        "enum.AlimIndic.All": "Toate indicațiile"
     }
 }
