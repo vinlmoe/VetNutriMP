@@ -15,5 +15,6 @@ data class ExportData(
         val reference: ReferenceEv?,
         val conseils: List<String> = emptyList(),
         val title: String = "",
-        val additionalText: String = ""
+        val additionalText: String = "",
+        val htmlSections: List<HtmlSection> = emptyList()
 )

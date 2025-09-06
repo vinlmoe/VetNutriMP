@@ -15,7 +15,8 @@ object HtmlDocumentBuilder {
                             data.ration,
                             data.reference,
                             data.title,
-                            data.additionalText
+                            data.additionalText,
+                            data.htmlSections
                     )
             DocumentType.PRESCRIPTION ->
                     buildPrescriptionHtml(
@@ -23,7 +24,8 @@ object HtmlDocumentBuilder {
                             data.ration,
                             data.conseils,
                             data.title,
-                            data.additionalText
+                            data.additionalText,
+                            data.htmlSections
                     )
         }
     }
@@ -117,13 +119,15 @@ object HtmlDocumentBuilder {
             ration: Ration?,
             reference: ReferenceEv?,
             title: String,
-            additionalText: String
+            additionalText: String,
+            htmlSections: List<HtmlSection> = emptyList()
     ): String {
         return buildHeader(if (title.isNotBlank()) title else "Analyse de ration") +
                 buildAnimalBlock(animal) +
                 buildRationBlock(ration) +
                 buildReferencesBlock(reference) +
                 buildAdditionalTextBlock(additionalText) +
+                buildHtmlSectionsBlock(htmlSections) +
                 buildFooter()
     }
 
@@ -132,13 +136,15 @@ object HtmlDocumentBuilder {
             ration: Ration?,
             conseils: List<String>,
             title: String,
-            additionalText: String
+            additionalText: String,
+            htmlSections: List<HtmlSection> = emptyList()
     ): String {
         return buildHeader(if (title.isNotBlank()) title else "Ordonnance nutritionnelle") +
                 buildAnimalBlock(animal) +
                 buildRationBlock(ration) +
                 buildConseilsBlock(conseils) +
                 buildAdditionalTextBlock(additionalText) +
+                buildHtmlSectionsBlock(htmlSections) +
                 buildFooter()
     }
 
@@ -153,6 +159,21 @@ object HtmlDocumentBuilder {
             <div class='section'>
                 <h2>Notes</h2>
                 <div class='small'>${escaped}</div>
+            </div>
+        """.trimIndent()
+    }
+
+    private fun buildHtmlSectionsBlock(sections: List<HtmlSection>): String {
+        if (sections.isEmpty()) return ""
+
+        val sectionsHtml =
+                sections.joinToString("\n") { section ->
+                    HtmlSectionParser.parseSectionToHtml(section)
+                }
+
+        return """
+            <div class='custom-sections'>
+                $sectionsHtml
             </div>
         """.trimIndent()
     }

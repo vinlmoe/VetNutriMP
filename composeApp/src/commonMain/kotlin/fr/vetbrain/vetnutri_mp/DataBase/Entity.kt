@@ -624,3 +624,28 @@ data class ReferenceEvNutrientEntity(
         val uniteReqId: Int,
         val biblioRefId: String?
 )
+
+// Entités pour les sections HTML réutilisables
+@Serializable
+@Entity(tableName = "HTML_SECTIONS")
+data class HtmlSectionEntity(
+        @PrimaryKey val id: String,
+        val title: String,
+        val contentJson: String, // JSON sérialisé de RichTextContent
+        val category: String, // SectionCategory.name
+        val tagsJson: String, // JSON array des tags
+        val createdAt: Long, // timestamp
+        val updatedAt: Long, // timestamp
+        val isTemplate: Boolean
+)
+
+@Serializable
+@Entity(tableName = "HTML_SECTION_LIBRARIES")
+data class HtmlSectionLibraryEntity(
+        @PrimaryKey val id: String,
+        val name: String,
+        val description: String,
+        val sectionIdsJson: String, // JSON array des IDs de sections
+        val createdAt: Long,
+        val updatedAt: Long
+)
