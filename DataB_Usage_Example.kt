@@ -33,7 +33,8 @@ fun main() {
     // Obtenir toutes les correspondances
     val allMappings = DataBMapping.getAllMappings()
     println("All mappings: $allMappings")
-    // Affiche: All mappings: {0=CIQUAL, 1=FCEN, 2=PetFood Divers, 4=Générique, 5=Aliment Barf, VF24=VetFood 2024}
+    // Affiche: All mappings: {0=CIQUAL, 1=FCEN, 2=PetFood Divers, 4=Générique, 5=Aliment Barf,
+    // VF24=VetFood 2024}
 
     // Recharger les correspondances (utile après modification du fichier JSON)
     DataBMapping.reloadMappings()

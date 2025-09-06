@@ -1,6 +1,7 @@
 package fr.vetbrain.vetnutri_mp.Data
 
 import fr.vetbrain.vetnutri_mp.Enumer.*
+import fr.vetbrain.vetnutri_mp.Enumer.AAEnum
 import fr.vetbrain.vetnutri_mp.Enumer.AlimIndic
 import fr.vetbrain.vetnutri_mp.Enumer.FoodKind
 import fr.vetbrain.vetnutri_mp.Enumer.GroupAlim
@@ -36,6 +37,12 @@ data class AlimentEv(
          * @return La valeur du nutriment ou null si non trouvé
          */
         fun getNutrient(nutrient: Nutrient, referenceEv: ReferenceEv? = null): Double? {
+                // Protection de l'aminogramme : retourner null pour les acides aminés
+                // si la base de données est VF24
+                if (nutrient is AAEnum && dataB == "VF24") {
+                        return null
+                }
+
                 // Si c'est l'énergie (NutrientEnergy ou NutrientMain.ENERGIE) et qu'on a une
                 // référence avec des équations, utiliser les équations
                 if (referenceEv != null &&

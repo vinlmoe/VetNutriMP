@@ -362,9 +362,10 @@ class SettingsViewModel(
 
     /**
      * Relance l'import automatique des données initiales (aliments et références nutritionnelles)
+     * @param forceImport Si true, force l'import même si les versions sont identiques
      * @return Le résultat de l'importation
      */
-    suspend fun relaunchAutomaticImport(): ImportResult {
+    suspend fun relaunchAutomaticImport(forceImport: Boolean = false): ImportResult {
         println("🔄 [SETTINGS] Début de relaunchAutomaticImport")
         return try {
             println("🔄 [SETTINGS] Création de l'ExportImportRepository...")
@@ -419,16 +420,20 @@ class SettingsViewModel(
             val updateNeeded = databaseVersionManager.isJsonUpdateNeeded(json)
             println("🔄 [SETTINGS] Mise à jour nécessaire: $updateNeeded")
 
-            // 🔧 CORRECTION : Vérifier aussi si la base de données est vide
+            // 🔧 CORRECTION : Vérifier spécifiquement si les aliments sont manquants
             val currentFoodCount = foodRepository.getAllFoods().size
             val currentReferenceCount = referenceEvRepository?.getAllReferenceEv()?.size ?: 0
+            val foodsAreMissing = currentFoodCount == 0
             val databaseIsEmpty = currentFoodCount == 0 && currentReferenceCount == 0
-            
-            println("🔄 [SETTINGS] État de la base - Aliments: $currentFoodCount, Références: $currentReferenceCount")
-            println("🔄 [SETTINGS] Base vide: $databaseIsEmpty")
 
-            if (!updateNeeded && !databaseIsEmpty) {
-                // Aucune mise à jour nécessaire et base non vide
+            println("🔄 [SETTINGS] État de la base - Aliments: $currentFoodCount, Références: $currentReferenceCount")
+            println("🔄 [SETTINGS] Aliments manquants: $foodsAreMissing")
+            println("🔄 [SETTINGS] Base vide: $databaseIsEmpty")
+            println("🔄 [SETTINGS] Import forcé: $forceImport")
+
+            // Si l'import n'est pas forcé, vérifier si une mise à jour est nécessaire
+            if (!forceImport && !updateNeeded && !foodsAreMissing) {
+                // Aucune mise à jour nécessaire et aliments présents
                 val currentJsonVersion = databaseVersionManager.getStoredJsonVersion()
                 println("ℹ️ [SETTINGS] Aucune mise à jour nécessaire, version actuelle: $currentJsonVersion")
                 return ImportResult.Success(
@@ -437,9 +442,9 @@ class SettingsViewModel(
                 )
             }
 
-            // 🔧 CORRECTION : Forcer l'import si la base est vide
-            if (databaseIsEmpty) {
-                println("🔄 [SETTINGS] Base vide détectée, import forcé même si versions identiques")
+            // 🔧 CORRECTION : Forcer l'import si les aliments sont manquants ou si la base est vide
+            if (foodsAreMissing || databaseIsEmpty) {
+                println("🔄 [SETTINGS] Aliments manquants ou base vide détecté(e), import forcé même si versions identiques")
             }
 
             println("🔄 [SETTINGS] Lancement de l'import...")

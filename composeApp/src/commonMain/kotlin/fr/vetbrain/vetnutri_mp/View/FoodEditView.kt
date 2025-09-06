@@ -14,12 +14,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import fr.vetbrain.vetnutri_mp.Components.BasicAppTextField
 import fr.vetbrain.vetnutri_mp.Components.DropdownField
 import fr.vetbrain.vetnutri_mp.Components.MultiSelectionCard
 import fr.vetbrain.vetnutri_mp.Components.NutrientSection
 import fr.vetbrain.vetnutri_mp.Components.TopBar
 import fr.vetbrain.vetnutri_mp.Enumer.*
+import fr.vetbrain.vetnutri_mp.Enumer.AAEnum
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.DataBMapping
 import fr.vetbrain.vetnutri_mp.ViewModel.FoodEditViewModel
@@ -119,11 +119,15 @@ fun FoodEditView(
                 selectedEspecesState.value = matchedEspeces
                 selectedIndications.value = aliment.indicat.toMutableList()
 
-                // Mettre à jour les valeurs des nutriments
+                // Mettre à jour les valeurs des nutriments en utilisant getNutrient()
+                // pour appliquer la protection de l'aminogramme
                 nutrientValues.clear()
                 nutrientErrors.clear()
-                aliment.valMap.forEach { (nutrient, value) ->
-                        nutrientValues[nutrient] = value.value.toString()
+                allNutrients.forEach { nutrient ->
+                        val nutrientValue = aliment.getNutrient(nutrient)
+                        if (nutrientValue != null) {
+                                nutrientValues[nutrient] = nutrientValue.toString()
+                        }
                 }
         }
 
@@ -222,31 +226,46 @@ fun FoodEditView(
                                                                         nutrientValues[nutrient]
                                                                                 ?: ""
 
-                                                                // Si la valeur n'est pas vide et
-                                                                // est valide, l'ajouter à la map
-                                                                if (valueStr.isNotBlank()) {
-                                                                        val value =
-                                                                                valueStr.replace(
-                                                                                                ",",
-                                                                                                "."
-                                                                                        )
-                                                                                        .toDoubleOrNull()
-                                                                                        ?: 0.0
-                                                                        if (value > 0.0) {
-                                                                                processedNutrientValues[
-                                                                                        nutrient] =
-                                                                                        fr.vetbrain
-                                                                                                .vetnutri_mp
-                                                                                                .Data
-                                                                                                .NutrientQuantity(
-                                                                                                        value,
-                                                                                                        nutrient.label
+                                                                // Appliquer la protection de
+                                                                // l'aminogramme :
+                                                                // ne pas sauvegarder les acides
+                                                                // aminés pour VF24
+                                                                val isProtectedAA =
+                                                                        nutrient is AAEnum &&
+                                                                                dataBState.value ==
+                                                                                        "VF24"
+
+                                                                if (!isProtectedAA) {
+                                                                        // Si la valeur n'est pas
+                                                                        // vide et
+                                                                        // est valide, l'ajouter à
+                                                                        // la map
+                                                                        if (valueStr.isNotBlank()) {
+                                                                                val value =
+                                                                                        valueStr.replace(
+                                                                                                        ",",
+                                                                                                        "."
                                                                                                 )
+                                                                                                .toDoubleOrNull()
+                                                                                                ?: 0.0
+                                                                                if (value > 0.0) {
+                                                                                        processedNutrientValues[
+                                                                                                nutrient] =
+                                                                                                fr.vetbrain
+                                                                                                        .vetnutri_mp
+                                                                                                        .Data
+                                                                                                        .NutrientQuantity(
+                                                                                                                value,
+                                                                                                                nutrient.label
+                                                                                                        )
+                                                                                }
                                                                         }
+                                                                        // Si vide ou valeur ≤ 0, ne
+                                                                        // pas
+                                                                        // ajouter à la map pour que
+                                                                        // le
+                                                                        // nutriment soit supprimé
                                                                 }
-                                                                // Si vide ou valeur ≤ 0, ne pas
-                                                                // ajouter à la map pour que le
-                                                                // nutriment soit supprimé
                                                         }
 
                                                         // Log pour débugger
@@ -497,16 +516,31 @@ private fun GeneralInfoTab(
                                 DropdownField(
                                         label = "Base de données",
                                         selectedValue = dataBState.value.ifBlank { "" },
-                                        options = buildList {
-                                            add("") // Valeur vide pour "Sélectionner..."
-                                            addAll(DataBMapping.getAllMappings().keys.sorted())
-                                            // Ajouter la valeur actuelle si elle n'est pas dans la liste
-                                            if (dataBState.value.isNotBlank() && !DataBMapping.hasMapping(dataBState.value)) {
-                                                add(dataBState.value)
-                                            }
-                                        },
+                                        options =
+                                                buildList {
+                                                        add(
+                                                                ""
+                                                        ) // Valeur vide pour "Sélectionner..."
+                                                        addAll(
+                                                                DataBMapping.getAllMappings()
+                                                                        .keys
+                                                                        .sorted()
+                                                        )
+                                                        // Ajouter la valeur actuelle si elle n'est
+                                                        // pas dans la liste
+                                                        if (dataBState.value.isNotBlank() &&
+                                                                        !DataBMapping.hasMapping(
+                                                                                dataBState.value
+                                                                        )
+                                                        ) {
+                                                                add(dataBState.value)
+                                                        }
+                                                },
                                         onValueChange = { dataBState.value = it },
-                                        valueToString = { if (it.isBlank()) "Sélectionner..." else DataBMapping.getDisplayName(it) },
+                                        valueToString = {
+                                                if (it.isBlank()) "Sélectionner..."
+                                                else DataBMapping.getDisplayName(it)
+                                        },
                                         modifier = Modifier.fillMaxWidth(),
                                         height = 40.dp,
                                         fontSize = 14.sp,

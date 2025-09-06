@@ -867,10 +867,10 @@ fun StartupScreen(
                                                                 "🔄 [STARTUP] Lancement de l'import automatique..."
                                                         )
                                                         // Lancer la mise à jour de la base de
-                                                        // données
+                                                        // données (forcée)
                                                         val result =
                                                                 settingsViewModel
-                                                                        .relaunchAutomaticImport()
+                                                                        .relaunchAutomaticImport(forceImport = true)
                                                         println(
                                                                 "🔄 [STARTUP] Import terminé, résultat: $result"
                                                         )
