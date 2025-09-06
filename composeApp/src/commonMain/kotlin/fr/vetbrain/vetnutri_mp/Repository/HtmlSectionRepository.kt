@@ -181,5 +181,7 @@ class HtmlSectionRepository(private val dao: HtmlSectionDao) {
     }
 
     private fun generateId(): String =
-            "section_${System.currentTimeMillis()}_${kotlin.random.Random.nextInt(1000)}"
+            "section_${kotlinx.datetime.Clock.System.now().toEpochMilliseconds()}_${kotlin.random.Random.nextInt(1000)}"
 }
+
+

@@ -764,7 +764,7 @@ private fun WideScreenLayout(
                                                                                                 .Export
                                                                                                 .HtmlSection(
                                                                                                         id =
-                                                                                                                "section_${System.currentTimeMillis()}",
+                                                                                                                "section_${kotlinx.datetime.Clock.System.now().toEpochMilliseconds()}",
                                                                                                         title =
                                                                                                                 "Section personnalisée ${htmlSections.size + 1}",
                                                                                                         content =
@@ -1737,7 +1737,7 @@ private fun NarrowScreenLayout(
                                                                                                                 .Export
                                                                                                                 .HtmlSection(
                                                                                                                         id =
-                                                                                                                                "section_${System.currentTimeMillis()}",
+                                                                                                                                "section_${kotlinx.datetime.Clock.System.now().toEpochMilliseconds()}",
                                                                                                                         title =
                                                                                                                                 "Section personnalisée ${htmlSections.size + 1}",
                                                                                                                         content =

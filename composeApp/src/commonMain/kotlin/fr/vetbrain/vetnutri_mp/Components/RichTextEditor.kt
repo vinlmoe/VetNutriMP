@@ -649,4 +649,4 @@ private fun TableBlockEditor(block: TextBlock.TableBlock, onBlockChange: (TextBl
 
 /** Génère un ID unique pour un bloc */
 private fun generateBlockId(): String =
-        "block_${System.currentTimeMillis()}_${kotlin.random.Random.nextInt(1000)}"
+        "block_${kotlinx.datetime.Clock.System.now().toEpochMilliseconds()}_${kotlin.random.Random.nextInt(1000)}"
