@@ -56,7 +56,7 @@ object Mappers {
                                         try {
                                                 LocalDate.parse(dateStr)
                                         } catch (e: Exception) {
-                                                
+
                                                 null
                                         }
                                 },
@@ -132,7 +132,7 @@ object Mappers {
                                         try {
                                                 LocalDate.parse(this.date)
                                         } catch (e: Exception) {
-                                                
+
                                                 null
                                         }
                                 } else {
@@ -549,7 +549,7 @@ object Mappers {
                                         try {
                                                 LocalDate.parse(this.date)
                                         } catch (e: Exception) {
-                                                
+
                                                 LocalDate(
                                                         2000,
                                                         1,

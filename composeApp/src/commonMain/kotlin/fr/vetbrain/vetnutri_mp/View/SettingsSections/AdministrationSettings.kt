@@ -68,7 +68,7 @@ fun AdministrationSettings(
                                     autoImportResult = null
                                     coroutineScope.launch {
                                         try {
-                                            val result = viewModel.relaunchAutomaticImport()
+                                            val result = viewModel.relaunchAutomaticImport(forceImport = true)
                                             when (result) {
                                                 is SettingsViewModel.ImportResult.Success -> {
                                                     autoImportResult =

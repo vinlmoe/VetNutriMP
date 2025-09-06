@@ -133,7 +133,6 @@ fun createDatabaseBackup(database: AppDatabase): Boolean {
 fun createMigration17to18(): Migration {
     return object : Migration(17, 18) {
         override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
-            
 
             try {
                 // Cette migration ne fait aucune modification de structure
@@ -212,7 +211,6 @@ fun createMigration18to19(): Migration {
 fun createMigration19to20(): Migration {
     return object : Migration(19, 20) {
         override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
-            
 
             try {
                 // Ajouter la colonne nutrient à la table EQUATIONS
@@ -220,10 +218,8 @@ fun createMigration19to20(): Migration {
                     ->
                     statement.step()
                 }
-
-                
             } catch (e: Exception) {
-                
+
                 throw e
             }
         }
@@ -234,15 +230,14 @@ fun createMigration19to20(): Migration {
 fun createMigration20to21(): Migration {
     return object : Migration(20, 21) {
         override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
-            
+
             try {
                 connection.prepare(
                                 "ALTER TABLE EQUATIONS ADD COLUMN ratio INTEGER NOT NULL DEFAULT 0"
                         )
                         .use { statement -> statement.step() }
-                
             } catch (e: Exception) {
-                
+
                 throw e
             }
         }
@@ -288,42 +283,42 @@ fun createMigration21to22(): Migration {
 fun createMigration22to23(): Migration {
     return object : Migration(22, 23) {
         override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
-            
-            
+
             try {
                 // Index pour le filtrage par groupe d'aliment
                 connection.prepare(
-                    "CREATE INDEX IF NOT EXISTS index_FOOD_groupAlim ON FOOD(groupAlim)"
-                ).use { it.step() }
-                
+                                "CREATE INDEX IF NOT EXISTS index_FOOD_groupAlim ON FOOD(groupAlim)"
+                        )
+                        .use { it.step() }
+
                 // Index pour le filtrage par type d'aliment
                 connection.prepare(
-                    "CREATE INDEX IF NOT EXISTS index_FOOD_typeAlim ON FOOD(typeAlim)"
-                ).use { it.step() }
-                
+                                "CREATE INDEX IF NOT EXISTS index_FOOD_typeAlim ON FOOD(typeAlim)"
+                        )
+                        .use { it.step() }
+
                 // Index pour la recherche par marque
-                connection.prepare(
-                    "CREATE INDEX IF NOT EXISTS index_FOOD_brand ON FOOD(brand)"
-                ).use { it.step() }
-                
+                connection.prepare("CREATE INDEX IF NOT EXISTS index_FOOD_brand ON FOOD(brand)")
+                        .use { it.step() }
+
                 // Index pour la recherche par nom
-                connection.prepare(
-                    "CREATE INDEX IF NOT EXISTS index_FOOD_name ON FOOD(name)"
-                ).use { it.step() }
-                
+                connection.prepare("CREATE INDEX IF NOT EXISTS index_FOOD_name ON FOOD(name)").use {
+                    it.step()
+                }
+
                 // Index pour le filtrage par espèces
                 connection.prepare(
-                    "CREATE INDEX IF NOT EXISTS index_FOOD_especesJson ON FOOD(especesJson)"
-                ).use { it.step() }
-                
+                                "CREATE INDEX IF NOT EXISTS index_FOOD_especesJson ON FOOD(especesJson)"
+                        )
+                        .use { it.step() }
+
                 // Index pour filtrer les aliments obsolètes
                 connection.prepare(
-                    "CREATE INDEX IF NOT EXISTS index_FOOD_deprecated ON FOOD(deprecated)"
-                ).use { it.step() }
-                
-                
+                                "CREATE INDEX IF NOT EXISTS index_FOOD_deprecated ON FOOD(deprecated)"
+                        )
+                        .use { it.step() }
             } catch (e: Exception) {
-                
+
                 throw e
             }
         }

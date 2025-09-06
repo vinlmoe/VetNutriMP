@@ -123,8 +123,8 @@ android {
         applicationId = "fr.vetbrain.vetnutri_mp"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 14
-        versionName = "3.1.4b"
+        versionCode = 15
+        versionName = "3.1.15"
 
         // Configuration de Room
 
@@ -156,7 +156,7 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "fr.vetbrain.vetnutri_mp"
-            packageVersion = "3.1.3"
+            packageVersion = "3.1.15"
 
             // Configuration des icônes pour chaque plateforme
             macOS { iconFile.set(project.file("src/desktopMain/resources/icon.icns")) }

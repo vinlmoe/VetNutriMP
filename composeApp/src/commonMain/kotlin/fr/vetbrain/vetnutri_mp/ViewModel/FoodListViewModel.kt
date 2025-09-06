@@ -22,7 +22,7 @@ class FoodListViewModel(private val foodRepository: DatabaseFoodRepository) {
 
         // Liste des aliments (non filtrée)
         private val _allFoods = MutableStateFlow<List<AlimentEv>>(emptyList())
-        
+
         // Liste des aliments filtrés
         private val _foods = MutableStateFlow<List<AlimentEv>>(emptyList())
         val foods: StateFlow<List<AlimentEv>> = _foods.asStateFlow()
@@ -68,9 +68,12 @@ class FoodListViewModel(private val foodRepository: DatabaseFoodRepository) {
 
         init {
                 // S'abonner au Flow réactif des aliments pour des mises à jour automatiques
-                foodRepository.observeAllFoods()
+                foodRepository
+                        .observeAllFoods()
                         .onEach { allFoods ->
-                                println("DEBUG: FoodListViewModel - Mise à jour reçue: ${allFoods.size} aliments")
+                                println(
+                                        "DEBUG: FoodListViewModel - Mise à jour reçue: ${allFoods.size} aliments"
+                                )
                                 // Stocker tous les aliments non filtrés
                                 _allFoods.value = allFoods
 
@@ -79,13 +82,17 @@ class FoodListViewModel(private val foodRepository: DatabaseFoodRepository) {
 
                                 // Mettre à jour l'état filtré
                                 _foods.value = filteredFoods
-                                println("DEBUG: FoodListViewModel - Liste filtrée mise à jour: ${filteredFoods.size} aliments")
+                                println(
+                                        "DEBUG: FoodListViewModel - Liste filtrée mise à jour: ${filteredFoods.size} aliments"
+                                )
 
                                 // Mettre à jour les listes de valeurs disponibles pour les filtres
                                 updateAvailableFilterValues(allFoods)
                         }
                         .catch { e ->
-                                println("DEBUG: FoodListViewModel - Erreur dans le Flow: ${e.message}")
+                                println(
+                                        "DEBUG: FoodListViewModel - Erreur dans le Flow: ${e.message}"
+                                )
                                 e.printStackTrace()
                                 _allFoods.value = emptyList()
                                 _foods.value = emptyList()
@@ -197,36 +204,57 @@ class FoodListViewModel(private val foodRepository: DatabaseFoodRepository) {
                                 val matchesSearch =
                                         if (searchQuery.value.isEmpty()) true
                                         else {
-                                                val searchWords = searchQuery.value.trim().split("\\s+".toRegex())
-                                                        .filter { it.isNotEmpty() }
-                                                        .map { it.lowercase() }
+                                                val searchWords =
+                                                        searchQuery
+                                                                .value
+                                                                .trim()
+                                                                .split("\\s+".toRegex())
+                                                                .filter { it.isNotEmpty() }
+                                                                .map { it.lowercase() }
 
                                                 if (searchWords.isEmpty()) true
                                                 else {
-                                                        // Au moins un mot doit être trouvé dans au moins un des champs
+                                                        // Au moins un mot doit être trouvé dans au
+                                                        // moins un des champs
                                                         searchWords.any { word ->
-                                                                aliment.nom?.lowercase()?.contains(word) == true ||
-                                                                aliment.brand?.lowercase()?.contains(word) == true ||
-                                                                aliment.gamme?.lowercase()?.contains(word) == true ||
-                                                                aliment.ingredients?.lowercase()?.contains(word) == true
+                                                                aliment.nom
+                                                                        ?.lowercase()
+                                                                        ?.contains(word) == true ||
+                                                                        aliment.brand
+                                                                                ?.lowercase()
+                                                                                ?.contains(word) ==
+                                                                                true ||
+                                                                        aliment.gamme
+                                                                                ?.lowercase()
+                                                                                ?.contains(word) ==
+                                                                                true ||
+                                                                        aliment.ingredients
+                                                                                ?.lowercase()
+                                                                                ?.contains(word) ==
+                                                                                true
                                                         }
                                                 }
                                         }
 
                                 // Filtre par type d'aliment
                                 val matchesFoodType =
-                                        selectedFoodType.value == null || selectedFoodType.value == FoodKind.ALL ||
+                                        selectedFoodType.value == null ||
+                                                selectedFoodType.value == FoodKind.ALL ||
                                                 aliment.typeAliment == selectedFoodType.value
 
                                 // Filtre par groupe d'aliment
                                 val matchesFoodGroup =
-                                        selectedFoodGroup.value == null || selectedFoodGroup.value == GroupAlim.ALL ||
+                                        selectedFoodGroup.value == null ||
+                                                selectedFoodGroup.value == GroupAlim.ALL ||
                                                 aliment.group == selectedFoodGroup.value
 
                                 // Filtre par espèce avec traitement amélioré
                                 val matchesEspece =
-                                        if (selectedEspece.value == null || selectedEspece.value == Espece.CH) {
-                                                true // Aucun filtre d'espèce sélectionné ou toutes les espèces acceptées
+                                        if (selectedEspece.value == null ||
+                                                        selectedEspece.value == Espece.CH
+                                        ) {
+                                                true // Aucun filtre d'espèce sélectionné ou toutes
+                                                // les espèces acceptées
                                         } else {
                                                 aliment.especes.any { especeStr ->
                                                         try {
@@ -323,8 +351,11 @@ class FoodListViewModel(private val foodRepository: DatabaseFoodRepository) {
 
                                 // Filtre par indication
                                 val matchesIndication =
-                                        if (selectedIndication.value == null || selectedIndication.value == AlimIndic.ALL) {
-                                                true // Aucun filtre d'indication sélectionné ou toutes les indications acceptées
+                                        if (selectedIndication.value == null ||
+                                                        selectedIndication.value == AlimIndic.ALL
+                                        ) {
+                                                true // Aucun filtre d'indication sélectionné ou
+                                                // toutes les indications acceptées
                                         } else {
                                                 aliment.indicat.any { indication ->
                                                         indication == selectedIndication.value
@@ -333,7 +364,8 @@ class FoodListViewModel(private val foodRepository: DatabaseFoodRepository) {
 
                                 // Filtre par base de données
                                 val matchesDataB =
-                                        if (selectedDataB.value == null || selectedDataB.value == "") {
+                                        if (selectedDataB.value == null || selectedDataB.value == ""
+                                        ) {
                                                 true // Aucun filtre de base de données sélectionné
                                         } else {
                                                 aliment.dataB?.trim() == selectedDataB.value?.trim()
@@ -353,7 +385,8 @@ class FoodListViewModel(private val foodRepository: DatabaseFoodRepository) {
         fun deleteFood(food: AlimentEv) {
                 viewModelScope.launch {
                         foodRepository.deleteFood(food.uuid)
-                        // Plus besoin d'appeler loadFoods() car le Flow se met à jour automatiquement
+                        // Plus besoin d'appeler loadFoods() car le Flow se met à jour
+                        // automatiquement
                 }
         }
 }
