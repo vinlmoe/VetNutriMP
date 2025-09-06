@@ -127,3 +127,5 @@ Voir le fichier `HtmlSectionExample.kt` pour un exemple complet d'utilisation av
 - Partage de sections entre utilisateurs
 - Historique des modifications
 - Collaboration en temps réel
+
+
