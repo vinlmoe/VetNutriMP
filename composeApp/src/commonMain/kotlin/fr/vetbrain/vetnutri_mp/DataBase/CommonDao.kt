@@ -52,7 +52,8 @@ interface AnimalDao {
 
 @Dao
 interface ConsultationDao {
-        @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun insert(consultation: ConsultationEntity)
+        @Insert(onConflict = OnConflictStrategy.REPLACE)
+        suspend fun insert(consultation: ConsultationEntity)
 
         @Update suspend fun update(consultation: ConsultationEntity)
 
@@ -78,9 +79,11 @@ interface ConsultationDao {
         @Insert(onConflict = OnConflictStrategy.REPLACE)
         suspend fun insertSupplementalVariable(supplementalVariable: SupplementalVariableEntity)
 
-        @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun insertRation(ration: RationEntity)
+        @Insert(onConflict = OnConflictStrategy.REPLACE)
+        suspend fun insertRation(ration: RationEntity)
 
-        @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun insertAlimentRation(aliment: AlimentRationEntity)
+        @Insert(onConflict = OnConflictStrategy.REPLACE)
+        suspend fun insertAlimentRation(aliment: AlimentRationEntity)
 
         @Query("DELETE FROM RATIONS WHERE idConsult = :consultationId")
         suspend fun deleteRationsForConsultation(consultationId: String)
@@ -387,4 +390,49 @@ interface ReferenceEvDao {
         @Query("DELETE FROM REFERENCE_EV_COEFFICIENTS") suspend fun deleteAllCoefficients()
 
         @Query("DELETE FROM REFERENCE_EV_NUTRIENTS") suspend fun deleteAllNutrients()
+}
+
+/** DAO pour accéder aux sections HTML réutilisables */
+@Dao
+interface HtmlSectionDao {
+        @Insert(onConflict = OnConflictStrategy.REPLACE)
+        suspend fun insertSection(section: HtmlSectionEntity)
+
+        @Update suspend fun updateSection(section: HtmlSectionEntity)
+
+        @Delete suspend fun deleteSection(section: HtmlSectionEntity)
+
+        @Query("SELECT * FROM HTML_SECTIONS") suspend fun getAllSections(): List<HtmlSectionEntity>
+
+        @Query("SELECT * FROM HTML_SECTIONS WHERE id = :id")
+        suspend fun getSectionById(id: String): HtmlSectionEntity?
+
+        @Query("SELECT * FROM HTML_SECTIONS WHERE category = :category")
+        suspend fun getSectionsByCategory(category: String): List<HtmlSectionEntity>
+
+        @Query("SELECT * FROM HTML_SECTIONS WHERE isTemplate = 1")
+        suspend fun getTemplateSections(): List<HtmlSectionEntity>
+
+        @Query(
+                "SELECT * FROM HTML_SECTIONS WHERE title LIKE '%' || :query || '%' OR category LIKE '%' || :query || '%'"
+        )
+        suspend fun searchSections(query: String): List<HtmlSectionEntity>
+
+        @Query("DELETE FROM HTML_SECTIONS") suspend fun deleteAllSections()
+
+        // DAO pour les bibliothèques de sections
+        @Insert(onConflict = OnConflictStrategy.REPLACE)
+        suspend fun insertLibrary(library: HtmlSectionLibraryEntity)
+
+        @Update suspend fun updateLibrary(library: HtmlSectionLibraryEntity)
+
+        @Delete suspend fun deleteLibrary(library: HtmlSectionLibraryEntity)
+
+        @Query("SELECT * FROM HTML_SECTION_LIBRARIES")
+        suspend fun getAllLibraries(): List<HtmlSectionLibraryEntity>
+
+        @Query("SELECT * FROM HTML_SECTION_LIBRARIES WHERE id = :id")
+        suspend fun getLibraryById(id: String): HtmlSectionLibraryEntity?
+
+        @Query("DELETE FROM HTML_SECTION_LIBRARIES") suspend fun deleteAllLibraries()
 }

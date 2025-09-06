@@ -7,6 +7,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Analytics
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Person
@@ -15,10 +17,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Components.ConfirmDialog
-import fr.vetbrain.vetnutri_mp.Data.AnimalEv
+import fr.vetbrain.vetnutri_mp.Components.RichTextEditor
 import fr.vetbrain.vetnutri_mp.Data.AlimentEv
+import fr.vetbrain.vetnutri_mp.Data.AnimalEv
 import fr.vetbrain.vetnutri_mp.Export.DocumentType
 import fr.vetbrain.vetnutri_mp.Export.ExportData
 import fr.vetbrain.vetnutri_mp.Export.HtmlDocumentBuilder
@@ -27,18 +31,15 @@ import fr.vetbrain.vetnutri_mp.Export.PdfExporter
 import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Repository.FoodRepository
-import fr.vetbrain.vetnutri_mp.Repository.RecipeRepository
 import fr.vetbrain.vetnutri_mp.Repository.PreferencesRepository
-import fr.vetbrain.vetnutri_mp.Utils.createPreferencesStorage
+import fr.vetbrain.vetnutri_mp.Repository.RecipeRepository
 import fr.vetbrain.vetnutri_mp.Theme.AppIcons
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
+import fr.vetbrain.vetnutri_mp.Utils.createPreferencesStorage
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailSection
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.SettingsViewModel
-import fr.vetbrain.vetnutri_mp.View.AnalyseGraphiqueAlimentsView
-import fr.vetbrain.vetnutri_mp.View.AnalyseSelectionAlimentsView
-import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -69,16 +70,18 @@ fun AnimalDetailView(
         val showFullScreenEdit by viewModel.showFullScreenEdit.collectAsState()
         val selectedConsultation by viewModel.selectedConsultation.collectAsState()
         var showConsultationDetail by remember { mutableStateOf(false) }
-        
+
         // Récupération des préférences pour l'espèce
-        val preferencesStorage: fr.vetbrain.vetnutri_mp.Utils.PreferencesStorage = remember { createPreferencesStorage() }
+        val preferencesStorage: fr.vetbrain.vetnutri_mp.Utils.PreferencesStorage = remember {
+                createPreferencesStorage()
+        }
         val preferencesRepository: PreferencesRepository = remember {
                 PreferencesRepository(preferencesStorage)
         }
         var preferencesApplication by remember {
                 mutableStateOf<fr.vetbrain.vetnutri_mp.Data.PreferencesApplication?>(null)
         }
-        
+
         // Charger les préférences au démarrage
         LaunchedEffect(Unit) {
                 preferencesRepository.loadPreferences()
@@ -281,6 +284,14 @@ private fun WideScreenLayout(
         recipeRepository: RecipeRepository,
         foodRepository: FoodRepository
 ) {
+        // État pour l'éditeur de texte enrichi
+        var htmlSections by remember {
+                mutableStateOf<List<fr.vetbrain.vetnutri_mp.Export.HtmlSection>>(emptyList())
+        }
+        var currentHtmlContent by remember {
+                mutableStateOf(fr.vetbrain.vetnutri_mp.Export.RichTextContent())
+        }
+        var showRichTextEditor by remember { mutableStateOf(false) }
         Row(modifier = Modifier.fillMaxSize()) {
                 // Sidebar
                 Column(
@@ -403,143 +414,272 @@ private fun WideScreenLayout(
                                         )
                                 }
                                 AnimalDetailSection.GRAPHIQUE_ALIMENTS -> {
-                                        val availableFoods by viewModel.availableFoods.collectAsState()
-                                        val isLoadingFoods by viewModel.isLoadingFoods.collectAsState()
-                                        
-                                        // Récupération des préférences pour l'espèce dans ce contexte
-                                        val preferencesStorageLocal: fr.vetbrain.vetnutri_mp.Utils.PreferencesStorage = remember { createPreferencesStorage() }
-                                        val preferencesRepositoryLocal: PreferencesRepository = remember {
-                                                PreferencesRepository(preferencesStorageLocal)
-                                        }
+                                        val availableFoods by
+                                                viewModel.availableFoods.collectAsState()
+                                        val isLoadingFoods by
+                                                viewModel.isLoadingFoods.collectAsState()
+
+                                        // Récupération des préférences pour l'espèce dans ce
+                                        // contexte
+                                        val preferencesStorageLocal:
+                                                fr.vetbrain.vetnutri_mp.Utils.PreferencesStorage =
+                                                remember {
+                                                        createPreferencesStorage()
+                                                }
+                                        val preferencesRepositoryLocal: PreferencesRepository =
+                                                remember {
+                                                        PreferencesRepository(
+                                                                preferencesStorageLocal
+                                                        )
+                                                }
                                         var preferencesApplicationLocal by remember {
-                                                mutableStateOf<fr.vetbrain.vetnutri_mp.Data.PreferencesApplication?>(null)
+                                                mutableStateOf<
+                                                        fr.vetbrain.vetnutri_mp.Data.PreferencesApplication?>(
+                                                        null
+                                                )
                                         }
-                                        
+
                                         // Charger les préférences au démarrage
                                         LaunchedEffect(Unit) {
                                                 preferencesRepositoryLocal.loadPreferences()
-                                                preferencesApplicationLocal = preferencesRepositoryLocal.preferences
+                                                preferencesApplicationLocal =
+                                                        preferencesRepositoryLocal.preferences
                                         }
-                                        
+
                                         if (isLoadingFoods) {
-                                        Column(
-                                                modifier = Modifier.fillMaxSize().padding(AppSizes.paddingMedium),
-                                                verticalArrangement = Arrangement.Center,
-                                                horizontalAlignment = Alignment.CenterHorizontally
-                                        ) {
-                                                        CircularProgressIndicator(color = VetNutriColors.Primary)
-                                                        Spacer(modifier = Modifier.height(AppSizes.paddingMedium))
-                                                Text(
+                                                Column(
+                                                        modifier =
+                                                                Modifier.fillMaxSize()
+                                                                        .padding(
+                                                                                AppSizes.paddingMedium
+                                                                        ),
+                                                        verticalArrangement = Arrangement.Center,
+                                                        horizontalAlignment =
+                                                                Alignment.CenterHorizontally
+                                                ) {
+                                                        CircularProgressIndicator(
+                                                                color = VetNutriColors.Primary
+                                                        )
+                                                        Spacer(
+                                                                modifier =
+                                                                        Modifier.height(
+                                                                                AppSizes.paddingMedium
+                                                                        )
+                                                        )
+                                                        Text(
                                                                 "Chargement des aliments...",
-                                                                style = MaterialTheme.typography.body1,
-                                                                color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                                                                style =
+                                                                        MaterialTheme.typography
+                                                                                .body1,
+                                                                color =
+                                                                        MaterialTheme.colors
+                                                                                .onSurface.copy(
+                                                                                alpha = 0.7f
+                                                                        )
                                                         )
                                                 }
                                         } else if (availableFoods.isNotEmpty()) {
-                                                // ✨ Utiliser les états du ViewModel pour persister la sélection
-                                                val showAnalyseGraphique by viewModel.showAnalyseGraphique.collectAsState()
-                                                val alimentsSelectionnes by viewModel.alimentsSelectionnes.collectAsState()
-                                                
-                                                if (showAnalyseGraphique && alimentsSelectionnes.isNotEmpty()) {
+                                                // ✨ Utiliser les états du ViewModel pour persister
+                                                // la sélection
+                                                val showAnalyseGraphique by
+                                                        viewModel.showAnalyseGraphique
+                                                                .collectAsState()
+                                                val alimentsSelectionnes by
+                                                        viewModel.alimentsSelectionnes
+                                                                .collectAsState()
+
+                                                if (showAnalyseGraphique &&
+                                                                alimentsSelectionnes.isNotEmpty()
+                                                ) {
                                                         // Afficher la vue d'analyse graphique
-                                                        // Récupérer les aliments complets avec leurs valeurs nutritionnelles
-                                                        var alimentsComplets by remember { mutableStateOf<List<fr.vetbrain.vetnutri_mp.Data.AlimentEv>>(emptyList()) }
-                                                        var isLoadingAlimentsComplets by remember { mutableStateOf(true) }
-                                                        
+                                                        // Récupérer les aliments complets avec
+                                                        // leurs valeurs nutritionnelles
+                                                        var alimentsComplets by remember {
+                                                                mutableStateOf<
+                                                                        List<
+                                                                                fr.vetbrain.vetnutri_mp.Data.AlimentEv>>(
+                                                                        emptyList()
+                                                                )
+                                                        }
+                                                        var isLoadingAlimentsComplets by remember {
+                                                                mutableStateOf(true)
+                                                        }
+
                                                         LaunchedEffect(alimentsSelectionnes) {
                                                                 isLoadingAlimentsComplets = true
-                                                                val alimentsAvecValeurs = mutableListOf<fr.vetbrain.vetnutri_mp.Data.AlimentEv>()
-                                                                
-                                                                
-                                                                
-                                                                for (aliment in alimentsSelectionnes) {
+                                                                val alimentsAvecValeurs =
+                                                                        mutableListOf<
+                                                                                fr.vetbrain.vetnutri_mp.Data.AlimentEv>()
+
+                                                                for (aliment in
+                                                                        alimentsSelectionnes) {
                                                                         try {
-                                                                                
-                                                                                
-                                                                                
-                                                                                // Récupérer l'aliment complet depuis le repository
-                                                                                val alimentComplet = fr.vetbrain.vetnutri_mp.Repository.AlimentRepository.getAlimentByUUID(aliment.uuid)
-                                                                                
-                                                                                if (alimentComplet != null) {
-                                                                                        
-                                                                                        alimentsAvecValeurs.add(alimentComplet)
+
+                                                                                // Récupérer
+                                                                                // l'aliment complet
+                                                                                // depuis le
+                                                                                // repository
+                                                                                val alimentComplet =
+                                                                                        fr.vetbrain
+                                                                                                .vetnutri_mp
+                                                                                                .Repository
+                                                                                                .AlimentRepository
+                                                                                                .getAlimentByUUID(
+                                                                                                        aliment.uuid
+                                                                                                )
+
+                                                                                if (alimentComplet !=
+                                                                                                null
+                                                                                ) {
+
+                                                                                        alimentsAvecValeurs
+                                                                                                .add(
+                                                                                                        alimentComplet
+                                                                                                )
                                                                                 } else {
-                                                                                        
-                                                                                        alimentsAvecValeurs.add(aliment) // Fallback
+
+                                                                                        alimentsAvecValeurs
+                                                                                                .add(
+                                                                                                        aliment
+                                                                                                ) // Fallback
                                                                                 }
                                                                         } catch (e: Exception) {
-                                                                                
+
                                                                                 e.printStackTrace()
-                                                                                alimentsAvecValeurs.add(aliment) // Fallback
+                                                                                alimentsAvecValeurs
+                                                                                        .add(
+                                                                                                aliment
+                                                                                        ) // Fallback
                                                                         }
                                                                 }
-                                                                
-                                                                
-                                                                alimentsComplets = alimentsAvecValeurs
+
+                                                                alimentsComplets =
+                                                                        alimentsAvecValeurs
                                                                 isLoadingAlimentsComplets = false
                                                         }
-                                                        
+
                                                         if (isLoadingAlimentsComplets) {
                                                                 Box(
-                                                                        modifier = Modifier.fillMaxSize(),
-                                                                        contentAlignment = Alignment.Center
+                                                                        modifier =
+                                                                                Modifier.fillMaxSize(),
+                                                                        contentAlignment =
+                                                                                Alignment.Center
                                                                 ) {
                                                                         Column(
-                                                                                horizontalAlignment = Alignment.CenterHorizontally,
-                                                                                verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
+                                                                                horizontalAlignment =
+                                                                                        Alignment
+                                                                                                .CenterHorizontally,
+                                                                                verticalArrangement =
+                                                                                        Arrangement
+                                                                                                .spacedBy(
+                                                                                                        AppSizes.paddingMedium
+                                                                                                )
                                                                         ) {
-                                                                                CircularProgressIndicator(color = VetNutriColors.Primary)
+                                                                                CircularProgressIndicator(
+                                                                                        color =
+                                                                                                VetNutriColors
+                                                                                                        .Primary
+                                                                                )
                                                                                 Text(
-                                                                                        text = "Chargement des valeurs nutritionnelles...",
-                                                                                        style = MaterialTheme.typography.body1,
-                                                                                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                                                                                        text =
+                                                                                                "Chargement des valeurs nutritionnelles...",
+                                                                                        style =
+                                                                                                MaterialTheme
+                                                                                                        .typography
+                                                                                                        .body1,
+                                                                                        color =
+                                                                                                MaterialTheme
+                                                                                                        .colors
+                                                                                                        .onSurface
+                                                                                                        .copy(
+                                                                                                                alpha =
+                                                                                                                        0.7f
+                                                                                                        )
                                                                                 )
                                                                         }
                                                                 }
                                                         } else {
                                                                 AnalyseGraphiqueAlimentsView(
                                                                         aliments = alimentsComplets,
-                                                                        referenceEv = viewModel.referenceUtilisee.value,
-                                                                        equationRepository = equationRepository,
-                                                                        preferencesEspece = animalDetails?.let { animal ->
-                                                                                preferencesApplicationLocal?.getPreferencesEspece(animal.getEspece())
+                                                                        referenceEv =
+                                                                                viewModel
+                                                                                        .referenceUtilisee
+                                                                                        .value,
+                                                                        equationRepository =
+                                                                                equationRepository,
+                                                                        preferencesEspece =
+                                                                                animalDetails
+                                                                                        ?.let {
+                                                                                                animal
+                                                                                                ->
+                                                                                                preferencesApplicationLocal
+                                                                                                        ?.getPreferencesEspece(
+                                                                                                                animal.getEspece()
+                                                                                                        )
+                                                                                        },
+                                                                        onClose = {
+                                                                                viewModel
+                                                                                        .hideAnalyseGraphique()
                                                                         },
-                                                                        onClose = { viewModel.hideAnalyseGraphique() },
-                                                                        modifier = Modifier.fillMaxSize()
+                                                                        modifier =
+                                                                                Modifier.fillMaxSize()
                                                                 )
                                                         }
                                                 } else {
-                                                        // Utiliser la vue de sélection des aliments avec possibilité d'analyse graphique
+                                                        // Utiliser la vue de sélection des aliments
+                                                        // avec possibilité d'analyse graphique
                                                         AnalyseSelectionAlimentsView(
                                                                 aliments = availableFoods,
-                                                                onClose = { /* Retour à la section précédente */ },
-                                                                onAlimentSelected = { /* Gestion de la sélection */ },
-                                                                onAnalyseGraphique = { aliments ->
-                                                                        viewModel.lancerAnalyseGraphique(aliments)
+                                                                onClose = { /* Retour à la section précédente */
                                                                 },
-                                                                alimentsInitialementSelectionnes = alimentsSelectionnes,
-                                                                onSelectionChanged = { nouvelleSelection ->
-                                                                        viewModel.setAlimentsSelectionnes(nouvelleSelection)
-                                                                }, // ✨ Synchroniser avec le ViewModel
+                                                                onAlimentSelected = { /* Gestion de la sélection */
+                                                                },
+                                                                onAnalyseGraphique = { aliments ->
+                                                                        viewModel
+                                                                                .lancerAnalyseGraphique(
+                                                                                        aliments
+                                                                                )
+                                                                },
+                                                                alimentsInitialementSelectionnes =
+                                                                        alimentsSelectionnes,
+                                                                onSelectionChanged = {
+                                                                        nouvelleSelection ->
+                                                                        viewModel
+                                                                                .setAlimentsSelectionnes(
+                                                                                        nouvelleSelection
+                                                                                )
+                                                                }, // ✨ Synchroniser avec le
+                                                                // ViewModel
                                                                 modifier = Modifier.fillMaxSize()
                                                         )
                                                 }
                                         } else {
                                                 Column(
-                                                        modifier = Modifier.fillMaxSize().padding(AppSizes.paddingMedium),
+                                                        modifier =
+                                                                Modifier.fillMaxSize()
+                                                                        .padding(
+                                                                                AppSizes.paddingMedium
+                                                                        ),
                                                         verticalArrangement = Arrangement.Center,
-                                                        horizontalAlignment = Alignment.CenterHorizontally
+                                                        horizontalAlignment =
+                                                                Alignment.CenterHorizontally
                                                 ) {
                                                         Text(
                                                                 "Aucun aliment disponible",
-                                                        style = MaterialTheme.typography.h5,
-                                                        color = VetNutriColors.Primary
-                                                )
-                                                Text(
+                                                                style = MaterialTheme.typography.h5,
+                                                                color = VetNutriColors.Primary
+                                                        )
+                                                        Text(
                                                                 "Aucun aliment n'est disponible pour l'analyse graphique",
-                                                        style = MaterialTheme.typography.body1,
-                                                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
-                                                )
+                                                                style =
+                                                                        MaterialTheme.typography
+                                                                                .body1,
+                                                                color =
+                                                                        MaterialTheme.colors
+                                                                                .onSurface.copy(
+                                                                                alpha = 0.7f
+                                                                        )
+                                                        )
                                                 }
                                         }
                                 }
@@ -550,70 +690,374 @@ private fun WideScreenLayout(
                                                 viewModel.selectedRation.collectAsState()
                                         val referenceUtilisee by
                                                 viewModel.referenceUtilisee.collectAsState()
-                                        Column(
-                                                modifier =
-                                                        Modifier.fillMaxSize()
-                                                                .padding(AppSizes.paddingMedium),
-                                                verticalArrangement =
-                                                        Arrangement.spacedBy(AppSizes.paddingMedium)
-                                        ) {
-                                                Text(
-                                                        "Export des documents",
-                                                        style = MaterialTheme.typography.h6,
-                                                        color = VetNutriColors.Primary
-                                                )
-                                                Text(
-                                                        text =
-                                                                if (selectedRation != null)
-                                                                        "Ration sélectionnée: ${selectedRation!!.name}"
-                                                                else "Aucune ration sélectionnée",
-                                                        color =
-                                                                MaterialTheme.colors.onSurface.copy(
-                                                                        alpha = 0.7f
+
+                                        if (showRichTextEditor) {
+                                                // Éditeur de texte enrichi
+                                                Column(modifier = Modifier.fillMaxSize()) {
+                                                        Row(
+                                                                modifier =
+                                                                        Modifier.fillMaxWidth()
+                                                                                .padding(
+                                                                                        AppSizes.paddingMedium
+                                                                                ),
+                                                                horizontalArrangement =
+                                                                        Arrangement.SpaceBetween,
+                                                                verticalAlignment =
+                                                                        Alignment.CenterVertically
+                                                        ) {
+                                                                Text(
+                                                                        "Éditeur de sections HTML",
+                                                                        style =
+                                                                                MaterialTheme
+                                                                                        .typography
+                                                                                        .h6,
+                                                                        color =
+                                                                                VetNutriColors
+                                                                                        .Primary
                                                                 )
-                                                )
-                                                var showPreview by remember {
-                                                        mutableStateOf(false)
+                                                                Button(
+                                                                        onClick = {
+                                                                                showRichTextEditor =
+                                                                                        false
+                                                                        },
+                                                                        colors =
+                                                                                ButtonDefaults
+                                                                                        .buttonColors(
+                                                                                                backgroundColor =
+                                                                                                        VetNutriColors
+                                                                                                                .Secondary,
+                                                                                                contentColor =
+                                                                                                        VetNutriColors
+                                                                                                                .OnSecondary
+                                                                                        )
+                                                                ) { Text("Retour à l'export") }
+                                                        }
+
+                                                        RichTextEditor(
+                                                                initialContent = currentHtmlContent,
+                                                                onContentChange = { content ->
+                                                                        currentHtmlContent = content
+                                                                },
+                                                                modifier = Modifier.weight(1f)
+                                                        )
+
+                                                        // Boutons d'action
+                                                        Row(
+                                                                modifier =
+                                                                        Modifier.fillMaxWidth()
+                                                                                .padding(
+                                                                                        AppSizes.paddingMedium
+                                                                                ),
+                                                                horizontalArrangement =
+                                                                        Arrangement.spacedBy(
+                                                                                AppSizes.paddingSmall
+                                                                        )
+                                                        ) {
+                                                                Button(
+                                                                        onClick = {
+                                                                                // Créer une
+                                                                                // nouvelle section
+                                                                                // HTML
+                                                                                val newSection =
+                                                                                        fr.vetbrain
+                                                                                                .vetnutri_mp
+                                                                                                .Export
+                                                                                                .HtmlSection(
+                                                                                                        id =
+                                                                                                                "section_${System.currentTimeMillis()}",
+                                                                                                        title =
+                                                                                                                "Section personnalisée ${htmlSections.size + 1}",
+                                                                                                        content =
+                                                                                                                currentHtmlContent,
+                                                                                                        category =
+                                                                                                                fr.vetbrain
+                                                                                                                        .vetnutri_mp
+                                                                                                                        .Export
+                                                                                                                        .SectionCategory
+                                                                                                                        .CUSTOM
+                                                                                                )
+                                                                                htmlSections =
+                                                                                        htmlSections +
+                                                                                                newSection
+                                                                                currentHtmlContent =
+                                                                                        fr.vetbrain
+                                                                                                .vetnutri_mp
+                                                                                                .Export
+                                                                                                .RichTextContent()
+                                                                                showRichTextEditor =
+                                                                                        false
+                                                                        },
+                                                                        enabled =
+                                                                                currentHtmlContent
+                                                                                        .blocks
+                                                                                        .isNotEmpty()
+                                                                ) { Text("Ajouter la section") }
+
+                                                                OutlinedButton(
+                                                                        onClick = {
+                                                                                currentHtmlContent =
+                                                                                        fr.vetbrain
+                                                                                                .vetnutri_mp
+                                                                                                .Export
+                                                                                                .RichTextContent()
+                                                                        }
+                                                                ) { Text("Effacer") }
+                                                        }
                                                 }
-                                                var previewHtml by remember { mutableStateOf("") }
-                                                var additionalText by remember {
-                                                        mutableStateOf("")
-                                                }
-                                                Row(
-                                                        horizontalArrangement =
+                                        } else {
+                                                // Section export normale
+                                                Column(
+                                                        modifier =
+                                                                Modifier.fillMaxSize()
+                                                                        .padding(
+                                                                                AppSizes.paddingMedium
+                                                                        ),
+                                                        verticalArrangement =
                                                                 Arrangement.spacedBy(
-                                                                        AppSizes.paddingSmall
+                                                                        AppSizes.paddingMedium
                                                                 )
                                                 ) {
-                                                        Button(
-                                                                onClick = {
-                                                                        previewHtml =
-                                                                                HtmlDocumentBuilder
-                                                                                        .buildHtml(
-                                                                                                DocumentType
-                                                                                                        .RATION_ANALYSIS,
-                                                                                                ExportData(
-                                                                                                        animal =
-                                                                                                                animalDetails,
-                                                                                                        ration =
-                                                                                                                selectedRation,
-                                                                                                        reference =
-                                                                                                                referenceUtilisee,
-                                                                                                        title =
-                                                                                                                "Analyse de ration",
-                                                                                                        additionalText =
-                                                                                                                additionalText
-                                                                                                )
-                                                                                        )
-                                                                        showPreview = true
-                                                                }
-                                                        ) { Text("Exporter analyse PDF") }
+                                                        Text(
+                                                                "Export des documents",
+                                                                style = MaterialTheme.typography.h6,
+                                                                color = VetNutriColors.Primary
+                                                        )
+                                                        Text(
+                                                                text =
+                                                                        if (selectedRation != null)
+                                                                                "Ration sélectionnée: ${selectedRation!!.name}"
+                                                                        else
+                                                                                "Aucune ration sélectionnée",
+                                                                color =
+                                                                        MaterialTheme.colors
+                                                                                .onSurface.copy(
+                                                                                alpha = 0.7f
+                                                                        )
+                                                        )
 
+                                                        // Bouton pour accéder à l'éditeur de texte
+                                                        // enrichi
                                                         Button(
                                                                 onClick = {
-                                                                        previewHtml =
-                                                                                HtmlDocumentBuilder
-                                                                                        .buildHtml(
+                                                                        showRichTextEditor = true
+                                                                },
+                                                                modifier = Modifier.fillMaxWidth(),
+                                                                colors =
+                                                                        ButtonDefaults.buttonColors(
+                                                                                backgroundColor =
+                                                                                        VetNutriColors
+                                                                                                .Secondary,
+                                                                                contentColor =
+                                                                                        VetNutriColors
+                                                                                                .OnSecondary
+                                                                        )
+                                                        ) {
+                                                                Icon(
+                                                                        Icons.Default.Edit,
+                                                                        "Éditeur HTML"
+                                                                )
+                                                                Spacer(
+                                                                        modifier =
+                                                                                Modifier.width(
+                                                                                        AppSizes.paddingSmall
+                                                                                )
+                                                                )
+                                                                Text(
+                                                                        "Créer des sections HTML personnalisées"
+                                                                )
+                                                        }
+
+                                                        // Afficher les sections HTML créées
+                                                        if (htmlSections.isNotEmpty()) {
+                                                                Text(
+                                                                        "Sections HTML créées (${htmlSections.size}):",
+                                                                        style =
+                                                                                MaterialTheme
+                                                                                        .typography
+                                                                                        .subtitle1,
+                                                                        color =
+                                                                                VetNutriColors
+                                                                                        .Primary
+                                                                )
+                                                                Column(
+                                                                        verticalArrangement =
+                                                                                Arrangement
+                                                                                        .spacedBy(
+                                                                                                AppSizes.paddingSmall
+                                                                                        )
+                                                                ) {
+                                                                        htmlSections.forEach {
+                                                                                section ->
+                                                                                Card(
+                                                                                        modifier =
+                                                                                                Modifier.fillMaxWidth(),
+                                                                                        elevation =
+                                                                                                2.dp
+                                                                                ) {
+                                                                                        Row(
+                                                                                                modifier =
+                                                                                                        Modifier.fillMaxWidth()
+                                                                                                                .padding(
+                                                                                                                        AppSizes.paddingSmall
+                                                                                                                ),
+                                                                                                horizontalArrangement =
+                                                                                                        Arrangement
+                                                                                                                .SpaceBetween,
+                                                                                                verticalAlignment =
+                                                                                                        Alignment
+                                                                                                                .CenterVertically
+                                                                                        ) {
+                                                                                                Column(
+                                                                                                        modifier =
+                                                                                                                Modifier.weight(
+                                                                                                                        1f
+                                                                                                                )
+                                                                                                ) {
+                                                                                                        Text(
+                                                                                                                section.title,
+                                                                                                                fontWeight =
+                                                                                                                        FontWeight
+                                                                                                                                .Bold
+                                                                                                        )
+                                                                                                        Text(
+                                                                                                                "${section.content.blocks.size} blocs",
+                                                                                                                style =
+                                                                                                                        MaterialTheme
+                                                                                                                                .typography
+                                                                                                                                .caption,
+                                                                                                                color =
+                                                                                                                        Color.Gray
+                                                                                                        )
+                                                                                                }
+                                                                                                IconButton(
+                                                                                                        onClick = {
+                                                                                                                htmlSections =
+                                                                                                                        htmlSections
+                                                                                                                                .filter {
+                                                                                                                                        it.id !=
+                                                                                                                                                section.id
+                                                                                                                                }
+                                                                                                        }
+                                                                                                ) {
+                                                                                                        Icon(
+                                                                                                                Icons.Default
+                                                                                                                        .Delete,
+                                                                                                                "Supprimer",
+                                                                                                                tint =
+                                                                                                                        Color.Red
+                                                                                                        )
+                                                                                                }
+                                                                                        }
+                                                                                }
+                                                                        }
+                                                                }
+                                                        }
+
+                                                        var showPreview by remember {
+                                                                mutableStateOf(false)
+                                                        }
+                                                        var previewHtml by remember {
+                                                                mutableStateOf("")
+                                                        }
+                                                        var additionalText by remember {
+                                                                mutableStateOf("")
+                                                        }
+
+                                                        Row(
+                                                                horizontalArrangement =
+                                                                        Arrangement.spacedBy(
+                                                                                AppSizes.paddingSmall
+                                                                        )
+                                                        ) {
+                                                                Button(
+                                                                        onClick = {
+                                                                                previewHtml =
+                                                                                        HtmlDocumentBuilder
+                                                                                                .buildHtml(
+                                                                                                        DocumentType
+                                                                                                                .RATION_ANALYSIS,
+                                                                                                        ExportData(
+                                                                                                                animal =
+                                                                                                                        animalDetails,
+                                                                                                                ration =
+                                                                                                                        selectedRation,
+                                                                                                                reference =
+                                                                                                                        referenceUtilisee,
+                                                                                                                title =
+                                                                                                                        "Analyse de ration",
+                                                                                                                additionalText =
+                                                                                                                        additionalText,
+                                                                                                                htmlSections =
+                                                                                                                        htmlSections
+                                                                                                        )
+                                                                                                )
+                                                                                showPreview = true
+                                                                        }
+                                                                ) { Text("Exporter analyse PDF") }
+
+                                                                Button(
+                                                                        onClick = {
+                                                                                previewHtml =
+                                                                                        HtmlDocumentBuilder
+                                                                                                .buildHtml(
+                                                                                                        DocumentType
+                                                                                                                .PRESCRIPTION,
+                                                                                                        ExportData(
+                                                                                                                animal =
+                                                                                                                        animalDetails,
+                                                                                                                ration =
+                                                                                                                        selectedRation,
+                                                                                                                reference =
+                                                                                                                        null,
+                                                                                                                conseils =
+                                                                                                                        listOf(
+                                                                                                                                "Fractionner la ration en 2-3 repas",
+                                                                                                                                "Veiller à l'hydratation"
+                                                                                                                        ),
+                                                                                                                title =
+                                                                                                                        "Ordonnance nutritionnelle",
+                                                                                                                additionalText =
+                                                                                                                        additionalText,
+                                                                                                                htmlSections =
+                                                                                                                        htmlSections
+                                                                                                        )
+                                                                                                )
+                                                                                showPreview = true
+                                                                        }
+                                                                ) {
+                                                                        Text(
+                                                                                "Exporter ordonnance PDF"
+                                                                        )
+                                                                }
+                                                        }
+
+                                                        // Texte additionnel
+                                                        OutlinedTextField(
+                                                                value = additionalText,
+                                                                onValueChange = {
+                                                                        additionalText = it
+                                                                },
+                                                                modifier = Modifier.fillMaxWidth(),
+                                                                label = {
+                                                                        Text(
+                                                                                "Texte additionnel (apparaît en fin de document)"
+                                                                        )
+                                                                },
+                                                                maxLines = 6
+                                                        )
+
+                                                        HtmlPreviewDialog(
+                                                                html = previewHtml,
+                                                                isVisible = showPreview,
+                                                                onConfirmExport = {
+                                                                        val isPrescription =
+                                                                                previewHtml
+                                                                                        .contains(
+                                                                                                "Ordonnance nutritionnelle"
+                                                                                        )
+                                                                        if (isPrescription) {
+                                                                                PdfExporter
+                                                                                        .exportDocument(
                                                                                                 DocumentType
                                                                                                         .PRESCRIPTION,
                                                                                                 ExportData(
@@ -631,84 +1075,41 @@ private fun WideScreenLayout(
                                                                                                         title =
                                                                                                                 "Ordonnance nutritionnelle",
                                                                                                         additionalText =
-                                                                                                                additionalText
-                                                                                                )
-                                                                                        )
-                                                                        showPreview = true
-                                                                }
-                                                        ) { Text("Exporter ordonnance PDF") }
-                                                }
-
-                                                // Texte additionnel
-                                                OutlinedTextField(
-                                                        value = additionalText,
-                                                        onValueChange = { additionalText = it },
-                                                        modifier = Modifier.fillMaxWidth(),
-                                                        label = {
-                                                                Text(
-                                                                        "Texte additionnel (apparaît en fin de document)"
-                                                                )
-                                                        },
-                                                        maxLines = 6
-                                                )
-                                                HtmlPreviewDialog(
-                                                        html = previewHtml,
-                                                        isVisible = showPreview,
-                                                        onConfirmExport = {
-                                                                // Décider du type à partir du
-                                                                // contenu titre
-                                                                val isPrescription =
-                                                                        previewHtml.contains(
-                                                                                "Ordonnance nutritionnelle"
-                                                                        )
-                                                                if (isPrescription) {
-                                                                        PdfExporter.exportDocument(
-                                                                                DocumentType
-                                                                                        .PRESCRIPTION,
-                                                                                ExportData(
-                                                                                        animal =
-                                                                                                animalDetails,
-                                                                                        ration =
-                                                                                                selectedRation,
-                                                                                        reference =
-                                                                                                null,
-                                                                                        conseils =
-                                                                                                listOf(
-                                                                                                        "Fractionner la ration en 2-3 repas",
-                                                                                                        "Veiller à l'hydratation"
+                                                                                                                additionalText,
+                                                                                                        htmlSections =
+                                                                                                                htmlSections
                                                                                                 ),
-                                                                                        title =
-                                                                                                "Ordonnance nutritionnelle",
-                                                                                        additionalText =
-                                                                                                additionalText
-                                                                                ),
-                                                                                defaultFileName =
-                                                                                        "ordonnance.pdf"
-                                                                        )
-                                                                } else {
-                                                                        PdfExporter.exportDocument(
-                                                                                DocumentType
-                                                                                        .RATION_ANALYSIS,
-                                                                                ExportData(
-                                                                                        animal =
-                                                                                                animalDetails,
-                                                                                        ration =
-                                                                                                selectedRation,
-                                                                                        reference =
-                                                                                                referenceUtilisee,
-                                                                                        title =
-                                                                                                "Analyse de ration",
-                                                                                        additionalText =
-                                                                                                additionalText
-                                                                                ),
-                                                                                defaultFileName =
-                                                                                        "analyse_ration.pdf"
-                                                                        )
-                                                                }
-                                                                showPreview = false
-                                                        },
-                                                        onDismiss = { showPreview = false }
-                                                )
+                                                                                                defaultFileName =
+                                                                                                        "ordonnance.pdf"
+                                                                                        )
+                                                                        } else {
+                                                                                PdfExporter
+                                                                                        .exportDocument(
+                                                                                                DocumentType
+                                                                                                        .RATION_ANALYSIS,
+                                                                                                ExportData(
+                                                                                                        animal =
+                                                                                                                animalDetails,
+                                                                                                        ration =
+                                                                                                                selectedRation,
+                                                                                                        reference =
+                                                                                                                referenceUtilisee,
+                                                                                                        title =
+                                                                                                                "Analyse de ration",
+                                                                                                        additionalText =
+                                                                                                                additionalText,
+                                                                                                        htmlSections =
+                                                                                                                htmlSections
+                                                                                                ),
+                                                                                                defaultFileName =
+                                                                                                        "analyse_ration.pdf"
+                                                                                        )
+                                                                        }
+                                                                        showPreview = false
+                                                                },
+                                                                onDismiss = { showPreview = false }
+                                                        )
+                                                }
                                         }
                                 }
                         }
@@ -736,6 +1137,14 @@ private fun NarrowScreenLayout(
         recipeRepository: RecipeRepository,
         foodRepository: FoodRepository
 ) {
+        // État pour l'éditeur de texte enrichi
+        var htmlSections by remember {
+                mutableStateOf<List<fr.vetbrain.vetnutri_mp.Export.HtmlSection>>(emptyList())
+        }
+        var currentHtmlContent by remember {
+                mutableStateOf(fr.vetbrain.vetnutri_mp.Export.RichTextContent())
+        }
+        var showRichTextEditor by remember { mutableStateOf(false) }
         ModalDrawer(
                 drawerState = drawerState,
                 drawerContent = {
@@ -914,148 +1323,323 @@ private fun NarrowScreenLayout(
                                                 AnimalDetailSection.GRAPHIQUE -> {
                                                         AnalyseGraphiqueView(
                                                                 viewModel = viewModel,
-                                                                equationRepository = equationRepository,
+                                                                equationRepository =
+                                                                        equationRepository,
                                                                 modifier = Modifier.fillMaxSize()
                                                         )
                                                 }
                                                 AnimalDetailSection.GRAPHIQUE_ALIMENTS -> {
-                                                        val availableFoods by viewModel.availableFoods.collectAsState()
-                                                        val isLoadingFoods by viewModel.isLoadingFoods.collectAsState()
-                                                        
-                                                        // 🔧 Récupération des préférences pour l'espèce dans ce contexte (même logique que layout large)
-                                                        val preferencesStorageLocal: fr.vetbrain.vetnutri_mp.Utils.PreferencesStorage = remember { createPreferencesStorage() }
-                                                        val preferencesRepositoryLocal: PreferencesRepository = remember {
-                                                                PreferencesRepository(preferencesStorageLocal)
-                                                        }
+                                                        val availableFoods by
+                                                                viewModel.availableFoods
+                                                                        .collectAsState()
+                                                        val isLoadingFoods by
+                                                                viewModel.isLoadingFoods
+                                                                        .collectAsState()
+
+                                                        // 🔧 Récupération des préférences pour
+                                                        // l'espèce dans ce contexte (même logique
+                                                        // que layout large)
+                                                        val preferencesStorageLocal:
+                                                                fr.vetbrain.vetnutri_mp.Utils.PreferencesStorage =
+                                                                remember {
+                                                                        createPreferencesStorage()
+                                                                }
+                                                        val preferencesRepositoryLocal:
+                                                                PreferencesRepository =
+                                                                remember {
+                                                                        PreferencesRepository(
+                                                                                preferencesStorageLocal
+                                                                        )
+                                                                }
                                                         var preferencesApplicationLocal by remember {
-                                                                mutableStateOf<fr.vetbrain.vetnutri_mp.Data.PreferencesApplication?>(null)
+                                                                mutableStateOf<
+                                                                        fr.vetbrain.vetnutri_mp.Data.PreferencesApplication?>(
+                                                                        null
+                                                                )
                                                         }
-                                                        
+
                                                         // Charger les préférences au démarrage
                                                         LaunchedEffect(Unit) {
-                                                                preferencesRepositoryLocal.loadPreferences()
-                                                                preferencesApplicationLocal = preferencesRepositoryLocal.preferences
+                                                                preferencesRepositoryLocal
+                                                                        .loadPreferences()
+                                                                preferencesApplicationLocal =
+                                                                        preferencesRepositoryLocal
+                                                                                .preferences
                                                         }
-                                                        
+
                                                         if (isLoadingFoods) {
-                                                        Column(
-                                                                modifier = Modifier.fillMaxSize().padding(AppSizes.paddingMedium),
-                                                                verticalArrangement = Arrangement.Center,
-                                                                horizontalAlignment = Alignment.CenterHorizontally
-                                                        ) {
-                                                                        CircularProgressIndicator(color = VetNutriColors.Primary)
-                                                                        Spacer(modifier = Modifier.height(AppSizes.paddingMedium))
-                                                                Text(
+                                                                Column(
+                                                                        modifier =
+                                                                                Modifier.fillMaxSize()
+                                                                                        .padding(
+                                                                                                AppSizes.paddingMedium
+                                                                                        ),
+                                                                        verticalArrangement =
+                                                                                Arrangement.Center,
+                                                                        horizontalAlignment =
+                                                                                Alignment
+                                                                                        .CenterHorizontally
+                                                                ) {
+                                                                        CircularProgressIndicator(
+                                                                                color =
+                                                                                        VetNutriColors
+                                                                                                .Primary
+                                                                        )
+                                                                        Spacer(
+                                                                                modifier =
+                                                                                        Modifier.height(
+                                                                                                AppSizes.paddingMedium
+                                                                                        )
+                                                                        )
+                                                                        Text(
                                                                                 "Chargement des aliments...",
-                                                                                style = MaterialTheme.typography.body1,
-                                                                                color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                                                                                style =
+                                                                                        MaterialTheme
+                                                                                                .typography
+                                                                                                .body1,
+                                                                                color =
+                                                                                        MaterialTheme
+                                                                                                .colors
+                                                                                                .onSurface
+                                                                                                .copy(
+                                                                                                        alpha =
+                                                                                                                0.7f
+                                                                                                )
                                                                         )
                                                                 }
                                                         } else if (availableFoods.isNotEmpty()) {
-                                                                // ✨ MÊME LOGIQUE QUE LE LAYOUT LARGE - Utiliser les états du ViewModel pour persister la sélection
-                                                                val showAnalyseGraphique by viewModel.showAnalyseGraphique.collectAsState()
-                                                                val alimentsSelectionnes by viewModel.alimentsSelectionnes.collectAsState()
-                                                                
-                                                                if (showAnalyseGraphique && alimentsSelectionnes.isNotEmpty()) {
-                                                                        // Afficher la vue d'analyse graphique
-                                                                        // Récupérer les aliments complets avec leurs valeurs nutritionnelles
-                                                                        var alimentsComplets by remember { mutableStateOf<List<fr.vetbrain.vetnutri_mp.Data.AlimentEv>>(emptyList()) }
-                                                                        var isLoadingAlimentsComplets by remember { mutableStateOf(true) }
-                                                                        
-                                                                        LaunchedEffect(alimentsSelectionnes) {
-                                                                                isLoadingAlimentsComplets = true
-                                                                                val alimentsAvecValeurs = mutableListOf<fr.vetbrain.vetnutri_mp.Data.AlimentEv>()
-                                                                                
-                                                                                
-                                                                                
-                                                                                for (aliment in alimentsSelectionnes) {
+                                                                // ✨ MÊME LOGIQUE QUE LE LAYOUT
+                                                                // LARGE - Utiliser les états du
+                                                                // ViewModel pour persister la
+                                                                // sélection
+                                                                val showAnalyseGraphique by
+                                                                        viewModel
+                                                                                .showAnalyseGraphique
+                                                                                .collectAsState()
+                                                                val alimentsSelectionnes by
+                                                                        viewModel
+                                                                                .alimentsSelectionnes
+                                                                                .collectAsState()
+
+                                                                if (showAnalyseGraphique &&
+                                                                                alimentsSelectionnes
+                                                                                        .isNotEmpty()
+                                                                ) {
+                                                                        // Afficher la vue d'analyse
+                                                                        // graphique
+                                                                        // Récupérer les aliments
+                                                                        // complets avec leurs
+                                                                        // valeurs nutritionnelles
+                                                                        var alimentsComplets by remember {
+                                                                                mutableStateOf<
+                                                                                        List<
+                                                                                                fr.vetbrain.vetnutri_mp.Data.AlimentEv>>(
+                                                                                        emptyList()
+                                                                                )
+                                                                        }
+                                                                        var isLoadingAlimentsComplets by remember {
+                                                                                mutableStateOf(true)
+                                                                        }
+
+                                                                        LaunchedEffect(
+                                                                                alimentsSelectionnes
+                                                                        ) {
+                                                                                isLoadingAlimentsComplets =
+                                                                                        true
+                                                                                val alimentsAvecValeurs =
+                                                                                        mutableListOf<
+                                                                                                fr.vetbrain.vetnutri_mp.Data.AlimentEv>()
+
+                                                                                for (aliment in
+                                                                                        alimentsSelectionnes) {
                                                                                         try {
-                                                                                                
-                                                                                                
-                                                                                                
+
                                                                                                 // Récupérer l'aliment complet depuis le repository
-                                                                                                val alimentComplet = fr.vetbrain.vetnutri_mp.Repository.AlimentRepository.getAlimentByUUID(aliment.uuid)
-                                                                                                
-                                                                                                if (alimentComplet != null) {
-                                                                                                        
-                                                                                                        alimentsAvecValeurs.add(alimentComplet)
+                                                                                                val alimentComplet =
+                                                                                                        fr.vetbrain
+                                                                                                                .vetnutri_mp
+                                                                                                                .Repository
+                                                                                                                .AlimentRepository
+                                                                                                                .getAlimentByUUID(
+                                                                                                                        aliment.uuid
+                                                                                                                )
+
+                                                                                                if (alimentComplet !=
+                                                                                                                null
+                                                                                                ) {
+
+                                                                                                        alimentsAvecValeurs
+                                                                                                                .add(
+                                                                                                                        alimentComplet
+                                                                                                                )
                                                                                                 } else {
-                                                                                                        
-                                                                                                        alimentsAvecValeurs.add(aliment) // Fallback
+
+                                                                                                        alimentsAvecValeurs
+                                                                                                                .add(
+                                                                                                                        aliment
+                                                                                                                ) // Fallback
                                                                                                 }
-                                                                                        } catch (e: Exception) {
-                                                                                                
+                                                                                        } catch (
+                                                                                                e:
+                                                                                                        Exception) {
+
                                                                                                 e.printStackTrace()
-                                                                                                alimentsAvecValeurs.add(aliment) // Fallback
+                                                                                                alimentsAvecValeurs
+                                                                                                        .add(
+                                                                                                                aliment
+                                                                                                        ) // Fallback
                                                                                         }
                                                                                 }
-                                                                                
-                                                                                
-                                                                                alimentsComplets = alimentsAvecValeurs
-                                                                                isLoadingAlimentsComplets = false
+
+                                                                                alimentsComplets =
+                                                                                        alimentsAvecValeurs
+                                                                                isLoadingAlimentsComplets =
+                                                                                        false
                                                                         }
-                                                                        
-                                                                        if (isLoadingAlimentsComplets) {
+
+                                                                        if (isLoadingAlimentsComplets
+                                                                        ) {
                                                                                 Box(
-                                                                                        modifier = Modifier.fillMaxSize(),
-                                                                                        contentAlignment = Alignment.Center
+                                                                                        modifier =
+                                                                                                Modifier.fillMaxSize(),
+                                                                                        contentAlignment =
+                                                                                                Alignment
+                                                                                                        .Center
                                                                                 ) {
                                                                                         Column(
-                                                                                                horizontalAlignment = Alignment.CenterHorizontally,
-                                                                                                verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
+                                                                                                horizontalAlignment =
+                                                                                                        Alignment
+                                                                                                                .CenterHorizontally,
+                                                                                                verticalArrangement =
+                                                                                                        Arrangement
+                                                                                                                .spacedBy(
+                                                                                                                        AppSizes.paddingMedium
+                                                                                                                )
                                                                                         ) {
-                                                                                                CircularProgressIndicator(color = VetNutriColors.Primary)
+                                                                                                CircularProgressIndicator(
+                                                                                                        color =
+                                                                                                                VetNutriColors
+                                                                                                                        .Primary
+                                                                                                )
                                                                                                 Text(
-                                                                                                        text = "Chargement des valeurs nutritionnelles...",
-                                                                                                        style = MaterialTheme.typography.body1,
-                                                                                                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                                                                                                        text =
+                                                                                                                "Chargement des valeurs nutritionnelles...",
+                                                                                                        style =
+                                                                                                                MaterialTheme
+                                                                                                                        .typography
+                                                                                                                        .body1,
+                                                                                                        color =
+                                                                                                                MaterialTheme
+                                                                                                                        .colors
+                                                                                                                        .onSurface
+                                                                                                                        .copy(
+                                                                                                                                alpha =
+                                                                                                                                        0.7f
+                                                                                                                        )
                                                                                                 )
                                                                                         }
                                                                                 }
                                                                         } else {
                                                                                 AnalyseGraphiqueAlimentsView(
-                                                                                        aliments = alimentsComplets,
-                                                                                        referenceEv = viewModel.referenceUtilisee.value,
-                                                                                        equationRepository = equationRepository,
-                                                                                        preferencesEspece = animalDetails?.let { animal ->
-                                                                                                preferencesApplicationLocal?.getPreferencesEspece(animal.getEspece())
+                                                                                        aliments =
+                                                                                                alimentsComplets,
+                                                                                        referenceEv =
+                                                                                                viewModel
+                                                                                                        .referenceUtilisee
+                                                                                                        .value,
+                                                                                        equationRepository =
+                                                                                                equationRepository,
+                                                                                        preferencesEspece =
+                                                                                                animalDetails
+                                                                                                        ?.let {
+                                                                                                                animal
+                                                                                                                ->
+                                                                                                                preferencesApplicationLocal
+                                                                                                                        ?.getPreferencesEspece(
+                                                                                                                                animal.getEspece()
+                                                                                                                        )
+                                                                                                        },
+                                                                                        onClose = {
+                                                                                                viewModel
+                                                                                                        .hideAnalyseGraphique()
                                                                                         },
-                                                                                        onClose = { viewModel.hideAnalyseGraphique() },
-                                                                                        modifier = Modifier.fillMaxSize()
+                                                                                        modifier =
+                                                                                                Modifier.fillMaxSize()
                                                                                 )
                                                                         }
                                                                 } else {
-                                                                        // Utiliser la vue de sélection des aliments avec possibilité d'analyse graphique
+                                                                        // Utiliser la vue de
+                                                                        // sélection des aliments
+                                                                        // avec possibilité
+                                                                        // d'analyse graphique
                                                                         AnalyseSelectionAlimentsView(
-                                                                                aliments = availableFoods,
-                                                                                onClose = { /* Retour à la section précédente */ },
-                                                                                onAlimentSelected = { /* Gestion de la sélection */ },
-                                                                                onAnalyseGraphique = { aliments ->
-                                                                                        viewModel.lancerAnalyseGraphique(aliments)
+                                                                                aliments =
+                                                                                        availableFoods,
+                                                                                onClose = { /* Retour à la section précédente */
                                                                                 },
-                                                                                alimentsInitialementSelectionnes = alimentsSelectionnes,
-                                                                                onSelectionChanged = { nouvelleSelection ->
-                                                                                        viewModel.setAlimentsSelectionnes(nouvelleSelection)
-                                                                                }, // ✨ Synchroniser avec le ViewModel
-                                                                                modifier = Modifier.fillMaxSize()
+                                                                                onAlimentSelected = { /* Gestion de la sélection */
+                                                                                },
+                                                                                onAnalyseGraphique = {
+                                                                                        aliments ->
+                                                                                        viewModel
+                                                                                                .lancerAnalyseGraphique(
+                                                                                                        aliments
+                                                                                                )
+                                                                                },
+                                                                                alimentsInitialementSelectionnes =
+                                                                                        alimentsSelectionnes,
+                                                                                onSelectionChanged = {
+                                                                                        nouvelleSelection
+                                                                                        ->
+                                                                                        viewModel
+                                                                                                .setAlimentsSelectionnes(
+                                                                                                        nouvelleSelection
+                                                                                                )
+                                                                                }, // ✨ Synchroniser
+                                                                                // avec le
+                                                                                // ViewModel
+                                                                                modifier =
+                                                                                        Modifier.fillMaxSize()
                                                                         )
                                                                 }
                                                         } else {
                                                                 Column(
-                                                                        modifier = Modifier.fillMaxSize().padding(AppSizes.paddingMedium),
-                                                                        verticalArrangement = Arrangement.Center,
-                                                                        horizontalAlignment = Alignment.CenterHorizontally
+                                                                        modifier =
+                                                                                Modifier.fillMaxSize()
+                                                                                        .padding(
+                                                                                                AppSizes.paddingMedium
+                                                                                        ),
+                                                                        verticalArrangement =
+                                                                                Arrangement.Center,
+                                                                        horizontalAlignment =
+                                                                                Alignment
+                                                                                        .CenterHorizontally
                                                                 ) {
                                                                         Text(
                                                                                 "Aucun aliment disponible",
-                                                                        style = MaterialTheme.typography.h5,
-                                                                        color = VetNutriColors.Primary
-                                                                )
-                                                                Text(
+                                                                                style =
+                                                                                        MaterialTheme
+                                                                                                .typography
+                                                                                                .h5,
+                                                                                color =
+                                                                                        VetNutriColors
+                                                                                                .Primary
+                                                                        )
+                                                                        Text(
                                                                                 "Aucun aliment n'est disponible pour l'analyse graphique",
-                                                                        style = MaterialTheme.typography.body1,
-                                                                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
-                                                                )
+                                                                                style =
+                                                                                        MaterialTheme
+                                                                                                .typography
+                                                                                                .body1,
+                                                                                color =
+                                                                                        MaterialTheme
+                                                                                                .colors
+                                                                                                .onSurface
+                                                                                                .copy(
+                                                                                                        alpha =
+                                                                                                                0.7f
+                                                                                                )
+                                                                        )
                                                                 }
                                                         }
                                                 }
@@ -1069,111 +1653,375 @@ private fun NarrowScreenLayout(
                                                         val referenceUtilisee by
                                                                 viewModel.referenceUtilisee
                                                                         .collectAsState()
-                                                        Column(
-                                                                modifier =
-                                                                        Modifier.fillMaxSize()
-                                                                                .padding(
-                                                                                        AppSizes.paddingMedium
-                                                                                ),
-                                                                verticalArrangement =
-                                                                        Arrangement.spacedBy(
-                                                                                AppSizes.paddingMedium
-                                                                        )
-                                                        ) {
-                                                                Text(
-                                                                        "Export des documents",
-                                                                        style =
-                                                                                MaterialTheme
-                                                                                        .typography
-                                                                                        .h6,
-                                                                        color =
-                                                                                VetNutriColors
-                                                                                        .Primary
-                                                                )
-                                                                Text(
-                                                                        text =
-                                                                                if (selectedRation !=
-                                                                                                null
-                                                                                )
-                                                                                        "Ration sélectionnée: ${selectedRation!!.name}"
-                                                                                else
-                                                                                        "Aucune ration sélectionnée",
-                                                                        color =
-                                                                                MaterialTheme.colors
-                                                                                        .onSurface
-                                                                                        .copy(
-                                                                                                alpha =
-                                                                                                        0.7f
-                                                                                        )
-                                                                )
-                                                                Row(
-                                                                        horizontalArrangement =
-                                                                                Arrangement
-                                                                                        .spacedBy(
-                                                                                                AppSizes.paddingSmall
-                                                                                        )
+
+                                                        if (showRichTextEditor) {
+                                                                // Éditeur de texte enrichi
+                                                                Column(
+                                                                        modifier =
+                                                                                Modifier.fillMaxSize()
                                                                 ) {
-                                                                        Button(
-                                                                                onClick = {
-                                                                                        val ok =
-                                                                                                PdfExporter
-                                                                                                        .exportDocument(
-                                                                                                                documentType =
-                                                                                                                        DocumentType
-                                                                                                                                .RATION_ANALYSIS,
-                                                                                                                data =
-                                                                                                                        ExportData(
-                                                                                                                                animal =
-                                                                                                                                        animalDetails,
-                                                                                                                                ration =
-                                                                                                                                        selectedRation,
-                                                                                                                                reference =
-                                                                                                                                        referenceUtilisee,
-                                                                                                                                title =
-                                                                                                                                        "Analyse de ration"
-                                                                                                                        ),
-                                                                                                                defaultFileName =
-                                                                                                                        "analyse_ration.pdf"
-                                                                                                        )
-                                                                                }
+                                                                        Row(
+                                                                                modifier =
+                                                                                        Modifier.fillMaxWidth()
+                                                                                                .padding(
+                                                                                                        AppSizes.paddingMedium
+                                                                                                ),
+                                                                                horizontalArrangement =
+                                                                                        Arrangement
+                                                                                                .SpaceBetween,
+                                                                                verticalAlignment =
+                                                                                        Alignment
+                                                                                                .CenterVertically
                                                                         ) {
                                                                                 Text(
-                                                                                        "Exporter analyse PDF"
+                                                                                        "Éditeur de sections HTML",
+                                                                                        style =
+                                                                                                MaterialTheme
+                                                                                                        .typography
+                                                                                                        .h6,
+                                                                                        color =
+                                                                                                VetNutriColors
+                                                                                                        .Primary
+                                                                                )
+                                                                                Button(
+                                                                                        onClick = {
+                                                                                                showRichTextEditor =
+                                                                                                        false
+                                                                                        },
+                                                                                        colors =
+                                                                                                ButtonDefaults
+                                                                                                        .buttonColors(
+                                                                                                                backgroundColor =
+                                                                                                                        VetNutriColors
+                                                                                                                                .Secondary,
+                                                                                                                contentColor =
+                                                                                                                        VetNutriColors
+                                                                                                                                .OnSecondary
+                                                                                                        )
+                                                                                ) { Text("Retour") }
+                                                                        }
+
+                                                                        RichTextEditor(
+                                                                                initialContent =
+                                                                                        currentHtmlContent,
+                                                                                onContentChange = {
+                                                                                        content ->
+                                                                                        currentHtmlContent =
+                                                                                                content
+                                                                                },
+                                                                                modifier =
+                                                                                        Modifier.weight(
+                                                                                                1f
+                                                                                        )
+                                                                        )
+
+                                                                        // Boutons d'action
+                                                                        Row(
+                                                                                modifier =
+                                                                                        Modifier.fillMaxWidth()
+                                                                                                .padding(
+                                                                                                        AppSizes.paddingMedium
+                                                                                                ),
+                                                                                horizontalArrangement =
+                                                                                        Arrangement
+                                                                                                .spacedBy(
+                                                                                                        AppSizes.paddingSmall
+                                                                                                )
+                                                                        ) {
+                                                                                Button(
+                                                                                        onClick = {
+                                                                                                // Créer une nouvelle section HTML
+                                                                                                val newSection =
+                                                                                                        fr.vetbrain
+                                                                                                                .vetnutri_mp
+                                                                                                                .Export
+                                                                                                                .HtmlSection(
+                                                                                                                        id =
+                                                                                                                                "section_${System.currentTimeMillis()}",
+                                                                                                                        title =
+                                                                                                                                "Section personnalisée ${htmlSections.size + 1}",
+                                                                                                                        content =
+                                                                                                                                currentHtmlContent,
+                                                                                                                        category =
+                                                                                                                                fr.vetbrain
+                                                                                                                                        .vetnutri_mp
+                                                                                                                                        .Export
+                                                                                                                                        .SectionCategory
+                                                                                                                                        .CUSTOM
+                                                                                                                )
+                                                                                                htmlSections =
+                                                                                                        htmlSections +
+                                                                                                                newSection
+                                                                                                currentHtmlContent =
+                                                                                                        fr.vetbrain
+                                                                                                                .vetnutri_mp
+                                                                                                                .Export
+                                                                                                                .RichTextContent()
+                                                                                                showRichTextEditor =
+                                                                                                        false
+                                                                                        },
+                                                                                        enabled =
+                                                                                                currentHtmlContent
+                                                                                                        .blocks
+                                                                                                        .isNotEmpty()
+                                                                                ) {
+                                                                                        Text(
+                                                                                                "Ajouter"
+                                                                                        )
+                                                                                }
+
+                                                                                OutlinedButton(
+                                                                                        onClick = {
+                                                                                                currentHtmlContent =
+                                                                                                        fr.vetbrain
+                                                                                                                .vetnutri_mp
+                                                                                                                .Export
+                                                                                                                .RichTextContent()
+                                                                                        }
+                                                                                ) {
+                                                                                        Text(
+                                                                                                "Effacer"
+                                                                                        )
+                                                                                }
+                                                                        }
+                                                                }
+                                                        } else {
+                                                                // Section export normale
+                                                                Column(
+                                                                        modifier =
+                                                                                Modifier.fillMaxSize()
+                                                                                        .padding(
+                                                                                                AppSizes.paddingMedium
+                                                                                        ),
+                                                                        verticalArrangement =
+                                                                                Arrangement
+                                                                                        .spacedBy(
+                                                                                                AppSizes.paddingMedium
+                                                                                        )
+                                                                ) {
+                                                                        Text(
+                                                                                "Export des documents",
+                                                                                style =
+                                                                                        MaterialTheme
+                                                                                                .typography
+                                                                                                .h6,
+                                                                                color =
+                                                                                        VetNutriColors
+                                                                                                .Primary
+                                                                        )
+                                                                        Text(
+                                                                                text =
+                                                                                        if (selectedRation !=
+                                                                                                        null
+                                                                                        )
+                                                                                                "Ration sélectionnée: ${selectedRation!!.name}"
+                                                                                        else
+                                                                                                "Aucune ration sélectionnée",
+                                                                                color =
+                                                                                        MaterialTheme
+                                                                                                .colors
+                                                                                                .onSurface
+                                                                                                .copy(
+                                                                                                        alpha =
+                                                                                                                0.7f
+                                                                                                )
+                                                                        )
+
+                                                                        // Bouton pour accéder à
+                                                                        // l'éditeur de texte
+                                                                        // enrichi
+                                                                        Button(
+                                                                                onClick = {
+                                                                                        showRichTextEditor =
+                                                                                                true
+                                                                                },
+                                                                                modifier =
+                                                                                        Modifier.fillMaxWidth(),
+                                                                                colors =
+                                                                                        ButtonDefaults
+                                                                                                .buttonColors(
+                                                                                                        backgroundColor =
+                                                                                                                VetNutriColors
+                                                                                                                        .Secondary,
+                                                                                                        contentColor =
+                                                                                                                VetNutriColors
+                                                                                                                        .OnSecondary
+                                                                                                )
+                                                                        ) {
+                                                                                Icon(
+                                                                                        Icons.Default
+                                                                                                .Edit,
+                                                                                        "Éditeur HTML"
+                                                                                )
+                                                                                Spacer(
+                                                                                        modifier =
+                                                                                                Modifier.width(
+                                                                                                        AppSizes.paddingSmall
+                                                                                                )
+                                                                                )
+                                                                                Text(
+                                                                                        "Créer des sections HTML"
                                                                                 )
                                                                         }
 
-                                                                        Button(
-                                                                                onClick = {
-                                                                                        val ok =
+                                                                        // Afficher les sections
+                                                                        // HTML créées
+                                                                        if (htmlSections
+                                                                                        .isNotEmpty()
+                                                                        ) {
+                                                                                Text(
+                                                                                        "Sections créées (${htmlSections.size}):",
+                                                                                        style =
+                                                                                                MaterialTheme
+                                                                                                        .typography
+                                                                                                        .subtitle1,
+                                                                                        color =
+                                                                                                VetNutriColors
+                                                                                                        .Primary
+                                                                                )
+                                                                                Column(
+                                                                                        verticalArrangement =
+                                                                                                Arrangement
+                                                                                                        .spacedBy(
+                                                                                                                AppSizes.paddingSmall
+                                                                                                        )
+                                                                                ) {
+                                                                                        htmlSections
+                                                                                                .forEach {
+                                                                                                        section
+                                                                                                        ->
+                                                                                                        Card(
+                                                                                                                modifier =
+                                                                                                                        Modifier.fillMaxWidth(),
+                                                                                                                elevation =
+                                                                                                                        2.dp
+                                                                                                        ) {
+                                                                                                                Row(
+                                                                                                                        modifier =
+                                                                                                                                Modifier.fillMaxWidth()
+                                                                                                                                        .padding(
+                                                                                                                                                AppSizes.paddingSmall
+                                                                                                                                        ),
+                                                                                                                        horizontalArrangement =
+                                                                                                                                Arrangement
+                                                                                                                                        .SpaceBetween,
+                                                                                                                        verticalAlignment =
+                                                                                                                                Alignment
+                                                                                                                                        .CenterVertically
+                                                                                                                ) {
+                                                                                                                        Column(
+                                                                                                                                modifier =
+                                                                                                                                        Modifier.weight(
+                                                                                                                                                1f
+                                                                                                                                        )
+                                                                                                                        ) {
+                                                                                                                                Text(
+                                                                                                                                        section.title,
+                                                                                                                                        fontWeight =
+                                                                                                                                                FontWeight
+                                                                                                                                                        .Bold
+                                                                                                                                )
+                                                                                                                                Text(
+                                                                                                                                        "${section.content.blocks.size} blocs",
+                                                                                                                                        style =
+                                                                                                                                                MaterialTheme
+                                                                                                                                                        .typography
+                                                                                                                                                        .caption,
+                                                                                                                                        color =
+                                                                                                                                                Color.Gray
+                                                                                                                                )
+                                                                                                                        }
+                                                                                                                        IconButton(
+                                                                                                                                onClick = {
+                                                                                                                                        htmlSections =
+                                                                                                                                                htmlSections
+                                                                                                                                                        .filter {
+                                                                                                                                                                it.id !=
+                                                                                                                                                                        section.id
+                                                                                                                                                        }
+                                                                                                                                }
+                                                                                                                        ) {
+                                                                                                                                Icon(
+                                                                                                                                        Icons.Default
+                                                                                                                                                .Delete,
+                                                                                                                                        "Supprimer",
+                                                                                                                                        tint =
+                                                                                                                                                Color.Red
+                                                                                                                                )
+                                                                                                                        }
+                                                                                                                }
+                                                                                                        }
+                                                                                                }
+                                                                                }
+                                                                        }
+
+                                                                        Row(
+                                                                                horizontalArrangement =
+                                                                                        Arrangement
+                                                                                                .spacedBy(
+                                                                                                        AppSizes.paddingSmall
+                                                                                                )
+                                                                        ) {
+                                                                                Button(
+                                                                                        onClick = {
                                                                                                 PdfExporter
                                                                                                         .exportDocument(
-                                                                                                                documentType =
-                                                                                                                        DocumentType
-                                                                                                                                .PRESCRIPTION,
-                                                                                                                data =
-                                                                                                                        ExportData(
-                                                                                                                                animal =
-                                                                                                                                        animalDetails,
-                                                                                                                                ration =
-                                                                                                                                        selectedRation,
-                                                                                                                                reference =
-                                                                                                                                        null,
-                                                                                                                                conseils =
-                                                                                                                                        listOf(
-                                                                                                                                                "Fractionner la ration en 2-3 repas",
-                                                                                                                                                "Veiller à l'hydratation"
-                                                                                                                                        ),
-                                                                                                                                title =
-                                                                                                                                        "Ordonnance nutritionnelle"
-                                                                                                                        ),
+                                                                                                                DocumentType
+                                                                                                                        .RATION_ANALYSIS,
+                                                                                                                ExportData(
+                                                                                                                        animal =
+                                                                                                                                animalDetails,
+                                                                                                                        ration =
+                                                                                                                                selectedRation,
+                                                                                                                        reference =
+                                                                                                                                referenceUtilisee,
+                                                                                                                        title =
+                                                                                                                                "Analyse de ration",
+                                                                                                                        htmlSections =
+                                                                                                                                htmlSections
+                                                                                                                ),
+                                                                                                                defaultFileName =
+                                                                                                                        "analyse_ration.pdf"
+                                                                                                        )
+                                                                                        }
+                                                                                ) {
+                                                                                        Text(
+                                                                                                "Exporter analyse PDF"
+                                                                                        )
+                                                                                }
+
+                                                                                Button(
+                                                                                        onClick = {
+                                                                                                PdfExporter
+                                                                                                        .exportDocument(
+                                                                                                                DocumentType
+                                                                                                                        .PRESCRIPTION,
+                                                                                                                ExportData(
+                                                                                                                        animal =
+                                                                                                                                animalDetails,
+                                                                                                                        ration =
+                                                                                                                                selectedRation,
+                                                                                                                        reference =
+                                                                                                                                null,
+                                                                                                                        conseils =
+                                                                                                                                listOf(
+                                                                                                                                        "Fractionner la ration en 2-3 repas",
+                                                                                                                                        "Veiller à l'hydratation"
+                                                                                                                                ),
+                                                                                                                        title =
+                                                                                                                                "Ordonnance nutritionnelle",
+                                                                                                                        htmlSections =
+                                                                                                                                htmlSections
+                                                                                                                ),
                                                                                                                 defaultFileName =
                                                                                                                         "ordonnance.pdf"
                                                                                                         )
+                                                                                        }
+                                                                                ) {
+                                                                                        Text(
+                                                                                                "Exporter ordonnance PDF"
+                                                                                        )
                                                                                 }
-                                                                        ) {
-                                                                                Text(
-                                                                                        "Exporter ordonnance PDF"
-                                                                                )
                                                                         }
                                                                 }
                                                         }
