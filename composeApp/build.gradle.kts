@@ -24,10 +24,7 @@ kotlin {
 
     jvm("desktop")
 
-    // 🔧 AJOUT : Support Windows pour la compilation cross-platform
-    mingwX64("windows") {
-        binaries { executable { entryPoint = "fr.vetbrain.vetnutri_mp.MainKt.main" } }
-    }
+
 
     sourceSets {
         sourceSets.iosMain { kotlin.srcDir("build/generated/ksp/metadata") }
@@ -88,17 +85,7 @@ kotlin {
             }
         }
 
-        // 🔧 AJOUT : Source set Windows
-        val windowsMain by getting {
-            dependencies {
-                implementation(libs.kotlinx.coroutines.core)
-                implementation(libs.kotlinx.coroutines.test)
-                implementation(compose.desktop.windows_x64)
-                implementation(libs.skiko.awt)
-                implementation("com.openhtmltopdf:openhtmltopdf-core:1.0.10")
-                implementation("com.openhtmltopdf:openhtmltopdf-pdfbox:1.0.10")
-            }
-        }
+
 
         val iosMain by getting {
             kotlin.srcDir("build/generated/ksp/metadata")
@@ -123,8 +110,8 @@ android {
         applicationId = "fr.vetbrain.vetnutri_mp"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 16
-        versionName = "3.1.16"
+        versionCode = 17
+        versionName = "3.1.16B"
 
         // Configuration de Room
 
