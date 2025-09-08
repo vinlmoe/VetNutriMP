@@ -6,6 +6,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Repository.BiblioRefRepository
+import fr.vetbrain.vetnutri_mp.Repository.ConseilRepository
 import fr.vetbrain.vetnutri_mp.Repository.DatabaseReferenceEvRepository
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Theme.AppIcons
@@ -39,9 +40,12 @@ fun CalculationTabsView(
         equationViewModel: EquationViewModel,
         biblioRefViewModel: BiblioRefViewModel,
         referenceEvViewModel: ReferenceEvViewModel,
+        conseilRepository: ConseilRepository,
         onNavigateBack: () -> Unit,
         onEditReferenceEv: (String) -> Unit,
         onCreateReferenceEv: () -> Unit,
+        onEditConseil: (String) -> Unit,
+        onCreateConseil: () -> Unit,
         selectedTab: Int = 0,
         onTabChanged: (Int) -> Unit = {},
         modifier: Modifier = Modifier,
@@ -157,6 +161,11 @@ fun CalculationTabsView(
                                 onClick = { onTabChanged(2) },
                                 text = { Text("Systèmes de calcul") }
                         )
+                        Tab(
+                                selected = selectedTab == 3,
+                                onClick = { onTabChanged(3) },
+                                text = { Text("Conseils personnalisés") }
+                        )
                 }
 
                 when (selectedTab) {
@@ -184,6 +193,13 @@ fun CalculationTabsView(
                                                 selectedReferenceEvId = referenceEvId
                                                 isEditingReferenceEv = true
                                         }
+                                )
+                        3 ->
+                                ConseilsPersonnalisesView(
+                                        conseilRepository = conseilRepository,
+                                        onNavigateBack = onNavigateBack,
+                                        onEditConseil = onEditConseil,
+                                        onCreateConseil = onCreateConseil
                                 )
                 }
         }

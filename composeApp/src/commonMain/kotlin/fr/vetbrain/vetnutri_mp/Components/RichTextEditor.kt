@@ -1,3 +1,4 @@
+
 package fr.vetbrain.vetnutri_mp.Components
 
 import androidx.compose.foundation.background
@@ -31,6 +32,9 @@ fun RichTextEditor(
 ) {
     var content by remember { mutableStateOf(initialContent) }
     var selectedBlockIndex by remember { mutableStateOf<Int?>(null) }
+
+    // Mettre à jour le contenu quand initialContent change
+    LaunchedEffect(initialContent) { content = initialContent }
 
     Column(modifier = modifier) {
         // Barre d'outils pour ajouter des blocs
@@ -103,6 +107,16 @@ fun RichTextEditor(
                                 .padding(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            if (content.blocks.isEmpty()) {
+                item {
+                    Text(
+                            text = "Cliquez sur un bouton ci-dessus pour commencer à écrire...",
+                            color = Color.Gray,
+                            style = MaterialTheme.typography.body2,
+                            modifier = Modifier.padding(16.dp)
+                    )
+                }
+            }
             itemsIndexed(content.blocks) { index, block ->
                 key(block.id) {
                     EditableBlock(
@@ -121,22 +135,33 @@ fun RichTextEditor(
                                 content = content.copy(blocks = newBlocks)
                                 onContentChange(content)
                                 selectedBlockIndex = null
-                            }
+                            },
+                            onMoveUp = if (index > 0) {
+                                {
+                                    val newBlocks = content.blocks.toMutableList()
+                                    val blockToMove = newBlocks.removeAt(index)
+                                    newBlocks.add(index - 1, blockToMove)
+                                    content = content.copy(blocks = newBlocks)
+                                    onContentChange(content)
+                                    selectedBlockIndex = index - 1
+                                }
+                            } else null,
+                            onMoveDown = if (index < content.blocks.size - 1) {
+                                {
+                                    val newBlocks = content.blocks.toMutableList()
+                                    val blockToMove = newBlocks.removeAt(index)
+                                    newBlocks.add(index + 1, blockToMove)
+                                    content = content.copy(blocks = newBlocks)
+                                    onContentChange(content)
+                                    selectedBlockIndex = index + 1
+                                }
+                            } else null
                     )
                 }
             }
 
             // Bloc vide pour ajouter du contenu
-            if (content.blocks.isEmpty()) {
-                item {
-                    Text(
-                            "Cliquez sur les boutons ci-dessus pour ajouter du contenu",
-                            modifier = Modifier.fillMaxWidth().padding(32.dp),
-                            textAlign = TextAlign.Center,
-                            color = Color.Gray
-                    )
-                }
-            }
+           
         }
     }
 
@@ -405,7 +430,9 @@ private fun EditableBlock(
         isSelected: Boolean,
         onBlockChange: (TextBlock) -> Unit,
         onBlockSelect: () -> Unit,
-        onBlockDelete: () -> Unit
+        onBlockDelete: () -> Unit,
+        onMoveUp: (() -> Unit)? = null,
+        onMoveDown: (() -> Unit)? = null
 ) {
     val backgroundColor = if (isSelected) Color.Blue.copy(alpha = 0.1f) else Color.Transparent
 
@@ -432,8 +459,23 @@ private fun EditableBlock(
         if (isSelected) {
             Row(
                     modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                    horizontalArrangement = Arrangement.End
+                    horizontalArrangement = Arrangement.SpaceBetween
             ) {
+                // Boutons de déplacement
+                Row {
+                    onMoveUp?.let { moveUp ->
+                        IconButton(onClick = moveUp) {
+                            Icon(Icons.Default.KeyboardArrowUp, "Déplacer vers le haut", tint = Color.Blue)
+                        }
+                    }
+                    onMoveDown?.let { moveDown ->
+                        IconButton(onClick = moveDown) {
+                            Icon(Icons.Default.KeyboardArrowDown, "Déplacer vers le bas", tint = Color.Blue)
+                        }
+                    }
+                }
+                
+                // Bouton de suppression
                 IconButton(onClick = onBlockDelete) {
                     Icon(Icons.Default.Delete, "Supprimer", tint = Color.Red)
                 }
@@ -453,7 +495,7 @@ private fun ParagraphBlockEditor(block: TextBlock.Paragraph, onBlockChange: (Tex
                 text = it
                 onBlockChange(block.copy(text = it))
             },
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().heightIn(min = 40.dp),
             textStyle = TextStyle(fontSize = 14.sp),
             decorationBox = { innerTextField ->
                 if (text.isEmpty()) {
@@ -478,7 +520,7 @@ private fun HeadingBlockEditor(block: TextBlock.Heading, onBlockChange: (TextBlo
                     text = it
                     onBlockChange(block.copy(text = it))
                 },
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f).heightIn(min = 40.dp),
                 textStyle =
                         TextStyle(
                                 fontSize =

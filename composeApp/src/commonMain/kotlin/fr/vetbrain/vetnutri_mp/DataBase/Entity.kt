@@ -627,7 +627,10 @@ data class ReferenceEvNutrientEntity(
 
 // Entités pour les sections HTML réutilisables
 @Serializable
-@Entity(tableName = "HTML_SECTIONS")
+@Entity(
+        tableName = "HTML_SECTIONS",
+        indices = [Index("category"), Index("isTemplate"), Index("title")]
+)
 data class HtmlSectionEntity(
         @PrimaryKey val id: String,
         val title: String,
@@ -636,7 +639,14 @@ data class HtmlSectionEntity(
         val tagsJson: String, // JSON array des tags
         val createdAt: Long, // timestamp
         val updatedAt: Long, // timestamp
-        val isTemplate: Boolean
+        val isTemplate: Boolean,
+        // Nouvelles propriétés pour les conseils
+        val priority: Int, // Priorité d'affichage
+        val isActive: Boolean, // Actif/inactif
+        val targetSpeciesJson: String, // JSON array des espèces cibles
+        val targetAgeGroupsJson: String, // JSON array des groupes d'âge
+        val usageCount: Int, // Compteur d'utilisation
+        val lastUsed: Long? = null // Dernière utilisation (timestamp)
 )
 
 @Serializable

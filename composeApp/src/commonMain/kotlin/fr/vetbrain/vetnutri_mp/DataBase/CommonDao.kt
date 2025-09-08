@@ -435,4 +435,62 @@ interface HtmlSectionDao {
         suspend fun getLibraryById(id: String): HtmlSectionLibraryEntity?
 
         @Query("DELETE FROM HTML_SECTION_LIBRARIES") suspend fun deleteAllLibraries()
+
+        // Requêtes spécialisées pour les conseils
+        @Query(
+                """
+            SELECT * FROM HTML_SECTIONS 
+            WHERE category LIKE '%CONSEIL%' 
+            AND isTemplate = 0
+            AND (title LIKE '%' || :query || '%' OR contentJson LIKE '%' || :query || '%')
+            ORDER BY usageCount DESC, updatedAt DESC
+            LIMIT :limit
+        """
+        )
+        suspend fun searchConseils(query: String, limit: Int = 50): List<HtmlSectionEntity>
+
+        @Query(
+                """
+            SELECT * FROM HTML_SECTIONS 
+            WHERE category = :category 
+            AND isTemplate = 0
+            ORDER BY priority DESC, usageCount DESC
+        """
+        )
+        suspend fun getConseilsByCategory(category: String): List<HtmlSectionEntity>
+
+        @Query(
+                """
+            SELECT * FROM HTML_SECTIONS 
+            WHERE category LIKE '%CONSEIL%' 
+            AND isTemplate = 0
+            AND lastUsed IS NOT NULL
+            ORDER BY lastUsed DESC
+            LIMIT :limit
+        """
+        )
+        suspend fun getConseilsRecents(limit: Int = 20): List<HtmlSectionEntity>
+
+        @Query(
+                """
+            SELECT * FROM HTML_SECTIONS 
+            WHERE category LIKE '%CONSEIL%' 
+            AND isTemplate = 0
+            AND priority >= :minPriority
+            ORDER BY priority DESC, usageCount DESC
+        """
+        )
+        suspend fun getConseilsByPriority(minPriority: Int = 0): List<HtmlSectionEntity>
+
+        @Query(
+                """
+            SELECT * FROM HTML_SECTIONS 
+            WHERE category LIKE '%CONSEIL%' 
+            AND isTemplate = 0
+            AND isActive = 1
+            ORDER BY usageCount DESC
+            LIMIT :limit
+        """
+        )
+        suspend fun getConseilsPopulaires(limit: Int = 10): List<HtmlSectionEntity>
 }

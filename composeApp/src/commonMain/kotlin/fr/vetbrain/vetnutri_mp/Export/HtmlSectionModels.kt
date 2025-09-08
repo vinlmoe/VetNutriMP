@@ -14,19 +14,35 @@ data class HtmlSection(
         val tags: List<String> = emptyList(),
         val createdAt: Instant = Clock.System.now(),
         val updatedAt: Instant = Clock.System.now(),
-        val isTemplate: Boolean = false
+        val isTemplate: Boolean = false,
+        // Nouvelles propriétés pour les conseils
+        val priority: Int = 0, // Priorité d'affichage
+        val isActive: Boolean = true, // Actif/inactif
+        val targetSpecies: List<String> = emptyList(), // Espèces cibles
+        val targetAgeGroups: List<String> = emptyList(), // Groupes d'âge
+        val usageCount: Int = 0, // Compteur d'utilisation
+        val lastUsed: Instant? = null // Dernière utilisation
 )
 
 /** Catégories de sections pour une meilleure organisation */
 @Serializable
 enum class SectionCategory {
-    GENERAL,
-    INTRODUCTION,
-    CONCLUSION,
-    CONSEILS,
-    RECOMMANDATIONS,
-    NOTES,
-    CUSTOM
+        GENERAL,
+        INTRODUCTION,
+        CONCLUSION,
+        CONSEILS,
+        RECOMMANDATIONS,
+        NOTES,
+        CUSTOM,
+        // Nouvelles catégories pour les conseils
+        CONSEIL_NUTRITIONNEL,
+        CONSEIL_HYGIENE,
+        CONSEIL_COMPORTEMENT,
+        CONSEIL_SANTE,
+        CONSEIL_REPRODUCTION,
+        CONSEIL_ALIMENTATION,
+        CONSEIL_ACTIVITE,
+        CONSEIL_PREVENTION
 }
 
 /** Contenu de texte enrichi avec support du formatage */
@@ -35,35 +51,35 @@ enum class SectionCategory {
 /** Bloc de texte avec son formatage */
 @Serializable
 sealed class TextBlock {
-    abstract val id: String
+        abstract val id: String
 
-    @Serializable
-    data class Paragraph(
-            override val id: String,
-            val text: String,
-            val formatting: TextFormatting = TextFormatting()
-    ) : TextBlock()
+        @Serializable
+        data class Paragraph(
+                override val id: String,
+                val text: String,
+                val formatting: TextFormatting = TextFormatting()
+        ) : TextBlock()
 
-    @Serializable
-    data class Heading(
-            override val id: String,
-            val level: Int, // 1-6 pour h1-h6
-            val text: String
-    ) : TextBlock()
+        @Serializable
+        data class Heading(
+                override val id: String,
+                val level: Int, // 1-6 pour h1-h6
+                val text: String
+        ) : TextBlock()
 
-    @Serializable
-    data class ListBlock(
-            override val id: String,
-            val items: List<String>,
-            val isOrdered: Boolean = false
-    ) : TextBlock()
+        @Serializable
+        data class ListBlock(
+                override val id: String,
+                val items: List<String>,
+                val isOrdered: Boolean = false
+        ) : TextBlock()
 
-    @Serializable
-    data class TableBlock(
-            override val id: String,
-            val headers: List<String>,
-            val rows: List<List<String>>
-    ) : TextBlock()
+        @Serializable
+        data class TableBlock(
+                override val id: String,
+                val headers: List<String>,
+                val rows: List<List<String>>
+        ) : TextBlock()
 }
 
 /** Formatage de texte pour les paragraphes */
@@ -80,10 +96,10 @@ data class TextFormatting(
 
 @Serializable
 enum class TextAlignment {
-    LEFT,
-    CENTER,
-    RIGHT,
-    JUSTIFY
+        LEFT,
+        CENTER,
+        RIGHT,
+        JUSTIFY
 }
 
 /** Modèle pour une bibliothèque de sections */
@@ -92,6 +108,3 @@ data class HtmlSectionLibrary(
         val sections: List<HtmlSection> = emptyList(),
         val categories: List<SectionCategory> = SectionCategory.entries
 )
-
-
-
