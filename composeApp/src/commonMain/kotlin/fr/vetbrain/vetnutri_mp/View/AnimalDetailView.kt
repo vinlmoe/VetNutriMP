@@ -63,7 +63,8 @@ fun AnimalDetailView(
         modifier: Modifier = Modifier,
         equationRepository: EquationRepository,
         recipeRepository: RecipeRepository,
-        foodRepository: FoodRepository
+        foodRepository: FoodRepository,
+        conseilRepository: fr.vetbrain.vetnutri_mp.Repository.ConseilRepository
 ) {
         val animal by viewModel.animal.collectAsState()
         val currentSection by viewModel.currentSection.collectAsState()
@@ -197,7 +198,8 @@ fun AnimalDetailView(
                                         onShowConsultationDetail = { showConsultationDetail = it },
                                         equationRepository = equationRepository,
                                         recipeRepository = recipeRepository,
-                                        foodRepository = foodRepository
+                                        foodRepository = foodRepository,
+                                        conseilRepository = conseilRepository
                                 )
                         } else {
                                 // Layout pour écrans étroits avec drawer
@@ -219,7 +221,8 @@ fun AnimalDetailView(
                                         scope = scope,
                                         equationRepository = equationRepository,
                                         recipeRepository = recipeRepository,
-                                        foodRepository = foodRepository
+                                        foodRepository = foodRepository,
+                                        conseilRepository = conseilRepository
                                 )
                         }
 
@@ -282,7 +285,8 @@ private fun WideScreenLayout(
         onShowConsultationDetail: (Boolean) -> Unit,
         equationRepository: EquationRepository,
         recipeRepository: RecipeRepository,
-        foodRepository: FoodRepository
+        foodRepository: FoodRepository,
+        conseilRepository: fr.vetbrain.vetnutri_mp.Repository.ConseilRepository
 ) {
         // État pour l'éditeur de texte enrichi
         var htmlSections by remember {
@@ -292,6 +296,27 @@ private fun WideScreenLayout(
                 mutableStateOf(fr.vetbrain.vetnutri_mp.Export.RichTextContent())
         }
         var showRichTextEditor by remember { mutableStateOf(false) }
+
+        // État pour les conseils personnalisés
+        var availableConseils by remember {
+                mutableStateOf<List<fr.vetbrain.vetnutri_mp.Export.HtmlSection>>(emptyList())
+        }
+        var selectedConseils by remember { mutableStateOf<Set<String>>(emptySet()) }
+        var isLoadingConseils by remember { mutableStateOf(true) }
+
+        // Charger les conseils personnalisés
+        LaunchedEffect(Unit) {
+                try {
+                        val result = conseilRepository.getConseilsActifs()
+                        if (result.isSuccess) {
+                                availableConseils = result.getOrThrow()
+                        }
+                } catch (e: Exception) {
+                        e.printStackTrace()
+                } finally {
+                        isLoadingConseils = false
+                }
+        }
         Row(modifier = Modifier.fillMaxSize()) {
                 // Sidebar
                 Column(
@@ -835,6 +860,100 @@ private fun WideScreenLayout(
                                                                         )
                                                         )
 
+                                                        // Section pour les conseils personnalisés
+                                                        if (!isLoadingConseils &&
+                                                                        availableConseils
+                                                                                .isNotEmpty()
+                                                        ) {
+                                                                Text(
+                                                                        "Conseils personnalisés disponibles:",
+                                                                        style =
+                                                                                MaterialTheme
+                                                                                        .typography
+                                                                                        .subtitle1,
+                                                                        color =
+                                                                                VetNutriColors
+                                                                                        .Primary
+                                                                )
+
+                                                                Column(
+                                                                        modifier =
+                                                                                Modifier.fillMaxWidth(),
+                                                                        verticalArrangement =
+                                                                                Arrangement
+                                                                                        .spacedBy(
+                                                                                                8.dp
+                                                                                        )
+                                                                ) {
+                                                                        availableConseils.forEach {
+                                                                                conseil ->
+                                                                                Row(
+                                                                                        modifier =
+                                                                                                Modifier.fillMaxWidth(),
+                                                                                        verticalAlignment =
+                                                                                                Alignment
+                                                                                                        .CenterVertically
+                                                                                ) {
+                                                                                        Checkbox(
+                                                                                                checked =
+                                                                                                        selectedConseils
+                                                                                                                .contains(
+                                                                                                                        conseil.id
+                                                                                                                ),
+                                                                                                onCheckedChange = {
+                                                                                                        isChecked
+                                                                                                        ->
+                                                                                                        selectedConseils =
+                                                                                                                if (isChecked
+                                                                                                                ) {
+                                                                                                                        selectedConseils +
+                                                                                                                                conseil.id
+                                                                                                                } else {
+                                                                                                                        selectedConseils -
+                                                                                                                                conseil.id
+                                                                                                                }
+                                                                                                }
+                                                                                        )
+                                                                                        Column(
+                                                                                                modifier =
+                                                                                                        Modifier.weight(
+                                                                                                                1f
+                                                                                                        )
+                                                                                        ) {
+                                                                                                Text(
+                                                                                                        text =
+                                                                                                                conseil.title,
+                                                                                                        style =
+                                                                                                                MaterialTheme
+                                                                                                                        .typography
+                                                                                                                        .body1,
+                                                                                                        fontWeight =
+                                                                                                                FontWeight
+                                                                                                                        .Medium
+                                                                                                )
+                                                                                                Text(
+                                                                                                        text =
+                                                                                                                "Catégorie: ${conseil.category.name}",
+                                                                                                        style =
+                                                                                                                MaterialTheme
+                                                                                                                        .typography
+                                                                                                                        .caption,
+                                                                                                        color =
+                                                                                                                Color.Gray
+                                                                                                )
+                                                                                        }
+                                                                                }
+                                                                        }
+                                                                }
+
+                                                                Spacer(
+                                                                        modifier =
+                                                                                Modifier.height(
+                                                                                        16.dp
+                                                                                )
+                                                                )
+                                                        }
+
                                                         // Bouton pour accéder à l'éditeur de texte
                                                         // enrichi
                                                         Button(
@@ -963,6 +1082,21 @@ private fun WideScreenLayout(
                                                                 mutableStateOf("")
                                                         }
 
+                                                        // Fonction pour récupérer les conseils
+                                                        // sélectionnés
+                                                        val getSelectedConseils:
+                                                                () -> List<
+                                                                                fr.vetbrain.vetnutri_mp.Export.HtmlSection> =
+                                                                {
+                                                                        availableConseils.filter {
+                                                                                conseil ->
+                                                                                selectedConseils
+                                                                                        .contains(
+                                                                                                conseil.id
+                                                                                        )
+                                                                        }
+                                                                }
+
                                                         Row(
                                                                 horizontalArrangement =
                                                                         Arrangement.spacedBy(
@@ -988,7 +1122,8 @@ private fun WideScreenLayout(
                                                                                                                 additionalText =
                                                                                                                         additionalText,
                                                                                                                 htmlSections =
-                                                                                                                        htmlSections
+                                                                                                                        htmlSections +
+                                                                                                                                getSelectedConseils()
                                                                                                         )
                                                                                                 )
                                                                                 showPreview = true
@@ -1019,7 +1154,8 @@ private fun WideScreenLayout(
                                                                                                                 additionalText =
                                                                                                                         additionalText,
                                                                                                                 htmlSections =
-                                                                                                                        htmlSections
+                                                                                                                        htmlSections +
+                                                                                                                                getSelectedConseils()
                                                                                                         )
                                                                                                 )
                                                                                 showPreview = true
@@ -1077,7 +1213,8 @@ private fun WideScreenLayout(
                                                                                                         additionalText =
                                                                                                                 additionalText,
                                                                                                         htmlSections =
-                                                                                                                htmlSections
+                                                                                                                htmlSections +
+                                                                                                                        getSelectedConseils()
                                                                                                 ),
                                                                                                 defaultFileName =
                                                                                                         "ordonnance.pdf"
@@ -1099,7 +1236,8 @@ private fun WideScreenLayout(
                                                                                                         additionalText =
                                                                                                                 additionalText,
                                                                                                         htmlSections =
-                                                                                                                htmlSections
+                                                                                                                htmlSections +
+                                                                                                                        getSelectedConseils()
                                                                                                 ),
                                                                                                 defaultFileName =
                                                                                                         "analyse_ration.pdf"
@@ -1135,7 +1273,8 @@ private fun NarrowScreenLayout(
         scope: CoroutineScope,
         equationRepository: EquationRepository,
         recipeRepository: RecipeRepository,
-        foodRepository: FoodRepository
+        foodRepository: FoodRepository,
+        conseilRepository: fr.vetbrain.vetnutri_mp.Repository.ConseilRepository
 ) {
         // État pour l'éditeur de texte enrichi
         var htmlSections by remember {
@@ -1145,6 +1284,27 @@ private fun NarrowScreenLayout(
                 mutableStateOf(fr.vetbrain.vetnutri_mp.Export.RichTextContent())
         }
         var showRichTextEditor by remember { mutableStateOf(false) }
+
+        // État pour les conseils personnalisés
+        var availableConseils by remember {
+                mutableStateOf<List<fr.vetbrain.vetnutri_mp.Export.HtmlSection>>(emptyList())
+        }
+        var selectedConseils by remember { mutableStateOf<Set<String>>(emptySet()) }
+        var isLoadingConseils by remember { mutableStateOf(true) }
+
+        // Charger les conseils personnalisés
+        LaunchedEffect(Unit) {
+                try {
+                        val result = conseilRepository.getConseilsActifs()
+                        if (result.isSuccess) {
+                                availableConseils = result.getOrThrow()
+                        }
+                } catch (e: Exception) {
+                        e.printStackTrace()
+                } finally {
+                        isLoadingConseils = false
+                }
+        }
         ModalDrawer(
                 drawerState = drawerState,
                 drawerContent = {
@@ -1827,6 +1987,103 @@ private fun NarrowScreenLayout(
                                                                                                 )
                                                                         )
 
+                                                                        // Section pour les conseils
+                                                                        // personnalisés
+                                                                        if (!isLoadingConseils &&
+                                                                                        availableConseils
+                                                                                                .isNotEmpty()
+                                                                        ) {
+                                                                                Text(
+                                                                                        "Conseils personnalisés disponibles:",
+                                                                                        style =
+                                                                                                MaterialTheme
+                                                                                                        .typography
+                                                                                                        .subtitle1,
+                                                                                        color =
+                                                                                                VetNutriColors
+                                                                                                        .Primary
+                                                                                )
+
+                                                                                Column(
+                                                                                        modifier =
+                                                                                                Modifier.fillMaxWidth(),
+                                                                                        verticalArrangement =
+                                                                                                Arrangement
+                                                                                                        .spacedBy(
+                                                                                                                8.dp
+                                                                                                        )
+                                                                                ) {
+                                                                                        availableConseils
+                                                                                                .forEach {
+                                                                                                        conseil
+                                                                                                        ->
+                                                                                                        Row(
+                                                                                                                modifier =
+                                                                                                                        Modifier.fillMaxWidth(),
+                                                                                                                verticalAlignment =
+                                                                                                                        Alignment
+                                                                                                                                .CenterVertically
+                                                                                                        ) {
+                                                                                                                Checkbox(
+                                                                                                                        checked =
+                                                                                                                                selectedConseils
+                                                                                                                                        .contains(
+                                                                                                                                                conseil.id
+                                                                                                                                        ),
+                                                                                                                        onCheckedChange = {
+                                                                                                                                isChecked
+                                                                                                                                ->
+                                                                                                                                selectedConseils =
+                                                                                                                                        if (isChecked
+                                                                                                                                        ) {
+                                                                                                                                                selectedConseils +
+                                                                                                                                                        conseil.id
+                                                                                                                                        } else {
+                                                                                                                                                selectedConseils -
+                                                                                                                                                        conseil.id
+                                                                                                                                        }
+                                                                                                                        }
+                                                                                                                )
+                                                                                                                Column(
+                                                                                                                        modifier =
+                                                                                                                                Modifier.weight(
+                                                                                                                                        1f
+                                                                                                                                )
+                                                                                                                ) {
+                                                                                                                        Text(
+                                                                                                                                text =
+                                                                                                                                        conseil.title,
+                                                                                                                                style =
+                                                                                                                                        MaterialTheme
+                                                                                                                                                .typography
+                                                                                                                                                .body1,
+                                                                                                                                fontWeight =
+                                                                                                                                        FontWeight
+                                                                                                                                                .Medium
+                                                                                                                        )
+                                                                                                                        Text(
+                                                                                                                                text =
+                                                                                                                                        "Catégorie: ${conseil.category.name}",
+                                                                                                                                style =
+                                                                                                                                        MaterialTheme
+                                                                                                                                                .typography
+                                                                                                                                                .caption,
+                                                                                                                                color =
+                                                                                                                                        Color.Gray
+                                                                                                                        )
+                                                                                                                }
+                                                                                                        }
+                                                                                                }
+                                                                                }
+
+                                                                                Spacer(
+                                                                                        modifier =
+                                                                                                Modifier.height(
+                                                                                                        16.dp
+                                                                                                )
+                                                                                )
+                                                                        }
+
                                                                         // Bouton pour accéder à
                                                                         // l'éditeur de texte
                                                                         // enrichi
@@ -1955,6 +2212,23 @@ private fun NarrowScreenLayout(
                                                                                 }
                                                                         }
 
+                                                                        // Fonction pour récupérer
+                                                                        // les conseils sélectionnés
+                                                                        val getSelectedConseils:
+                                                                                () -> List<
+                                                                                                fr.vetbrain.vetnutri_mp.Export.HtmlSection> =
+                                                                                {
+                                                                                        availableConseils
+                                                                                                .filter {
+                                                                                                        conseil
+                                                                                                        ->
+                                                                                                        selectedConseils
+                                                                                                                .contains(
+                                                                                                                        conseil.id
+                                                                                                                )
+                                                                                                }
+                                                                                }
+
                                                                         Row(
                                                                                 horizontalArrangement =
                                                                                         Arrangement
@@ -1978,7 +2252,8 @@ private fun NarrowScreenLayout(
                                                                                                                         title =
                                                                                                                                 "Analyse de ration",
                                                                                                                         htmlSections =
-                                                                                                                                htmlSections
+                                                                                                                                htmlSections +
+                                                                                                                                        getSelectedConseils()
                                                                                                                 ),
                                                                                                                 defaultFileName =
                                                                                                                         "analyse_ration.pdf"
@@ -2011,7 +2286,8 @@ private fun NarrowScreenLayout(
                                                                                                                         title =
                                                                                                                                 "Ordonnance nutritionnelle",
                                                                                                                         htmlSections =
-                                                                                                                                htmlSections
+                                                                                                                                htmlSections +
+                                                                                                                                        getSelectedConseils()
                                                                                                                 ),
                                                                                                                 defaultFileName =
                                                                                                                         "ordonnance.pdf"

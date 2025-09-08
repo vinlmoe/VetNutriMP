@@ -108,6 +108,9 @@ fun App(appDatabase: AppDatabase) {
         DatabaseEquationRepository(appDatabase.equationDao(), appDatabase.biblioRefDao())
     }
 
+    // Création du repository pour les conseils personnalisés
+    val conseilRepository = remember { ConseilRepository(appDatabase.htmlSectionDao()) }
+
     // création des ViewModels (existant)...
     // ViewModel et état pour les équations et références (déclarée avant AnimalDetailViewModel)
     val platformDispatcher = remember { PlatformDispatcher() }
@@ -158,6 +161,7 @@ fun App(appDatabase: AppDatabase) {
         ReferenceEvViewModel(databaseReferenceEvRepository, platformDispatcher)
     }
     var selectedReferenceEvId by remember { mutableStateOf<String?>(null) }
+    var selectedConseilId by remember { mutableStateOf<String?>(null) }
 
     // État pour gérer l'onglet sélectionné dans CalculationTabsView
     var selectedCalculationTab by remember { mutableStateOf(0) }
@@ -171,6 +175,10 @@ fun App(appDatabase: AppDatabase) {
         )
     }
     var selectedEquationId by remember { mutableStateOf<String?>(null) }
+
+    // ViewModel pour les conseils personnalisés
+    val coroutineScope = rememberCoroutineScope()
+    val conseilsViewModel = remember { ConseilsViewModel(conseilRepository, coroutineScope) }
 
     // Création des view models en fonction des besoins de la navigation
     val foodEditViewModel by
@@ -360,7 +368,8 @@ fun App(appDatabase: AppDatabase) {
                                         modifier = Modifier.fillMaxWidth().weight(1f),
                                         equationRepository = equationRepository,
                                         recipeRepository = recipeRepository,
-                                        foodRepository = foodRepository
+                                        foodRepository = foodRepository,
+                                        conseilRepository = conseilRepository
                                 )
                             }
                         }
@@ -396,6 +405,7 @@ fun App(appDatabase: AppDatabase) {
                                     equationViewModel = equationViewModel,
                                     biblioRefViewModel = biblioRefViewModel,
                                     referenceEvViewModel = referenceEvViewModel,
+                                    conseilRepository = conseilRepository,
                                     onNavigateBack = { currentScreen = Screen.List },
                                     onEditReferenceEv = { referenceEvId ->
                                         selectedReferenceEvId = referenceEvId
@@ -404,6 +414,14 @@ fun App(appDatabase: AppDatabase) {
                                     onCreateReferenceEv = {
                                         selectedReferenceEvId = null
                                         currentScreen = Screen.NewReferenceEvEdit
+                                    },
+                                    onEditConseil = { conseilId ->
+                                        selectedConseilId = conseilId
+                                        currentScreen = Screen.ConseilEdit
+                                    },
+                                    onCreateConseil = {
+                                        selectedConseilId = null
+                                        currentScreen = Screen.ConseilEdit
                                     },
                                     selectedTab = selectedCalculationTab,
                                     onTabChanged = { selectedCalculationTab = it },
@@ -539,6 +557,17 @@ fun App(appDatabase: AppDatabase) {
                                         selectedReferenceEvId = null
                                         selectedCalculationTab =
                                                 2 // Sélectionner l'onglet "Besoins"
+                                        currentScreen = Screen.CalculationTabs
+                                    },
+                                    modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                        Screen.ConseilEdit -> {
+                            ConseilEditView(
+                                    conseilRepository = conseilRepository,
+                                    conseilId = selectedConseilId,
+                                    onNavigateBack = {
+                                        selectedConseilId = null
                                         currentScreen = Screen.CalculationTabs
                                     },
                                     modifier = Modifier.fillMaxSize()
@@ -739,4 +768,5 @@ private sealed class Screen {
     object NewReferenceEvEdit : Screen()
     object Settings : Screen()
     object SpeciesPreferences : Screen()
+    object ConseilEdit : Screen()
 }

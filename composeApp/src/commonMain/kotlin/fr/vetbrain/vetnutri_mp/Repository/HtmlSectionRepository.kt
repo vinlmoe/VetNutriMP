@@ -163,7 +163,13 @@ class HtmlSectionRepository(private val dao: HtmlSectionDao) {
                 tagsJson = json.encodeToString(this.tags),
                 createdAt = this.createdAt.toEpochMilliseconds(),
                 updatedAt = this.updatedAt.toEpochMilliseconds(),
-                isTemplate = this.isTemplate
+                isTemplate = this.isTemplate,
+                priority = this.priority,
+                isActive = this.isActive,
+                targetSpeciesJson = json.encodeToString(this.targetSpecies),
+                targetAgeGroupsJson = json.encodeToString(this.targetAgeGroups),
+                usageCount = this.usageCount,
+                lastUsed = this.lastUsed?.toEpochMilliseconds()
         )
     }
 
@@ -176,12 +182,16 @@ class HtmlSectionRepository(private val dao: HtmlSectionDao) {
                 tags = json.decodeFromString(this.tagsJson),
                 createdAt = Instant.fromEpochMilliseconds(this.createdAt),
                 updatedAt = Instant.fromEpochMilliseconds(this.updatedAt),
-                isTemplate = this.isTemplate
+                isTemplate = this.isTemplate,
+                priority = this.priority,
+                isActive = this.isActive,
+                targetSpecies = json.decodeFromString(this.targetSpeciesJson),
+                targetAgeGroups = json.decodeFromString(this.targetAgeGroupsJson),
+                usageCount = this.usageCount,
+                lastUsed = this.lastUsed?.let { Instant.fromEpochMilliseconds(it) }
         )
     }
 
     private fun generateId(): String =
             "section_${kotlinx.datetime.Clock.System.now().toEpochMilliseconds()}_${kotlin.random.Random.nextInt(1000)}"
 }
-
-

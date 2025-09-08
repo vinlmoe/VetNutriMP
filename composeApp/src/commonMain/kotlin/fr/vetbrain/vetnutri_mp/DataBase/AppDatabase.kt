@@ -34,8 +34,10 @@ import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
                         ReferenceEvEntity::class,
                         ReferenceEvEquationEntity::class,
                         ReferenceEvCoefficientEntity::class,
-                        ReferenceEvNutrientEntity::class],
-        version = 23,
+                        ReferenceEvNutrientEntity::class,
+                        HtmlSectionEntity::class,
+                        HtmlSectionLibraryEntity::class],
+        version = 24,
         exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -49,6 +51,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun biblioRefDao(): BiblioRefDao
     abstract fun equationDao(): EquationDao
     abstract fun referenceEvDao(): ReferenceEvDao
+    abstract fun htmlSectionDao(): HtmlSectionDao
 
     companion object {
         const val DATABASE_NAME = "vetnutri.db"
@@ -86,7 +89,10 @@ fun getRoomDatabase(builder: RoomDatabase.Builder<AppDatabase>): AppDatabase {
                         // Migration 21→22 : Création des tables de recettes
                         createMigration21to22(),
                         // Migration 22→23 : Ajout d'index pour optimiser les performances
-                        createMigration22to23()
+                        createMigration22to23(),
+                        // Migration 23→24 : Ajout des tables HTML_SECTIONS et
+                        // HTML_SECTION_LIBRARIES
+                        createMigration23to24()
                 )
                 .setDriver(BundledSQLiteDriver())
                 .setQueryCoroutineContext(AppDispatchers.IO)
@@ -319,6 +325,82 @@ fun createMigration22to23(): Migration {
                         .use { it.step() }
             } catch (e: Exception) {
 
+                throw e
+            }
+        }
+    }
+}
+
+/** Migration 23 → 24 : Création des tables HTML_SECTIONS et HTML_SECTION_LIBRARIES */
+fun createMigration23to24(): Migration {
+    return object : Migration(23, 24) {
+        override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
+            try {
+                // Supprimer les tables si elles existent déjà (pour éviter les conflits)
+                connection.prepare("DROP TABLE IF EXISTS HTML_SECTIONS").use { it.step() }
+                connection.prepare("DROP TABLE IF EXISTS HTML_SECTION_LIBRARIES").use { it.step() }
+
+                // Supprimer les index s'ils existent
+                connection.prepare("DROP INDEX IF EXISTS index_HTML_SECTIONS_category").use {
+                    it.step()
+                }
+                connection.prepare("DROP INDEX IF EXISTS index_HTML_SECTIONS_isTemplate").use {
+                    it.step()
+                }
+                connection.prepare("DROP INDEX IF EXISTS index_HTML_SECTIONS_title").use {
+                    it.step()
+                }
+
+                // Création de la table HTML_SECTIONS avec la structure exacte attendue par Room
+                connection.prepare(
+                                """
+                    CREATE TABLE HTML_SECTIONS (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        title TEXT NOT NULL,
+                        contentJson TEXT NOT NULL,
+                        category TEXT NOT NULL,
+                        tagsJson TEXT NOT NULL,
+                        createdAt INTEGER NOT NULL,
+                        updatedAt INTEGER NOT NULL,
+                        isTemplate INTEGER NOT NULL,
+                        priority INTEGER NOT NULL,
+                        isActive INTEGER NOT NULL,
+                        targetSpeciesJson TEXT NOT NULL,
+                        targetAgeGroupsJson TEXT NOT NULL,
+                        usageCount INTEGER NOT NULL,
+                        lastUsed INTEGER
+                    )
+                    """
+                        )
+                        .use { it.step() }
+
+                // Création de la table HTML_SECTION_LIBRARIES
+                connection.prepare(
+                                """
+                    CREATE TABLE HTML_SECTION_LIBRARIES (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        name TEXT NOT NULL,
+                        description TEXT NOT NULL,
+                        sectionIdsJson TEXT NOT NULL,
+                        createdAt INTEGER NOT NULL,
+                        updatedAt INTEGER NOT NULL
+                    )
+                    """
+                        )
+                        .use { it.step() }
+
+                // Création des index
+                connection.prepare(
+                                "CREATE INDEX index_HTML_SECTIONS_category ON HTML_SECTIONS(category)"
+                        )
+                        .use { it.step() }
+                connection.prepare(
+                                "CREATE INDEX index_HTML_SECTIONS_isTemplate ON HTML_SECTIONS(isTemplate)"
+                        )
+                        .use { it.step() }
+                connection.prepare("CREATE INDEX index_HTML_SECTIONS_title ON HTML_SECTIONS(title)")
+                        .use { it.step() }
+            } catch (e: Exception) {
                 throw e
             }
         }

@@ -1,8 +1,8 @@
 {
   "formatVersion": 1,
   "database": {
-    "version": 23,
-    "identityHash": "e4a30bbb5f79fc6f9dbba3856230b6dd",
+    "version": 24,
+    "identityHash": "4773164704792b632a8187705dbac52f",
     "entities": [
       {
         "tableName": "ANIMALS",
@@ -811,7 +811,7 @@
       },
       {
         "tableName": "FOOD",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`uuid` TEXT NOT NULL, `groupAlim` INTEGER NOT NULL, `typeAlim` INTEGER NOT NULL, `ingredients` TEXT NOT NULL, `price` REAL NOT NULL, `categPrice` TEXT NOT NULL, `brand` TEXT NOT NULL, `gamme` TEXT NOT NULL, `cont` TEXT NOT NULL, `unitPres` INTEGER NOT NULL, `quantityPres` REAL NOT NULL, `version` INTEGER NOT NULL, `date` TEXT NOT NULL, `nameDef` TEXT NOT NULL, `consistent` INTEGER NOT NULL, `deprecated` INTEGER NOT NULL, `DataB` TEXT, `RefRation` TEXT, `RefAlimUnif` TEXT, `especesJson` TEXT, `indicationsJson` TEXT, `name` TEXT, `quantite` REAL NOT NULL, PRIMARY KEY(`uuid`), FOREIGN KEY(`RefRation`) REFERENCES `RATIONS`(`uuid`) ON UPDATE NO ACTION ON DELETE SET NULL )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`uuid` TEXT NOT NULL, `groupAlim` INTEGER NOT NULL, `typeAlim` INTEGER NOT NULL, `ingredients` TEXT NOT NULL, `price` REAL NOT NULL, `categPrice` TEXT NOT NULL, `brand` TEXT NOT NULL, `gamme` TEXT NOT NULL, `cont` TEXT NOT NULL, `unitPres` INTEGER NOT NULL, `quantityPres` REAL NOT NULL, `version` INTEGER NOT NULL, `date` TEXT NOT NULL, `nameDef` TEXT NOT NULL, `consistent` INTEGER NOT NULL, `deprecated` INTEGER NOT NULL, `DataB` TEXT NOT NULL, `RefRation` TEXT, `RefAlimUnif` TEXT, `especesJson` TEXT, `indicationsJson` TEXT, `name` TEXT, `quantite` REAL NOT NULL, PRIMARY KEY(`uuid`), FOREIGN KEY(`RefRation`) REFERENCES `RATIONS`(`uuid`) ON UPDATE NO ACTION ON DELETE SET NULL )",
         "fields": [
           {
             "fieldPath": "uuid",
@@ -912,7 +912,8 @@
           {
             "fieldPath": "DataB",
             "columnName": "DataB",
-            "affinity": "TEXT"
+            "affinity": "TEXT",
+            "notNull": true
           },
           {
             "fieldPath": "RefRation",
@@ -1613,11 +1614,183 @@
             ]
           }
         ]
+      },
+      {
+        "tableName": "HTML_SECTIONS",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `title` TEXT NOT NULL, `contentJson` TEXT NOT NULL, `category` TEXT NOT NULL, `tagsJson` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `isTemplate` INTEGER NOT NULL, `priority` INTEGER NOT NULL, `isActive` INTEGER NOT NULL, `targetSpeciesJson` TEXT NOT NULL, `targetAgeGroupsJson` TEXT NOT NULL, `usageCount` INTEGER NOT NULL, `lastUsed` INTEGER, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "contentJson",
+            "columnName": "contentJson",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "category",
+            "columnName": "category",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tagsJson",
+            "columnName": "tagsJson",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isTemplate",
+            "columnName": "isTemplate",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "priority",
+            "columnName": "priority",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isActive",
+            "columnName": "isActive",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "targetSpeciesJson",
+            "columnName": "targetSpeciesJson",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "targetAgeGroupsJson",
+            "columnName": "targetAgeGroupsJson",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "usageCount",
+            "columnName": "usageCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastUsed",
+            "columnName": "lastUsed",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_HTML_SECTIONS_category",
+            "unique": false,
+            "columnNames": [
+              "category"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_HTML_SECTIONS_category` ON `${TABLE_NAME}` (`category`)"
+          },
+          {
+            "name": "index_HTML_SECTIONS_isTemplate",
+            "unique": false,
+            "columnNames": [
+              "isTemplate"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_HTML_SECTIONS_isTemplate` ON `${TABLE_NAME}` (`isTemplate`)"
+          },
+          {
+            "name": "index_HTML_SECTIONS_title",
+            "unique": false,
+            "columnNames": [
+              "title"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_HTML_SECTIONS_title` ON `${TABLE_NAME}` (`title`)"
+          }
+        ]
+      },
+      {
+        "tableName": "HTML_SECTION_LIBRARIES",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `description` TEXT NOT NULL, `sectionIdsJson` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "description",
+            "columnName": "description",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sectionIdsJson",
+            "columnName": "sectionIdsJson",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
       }
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'e4a30bbb5f79fc6f9dbba3856230b6dd')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '4773164704792b632a8187705dbac52f')"
     ]
   }
 }
