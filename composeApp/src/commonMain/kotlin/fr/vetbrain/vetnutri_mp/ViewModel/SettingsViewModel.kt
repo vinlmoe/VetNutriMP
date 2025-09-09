@@ -35,7 +35,8 @@ class SettingsViewModel(
                 null,
         internal val consultationRepository:
                 fr.vetbrain.vetnutri_mp.Repository.ConsultationRepository? =
-                null
+                null,
+        internal val conseilRepository: fr.vetbrain.vetnutri_mp.Repository.ConseilRepository? = null
 ) {
     private val _uiScale = MutableStateFlow(1.0)
     val uiScale: StateFlow<Double> = _uiScale.asStateFlow()
@@ -105,7 +106,8 @@ class SettingsViewModel(
                 val updatedCount: Int = 0,
                 val deletedCount: Int = 0,
                 val errorCount: Int = 0,
-                val nonResolvedNutrients: Int = 0
+                val nonResolvedNutrients: Int = 0,
+                val conseils: Int = 0
         ) : ImportResult()
 
         /**
@@ -307,7 +309,8 @@ class SettingsViewModel(
                         updatedCount = result.updatedCount,
                         deletedCount = result.deletedCount,
                         errorCount = result.errorCount,
-                        nonResolvedNutrients = result.nonResolvedNutrientsCount
+                        nonResolvedNutrients = result.nonResolvedNutrientsCount,
+                        conseils = 0
                 )
         return result
     }
@@ -438,7 +441,8 @@ class SettingsViewModel(
                 println("ℹ️ [SETTINGS] Aucune mise à jour nécessaire, version actuelle: $currentJsonVersion")
                 return ImportResult.Success(
                         count = currentFoodCount + currentReferenceCount,
-                        importedCount = 0
+                        importedCount = 0,
+                        conseils = 0
                 )
             }
 
@@ -476,7 +480,8 @@ class SettingsViewModel(
             println("✅ [SETTINGS] Retour du résultat: $totalCount éléments")
             ImportResult.Success(
                     count = totalCount,
-                    importedCount = totalCount
+                    importedCount = totalCount,
+                    conseils = 0
             )
         } catch (e: Exception) {
             println("💥 [SETTINGS] Exception dans relaunchAutomaticImport: ${e.message}")

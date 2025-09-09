@@ -133,6 +133,26 @@ class ConseilRepository(private val dao: HtmlSectionDao) {
         }
     }
 
+    /** Récupère le nombre total de conseils actifs */
+    suspend fun getConseilsCount(): Result<Int> {
+        return try {
+            val count = dao.getConseilsCount()
+            Result.success(count)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /** Sauvegarde un conseil (insert ou update) */
+    suspend fun saveConseil(conseil: fr.vetbrain.vetnutri_mp.Export.HtmlSection): Result<Unit> {
+        return try {
+            dao.insertSection(conseil.toEntity())
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     /** Récupère tous les templates de conseils */
     suspend fun getTemplatesConseils(): Result<List<HtmlSection>> {
         return try {

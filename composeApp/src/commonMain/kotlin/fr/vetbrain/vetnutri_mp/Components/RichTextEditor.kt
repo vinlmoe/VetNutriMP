@@ -1,4 +1,3 @@
-
 package fr.vetbrain.vetnutri_mp.Components
 
 import androidx.compose.foundation.background
@@ -18,7 +17,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import fr.vetbrain.vetnutri_mp.Export.*
@@ -136,32 +134,34 @@ fun RichTextEditor(
                                 onContentChange(content)
                                 selectedBlockIndex = null
                             },
-                            onMoveUp = if (index > 0) {
-                                {
-                                    val newBlocks = content.blocks.toMutableList()
-                                    val blockToMove = newBlocks.removeAt(index)
-                                    newBlocks.add(index - 1, blockToMove)
-                                    content = content.copy(blocks = newBlocks)
-                                    onContentChange(content)
-                                    selectedBlockIndex = index - 1
-                                }
-                            } else null,
-                            onMoveDown = if (index < content.blocks.size - 1) {
-                                {
-                                    val newBlocks = content.blocks.toMutableList()
-                                    val blockToMove = newBlocks.removeAt(index)
-                                    newBlocks.add(index + 1, blockToMove)
-                                    content = content.copy(blocks = newBlocks)
-                                    onContentChange(content)
-                                    selectedBlockIndex = index + 1
-                                }
-                            } else null
+                            onMoveUp =
+                                    if (index > 0) {
+                                        {
+                                            val newBlocks = content.blocks.toMutableList()
+                                            val blockToMove = newBlocks.removeAt(index)
+                                            newBlocks.add(index - 1, blockToMove)
+                                            content = content.copy(blocks = newBlocks)
+                                            onContentChange(content)
+                                            selectedBlockIndex = index - 1
+                                        }
+                                    } else null,
+                            onMoveDown =
+                                    if (index < content.blocks.size - 1) {
+                                        {
+                                            val newBlocks = content.blocks.toMutableList()
+                                            val blockToMove = newBlocks.removeAt(index)
+                                            newBlocks.add(index + 1, blockToMove)
+                                            content = content.copy(blocks = newBlocks)
+                                            onContentChange(content)
+                                            selectedBlockIndex = index + 1
+                                        }
+                                    } else null
                     )
                 }
             }
 
             // Bloc vide pour ajouter du contenu
-           
+
         }
     }
 
@@ -465,16 +465,24 @@ private fun EditableBlock(
                 Row {
                     onMoveUp?.let { moveUp ->
                         IconButton(onClick = moveUp) {
-                            Icon(Icons.Default.KeyboardArrowUp, "Déplacer vers le haut", tint = Color.Blue)
+                            Icon(
+                                    Icons.Default.KeyboardArrowUp,
+                                    "Déplacer vers le haut",
+                                    tint = Color.Blue
+                            )
                         }
                     }
                     onMoveDown?.let { moveDown ->
                         IconButton(onClick = moveDown) {
-                            Icon(Icons.Default.KeyboardArrowDown, "Déplacer vers le bas", tint = Color.Blue)
+                            Icon(
+                                    Icons.Default.KeyboardArrowDown,
+                                    "Déplacer vers le bas",
+                                    tint = Color.Blue
+                            )
                         }
                     }
                 }
-                
+
                 // Bouton de suppression
                 IconButton(onClick = onBlockDelete) {
                     Icon(Icons.Default.Delete, "Supprimer", tint = Color.Red)

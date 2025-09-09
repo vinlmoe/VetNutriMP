@@ -493,4 +493,14 @@ interface HtmlSectionDao {
         """
         )
         suspend fun getConseilsPopulaires(limit: Int = 10): List<HtmlSectionEntity>
+
+        @Query(
+                """
+            SELECT COUNT(*) FROM HTML_SECTIONS 
+            WHERE category LIKE '%CONSEIL%' 
+            AND isTemplate = 0
+            AND isActive = 1
+        """
+        )
+        suspend fun getConseilsCount(): Int
 }

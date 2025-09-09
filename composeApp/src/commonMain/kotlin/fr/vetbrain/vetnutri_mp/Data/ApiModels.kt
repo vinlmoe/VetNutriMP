@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.Data
 
+import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.Serializable
 
@@ -17,7 +18,8 @@ data class ApiEnvelope(
         val recipes: List<RecipeApi> = emptyList(),
         val equations: List<EquationApi> = emptyList(),
         val biblioRefs: List<BiblioRefApi> = emptyList(),
-        val references: List<ReferenceEvApi> = emptyList()
+        val references: List<ReferenceEvApi> = emptyList(),
+        val conseils: List<ConseilApi> = emptyList()
 )
 
 @Serializable
@@ -790,5 +792,212 @@ fun RecipeIngredientApi.toDomain(): fr.vetbrain.vetnutri_mp.Data.AlimentRecette 
                 refRecipe = "", // Sera défini lors de l'import
                 quantity = quantity,
                 refTarget = targetRef
+        )
+}
+
+// ============================================================================
+// MODÈLES API POUR LES CONSEILS
+// ============================================================================
+
+@Serializable
+data class ConseilApi(
+        val id: String,
+        val title: String,
+        val content: RichTextContentApi,
+        val category: String,
+        val tags: List<String> = emptyList(),
+        val priority: Int = 0,
+        val isActive: Boolean = true,
+        val targetSpecies: List<String> = emptyList(),
+        val targetAgeGroups: List<String> = emptyList(),
+        val usageCount: Int = 0,
+        val lastUsed: Long? = null, // Timestamp en millisecondes
+        val isTemplate: Boolean = false,
+        val createdAt: Long, // Timestamp en millisecondes
+        val updatedAt: Long // Timestamp en millisecondes
+)
+
+@Serializable
+data class RichTextContentApi(
+        val blocks: List<TextBlockApi> = emptyList()
+)
+
+@Serializable
+sealed class TextBlockApi {
+        abstract val id: String
+
+        @Serializable
+        data class Paragraph(
+                override val id: String,
+                val text: String,
+                val formatting: TextFormattingApi = TextFormattingApi()
+        ) : TextBlockApi()
+
+        @Serializable
+        data class Heading(
+                override val id: String,
+                val level: Int, // 1-6 pour h1-h6
+                val text: String
+        ) : TextBlockApi()
+
+        @Serializable
+        data class ListBlock(
+                override val id: String,
+                val items: List<String>,
+                val isOrdered: Boolean = false
+        ) : TextBlockApi()
+
+        @Serializable
+        data class TableBlock(
+                override val id: String,
+                val headers: List<String>,
+                val rows: List<List<String>>
+        ) : TextBlockApi()
+}
+
+@Serializable
+data class TextFormattingApi(
+        val isBold: Boolean = false,
+        val isItalic: Boolean = false,
+        val isUnderline: Boolean = false,
+        val isStrikethrough: Boolean = false,
+        val fontSize: Int? = null,
+        val color: String? = null,
+        val alignment: String = "LEFT" // LEFT, CENTER, RIGHT, JUSTIFY
+)
+
+// ============================================================================
+// FONCTIONS DE CONVERSION POUR LES CONSEILS
+// ============================================================================
+
+fun fr.vetbrain.vetnutri_mp.Export.HtmlSection.toApi(): ConseilApi {
+        return ConseilApi(
+                id = id,
+                title = title,
+                content = content.toApi(),
+                category = category.name,
+                tags = tags,
+                priority = priority,
+                isActive = isActive,
+                targetSpecies = targetSpecies,
+                targetAgeGroups = targetAgeGroups,
+                usageCount = usageCount,
+                lastUsed = lastUsed?.toEpochMilliseconds(),
+                isTemplate = isTemplate,
+                createdAt = createdAt.toEpochMilliseconds(),
+                updatedAt = updatedAt.toEpochMilliseconds()
+        )
+}
+
+fun fr.vetbrain.vetnutri_mp.Export.RichTextContent.toApi(): RichTextContentApi {
+        return RichTextContentApi(
+                blocks = blocks.map { it.toApi() }
+        )
+}
+
+fun fr.vetbrain.vetnutri_mp.Export.TextBlock.toApi(): TextBlockApi {
+        return when (this) {
+                is fr.vetbrain.vetnutri_mp.Export.TextBlock.Paragraph -> 
+                        TextBlockApi.Paragraph(
+                                id = id,
+                                text = text,
+                                formatting = formatting.toApi()
+                        )
+                is fr.vetbrain.vetnutri_mp.Export.TextBlock.Heading -> 
+                        TextBlockApi.Heading(
+                                id = id,
+                                level = level,
+                                text = text
+                        )
+                is fr.vetbrain.vetnutri_mp.Export.TextBlock.ListBlock -> 
+                        TextBlockApi.ListBlock(
+                                id = id,
+                                items = items,
+                                isOrdered = isOrdered
+                        )
+                is fr.vetbrain.vetnutri_mp.Export.TextBlock.TableBlock -> 
+                        TextBlockApi.TableBlock(
+                                id = id,
+                                headers = headers,
+                                rows = rows
+                        )
+        }
+}
+
+fun fr.vetbrain.vetnutri_mp.Export.TextFormatting.toApi(): TextFormattingApi {
+        return TextFormattingApi(
+                isBold = isBold,
+                isItalic = isItalic,
+                isUnderline = isUnderline,
+                isStrikethrough = isStrikethrough,
+                fontSize = fontSize,
+                color = color,
+                alignment = alignment.name
+        )
+}
+
+fun ConseilApi.toDomain(): fr.vetbrain.vetnutri_mp.Export.HtmlSection {
+        return fr.vetbrain.vetnutri_mp.Export.HtmlSection(
+                id = id,
+                title = title,
+                content = content.toDomain(),
+                category = fr.vetbrain.vetnutri_mp.Export.SectionCategory.valueOf(category),
+                tags = tags,
+                priority = priority,
+                isActive = isActive,
+                targetSpecies = targetSpecies,
+                targetAgeGroups = targetAgeGroups,
+                usageCount = usageCount,
+                lastUsed = lastUsed?.let { Instant.fromEpochMilliseconds(it) },
+                isTemplate = isTemplate,
+                createdAt = Instant.fromEpochMilliseconds(createdAt),
+                updatedAt = Instant.fromEpochMilliseconds(updatedAt)
+        )
+}
+
+fun RichTextContentApi.toDomain(): fr.vetbrain.vetnutri_mp.Export.RichTextContent {
+        return fr.vetbrain.vetnutri_mp.Export.RichTextContent(
+                blocks = blocks.map { it.toDomain() }
+        )
+}
+
+fun TextBlockApi.toDomain(): fr.vetbrain.vetnutri_mp.Export.TextBlock {
+        return when (this) {
+                is TextBlockApi.Paragraph -> 
+                        fr.vetbrain.vetnutri_mp.Export.TextBlock.Paragraph(
+                                id = id,
+                                text = text,
+                                formatting = formatting.toDomain()
+                        )
+                is TextBlockApi.Heading -> 
+                        fr.vetbrain.vetnutri_mp.Export.TextBlock.Heading(
+                                id = id,
+                                level = level,
+                                text = text
+                        )
+                is TextBlockApi.ListBlock -> 
+                        fr.vetbrain.vetnutri_mp.Export.TextBlock.ListBlock(
+                                id = id,
+                                items = items,
+                                isOrdered = isOrdered
+                        )
+                is TextBlockApi.TableBlock -> 
+                        fr.vetbrain.vetnutri_mp.Export.TextBlock.TableBlock(
+                                id = id,
+                                headers = headers,
+                                rows = rows
+                        )
+        }
+}
+
+fun TextFormattingApi.toDomain(): fr.vetbrain.vetnutri_mp.Export.TextFormatting {
+        return fr.vetbrain.vetnutri_mp.Export.TextFormatting(
+                isBold = isBold,
+                isItalic = isItalic,
+                isUnderline = isUnderline,
+                isStrikethrough = isStrikethrough,
+                fontSize = fontSize,
+                color = color,
+                alignment = fr.vetbrain.vetnutri_mp.Export.TextAlignment.valueOf(alignment)
         )
 }
