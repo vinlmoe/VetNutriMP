@@ -119,6 +119,9 @@ fun SettingsView(
 
         // État pour l'onglet actuel
         var selectedTab by remember { mutableStateOf(0) }
+        
+        // État pour le nombre de conseils
+        var conseilsCount by remember { mutableStateOf(0) }
 
         // Observer le message d'importation des références nutritionnelles
         val nutritionalRequirementMessage by remember {
@@ -138,6 +141,17 @@ fun SettingsView(
                                 importDialogMessage = message
                                 showImportDialog = true
                         }
+                }
+        }
+
+        // Charger le nombre de conseils au démarrage
+        LaunchedEffect(Unit) {
+                try {
+                        val count = viewModel.conseilRepository?.getConseilsCount()?.getOrThrow() ?: 0
+                        conseilsCount = count
+                } catch (e: Exception) {
+                        // En cas d'erreur, garder 0
+                        conseilsCount = 0
                 }
         }
 
@@ -167,8 +181,32 @@ fun SettingsView(
                                         }
                                 }
                                 2 -> { // Importation
-                                        // Section pour l'importation des données
+                                                        // Section pour l'importation des données
                                         Section(title = "Importation des données") {
+                                                // Affichage du nombre de conseils
+                                                Card(
+                                                        modifier = Modifier.fillMaxWidth()
+                                                                .padding(bottom = 8.dp),
+                                                        backgroundColor = VetNutriColors.Primary.copy(alpha = 0.1f)
+                                                ) {
+                                                        Row(
+                                                                modifier = Modifier.padding(12.dp),
+                                                                verticalAlignment = Alignment.CenterVertically
+                                                        ) {
+                                                                Icon(
+                                                                        imageVector = Icons.Default.Info,
+                                                                        contentDescription = "Conseils",
+                                                                        tint = VetNutriColors.Primary
+                                                                )
+                                                                Spacer(modifier = Modifier.width(8.dp))
+                                                                Text(
+                                                                        text = "Conseils dans la base : $conseilsCount",
+                                                                        style = MaterialTheme.typography.body2,
+                                                                        color = VetNutriColors.Primary,
+                                                                        fontWeight = FontWeight.Medium
+                                                                )
+                                                        }
+                                                }
                                                 Column(
                                                         modifier =
                                                                 Modifier.fillMaxWidth()
@@ -192,6 +230,9 @@ fun SettingsView(
                                                                 mutableStateOf(true)
                                                         }
                                                         var includeRecipes by remember {
+                                                                mutableStateOf(true)
+                                                        }
+                                                        var includeConseils by remember {
                                                                 mutableStateOf(true)
                                                         }
                                                         var selectedAnimalIds by remember {
@@ -328,6 +369,18 @@ fun SettingsView(
                                                                         }
                                                                 )
                                                                 Text("Inclure recettes")
+                                                        }
+                                                        Row(
+                                                                verticalAlignment =
+                                                                        Alignment.CenterVertically
+                                                        ) {
+                                                                Checkbox(
+                                                                        checked = includeConseils,
+                                                                        onCheckedChange = {
+                                                                                includeConseils = it
+                                                                        }
+                                                                )
+                                                                Text("Inclure conseils")
                                                         }
                                                         // Affichage du message de résultat
                                                         // d'importation des références
@@ -471,7 +524,10 @@ fun SettingsView(
                                                                                                                         .consultationRepository,
                                                                                                         recipeRepository =
                                                                                                                 viewModel
-                                                                                                                        .recipeRepository
+                                                                                                                        .recipeRepository,
+                                                                                                        conseilRepository =
+                                                                                                                viewModel
+                                                                                                                        .conseilRepository
                                                                                                 )
                                                                                         val json =
                                                                                                 exportRepo
@@ -488,6 +544,8 @@ fun SettingsView(
                                                                                                                                         includeRecipes,
                                                                                                                                 includeEquations =
                                                                                                                                         includeEquations,
+                                                                                                                                includeConseils =
+                                                                                                                                        includeConseils,
                                                                                                                                 animalIds =
                                                                                                                                         selectedAnimalIds,
                                                                                                                                 foodIds =
@@ -678,6 +736,12 @@ fun SettingsView(
                                                                                                                                 MaterialTheme
                                                                                                                                         .colors
                                                                                                                                         .error
+                                                                                                                )
+                                                                                                        if (r.conseils >
+                                                                                                                        0
+                                                                                                        )
+                                                                                                                Text(
+                                                                                                                        "Conseils: ${r.conseils}"
                                                                                                                 )
                                                                                                 }
                                                                                         }

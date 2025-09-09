@@ -391,7 +391,8 @@ actual fun importApiFromFile(viewModel: SettingsViewModel) {
                             referenceRepository = viewModel.referenceEvRepository,
                             biblioRepository = viewModel.biblioRefRepository,
                             consultationRepository = viewModel.consultationRepository,
-                            recipeRepository = viewModel.recipeRepository
+                            recipeRepository = viewModel.recipeRepository,
+                            conseilRepository = viewModel.conseilRepository
                     )
             // Découper l'import en étapes et mettre à jour la progression/logs via callbacks
             // simples
@@ -411,9 +412,9 @@ actual fun importApiFromFile(viewModel: SettingsViewModel) {
                                             )
                     )
             viewModel.updateApiImportProgress(1.0)
-            val total = counts.animals + counts.foods + counts.equations + counts.references
+            val total = counts.animals + counts.foods + counts.equations + counts.references + counts.conseils
             viewModel.appendApiImportLog(
-                    "Import terminé → animals=${counts.animals}, foods=${counts.foods}, equations=${counts.equations}, refs=${counts.references}"
+                    "Import terminé → animals=${counts.animals}, foods=${counts.foods}, equations=${counts.equations}, refs=${counts.references}, conseils=${counts.conseils}"
             )
             viewModel.setImportResult(
                     SettingsViewModel.ImportResult.Success(
@@ -422,7 +423,8 @@ actual fun importApiFromFile(viewModel: SettingsViewModel) {
                             updatedCount = 0,
                             deletedCount = 0,
                             errorCount = 0,
-                            nonResolvedNutrients = 0
+                            nonResolvedNutrients = 0,
+                            conseils = counts.conseils
                     )
             )
         } catch (e: Exception) {

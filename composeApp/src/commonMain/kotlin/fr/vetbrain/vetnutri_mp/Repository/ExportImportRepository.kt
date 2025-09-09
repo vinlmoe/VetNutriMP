@@ -34,7 +34,8 @@ class ExportImportRepository(
         private val referenceRepository: DatabaseReferenceEvRepository? = null,
         private val biblioRepository: BiblioRefRepository? = null,
         private val consultationRepository: ConsultationRepository? = null,
-        private val recipeRepository: RecipeRepository? = null
+        private val recipeRepository: RecipeRepository? = null,
+        private val conseilRepository: ConseilRepository? = null
 ) {
         class ImportProgressListener(val onProgress: (Double) -> Unit, val onLog: (String) -> Unit)
 
@@ -51,6 +52,7 @@ class ExportImportRepository(
                 val includeRations: Boolean = false,
                 val includeRecipes: Boolean = true,
                 val includeEquations: Boolean = true,
+                val includeConseils: Boolean = true,
                 val animalIds: Set<String> = emptySet(),
                 val foodIds: Set<String> = emptySet()
         )
@@ -105,6 +107,15 @@ class ExportImportRepository(
                                 ?: emptyList()
                 
 
+                // Récupérer tous les conseils
+                val conseils =
+                        try {
+                                conseilRepository?.getConseilsActifs()?.getOrThrow()?.map { it.toApi() }
+                                        ?: emptyList()
+                        } catch (e: Exception) {
+                                emptyList()
+                        }
+
                 // Références et biblios
                 val references =
                         referenceRepository?.getAllReferenceEv()?.map { it.toApiRef() }
@@ -127,7 +138,8 @@ class ExportImportRepository(
                                 recipes = recipes,
                                 equations = equations,
                                 biblioRefs = biblioRefs,
-                                references = references
+                                references = references,
+                                conseils = conseils
                         )
                 return jsonPretty.encodeToString(envelope)
         }
@@ -212,6 +224,17 @@ class ExportImportRepository(
                         } else emptyList()
                 
 
+                // Récupérer les conseils selon les options
+                val conseils =
+                        if (options.includeConseils) {
+                                try {
+                                        conseilRepository?.getConseilsActifs()?.getOrThrow()?.map { it.toApi() }
+                                                ?: emptyList()
+                                } catch (e: Exception) {
+                                        emptyList()
+                                }
+                        } else emptyList()
+
                 val biblioRefs =
                         try {
                                 val list =
@@ -231,7 +254,8 @@ class ExportImportRepository(
                                 recipes = recipes,
                                 equations = equations,
                                 biblioRefs = biblioRefs,
-                                references = references
+                                references = references,
+                                conseils = conseils
                         )
                 return jsonPretty.encodeToString(envelope)
         }
@@ -247,7 +271,7 @@ class ExportImportRepository(
                 val envelope = jsonPretty.decodeFromString<ApiEnvelope>(apiJson)
 
                 listener?.onLog(
-                        "Contenu: animals=${envelope.animals.size}, foods=${envelope.foods.size}, rations=${envelope.rations.size}, recipes=${envelope.recipes.size}, equations=${envelope.equations.size}, biblioRefs=${envelope.biblioRefs.size}, references=${envelope.references.size}"
+                        "Contenu: animals=${envelope.animals.size}, foods=${envelope.foods.size}, rations=${envelope.rations.size}, recipes=${envelope.recipes.size}, equations=${envelope.equations.size}, biblioRefs=${envelope.biblioRefs.size}, references=${envelope.references.size}, conseils=${envelope.conseils.size}"
                 )
                 var animalsImported: Int = 0
                 var foodsImported: Int = 0
@@ -257,13 +281,15 @@ class ExportImportRepository(
                 var biblioImported: Int = 0
                 var rationsImported: Int = 0
                 var recipesImported: Int = 0
+                var conseilsImported: Int = 0
                 val totalUnits: Int =
                         (envelope.foods.size +
                                         envelope.equations.size +
                                         envelope.biblioRefs.size +
                                         envelope.animals.size +
                                         envelope.references.size +
-                                        envelope.recipes.size)
+                                        envelope.recipes.size +
+                                        envelope.conseils.size)
                                 .coerceAtLeast(1)
                 var processedUnits = 0
                 fun advance(units: Int = 1) {
@@ -683,6 +709,32 @@ class ExportImportRepository(
                         listener?.onLog("Recettes importées=$recipesImported")
                 }
 
+                // 7) Conseils (aucune dépendance)
+                if (envelope.conseils.isNotEmpty() && conseilRepository != null) {
+                        listener?.onLog("Import des conseils (${envelope.conseils.size})…")
+                        for (conseilApi in envelope.conseils) {
+                                try {
+                                        val conseil = conseilApi.toDomain()
+                                        // Vérifier si le conseil existe déjà
+                                        val existingConseil = try {
+                                                conseilRepository.getConseilsActifs().getOrThrow()
+                                                        .find { it.id == conseil.id }
+                                        } catch (e: Exception) {
+                                                null
+                                        }
+                                        
+                                        // Sauvegarder le conseil (insert ou update)
+                                        conseilRepository.saveConseil(conseil)
+                                        conseilsImported++
+                                        advance()
+                                } catch (e: Exception) {
+                                        listener?.onLog("Erreur conseil ${conseilApi.id}: ${e.message}")
+                                        advance()
+                                }
+                        }
+                        listener?.onLog("Conseils importés=$conseilsImported")
+                }
+
                 return ImportCounts(
                         animals = animalsImported,
                         foods = foodsImported,
@@ -690,7 +742,8 @@ class ExportImportRepository(
                         references = referencesImported,
                         biblios = biblioImported,
                         rations = rationsImported,
-                        recipes = recipesImported
+                        recipes = recipesImported,
+                        conseils = conseilsImported
                 )
         }
 
@@ -701,6 +754,7 @@ class ExportImportRepository(
                 val references: Int,
                 val biblios: Int,
                 val rations: Int,
-                val recipes: Int
+                val recipes: Int,
+                val conseils: Int
         )
 }

@@ -1,12 +1,16 @@
 package fr.vetbrain.vetnutri_mp.View
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.*
 import androidx.compose.material.DrawerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Analytics
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Info
@@ -289,20 +293,25 @@ private fun WideScreenLayout(
         conseilRepository: fr.vetbrain.vetnutri_mp.Repository.ConseilRepository
 ) {
         // État pour l'éditeur de texte enrichi
-        var htmlSections by remember {
-                mutableStateOf<List<fr.vetbrain.vetnutri_mp.Export.HtmlSection>>(emptyList())
-        }
         var currentHtmlContent by remember {
                 mutableStateOf(fr.vetbrain.vetnutri_mp.Export.RichTextContent())
         }
         var showRichTextEditor by remember { mutableStateOf(false) }
 
-        // État pour les conseils personnalisés
+        // État pour les conseils personnalisés (sauvegardés)
         var availableConseils by remember {
                 mutableStateOf<List<fr.vetbrain.vetnutri_mp.Export.HtmlSection>>(emptyList())
         }
-        var selectedConseils by remember { mutableStateOf<Set<String>>(emptySet()) }
+        // État pour les sections HTML créées localement (temporaires)
+        var localHtmlSections by remember {
+                mutableStateOf<List<fr.vetbrain.vetnutri_mp.Export.HtmlSection>>(emptyList())
+        }
+        var selectedConseils by remember {
+                mutableStateOf<List<fr.vetbrain.vetnutri_mp.Export.HtmlSection>>(emptyList())
+        }
         var isLoadingConseils by remember { mutableStateOf(true) }
+        var searchQuery by remember { mutableStateOf("") }
+        var showSearchDialog by remember { mutableStateOf(false) }
 
         // Charger les conseils personnalisés
         LaunchedEffect(Unit) {
@@ -791,7 +800,7 @@ private fun WideScreenLayout(
                                                                                                         id =
                                                                                                                 "section_${kotlinx.datetime.Clock.System.now().toEpochMilliseconds()}",
                                                                                                         title =
-                                                                                                                "Section personnalisée ${htmlSections.size + 1}",
+                                                                                                                "Section personnalisée ${availableConseils.size + 1}",
                                                                                                         content =
                                                                                                                 currentHtmlContent,
                                                                                                         category =
@@ -801,8 +810,12 @@ private fun WideScreenLayout(
                                                                                                                         .SectionCategory
                                                                                                                         .CUSTOM
                                                                                                 )
-                                                                                htmlSections =
-                                                                                        htmlSections +
+                                                                                // Ajouter à la
+                                                                                // liste des
+                                                                                // sections HTML
+                                                                                // locales
+                                                                                localHtmlSections =
+                                                                                        localHtmlSections +
                                                                                                 newSection
                                                                                 currentHtmlContent =
                                                                                         fr.vetbrain
@@ -861,12 +874,129 @@ private fun WideScreenLayout(
                                                         )
 
                                                         // Section pour les conseils personnalisés
-                                                        if (!isLoadingConseils &&
-                                                                        availableConseils
-                                                                                .isNotEmpty()
+                                                        Text(
+                                                                "Conseils personnalisés:",
+                                                                style =
+                                                                        MaterialTheme.typography
+                                                                                .subtitle1,
+                                                                color = VetNutriColors.Primary
+                                                        )
+
+                                                        // Affichage des conseils sélectionnés
+                                                        if (selectedConseils.isNotEmpty()) {
+                                                                Column(
+                                                                        modifier =
+                                                                                Modifier.fillMaxWidth(),
+                                                                        verticalArrangement =
+                                                                                Arrangement
+                                                                                        .spacedBy(
+                                                                                                4.dp
+                                                                                        )
+                                                                ) {
+                                                                        selectedConseils.forEach {
+                                                                                conseil ->
+                                                                                Card(
+                                                                                        modifier =
+                                                                                                Modifier.fillMaxWidth(),
+                                                                                        elevation =
+                                                                                                2.dp
+                                                                                ) {
+                                                                                        Row(
+                                                                                                modifier =
+                                                                                                        Modifier.fillMaxWidth()
+                                                                                                                .padding(
+                                                                                                                        8.dp
+                                                                                                                ),
+                                                                                                horizontalArrangement =
+                                                                                                        Arrangement
+                                                                                                                .SpaceBetween,
+                                                                                                verticalAlignment =
+                                                                                                        Alignment
+                                                                                                                .CenterVertically
+                                                                                        ) {
+                                                                                                Column(
+                                                                                                        modifier =
+                                                                                                                Modifier.weight(
+                                                                                                                        1f
+                                                                                                                )
+                                                                                                ) {
+                                                                                                        Text(
+                                                                                                                text =
+                                                                                                                        conseil.title,
+                                                                                                                style =
+                                                                                                                        MaterialTheme
+                                                                                                                                .typography
+                                                                                                                                .body2,
+                                                                                                                fontWeight =
+                                                                                                                        FontWeight
+                                                                                                                                .Medium
+                                                                                                        )
+                                                                                                        Text(
+                                                                                                                text =
+                                                                                                                        "Catégorie: ${conseil.category.name}",
+                                                                                                                style =
+                                                                                                                        MaterialTheme
+                                                                                                                                .typography
+                                                                                                                                .caption,
+                                                                                                                color =
+                                                                                                                        Color.Gray
+                                                                                                        )
+                                                                                                }
+                                                                                                IconButton(
+                                                                                                        onClick = {
+                                                                                                                selectedConseils =
+                                                                                                                        selectedConseils
+                                                                                                                                .filter {
+                                                                                                                                        it.id !=
+                                                                                                                                                conseil.id
+                                                                                                                                }
+                                                                                                        }
+                                                                                                ) {
+                                                                                                        Icon(
+                                                                                                                Icons.Default
+                                                                                                                        .Delete,
+                                                                                                                "Supprimer",
+                                                                                                                tint =
+                                                                                                                        Color.Red
+                                                                                                        )
+                                                                                                }
+                                                                                        }
+                                                                                }
+                                                                        }
+                                                                }
+                                                        }
+
+                                                        // Bouton pour ajouter des conseils
+                                                        Button(
+                                                                onClick = {
+                                                                        showSearchDialog = true
+                                                                },
+                                                                modifier = Modifier.fillMaxWidth(),
+                                                                colors =
+                                                                        ButtonDefaults.buttonColors(
+                                                                                backgroundColor =
+                                                                                        VetNutriColors
+                                                                                                .Secondary,
+                                                                                contentColor =
+                                                                                        VetNutriColors
+                                                                                                .OnSecondary
+                                                                        )
                                                         ) {
+                                                                Icon(Icons.Default.Add, "Ajouter")
+                                                                Spacer(
+                                                                        modifier =
+                                                                                Modifier.width(8.dp)
+                                                                )
+                                                                Text("Ajouter des conseils")
+                                                        }
+
+                                                        Spacer(modifier = Modifier.height(16.dp))
+
+                                                        // Section pour les sections HTML créées
+                                                        // localement
+                                                        if (localHtmlSections.isNotEmpty()) {
                                                                 Text(
-                                                                        "Conseils personnalisés disponibles:",
+                                                                        "Sections HTML créées localement (${localHtmlSections.size}):",
                                                                         style =
                                                                                 MaterialTheme
                                                                                         .typography
@@ -875,77 +1005,86 @@ private fun WideScreenLayout(
                                                                                 VetNutriColors
                                                                                         .Primary
                                                                 )
-
                                                                 Column(
                                                                         modifier =
                                                                                 Modifier.fillMaxWidth(),
                                                                         verticalArrangement =
                                                                                 Arrangement
                                                                                         .spacedBy(
-                                                                                                8.dp
+                                                                                                4.dp
                                                                                         )
                                                                 ) {
-                                                                        availableConseils.forEach {
-                                                                                conseil ->
-                                                                                Row(
+                                                                        localHtmlSections.forEach {
+                                                                                section ->
+                                                                                Card(
                                                                                         modifier =
                                                                                                 Modifier.fillMaxWidth(),
-                                                                                        verticalAlignment =
-                                                                                                Alignment
-                                                                                                        .CenterVertically
+                                                                                        elevation =
+                                                                                                2.dp
                                                                                 ) {
-                                                                                        Checkbox(
-                                                                                                checked =
-                                                                                                        selectedConseils
-                                                                                                                .contains(
-                                                                                                                        conseil.id
-                                                                                                                ),
-                                                                                                onCheckedChange = {
-                                                                                                        isChecked
-                                                                                                        ->
-                                                                                                        selectedConseils =
-                                                                                                                if (isChecked
-                                                                                                                ) {
-                                                                                                                        selectedConseils +
-                                                                                                                                conseil.id
-                                                                                                                } else {
-                                                                                                                        selectedConseils -
-                                                                                                                                conseil.id
-                                                                                                                }
-                                                                                                }
-                                                                                        )
-                                                                                        Column(
+                                                                                        Row(
                                                                                                 modifier =
-                                                                                                        Modifier.weight(
-                                                                                                                1f
-                                                                                                        )
+                                                                                                        Modifier.fillMaxWidth()
+                                                                                                                .padding(
+                                                                                                                        8.dp
+                                                                                                                ),
+                                                                                                horizontalArrangement =
+                                                                                                        Arrangement
+                                                                                                                .SpaceBetween,
+                                                                                                verticalAlignment =
+                                                                                                        Alignment
+                                                                                                                .CenterVertically
                                                                                         ) {
-                                                                                                Text(
-                                                                                                        text =
-                                                                                                                conseil.title,
-                                                                                                        style =
-                                                                                                                MaterialTheme
-                                                                                                                        .typography
-                                                                                                                        .body1,
-                                                                                                        fontWeight =
-                                                                                                                FontWeight
-                                                                                                                        .Medium
-                                                                                                )
-                                                                                                Text(
-                                                                                                        text =
-                                                                                                                "Catégorie: ${conseil.category.name}",
-                                                                                                        style =
-                                                                                                                MaterialTheme
-                                                                                                                        .typography
-                                                                                                                        .caption,
-                                                                                                        color =
-                                                                                                                Color.Gray
-                                                                                                )
+                                                                                                Column(
+                                                                                                        modifier =
+                                                                                                                Modifier.weight(
+                                                                                                                        1f
+                                                                                                                )
+                                                                                                ) {
+                                                                                                        Text(
+                                                                                                                text =
+                                                                                                                        section.title,
+                                                                                                                style =
+                                                                                                                        MaterialTheme
+                                                                                                                                .typography
+                                                                                                                                .body2,
+                                                                                                                fontWeight =
+                                                                                                                        FontWeight
+                                                                                                                                .Medium
+                                                                                                        )
+                                                                                                        Text(
+                                                                                                                text =
+                                                                                                                        "${section.content.blocks.size} blocs",
+                                                                                                                style =
+                                                                                                                        MaterialTheme
+                                                                                                                                .typography
+                                                                                                                                .caption,
+                                                                                                                color =
+                                                                                                                        Color.Gray
+                                                                                                        )
+                                                                                                }
+                                                                                                IconButton(
+                                                                                                        onClick = {
+                                                                                                                localHtmlSections =
+                                                                                                                        localHtmlSections
+                                                                                                                                .filter {
+                                                                                                                                        it.id !=
+                                                                                                                                                section.id
+                                                                                                                                }
+                                                                                                        }
+                                                                                                ) {
+                                                                                                        Icon(
+                                                                                                                Icons.Default
+                                                                                                                        .Delete,
+                                                                                                                "Supprimer",
+                                                                                                                tint =
+                                                                                                                        Color.Red
+                                                                                                        )
+                                                                                                }
                                                                                         }
                                                                                 }
                                                                         }
                                                                 }
-
                                                                 Spacer(
                                                                         modifier =
                                                                                 Modifier.height(
@@ -986,92 +1125,6 @@ private fun WideScreenLayout(
                                                                 )
                                                         }
 
-                                                        // Afficher les sections HTML créées
-                                                        if (htmlSections.isNotEmpty()) {
-                                                                Text(
-                                                                        "Sections HTML créées (${htmlSections.size}):",
-                                                                        style =
-                                                                                MaterialTheme
-                                                                                        .typography
-                                                                                        .subtitle1,
-                                                                        color =
-                                                                                VetNutriColors
-                                                                                        .Primary
-                                                                )
-                                                                Column(
-                                                                        verticalArrangement =
-                                                                                Arrangement
-                                                                                        .spacedBy(
-                                                                                                AppSizes.paddingSmall
-                                                                                        )
-                                                                ) {
-                                                                        htmlSections.forEach {
-                                                                                section ->
-                                                                                Card(
-                                                                                        modifier =
-                                                                                                Modifier.fillMaxWidth(),
-                                                                                        elevation =
-                                                                                                2.dp
-                                                                                ) {
-                                                                                        Row(
-                                                                                                modifier =
-                                                                                                        Modifier.fillMaxWidth()
-                                                                                                                .padding(
-                                                                                                                        AppSizes.paddingSmall
-                                                                                                                ),
-                                                                                                horizontalArrangement =
-                                                                                                        Arrangement
-                                                                                                                .SpaceBetween,
-                                                                                                verticalAlignment =
-                                                                                                        Alignment
-                                                                                                                .CenterVertically
-                                                                                        ) {
-                                                                                                Column(
-                                                                                                        modifier =
-                                                                                                                Modifier.weight(
-                                                                                                                        1f
-                                                                                                                )
-                                                                                                ) {
-                                                                                                        Text(
-                                                                                                                section.title,
-                                                                                                                fontWeight =
-                                                                                                                        FontWeight
-                                                                                                                                .Bold
-                                                                                                        )
-                                                                                                        Text(
-                                                                                                                "${section.content.blocks.size} blocs",
-                                                                                                                style =
-                                                                                                                        MaterialTheme
-                                                                                                                                .typography
-                                                                                                                                .caption,
-                                                                                                                color =
-                                                                                                                        Color.Gray
-                                                                                                        )
-                                                                                                }
-                                                                                                IconButton(
-                                                                                                        onClick = {
-                                                                                                                htmlSections =
-                                                                                                                        htmlSections
-                                                                                                                                .filter {
-                                                                                                                                        it.id !=
-                                                                                                                                                section.id
-                                                                                                                                }
-                                                                                                        }
-                                                                                                ) {
-                                                                                                        Icon(
-                                                                                                                Icons.Default
-                                                                                                                        .Delete,
-                                                                                                                "Supprimer",
-                                                                                                                tint =
-                                                                                                                        Color.Red
-                                                                                                        )
-                                                                                                }
-                                                                                        }
-                                                                                }
-                                                                        }
-                                                                }
-                                                        }
-
                                                         var showPreview by remember {
                                                                 mutableStateOf(false)
                                                         }
@@ -1083,18 +1136,14 @@ private fun WideScreenLayout(
                                                         }
 
                                                         // Fonction pour récupérer les conseils
-                                                        // sélectionnés
+                                                        // sélectionnés (conseils + sections
+                                                        // locales)
                                                         val getSelectedConseils:
                                                                 () -> List<
                                                                                 fr.vetbrain.vetnutri_mp.Export.HtmlSection> =
                                                                 {
-                                                                        availableConseils.filter {
-                                                                                conseil ->
-                                                                                selectedConseils
-                                                                                        .contains(
-                                                                                                conseil.id
-                                                                                        )
-                                                                        }
+                                                                        selectedConseils +
+                                                                                localHtmlSections
                                                                 }
 
                                                         Row(
@@ -1122,8 +1171,7 @@ private fun WideScreenLayout(
                                                                                                                 additionalText =
                                                                                                                         additionalText,
                                                                                                                 htmlSections =
-                                                                                                                        htmlSections +
-                                                                                                                                getSelectedConseils()
+                                                                                                                        getSelectedConseils()
                                                                                                         )
                                                                                                 )
                                                                                 showPreview = true
@@ -1154,8 +1202,7 @@ private fun WideScreenLayout(
                                                                                                                 additionalText =
                                                                                                                         additionalText,
                                                                                                                 htmlSections =
-                                                                                                                        htmlSections +
-                                                                                                                                getSelectedConseils()
+                                                                                                                        getSelectedConseils()
                                                                                                         )
                                                                                                 )
                                                                                 showPreview = true
@@ -1213,8 +1260,7 @@ private fun WideScreenLayout(
                                                                                                         additionalText =
                                                                                                                 additionalText,
                                                                                                         htmlSections =
-                                                                                                                htmlSections +
-                                                                                                                        getSelectedConseils()
+                                                                                                                getSelectedConseils()
                                                                                                 ),
                                                                                                 defaultFileName =
                                                                                                         "ordonnance.pdf"
@@ -1236,8 +1282,7 @@ private fun WideScreenLayout(
                                                                                                         additionalText =
                                                                                                                 additionalText,
                                                                                                         htmlSections =
-                                                                                                                htmlSections +
-                                                                                                                        getSelectedConseils()
+                                                                                                                getSelectedConseils()
                                                                                                 ),
                                                                                                 defaultFileName =
                                                                                                         "analyse_ration.pdf"
@@ -1250,6 +1295,164 @@ private fun WideScreenLayout(
                                                 }
                                         }
                                 }
+                        }
+
+                        // Dialogue de recherche et sélection des conseils
+                        if (showSearchDialog) {
+                                AlertDialog(
+                                        onDismissRequest = { showSearchDialog = false },
+                                        title = { Text("Ajouter des conseils") },
+                                        text = {
+                                                Column {
+                                                        OutlinedTextField(
+                                                                value = searchQuery,
+                                                                onValueChange = {
+                                                                        searchQuery = it
+                                                                },
+                                                                label = {
+                                                                        Text(
+                                                                                "Rechercher un conseil..."
+                                                                        )
+                                                                },
+                                                                modifier = Modifier.fillMaxWidth()
+                                                        )
+
+                                                        Spacer(modifier = Modifier.height(16.dp))
+
+                                                        val filteredConseils =
+                                                                availableConseils.filter { conseil
+                                                                        ->
+                                                                        conseil.title.contains(
+                                                                                searchQuery,
+                                                                                ignoreCase = true
+                                                                        ) ||
+                                                                                conseil.category
+                                                                                        .name
+                                                                                        .contains(
+                                                                                                searchQuery,
+                                                                                                ignoreCase =
+                                                                                                        true
+                                                                                        )
+                                                                }
+
+                                                        LazyColumn(
+                                                                modifier =
+                                                                        Modifier.heightIn(
+                                                                                max = 300.dp
+                                                                        ),
+                                                                verticalArrangement =
+                                                                        Arrangement.spacedBy(4.dp)
+                                                        ) {
+                                                                items(filteredConseils) { conseil ->
+                                                                        val isAlreadySelected =
+                                                                                selectedConseils
+                                                                                        .any {
+                                                                                                it.id ==
+                                                                                                        conseil.id
+                                                                                        }
+
+                                                                        Card(
+                                                                                modifier =
+                                                                                        Modifier.fillMaxWidth(),
+                                                                                elevation =
+                                                                                        if (isAlreadySelected
+                                                                                        )
+                                                                                                4.dp
+                                                                                        else 1.dp,
+                                                                                backgroundColor =
+                                                                                        if (isAlreadySelected
+                                                                                        )
+                                                                                                VetNutriColors
+                                                                                                        .Primary
+                                                                                                        .copy(
+                                                                                                                alpha =
+                                                                                                                        0.1f
+                                                                                                        )
+                                                                                        else
+                                                                                                Color.Transparent
+                                                                        ) {
+                                                                                Row(
+                                                                                        modifier =
+                                                                                                Modifier.fillMaxWidth()
+                                                                                                        .padding(
+                                                                                                                12.dp
+                                                                                                        ),
+                                                                                        horizontalArrangement =
+                                                                                                Arrangement
+                                                                                                        .SpaceBetween,
+                                                                                        verticalAlignment =
+                                                                                                Alignment
+                                                                                                        .CenterVertically
+                                                                                ) {
+                                                                                        Column(
+                                                                                                modifier =
+                                                                                                        Modifier.weight(
+                                                                                                                1f
+                                                                                                        )
+                                                                                        ) {
+                                                                                                Text(
+                                                                                                        text =
+                                                                                                                conseil.title,
+                                                                                                        style =
+                                                                                                                MaterialTheme
+                                                                                                                        .typography
+                                                                                                                        .body1,
+                                                                                                        fontWeight =
+                                                                                                                FontWeight
+                                                                                                                        .Medium
+                                                                                                )
+                                                                                                Text(
+                                                                                                        text =
+                                                                                                                "Catégorie: ${conseil.category.name}",
+                                                                                                        style =
+                                                                                                                MaterialTheme
+                                                                                                                        .typography
+                                                                                                                        .caption,
+                                                                                                        color =
+                                                                                                                Color.Gray
+                                                                                                )
+                                                                                        }
+
+                                                                                        if (isAlreadySelected
+                                                                                        ) {
+                                                                                                Icon(
+                                                                                                        Icons.Default
+                                                                                                                .Check,
+                                                                                                        "Sélectionné",
+                                                                                                        tint =
+                                                                                                                VetNutriColors
+                                                                                                                        .Primary
+                                                                                                )
+                                                                                        } else {
+                                                                                                IconButton(
+                                                                                                        onClick = {
+                                                                                                                selectedConseils =
+                                                                                                                        selectedConseils +
+                                                                                                                                conseil
+                                                                                                        }
+                                                                                                ) {
+                                                                                                        Icon(
+                                                                                                                Icons.Default
+                                                                                                                        .Add,
+                                                                                                                "Ajouter",
+                                                                                                                tint =
+                                                                                                                        VetNutriColors
+                                                                                                                                .Primary
+                                                                                                        )
+                                                                                                }
+                                                                                        }
+                                                                                }
+                                                                        }
+                                                                }
+                                                        }
+                                                }
+                                        },
+                                        confirmButton = {
+                                                TextButton(onClick = { showSearchDialog = false }) {
+                                                        Text("Fermer")
+                                                }
+                                        }
+                                )
                         }
                 }
         }
@@ -1277,20 +1480,25 @@ private fun NarrowScreenLayout(
         conseilRepository: fr.vetbrain.vetnutri_mp.Repository.ConseilRepository
 ) {
         // État pour l'éditeur de texte enrichi
-        var htmlSections by remember {
-                mutableStateOf<List<fr.vetbrain.vetnutri_mp.Export.HtmlSection>>(emptyList())
-        }
         var currentHtmlContent by remember {
                 mutableStateOf(fr.vetbrain.vetnutri_mp.Export.RichTextContent())
         }
         var showRichTextEditor by remember { mutableStateOf(false) }
 
-        // État pour les conseils personnalisés
+        // État pour les conseils personnalisés (sauvegardés)
         var availableConseils by remember {
                 mutableStateOf<List<fr.vetbrain.vetnutri_mp.Export.HtmlSection>>(emptyList())
         }
-        var selectedConseils by remember { mutableStateOf<Set<String>>(emptySet()) }
+        // État pour les sections HTML créées localement (temporaires)
+        var localHtmlSections by remember {
+                mutableStateOf<List<fr.vetbrain.vetnutri_mp.Export.HtmlSection>>(emptyList())
+        }
+        var selectedConseils by remember {
+                mutableStateOf<List<fr.vetbrain.vetnutri_mp.Export.HtmlSection>>(emptyList())
+        }
         var isLoadingConseils by remember { mutableStateOf(true) }
+        var searchQuery by remember { mutableStateOf("") }
+        var showSearchDialog by remember { mutableStateOf(false) }
 
         // Charger les conseils personnalisés
         LaunchedEffect(Unit) {
@@ -1899,7 +2107,7 @@ private fun NarrowScreenLayout(
                                                                                                                         id =
                                                                                                                                 "section_${kotlinx.datetime.Clock.System.now().toEpochMilliseconds()}",
                                                                                                                         title =
-                                                                                                                                "Section personnalisée ${htmlSections.size + 1}",
+                                                                                                                                "Section personnalisée ${availableConseils.size + 1}",
                                                                                                                         content =
                                                                                                                                 currentHtmlContent,
                                                                                                                         category =
@@ -1909,8 +2117,9 @@ private fun NarrowScreenLayout(
                                                                                                                                         .SectionCategory
                                                                                                                                         .CUSTOM
                                                                                                                 )
-                                                                                                htmlSections =
-                                                                                                        htmlSections +
+                                                                                                // Ajouter à la liste des conseils disponibles
+                                                                                                availableConseils =
+                                                                                                        availableConseils +
                                                                                                                 newSection
                                                                                                 currentHtmlContent =
                                                                                                         fr.vetbrain
@@ -1989,12 +2198,156 @@ private fun NarrowScreenLayout(
 
                                                                         // Section pour les conseils
                                                                         // personnalisés
-                                                                        if (!isLoadingConseils &&
-                                                                                        availableConseils
-                                                                                                .isNotEmpty()
+                                                                        Text(
+                                                                                "Conseils personnalisés:",
+                                                                                style =
+                                                                                        MaterialTheme
+                                                                                                .typography
+                                                                                                .subtitle1,
+                                                                                color =
+                                                                                        VetNutriColors
+                                                                                                .Primary
+                                                                        )
+
+                                                                        // Affichage des conseils
+                                                                        // sélectionnés
+                                                                        if (selectedConseils
+                                                                                        .isNotEmpty()
+                                                                        ) {
+                                                                                Column(
+                                                                                        modifier =
+                                                                                                Modifier.fillMaxWidth(),
+                                                                                        verticalArrangement =
+                                                                                                Arrangement
+                                                                                                        .spacedBy(
+                                                                                                                4.dp
+                                                                                                        )
+                                                                                ) {
+                                                                                        selectedConseils
+                                                                                                .forEach {
+                                                                                                        conseil
+                                                                                                        ->
+                                                                                                        Card(
+                                                                                                                modifier =
+                                                                                                                        Modifier.fillMaxWidth(),
+                                                                                                                elevation =
+                                                                                                                        2.dp
+                                                                                                        ) {
+                                                                                                                Row(
+                                                                                                                        modifier =
+                                                                                                                                Modifier.fillMaxWidth()
+                                                                                                                                        .padding(
+                                                                                                                                                8.dp
+                                                                                                                                        ),
+                                                                                                                        horizontalArrangement =
+                                                                                                                                Arrangement
+                                                                                                                                        .SpaceBetween,
+                                                                                                                        verticalAlignment =
+                                                                                                                                Alignment
+                                                                                                                                        .CenterVertically
+                                                                                                                ) {
+                                                                                                                        Column(
+                                                                                                                                modifier =
+                                                                                                                                        Modifier.weight(
+                                                                                                                                                1f
+                                                                                                                                        )
+                                                                                                                        ) {
+                                                                                                                                Text(
+                                                                                                                                        text =
+                                                                                                                                                conseil.title,
+                                                                                                                                        style =
+                                                                                                                                                MaterialTheme
+                                                                                                                                                        .typography
+                                                                                                                                                        .body2,
+                                                                                                                                        fontWeight =
+                                                                                                                                                FontWeight
+                                                                                                                                                        .Medium
+                                                                                                                                )
+                                                                                                                                Text(
+                                                                                                                                        text =
+                                                                                                                                                "Catégorie: ${conseil.category.name}",
+                                                                                                                                        style =
+                                                                                                                                                MaterialTheme
+                                                                                                                                                        .typography
+                                                                                                                                                        .caption,
+                                                                                                                                        color =
+                                                                                                                                                Color.Gray
+                                                                                                                                )
+                                                                                                                        }
+                                                                                                                        IconButton(
+                                                                                                                                onClick = {
+                                                                                                                                        selectedConseils =
+                                                                                                                                                selectedConseils
+                                                                                                                                                        .filter {
+                                                                                                                                                                it.id !=
+                                                                                                                                                                        conseil.id
+                                                                                                                                                        }
+                                                                                                                                }
+                                                                                                                        ) {
+                                                                                                                                Icon(
+                                                                                                                                        Icons.Default
+                                                                                                                                                .Delete,
+                                                                                                                                        "Supprimer",
+                                                                                                                                        tint =
+                                                                                                                                                Color.Red
+                                                                                                                                )
+                                                                                                                        }
+                                                                                                                }
+                                                                                                        }
+                                                                                                }
+                                                                                }
+                                                                        }
+
+                                                                        // Bouton pour ajouter des
+                                                                        // conseils
+                                                                        Button(
+                                                                                onClick = {
+                                                                                        showSearchDialog =
+                                                                                                true
+                                                                                },
+                                                                                modifier =
+                                                                                        Modifier.fillMaxWidth(),
+                                                                                colors =
+                                                                                        ButtonDefaults
+                                                                                                .buttonColors(
+                                                                                                        backgroundColor =
+                                                                                                                VetNutriColors
+                                                                                                                        .Secondary,
+                                                                                                        contentColor =
+                                                                                                                VetNutriColors
+                                                                                                                        .OnSecondary
+                                                                                                )
+                                                                        ) {
+                                                                                Icon(
+                                                                                        Icons.Default
+                                                                                                .Add,
+                                                                                        "Ajouter"
+                                                                                )
+                                                                                Spacer(
+                                                                                        modifier =
+                                                                                                Modifier.width(
+                                                                                                        8.dp
+                                                                                                )
+                                                                                )
+                                                                                Text(
+                                                                                        "Ajouter des conseils"
+                                                                                )
+                                                                        }
+
+                                                                        Spacer(
+                                                                                modifier =
+                                                                                        Modifier.height(
+                                                                                                16.dp
+                                                                                        )
+                                                                        )
+
+                                                                        // Section pour les sections
+                                                                        // HTML créées localement
+                                                                        if (localHtmlSections
+                                                                                        .isNotEmpty()
                                                                         ) {
                                                                                 Text(
-                                                                                        "Conseils personnalisés disponibles:",
+                                                                                        "Sections HTML créées localement (${localHtmlSections.size}):",
                                                                                         style =
                                                                                                 MaterialTheme
                                                                                                         .typography
@@ -2003,79 +2356,88 @@ private fun NarrowScreenLayout(
                                                                                                 VetNutriColors
                                                                                                         .Primary
                                                                                 )
-
                                                                                 Column(
                                                                                         modifier =
                                                                                                 Modifier.fillMaxWidth(),
                                                                                         verticalArrangement =
                                                                                                 Arrangement
                                                                                                         .spacedBy(
-                                                                                                                8.dp
+                                                                                                                4.dp
                                                                                                         )
                                                                                 ) {
-                                                                                        availableConseils
+                                                                                        localHtmlSections
                                                                                                 .forEach {
-                                                                                                        conseil
+                                                                                                        section
                                                                                                         ->
-                                                                                                        Row(
+                                                                                                        Card(
                                                                                                                 modifier =
                                                                                                                         Modifier.fillMaxWidth(),
-                                                                                                                verticalAlignment =
-                                                                                                                        Alignment
-                                                                                                                                .CenterVertically
+                                                                                                                elevation =
+                                                                                                                        2.dp
                                                                                                         ) {
-                                                                                                                Checkbox(
-                                                                                                                        checked =
-                                                                                                                                selectedConseils
-                                                                                                                                        .contains(
-                                                                                                                                                conseil.id
-                                                                                                                                        ),
-                                                                                                                        onCheckedChange = {
-                                                                                                                                isChecked
-                                                                                                                                ->
-                                                                                                                                selectedConseils =
-                                                                                                                                        if (isChecked
-                                                                                                                                        ) {
-                                                                                                                                                selectedConseils +
-                                                                                                                                                        conseil.id
-                                                                                                                                        } else {
-                                                                                                                                                selectedConseils -
-                                                                                                                                                        conseil.id
-                                                                                                                                        }
-                                                                                                                        }
-                                                                                                                )
-                                                                                                                Column(
+                                                                                                                Row(
                                                                                                                         modifier =
-                                                                                                                                Modifier.weight(
-                                                                                                                                        1f
-                                                                                                                                )
+                                                                                                                                Modifier.fillMaxWidth()
+                                                                                                                                        .padding(
+                                                                                                                                                8.dp
+                                                                                                                                        ),
+                                                                                                                        horizontalArrangement =
+                                                                                                                                Arrangement
+                                                                                                                                        .SpaceBetween,
+                                                                                                                        verticalAlignment =
+                                                                                                                                Alignment
+                                                                                                                                        .CenterVertically
                                                                                                                 ) {
-                                                                                                                        Text(
-                                                                                                                                text =
-                                                                                                                                        conseil.title,
-                                                                                                                                style =
-                                                                                                                                        MaterialTheme
-                                                                                                                                                .typography
-                                                                                                                                                .body1,
-                                                                                                                                fontWeight =
-                                                                                                                                        FontWeight
-                                                                                                                                                .Medium
-                                                                                                                        )
-                                                                                                                        Text(
-                                                                                                                                text =
-                                                                                                                                        "Catégorie: ${conseil.category.name}",
-                                                                                                                                style =
-                                                                                                                                        MaterialTheme
-                                                                                                                                                .typography
-                                                                                                                                                .caption,
-                                                                                                                                color =
-                                                                                                                                        Color.Gray
-                                                                                                                        )
+                                                                                                                        Column(
+                                                                                                                                modifier =
+                                                                                                                                        Modifier.weight(
+                                                                                                                                                1f
+                                                                                                                                        )
+                                                                                                                        ) {
+                                                                                                                                Text(
+                                                                                                                                        text =
+                                                                                                                                                section.title,
+                                                                                                                                        style =
+                                                                                                                                                MaterialTheme
+                                                                                                                                                        .typography
+                                                                                                                                                        .body2,
+                                                                                                                                        fontWeight =
+                                                                                                                                                FontWeight
+                                                                                                                                                        .Medium
+                                                                                                                                )
+                                                                                                                                Text(
+                                                                                                                                        text =
+                                                                                                                                                "${section.content.blocks.size} blocs",
+                                                                                                                                        style =
+                                                                                                                                                MaterialTheme
+                                                                                                                                                        .typography
+                                                                                                                                                        .caption,
+                                                                                                                                        color =
+                                                                                                                                                Color.Gray
+                                                                                                                                )
+                                                                                                                        }
+                                                                                                                        IconButton(
+                                                                                                                                onClick = {
+                                                                                                                                        localHtmlSections =
+                                                                                                                                                localHtmlSections
+                                                                                                                                                        .filter {
+                                                                                                                                                                it.id !=
+                                                                                                                                                                        section.id
+                                                                                                                                                        }
+                                                                                                                                }
+                                                                                                                        ) {
+                                                                                                                                Icon(
+                                                                                                                                        Icons.Default
+                                                                                                                                                .Delete,
+                                                                                                                                        "Supprimer",
+                                                                                                                                        tint =
+                                                                                                                                                Color.Red
+                                                                                                                                )
+                                                                                                                        }
                                                                                                                 }
                                                                                                         }
                                                                                                 }
                                                                                 }
-
                                                                                 Spacer(
                                                                                         modifier =
                                                                                                 Modifier.height(
@@ -2121,112 +2483,16 @@ private fun NarrowScreenLayout(
                                                                                 )
                                                                         }
 
-                                                                        // Afficher les sections
-                                                                        // HTML créées
-                                                                        if (htmlSections
-                                                                                        .isNotEmpty()
-                                                                        ) {
-                                                                                Text(
-                                                                                        "Sections créées (${htmlSections.size}):",
-                                                                                        style =
-                                                                                                MaterialTheme
-                                                                                                        .typography
-                                                                                                        .subtitle1,
-                                                                                        color =
-                                                                                                VetNutriColors
-                                                                                                        .Primary
-                                                                                )
-                                                                                Column(
-                                                                                        verticalArrangement =
-                                                                                                Arrangement
-                                                                                                        .spacedBy(
-                                                                                                                AppSizes.paddingSmall
-                                                                                                        )
-                                                                                ) {
-                                                                                        htmlSections
-                                                                                                .forEach {
-                                                                                                        section
-                                                                                                        ->
-                                                                                                        Card(
-                                                                                                                modifier =
-                                                                                                                        Modifier.fillMaxWidth(),
-                                                                                                                elevation =
-                                                                                                                        2.dp
-                                                                                                        ) {
-                                                                                                                Row(
-                                                                                                                        modifier =
-                                                                                                                                Modifier.fillMaxWidth()
-                                                                                                                                        .padding(
-                                                                                                                                                AppSizes.paddingSmall
-                                                                                                                                        ),
-                                                                                                                        horizontalArrangement =
-                                                                                                                                Arrangement
-                                                                                                                                        .SpaceBetween,
-                                                                                                                        verticalAlignment =
-                                                                                                                                Alignment
-                                                                                                                                        .CenterVertically
-                                                                                                                ) {
-                                                                                                                        Column(
-                                                                                                                                modifier =
-                                                                                                                                        Modifier.weight(
-                                                                                                                                                1f
-                                                                                                                                        )
-                                                                                                                        ) {
-                                                                                                                                Text(
-                                                                                                                                        section.title,
-                                                                                                                                        fontWeight =
-                                                                                                                                                FontWeight
-                                                                                                                                                        .Bold
-                                                                                                                                )
-                                                                                                                                Text(
-                                                                                                                                        "${section.content.blocks.size} blocs",
-                                                                                                                                        style =
-                                                                                                                                                MaterialTheme
-                                                                                                                                                        .typography
-                                                                                                                                                        .caption,
-                                                                                                                                        color =
-                                                                                                                                                Color.Gray
-                                                                                                                                )
-                                                                                                                        }
-                                                                                                                        IconButton(
-                                                                                                                                onClick = {
-                                                                                                                                        htmlSections =
-                                                                                                                                                htmlSections
-                                                                                                                                                        .filter {
-                                                                                                                                                                it.id !=
-                                                                                                                                                                        section.id
-                                                                                                                                                        }
-                                                                                                                                }
-                                                                                                                        ) {
-                                                                                                                                Icon(
-                                                                                                                                        Icons.Default
-                                                                                                                                                .Delete,
-                                                                                                                                        "Supprimer",
-                                                                                                                                        tint =
-                                                                                                                                                Color.Red
-                                                                                                                                )
-                                                                                                                        }
-                                                                                                                }
-                                                                                                        }
-                                                                                                }
-                                                                                }
-                                                                        }
-
                                                                         // Fonction pour récupérer
                                                                         // les conseils sélectionnés
+                                                                        // (conseils + sections
+                                                                        // locales)
                                                                         val getSelectedConseils:
                                                                                 () -> List<
                                                                                                 fr.vetbrain.vetnutri_mp.Export.HtmlSection> =
                                                                                 {
-                                                                                        availableConseils
-                                                                                                .filter {
-                                                                                                        conseil
-                                                                                                        ->
-                                                                                                        selectedConseils
-                                                                                                                .contains(
-                                                                                                                        conseil.id
-                                                                                                                )
-                                                                                                }
+                                                                                        selectedConseils +
+                                                                                                localHtmlSections
                                                                                 }
 
                                                                         Row(
@@ -2252,8 +2518,7 @@ private fun NarrowScreenLayout(
                                                                                                                         title =
                                                                                                                                 "Analyse de ration",
                                                                                                                         htmlSections =
-                                                                                                                                htmlSections +
-                                                                                                                                        getSelectedConseils()
+                                                                                                                                getSelectedConseils()
                                                                                                                 ),
                                                                                                                 defaultFileName =
                                                                                                                         "analyse_ration.pdf"
@@ -2286,8 +2551,7 @@ private fun NarrowScreenLayout(
                                                                                                                         title =
                                                                                                                                 "Ordonnance nutritionnelle",
                                                                                                                         htmlSections =
-                                                                                                                                htmlSections +
-                                                                                                                                        getSelectedConseils()
+                                                                                                                                getSelectedConseils()
                                                                                                                 ),
                                                                                                                 defaultFileName =
                                                                                                                         "ordonnance.pdf"
@@ -2304,6 +2568,164 @@ private fun NarrowScreenLayout(
                                                 }
                                         }
                                 }
+                        }
+
+                        // Dialogue de recherche et sélection des conseils
+                        if (showSearchDialog) {
+                                AlertDialog(
+                                        onDismissRequest = { showSearchDialog = false },
+                                        title = { Text("Ajouter des conseils") },
+                                        text = {
+                                                Column {
+                                                        OutlinedTextField(
+                                                                value = searchQuery,
+                                                                onValueChange = {
+                                                                        searchQuery = it
+                                                                },
+                                                                label = {
+                                                                        Text(
+                                                                                "Rechercher un conseil..."
+                                                                        )
+                                                                },
+                                                                modifier = Modifier.fillMaxWidth()
+                                                        )
+
+                                                        Spacer(modifier = Modifier.height(16.dp))
+
+                                                        val filteredConseils =
+                                                                availableConseils.filter { conseil
+                                                                        ->
+                                                                        conseil.title.contains(
+                                                                                searchQuery,
+                                                                                ignoreCase = true
+                                                                        ) ||
+                                                                                conseil.category
+                                                                                        .name
+                                                                                        .contains(
+                                                                                                searchQuery,
+                                                                                                ignoreCase =
+                                                                                                        true
+                                                                                        )
+                                                                }
+
+                                                        LazyColumn(
+                                                                modifier =
+                                                                        Modifier.heightIn(
+                                                                                max = 300.dp
+                                                                        ),
+                                                                verticalArrangement =
+                                                                        Arrangement.spacedBy(4.dp)
+                                                        ) {
+                                                                items(filteredConseils) { conseil ->
+                                                                        val isAlreadySelected =
+                                                                                selectedConseils
+                                                                                        .any {
+                                                                                                it.id ==
+                                                                                                        conseil.id
+                                                                                        }
+
+                                                                        Card(
+                                                                                modifier =
+                                                                                        Modifier.fillMaxWidth(),
+                                                                                elevation =
+                                                                                        if (isAlreadySelected
+                                                                                        )
+                                                                                                4.dp
+                                                                                        else 1.dp,
+                                                                                backgroundColor =
+                                                                                        if (isAlreadySelected
+                                                                                        )
+                                                                                                VetNutriColors
+                                                                                                        .Primary
+                                                                                                        .copy(
+                                                                                                                alpha =
+                                                                                                                        0.1f
+                                                                                                        )
+                                                                                        else
+                                                                                                Color.Transparent
+                                                                        ) {
+                                                                                Row(
+                                                                                        modifier =
+                                                                                                Modifier.fillMaxWidth()
+                                                                                                        .padding(
+                                                                                                                12.dp
+                                                                                                        ),
+                                                                                        horizontalArrangement =
+                                                                                                Arrangement
+                                                                                                        .SpaceBetween,
+                                                                                        verticalAlignment =
+                                                                                                Alignment
+                                                                                                        .CenterVertically
+                                                                                ) {
+                                                                                        Column(
+                                                                                                modifier =
+                                                                                                        Modifier.weight(
+                                                                                                                1f
+                                                                                                        )
+                                                                                        ) {
+                                                                                                Text(
+                                                                                                        text =
+                                                                                                                conseil.title,
+                                                                                                        style =
+                                                                                                                MaterialTheme
+                                                                                                                        .typography
+                                                                                                                        .body1,
+                                                                                                        fontWeight =
+                                                                                                                FontWeight
+                                                                                                                        .Medium
+                                                                                                )
+                                                                                                Text(
+                                                                                                        text =
+                                                                                                                "Catégorie: ${conseil.category.name}",
+                                                                                                        style =
+                                                                                                                MaterialTheme
+                                                                                                                        .typography
+                                                                                                                        .caption,
+                                                                                                        color =
+                                                                                                                Color.Gray
+                                                                                                )
+                                                                                        }
+
+                                                                                        if (isAlreadySelected
+                                                                                        ) {
+                                                                                                Icon(
+                                                                                                        Icons.Default
+                                                                                                                .Check,
+                                                                                                        "Sélectionné",
+                                                                                                        tint =
+                                                                                                                VetNutriColors
+                                                                                                                        .Primary
+                                                                                                )
+                                                                                        } else {
+                                                                                                IconButton(
+                                                                                                        onClick = {
+                                                                                                                selectedConseils =
+                                                                                                                        selectedConseils +
+                                                                                                                                conseil
+                                                                                                        }
+                                                                                                ) {
+                                                                                                        Icon(
+                                                                                                                Icons.Default
+                                                                                                                        .Add,
+                                                                                                                "Ajouter",
+                                                                                                                tint =
+                                                                                                                        VetNutriColors
+                                                                                                                                .Primary
+                                                                                                        )
+                                                                                                }
+                                                                                        }
+                                                                                }
+                                                                        }
+                                                                }
+                                                        }
+                                                }
+                                        },
+                                        confirmButton = {
+                                                TextButton(onClick = { showSearchDialog = false }) {
+                                                        Text("Fermer")
+                                                }
+                                        }
+                                )
                         }
                 }
         )

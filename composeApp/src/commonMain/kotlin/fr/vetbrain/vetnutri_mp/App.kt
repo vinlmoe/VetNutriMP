@@ -147,7 +147,8 @@ fun App(appDatabase: AppDatabase) {
                 referenceEvRepository = databaseReferenceEvRepository,
                 equationRepository = equationRepository,
                 biblioRefRepository = biblioRefRepository,
-                consultationRepository = consultationRepository
+                consultationRepository = consultationRepository,
+                conseilRepository = conseilRepository
         )
     }
     val foodListViewModel = remember { FoodListViewModel(foodRepository) }
@@ -283,7 +284,8 @@ fun App(appDatabase: AppDatabase) {
                         foodRepository = foodRepository,
                         referenceRepository = databaseReferenceEvRepository,
                         settingsViewModel = settingsViewModel,
-                        onDatabaseReady = onDatabaseReady
+                        onDatabaseReady = onDatabaseReady,
+                        conseilRepository = settingsViewModel.conseilRepository
                 )
             } else {
                 // Afficher l'application principale

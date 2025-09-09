@@ -38,6 +38,7 @@ fun StartupScreen(
         referenceRepository: DatabaseReferenceEvRepository?,
         settingsViewModel: SettingsViewModel,
         onDatabaseReady: () -> Unit,
+        conseilRepository: fr.vetbrain.vetnutri_mp.Repository.ConseilRepository? = null,
         modifier: Modifier = Modifier
 ) {
         var showStartupScreen by remember { mutableStateOf(true) }
@@ -75,11 +76,17 @@ fun StartupScreen(
                 try {
                         val foodCount = foodRepository.getAllFoods().size
                         val referenceCount = referenceRepository?.getAllReferenceEv()?.size ?: 0
+                        val conseilsCount = try {
+                                conseilRepository?.getConseilsCount()?.getOrThrow() ?: 0
+                        } catch (e: Exception) {
+                                0
+                        }
 
                         databaseStatus =
                                 DatabaseStatus(
                                         foodCount = foodCount,
                                         referenceCount = referenceCount,
+                                        conseilsCount = conseilsCount,
                                         needsUpdate = foodCount == 0 || referenceCount == 0
                                 )
 
@@ -1064,6 +1071,12 @@ private fun DatabaseStatusCard(status: DatabaseStatus, modifier: Modifier = Modi
                                                         VetNutriColors.Primary
                                                 else MaterialTheme.colors.error
                                 )
+
+                                StatisticItem(
+                                        label = "Conseils",
+                                        value = status.conseilsCount.toString(),
+                                        color = VetNutriColors.Primary
+                                )
                         }
 
                         // Message d'erreur si présent
@@ -1380,6 +1393,7 @@ private fun TermsAndConditionsDialog(onAccept: () -> Unit, onDismiss: () -> Unit
 data class DatabaseStatus(
         val foodCount: Int,
         val referenceCount: Int,
+        val conseilsCount: Int = 0,
         val needsUpdate: Boolean,
         val error: String? = null
 )
