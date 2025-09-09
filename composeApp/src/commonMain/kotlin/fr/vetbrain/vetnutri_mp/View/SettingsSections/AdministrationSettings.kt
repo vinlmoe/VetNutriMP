@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AdminPanelSettings
+import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.runtime.*
@@ -31,6 +32,7 @@ fun AdministrationSettings(
         viewModel: SettingsViewModel,
         onAnimalListRefresh: () -> Unit,
         onFoodListRefresh: () -> Unit,
+        onBackupClick: () -> Unit = {},
         modifier: Modifier = Modifier
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -115,6 +117,24 @@ fun AdministrationSettings(
                                     if (isAutoImporting) "Import en cours..."
                                     else "Relancer l'import automatique des données initiales"
                             )
+                        }
+
+                        // Bouton de gestion des sauvegardes
+                        Button(
+                                onClick = onBackupClick,
+                                colors = ButtonDefaults.buttonColors(
+                                        backgroundColor = VetNutriColors.Secondary,
+                                        contentColor = Color.White
+                                ),
+                                modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(
+                                    imageVector = Icons.Default.Backup,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Gérer les sauvegardes")
                         }
 
                         // Affichage du résultat de l'import automatique

@@ -39,6 +39,7 @@ fun StartupScreen(
         settingsViewModel: SettingsViewModel,
         onDatabaseReady: () -> Unit,
         conseilRepository: fr.vetbrain.vetnutri_mp.Repository.ConseilRepository? = null,
+        onShowBackupDialog: () -> Unit = {},
         modifier: Modifier = Modifier
 ) {
         var showStartupScreen by remember { mutableStateOf(true) }
@@ -538,6 +539,26 @@ fun StartupScreen(
                                                                                 "Continuer sans mise à jour"
                                                                         )
                                                                 }
+                                                                
+                                                                Spacer(modifier = Modifier.height(8.dp))
+                                                                
+                                                                // Bouton pour restaurer une sauvegarde
+                                                                OutlinedButton(
+                                                                        onClick = onShowBackupDialog,
+                                                                        modifier = Modifier.fillMaxWidth()
+                                                                                .height(48.dp),
+                                                                        colors = ButtonDefaults.outlinedButtonColors(
+                                                                                contentColor = VetNutriColors.Secondary
+                                                                        )
+                                                                ) {
+                                                                        Icon(
+                                                                                imageVector = Icons.Default.Download,
+                                                                                contentDescription = null,
+                                                                                modifier = Modifier.size(18.dp)
+                                                                        )
+                                                                        Spacer(modifier = Modifier.width(8.dp))
+                                                                        Text("Restaurer une sauvegarde")
+                                                                }
                                                         }
                                                 } else {
                                                         // Base complète : le bouton "Continuer"
@@ -575,6 +596,26 @@ fun StartupScreen(
                                                                                 text = "Continuer",
                                                                                 fontSize = 16.sp
                                                                         )
+                                                                }
+                                                                
+                                                                Spacer(modifier = Modifier.height(8.dp))
+                                                                
+                                                                // Bouton pour restaurer une sauvegarde
+                                                                OutlinedButton(
+                                                                        onClick = onShowBackupDialog,
+                                                                        modifier = Modifier.fillMaxWidth()
+                                                                                .height(48.dp),
+                                                                        colors = ButtonDefaults.outlinedButtonColors(
+                                                                                contentColor = VetNutriColors.Secondary
+                                                                        )
+                                                                ) {
+                                                                        Icon(
+                                                                                imageVector = Icons.Default.Download,
+                                                                                contentDescription = null,
+                                                                                modifier = Modifier.size(18.dp)
+                                                                        )
+                                                                        Spacer(modifier = Modifier.width(8.dp))
+                                                                        Text("Restaurer une sauvegarde")
                                                                 }
                                                         }
                                                 }
