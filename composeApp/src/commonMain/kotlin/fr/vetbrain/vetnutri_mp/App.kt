@@ -18,13 +18,16 @@ import fr.vetbrain.vetnutri_mp.Localization.LocalizationManager
 import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Repository.*
+import fr.vetbrain.vetnutri_mp.Service.*
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriTheme
 import fr.vetbrain.vetnutri_mp.Utils.PlatformDispatcher
 import fr.vetbrain.vetnutri_mp.Utils.createPreferencesStorage
 import fr.vetbrain.vetnutri_mp.View.*
 import fr.vetbrain.vetnutri_mp.View.StartupScreen
 import fr.vetbrain.vetnutri_mp.ViewModel.*
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.CoroutineScope
 
 // Fonctions d'importation de fichiers - implémentées par plateforme spécifique
 expect fun importAnimalsFromFile(viewModel: AnimalListViewModel)
@@ -40,6 +43,9 @@ expect fun importApiFromFile(viewModel: SettingsViewModel)
 expect fun exportJsonToFile(content: String, defaultFileName: String): Boolean
 
 expect fun openJsonFileContent(): String?
+
+// Service de gestion des fichiers
+expect fun createFileService(): FileService
 
 @Composable
 fun App(appDatabase: AppDatabase) {
@@ -122,6 +128,51 @@ fun App(appDatabase: AppDatabase) {
         )
     }
 
+    // Création du repository d'export/import
+    val exportImportRepository = remember {
+        ExportImportRepository(
+            animalRepository = animalRepository,
+            foodRepository = foodRepository,
+            equationRepository = equationRepository,
+            referenceRepository = databaseReferenceEvRepository,
+            biblioRepository = biblioRefRepository,
+            consultationRepository = consultationRepository,
+            recipeRepository = recipeRepository,
+            conseilRepository = conseilRepository
+        )
+    }
+
+    // Variables d'état pour l'interface
+    var showStartupBackupDialog by remember { mutableStateOf(false) }
+
+    // Création des services de sauvegarde
+    val fileService = remember { createFileService() }
+    val startupService = remember { StartupService(exportImportRepository, fileService) }
+    
+    // État pour le service de sauvegarde
+    var backupService by remember { mutableStateOf<BackupService?>(null) }
+
+    // Initialisation des services au démarrage
+    LaunchedEffect(Unit) {
+        println("DEBUG: Début de l'initialisation des services")
+        startupService.initialize()
+        println("DEBUG: startupService.initialize() terminé")
+        
+        // Attendre que les services soient initialisés
+        delay(2000) // Augmenté à 2 secondes
+        println("DEBUG: Délai d'attente terminé")
+        
+        // Récupérer le service de sauvegarde après initialisation
+        val service = startupService.getBackupService()
+        backupService = service
+        println("DEBUG: backupService initialisé: ${service != null}")
+        
+        // Vérifier s'il y a des sauvegardes disponibles au démarrage
+        val availableBackups = startupService.getAvailableBackups()
+        println("DEBUG: Sauvegardes disponibles: ${availableBackups.size}")
+        // Ne plus afficher automatiquement le dialog de restauration
+    }
+
     // Repository des préférences (global pour tous les ViewModels)
     val preferencesRepository = remember {
         fr.vetbrain.vetnutri_mp.Repository.PreferencesRepository(createPreferencesStorage())
@@ -198,6 +249,11 @@ fun App(appDatabase: AppDatabase) {
                 equationRepository = equationRepository,
                 biblioRefRepository = biblioRefRepository
         )
+    }
+
+    // ViewModel pour la gestion des sauvegardes
+    val backupRestoreViewModel = remember(backupService) { 
+        backupService?.let { BackupRestoreViewModel(it, platformDispatcher) }
     }
 
     var currentScreen by remember { mutableStateOf<Screen>(Screen.List) }
@@ -285,7 +341,8 @@ fun App(appDatabase: AppDatabase) {
                         referenceRepository = databaseReferenceEvRepository,
                         settingsViewModel = settingsViewModel,
                         onDatabaseReady = onDatabaseReady,
-                        conseilRepository = settingsViewModel.conseilRepository
+                        conseilRepository = settingsViewModel.conseilRepository,
+                        onShowBackupDialog = { showStartupBackupDialog = true }
                 )
             } else {
                 // Afficher l'application principale
@@ -605,6 +662,10 @@ fun App(appDatabase: AppDatabase) {
                                         onSpeciesClick = { species ->
                                             selectedSpecies = species
                                             currentScreen = Screen.SpeciesPreferences
+                                        },
+                                        onBackupClick = {
+                                            println("DEBUG: Bouton backup cliqué, backupRestoreViewModel: ${backupRestoreViewModel != null}")
+                                            currentScreen = Screen.BackupRestore
                                         }
                                 )
                             }
@@ -634,6 +695,17 @@ fun App(appDatabase: AppDatabase) {
                                         // Fallback si aucune espèce n'est sélectionnée
                                         currentScreen = Screen.Settings
                                     }
+                        }
+                        Screen.BackupRestore -> {
+                            backupRestoreViewModel?.let { viewModel ->
+                                BackupRestoreView(
+                                    viewModel = viewModel,
+                                    onBack = { currentScreen = Screen.Settings }
+                                )
+                            } ?: run {
+                                // Fallback si le ViewModel n'est pas disponible
+                                currentScreen = Screen.Settings
+                            }
                         }
                     }
                 }
@@ -748,6 +820,18 @@ fun App(appDatabase: AppDatabase) {
                         }
                 )
             }
+            
+            // Dialog de démarrage pour la restauration des sauvegardes
+            if (showStartupBackupDialog && backupRestoreViewModel != null) {
+                StartupBackupDialog(
+                    viewModel = backupRestoreViewModel,
+                    onDismiss = { showStartupBackupDialog = false },
+                    onRestore = { backup ->
+                        backupRestoreViewModel.restoreBackup(backup)
+                        // Ne pas fermer le dialog immédiatement, laisser le ViewModel gérer l'état
+                    }
+                )
+            }
         }
     }
 }
@@ -771,4 +855,5 @@ private sealed class Screen {
     object Settings : Screen()
     object SpeciesPreferences : Screen()
     object ConseilEdit : Screen()
+    object BackupRestore : Screen()
 }

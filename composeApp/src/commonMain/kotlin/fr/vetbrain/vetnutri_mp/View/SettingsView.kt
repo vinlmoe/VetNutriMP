@@ -30,9 +30,7 @@ import fr.vetbrain.vetnutri_mp.View.SettingsComponents.SettingsHeader
 import fr.vetbrain.vetnutri_mp.View.SettingsComponents.SettingsTabs
 import fr.vetbrain.vetnutri_mp.View.SettingsSections.AdministrationSettings
 import fr.vetbrain.vetnutri_mp.View.SettingsSections.InterfaceSettings
-import fr.vetbrain.vetnutri_mp.View.SettingsSections.RecipeEditView
 import fr.vetbrain.vetnutri_mp.ViewModel.ImportViewModel
-import fr.vetbrain.vetnutri_mp.ViewModel.RecipeEditViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.SettingsViewModel
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
@@ -43,7 +41,11 @@ import kotlinx.coroutines.launch
  * @param onDismiss Callback appelé lorsque l'utilisateur ferme le dialogue
  */
 @Composable
-fun SettingsDialog(viewModel: SettingsViewModel, onDismiss: () -> Unit) {
+fun SettingsDialog(
+    viewModel: SettingsViewModel, 
+    onDismiss: () -> Unit,
+    onBackupClick: () -> Unit = {}
+) {
         val uiScale by viewModel.uiScale.collectAsState()
 
         AlertDialog(
@@ -107,7 +109,8 @@ fun SettingsView(
         onAnimalListRefresh: () -> Unit,
         onFoodListRefresh: () -> Unit,
         modifier: Modifier = Modifier,
-        onSpeciesClick: (fr.vetbrain.vetnutri_mp.Enumer.Espece) -> Unit = {}
+        onSpeciesClick: (fr.vetbrain.vetnutri_mp.Enumer.Espece) -> Unit = {},
+        onBackupClick: () -> Unit = {}
 ) {
 
         // État pour le dialogue d'alerte d'importation des références nutritionnelles
@@ -852,26 +855,42 @@ fun SettingsView(
                                         }
                                 }
                                 4 -> { // Recettes
-                                        RecipeEditView(
-                                                viewModel =
-                                                        RecipeEditViewModel(
-                                                                recipeRepository =
-                                                                        viewModel.recipeRepository
-                                                                                ?: throw IllegalStateException(
-                                                                                        "RecipeRepository not available"
-                                                                                ),
-                                                                foodRepository =
-                                                                        viewModel.foodRepository
-                                                        ),
-                                                foodRepository = viewModel.foodRepository,
-                                                modifier = Modifier.fillMaxWidth()
-                                        )
+                                        // Section des recettes temporairement désactivée
+                                        Card(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                backgroundColor = VetNutriColors.Primary.copy(alpha = 0.1f)
+                                        ) {
+                                                Column(
+                                                        modifier = Modifier.padding(16.dp),
+                                                        horizontalAlignment = Alignment.CenterHorizontally
+                                                ) {
+                                                        Icon(
+                                                                imageVector = Icons.Default.Info,
+                                                                contentDescription = "Information",
+                                                                tint = VetNutriColors.Primary
+                                                        )
+                                                        Spacer(modifier = Modifier.height(8.dp))
+                                                        Text(
+                                                                text = "Section des recettes",
+                                                                style = MaterialTheme.typography.h6,
+                                                                color = VetNutriColors.Primary
+                                                        )
+                                                        Spacer(modifier = Modifier.height(4.dp))
+                                                        Text(
+                                                                text = "Cette section sera disponible dans une prochaine version",
+                                                                style = MaterialTheme.typography.body2,
+                                                                color = Color.Gray,
+                                                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                                        )
+                                                }
+                                        }
                                 }
                                 5 -> { // Administration
                                         AdministrationSettings(
                                                 viewModel = viewModel,
                                                 onAnimalListRefresh = onAnimalListRefresh,
                                                 onFoodListRefresh = onFoodListRefresh,
+                                                onBackupClick = { onBackupClick() },
                                                 modifier = Modifier.fillMaxWidth()
                                         )
                                 }
