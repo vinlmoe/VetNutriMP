@@ -28,6 +28,8 @@ import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.View.SettingsComponents.SettingsHeader
 import fr.vetbrain.vetnutri_mp.View.SettingsComponents.SettingsTabs
+import fr.vetbrain.vetnutri_mp.View.SettingsSections.RecipeEditView
+import fr.vetbrain.vetnutri_mp.ViewModel.RecipeEditViewModel
 import fr.vetbrain.vetnutri_mp.View.SettingsSections.AdministrationSettings
 import fr.vetbrain.vetnutri_mp.View.SettingsSections.InterfaceSettings
 import fr.vetbrain.vetnutri_mp.ViewModel.ImportViewModel
@@ -160,7 +162,7 @@ fun SettingsView(
 
         Column(modifier = modifier.fillMaxSize()) {
                 // En-tête avec bouton retour
-                SettingsHeader(onBack = onBack)
+              
 
                 // Navigation par onglets
                 SettingsTabs(selectedTab = selectedTab, onTabSelected = { selectedTab = it })
@@ -175,17 +177,12 @@ fun SettingsView(
                                         )
                                 }
                                 1 -> { // Préférences
-                                        // Section pour les préférences
-                                        Section(title = "Préférences de l'application") {
-                                                PreferencesSection(
-                                                        modifier = Modifier.fillMaxWidth(),
-                                                        onSpeciesClick = onSpeciesClick
-                                                )
-                                        }
+                                        PreferencesSection(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                onSpeciesClick = onSpeciesClick
+                                        )
                                 }
                                 2 -> { // Importation
-                                                        // Section pour l'importation des données
-                                        Section(title = "Importation des données") {
                                                 // Affichage du nombre de conseils
                                                 Card(
                                                         modifier = Modifier.fillMaxWidth()
@@ -844,46 +841,30 @@ fun SettingsView(
                                                                 )
                                                         }
                                                 }
-                                        }
                                 }
                                 3 -> { // Excel Import/Export
-                                        // Section pour l'import/export Excel des aliments
-                                        Section(title = "Import/Export Excel Aliments") {
-                                                ExcelImportExportSection(
-                                                        modifier = Modifier.fillMaxWidth()
-                                                )
-                                        }
+                                        ExcelImportExportSection(
+                                                modifier = Modifier.fillMaxWidth()
+                                        )
                                 }
                                 4 -> { // Recettes
-                                        // Section des recettes temporairement désactivée
-                                        Card(
-                                                modifier = Modifier.fillMaxWidth(),
-                                                backgroundColor = VetNutriColors.Primary.copy(alpha = 0.1f)
-                                        ) {
-                                                Column(
-                                                        modifier = Modifier.padding(16.dp),
-                                                        horizontalAlignment = Alignment.CenterHorizontally
-                                                ) {
-                                                        Icon(
-                                                                imageVector = Icons.Default.Info,
-                                                                contentDescription = "Information",
-                                                                tint = VetNutriColors.Primary
-                                                        )
-                                                        Spacer(modifier = Modifier.height(8.dp))
-                                                        Text(
-                                                                text = "Section des recettes",
-                                                                style = MaterialTheme.typography.h6,
-                                                                color = VetNutriColors.Primary
-                                                        )
-                                                        Spacer(modifier = Modifier.height(4.dp))
-                                                        Text(
-                                                                text = "Cette section sera disponible dans une prochaine version",
-                                                                style = MaterialTheme.typography.body2,
-                                                                color = Color.Gray,
-                                                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                                                        )
-                                                }
-                                        }
+                                        RecipeEditView(
+                                                viewModel = RecipeEditViewModel(
+                                                        recipeRepository = viewModel.recipeRepository
+                                                                ?: throw IllegalStateException(
+                                                                        "RecipeRepository not available"
+                                                                ),
+                                                        foodRepository = viewModel.foodRepository
+                                                                ?: throw IllegalStateException(
+                                                                        "FoodRepository not available"
+                                                                )
+                                                ),
+                                                foodRepository = viewModel.foodRepository
+                                                        ?: throw IllegalStateException(
+                                                                "FoodRepository not available"
+                                                        ),
+                                                modifier = Modifier.fillMaxWidth()
+                                        )
                                 }
                                 5 -> { // Administration
                                         AdministrationSettings(

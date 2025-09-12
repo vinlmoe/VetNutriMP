@@ -41,10 +41,9 @@ fun SettingsDrawer(
         // En-tête du drawer
         Row(
                 modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Paramètres", style = MaterialTheme.typography.h6, color = VetNutriColors.Primary)
             IconButton(onClick = onClose) {
                 Icon(Icons.Default.Close, contentDescription = "Fermer", tint = Color.Gray)
             }

@@ -80,9 +80,6 @@ fun FoodSearchComponent(
         config: FoodSearchConfig = FoodSearchConfig(),
         modifier: Modifier = Modifier
 ) {
-        println("DEBUG FoodSearchComponent - filters.dataB: ${filters.dataB}")
-        println("DEBUG FoodSearchComponent - filters.hashCode: ${filters.hashCode()}")
-        println("DEBUG FoodSearchComponent - RERENDER")
 
         // Filtrer les aliments selon les critères
         val filteredFoods =
@@ -200,39 +197,11 @@ fun FoodSearchComponent(
                                         // Filtre par base de données (null/"" = pas de filtre)
                                         val matchesDataB =
                                                 when (val dataBFilter = filters.dataB) {
-                                                        null -> {
-                                                                if (aliment.nom?.contains("test") ==
-                                                                                true
-                                                                ) {
-                                                                        println(
-                                                                                "DEBUG DataB Filter - Aliment: ${aliment.nom}, dataB: ${aliment.dataB}, filter: null -> true"
-                                                                        )
-                                                                }
-                                                                true // null = pas de filtre
-                                                        }
-                                                        "" -> {
-                                                                if (aliment.nom?.contains("test") ==
-                                                                                true
-                                                                ) {
-                                                                        println(
-                                                                                "DEBUG DataB Filter - Aliment: ${aliment.nom}, dataB: ${aliment.dataB}, filter: \"\" -> true"
-                                                                        )
-                                                                }
-                                                                true // chaîne vide = pas de filtre
-                                                        }
+                                                        null -> true // null = pas de filtre
+                                                        "" -> true // chaîne vide = pas de filtre
                                                         else -> {
-                                                                val result =
-                                                                        aliment.dataB?.trim() ==
-                                                                                dataBFilter
-                                                                                        .trim() // Comparaison exacte
-                                                                if (aliment.nom?.contains("test") ==
-                                                                                true
-                                                                ) {
-                                                                        println(
-                                                                                "DEBUG DataB Filter - Aliment: ${aliment.nom}, dataB: ${aliment.dataB}, filter: $dataBFilter -> $result"
-                                                                        )
-                                                                }
-                                                                result
+                                                                aliment.dataB?.trim() ==
+                                                                        dataBFilter.trim() // Comparaison exacte
                                                         }
                                                 }
 
@@ -537,25 +506,16 @@ private fun FiltersSection(
                                                                         .filter { it.isNotEmpty() }
                                                                         .distinct()
                                                                         .sorted()
-                                                println("DEBUG DataB - Options générées: $options")
                                                 options
                                         }
                                 val selectedDataB = filters.dataB ?: ""
-                                println(
-                                        "DEBUG DataB - Valeur sélectionnée: '$selectedDataB' (filters.dataB = ${filters.dataB})"
-                                )
-                                println("DEBUG DataB - filters.hashCode: ${filters.hashCode()}")
 
                                 DropdownField(
                                         label = "Base de données",
                                         selectedValue = selectedDataB,
                                         options = dataBOptions,
                                         onValueChange = {
-                                                println("DEBUG DataB - Changement de valeur: '$it'")
                                                 val newDataB = if (it.isEmpty()) null else it
-                                                println(
-                                                        "DEBUG DataB - Ancien filters.dataB: ${filters.dataB}"
-                                                )
                                                 // Créer un nouvel objet complètement différent pour
                                                 // forcer le re-rendu
                                                 val newFilters =
@@ -571,35 +531,16 @@ private fun FiltersSection(
                                                                         filters.selectedIndications,
                                                                 dataB = newDataB
                                                         )
-                                                println(
-                                                        "DEBUG DataB - Nouveau filters.dataB: ${newFilters.dataB}"
-                                                )
-                                                println(
-                                                        "DEBUG DataB - NOUVEAU OBJET créé: ${newFilters.hashCode()}"
-                                                )
-                                                println(
-                                                        "DEBUG DataB - APPEL onFiltersChange avec: ${newFilters.dataB}"
-                                                )
                                                 onFiltersChange(newFilters)
                                         },
                                         valueToString = {
-                                                val result =
-                                                        if (it.isEmpty()) "Toutes"
-                                                        else {
-                                                                // Utilisation directe de l'enum
-                                                                // DataB - plus propre et type-safe
-                                                                val dataBEnum = DataB.fromCode(it)
-                                                                val displayName =
-                                                                        dataBEnum?.displayName ?: it
-                                                                println(
-                                                                        "DEBUG DataB - fromCode('$it') = ${dataBEnum?.name ?: "null"} -> '$displayName'"
-                                                                )
-                                                                displayName
-                                                        }
-                                                println(
-                                                        "DEBUG DataB - valueToString: '$it' -> '$result'"
-                                                )
-                                                result
+                                                if (it.isEmpty()) "Toutes"
+                                                else {
+                                                        // Utilisation directe de l'enum
+                                                        // DataB - plus propre et type-safe
+                                                        val dataBEnum = DataB.fromCode(it)
+                                                        dataBEnum?.displayName ?: it
+                                                }
                                         },
                                         modifier = Modifier.fillMaxWidth(),
                                         height = 40.dp,
@@ -716,24 +657,16 @@ private fun CompactFilters(
                                                         .filter { it.isNotEmpty() }
                                                         .distinct()
                                                         .sorted()
-                                println("DEBUG DataB Compact - Options générées: $options")
                                 options
                         }
                 val selectedDataB = filters.dataB ?: ""
-                println(
-                        "DEBUG DataB Compact - Valeur sélectionnée: '$selectedDataB' (filters.dataB = ${filters.dataB})"
-                )
 
                 DropdownField(
                         label = "Base",
                         selectedValue = selectedDataB,
                         options = dataBOptions,
                         onValueChange = {
-                                println("DEBUG DataB Compact - Changement de valeur: '$it'")
                                 val newDataB = if (it.isEmpty()) null else it
-                                println(
-                                        "DEBUG DataB Compact - Ancien filters.dataB: ${filters.dataB}"
-                                )
                                 // Créer un nouvel objet complètement différent pour forcer le
                                 // re-rendu
                                 val newFilters =
@@ -745,47 +678,27 @@ private fun CompactFilters(
                                                 selectedIndications = filters.selectedIndications,
                                                 dataB = newDataB
                                         )
-                                println(
-                                        "DEBUG DataB Compact - Nouveau filters.dataB: ${newFilters.dataB}"
-                                )
-                                println(
-                                        "DEBUG DataB Compact - NOUVEAU OBJET créé: ${newFilters.hashCode()}"
-                                )
-                                println(
-                                        "DEBUG DataB Compact - APPEL onFiltersChange avec: ${newFilters.dataB}"
-                                )
                                 onFiltersChange(newFilters)
                         },
                         valueToString = {
-                                val result =
-                                        if (it.isEmpty()) "Toutes"
-                                        else {
-                                                val displayName = DataBMapping.getDisplayName(it)
-                                                println(
-                                                        "DEBUG DataB Compact - getDisplayName('$it') = '$displayName'"
-                                                )
-                                                // Fallback si DataBMapping ne fonctionne pas
-                                                if (displayName == it) {
-                                                        val fallbackName =
-                                                                when (it) {
-                                                                        "0" -> "CIQUAL"
-                                                                        "1" -> "FCEN"
-                                                                        "2" -> "PetFood Divers"
-                                                                        "4" -> "Générique"
-                                                                        "5" -> "Aliment Barf"
-                                                                        "VF24" -> "VetFood 2024"
-                                                                        else -> it
-                                                                }
-                                                        println(
-                                                                "DEBUG DataB Compact - Fallback: '$it' -> '$fallbackName'"
-                                                        )
-                                                        fallbackName
-                                                } else {
-                                                        displayName
+                                if (it.isEmpty()) "Toutes"
+                                else {
+                                        val displayName = DataBMapping.getDisplayName(it)
+                                        // Fallback si DataBMapping ne fonctionne pas
+                                        if (displayName == it) {
+                                                when (it) {
+                                                        "0" -> "CIQUAL"
+                                                        "1" -> "FCEN"
+                                                        "2" -> "PetFood Divers"
+                                                        "4" -> "Générique"
+                                                        "5" -> "Aliment Barf"
+                                                        "VF24" -> "VetFood 2024"
+                                                        else -> it
                                                 }
+                                        } else {
+                                                displayName
                                         }
-                                println("DEBUG DataB Compact - valueToString: '$it' -> '$result'")
-                                result
+                                }
                         },
                         modifier = Modifier.weight(1f),
                         height = 40.dp,

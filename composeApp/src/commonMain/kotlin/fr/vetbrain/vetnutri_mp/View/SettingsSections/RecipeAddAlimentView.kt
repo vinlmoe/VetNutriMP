@@ -1,21 +1,13 @@
 package fr.vetbrain.vetnutri_mp.View.SettingsSections
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.*
-import androidx.compose.runtime.derivedStateOf
-import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -29,6 +21,10 @@ import fr.vetbrain.vetnutri_mp.Repository.FoodRepository
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.TextUtils
+import fr.vetbrain.vetnutri_mp.View.components.FoodSearchComponent
+import fr.vetbrain.vetnutri_mp.View.components.FoodSearchFilters
+import fr.vetbrain.vetnutri_mp.View.components.FoodSearchConfig
+import fr.vetbrain.vetnutri_mp.View.components.FoodSearchLayout
 
 /**
  * Vue pour ajouter un aliment à une recette
@@ -40,29 +36,21 @@ fun RecipeAddAlimentView(
     onAddAliment: (AlimentEv, Double) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // États pour les filtres avec debouncing
-    var searchQuery by remember { mutableStateOf("") }
-    var debouncedSearchQuery by remember { mutableStateOf("") }
-    var selectedType by remember { mutableStateOf<FoodKind?>(null) }
-    var selectedGroup by remember { mutableStateOf<GroupAlim?>(null) }
-    var selectedEspece by remember { mutableStateOf<Espece?>(null) }
-    var selectedIndic by remember { mutableStateOf<AlimIndic?>(null) }
+    // États pour les filtres de recherche
+    var searchFilters by remember { 
+        mutableStateOf(FoodSearchFilters()) 
+    }
     
     // État pour l'aliment sélectionné et la quantité
     var selectedFood by remember { mutableStateOf<AlimentEv?>(null) }
     var quantite by remember { mutableStateOf("100") }
     var quantiteError by remember { mutableStateOf(false) }
     
-    // Debouncing de la recherche (300ms)
-    LaunchedEffect(searchQuery) {
-        delay(300)
-        debouncedSearchQuery = searchQuery
-    }
-    
     // Charger les aliments
     val allFoods = remember {
         mutableStateListOf<AlimentEv>()
     }
+    var isLoading by remember { mutableStateOf(true) }
     
     LaunchedEffect(Unit) {
         try {
@@ -73,31 +61,15 @@ fun RecipeAddAlimentView(
                 kotlinx.coroutines.withContext(fr.vetbrain.vetnutri_mp.Utils.AppDispatchers.Main) {
                     allFoods.clear()
                     allFoods.addAll(foods)
+                    isLoading = false
                     println("🔍 RecipeAddAlimentView: ${allFoods.size} aliments ajoutés à la liste locale")
                 }
             }
         } catch (e: Exception) {
             println("❌ RecipeAddAlimentView: Erreur lors du chargement: ${e.message}")
             e.printStackTrace()
+            isLoading = false
         }
-    }
-    
-    // Filtrer les aliments selon les critères avec debouncing
-    val filteredFoods by derivedStateOf {
-        val filtered = allFoods.filter { aliment ->
-            val matchesSearch = debouncedSearchQuery.isEmpty() || 
-                aliment.nom?.contains(debouncedSearchQuery, ignoreCase = true) == true ||
-                aliment.brand?.contains(debouncedSearchQuery, ignoreCase = true) == true
-            
-            val matchesType = selectedType == null || aliment.typeAliment == selectedType
-            val matchesGroup = selectedGroup == null || aliment.group == selectedGroup
-            val matchesEspece = selectedEspece == null || aliment.getEspecesList().contains(selectedEspece)
-            val matchesIndic = selectedIndic == null || aliment.getIndications().contains(selectedIndic)
-            
-            matchesSearch && matchesType && matchesGroup && matchesEspece && matchesIndic
-        }
-        println("🔍 RecipeAddAlimentView: Filtrage - ${allFoods.size} aliments totaux, ${filtered.size} après filtrage")
-        filtered
     }
     
     Scaffold(
@@ -149,89 +121,28 @@ fun RecipeAddAlimentView(
             modifier = Modifier.fillMaxSize().padding(AppSizes.paddingMedium),
             horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
         ) {
-            // Colonne gauche - Filtres et liste (60% de l'espace)
+            // Colonne gauche - Recherche d'aliments (60% de l'espace)
             Column(
                 modifier = Modifier.weight(0.6f).fillMaxHeight(),
                 verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
             ) {
-                // Barre de recherche
-                BasicAppTextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
-                    placeholder = "Rechercher un aliment...",
+                // Utilisation du composant FoodSearchComponent
+                FoodSearchComponent(
+                    foods = allFoods,
+                    filters = searchFilters,
+                    onFiltersChange = { searchFilters = it },
+                    config = FoodSearchConfig(
+                        showFilters = true,
+                        showSearchBar = true,
+                        showResultsCount = true,
+                        layout = FoodSearchLayout.VERTICAL,
+                        onFoodSelected = { aliment -> selectedFood = aliment },
+                        availableActions = emptyList(),
+                        isLoading = isLoading,
+                        selectedFood = selectedFood
+                    ),
                     modifier = Modifier.fillMaxWidth()
                 )
-                
-               
-                // Filtres simplifiés
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
-                ) {
-                    // Type d'aliment
-                    OutlinedTextField(
-                        value = selectedType?.translateEnum() ?: "Tous types",
-                        onValueChange = { },
-                        readOnly = true,
-                        label = { Text("Type") },
-                        modifier = Modifier.weight(1f),
-                        singleLine = true
-                    )
-                    
-                    // Groupe d'aliment
-                    OutlinedTextField(
-                        value = selectedGroup?.translateEnum() ?: "Tous groupes",
-                        onValueChange = { },
-                        readOnly = true,
-                        label = { Text("Groupe") },
-                        modifier = Modifier.weight(1f),
-                        singleLine = true
-                    )
-                }
-                
-                // Liste des aliments
-                if (allFoods.isEmpty()) {
-                    Box(
-                        modifier = Modifier.weight(1f),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator()
-                    }
-                } else {
-                    LazyColumn(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        state = rememberLazyListState(),
-                        contentPadding = PaddingValues(vertical = 8.dp)
-                    ) {
-                        if (filteredFoods.isEmpty()) {
-                            item {
-                                Box(
-                                    modifier = Modifier.fillMaxWidth().padding(16.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = "Aucun aliment trouvé\nEssayez de modifier vos filtres",
-                                        style = MaterialTheme.typography.body1,
-                                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f),
-                                        textAlign = TextAlign.Center
-                                    )
-                                }
-                            }
-                        } else {
-                            items(
-                                items = filteredFoods,
-                                key = { it.uuid } // Optimisation avec des clés uniques
-                            ) { aliment ->
-                                AlimentListItem(
-                                    aliment = aliment,
-                                    isSelected = selectedFood?.uuid == aliment.uuid,
-                                    onClick = { selectedFood = aliment }
-                                )
-                            }
-                        }
-                    }
-                }
             }
             
             // Colonne droite - Détails de l'aliment sélectionné (40% de l'espace)
@@ -274,72 +185,6 @@ fun RecipeAddAlimentView(
     }
 }
 
-/** Composant pour afficher un aliment dans la liste */
-@Composable
-private fun AlimentListItem(aliment: AlimentEv, isSelected: Boolean, onClick: () -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth().clickable { onClick() },
-        elevation = if (isSelected) AppSizes.elevationMedium else AppSizes.elevationSmall,
-        backgroundColor = if (isSelected) VetNutriColors.Primary.copy(alpha = 0.1f) else MaterialTheme.colors.surface
-    ) {
-        Column(modifier = Modifier.padding(AppSizes.paddingMedium)) {
-            // Nom de l'aliment
-            Text(
-                text = aliment.nom ?: "Sans nom",
-                style = MaterialTheme.typography.subtitle1,
-                fontWeight = FontWeight.Bold
-            )
-            
-            // Marque et gamme sur la même ligne
-            if (!aliment.brand.isNullOrEmpty() || !aliment.gamme.isNullOrEmpty()) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    aliment.brand?.let {
-                        Text(
-                            text = it,
-                            style = MaterialTheme.typography.body2,
-                            color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f),
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                    aliment.gamme?.let {
-                        Text(
-                            text = it,
-                            style = MaterialTheme.typography.caption,
-                            color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f),
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                }
-            }
-            
-            // Type et groupe sur la même ligne
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                aliment.typeAliment?.takeIf { it != FoodKind.ALL }?.let { type ->
-                    Text(
-                        text = type.translateEnum(),
-                        style = MaterialTheme.typography.caption,
-                        color = VetNutriColors.Primary,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-                aliment.group?.takeIf { it != GroupAlim.ALL }?.let { group ->
-                    Text(
-                        text = group.translateEnum(),
-                        style = MaterialTheme.typography.caption,
-                        color = VetNutriColors.Primary,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-            }
-        }
-    }
-}
 
 /** Panneau de détails de l'aliment sélectionné */
 @Composable
