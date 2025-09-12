@@ -123,152 +123,9 @@ fun AnalyseNutritionnelleCard(
                 }
             }
 
-    // Appliquer les équations complémentaires sélectionnées (si présentes)
-    val selectedEquationUuidsKey =
-            remember(referenceUtilisee) {
-                referenceUtilisee?.equationsNut?.joinToString("|") { it.uuid } ?: ""
-            }
-    val valeursNutritionnelles =
-            remember(valeursNutritionnellesBase, referenceUtilisee, selectedEquationUuidsKey) {
-                val baseMap = valeursNutritionnellesBase.toMutableMap()
-                try {
-                    if (referenceUtilisee != null) {
-                        val selectedEquationUuids = referenceUtilisee.equationsNut.map { it.uuid }
-                        
-                        if (selectedEquationUuids.isNotEmpty()) {
-                            val equationRepo = equationRepository
-
-                            // Préparer les variables globales pour l’évaluation (ration + animal)
-                            // Récupérées dans EquationEvaluator.evaluerBesoinNutritionnel côté
-                            // repository
-
-                            // Récupérer toutes les équations une fois et indexer par UUID pour
-                            // éviter
-                            // les incohérences de lookup
-                            val eqMap: Map<String, fr.vetbrain.vetnutri_mp.Data.Equation> =
-                                    try {
-                                        val all =
-                                                kotlinx.coroutines.runBlocking {
-                                                    equationRepo?.getAllEquations() ?: emptyList()
-                                                }
-                                        
-                                        all.associateBy { it.uuid }
-                                    } catch (e: Exception) {
-                                        
-                                        emptyMap()
-                                    }
-
-                            // Pour chaque équation sélectionnée, calculer sa contribution et
-                            // l’ajouter au nutriment correspondant
-                            selectedEquationUuids.forEach { eqId ->
-                                
-                                val eq = eqMap[eqId]
-                                if (eq == null) {
-                                    
-                                }
-                                if (eq != null &&
-                                                eq.kind ==
-                                                        fr.vetbrain.vetnutri_mp.Enumer.EquationKind
-                                                                .COMPLEMENTARY_NUTRIENT &&
-                                                eq.nutrient != null
-                                ) {
-                                    
-                                    val poids = (animal?.consultations?.lastOrNull()?.weight ?: 0.0)
-                                    val bee = (animal?.getBEE() ?: 0.0)
-                                    val mw =
-                                            if (poids > 0)
-                                                    fr.vetbrain.vetnutri_mp.Utils.EquationEvaluator
-                                                            .calculerPoidsMetabolique(poids)
-                                                            .toDouble()
-                                            else 0.0
-                                    
-                                    val valeur =
-                                            if (eq.ratio) {
-                                                fr.vetbrain.vetnutri_mp.Utils.EquationEvaluator
-                                                        .evaluerBesoinNutritionnelAvecComplementairesBlocking(
-                                                                expression = eq.equationScript,
-                                                                poidsCorps = poids,
-                                                                besoinEnergetique = bee,
-                                                                poidsMetabolique = mw,
-                                                                variablesSupp =
-                                                                        (animal?.consultations
-                                                                                ?.lastOrNull()
-                                                                                ?.suppVarp
-                                                                                ?: mutableListOf()),
-                                                                ration = ration,
-                                                                preferences =
-                                                                        (kotlinx.coroutines
-                                                                                .runBlocking {
-                                                                                    preferencesRepository
-                                                                                            ?.getPreferencesForSpecies(
-                                                                                                    ration.getEspece()
-                                                                                            )
-                                                                                }
-                                                                                ?: fr.vetbrain
-                                                                                        .vetnutri_mp
-                                                                                        .Data
-                                                                                        .PreferencesEspece
-                                                                                        .createDefault(
-                                                                                                ration.getEspece()
-                                                                                        )),
-                                                                equationRepository =
-                                                                        equationRepository!!,
-                                                                referenceEv = referenceUtilisee
-                                                        )
-                                                        ?: 0.0
-                                            } else 0.0
-                                    
-                                    val nutrient = eq.nutrient!!
-                                    val label = nutrient.translateEnum()
-                                    val existante = baseMap[label]
-
-                                    if (existante != null) {
-                                        if (eq.ratio) {
-                                            
-                                            baseMap[label] = existante.copy(valeur = valeur)
-                                        } else {
-                                            // Ne plus additionner au total ici (calcul déjà par
-                                            // aliment)
-                                            
-                                        }
-                                    } else {
-                                        
-                                        if (eq.ratio) {
-                                            baseMap[label] =
-                                                    ValeurNutritionnelle(
-                                                            nutriment = nutrient,
-                                                            unite = nutrient.ue,
-                                                            valeur = valeur,
-                                                            description = "Calculé par équation",
-                                                            complete = true
-                                                    )
-                                        } else {
-                                            // Pas de création au niveau ration pour non-ratio
-                                            
-                                        }
-                                    }
-                                }
-                                if (eq != null && eq.nutrient == null) {
-                                    
-                                }
-                                if (eq != null &&
-                                                eq.kind !=
-                                                        fr.vetbrain.vetnutri_mp.Enumer.EquationKind
-                                                                .COMPLEMENTARY_NUTRIENT
-                                ) {
-                                    
-                                }
-                            }
-                        } else {
-                            val specieName = referenceUtilisee?.espece?.name ?: "?"
-                            
-                        }
-                    }
-                } catch (e: Exception) {
-                    
-                }
-                baseMap
-            }
+    // Les équations complémentaires sont déjà appliquées dans analyserValeursNutritionnellesRationAvecEquations
+    // via getNutrientWithComplementary, donc on utilise directement les valeurs de base
+    val valeursNutritionnelles = valeursNutritionnellesBase
 
     // Grouper les nutriments par catégorie
     val nutrimentsGroupes =
@@ -444,6 +301,34 @@ fun AnalyseNutritionnelleCard(
                                     val typeExpr =
                                             finalTypeExpressionBesoin
                                                     ?: TypeExpressionBesoin.DEFAULT
+                                    
+                                    // Convertir la valeur selon l'unité des préférences pour le graphique bullet
+                                    val apportConverti = when (typeExpr) {
+                                        TypeExpressionBesoin.PAR_KG -> {
+                                            poidsAnimal?.let { poids ->
+                                                if (poids > 0) apport / poids else apport
+                                            } ?: apport
+                                        }
+                                        TypeExpressionBesoin.PAR_KG_METABOLIQUE -> {
+                                            poidsMetabolique?.let { poidsMetab ->
+                                                if (poidsMetab > 0) apport / poidsMetab else apport
+                                            } ?: apport
+                                        }
+                                        TypeExpressionBesoin.PAR_KCAL -> {
+                                            besoinEnergetiqueEntretien?.let { bee ->
+                                                if (bee > 0) (apport / bee) * 1000 else apport
+                                            } ?: apport
+                                        }
+                                        TypeExpressionBesoin.PAR_KJ -> {
+                                            besoinEnergetiqueEntretien?.let { bee ->
+                                                if (bee > 0) {
+                                                    val beeEnKj = bee * 4.184
+                                                    (apport / beeEnKj) * 1000
+                                                } else apport
+                                            } ?: apport
+                                        }
+                                    }
+                                    
                                     if (referenceUtilisee != null) {
                                         Row(
                                                 verticalAlignment = Alignment.CenterVertically,
@@ -460,7 +345,7 @@ fun AnalyseNutritionnelleCard(
                                             )
                                             Box(modifier = Modifier.weight(1f)) {
                                                 ReferenceBulletGraph(
-                                                        valeurApport = apport,
+                                                        valeurApport = apportConverti,
                                                         reference = referenceUtilisee,
                                                         nutriment = valeur.nutriment,
                                                         typeExpressionBesoin = typeExpr,
