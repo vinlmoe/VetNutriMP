@@ -58,26 +58,6 @@ fun SettingsTabs(selectedTab: Int, onTabSelected: (Int) -> Unit, modifier: Modif
             )
 
     Column(modifier = modifier) {
-        // En-tête avec titre principal
-        Row(
-                modifier = Modifier.fillMaxWidth().padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                    imageVector = Icons.Default.Settings,
-                    contentDescription = null,
-                    tint = VetNutriColors.Primary,
-                    modifier = Modifier.size(32.dp)
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            Text(
-                    text = "Paramètres",
-                    style = MaterialTheme.typography.h5,
-                    color = VetNutriColors.Primary,
-                    fontWeight = FontWeight.Bold
-            )
-        }
-
         // Navigation par onglets avec animations
         TabRow(
                 selectedTabIndex = selectedTab,
