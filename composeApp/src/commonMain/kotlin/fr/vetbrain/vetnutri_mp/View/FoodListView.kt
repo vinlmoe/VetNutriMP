@@ -46,12 +46,10 @@ fun FoodListView(
         val foods: List<AlimentEv> = viewModel.foods.collectAsState().value
         val searchQuery = viewModel.searchQuery.collectAsState().value
         val selectedFoodType = viewModel.selectedFoodType.collectAsState().value
-        val selectedFoodGroup = viewModel.selectedFoodGroup.collectAsState().value
         val selectedEspece = viewModel.selectedEspece.collectAsState().value
         val selectedIndication = viewModel.selectedIndication.collectAsState().value
         val selectedDataB = viewModel.selectedDataB.collectAsState().value
         val availableFoodTypes = viewModel.availableFoodTypes.collectAsState().value
-        val availableFoodGroups = viewModel.availableFoodGroups.collectAsState().value
         val availableIndications = viewModel.availableIndications.collectAsState().value
         val availableEspeces = viewModel.availableEspeces
         val coroutineScope = rememberCoroutineScope()
@@ -60,7 +58,6 @@ fun FoodListView(
         val filters = remember(
                 searchQuery,
                 selectedFoodType,
-                selectedFoodGroup,
                 selectedEspece,
                 selectedIndication,
                 selectedDataB
@@ -68,7 +65,7 @@ fun FoodListView(
                 FoodSearchFilters(
                         searchQuery = searchQuery,
                         selectedFoodType = selectedFoodType,
-                        selectedFoodGroup = selectedFoodGroup,
+                        selectedFoodGroup = null, // Pas de filtre par groupe
                         selectedEspece = selectedEspece,
                         selectedIndications = if (selectedIndication != null) setOf(selectedIndication) else emptySet(),
                         dataB = selectedDataB
@@ -135,7 +132,7 @@ fun FoodListView(
                                         println("DEBUG FoodListView - onFiltersChange appelé avec dataB: ${newFilters.dataB}")
                                         viewModel.setSearchQuery(newFilters.searchQuery)
                                         viewModel.setSelectedFoodType(newFilters.selectedFoodType)
-                                        viewModel.setSelectedFoodGroup(newFilters.selectedFoodGroup)
+                                        // Pas de setSelectedFoodGroup car on ne filtre plus par groupe
                                         viewModel.setSelectedEspece(newFilters.selectedEspece)
                                         newFilters.selectedIndications.firstOrNull()?.let { indication ->
                                                 viewModel.setSelectedIndication(indication)
