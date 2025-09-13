@@ -40,16 +40,12 @@ coreKtx = "1.6.1"
 composeTest = "1.7.8"
 junitJupiter = "5.9.3"
 koalaPlot = "0.9.0"
-
 pagingComposeAndroid = "3.3.5"
 junitVersion = "4.13.2"
-
 sqliteBundled = "2.5.0-beta01"
-skikoAwt = "0.8.25"
 coroutines = "1.7.3"
 materialIconsExtended = "1.7.8"
 jansi = "2.4.1"
-
 
 [libraries]
 koalaPlot-core = { module = "io.github.koalaplot:koalaplot-core", version.ref = "koalaPlot" }
@@ -109,7 +105,7 @@ junit-junit = { group = "junit", name = "junit", version.ref = "junitVersion" }
 junit-jupiter = { group = "org.junit.jupiter", name = "junit-jupiter", version.ref = "junitJupiter" }
 
 androidx-sqlite-bundled = { group = "androidx.sqlite", name = "sqlite-bundled", version.ref = "sqliteBundled" }
-skiko-awt = { group = "org.jetbrains.skiko", name = "skiko-awt", version.ref = "skikoAwt" }
+# skiko supprimé volontairement pour multiplatforme
 
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
 kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "kotlinx-coroutines" }
