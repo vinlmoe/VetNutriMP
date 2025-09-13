@@ -24,16 +24,13 @@ kotlin {
 
     jvm("desktop")
 
-
-
     sourceSets {
         sourceSets.iosMain { kotlin.srcDir("build/generated/ksp/metadata") }
+
         androidMain.dependencies {
             implementation(libs.androidx.activity.compose)
             implementation(libs.androidx.room.runtime)
             implementation(libs.androidx.room.paging)
-            // implementation(libs.androidx.sqlite.sqlite.ktx)
-
         }
 
         commonMain.dependencies {
@@ -55,7 +52,6 @@ kotlin {
             implementation(libs.androidx.room.runtime)
             implementation(libs.androidx.room.paging)
             implementation(libs.okio)
-            implementation(libs.okio)
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.kotlinx.datetime)
             implementation(libs.kotlinx.serialization.core)
@@ -68,24 +64,15 @@ kotlin {
 
         val desktopMain by getting {
             dependencies {
+                implementation(compose.desktop.currentOs) // ✅ auto-resolve skiko
                 implementation(libs.kotlinx.coroutines.core)
                 implementation(libs.kotlinx.coroutines.test)
                 implementation(libs.kotlinx.coroutines.swing)
-                implementation(compose.desktop.macos_arm64)
-                implementation(libs.skiko.awt)
-                //  implementation(libs.junit.jupiter)
-                // implementation(libs.junit.junit)
-
-                /*    implementation(libs.xerial.sqlite.jdbc)
-                implementation(libs.androidx.sqlite.sqlite.framework3)
-                implementation(libs.androidx.sqlite.sqlite.ktx)*/
-                implementation(libs.compose.ui.test.manifest)
                 implementation("com.openhtmltopdf:openhtmltopdf-core:1.0.10")
                 implementation("com.openhtmltopdf:openhtmltopdf-pdfbox:1.0.10")
+                implementation(libs.compose.ui.test.manifest)
             }
         }
-
-
 
         val iosMain by getting {
             kotlin.srcDir("build/generated/ksp/metadata")
@@ -112,9 +99,6 @@ android {
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 17
         versionName = "3.1.16B"
-
-        // Configuration de Room
-
     }
 
     packaging {
@@ -134,7 +118,9 @@ android {
     }
 }
 
-dependencies { debugImplementation(compose.uiTooling) }
+dependencies {
+    debugImplementation(compose.uiTooling)
+}
 
 compose.desktop {
     application {
@@ -145,7 +131,6 @@ compose.desktop {
             packageName = "fr.vetbrain.vetnutri_mp"
             packageVersion = "3.1.16"
 
-            // Configuration des icônes pour chaque plateforme
             macOS { iconFile.set(project.file("src/desktopMain/resources/icon.icns")) }
             windows { iconFile.set(project.file("src/desktopMain/resources/icon.ico")) }
             linux { iconFile.set(project.file("src/desktopMain/resources/icon.png")) }
@@ -155,20 +140,18 @@ compose.desktop {
 
 dependencies {
     implementation("org.jetbrains.compose.material:material-icons-extended:1.7.3")
-    implementation(libs.skiko.awt)
     implementation(libs.androidx.sqlite.bundled)
     implementation(kotlin("test"))
     implementation(kotlin("test-common"))
     implementation(kotlin("test-annotations-common"))
-    //  add("kspCommonMainMetadata", libs.androidx.room.compiler)
+
     add("kspAndroid", libs.androidx.room.compiler)
     add("kspIosSimulatorArm64", libs.androidx.room.compiler)
     add("kspIosX64", libs.androidx.room.compiler)
     add("kspIosArm64", libs.androidx.room.compiler)
     add("kspDesktop", libs.androidx.room.compiler)
-    implementation("io.github.kevinnzou:compose-webview-multiplatform:1.9.40")
 
-    // Reorderable - Drag and Drop pour Compose
+    implementation("io.github.kevinnzou:compose-webview-multiplatform:1.9.40")
     implementation("org.burnoutcrew.composereorderable:reorderable:0.9.6")
 }
 
