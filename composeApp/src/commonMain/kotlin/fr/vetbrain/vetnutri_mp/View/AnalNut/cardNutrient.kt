@@ -22,6 +22,7 @@ import fr.vetbrain.vetnutri_mp.Repository.PreferencesRepository
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.TextUtils
+import kotlinx.coroutines.runBlocking
 
 /**
  * Obtient le nom traduit d'un nutriment selon son type en utilisant les traductions JSON
@@ -116,25 +117,47 @@ fun AnalyseNutritionnelleCard(
             ) {
                 // Utiliser les équations complémentaires depuis la ReferenceEv si disponible
                 if (referenceUtilisee != null && equationRepository != null) {
-                    fr.vetbrain.vetnutri_mp.Data.analyserValeursNutritionnellesRationAvecEquations(
-                            ration = ration,
-                            preferencesEspece = PreferencesEspece(),
-                            equationRepository = equationRepository,
-                            referenceEv = referenceUtilisee
-                    )
+                    // Créer les préférences de l'espèce à partir de l'animal
+                    val preferencesEspece = animal?.let { 
+                        runBlocking { preferencesRepository?.getPreferencesForSpecies(it.getEspece()) }
+                    } ?: PreferencesEspece()
+                    
+                    println("DEBUG CARD: Utilisation des équations complémentaires avec ReferenceEv")
+                    println("DEBUG CARD: Animal: ${animal?.nom}, Espèce: ${animal?.getEspece()}")
+                    println("DEBUG CARD: Préférences chargées: ${preferencesEspece != PreferencesEspece()}")
+                    
+                    val resultat = runBlocking {
+                        fr.vetbrain.vetnutri_mp.Data.analyserValeursNutritionnellesRationAvecEquations(
+                                ration = ration,
+                                preferencesEspece = preferencesEspece,
+                                equationRepository = equationRepository,
+                                referenceEv = referenceUtilisee
+                        )
+                    }
+                    resultat
                 } else {
                     analyserValeursNutritionnellesRation(ration)
                 }
             } else {
                 // Mode filtré: intégrer aussi les équations si disponibles via la ReferenceEv
                 if (referenceUtilisee != null && equationRepository != null) {
-                    fr.vetbrain.vetnutri_mp.Data.analyserValeursNutritionnellesRationSelective(
-                            ration = ration,
-                            nutrimentsSelectionnes = nutrimentsSelectionnes,
-                            preferencesEspece = null,
-                            equationRepository = equationRepository,
-                            referenceEv = referenceUtilisee
-                    )
+                    // Créer les préférences de l'espèce à partir de l'animal
+                    val preferencesEspece = animal?.let { 
+                        runBlocking { preferencesRepository?.getPreferencesForSpecies(it.getEspece()) }
+                    } ?: PreferencesEspece()
+                    
+                    println("DEBUG CARD: Mode filtré - Utilisation des équations complémentaires")
+                    
+                    val resultat = runBlocking {
+                        fr.vetbrain.vetnutri_mp.Data.analyserValeursNutritionnellesRationSelective(
+                                ration = ration,
+                                nutrimentsSelectionnes = nutrimentsSelectionnes,
+                                preferencesEspece = preferencesEspece,
+                                equationRepository = equationRepository,
+                                referenceEv = referenceUtilisee
+                        )
+                    }
+                    resultat
                 } else {
                     analyserValeursNutritionnellesRationSelective(ration, nutrimentsSelectionnes)
                 }
