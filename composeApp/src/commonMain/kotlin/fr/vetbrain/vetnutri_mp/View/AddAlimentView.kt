@@ -50,7 +50,6 @@ fun AddAlimentView(
 ) {
         // États pour les filtres - maintenant gérés par FoodSearchComponent
         var filters by remember { mutableStateOf(FoodSearchFilters()) }
-        var filtersVersion by remember { mutableStateOf(0) }
 
         // État pour l'aliment sélectionné
         var selectedFood by remember { mutableStateOf<AlimentEv?>(null) }
@@ -135,23 +134,19 @@ fun AddAlimentView(
                                         modifier = Modifier.weight(0.6f).fillMaxHeight(),
                                         verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
                                 ) {
-                                        // Utilisation du composant partagé FoodSearchComponent
-                                        key(filtersVersion) {
-                                            FoodSearchComponent(
-                                                foods = availableFoods,
-                                                filters = filters,
-                                                onFiltersChange = {
-                                                    println("DEBUG AddAlimentView - onFiltersChange appelé avec dataB: ${it.dataB}")
-                                                    println("DEBUG AddAlimentView - Ancien filters.dataB: ${filters.dataB}")
-                                                    filters = it
-                                                    filtersVersion++
-                                                    println("DEBUG AddAlimentView - Nouveau filters.dataB: ${filters.dataB}")
-                                                    println("DEBUG AddAlimentView - filtersVersion: $filtersVersion")
-                                                },
-                                                config = searchConfig,
-                                                modifier = Modifier.fillMaxSize()
-                                            )
-                                        }
+                                // Utilisation du composant partagé FoodSearchComponent
+                                FoodSearchComponent(
+                                    foods = availableFoods,
+                                    filters = filters,
+                                    onFiltersChange = {
+                                        println("DEBUG AddAlimentView - onFiltersChange appelé avec dataB: ${it.dataB}")
+                                        println("DEBUG AddAlimentView - Ancien filters.dataB: ${filters.dataB}")
+                                        filters = it
+                                        println("DEBUG AddAlimentView - Nouveau filters.dataB: ${filters.dataB}")
+                                    },
+                                    config = searchConfig,
+                                    modifier = Modifier.fillMaxSize()
+                                )
                                 }
 
                                                         // Colonne droite - Détails de l'aliment sélectionné (40% de l'espace)
