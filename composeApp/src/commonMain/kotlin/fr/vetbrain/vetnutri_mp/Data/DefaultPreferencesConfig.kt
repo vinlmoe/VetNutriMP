@@ -173,11 +173,12 @@ object DefaultPreferencesConfig {
         // 2,  // DEDM (Densité énergétique matière sèche)
         // 4,  // K, PERC, BEE, BE, MW, KPRED (coefficients)
         
-        /** NutrientAnalysis (Analyses et ratios - vide par défaut) */
-        val ANA: List<Int> = emptyList()
+        /** NutrientAnalysis (Analyses et ratios - CAP sélectionné par défaut) */
+        val ANA: List<Int> = listOf(
+            1   // P/Ca (Rapport phosphocalcique) - CAP
+        )
         // NutrientAnalysis disponibles (non sélectionnés par défaut) :
         // 0,  // K/Na (Rapport potassium/sodium)
-        // 1,  // P/Ca (Rapport phosphocalcique)
         // 2,  // O6/O3 (Rapport oméga 6/oméga 3)
         // 3,  // Zn/Cu (Rapport zinc/cuivre)
         // 4,  // Prot/P (Rapport protéines/phosphore)

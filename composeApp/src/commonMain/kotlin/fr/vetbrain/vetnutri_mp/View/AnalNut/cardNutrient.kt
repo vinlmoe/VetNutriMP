@@ -122,9 +122,6 @@ fun AnalyseNutritionnelleCard(
                         runBlocking { preferencesRepository?.getPreferencesForSpecies(it.getEspece()) }
                     } ?: PreferencesEspece()
                     
-                    println("DEBUG CARD: Utilisation des équations complémentaires avec ReferenceEv")
-                    println("DEBUG CARD: Animal: ${animal?.nom}, Espèce: ${animal?.getEspece()}")
-                    println("DEBUG CARD: Préférences chargées: ${preferencesEspece != PreferencesEspece()}")
                     
                     val resultat = runBlocking {
                         fr.vetbrain.vetnutri_mp.Data.analyserValeursNutritionnellesRationAvecEquations(
@@ -146,7 +143,6 @@ fun AnalyseNutritionnelleCard(
                         runBlocking { preferencesRepository?.getPreferencesForSpecies(it.getEspece()) }
                     } ?: PreferencesEspece()
                     
-                    println("DEBUG CARD: Mode filtré - Utilisation des équations complémentaires")
                     
                     val resultat = runBlocking {
                         fr.vetbrain.vetnutri_mp.Data.analyserValeursNutritionnellesRationSelective(
