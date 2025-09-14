@@ -159,7 +159,9 @@ fun AnalyseNutritionnelleCard(
                     }
                     resultat
                 } else {
-                    analyserValeursNutritionnellesRationSelective(ration, nutrimentsSelectionnes)
+                    runBlocking {
+                        analyserValeursNutritionnellesRationSelective(ration, nutrimentsSelectionnes)
+                    }
                 }
             }
 
@@ -910,6 +912,15 @@ private fun obtenirIconeConformite(
         val nutrient = valeurNutritionnelle.nutriment
         val apportAbsolu = valeurNutritionnelle.valeur
         var hasReferences = false
+        
+        // Vérifier si c'est un nutriment de ratio (calculé par équation)
+        val isNutrimentRatio = when (nutrient) {
+            is fr.vetbrain.vetnutri_mp.Enumer.NutrientAnalysis -> {
+                // Les nutriments d'analyse avec une unité vide sont des ratios
+                nutrient.unite.isEmpty()
+            }
+            else -> false
+        }
 
         // Vérifier les minimums (MIN et OPTIMIN)
         listOf(Reflevel.MIN, Reflevel.OPTIMIN).forEach { level ->
@@ -918,14 +929,19 @@ private fun obtenirIconeConformite(
                 val valeurRef = reference.obtenirNutriment(nutrient, level)
                 val uniteRef = UnitReqEnum.getById(reference.obtenirUniteNutriment(nutrient, level))
 
-                val besoinAbsolu =
-                        calculerBesoinAbsoluLocal(
-                                valeurRef,
-                                uniteRef,
-                                besoinEnergetiqueEntretien,
-                                poidsAnimal,
-                                poidsMetabolique
-                        )
+                val besoinAbsolu = if (isNutrimentRatio) {
+                    // Pour les ratios, utiliser directement la valeur de référence
+                    // car ils ne dépendent pas du poids ou de l'énergie
+                    valeurRef
+                } else {
+                    calculerBesoinAbsoluLocal(
+                            valeurRef,
+                            uniteRef,
+                            besoinEnergetiqueEntretien,
+                            poidsAnimal,
+                            poidsMetabolique
+                    )
+                }
 
                 besoinAbsolu?.let { besoin ->
                     if (apportAbsolu < besoin) {
@@ -951,14 +967,19 @@ private fun obtenirIconeConformite(
                 val valeurRef = reference.obtenirNutriment(nutrient, level)
                 val uniteRef = UnitReqEnum.getById(reference.obtenirUniteNutriment(nutrient, level))
 
-                val besoinAbsolu =
-                        calculerBesoinAbsoluLocal(
-                                valeurRef,
-                                uniteRef,
-                                besoinEnergetiqueEntretien,
-                                poidsAnimal,
-                                poidsMetabolique
-                        )
+                val besoinAbsolu = if (isNutrimentRatio) {
+                    // Pour les ratios, utiliser directement la valeur de référence
+                    // car ils ne dépendent pas du poids ou de l'énergie
+                    valeurRef
+                } else {
+                    calculerBesoinAbsoluLocal(
+                            valeurRef,
+                            uniteRef,
+                            besoinEnergetiqueEntretien,
+                            poidsAnimal,
+                            poidsMetabolique
+                    )
+                }
 
                 besoinAbsolu?.let { besoin ->
                     if (apportAbsolu > besoin) {
@@ -992,20 +1013,35 @@ private fun obtenirIconeConformite(
     referencesMaladies.forEach { refMaladie ->
         val nutrient = valeurNutritionnelle.nutriment
         val apportAbsolu = valeurNutritionnelle.valeur
+        
+        // Vérifier si c'est un nutriment de ratio pour les références de maladies aussi
+        val isNutrimentRatio = when (nutrient) {
+            is fr.vetbrain.vetnutri_mp.Enumer.NutrientAnalysis -> {
+                // Les nutriments d'analyse avec une unité vide sont des ratios
+                nutrient.unite.isEmpty()
+            }
+            else -> false
+        }
+        
         // Contrôle MIN/MAX maladie
         listOf(Reflevel.MIN, Reflevel.MAX).forEach { level ->
             if (refMaladie.contientNutriment(nutrient, level)) {
                 val valeurRef = refMaladie.obtenirNutriment(nutrient, level)
                 val uniteRef =
                         UnitReqEnum.getById(refMaladie.obtenirUniteNutriment(nutrient, level))
-                val besoinAbsolu =
-                        calculerBesoinAbsoluLocal(
-                                valeurRef,
-                                uniteRef,
-                                besoinEnergetiqueEntretien,
-                                poidsAnimal,
-                                poidsMetabolique
-                        )
+                val besoinAbsolu = if (isNutrimentRatio) {
+                    // Pour les ratios, utiliser directement la valeur de référence
+                    // car ils ne dépendent pas du poids ou de l'énergie
+                    valeurRef
+                } else {
+                    calculerBesoinAbsoluLocal(
+                            valeurRef,
+                            uniteRef,
+                            besoinEnergetiqueEntretien,
+                            poidsAnimal,
+                            poidsMetabolique
+                    )
+                }
                 besoinAbsolu?.let { besoin ->
                     val violation =
                             (level == Reflevel.MIN && apportAbsolu < besoin) ||
