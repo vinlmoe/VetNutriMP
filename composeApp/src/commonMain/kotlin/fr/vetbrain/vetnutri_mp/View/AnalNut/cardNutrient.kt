@@ -334,15 +334,36 @@ fun AnalyseNutritionnelleCard(
                                                 verticalAlignment = Alignment.CenterVertically,
                                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                                         ) {
-                                            Text(
-                                                    text = nom,
-                                                    style = MaterialTheme.typography.caption,
-                                                    color =
-                                                            MaterialTheme.colors.onSurface.copy(
-                                                                    alpha = 0.8f
-                                                            ),
-                                                    modifier = Modifier.width(140.dp)
+                                            // Calculer l'affichage selon les préférences
+                                            val (valeurAffichee, uniteAffichee) = calculerAffichageNutriment(
+                                                    valeurNutritionnelle = valeur,
+                                                    typeExpressionBesoin = typeExpr,
+                                                    poidsMetabolique = poidsMetabolique,
+                                                    poidsAnimal = poidsAnimal,
+                                                    besoinEnergetiqueEntretien = besoinEnergetiqueEntretien
                                             )
+                                            
+                                            Column(
+                                                    modifier = Modifier.width(200.dp)
+                                            ) {
+                                                Text(
+                                                        text = nom,
+                                                        style = MaterialTheme.typography.caption,
+                                                        color =
+                                                                MaterialTheme.colors.onSurface.copy(
+                                                                        alpha = 0.8f
+                                                                ),
+                                                        fontWeight = FontWeight.Bold
+                                                )
+                                                Text(
+                                                        text = "$valeurAffichee $uniteAffichee",
+                                                        style = MaterialTheme.typography.overline,
+                                                        color =
+                                                                MaterialTheme.colors.onSurface.copy(
+                                                                        alpha = 0.6f
+                                                                )
+                                                )
+                                            }
                                             Box(modifier = Modifier.weight(1f)) {
                                                 ReferenceBulletGraph(
                                                         valeurApport = apportConverti,
@@ -359,12 +380,28 @@ fun AnalyseNutritionnelleCard(
                                             }
                                         }
                                     } else {
-                                        Text(
-                                                text =
-                                                        "$nom: ${TextUtils.formatDecimal(apport.toDouble(), 2)} ${valeur.unite.displayName}",
-                                                style = MaterialTheme.typography.caption,
-                                                color = MaterialTheme.colors.onSurface
+                                        // Calculer l'affichage selon les préférences même sans référence
+                                        val (valeurAffichee, uniteAffichee) = calculerAffichageNutriment(
+                                                valeurNutritionnelle = valeur,
+                                                typeExpressionBesoin = typeExpr,
+                                                poidsMetabolique = poidsMetabolique,
+                                                poidsAnimal = poidsAnimal,
+                                                besoinEnergetiqueEntretien = besoinEnergetiqueEntretien
                                         )
+                                        
+                                        Column {
+                                                Text(
+                                                        text = nom,
+                                                        style = MaterialTheme.typography.caption,
+                                                        color = MaterialTheme.colors.onSurface,
+                                                        fontWeight = FontWeight.Bold
+                                                )
+                                                Text(
+                                                        text = "$valeurAffichee $uniteAffichee",
+                                                        style = MaterialTheme.typography.overline,
+                                                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                                                )
+                                        }
                                     }
                                     Divider(
                                             modifier = Modifier.fillMaxWidth(),

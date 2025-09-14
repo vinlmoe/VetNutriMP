@@ -41,8 +41,36 @@ import fr.vetbrain.vetnutri_mp.Utils.TextUtils
 import io.github.koalaplot.core.bar.BulletGraphs
 import io.github.koalaplot.core.bar.FixedFraction
 import io.github.koalaplot.core.bar.HorizontalBarIndicator
+import kotlin.math.abs
 import io.github.koalaplot.core.util.ExperimentalKoalaPlotApi
 import io.github.koalaplot.core.xygraph.FloatLinearAxisModel
+
+/**
+ * Formate les labels de l'axe des abscisses des bullet graphs selon les critères :
+ * - Si la valeur maximale < 1 : 2 chiffres après la virgule
+ * - Si la valeur maximale < 5 : 1 chiffre après la virgule  
+ * - Sinon : pas de chiffre après la virgule
+ */
+private fun formaterLabelAxeBullet(valeur: Double, valeurMaximale: Double): String {
+    return when {
+        valeurMaximale < 1.0 -> {
+            // 2 chiffres après la virgule
+            String.format("%.2f", valeur)
+        }
+        valeurMaximale < 5.0 -> {
+            // 1 chiffre après la virgule
+            String.format("%.1f", valeur)
+        }
+        else -> {
+            // Pas de chiffre après la virgule
+            if (valeur % 1.0 == 0.0) {
+                valeur.toInt().toString()
+            } else {
+                String.format("%.0f", valeur)
+            }
+        }
+    }
+}
 
 // Fonction locale InfoRow po
 
@@ -498,15 +526,7 @@ fun ReferenceBulletGraph(
                                 axis {
                                         labels {
                                                 val tick = it
-                                                val label =
-                                                        if (tick % 1.0 == 0.0) {
-                                                                tick.toInt().toString()
-                                                        } else {
-                                                                TextUtils.formatDecimal(
-                                                                        tick.toDouble(),
-                                                                        1
-                                                                )
-                                                        }
+                                                val label = formaterLabelAxeBullet(tick.toDouble(), maxAxis)
                                                 AxisText(label)
                                         }
                                 }
