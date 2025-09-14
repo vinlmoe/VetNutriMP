@@ -23,6 +23,23 @@ import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.TextUtils
 
+/**
+ * Obtient le nom traduit d'un nutriment selon son type en utilisant les traductions JSON
+ */
+private fun obtenirNomTraduitNutriment(nom: String, nutriment: Any): String {
+    return when (nutriment) {
+        is NutrientLipid -> nutriment.translateEnum()
+        is NutrientMacro -> nutriment.translateEnum()
+        is NutrientMain -> nutriment.translateEnum()
+        is NutrientMin -> nutriment.translateEnum()
+        is NutrientOther -> nutriment.translateEnum()
+        is NutrientVitam -> nutriment.translateEnum()
+        is AAEnum -> nutriment.translateEnum()
+        is NutrientAnalysis -> nutriment.translateEnum()
+        else -> nom // Fallback sur le nom original si le type n'est pas reconnu
+    }
+}
+
 /** Données pour un item de la grille (titre ou nutriment) */
 private sealed class GridItem {
     data class TitreSection(val categorie: String, val titre: String) : GridItem()
@@ -347,7 +364,7 @@ fun AnalyseNutritionnelleCard(
                                                     modifier = Modifier.width(200.dp)
                                             ) {
                                                 Text(
-                                                        text = nom,
+                                                        text = obtenirNomTraduitNutriment(nom, valeur.nutriment),
                                                         style = MaterialTheme.typography.caption,
                                                         color =
                                                                 MaterialTheme.colors.onSurface.copy(
@@ -391,7 +408,7 @@ fun AnalyseNutritionnelleCard(
                                         
                                         Column {
                                                 Text(
-                                                        text = nom,
+                                                        text = obtenirNomTraduitNutriment(nom, valeur.nutriment),
                                                         style = MaterialTheme.typography.caption,
                                                         color = MaterialTheme.colors.onSurface,
                                                         fontWeight = FontWeight.Bold
