@@ -17,6 +17,191 @@ import fr.vetbrain.vetnutri_mp.Utils.TextUtils
 import kotlinx.coroutines.runBlocking
 
 /**
+ * Vérifie si un nutriment est un ratio (ne doit pas être multiplié par la quantité)
+ */
+private fun estNutrimentRatio(nutriment: Nutrient): Boolean {
+    return when (nutriment) {
+        is NutrientAnalysis -> {
+            // Les nutriments d'analyse avec une unité vide sont des ratios
+            nutriment.unite.isEmpty() 
+        }
+        else -> false
+    }
+}
+
+/**
+ * Calcule la quantité totale d'un nutriment dans une ration
+ */
+private suspend fun calculerQuantiteTotaleNutriment(ration: Ration, nutriment: Nutrient): Double {
+    var total = 0.0
+    println("DEBUG QUANTITE: Calcul de la quantité totale pour ${nutriment.label}")
+    for (aliment in ration.alimentMutableList) {
+        val valeur = aliment.getNutrient(nutriment)
+        if (valeur != null) {
+            val contribution = (valeur * aliment.quantite) / 100.0
+            total += contribution
+            println("DEBUG QUANTITE: ${aliment.aliment?.nom} - Valeur/100g: $valeur, Quantité: ${aliment.quantite}, Contribution: $contribution")
+        } else {
+            println("DEBUG QUANTITE: ${aliment.aliment?.nom} - Pas de valeur pour ${nutriment.label}")
+        }
+    }
+    println("DEBUG QUANTITE: Total pour ${nutriment.label}: $total")
+    return total
+}
+
+/**
+ * Vérifie si un nutriment est associé à une équation de type ratio
+ */
+private suspend fun estNutrimentRatio(
+    nutriment: Nutrient,
+    preferencesEspece: PreferencesEspece,
+    equationRepository: EquationRepository,
+    referenceEv: ReferenceEv?
+): Boolean {
+    println("DEBUG RATIO: Vérification pour ${nutriment.label}")
+    
+    // Vérifier dans les préférences de l'espèce
+    val equationUuid = preferencesEspece.getEquationComplementaire(nutriment.label)
+    println("DEBUG RATIO: Equation UUID dans préférences: $equationUuid")
+    if (equationUuid != null) {
+        val equation = equationRepository.getEquationById(equationUuid)
+        println("DEBUG RATIO: Equation trouvée: ${equation?.name}, ratio: ${equation?.ratio}")
+        if (equation?.ratio == true) {
+            return true
+        }
+    }
+    
+    // Vérifier dans les équations de la ReferenceEv
+    println("DEBUG RATIO: Vérification dans ReferenceEv - ${referenceEv?.equationsNut?.size} équations")
+    referenceEv?.equationsNut?.forEach { eq ->
+        println("DEBUG RATIO: Équation ${eq.nutrient?.label} - ratio: ${eq.ratio}")
+        if (eq.nutrient == nutriment && eq.ratio == true) {
+            return true
+        }
+    }
+    
+    return false
+}
+
+/**
+ * Calcule le ratio global d'une ration en utilisant les équations complémentaires de type ratio
+ */
+private suspend fun calculerRatioGlobalRation(
+    ration: Ration,
+    nutriment: Nutrient,
+    preferencesEspece: PreferencesEspece,
+    equationRepository: EquationRepository,
+    referenceEv: ReferenceEv?
+): Double {
+    println("DEBUG: Calcul du ratio global pour ${nutriment.label}")
+    
+    // Trouver l'équation complémentaire de type ratio pour ce nutriment
+    val equation = findRatioEquation(nutriment, preferencesEspece, equationRepository, referenceEv)
+    
+    if (equation != null) {
+        // Utiliser l'équation pour calculer le ratio avec les quantités totales de la ration
+        println("DEBUG RATION: Équation trouvée pour ${nutriment.label}: ${equation.name}")
+        println("DEBUG RATION: Script de l'équation: ${equation.equationScript}")
+        println("DEBUG RATION: Type ratio: ${equation.ratio}")
+        
+        val resultat = fr.vetbrain.vetnutri_mp.Utils.EquationEvaluator.evaluerBesoinNutritionnelAvecComplementaires(
+            expression = equation.equationScript,
+            poidsCorps = 0.0, // Pas utilisé pour les ratios
+            besoinEnergetique = 0.0, // Pas utilisé pour les ratios
+            poidsMetabolique = 0.0, // Pas utilisé pour les ratios
+            variablesSupp = emptyList(),
+            ration = ration,
+            preferences = preferencesEspece,
+            equationRepository = equationRepository,
+            referenceEv = referenceEv
+        ) ?: 0.0
+        
+        println("DEBUG RATION: Résultat de l'équation pour ${nutriment.label}: $resultat")
+        return resultat
+    }
+    
+    // Fallback: calculer directement les ratios selon le type de nutriment
+    return when (nutriment) {
+        is fr.vetbrain.vetnutri_mp.Enumer.NutrientAnalysis -> {
+            when (nutriment.label) {
+                "KNA" -> {
+                    // Rapport K/Na = Potassium / Sodium
+                    val k = runBlocking { calculerQuantiteTotaleNutriment(ration, fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro.K) }
+                    val na = runBlocking { calculerQuantiteTotaleNutriment(ration, fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro.NA) }
+                    if (na > 0) k / na else 0.0
+                }
+                "CAP" -> {
+                    // Rapport Ca/P = Calcium / Phosphore
+                    val ca = runBlocking { calculerQuantiteTotaleNutriment(ration, fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro.CAL) }
+                    val p = runBlocking { calculerQuantiteTotaleNutriment(ration, fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro.PHOS) }
+                    if (p > 0) ca / p else 0.0
+                }
+                "O6O3" -> {
+                    // Rapport O6/O3 = Oméga 6 / Oméga 3
+                    val o6 = runBlocking { calculerQuantiteTotaleNutriment(ration, fr.vetbrain.vetnutri_mp.Enumer.NutrientLipid.O6) }
+                    val o3 = runBlocking { calculerQuantiteTotaleNutriment(ration, fr.vetbrain.vetnutri_mp.Enumer.NutrientLipid.O3) }
+                    if (o3 > 0) o6 / o3 else 0.0
+                }
+                "ZNCU" -> {
+                    // Rapport Zn/Cu = Zinc / Cuivre
+                    val zn = runBlocking { calculerQuantiteTotaleNutriment(ration, fr.vetbrain.vetnutri_mp.Enumer.NutrientMin.ZN) }
+                    val cu = runBlocking { calculerQuantiteTotaleNutriment(ration, fr.vetbrain.vetnutri_mp.Enumer.NutrientMin.CU) }
+                    if (cu > 0) zn / cu else 0.0
+                }
+                "PROTP" -> {
+                    // Rapport Protéines/Phosphore
+                    val prot = runBlocking { calculerQuantiteTotaleNutriment(ration, fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.PROTEINE) }
+                    val p = runBlocking { calculerQuantiteTotaleNutriment(ration, fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro.PHOS) }
+                    if (p > 0) prot / p else 0.0
+                }
+                "nonOsPP" -> {
+                    // Ratio Prot/Phos non osseux
+                    val nonOsProt = runBlocking { calculerQuantiteTotaleNutriment(ration, fr.vetbrain.vetnutri_mp.Enumer.NutrientAnalysis.nonOsProt) }
+                    val nonOsPhos = runBlocking { calculerQuantiteTotaleNutriment(ration, fr.vetbrain.vetnutri_mp.Enumer.NutrientAnalysis.nonOsPhos) }
+                    if (nonOsPhos > 0) nonOsProt / nonOsPhos else 0.0
+                }
+                else -> {
+                    println("DEBUG: Ratio non implémenté: ${nutriment.label}")
+                    0.0
+                }
+            }
+        }
+        else -> {
+            println("DEBUG: Nutriment non ratio: ${nutriment.label}")
+            0.0
+        }
+    }
+}
+
+/**
+ * Trouve l'équation complémentaire de type ratio pour un nutriment donné
+ */
+private suspend fun findRatioEquation(
+    nutriment: Nutrient,
+    preferencesEspece: PreferencesEspece,
+    equationRepository: EquationRepository,
+    referenceEv: ReferenceEv?
+): fr.vetbrain.vetnutri_mp.Data.Equation? {
+    // Vérifier dans les préférences de l'espèce
+    val equationUuid = preferencesEspece.getEquationComplementaire(nutriment.label)
+    if (equationUuid != null) {
+        val equation = equationRepository.getEquationById(equationUuid)
+        if (equation?.ratio == true) {
+            return equation
+        }
+    }
+    
+    // Vérifier dans les équations de la ReferenceEv
+    referenceEv?.equationsNut?.forEach { eq ->
+        if (eq.nutrient == nutriment && eq.ratio == true) {
+            return eq
+        }
+    }
+    
+    return null
+}
+
+/**
  * Fonction qui analyse une ration et retourne une Map de tous les nutriments avec en clés le label
  * de chaque nutriment et en valeur ValeurNutritionnelle
  *
@@ -48,6 +233,8 @@ fun analyserValeursNutritionnellesRationAvecEquations(
         equationRepository: EquationRepository,
         referenceEv: ReferenceEv? = null
 ): Map<String, ValeurNutritionnelle> {
+    println("🚀🚀🚀 FONCTION ANALYSER APPELÉE ! 🚀🚀🚀")
+    println("🚀🚀🚀 Ration avec ${ration.alimentMutableList.size} aliments 🚀🚀🚀")
     val resultat = mutableMapOf<String, ValeurNutritionnelle>()
     val tousLesNutriments = obtenirTousLesNutriments()
 
@@ -57,29 +244,72 @@ fun analyserValeursNutritionnellesRationAvecEquations(
         var tousLesIngredientsOntUneValeur = true
         var auMoinsUnIngredientAUneValeur = false
 
-        ration.alimentMutableList.forEach { alimentRation ->
-            val nomIngredient = alimentRation.aliment?.nom ?: "Ingrédient inconnu"
-            val quantiteIngredient = alimentRation.quantite
-
-            // Utiliser la logique unifiée: valeur table > 0 sinon équation complémentaire
-            // (évite que 0.0 bloque l'utilisation de l'équation)
-            val valeurPour100g: Double? = runBlocking {
-                alimentRation.getNutrientWithComplementary(
-                        nutrient = nutriment,
-                        preferences = preferencesEspece,
-                        equationRepository = equationRepository,
-                        referenceEv = referenceEv
-                )
+        val isRatio = kotlinx.coroutines.runBlocking {
+            estNutrimentRatio(nutriment, preferencesEspece, equationRepository, referenceEv)
+        }
+        
+        println("DEBUG RATION: Nutriment ${nutriment.label} - isRatio: $isRatio")
+        
+        if (isRatio) {
+            // Pour les ratios, calculer le ratio global de la ration entière
+            println("DEBUG RATION: Calcul du ratio pour ${nutriment.label}")
+            println("DEBUG RATION: Nombre d'aliments dans la ration: ${ration.alimentMutableList.size}")
+            
+            // Log des quantités totales de nutriments dans la ration
+            val quantitesTotales = mutableMapOf<String, Double>()
+            for (n in fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.entries) {
+                val qte = kotlinx.coroutines.runBlocking { calculerQuantiteTotaleNutriment(ration, n) }
+                quantitesTotales[n.label] = qte
+                println("DEBUG RATION: Quantité totale ${n.label}: $qte")
             }
+            for (n in fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro.entries) {
+                val qte = kotlinx.coroutines.runBlocking { calculerQuantiteTotaleNutriment(ration, n) }
+                quantitesTotales[n.label] = qte
+                println("DEBUG RATION: Quantité totale ${n.label}: $qte")
+            }
+            for (n in fr.vetbrain.vetnutri_mp.Enumer.NutrientLipid.entries) {
+                val qte = kotlinx.coroutines.runBlocking { calculerQuantiteTotaleNutriment(ration, n) }
+                quantitesTotales[n.label] = qte
+                println("DEBUG RATION: Quantité totale ${n.label}: $qte")
+            }
+            for (n in fr.vetbrain.vetnutri_mp.Enumer.NutrientMin.entries) {
+                val qte = kotlinx.coroutines.runBlocking { calculerQuantiteTotaleNutriment(ration, n) }
+                quantitesTotales[n.label] = qte
+                println("DEBUG RATION: Quantité totale ${n.label}: $qte")
+            }
+            
+            valeurTotale = kotlinx.coroutines.runBlocking {
+                calculerRatioGlobalRation(ration, nutriment, preferencesEspece, equationRepository, referenceEv)
+            }
+            println("DEBUG RATION: Ratio calculé pour ${nutriment.label}: $valeurTotale")
+            auMoinsUnIngredientAUneValeur = valeurTotale > 0.0
+            contributrionsIngredients.add("Ratio global:$valeurTotale")
+        } else {
+            // Pour les autres nutriments, calculer la somme pondérée des contributions
+            ration.alimentMutableList.forEach { alimentRation ->
+                val nomIngredient = alimentRation.aliment?.nom ?: "Ingrédient inconnu"
+                val quantiteIngredient = alimentRation.quantite
 
-            if (valeurPour100g != null) {
-                val contributionIngredient = (valeurPour100g * quantiteIngredient) / 100.0
-                valeurTotale += contributionIngredient
-                auMoinsUnIngredientAUneValeur = true
-                contributrionsIngredients.add("$nomIngredient:$contributionIngredient")
-            } else {
-                tousLesIngredientsOntUneValeur = false
-                contributrionsIngredients.add("$nomIngredient:NA")
+                // Utiliser la logique unifiée: valeur table > 0 sinon équation complémentaire
+                // (évite que 0.0 bloque l'utilisation de l'équation)
+                val valeurPour100g: Double? = runBlocking {
+                    alimentRation.getNutrientWithComplementary(
+                            nutrient = nutriment,
+                            preferences = preferencesEspece,
+                            equationRepository = equationRepository,
+                            referenceEv = referenceEv
+                    )
+                }
+
+                if (valeurPour100g != null) {
+                    val contributionIngredient = (valeurPour100g * quantiteIngredient) / 100.0
+                    valeurTotale += contributionIngredient
+                    auMoinsUnIngredientAUneValeur = true
+                    contributrionsIngredients.add("$nomIngredient:$contributionIngredient")
+                } else {
+                    tousLesIngredientsOntUneValeur = false
+                    contributrionsIngredients.add("$nomIngredient:NA")
+                }
             }
         }
 
@@ -137,28 +367,36 @@ private fun calculerValeurNutrimentDansRation(
     var tousLesIngredientsOntUneValeur = true
     var auMoinsUnIngredientAUneValeur = false
 
-    // Pour chaque ingrédient de la ration
-    ration.alimentMutableList.forEach { alimentRation ->
-        val nomIngredient = alimentRation.aliment?.nom ?: "Ingrédient inconnu"
-        val quantiteIngredient = alimentRation.quantite
+    if (estNutrimentRatio(nutriment)) {
+        // Pour les ratios, on ne peut pas les calculer ici car on n'a pas accès aux équations
+        // On retourne 0.0 pour indiquer qu'il faut utiliser la version avec équations
+        valeurTotale = 0.0
+        auMoinsUnIngredientAUneValeur = false
+        contributrionsIngredients.add("Ratio:Non calculable sans équations")
+    } else {
+        // Pour les autres nutriments, calculer la somme pondérée
+        ration.alimentMutableList.forEach { alimentRation ->
+            val nomIngredient = alimentRation.aliment?.nom ?: "Ingrédient inconnu"
+            val quantiteIngredient = alimentRation.quantite
 
-        // Obtenir la valeur du nutriment pour cet ingrédient (pour 100g)
-        val valeurNutrimentPour100g = alimentRation.aliment?.getNutrient(nutriment)
+            // Obtenir la valeur du nutriment pour cet ingrédient (pour 100g)
+            val valeurNutrimentPour100g = alimentRation.aliment?.getNutrient(nutriment)
 
-        if (valeurNutrimentPour100g != null) {
-            // Calculer la contribution pondérée par la quantité
-            val contributionIngredient = (valeurNutrimentPour100g * quantiteIngredient) / 100.0
-            valeurTotale += contributionIngredient
+            if (valeurNutrimentPour100g != null) {
+                // Calculer la contribution pondérée par la quantité
+                val contributionIngredient = (valeurNutrimentPour100g * quantiteIngredient) / 100.0
+                valeurTotale += contributionIngredient
 
-            // Calculer le pourcentage d'apport de cet ingrédient
-            auMoinsUnIngredientAUneValeur = true
+                // Calculer le pourcentage d'apport de cet ingrédient
+                auMoinsUnIngredientAUneValeur = true
 
-            // On stocke temporairement la contribution pour calculer les pourcentages après
-            contributrionsIngredients.add("$nomIngredient:$contributionIngredient")
-        } else {
-            // L'ingrédient n'a pas de valeur pour ce nutriment
-            tousLesIngredientsOntUneValeur = false
-            contributrionsIngredients.add("$nomIngredient:NA")
+                // On stocke temporairement la contribution pour calculer les pourcentages après
+                contributrionsIngredients.add("$nomIngredient:$contributionIngredient")
+            } else {
+                // L'ingrédient n'a pas de valeur pour ce nutriment
+                tousLesIngredientsOntUneValeur = false
+                contributrionsIngredients.add("$nomIngredient:NA")
+            }
         }
     }
 
@@ -268,23 +506,35 @@ fun analyserValeursNutritionnellesRationSelective(
         equationRepository: EquationRepository? = null,
         referenceEv: ReferenceEv? = null
 ): Map<String, ValeurNutritionnelle> {
+    println("🔥🔥🔥 FONCTION SELECTIVE APPELÉE ! 🔥🔥🔥")
+    println("🔥🔥🔥 Ration avec ${ration.alimentMutableList.size} aliments, ${nutrimentsSelectionnes.size} nutriments sélectionnés 🔥🔥🔥")
     val resultat = mutableMapOf<String, ValeurNutritionnelle>()
 
+    println("🔥🔥🔥 ÉTAPE 1: Création du resultat OK 🔥🔥🔥")
+    
     // Obtenir seulement les nutriments sélectionnés selon les préférences
     val nutrimentsAAnalyser = obtenirNutrimentsSelonPreferences(nutrimentsSelectionnes)
+    println("🔥🔥🔥 ÉTAPE 2: Nutriments à analyser obtenus: ${nutrimentsAAnalyser.size} 🔥🔥🔥")
 
     // Pour chaque nutriment sélectionné, calculer sa valeur dans la ration
+    println("🔥🔥🔥 ÉTAPE 3: Début de la boucle sur ${nutrimentsAAnalyser.size} nutriments 🔥🔥🔥")
     nutrimentsAAnalyser.forEach { nutriment ->
+        println("🔥🔥🔥 ÉTAPE 4: Traitement du nutriment ${nutriment.label} 🔥🔥🔥")
         if (equationRepository != null) {
+            println("🔥🔥🔥 ÉTAPE 5: EquationRepository disponible 🔥🔥🔥")
+            println("🔥🔥🔥 ÉTAPE 6: Début du traitement des équations pour ${nutriment.label} 🔥🔥🔥")
             // Version intégrant les équations complémentaires par ingrédient
             var valeurTotale = 0.0
             val contributrionsIngredients = mutableListOf<String>()
             var tousLesIngredientsOntUneValeur = true
             var auMoinsUnIngredientAUneValeur = false
+            println("🔥🔥🔥 ÉTAPE 7: Variables initialisées 🔥🔥🔥")
+            println("🔥🔥🔥 ÉTAPE 8: Début de la boucle sur ${ration.alimentMutableList.size} aliments 🔥🔥🔥")
 
             ration.alimentMutableList.forEach { alimentRation ->
                 val nomIngredient = alimentRation.aliment?.nom ?: "Ingrédient inconnu"
                 val quantiteIngredient = alimentRation.quantite
+                println("🔥🔥🔥 ÉTAPE 9: Traitement de l'aliment $nomIngredient (${quantiteIngredient}g) 🔥🔥🔥")
 
                 val valeurPour100g: Double? = runBlocking {
                     alimentRation.getNutrientWithComplementary(
