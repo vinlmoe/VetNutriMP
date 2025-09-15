@@ -942,10 +942,7 @@ private fun obtenirIconeConformite(
                 besoinAbsolu?.let { besoin ->
                     if (apportAbsolu < besoin) {
                         return IconeConformite(
-                                icone = Icons.Filled.KeyboardArrowDown, // Icône
-                                // "↓"
-                                // pour
-                                // carence
+                                icone = Icons.Filled.ArrowDownward, // Icône "↓" pour carence
                                 couleur = VetNutriColors.Error,
                                 description =
                                         "Carence : apport inférieur au ${if (level == Reflevel.MIN) "minimum" else "optimal minimum"}",
@@ -980,10 +977,7 @@ private fun obtenirIconeConformite(
                 besoinAbsolu?.let { besoin ->
                     if (apportAbsolu > besoin) {
                         return IconeConformite(
-                                icone = Icons.Filled.KeyboardArrowUp, // Icône
-                                // "↑"
-                                // pour
-                                // excès
+                                icone = Icons.Filled.ArrowUpward, // Icône "↑" pour excès
                                 couleur = VetNutriColors.Error,
                                 description =
                                         "Excès : apport supérieur au ${if (level == Reflevel.MAX) "maximum" else "optimal maximum"}",
