@@ -462,7 +462,8 @@ fun EquationApi.toDomain(): Equation {
                 kind = fr.vetbrain.vetnutri_mp.Enumer.EquationKind.valueOf(kind),
                 nutrient =
                         nutrient?.let {
-                                fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver.findNutrientByLabel(
+                                // Utiliser le resolver "global" qui couvre aussi NutrientAnalysis
+                                fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver.AllNutrientResolver(
                                         it
                                 )
                         },
