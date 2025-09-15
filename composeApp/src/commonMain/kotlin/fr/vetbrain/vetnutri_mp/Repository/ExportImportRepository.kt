@@ -432,7 +432,7 @@ class ExportImportRepository(
                                                     // 🔍 LOG DIAGNOSTIC : Tracer l'import des nutriments
                                                     
                                                     
-                                                    // Résoudre le nutriment
+                                                    // Résoudre le nutriment (supporte aussi NutrientAnalysis)
                                                     val nutrient = fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver.AllNutrientResolver(nutrientApi.nutrientLabel)
                                                     if (nutrient != null) {
                                                         // Créer la référence bibliographique

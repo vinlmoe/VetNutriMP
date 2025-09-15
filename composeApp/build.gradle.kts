@@ -24,7 +24,16 @@ kotlin {
 
     jvm("desktop")
 
-
+    macosX64("macosX64") {
+        binaries.executable {
+            entryPoint = "fr.vetbrain.vetnutri_mp.main"
+        }
+    }
+    macosArm64("macosArm64") {
+        binaries.executable {
+            entryPoint = "fr.vetbrain.vetnutri_mp.main"
+        }
+    }
 
     sourceSets {
         sourceSets.iosMain { kotlin.srcDir("build/generated/ksp/metadata") }
@@ -54,6 +63,8 @@ kotlin {
             implementation(libs.androidx.lifecycle.runtime.compose)
             implementation(libs.androidx.room.runtime)
             implementation(libs.androidx.room.paging)
+              implementation(compose.desktop.macos_arm64)
+                implementation(compose.desktop.macos_x64) 
             implementation(libs.okio)
             implementation(libs.okio)
             implementation(libs.kotlinx.serialization.json)
@@ -110,8 +121,8 @@ android {
         applicationId = "fr.vetbrain.vetnutri_mp"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 17
-        versionName = "3.1.16B"
+        versionCode = 22
+        versionName = "3.1.22"
 
         // Configuration de Room
 
@@ -143,7 +154,7 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "fr.vetbrain.vetnutri_mp"
-            packageVersion = "3.1.16"
+            packageVersion = "3.1.22"
 
             // Configuration des icônes pour chaque plateforme
             macOS { iconFile.set(project.file("src/desktopMain/resources/icon.icns")) }
