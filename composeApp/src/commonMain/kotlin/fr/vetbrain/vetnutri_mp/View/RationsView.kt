@@ -876,57 +876,66 @@ fun RationsView(
                                                         }
                                                 }
                                         } else {
-                                                Row(
-                                                        modifier = Modifier.fillMaxWidth(),
-                                                        horizontalArrangement =
-                                                                Arrangement.spacedBy(
-                                                                        AppSizes.paddingMedium
+                                                if (selectedConsultation == null) {
+                                                        Box(
+                                                                modifier = Modifier.fillMaxSize(),
+                                                                contentAlignment = Alignment.Center
+                                                        ) { 
+                                                                Text("Sélectionnez une consultation pour voir les rations") 
+                                                        }
+                                                } else {
+                                                        Row(
+                                                                modifier = Modifier.fillMaxWidth(),
+                                                                horizontalArrangement =
+                                                                        Arrangement.spacedBy(
+                                                                                AppSizes.paddingMedium
+                                                                        )
+                                                        ) {
+                                                                SectionValeursMetaboliques(
+                                                                        selectedConsultation =
+                                                                                selectedConsultation,
+                                                                        poidsMetabolique = poidsMetabolique,
+                                                                        besoinEnergetiqueStandard =
+                                                                                besoinEnergetiqueStandard,
+                                                                        besoinEnergetiqueTotal =
+                                                                                besoinEnergetiqueTotal,
+                                                                        kObserve = kObserve,
+                                                                        kCalcule = kCalcule,
+                                                                        onExpand = {
+                                                                                showMetabolicValuesDialog =
+                                                                                        true
+                                                                        },
+                                                                        modifier = Modifier.weight(1f)
                                                                 )
-                                                ) {
-                                                        SectionValeursMetaboliques(
-                                                                selectedConsultation =
-                                                                        selectedConsultation,
-                                                                poidsMetabolique = poidsMetabolique,
-                                                                besoinEnergetiqueStandard =
-                                                                        besoinEnergetiqueStandard,
-                                                                besoinEnergetiqueTotal =
-                                                                        besoinEnergetiqueTotal,
-                                                                kObserve = kObserve,
-                                                                kCalcule = kCalcule,
-                                                                onExpand = {
-                                                                        showMetabolicValuesDialog =
-                                                                                true
-                                                                },
-                                                                modifier = Modifier.weight(1f)
-                                                        )
-                                                        Divider(
-                                                                modifier =
-                                                                        Modifier.width(1.dp)
-                                                                                .fillMaxHeight()
-                                                        )
-                                                        SectionCoefficients(
-                                                                selectedConsultation =
-                                                                        selectedConsultation,
-                                                                showCoefficientsDialog = {
-                                                                        showCoefficientsDialog =
-                                                                                true
-                                                                },
-                                                                viewModel = viewModel,
-                                                                modifier = Modifier.weight(1f)
-                                                        )
-                                                        Divider(
-                                                                modifier =
-                                                                        Modifier.width(1.dp)
-                                                                                .fillMaxHeight()
-                                                        )
-                                                        SectionBilanEnergetique(
-                                                                energieApportee = energieApportee,
-                                                                pourcentageCouverture =
-                                                                        pourcentageCouverture,
-                                                                kObserve = kObserve,
-                                                                kCalcule = kCalcule,
-                                                                modifier = Modifier.weight(1f)
-                                                        )
+                                                                Divider(
+                                                                        modifier =
+                                                                                Modifier.width(1.dp)
+                                                                                        .fillMaxHeight()
+                                                                )
+                                                                SectionCoefficients(
+                                                                        selectedConsultation =
+                                                                                selectedConsultation,
+                                                                        showCoefficientsDialog = {
+                                                                                showCoefficientsDialog =
+                                                                                        true
+                                                                        },
+                                                                        viewModel = viewModel,
+                                                                        modifier = Modifier.weight(1f)
+                                                                )
+                                                                Divider(
+                                                                        modifier =
+                                                                                Modifier.width(1.dp)
+                                                                                        .fillMaxHeight()
+                                                                )
+                                                                SectionBilanEnergetique(
+                                                                        energieApportee = energieApportee,
+                                                                        pourcentageCouverture =
+                                                                                pourcentageCouverture,
+                                                                        kObserve = kObserve,
+                                                                        kCalcule = kCalcule,
+                                                                        modifier = Modifier.weight(1f)
+                                                                )
+                                                        }
                                                 }
                                         }
                                 }
