@@ -24,24 +24,18 @@ class StartupService(
      */
     suspend fun initialize() {
         try {
-            println("DEBUG: StartupService.initialize() - début")
             
             // Créer le répertoire de sauvegarde
             val backupDirectory = fileService.getBackupDirectory()
-            println("DEBUG: Répertoire de sauvegarde: ${backupDirectory.absolutePath}")
             fileService.createDirectoryIfNotExists(backupDirectory)
             
             // Initialiser le service de sauvegarde
             backupService = BackupService(exportImportRepository, backupDirectory)
-            println("DEBUG: BackupService créé: ${backupService != null}")
             
             // Démarrer la sauvegarde automatique
             backupService?.startAutomaticBackup()
-            println("DEBUG: Sauvegarde automatique démarrée")
             
-            println("Services de démarrage initialisés avec succès")
         } catch (e: Exception) {
-            println("Erreur lors de l'initialisation des services: ${e.message}")
             e.printStackTrace()
         }
     }

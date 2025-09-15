@@ -72,7 +72,6 @@ class BackupService(
             try {
                 createBackup()
             } catch (e: Exception) {
-                println("Erreur lors de la sauvegarde initiale: ${e.message}")
             }
         }
         
@@ -83,7 +82,6 @@ class BackupService(
                 try {
                     createBackup()
                 } catch (e: Exception) {
-                    println("Erreur lors de la sauvegarde périodique: ${e.message}")
                 }
             }
         }
@@ -168,12 +166,10 @@ class BackupService(
                             metadataFile.delete()
                         }
                     } catch (e: Exception) {
-                        println("Erreur lors de la suppression du fichier ${file.name}: ${e.message}")
                     }
                 }
             }
         } catch (e: Exception) {
-            println("Erreur lors de la rotation des sauvegardes: ${e.message}")
         }
     }
     
@@ -186,7 +182,6 @@ class BackupService(
             val metadataJson = json.encodeToString(metadata)
             metadataFile.writeText(metadataJson)
         } catch (e: Exception) {
-            println("Erreur lors de la sauvegarde des métadonnées: ${e.message}")
         }
     }
     
@@ -229,18 +224,15 @@ class BackupService(
                             val metadataJson = json.encodeToString(metadata)
                             metadataFile.writeText(metadataJson)
                         } catch (e: Exception) {
-                            println("Erreur lors de la création des métadonnées pour ${file.name}: ${e.message}")
                         }
                         
                         metadata
                     }
                 } catch (e: Exception) {
-                    println("Erreur lors de la lecture des métadonnées pour ${file.name}: ${e.message}")
                     null
                 }
             }.sortedByDescending { it.createdAt }
         } catch (e: Exception) {
-            println("Erreur lors de la récupération des sauvegardes: ${e.message}")
             emptyList()
         }
     }

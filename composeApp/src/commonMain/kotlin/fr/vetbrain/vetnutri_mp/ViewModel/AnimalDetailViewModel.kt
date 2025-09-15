@@ -1271,7 +1271,6 @@ class AnimalDetailViewModel(
                 // Recalculer les valeurs métaboliques après la sauvegarde
                 calculerValeursMetaboliques(consultationToSave)
             } catch (e: Exception) {
-                println("Erreur lors de la sauvegarde depuis la vue plein écran: ${e.message}")
                 e.printStackTrace()
             }
         }

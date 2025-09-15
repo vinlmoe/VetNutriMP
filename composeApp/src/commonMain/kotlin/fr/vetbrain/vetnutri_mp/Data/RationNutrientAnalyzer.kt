@@ -149,13 +149,11 @@ private suspend fun calculerRatioGlobalRation(
                     if (nonOsPhos > 0) nonOsProt / nonOsPhos else 0.0
                 }
                 else -> {
-                    println("DEBUG: Ratio non implémenté: ${nutriment.label}")
                     0.0
                 }
             }
         }
         else -> {
-            println("DEBUG: Nutriment non ratio: ${nutriment.label}")
             0.0
         }
     }
@@ -516,7 +514,6 @@ suspend fun analyserValeursNutritionnellesRationSelective(
                         equationRepository = equationRepository,
                         referenceEv = referenceEv
                 )
-                println("🚀🚀🚀 APRÈS APPEL getNutrientWithComplementary pour ${nutriment.label}: $valeurPour100g 🚀🚀🚀")
 
                 if (valeurPour100g != null) {
                     val contributionIngredient = (valeurPour100g * quantiteIngredient) / 100.0

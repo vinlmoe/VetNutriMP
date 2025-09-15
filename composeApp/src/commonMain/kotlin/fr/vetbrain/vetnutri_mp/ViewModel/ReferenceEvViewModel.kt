@@ -134,9 +134,7 @@ class ReferenceEvViewModel(
                 references.forEach { ref ->
                 }
                 _allReferences.value = references
-                println("✅ [LOAD] Chargement terminé avec succès")
             } catch (e: Exception) {
-                println("❌ [LOAD] Erreur lors du chargement: ${e.message}")
                 _error.value =
                         "Erreur lors du chargement des références: ${e.message ?: "Erreur inconnue"}"
             } finally {
@@ -197,11 +195,8 @@ class ReferenceEvViewModel(
         try {
 
             repository.update(reference)
-            println("✅ [UPDATE_REF] Mise à jour réussie, rechargement de la liste...")
             loadAllReferences() // Recharger la liste
-            println("✅ [UPDATE_REF] Liste rechargée avec succès")
         } catch (e: Exception) {
-            println("❌ [UPDATE_REF] Erreur lors de la mise à jour: ${e.message}")
             _error.value =
                     "Erreur lors de la mise à jour de la référence: ${e.message ?: "Erreur inconnue"}"
             throw e
@@ -349,10 +344,8 @@ class ReferenceEvViewModel(
             if (saveResult) {
                 loadAllReferences()
                 _operationMessage.value = "Référence dupliquée avec succès"
-                println("✅ [DUPLICATION] Duplication terminée avec succès")
             } else {
                 _operationMessage.value = "Erreur lors de la sauvegarde de la référence dupliquée"
-                println("❌ [DUPLICATION] Erreur lors de la sauvegarde")
             }
         } catch (e: Exception) {
             _error.value = "Erreur lors de la duplication: ${e.message ?: "Erreur inconnue"}"

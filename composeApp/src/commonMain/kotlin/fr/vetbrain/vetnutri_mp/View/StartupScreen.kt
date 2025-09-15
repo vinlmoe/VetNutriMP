@@ -73,7 +73,6 @@ fun StartupScreen(
 
         // Vérifier l'état de la base de données, des CGU et des versions au démarrage
         LaunchedEffect(Unit) {
-                println("🚀 [STARTUP] LaunchedEffect démarré - vérification des versions")
                 try {
                         val foodCount = foodRepository.getAllFoods().size
                         val referenceCount = referenceRepository?.getAllReferenceEv()?.size ?: 0
@@ -900,9 +899,6 @@ fun StartupScreen(
                 if (showUpdateDialog) {
                         UpdateConfirmationDialog(
                                 onConfirm = {
-                                        println(
-                                                "🔄 [STARTUP] Début de la mise à jour de la base de données"
-                                        )
                                         showUpdateDialog = false
                                         // Désactiver l'affichage par défaut quand l'utilisateur
                                         // confirme la mise à jour
@@ -911,24 +907,15 @@ fun StartupScreen(
 
                                         coroutineScope.launch {
                                                 try {
-                                                        println(
-                                                                "🔄 [STARTUP] Lancement de l'import automatique..."
-                                                        )
                                                         // Lancer la mise à jour de la base de
                                                         // données (forcée)
                                                         val result =
                                                                 settingsViewModel
                                                                         .relaunchAutomaticImport(forceImport = true)
-                                                        println(
-                                                                "🔄 [STARTUP] Import terminé, résultat: $result"
-                                                        )
 
                                                         // Mettre à jour le statut
                                                         when (result) {
                                                                 is SettingsViewModel.ImportResult.Success -> {
-                                                                        println(
-                                                                                "✅ [STARTUP] Import réussi: ${result.count} éléments"
-                                                                        )
                                                                         databaseStatus =
                                                                                 databaseStatus
                                                                                         ?.copy(
@@ -947,9 +934,6 @@ fun StartupScreen(
                                                                         onDatabaseReady()
                                                                 }
                                                                 is SettingsViewModel.ImportResult.Error -> {
-                                                                        println(
-                                                                                "❌ [STARTUP] Erreur lors de l'import: ${result.message}"
-                                                                        )
                                                                         databaseStatus =
                                                                                 databaseStatus
                                                                                         ?.copy(
@@ -961,12 +945,6 @@ fun StartupScreen(
                                                                 }
                                                         }
                                                 } catch (e: Exception) {
-                                                        println(
-                                                                "💥 [STARTUP] Exception lors de l'import: ${e.message}"
-                                                        )
-                                                        println(
-                                                                "💥 [STARTUP] Stack trace: ${e.stackTraceToString()}"
-                                                        )
                                                         // En cas d'erreur, afficher le message et
                                                         // permettre de continuer
                                                         databaseStatus =

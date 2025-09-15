@@ -369,9 +369,7 @@ class SettingsViewModel(
      * @return Le résultat de l'importation
      */
     suspend fun relaunchAutomaticImport(forceImport: Boolean = false): ImportResult {
-        println("🔄 [SETTINGS] Début de relaunchAutomaticImport")
         return try {
-            println("🔄 [SETTINGS] Création de l'ExportImportRepository...")
             // Créer l'ExportImportRepository avec tous les repositories nécessaires
             val exportImportRepo =
                     fr.vetbrain.vetnutri_mp.Repository.ExportImportRepository(
@@ -383,45 +381,34 @@ class SettingsViewModel(
                             consultationRepository = consultationRepository,
                             recipeRepository = recipeRepository
                     )
-            println("✅ [SETTINGS] ExportImportRepository créé avec succès")
 
-            println("🔄 [SETTINGS] Lecture du fichier JSON...")
             // Lire le fichier de ressources pour l'import automatique
             val json =
                     try {
                         // Essayer d'abord le chemin iOS (direct), puis le chemin Android/Desktop
                         // (data/)
                         try {
-                            println("🔄 [SETTINGS] Tentative 1 - Chemin iOS: vetnutri_export_init.json")
                             val result = fr.vetbrain.vetnutri_mp.Localization.ResourceReader()
                                     .readResource("vetnutri_export_init.json")
-                            println("✅ [SETTINGS] Succès avec le chemin iOS (${result.length} caractères)")
                             result
                         } catch (e: Exception) {
-                            println("❌ [SETTINGS] Échec chemin iOS: ${e.message}")
-                            println("🔄 [SETTINGS] Tentative 2 - Chemin Android/Desktop: data/vetnutri_export_init.json")
                             val result = fr.vetbrain.vetnutri_mp.Localization.ResourceReader()
                                     .readResource("data/vetnutri_export_init.json")
-                            println("✅ [SETTINGS] Succès avec le chemin Android/Desktop (${result.length} caractères)")
                             result
                         }
                     } catch (e: Exception) {
-                        println("💥 [SETTINGS] Échec des deux chemins: ${e.message}")
                         throw IllegalStateException(
                                 "Fichier vetnutri_export_init.json introuvable: ${e.message}"
                         )
                     }
 
             if (json.isEmpty()) {
-                println("💥 [SETTINGS] Le fichier JSON est vide!")
                 throw IllegalStateException("Le fichier JSON d'import automatique est vide")
             }
 
-            println("🔄 [SETTINGS] Vérification de la nécessité de mise à jour...")
             // Vérifier si une mise à jour est nécessaire
             val databaseVersionManager = fr.vetbrain.vetnutri_mp.Utils.DatabaseVersionManager()
             val updateNeeded = databaseVersionManager.isJsonUpdateNeeded(json)
-            println("🔄 [SETTINGS] Mise à jour nécessaire: $updateNeeded")
 
             // 🔧 CORRECTION : Vérifier spécifiquement si les aliments sont manquants
             val currentFoodCount = foodRepository.getAllFoods().size
@@ -429,16 +416,11 @@ class SettingsViewModel(
             val foodsAreMissing = currentFoodCount == 0
             val databaseIsEmpty = currentFoodCount == 0 && currentReferenceCount == 0
 
-            println("🔄 [SETTINGS] État de la base - Aliments: $currentFoodCount, Références: $currentReferenceCount")
-            println("🔄 [SETTINGS] Aliments manquants: $foodsAreMissing")
-            println("🔄 [SETTINGS] Base vide: $databaseIsEmpty")
-            println("🔄 [SETTINGS] Import forcé: $forceImport")
 
             // Si l'import n'est pas forcé, vérifier si une mise à jour est nécessaire
             if (!forceImport && !updateNeeded && !foodsAreMissing) {
                 // Aucune mise à jour nécessaire et aliments présents
                 val currentJsonVersion = databaseVersionManager.getStoredJsonVersion()
-                println("ℹ️ [SETTINGS] Aucune mise à jour nécessaire, version actuelle: $currentJsonVersion")
                 return ImportResult.Success(
                         count = currentFoodCount + currentReferenceCount,
                         importedCount = 0,
@@ -448,10 +430,8 @@ class SettingsViewModel(
 
             // 🔧 CORRECTION : Forcer l'import si les aliments sont manquants ou si la base est vide
             if (foodsAreMissing || databaseIsEmpty) {
-                println("🔄 [SETTINGS] Aliments manquants ou base vide détecté(e), import forcé même si versions identiques")
             }
 
-            println("🔄 [SETTINGS] Lancement de l'import...")
             // Lancer l'import avec un listener de progression
             val importCounts =
                     exportImportRepo.importAll(
@@ -462,30 +442,23 @@ class SettingsViewModel(
                                                     onProgress = { progress ->
                                                         // Mettre à jour la progression si
                                                         // nécessaire
-                                                        println("📊 [SETTINGS] Progression: ${(progress * 100).toInt()}%")
                                                     },
-                                                    onLog = { msg -> println("📝 [SETTINGS] $msg") }
+                                                    onLog = { }
                                             )
                     )
 
-            println("✅ [SETTINGS] Import terminé avec succès")
-            println("📊 [SETTINGS] Résultats - Animaux: ${importCounts.animals}, Aliments: ${importCounts.foods}, Équations: ${importCounts.equations}, Références: ${importCounts.references}")
 
             // Mettre à jour la version JSON après import réussi
-            println("🔄 [SETTINGS] Mise à jour de la version JSON...")
             databaseVersionManager.updateJsonVersionAfterImport(json)
 
             // Retourner le résultat de l'importation
             val totalCount = importCounts.animals + importCounts.foods + importCounts.equations + importCounts.references
-            println("✅ [SETTINGS] Retour du résultat: $totalCount éléments")
             ImportResult.Success(
                     count = totalCount,
                     importedCount = totalCount,
                     conseils = 0
             )
         } catch (e: Exception) {
-            println("💥 [SETTINGS] Exception dans relaunchAutomaticImport: ${e.message}")
-            println("💥 [SETTINGS] Stack trace: ${e.stackTraceToString()}")
             ImportResult.Error("Erreur lors de l'import automatique: ${e.message}")
         }
     }

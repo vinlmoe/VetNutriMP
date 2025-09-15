@@ -153,7 +153,6 @@ object EquationEvaluator {
         }
         suspend fun sommeRation(nutriment: Nutrient): Double {
             var total: Double = 0.0
-            println("DEBUG EQUATION: Calcul de la somme pour ${nutriment.label}")
             for (aliment in ration.alimentMutableList) {
                 val valeur: Double? =
                         aliment.getNutrientWithComplementary(
@@ -165,12 +164,9 @@ object EquationEvaluator {
                 if (valeur != null) {
                     val contribution = (valeur * aliment.quantite.toDouble()) / 100.0
                     total += contribution
-                    println("DEBUG EQUATION: ${aliment.aliment?.nom} - Valeur/100g: $valeur, Quantité: ${aliment.quantite}, Contribution: $contribution")
                 } else {
-                    println("DEBUG EQUATION: ${aliment.aliment?.nom} - Pas de valeur pour ${nutriment.label}")
                 }
             }
-            println("DEBUG EQUATION: Total pour ${nutriment.label}: $total")
             return total
         }
         for (n in NutrientMain.entries) variables[n.label] = sommeRation(n)
@@ -179,15 +175,8 @@ object EquationEvaluator {
         for (n in NutrientMacro.entries) variables[n.label] = sommeRation(n)
         for (n in NutrientMin.entries) variables[n.label] = sommeRation(n)
         
-        println("DEBUG EQUATION: Variables finales pour l'équation:")
-        variables.forEach { (key, value) ->
-            if (value > 0.0) {
-                println("DEBUG EQUATION: $key = $value")
-            }
-        }
         
         val resultat = ExpressionMathematique.evaluer(expression, variables)
-        println("DEBUG EQUATION: Résultat de l'évaluation: $resultat")
         return resultat
     }
 
