@@ -207,7 +207,7 @@ object HtmlDocumentBuilder {
 
         val sectionsHtml =
                 sections.joinToString("\n") { section ->
-                    HtmlSectionParser.parseSectionToHtml(section)
+                    HtmlSectionParser.parseSectionToHtmlForExport(section)
                 }
 
         return """
