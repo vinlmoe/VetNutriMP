@@ -71,9 +71,6 @@ class FoodListViewModel(private val foodRepository: DatabaseFoodRepository) {
                 foodRepository
                         .observeAllFoods()
                         .onEach { allFoods ->
-                                println(
-                                        "DEBUG: FoodListViewModel - Mise à jour reçue: ${allFoods.size} aliments"
-                                )
                                 // Stocker tous les aliments non filtrés
                                 _allFoods.value = allFoods
 
@@ -82,17 +79,11 @@ class FoodListViewModel(private val foodRepository: DatabaseFoodRepository) {
 
                                 // Mettre à jour l'état filtré
                                 _foods.value = filteredFoods
-                                println(
-                                        "DEBUG: FoodListViewModel - Liste filtrée mise à jour: ${filteredFoods.size} aliments"
-                                )
 
                                 // Mettre à jour les listes de valeurs disponibles pour les filtres
                                 updateAvailableFilterValues(allFoods)
                         }
                         .catch { e ->
-                                println(
-                                        "DEBUG: FoodListViewModel - Erreur dans le Flow: ${e.message}"
-                                )
                                 e.printStackTrace()
                                 _allFoods.value = emptyList()
                                 _foods.value = emptyList()

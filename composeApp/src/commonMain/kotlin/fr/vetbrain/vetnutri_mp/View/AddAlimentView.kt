@@ -139,10 +139,7 @@ fun AddAlimentView(
                                     foods = availableFoods,
                                     filters = filters,
                                     onFiltersChange = {
-                                        println("DEBUG AddAlimentView - onFiltersChange appelé avec dataB: ${it.dataB}")
-                                        println("DEBUG AddAlimentView - Ancien filters.dataB: ${filters.dataB}")
                                         filters = it
-                                        println("DEBUG AddAlimentView - Nouveau filters.dataB: ${filters.dataB}")
                                     },
                                     config = searchConfig,
                                     modifier = Modifier.fillMaxSize()
