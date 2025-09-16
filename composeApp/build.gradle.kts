@@ -24,17 +24,6 @@ kotlin {
 
     jvm("desktop")
 
-    macosX64("macosX64") {
-        binaries.executable {
-            entryPoint = "fr.vetbrain.vetnutri_mp.main"
-        }
-    }
-    macosArm64("macosArm64") {
-        binaries.executable {
-            entryPoint = "fr.vetbrain.vetnutri_mp.main"
-        }
-    }
-
     sourceSets {
         sourceSets.iosMain { kotlin.srcDir("build/generated/ksp/metadata") }
         androidMain.dependencies {
@@ -63,8 +52,7 @@ kotlin {
             implementation(libs.androidx.lifecycle.runtime.compose)
             implementation(libs.androidx.room.runtime)
             implementation(libs.androidx.room.paging)
-              implementation(compose.desktop.macos_arm64)
-                implementation(compose.desktop.macos_x64) 
+
             implementation(libs.okio)
             implementation(libs.okio)
             implementation(libs.kotlinx.serialization.json)
@@ -82,11 +70,12 @@ kotlin {
                 implementation(libs.kotlinx.coroutines.core)
                 implementation(libs.kotlinx.coroutines.test)
                 implementation(libs.kotlinx.coroutines.swing)
-                implementation(compose.desktop.macos_arm64)
+
                 implementation(libs.skiko.awt)
                 //  implementation(libs.junit.jupiter)
                 // implementation(libs.junit.junit)
-
+                implementation(compose.desktop.macos_arm64)
+                implementation(compose.desktop.macos_x64)
                 /*    implementation(libs.xerial.sqlite.jdbc)
                 implementation(libs.androidx.sqlite.sqlite.framework3)
                 implementation(libs.androidx.sqlite.sqlite.ktx)*/
@@ -95,8 +84,6 @@ kotlin {
                 implementation("com.openhtmltopdf:openhtmltopdf-pdfbox:1.0.10")
             }
         }
-
-
 
         val iosMain by getting {
             kotlin.srcDir("build/generated/ksp/metadata")

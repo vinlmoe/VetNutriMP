@@ -4,6 +4,7 @@ import fr.vetbrain.vetnutri_mp.Data.AnimalEv
 import fr.vetbrain.vetnutri_mp.Data.Ration
 import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
 import fr.vetbrain.vetnutri_mp.Enumer.ContEnum
+import fr.vetbrain.vetnutri_mp.Utils.NumberUtils
 import fr.vetbrain.vetnutri_mp.Utils.TextUtils
 
 object HtmlDocumentBuilder {
@@ -13,27 +14,35 @@ object HtmlDocumentBuilder {
      * @param alimentRation L'aliment ration
      * @return Une chaîne de caractères représentant la quantité en unités ou null si non applicable
      */
-    private fun calculerQuantiteEnUnites(alimentRation: fr.vetbrain.vetnutri_mp.Data.AlimentRation): String? {
+    private fun calculerQuantiteEnUnites(
+            alimentRation: fr.vetbrain.vetnutri_mp.Data.AlimentRation
+    ): String? {
         val alim = alimentRation.aliment ?: return null
         val cont = alim.cont ?: return null
         val quantInt = alim.quantInt ?: return null
-        
+
         // Vérifier que le cont n'est pas NO et que quantInt > 0
         if (cont == ContEnum.NO || quantInt <= 0) return null
-        
+
         // Calculer le nombre d'unités
         val nombreUnites = alimentRation.quantite / quantInt
-        
+
         // Formater le résultat
         return when (cont) {
-            ContEnum.SACHET -> "${String.format("%.1f", nombreUnites)} sachet${if (nombreUnites > 1) "s" else ""} (${quantInt}g/sachet)"
-            ContEnum.CAN -> "${String.format("%.1f", nombreUnites)} boîte${if (nombreUnites > 1) "s" else ""} (${quantInt}g/boîte)"
-            ContEnum.ML -> "${String.format("%.1f", nombreUnites)} ml (${quantInt}g/ml)"
-            ContEnum.COMP -> "${String.format("%.1f", nombreUnites)} comprimé${if (nombreUnites > 1) "s" else ""} (${quantInt}g/comprimé)"
-            ContEnum.BOUCH -> "${String.format("%.1f", nombreUnites)} cuillère${if (nombreUnites > 1) "s" else ""} (${quantInt}g/cuillère)"
-            ContEnum.DOSETTE -> "${String.format("%.1f", nombreUnites)} dosette${if (nombreUnites > 1) "s" else ""} (${quantInt}g/dosette)"
-            ContEnum.GEL -> "${String.format("%.1f", nombreUnites)} gel (${quantInt}g/gel)"
-            ContEnum.PRESSION -> "${String.format("%.1f", nombreUnites)} pression${if (nombreUnites > 1) "s" else ""} (${quantInt}g/pression)"
+            ContEnum.SACHET ->
+                    "${NumberUtils.format(nombreUnites.toDouble(), 1)} sachet${if (nombreUnites > 1) "s" else ""} (${quantInt}g/sachet)"
+            ContEnum.CAN ->
+                    "${NumberUtils.format(nombreUnites.toDouble(), 1)} boîte${if (nombreUnites > 1) "s" else ""} (${quantInt}g/boîte)"
+            ContEnum.ML -> "${NumberUtils.format(nombreUnites.toDouble(), 1)} ml (${quantInt}g/ml)"
+            ContEnum.COMP ->
+                    "${NumberUtils.format(nombreUnites.toDouble(), 1)} comprimé${if (nombreUnites > 1) "s" else ""} (${quantInt}g/comprimé)"
+            ContEnum.BOUCH ->
+                    "${NumberUtils.format(nombreUnites.toDouble(), 1)} cuillère${if (nombreUnites > 1) "s" else ""} (${quantInt}g/cuillère)"
+            ContEnum.DOSETTE ->
+                    "${NumberUtils.format(nombreUnites.toDouble(), 1)} dosette${if (nombreUnites > 1) "s" else ""} (${quantInt}g/dosette)"
+            ContEnum.GEL -> "${NumberUtils.format(nombreUnites.toDouble(), 1)} gel (${quantInt}g/gel)"
+            ContEnum.PRESSION ->
+                    "${NumberUtils.format(nombreUnites.toDouble(), 1)} pression${if (nombreUnites > 1) "s" else ""} (${quantInt}g/pression)"
             else -> null
         }
     }
@@ -109,13 +118,14 @@ object HtmlDocumentBuilder {
                     val nom = a.aliment?.nom ?: "?"
                     val qte = TextUtils.formatDecimal(a.quantite.toDouble(), 1)
                     val quantiteUnites = calculerQuantiteEnUnites(a)
-                    
-                    val quantiteCell = if (quantiteUnites != null) {
-                        "${qte} g<br/><small style='color: #666;'>${quantiteUnites}</small>"
-                    } else {
-                        "${qte} g"
-                    }
-                    
+
+                    val quantiteCell =
+                            if (quantiteUnites != null) {
+                                "${qte} g<br/><small style='color: #666;'>${quantiteUnites}</small>"
+                            } else {
+                                "${qte} g"
+                            }
+
                     "<tr><td>${nom}</td><td style='text-align:right'>${quantiteCell}</td></tr>"
                 }
         return """
