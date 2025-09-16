@@ -16,6 +16,7 @@ import fr.vetbrain.vetnutri_mp.Enumer.FoodKind
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientMain
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
+import fr.vetbrain.vetnutri_mp.Utils.NumberUtils
 
 /**
  * Calcule la quantité en unités (sachet, cuillère, etc.) pour un aliment
@@ -23,34 +24,35 @@ import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
  * @return Une chaîne de caractères représentant la quantité en unités ou null si non applicable
  */
 private fun calculerQuantiteEnUnites(aliment: AlimentRation): String? {
-    val alim = aliment.aliment ?: return null
-    val cont = alim.cont ?: return null
-    val quantInt = alim.quantInt ?: return null
-    
-    // Vérifier que le cont n'est pas NO et que quantInt > 0
-    if (cont == ContEnum.NO || quantInt <= 0) return null
-    
-    // Calculer le nombre d'unités
-    val nombreUnites = aliment.quantite / quantInt
-    
-    // Formater le résultat
-    return when (cont) {
-        ContEnum.SACHET -> "${nombreUnites.format(1)} sachet${if (nombreUnites > 1) "s" else ""} (${quantInt}g/sachet)"
-        ContEnum.CAN -> "${nombreUnites.format(1)} boîte${if (nombreUnites > 1) "s" else ""} (${quantInt}g/boîte)"
-        ContEnum.ML -> "${nombreUnites.format(1)} ml (${quantInt}g/ml)"
-        ContEnum.COMP -> "${nombreUnites.format(1)} comprimé${if (nombreUnites > 1) "s" else ""} (${quantInt}g/comprimé)"
-        ContEnum.BOUCH -> "${nombreUnites.format(1)} cuillère${if (nombreUnites > 1) "s" else ""} (${quantInt}g/cuillère)"
-        ContEnum.DOSETTE -> "${nombreUnites.format(1)} dosette${if (nombreUnites > 1) "s" else ""} (${quantInt}g/dosette)"
-        ContEnum.GEL -> "${nombreUnites.format(1)} gel (${quantInt}g/gel)"
-        ContEnum.PRESSION -> "${nombreUnites.format(1)} pression${if (nombreUnites > 1) "s" else ""} (${quantInt}g/pression)"
-        else -> null
-    }
-}
+        val alim = aliment.aliment ?: return null
+        val cont = alim.cont ?: return null
+        val quantInt = alim.quantInt ?: return null
 
-/**
- * Formate un nombre avec un nombre de décimales donné
- */
-private fun Double.format(digits: Int) = "%.${digits}f".format(this)
+        // Vérifier que le cont n'est pas NO et que quantInt > 0
+        if (cont == ContEnum.NO || quantInt <= 0) return null
+
+        // Calculer le nombre d'unités
+        val nombreUnites = aliment.quantite / quantInt
+
+        // Formater le résultat
+        return when (cont) {
+                ContEnum.SACHET ->
+                        "${NumberUtils.format(nombreUnites.toDouble(), 1)} sachet${if (nombreUnites > 1) "s" else ""} (${quantInt}g/sachet)"
+                ContEnum.CAN ->
+                        "${NumberUtils.format(nombreUnites.toDouble(), 1)} boîte${if (nombreUnites > 1) "s" else ""} (${quantInt}g/boîte)"
+                ContEnum.ML -> "${NumberUtils.format(nombreUnites.toDouble(), 1)} ml (${quantInt}g/ml)"
+                ContEnum.COMP ->
+                        "${NumberUtils.format(nombreUnites.toDouble(), 1)} comprimé${if (nombreUnites > 1) "s" else ""} (${quantInt}g/comprimé)"
+                ContEnum.BOUCH ->
+                        "${NumberUtils.format(nombreUnites.toDouble(), 1)} cuillère${if (nombreUnites > 1) "s" else ""} (${quantInt}g/cuillère)"
+                ContEnum.DOSETTE ->
+                        "${NumberUtils.format(nombreUnites.toDouble(), 1)} dosette${if (nombreUnites > 1) "s" else ""} (${quantInt}g/dosette)"
+                ContEnum.GEL -> "${NumberUtils.format(nombreUnites.toDouble(), 1)} gel (${quantInt}g/gel)"
+                ContEnum.PRESSION ->
+                        "${NumberUtils.format(nombreUnites.toDouble(), 1)} pression${if (nombreUnites > 1) "s" else ""} (${quantInt}g/pression)"
+                else -> null
+        }
+}
 
 /**
  * Composant pour afficher un aliment dans une liste
@@ -209,11 +211,13 @@ fun AlimentItem(
                                         ) // texte réduit
 
                                         if (isEditing) {
-                                                // Mode édition avec le composant BasicNumberTextField
+                                                // Mode édition avec le composant
+                                                // BasicNumberTextField
                                                 BasicNumberTextField(
                                                         value = quantityText,
                                                         onValueChange = { newValue ->
-                                                                // Filtrer pour n'accepter que les nombres
+                                                                // Filtrer pour n'accepter que les
+                                                                // nombres
                                                                 // et décimaux
                                                                 if (newValue.isEmpty() ||
                                                                                 newValue.matches(
@@ -226,33 +230,49 @@ fun AlimentItem(
                                                                 }
                                                         },
                                                         placeholder = "",
-                                                        modifier = Modifier.weight(1f).height(40.dp),
+                                                        modifier =
+                                                                Modifier.weight(1f).height(40.dp),
                                                         singleLine = true
                                                 )
 
                                                 Button(
                                                         onClick = {
                                                                 val newQuantity =
-                                                                        quantityText.toDoubleOrNull()
+                                                                        quantityText
+                                                                                .toDoubleOrNull()
                                                                                 ?: aliment.quantite
                                                                 // Arrondir au gramme
                                                                 val newQuantityArrondie =
-                                                                        kotlin.math.round(newQuantity)
-                                                                onQuantityChange(newQuantityArrondie)
+                                                                        kotlin.math.round(
+                                                                                newQuantity
+                                                                        )
+                                                                onQuantityChange(
+                                                                        newQuantityArrondie
+                                                                )
                                                                 onFinishEditing()
                                                         },
                                                         colors =
                                                                 ButtonDefaults.buttonColors(
                                                                         backgroundColor =
-                                                                                VetNutriColors.Primary,
+                                                                                VetNutriColors
+                                                                                        .Primary,
                                                                         contentColor =
-                                                                                VetNutriColors.OnPrimary
+                                                                                VetNutriColors
+                                                                                        .OnPrimary
                                                                 ),
                                                         modifier =
                                                                 Modifier.padding(
-                                                                        start = AppSizes.paddingSmall
+                                                                        start =
+                                                                                AppSizes.paddingSmall
                                                                 )
-                                                ) { Text("OK", style = MaterialTheme.typography.caption) }
+                                                ) {
+                                                        Text(
+                                                                "OK",
+                                                                style =
+                                                                        MaterialTheme.typography
+                                                                                .caption
+                                                        )
+                                                }
                                         } else {
                                                 // Mode affichage
                                                 Text(
@@ -264,13 +284,16 @@ fun AlimentItem(
                                                 )
                                         }
                                 }
-                                
+
                                 // Affichage de la quantité en unités si applicable
                                 calculerQuantiteEnUnites(aliment)?.let { quantiteUnites ->
                                         Text(
                                                 text = quantiteUnites,
                                                 style = MaterialTheme.typography.caption,
-                                                color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f),
+                                                color =
+                                                        MaterialTheme.colors.onSurface.copy(
+                                                                alpha = 0.7f
+                                                        ),
                                                 modifier = Modifier.padding(top = 2.dp)
                                         )
                                 }

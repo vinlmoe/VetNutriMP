@@ -27,6 +27,7 @@ import fr.vetbrain.vetnutri_mp.Data.Ration
 import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
 import fr.vetbrain.vetnutri_mp.Data.ValeurNutritionnelle
 import fr.vetbrain.vetnutri_mp.Enumer.*
+import fr.vetbrain.vetnutri_mp.Utils.NumberUtils
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
 import fr.vetbrain.vetnutri_mp.Enumer.Reflevel
@@ -55,18 +56,18 @@ private fun formaterLabelAxeBullet(valeur: Double, valeurMaximale: Double): Stri
     return when {
         valeurMaximale < 1.0 -> {
             // 2 chiffres après la virgule
-            String.format("%.2f", valeur)
+            NumberUtils.format(valeur.toDouble(), 2)
         }
         valeurMaximale < 5.0 -> {
             // 1 chiffre après la virgule
-            String.format("%.1f", valeur)
+            NumberUtils.format(valeur.toDouble(), 1)
         }
         else -> {
             // Pas de chiffre après la virgule
             if (valeur % 1.0 == 0.0) {
                 valeur.toInt().toString()
             } else {
-                String.format("%.0f", valeur)
+                NumberUtils.format(valeur.toDouble(), 0)
             }
         }
     }

@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.datetime.Clock
 
 class ConseilsViewModel(
         private val conseilRepository: ConseilRepository,
@@ -81,7 +82,7 @@ class ConseilsViewModel(
             try {
                 val nouveauConseil =
                         HtmlSection(
-                                id = "conseil_${System.currentTimeMillis()}",
+                                id = "conseil_${Clock.System.now().toEpochMilliseconds()}",
                                 title = title,
                                 content =
                                         fr.vetbrain.vetnutri_mp.Export.RichTextContent(
