@@ -379,7 +379,8 @@ class SettingsViewModel(
                             referenceRepository = referenceEvRepository,
                             biblioRepository = biblioRefRepository,
                             consultationRepository = consultationRepository,
-                            recipeRepository = recipeRepository
+                            recipeRepository = recipeRepository,
+                            conseilRepository = conseilRepository
                     )
 
             // Lire le fichier de ressources pour l'import automatique

@@ -94,7 +94,21 @@ class FoodListViewModel(private val foodRepository: DatabaseFoodRepository) {
         /** Charge la liste des aliments depuis le repository (maintenu pour compatibilité) */
         fun loadFoods() {
                 viewModelScope.launch {
-                        val allFoods = foodRepository.getAllFoods()
+                        val allFoodsLight = foodRepository.getAllFoodsLight()
+                        val allFoods = allFoodsLight.map { light ->
+                                fr.vetbrain.vetnutri_mp.Data.AlimentEv(
+                                        uuid = light.uuid,
+                                        nom = light.nom,
+                                        brand = light.brand,
+                                        group = light.group,
+                                        typeAliment = light.typeAliment,
+                                        gamme = light.gamme,
+                                        deprecated = light.deprecated,
+                                        especes = light.especes.toMutableList(),
+                                        indicat = light.indicat.toMutableList(),
+                                        valMap = mutableMapOf()
+                                )
+                        }
 
                         // Stocker tous les aliments non filtrés
                         _allFoods.value = allFoods
