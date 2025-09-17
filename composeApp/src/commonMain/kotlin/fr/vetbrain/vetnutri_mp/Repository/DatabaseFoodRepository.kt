@@ -257,11 +257,7 @@ class DatabaseFoodRepository(
             val result =
                     foodEntities.map { foodEntity ->
                         val nutrientValues =
-                                if (nutrientValueDao != null) {
-                                    nutrientValueDao.getNutrientValues(foodEntity.uuid)
-                                } else {
-                                    emptyList()
-                                }
+                                emptyList<NutrientValueEntity>()
                         foodEntity.toAlimentEv(nutrientValues = nutrientValues)
                     }
 
@@ -333,11 +329,7 @@ class DatabaseFoodRepository(
             val result =
                     foodEntities.map { foodEntity ->
                         val nutrientValues =
-                                if (nutrientValueDao != null) {
-                                    nutrientValueDao.getNutrientValues(foodEntity.uuid)
-                                } else {
-                                    emptyList()
-                                }
+                                emptyList<NutrientValueEntity>()
                         foodEntity.toAlimentEv(nutrientValues = nutrientValues)
                     }
 

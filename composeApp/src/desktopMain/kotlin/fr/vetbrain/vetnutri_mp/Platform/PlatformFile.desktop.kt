@@ -20,14 +20,15 @@ actual class PlatformFile actual constructor(path: String) {
     actual fun isDirectory(): Boolean = file.isDirectory
     actual fun mkdirs(): Boolean = file.mkdirs()
     actual fun delete(): Boolean = file.delete()
-    actual fun renameTo(dest: PlatformFile): Boolean = file.renameTo(dest.file)
-    actual fun copyTo(dest: PlatformFile, overwrite: Boolean): Unit =
-            file.copyTo(dest.file, overwrite)
-    actual fun listFiles(): List<PlatformFile>? = file.listFiles()?.map { PlatformFile(it) }
+    actual fun renameTo(dest: PlatformFile): Boolean = file.renameTo(File(dest.path))
+    actual fun copyTo(dest: PlatformFile, overwrite: Boolean): Unit {
+        file.copyTo(File(dest.path), overwrite)
+    }
+    actual fun listFiles(): List<PlatformFile>? = file.listFiles()?.map { PlatformFile(it.path) }
     actual fun readText(): String = file.readText()
     actual fun writeText(text: String): Unit = file.writeText(text)
 
     actual companion object {
-        actual fun create(path: String): PlatformFile = PlatformFile(File(path))
+        actual fun create(path: String): PlatformFile = PlatformFile(path)
     }
 }
