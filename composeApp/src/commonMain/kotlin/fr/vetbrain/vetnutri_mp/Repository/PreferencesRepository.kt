@@ -56,14 +56,13 @@ class PreferencesRepository(private val preferencesStorage: PreferencesStorage) 
     suspend fun loadPreferences() {
         try {
             val jsonString = preferencesStorage.getString(PREFERENCES_KEY, "{}")
-            
+
             if (jsonString.isNotBlank() && jsonString != "{}") {
                 // Essayer de parser le JSON manuellement
                 _preferences = parsePreferencesFromJson(jsonString)
             } else {
                 _preferences = PreferencesApplication()
             }
-            
         } catch (e: Exception) {
             // En cas d'erreur, utiliser les préférences par défaut
             _preferences = PreferencesApplication.createDefault()
@@ -74,7 +73,7 @@ class PreferencesRepository(private val preferencesStorage: PreferencesStorage) 
     suspend fun savePreferences(preferences: PreferencesApplication) {
         try {
             val jsonString = serializePreferencesToJson(preferences)
-            
+
             preferencesStorage.saveString(PREFERENCES_KEY, jsonString)
             _preferences = preferences
         } catch (e: Exception) {
@@ -113,6 +112,14 @@ class PreferencesRepository(private val preferencesStorage: PreferencesStorage) 
         val sb = StringBuilder()
         sb.append("{")
         sb.append("\"version\":${preferences.versionPreferences},")
+        sb.append("\"user\":{")
+        sb.append("\"name\":\"" + preferences.nomUtilisateur.replace("\"", "\\\"") + "\",")
+        sb.append("\"orderNumber\":\"" + preferences.numeroOrdre.replace("\"", "\\\"") + "\",")
+        sb.append("\"address\":\"" + preferences.adressePostale.replace("\"", "\\\"") + "\",")
+        sb.append("\"postalCode\":\"" + preferences.codePostal.replace("\"", "\\\"") + "\",")
+        sb.append("\"city\":\"" + preferences.ville.replace("\"", "\\\"") + "\",")
+        sb.append("\"phone\":\"" + preferences.telephone.replace("\"", "\\\"") + "\",")
+        sb.append("\"email\":\"" + preferences.email.replace("\"", "\\\"") + "\"},")
         sb.append("\"species\":{")
 
         val speciesEntries = mutableListOf<String>()
@@ -196,7 +203,48 @@ class PreferencesRepository(private val preferencesStorage: PreferencesStorage) 
                 }
             }
 
-            return PreferencesApplication(preferencesParEspece = preferencesMap)
+            // Extraire section utilisateur (optionnelle)
+            val userStart = json.indexOf("\"user\":{")
+            var nomUtilisateur = ""
+            var numeroOrdre = ""
+            var adressePostale = ""
+            var codePostal = ""
+            var ville = ""
+            var telephone = ""
+            var email = ""
+            if (userStart != -1) {
+                val braceIndex = json.indexOf('{', userStart)
+                val userEnd = findMatchingClosingBrace(json, braceIndex)
+                if (braceIndex != -1 && userEnd > braceIndex) {
+                    val userJson = json.substring(braceIndex + 1, userEnd)
+                    nomUtilisateur =
+                            Regex("\"name\":\"(.*?)\"").find(userJson)?.groupValues?.get(1) ?: ""
+                    numeroOrdre =
+                            Regex("\"orderNumber\":\"(.*?)\"").find(userJson)?.groupValues?.get(1)
+                                    ?: ""
+                    adressePostale =
+                            Regex("\"address\":\"(.*?)\"").find(userJson)?.groupValues?.get(1) ?: ""
+                    codePostal =
+                            Regex("\"postalCode\":\"(.*?)\"").find(userJson)?.groupValues?.get(1)
+                                    ?: ""
+                    ville = Regex("\"city\":\"(.*?)\"").find(userJson)?.groupValues?.get(1)
+                                    ?: ""
+                    telephone =
+                            Regex("\"phone\":\"(.*?)\"").find(userJson)?.groupValues?.get(1) ?: ""
+                    email = Regex("\"email\":\"(.*?)\"").find(userJson)?.groupValues?.get(1) ?: ""
+                }
+            }
+
+            return PreferencesApplication(
+                    preferencesParEspece = preferencesMap,
+                    nomUtilisateur = nomUtilisateur,
+                    numeroOrdre = numeroOrdre,
+                    adressePostale = adressePostale,
+                    codePostal = codePostal,
+                    ville = ville,
+                    telephone = telephone,
+                    email = email
+            )
         } catch (e: Exception) {
             return PreferencesApplication.createDefault()
         }

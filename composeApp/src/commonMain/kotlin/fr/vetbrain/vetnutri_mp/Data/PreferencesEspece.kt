@@ -157,7 +157,14 @@ data class PreferencesEspece(
 /** Ensemble des préférences de toutes les espèces */
 data class PreferencesApplication(
         val preferencesParEspece: Map<String, PreferencesEspece> = emptyMap(),
-        val versionPreferences: Int = DefaultPreferencesConfig.DEFAULT_VERSION
+        val versionPreferences: Int = DefaultPreferencesConfig.DEFAULT_VERSION,
+        val nomUtilisateur: String = "",
+        val numeroOrdre: String = "",
+        val adressePostale: String = "",
+        val codePostal: String = "",
+        val ville: String = "",
+        val telephone: String = "",
+        val email: String = ""
 ) {
     /** Obtient les préférences pour une espèce donnée */
     fun getPreferencesEspece(espece: Espece): PreferencesEspece {
@@ -170,7 +177,7 @@ data class PreferencesApplication(
         nouvellesPreferences[preferences.espece] = preferences
         return copy(preferencesParEspece = nouvellesPreferences)
     }
-    
+
     companion object {
         /** Crée une instance avec toutes les préférences par défaut */
         fun createDefault(): PreferencesApplication {

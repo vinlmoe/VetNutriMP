@@ -27,6 +27,7 @@ import fr.vetbrain.vetnutri_mp.Components.ConfirmDialog
 import fr.vetbrain.vetnutri_mp.Components.RichTextEditor
 import fr.vetbrain.vetnutri_mp.Data.AlimentEv
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
+import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
 import fr.vetbrain.vetnutri_mp.Export.DocumentType
 import fr.vetbrain.vetnutri_mp.Export.ExportData
 import fr.vetbrain.vetnutri_mp.Export.HtmlDocumentBuilder
@@ -46,8 +47,26 @@ import fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.SettingsViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.*
 
 typealias RecipeRepo = fr.vetbrain.vetnutri_mp.Repository.RecipeRepository
+
+/**
+ * Génère un nom de fichier par défaut pour l'export PDF
+ * Format: "ID animal + Nom Animal + date consultation.pdf"
+ */
+private fun generateDefaultPdfFileName(animal: AnimalEv?, consultation: ConsultationEv?): String {
+    val animalId = animal?.id ?: "ID_INCONNU"
+    val animalName = animal?.nom ?: "NOM_INCONNU"
+    val consultationDate = if (consultation?.date != null) {
+        val formatter = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+        formatter.format(consultation.date)
+    } else {
+        "DATE_INCONNUE"
+    }
+    return "${animalId}_${animalName}_${consultationDate}.pdf"
+}
 
 /**
  * Vue principale pour afficher les détails d'un animal
@@ -1180,32 +1199,69 @@ private fun WideScreenLayout(
 
                                                                 Button(
                                                                         onClick = {
-                                                                                previewHtml =
-                                                                                        HtmlDocumentBuilder
-                                                                                                .buildHtml(
-                                                                                                        DocumentType
-                                                                                                                .PRESCRIPTION,
+                                                                                // Charger les préférences utilisateur pour l'en-tête praticien
+                                                                                val prefsStorage = createPreferencesStorage()
+                                                                                val prefsRepo = PreferencesRepository(prefsStorage)
+                                                                                kotlinx.coroutines.GlobalScope.launch {
+                                                                                        try {
+                                                                                                prefsRepo.loadPreferences()
+                                                                                                val prefs = prefsRepo.preferences
+                                                                                                val practitioner = fr.vetbrain.vetnutri_mp.Export.PractitionerInfo(
+                                                                                                        nom = prefs.nomUtilisateur,
+                                                                                                        numeroOrdre = prefs.numeroOrdre,
+                                                                                                        adressePostale = prefs.adressePostale,
+                                                                                                        codePostal = prefs.codePostal,
+                                                                                                        ville = prefs.ville,
+                                                                                                        telephone = prefs.telephone,
+                                                                                                        email = prefs.email
+                                                                                                )
+                                                                                                val allRations = selectedConsultation?.rations?.toList() ?: emptyList()
+                                                                                                previewHtml =
+                                                                                                        HtmlDocumentBuilder
+                                                                                                                .buildHtml(
+                                                                                                                        DocumentType
+                                                                                                                                .PRESCRIPTION,
+                                                                                                                        ExportData(
+                                                                                                                                animal =
+                                                                                                                                        animalDetails,
+                                                                                                                                ration =
+                                                                                                                                        null,
+                                                                                                                                reference =
+                                                                                                                                        null,
+                                                                                                                                conseils =
+                                                                                                                                        listOf(
+                                                                                                                                                "Fractionner la ration en 2-3 repas",
+                                                                                                                                                "Veiller à l'hydratation"
+                                                                                                                                        ),
+                                                                                                                                title =
+                                                                                                                                        "Ordonnance nutritionnelle",
+                                                                                                                                additionalText =
+                                                                                                                                        additionalText,
+                                                                                                                                htmlSections =
+                                                                                                                                        getSelectedConseils(),
+                                                                                                                                rations = allRations,
+                                                                                                                                practitioner = practitioner
+                                                                                                                        )
+                                                                                                                )
+                                                                                                showPreview = true
+                                                                                        } catch (e: Exception) {
+                                                                                                previewHtml = HtmlDocumentBuilder.buildHtml(
+                                                                                                        DocumentType.PRESCRIPTION,
                                                                                                         ExportData(
-                                                                                                                animal =
-                                                                                                                        animalDetails,
-                                                                                                                ration =
-                                                                                                                        selectedRation,
-                                                                                                                reference =
-                                                                                                                        null,
-                                                                                                                conseils =
-                                                                                                                        listOf(
-                                                                                                                                "Fractionner la ration en 2-3 repas",
-                                                                                                                                "Veiller à l'hydratation"
-                                                                                                                        ),
-                                                                                                                title =
-                                                                                                                        "Ordonnance nutritionnelle",
-                                                                                                                additionalText =
-                                                                                                                        additionalText,
-                                                                                                                htmlSections =
-                                                                                                                        getSelectedConseils()
+                                                                                                                animal = animalDetails,
+                                                                                                                ration = null,
+                                                                                                                reference = null,
+                                                                                                                conseils = emptyList(),
+                                                                                                                title = "Ordonnance nutritionnelle",
+                                                                                                                additionalText = additionalText,
+                                                                                                                htmlSections = getSelectedConseils(),
+                                                                                                                rations = selectedConsultation?.rations?.toList() ?: emptyList(),
+                                                                                                                practitioner = null
                                                                                                         )
                                                                                                 )
-                                                                                showPreview = true
+                                                                                                showPreview = true
+                                                                                        }
+                                                                                }
                                                                         }
                                                                 ) {
                                                                         Text(
@@ -1263,7 +1319,7 @@ private fun WideScreenLayout(
                                                                                                                 getSelectedConseils()
                                                                                                 ),
                                                                                                 defaultFileName =
-                                                                                                        "ordonnance.pdf"
+                                                                                                        generateDefaultPdfFileName(animalDetails, selectedConsultation)
                                                                                         )
                                                                         } else {
                                                                                 PdfExporter
@@ -2521,7 +2577,7 @@ private fun NarrowScreenLayout(
                                                                                                                                 getSelectedConseils()
                                                                                                                 ),
                                                                                                                 defaultFileName =
-                                                                                                                        "analyse_ration.pdf"
+                                                                                                                        generateDefaultPdfFileName(animalDetails, selectedConsultation)
                                                                                                         )
                                                                                         }
                                                                                 ) {
@@ -2554,7 +2610,7 @@ private fun NarrowScreenLayout(
                                                                                                                                 getSelectedConseils()
                                                                                                                 ),
                                                                                                                 defaultFileName =
-                                                                                                                        "ordonnance.pdf"
+                                                                                                                        generateDefaultPdfFileName(animalDetails, selectedConsultation)
                                                                                                         )
                                                                                         }
                                                                                 ) {

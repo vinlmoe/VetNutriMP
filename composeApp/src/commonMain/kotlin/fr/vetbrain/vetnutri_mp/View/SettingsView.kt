@@ -21,18 +21,16 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import fr.vetbrain.vetnutri_mp.Components.Section
 import fr.vetbrain.vetnutri_mp.Enumer.*
 import fr.vetbrain.vetnutri_mp.Repository.ExportImportRepository
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
-import fr.vetbrain.vetnutri_mp.View.SettingsComponents.SettingsHeader
 import fr.vetbrain.vetnutri_mp.View.SettingsComponents.SettingsTabs
-import fr.vetbrain.vetnutri_mp.View.SettingsSections.RecipeEditView
-import fr.vetbrain.vetnutri_mp.ViewModel.RecipeEditViewModel
 import fr.vetbrain.vetnutri_mp.View.SettingsSections.AdministrationSettings
 import fr.vetbrain.vetnutri_mp.View.SettingsSections.InterfaceSettings
+import fr.vetbrain.vetnutri_mp.View.SettingsSections.RecipeEditView
 import fr.vetbrain.vetnutri_mp.ViewModel.ImportViewModel
+import fr.vetbrain.vetnutri_mp.ViewModel.RecipeEditViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.SettingsViewModel
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
@@ -44,9 +42,9 @@ import kotlinx.coroutines.launch
  */
 @Composable
 fun SettingsDialog(
-    viewModel: SettingsViewModel, 
-    onDismiss: () -> Unit,
-    onBackupClick: () -> Unit = {}
+        viewModel: SettingsViewModel,
+        onDismiss: () -> Unit,
+        onBackupClick: () -> Unit = {}
 ) {
         val uiScale by viewModel.uiScale.collectAsState()
 
@@ -124,7 +122,7 @@ fun SettingsView(
 
         // État pour l'onglet actuel
         var selectedTab by remember { mutableStateOf(0) }
-        
+
         // État pour le nombre de conseils
         var conseilsCount by remember { mutableStateOf(0) }
 
@@ -152,7 +150,8 @@ fun SettingsView(
         // Charger le nombre de conseils au démarrage
         LaunchedEffect(Unit) {
                 try {
-                        val count = viewModel.conseilRepository?.getConseilsCount()?.getOrThrow() ?: 0
+                        val count =
+                                viewModel.conseilRepository?.getConseilsCount()?.getOrThrow() ?: 0
                         conseilsCount = count
                 } catch (e: Exception) {
                         // En cas d'erreur, garder 0
@@ -162,7 +161,6 @@ fun SettingsView(
 
         Column(modifier = modifier.fillMaxSize()) {
                 // En-tête avec bouton retour
-              
 
                 // Navigation par onglets
                 SettingsTabs(selectedTab = selectedTab, onTabSelected = { selectedTab = it })
@@ -183,686 +181,668 @@ fun SettingsView(
                                         )
                                 }
                                 2 -> { // Importation
-                                                // Affichage du nombre de conseils
-                                                Card(
-                                                        modifier = Modifier.fillMaxWidth()
+                                        // Affichage du nombre de conseils
+                                        Card(
+                                                modifier =
+                                                        Modifier.fillMaxWidth()
                                                                 .padding(bottom = 8.dp),
-                                                        backgroundColor = VetNutriColors.Primary.copy(alpha = 0.1f)
+                                                backgroundColor =
+                                                        VetNutriColors.Primary.copy(alpha = 0.1f)
+                                        ) {
+                                                Row(
+                                                        modifier = Modifier.padding(12.dp),
+                                                        verticalAlignment =
+                                                                Alignment.CenterVertically
                                                 ) {
-                                                        Row(
-                                                                modifier = Modifier.padding(12.dp),
-                                                                verticalAlignment = Alignment.CenterVertically
-                                                        ) {
-                                                                Icon(
-                                                                        imageVector = Icons.Default.Info,
-                                                                        contentDescription = "Conseils",
-                                                                        tint = VetNutriColors.Primary
-                                                                )
-                                                                Spacer(modifier = Modifier.width(8.dp))
-                                                                Text(
-                                                                        text = "Conseils dans la base : $conseilsCount",
-                                                                        style = MaterialTheme.typography.body2,
-                                                                        color = VetNutriColors.Primary,
-                                                                        fontWeight = FontWeight.Medium
-                                                                )
-                                                        }
+                                                        Icon(
+                                                                imageVector = Icons.Default.Info,
+                                                                contentDescription = "Conseils",
+                                                                tint = VetNutriColors.Primary
+                                                        )
+                                                        Spacer(modifier = Modifier.width(8.dp))
+                                                        Text(
+                                                                text =
+                                                                        "Conseils dans la base : $conseilsCount",
+                                                                style =
+                                                                        MaterialTheme.typography
+                                                                                .body2,
+                                                                color = VetNutriColors.Primary,
+                                                                fontWeight = FontWeight.Medium
+                                                        )
                                                 }
-                                                Column(
-                                                        modifier =
-                                                                Modifier.fillMaxWidth()
-                                                                        .verticalScroll(
-                                                                                rememberScrollState()
-                                                                        ),
-                                                        verticalArrangement =
-                                                                Arrangement.spacedBy(8.dp)
+                                        }
+                                        Column(
+                                                modifier =
+                                                        Modifier.fillMaxWidth()
+                                                                .verticalScroll(
+                                                                        rememberScrollState()
+                                                                ),
+                                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                                // Sélection export avancée
+                                                var includeAnimals by remember {
+                                                        mutableStateOf(true)
+                                                }
+                                                var includeFoods by remember {
+                                                        mutableStateOf(true)
+                                                }
+                                                var includeEquations by remember {
+                                                        mutableStateOf(true)
+                                                }
+                                                var includeRations by remember {
+                                                        mutableStateOf(true)
+                                                }
+                                                var includeRecipes by remember {
+                                                        mutableStateOf(true)
+                                                }
+                                                var includeConseils by remember {
+                                                        mutableStateOf(true)
+                                                }
+                                                var selectedAnimalIds by remember {
+                                                        mutableStateOf(setOf<String>())
+                                                }
+                                                var selectedFoodIds by remember {
+                                                        mutableStateOf(setOf<String>())
+                                                }
+
+                                                // Bouton: choisir animaux à exporter (ouvre
+                                                // un simple sélecteur basique)
+                                                OutlinedButton(
+                                                        onClick = {
+                                                                coroutineScope.launch {
+                                                                        try {
+                                                                                val animals =
+                                                                                        viewModel
+                                                                                                .animalRepository
+                                                                                                .getAllAnimals()
+                                                                                // Simple
+                                                                                // sélection: toggle
+                                                                                // tout si vide
+                                                                                selectedAnimalIds =
+                                                                                        if (selectedAnimalIds
+                                                                                                        .isEmpty()
+                                                                                        )
+                                                                                                animals
+                                                                                                        .map {
+                                                                                                                it.uuid
+                                                                                                        }
+                                                                                                        .toSet()
+                                                                                        else
+                                                                                                emptySet()
+                                                                        } catch (e: Exception) {}
+                                                                }
+                                                        }
+                                                ) { Text("Sélectionner animaux (toggle tout)") }
+
+                                                // Bouton: choisir aliments à exporter
+                                                // (toggle tout)
+                                                OutlinedButton(
+                                                        onClick = {
+                                                                coroutineScope.launch {
+                                                                        try {
+                                                                                val foods =
+                                                                                        viewModel
+                                                                                                .foodRepository
+                                                                                                .getAllFoods()
+                                                                                selectedFoodIds =
+                                                                                        if (selectedFoodIds
+                                                                                                        .isEmpty()
+                                                                                        )
+                                                                                                foods
+                                                                                                        .map {
+                                                                                                                it.uuid
+                                                                                                        }
+                                                                                                        .toSet()
+                                                                                        else
+                                                                                                emptySet()
+                                                                        } catch (e: Exception) {}
+                                                                }
+                                                        }
+                                                ) { Text("Sélectionner aliments (toggle tout)") }
+
+                                                // Cases à cocher d’inclusion
+                                                Row(
+                                                        verticalAlignment =
+                                                                Alignment.CenterVertically
                                                 ) {
-                                                        // Sélection export avancée
-                                                        var includeAnimals by remember {
-                                                                mutableStateOf(true)
-                                                        }
-                                                        var includeFoods by remember {
-                                                                mutableStateOf(true)
-                                                        }
-                                                        var includeEquations by remember {
-                                                                mutableStateOf(true)
-                                                        }
-                                                        var includeRations by remember {
-                                                                mutableStateOf(true)
-                                                        }
-                                                        var includeRecipes by remember {
-                                                                mutableStateOf(true)
-                                                        }
-                                                        var includeConseils by remember {
-                                                                mutableStateOf(true)
-                                                        }
-                                                        var selectedAnimalIds by remember {
-                                                                mutableStateOf(setOf<String>())
-                                                        }
-                                                        var selectedFoodIds by remember {
-                                                                mutableStateOf(setOf<String>())
-                                                        }
-
-                                                        // Bouton: choisir animaux à exporter (ouvre
-                                                        // un simple sélecteur basique)
-                                                        OutlinedButton(
-                                                                onClick = {
-                                                                        coroutineScope.launch {
-                                                                                try {
-                                                                                        val animals =
-                                                                                                viewModel
-                                                                                                        .animalRepository
-                                                                                                        .getAllAnimals()
-                                                                                        // Simple
-                                                                                        // sélection: toggle tout si vide
-                                                                                        selectedAnimalIds =
-                                                                                                if (selectedAnimalIds
-                                                                                                                .isEmpty()
-                                                                                                )
-                                                                                                        animals
-                                                                                                                .map {
-                                                                                                                        it.uuid
-                                                                                                                }
-                                                                                                                .toSet()
-                                                                                                else
-                                                                                                        emptySet()
-                                                                                } catch (
-                                                                                        e:
-                                                                                                Exception) {}
-                                                                        }
+                                                        Checkbox(
+                                                                checked = includeAnimals,
+                                                                onCheckedChange = {
+                                                                        includeAnimals = it
                                                                 }
-                                                        ) {
-                                                                Text(
-                                                                        "Sélectionner animaux (toggle tout)"
-                                                                )
-                                                        }
-
-                                                        // Bouton: choisir aliments à exporter
-                                                        // (toggle tout)
-                                                        OutlinedButton(
-                                                                onClick = {
-                                                                        coroutineScope.launch {
-                                                                                try {
-                                                                                        val foods =
-                                                                                                viewModel
-                                                                                                        .foodRepository
-                                                                                                        .getAllFoods()
-                                                                                        selectedFoodIds =
-                                                                                                if (selectedFoodIds
-                                                                                                                .isEmpty()
-                                                                                                )
-                                                                                                        foods
-                                                                                                                .map {
-                                                                                                                        it.uuid
-                                                                                                                }
-                                                                                                                .toSet()
-                                                                                                else
-                                                                                                        emptySet()
-                                                                                } catch (
-                                                                                        e:
-                                                                                                Exception) {}
-                                                                        }
+                                                        )
+                                                        Text("Inclure animaux")
+                                                }
+                                                Row(
+                                                        verticalAlignment =
+                                                                Alignment.CenterVertically
+                                                ) {
+                                                        Checkbox(
+                                                                checked = includeFoods,
+                                                                onCheckedChange = {
+                                                                        includeFoods = it
                                                                 }
+                                                        )
+                                                        Text("Inclure aliments")
+                                                }
+                                                Row(
+                                                        verticalAlignment =
+                                                                Alignment.CenterVertically
+                                                ) {
+                                                        Checkbox(
+                                                                checked = includeEquations,
+                                                                onCheckedChange = {
+                                                                        includeEquations = it
+                                                                }
+                                                        )
+                                                        Text("Inclure équations")
+                                                }
+                                                Row(
+                                                        verticalAlignment =
+                                                                Alignment.CenterVertically
+                                                ) {
+                                                        Checkbox(
+                                                                checked = includeRations,
+                                                                onCheckedChange = {
+                                                                        includeRations = it
+                                                                }
+                                                        )
+                                                        Text("Inclure rations (sommaire)")
+                                                }
+                                                Row(
+                                                        verticalAlignment =
+                                                                Alignment.CenterVertically
+                                                ) {
+                                                        Checkbox(
+                                                                checked = includeRecipes,
+                                                                onCheckedChange = {
+                                                                        includeRecipes = it
+                                                                }
+                                                        )
+                                                        Text("Inclure recettes")
+                                                }
+                                                Row(
+                                                        verticalAlignment =
+                                                                Alignment.CenterVertically
+                                                ) {
+                                                        Checkbox(
+                                                                checked = includeConseils,
+                                                                onCheckedChange = {
+                                                                        includeConseils = it
+                                                                }
+                                                        )
+                                                        Text("Inclure conseils")
+                                                }
+                                                // Affichage du message de résultat
+                                                // d'importation des références
+                                                // nutritionnelles
+                                                nutritionalRequirementMessage?.let { message ->
+                                                        Card(
+                                                                modifier =
+                                                                        Modifier.fillMaxWidth()
+                                                                                .padding(
+                                                                                        bottom =
+                                                                                                8.dp
+                                                                                ),
+                                                                backgroundColor =
+                                                                        if (message.startsWith("✅"))
+                                                                                VetNutriColors
+                                                                                        .Primary
+                                                                                        .copy(
+                                                                                                alpha =
+                                                                                                        0.1f
+                                                                                        )
+                                                                        else if (message.startsWith(
+                                                                                        "❌"
+                                                                                )
+                                                                        )
+                                                                                VetNutriColors.Error
+                                                                                        .copy(
+                                                                                                alpha =
+                                                                                                        0.1f
+                                                                                        )
+                                                                        else
+                                                                                VetNutriColors
+                                                                                        .Secondary
+                                                                                        .copy(
+                                                                                                alpha =
+                                                                                                        0.1f
+                                                                                        )
                                                         ) {
-                                                                Text(
-                                                                        "Sélectionner aliments (toggle tout)"
-                                                                )
-                                                        }
-
-                                                        // Cases à cocher d’inclusion
-                                                        Row(
-                                                                verticalAlignment =
-                                                                        Alignment.CenterVertically
-                                                        ) {
-                                                                Checkbox(
-                                                                        checked = includeAnimals,
-                                                                        onCheckedChange = {
-                                                                                includeAnimals = it
-                                                                        }
-                                                                )
-                                                                Text("Inclure animaux")
-                                                        }
-                                                        Row(
-                                                                verticalAlignment =
-                                                                        Alignment.CenterVertically
-                                                        ) {
-                                                                Checkbox(
-                                                                        checked = includeFoods,
-                                                                        onCheckedChange = {
-                                                                                includeFoods = it
-                                                                        }
-                                                                )
-                                                                Text("Inclure aliments")
-                                                        }
-                                                        Row(
-                                                                verticalAlignment =
-                                                                        Alignment.CenterVertically
-                                                        ) {
-                                                                Checkbox(
-                                                                        checked = includeEquations,
-                                                                        onCheckedChange = {
-                                                                                includeEquations =
-                                                                                        it
-                                                                        }
-                                                                )
-                                                                Text("Inclure équations")
-                                                        }
-                                                        Row(
-                                                                verticalAlignment =
-                                                                        Alignment.CenterVertically
-                                                        ) {
-                                                                Checkbox(
-                                                                        checked = includeRations,
-                                                                        onCheckedChange = {
-                                                                                includeRations = it
-                                                                        }
-                                                                )
-                                                                Text("Inclure rations (sommaire)")
-                                                        }
-                                                        Row(
-                                                                verticalAlignment =
-                                                                        Alignment.CenterVertically
-                                                        ) {
-                                                                Checkbox(
-                                                                        checked = includeRecipes,
-                                                                        onCheckedChange = {
-                                                                                includeRecipes = it
-                                                                        }
-                                                                )
-                                                                Text("Inclure recettes")
-                                                        }
-                                                        Row(
-                                                                verticalAlignment =
-                                                                        Alignment.CenterVertically
-                                                        ) {
-                                                                Checkbox(
-                                                                        checked = includeConseils,
-                                                                        onCheckedChange = {
-                                                                                includeConseils = it
-                                                                        }
-                                                                )
-                                                                Text("Inclure conseils")
-                                                        }
-                                                        // Affichage du message de résultat
-                                                        // d'importation des références
-                                                        // nutritionnelles
-                                                        nutritionalRequirementMessage?.let { message
-                                                                ->
-                                                                Card(
+                                                                Row(
                                                                         modifier =
                                                                                 Modifier.fillMaxWidth()
                                                                                         .padding(
-                                                                                                bottom =
-                                                                                                        8.dp
+                                                                                                12.dp
                                                                                         ),
-                                                                        backgroundColor =
-                                                                                if (message.startsWith(
-                                                                                                "✅"
-                                                                                        )
-                                                                                )
-                                                                                        VetNutriColors
-                                                                                                .Primary
-                                                                                                .copy(
-                                                                                                        alpha =
-                                                                                                                0.1f
-                                                                                                )
-                                                                                else if (message.startsWith(
-                                                                                                "❌"
-                                                                                        )
-                                                                                )
-                                                                                        VetNutriColors
-                                                                                                .Error
-                                                                                                .copy(
-                                                                                                        alpha =
-                                                                                                                0.1f
-                                                                                                )
-                                                                                else
-                                                                                        VetNutriColors
-                                                                                                .Secondary
-                                                                                                .copy(
-                                                                                                        alpha =
-                                                                                                                0.1f
-                                                                                                )
+                                                                        horizontalArrangement =
+                                                                                Arrangement
+                                                                                        .SpaceBetween,
+                                                                        verticalAlignment =
+                                                                                Alignment
+                                                                                        .CenterVertically
                                                                 ) {
-                                                                        Row(
-                                                                                modifier =
-                                                                                        Modifier.fillMaxWidth()
-                                                                                                .padding(
-                                                                                                        12.dp
-                                                                                                ),
-                                                                                horizontalArrangement =
-                                                                                        Arrangement
-                                                                                                .SpaceBetween,
-                                                                                verticalAlignment =
-                                                                                        Alignment
-                                                                                                .CenterVertically
-                                                                        ) {
-                                                                                Text(
-                                                                                        message,
-                                                                                        style =
-                                                                                                MaterialTheme
-                                                                                                        .typography
-                                                                                                        .body2,
-                                                                                        color =
-                                                                                                if (message.startsWith(
-                                                                                                                "✅"
-                                                                                                        )
+                                                                        Text(
+                                                                                message,
+                                                                                style =
+                                                                                        MaterialTheme
+                                                                                                .typography
+                                                                                                .body2,
+                                                                                color =
+                                                                                        if (message.startsWith(
+                                                                                                        "✅"
                                                                                                 )
-                                                                                                        VetNutriColors
-                                                                                                                .Primary
-                                                                                                else if (message.startsWith(
-                                                                                                                "❌"
-                                                                                                        )
-                                                                                                )
-                                                                                                        VetNutriColors
-                                                                                                                .Error
-                                                                                                else
-                                                                                                        Color.DarkGray,
-                                                                                        modifier =
-                                                                                                Modifier.weight(
-                                                                                                        1f
-                                                                                                )
-                                                                                )
-                                                                                IconButton(
-                                                                                        onClick = {
-                                                                                                importViewModel
-                                                                                                        .resetImportResult()
-                                                                                        }
-                                                                                ) {
-                                                                                        Icon(
-                                                                                                Icons.Default
-                                                                                                        .Close,
-                                                                                                contentDescription =
-                                                                                                        "Fermer",
-                                                                                                tint =
-                                                                                                        Color.Gray
                                                                                         )
+                                                                                                VetNutriColors
+                                                                                                        .Primary
+                                                                                        else if (message.startsWith(
+                                                                                                        "❌"
+                                                                                                )
+                                                                                        )
+                                                                                                VetNutriColors
+                                                                                                        .Error
+                                                                                        else
+                                                                                                Color.DarkGray,
+                                                                                modifier =
+                                                                                        Modifier.weight(
+                                                                                                1f
+                                                                                        )
+                                                                        )
+                                                                        IconButton(
+                                                                                onClick = {
+                                                                                        importViewModel
+                                                                                                .resetImportResult()
                                                                                 }
+                                                                        ) {
+                                                                                Icon(
+                                                                                        Icons.Default
+                                                                                                .Close,
+                                                                                        contentDescription =
+                                                                                                "Fermer",
+                                                                                        tint =
+                                                                                                Color.Gray
+                                                                                )
                                                                         }
                                                                 }
                                                         }
+                                                }
 
-                                                        Button(
-                                                                onClick = onImportAnimals,
-                                                                colors =
-                                                                        ButtonDefaults.buttonColors(
-                                                                                backgroundColor =
-                                                                                        VetNutriColors
-                                                                                                .Primary
-                                                                        ),
-                                                                modifier = Modifier.fillMaxWidth()
-                                                        ) {
-                                                                Text(
-                                                                        "Importer des animaux",
-                                                                        color = Color.White
-                                                                )
-                                                        }
+                                                Button(
+                                                        onClick = onImportAnimals,
+                                                        colors =
+                                                                ButtonDefaults.buttonColors(
+                                                                        backgroundColor =
+                                                                                VetNutriColors
+                                                                                        .Primary
+                                                                ),
+                                                        modifier = Modifier.fillMaxWidth()
+                                                ) {
+                                                        Text(
+                                                                "Importer des animaux",
+                                                                color = Color.White
+                                                        )
+                                                }
 
-                                                        // Export (nouveau format API)
-                                                        Button(
-                                                                onClick = {
-                                                                        coroutineScope.launch {
-                                                                                try {
-                                                                                        val exportRepo =
-                                                                                                ExportImportRepository(
-                                                                                                        animalRepository =
-                                                                                                                viewModel
-                                                                                                                        .animalRepository,
-                                                                                                        foodRepository =
-                                                                                                                viewModel
-                                                                                                                        .foodRepository,
-                                                                                                        equationRepository =
-                                                                                                                viewModel
-                                                                                                                        .equationRepository,
-                                                                                                        referenceRepository =
-                                                                                                                viewModel
-                                                                                                                        .referenceEvRepository,
-                                                                                                        biblioRepository =
-                                                                                                                viewModel
-                                                                                                                        .biblioRefRepository,
-                                                                                                        consultationRepository =
-                                                                                                                viewModel
-                                                                                                                        .consultationRepository,
-                                                                                                        recipeRepository =
-                                                                                                                viewModel
-                                                                                                                        .recipeRepository,
-                                                                                                        conseilRepository =
-                                                                                                                viewModel
-                                                                                                                        .conseilRepository
+                                                // Export (nouveau format API)
+                                                Button(
+                                                        onClick = {
+                                                                coroutineScope.launch {
+                                                                        try {
+                                                                                val exportRepo =
+                                                                                        ExportImportRepository(
+                                                                                                animalRepository =
+                                                                                                        viewModel
+                                                                                                                .animalRepository,
+                                                                                                foodRepository =
+                                                                                                        viewModel
+                                                                                                                .foodRepository,
+                                                                                                equationRepository =
+                                                                                                        viewModel
+                                                                                                                .equationRepository,
+                                                                                                referenceRepository =
+                                                                                                        viewModel
+                                                                                                                .referenceEvRepository,
+                                                                                                biblioRepository =
+                                                                                                        viewModel
+                                                                                                                .biblioRefRepository,
+                                                                                                consultationRepository =
+                                                                                                        viewModel
+                                                                                                                .consultationRepository,
+                                                                                                recipeRepository =
+                                                                                                        viewModel
+                                                                                                                .recipeRepository,
+                                                                                                conseilRepository =
+                                                                                                        viewModel
+                                                                                                                .conseilRepository
+                                                                                        )
+                                                                                val json =
+                                                                                        exportRepo
+                                                                                                .exportWithSelection(
+                                                                                                        ExportImportRepository
+                                                                                                                .ExportSelectionOptions(
+                                                                                                                        includeAnimals =
+                                                                                                                                includeAnimals,
+                                                                                                                        includeFoods =
+                                                                                                                                includeFoods,
+                                                                                                                        includeRations =
+                                                                                                                                includeRations,
+                                                                                                                        includeRecipes =
+                                                                                                                                includeRecipes,
+                                                                                                                        includeEquations =
+                                                                                                                                includeEquations,
+                                                                                                                        includeConseils =
+                                                                                                                                includeConseils,
+                                                                                                                        animalIds =
+                                                                                                                                selectedAnimalIds,
+                                                                                                                        foodIds =
+                                                                                                                                selectedFoodIds
+                                                                                                                )
                                                                                                 )
-                                                                                        val json =
-                                                                                                exportRepo
-                                                                                                        .exportWithSelection(
-                                                                                                                ExportImportRepository
-                                                                                                                        .ExportSelectionOptions(
-                                                                                                                                includeAnimals =
-                                                                                                                                        includeAnimals,
-                                                                                                                                includeFoods =
-                                                                                                                                        includeFoods,
-                                                                                                                                includeRations =
-                                                                                                                                        includeRations,
-                                                                                                                                includeRecipes =
-                                                                                                                                        includeRecipes,
-                                                                                                                                includeEquations =
-                                                                                                                                        includeEquations,
-                                                                                                                                includeConseils =
-                                                                                                                                        includeConseils,
-                                                                                                                                animalIds =
-                                                                                                                                        selectedAnimalIds,
-                                                                                                                                foodIds =
-                                                                                                                                        selectedFoodIds
-                                                                                                                        )
-                                                                                                        )
-                                                                                        val ok =
-                                                                                                fr.vetbrain
-                                                                                                        .vetnutri_mp
-                                                                                                        .exportJsonToFile(
-                                                                                                                content =
-                                                                                                                        json,
-                                                                                                                defaultFileName =
-                                                                                                                        "vetnutri_export.json"
-                                                                                                        )
-                                                                                        // Export
-                                                                                        // terminé,
-                                                                                        // résultat
-                                                                                        // : $ok
-                                                                                } catch (
-                                                                                        e:
-                                                                                                Exception) {
-                                                                                        // Erreur
-                                                                                        // d'export
-                                                                                        // gérée
-                                                                                }
+                                                                                val ok =
+                                                                                        fr.vetbrain
+                                                                                                .vetnutri_mp
+                                                                                                .exportJsonToFile(
+                                                                                                        content =
+                                                                                                                json,
+                                                                                                        defaultFileName =
+                                                                                                                "vetnutri_export.json"
+                                                                                                )
+                                                                                // Export
+                                                                                // terminé,
+                                                                                // résultat
+                                                                                // : $ok
+                                                                        } catch (e: Exception) {
+                                                                                // Erreur
+                                                                                // d'export
+                                                                                // gérée
                                                                         }
-                                                                },
-                                                                colors =
-                                                                        ButtonDefaults.buttonColors(
-                                                                                backgroundColor =
-                                                                                        VetNutriColors
-                                                                                                .Secondary
-                                                                        ),
-                                                                modifier = Modifier.fillMaxWidth()
-                                                        ) {
-                                                                Text(
-                                                                        "Exporter (nouveau format API)",
-                                                                        color = Color.White
-                                                                )
-                                                        }
+                                                                }
+                                                        },
+                                                        colors =
+                                                                ButtonDefaults.buttonColors(
+                                                                        backgroundColor =
+                                                                                VetNutriColors
+                                                                                        .Secondary
+                                                                ),
+                                                        modifier = Modifier.fillMaxWidth()
+                                                ) {
+                                                        Text(
+                                                                "Exporter (nouveau format API)",
+                                                                color = Color.White
+                                                        )
+                                                }
 
-                                                        // Import (nouveau format API) – aligné sur
-                                                        // import animaux
-                                                        Button(
-                                                                onClick = {
-                                                                        viewModel
-                                                                                .importApiFromFileUI()
-                                                                },
-                                                                colors =
-                                                                        ButtonDefaults.buttonColors(
-                                                                                backgroundColor =
-                                                                                        VetNutriColors
-                                                                                                .Secondary
-                                                                        ),
-                                                                modifier = Modifier.fillMaxWidth()
-                                                        ) {
-                                                                Text(
-                                                                        "Importer (nouveau format API)",
-                                                                        color = Color.White
-                                                                )
-                                                        }
+                                                // Import (nouveau format API) – aligné sur
+                                                // import animaux
+                                                Button(
+                                                        onClick = {
+                                                                viewModel.importApiFromFileUI()
+                                                        },
+                                                        colors =
+                                                                ButtonDefaults.buttonColors(
+                                                                        backgroundColor =
+                                                                                VetNutriColors
+                                                                                        .Secondary
+                                                                ),
+                                                        modifier = Modifier.fillMaxWidth()
+                                                ) {
+                                                        Text(
+                                                                "Importer (nouveau format API)",
+                                                                color = Color.White
+                                                        )
+                                                }
 
-                                                        // Dialog de résultat pour l'import API
-                                                        val apiImportResult =
-                                                                viewModel.importResult
-                                                                        .collectAsState()
-                                                                        .value
-                                                        val apiImporting =
-                                                                viewModel.isApiImporting
-                                                                        .collectAsState()
-                                                                        .value
-                                                        val apiProgress =
-                                                                viewModel.apiImportProgress
-                                                                        .collectAsState()
-                                                                        .value
-                                                        val apiLogs =
-                                                                viewModel.apiImportLogs
-                                                                        .collectAsState()
-                                                                        .value
-                                                        if (apiImporting) {
-                                                                AlertDialog(
-                                                                        onDismissRequest = {},
-                                                                        title = {
-                                                                                Text(
-                                                                                        "Import API en cours…"
+                                                // Dialog de résultat pour l'import API
+                                                val apiImportResult =
+                                                        viewModel.importResult.collectAsState()
+                                                                .value
+                                                val apiImporting =
+                                                        viewModel.isApiImporting.collectAsState()
+                                                                .value
+                                                val apiProgress =
+                                                        viewModel.apiImportProgress.collectAsState()
+                                                                .value
+                                                val apiLogs =
+                                                        viewModel.apiImportLogs.collectAsState()
+                                                                .value
+                                                if (apiImporting) {
+                                                        AlertDialog(
+                                                                onDismissRequest = {},
+                                                                title = {
+                                                                        Text("Import API en cours…")
+                                                                },
+                                                                text = {
+                                                                        Column(
+                                                                                verticalArrangement =
+                                                                                        Arrangement
+                                                                                                .spacedBy(
+                                                                                                        8.dp
+                                                                                                )
+                                                                        ) {
+                                                                                LinearProgressIndicator(
+                                                                                        progress =
+                                                                                                apiProgress
+                                                                                                        .toFloat()
                                                                                 )
-                                                                        },
-                                                                        text = {
-                                                                                Column(
-                                                                                        verticalArrangement =
-                                                                                                Arrangement
-                                                                                                        .spacedBy(
+                                                                                Box(
+                                                                                        modifier =
+                                                                                                Modifier.fillMaxWidth()
+                                                                                                        .height(
+                                                                                                                120.dp
+                                                                                                        )
+                                                                                                        .background(
+                                                                                                                Color(
+                                                                                                                        0xFFF5F5F5
+                                                                                                                )
+                                                                                                        )
+                                                                                ) {
+                                                                                        // Affichage
+                                                                                        // simple
+                                                                                        // des logs
+                                                                                        // (limités)
+                                                                                        Column(
+                                                                                                modifier =
+                                                                                                        Modifier.padding(
                                                                                                                 8.dp
                                                                                                         )
-                                                                                ) {
-                                                                                        LinearProgressIndicator(
-                                                                                                progress =
-                                                                                                        apiProgress
-                                                                                                                .toFloat()
-                                                                                        )
-                                                                                        Box(
-                                                                                                modifier =
-                                                                                                        Modifier.fillMaxWidth()
-                                                                                                                .height(
-                                                                                                                        120.dp
-                                                                                                                )
-                                                                                                                .background(
-                                                                                                                        Color(
-                                                                                                                                0xFFF5F5F5
-                                                                                                                        )
-                                                                                                                )
                                                                                         ) {
-                                                                                                // Affichage simple des logs (limités)
-                                                                                                Column(
-                                                                                                        modifier =
-                                                                                                                Modifier.padding(
-                                                                                                                        8.dp
-                                                                                                                )
-                                                                                                ) {
-                                                                                                        apiLogs.takeLast(
-                                                                                                                        10
-                                                                                                                )
-                                                                                                                .forEach {
+                                                                                                apiLogs.takeLast(
+                                                                                                                10
+                                                                                                        )
+                                                                                                        .forEach {
+                                                                                                                line
+                                                                                                                ->
+                                                                                                                Text(
                                                                                                                         line
-                                                                                                                        ->
-                                                                                                                        Text(
-                                                                                                                                line
-                                                                                                                        )
-                                                                                                                }
-                                                                                                }
+                                                                                                                )
+                                                                                                        }
                                                                                         }
                                                                                 }
-                                                                        },
-                                                                        confirmButton = {}
-                                                                )
-                                                        }
-                                                        var showApiImportDialog by remember {
-                                                                mutableStateOf(false)
-                                                        }
-                                                        LaunchedEffect(apiImportResult) {
-                                                                if (apiImportResult != null)
-                                                                        showApiImportDialog = true
-                                                        }
-                                                        if (showApiImportDialog) {
-                                                                AlertDialog(
-                                                                        onDismissRequest = {
-                                                                                showApiImportDialog =
-                                                                                        false
-                                                                                viewModel
-                                                                                        .resetImportResult()
-                                                                        },
-                                                                        title = {
-                                                                                Text(
-                                                                                        "Résultat de l'import API"
-                                                                                )
-                                                                        },
-                                                                        text = {
-                                                                                when (val r =
-                                                                                                apiImportResult
-                                                                                ) {
-                                                                                        is SettingsViewModel.ImportResult.Success -> {
-                                                                                                Column {
-                                                                                                        Text(
-                                                                                                                "Total pris en compte: ${r.count}"
-                                                                                                        )
-                                                                                                        Text(
-                                                                                                                "Importés: ${r.importedCount}"
-                                                                                                        )
-                                                                                                        if (r.updatedCount >
-                                                                                                                        0
-                                                                                                        )
-                                                                                                                Text(
-                                                                                                                        "Mises à jour: ${r.updatedCount}"
-                                                                                                                )
-                                                                                                        if (r.deletedCount >
-                                                                                                                        0
-                                                                                                        )
-                                                                                                                Text(
-                                                                                                                        "Supprimés: ${r.deletedCount}"
-                                                                                                                )
-                                                                                                        if (r.errorCount >
-                                                                                                                        0
-                                                                                                        )
-                                                                                                                Text(
-                                                                                                                        "Erreurs: ${r.errorCount}",
-                                                                                                                        color =
-                                                                                                                                MaterialTheme
-                                                                                                                                        .colors
-                                                                                                                                        .error
-                                                                                                                )
-                                                                                                        if (r.conseils >
-                                                                                                                        0
-                                                                                                        )
-                                                                                                                Text(
-                                                                                                                        "Conseils: ${r.conseils}"
-                                                                                                                )
-                                                                                                }
-                                                                                        }
-                                                                                        is SettingsViewModel.ImportResult.Error -> {
-                                                                                                Text(
-                                                                                                        "Erreur: ${r.message}",
-                                                                                                        color =
-                                                                                                                MaterialTheme
-                                                                                                                        .colors
-                                                                                                                        .error
-                                                                                                )
-                                                                                        }
-                                                                                        null ->
-                                                                                                Text(
-                                                                                                        "Aucun résultat."
-                                                                                                )
-                                                                                }
-                                                                        },
-                                                                        confirmButton = {
-                                                                                Button(
-                                                                                        onClick = {
-                                                                                                showApiImportDialog =
-                                                                                                        false
-                                                                                                viewModel
-                                                                                                        .resetImportResult()
-                                                                                                // rafraîchit la liste des animaux si l'import a concerné des animaux
-                                                                                                onAnimalListRefresh()
-                                                                                        }
-                                                                                ) { Text("OK") }
-                                                                        }
-                                                                )
-                                                        }
-
-                                                        // Bouton pour importer des aliments
-                                                        Button(
-                                                                onClick = {
-                                                                        try {
-                                                                                // Utilisons la
-                                                                                // méthode du
-                                                                                // ViewModel qui
-                                                                                // encapsule l'appel
-                                                                                // à
-                                                                                // importFoodsFromFile
-                                                                                viewModel
-                                                                                        .importFoodsFromFileUI()
-                                                                        } catch (e: Exception) {
-                                                                                // Les erreurs sont
-                                                                                // gérées par le
-                                                                                // ViewModel
                                                                         }
                                                                 },
-                                                                colors =
-                                                                        ButtonDefaults.buttonColors(
-                                                                                backgroundColor =
-                                                                                        VetNutriColors
-                                                                                                .Primary
-                                                                        ),
-                                                                modifier = Modifier.fillMaxWidth()
-                                                        ) {
-                                                                Text(
-                                                                        "Importer des aliments",
-                                                                        color = Color.White
-                                                                )
-                                                        }
-
-                                                        // Bouton pour importer des références
-                                                        // nutritionnelles
-                                                        Button(
-                                                                onClick = {
-                                                                        try {
-                                                                                // Utilisons la
-                                                                                // méthode du
-                                                                                // ImportViewModel
-                                                                                // pour
-                                                                                // importer les
-                                                                                // références
-                                                                                // nutritionnelles
-                                                                                importViewModel
-                                                                                        .importNutritionalRequirementsFromFileUI()
-                                                                        } catch (e: Exception) {
-                                                                                // Les erreurs sont
-                                                                                // gérées par le
-                                                                                // ViewModel
-                                                                        }
-                                                                },
-                                                                colors =
-                                                                        ButtonDefaults.buttonColors(
-                                                                                backgroundColor =
-                                                                                        VetNutriColors
-                                                                                                .Secondary
-                                                                        ),
-                                                                modifier = Modifier.fillMaxWidth()
-                                                        ) {
-                                                                Text(
-                                                                        "Importer des références nutritionnelles (.vbnr.json)",
-                                                                        color = Color.White
-                                                                )
-                                                        }
+                                                                confirmButton = {}
+                                                        )
                                                 }
+                                                var showApiImportDialog by remember {
+                                                        mutableStateOf(false)
+                                                }
+                                                LaunchedEffect(apiImportResult) {
+                                                        if (apiImportResult != null)
+                                                                showApiImportDialog = true
+                                                }
+                                                if (showApiImportDialog) {
+                                                        AlertDialog(
+                                                                onDismissRequest = {
+                                                                        showApiImportDialog = false
+                                                                        viewModel
+                                                                                .resetImportResult()
+                                                                },
+                                                                title = {
+                                                                        Text(
+                                                                                "Résultat de l'import API"
+                                                                        )
+                                                                },
+                                                                text = {
+                                                                        when (val r =
+                                                                                        apiImportResult
+                                                                        ) {
+                                                                                is SettingsViewModel.ImportResult.Success -> {
+                                                                                        Column {
+                                                                                                Text(
+                                                                                                        "Total pris en compte: ${r.count}"
+                                                                                                )
+                                                                                                Text(
+                                                                                                        "Importés: ${r.importedCount}"
+                                                                                                )
+                                                                                                if (r.updatedCount >
+                                                                                                                0
+                                                                                                )
+                                                                                                        Text(
+                                                                                                                "Mises à jour: ${r.updatedCount}"
+                                                                                                        )
+                                                                                                if (r.deletedCount >
+                                                                                                                0
+                                                                                                )
+                                                                                                        Text(
+                                                                                                                "Supprimés: ${r.deletedCount}"
+                                                                                                        )
+                                                                                                if (r.errorCount >
+                                                                                                                0
+                                                                                                )
+                                                                                                        Text(
+                                                                                                                "Erreurs: ${r.errorCount}",
+                                                                                                                color =
+                                                                                                                        MaterialTheme
+                                                                                                                                .colors
+                                                                                                                                .error
+                                                                                                        )
+                                                                                                if (r.conseils >
+                                                                                                                0
+                                                                                                )
+                                                                                                        Text(
+                                                                                                                "Conseils: ${r.conseils}"
+                                                                                                        )
+                                                                                        }
+                                                                                }
+                                                                                is SettingsViewModel.ImportResult.Error -> {
+                                                                                        Text(
+                                                                                                "Erreur: ${r.message}",
+                                                                                                color =
+                                                                                                        MaterialTheme
+                                                                                                                .colors
+                                                                                                                .error
+                                                                                        )
+                                                                                }
+                                                                                null ->
+                                                                                        Text(
+                                                                                                "Aucun résultat."
+                                                                                        )
+                                                                        }
+                                                                },
+                                                                confirmButton = {
+                                                                        Button(
+                                                                                onClick = {
+                                                                                        showApiImportDialog =
+                                                                                                false
+                                                                                        viewModel
+                                                                                                .resetImportResult()
+                                                                                        // rafraîchit la liste des animaux si l'import a concerné des animaux
+                                                                                        onAnimalListRefresh()
+                                                                                }
+                                                                        ) { Text("OK") }
+                                                                }
+                                                        )
+                                                }
+
+                                                // Bouton pour importer des aliments
+                                                Button(
+                                                        onClick = {
+                                                                try {
+                                                                        // Utilisons la
+                                                                        // méthode du
+                                                                        // ViewModel qui
+                                                                        // encapsule l'appel
+                                                                        // à
+                                                                        // importFoodsFromFile
+                                                                        viewModel
+                                                                                .importFoodsFromFileUI()
+                                                                } catch (e: Exception) {
+                                                                        // Les erreurs sont
+                                                                        // gérées par le
+                                                                        // ViewModel
+                                                                }
+                                                        },
+                                                        colors =
+                                                                ButtonDefaults.buttonColors(
+                                                                        backgroundColor =
+                                                                                VetNutriColors
+                                                                                        .Primary
+                                                                ),
+                                                        modifier = Modifier.fillMaxWidth()
+                                                ) {
+                                                        Text(
+                                                                "Importer des aliments",
+                                                                color = Color.White
+                                                        )
+                                                }
+
+                                                // Bouton pour importer des références
+                                                // nutritionnelles
+                                                Button(
+                                                        onClick = {
+                                                                try {
+                                                                        // Utilisons la
+                                                                        // méthode du
+                                                                        // ImportViewModel
+                                                                        // pour
+                                                                        // importer les
+                                                                        // références
+                                                                        // nutritionnelles
+                                                                        importViewModel
+                                                                                .importNutritionalRequirementsFromFileUI()
+                                                                } catch (e: Exception) {
+                                                                        // Les erreurs sont
+                                                                        // gérées par le
+                                                                        // ViewModel
+                                                                }
+                                                        },
+                                                        colors =
+                                                                ButtonDefaults.buttonColors(
+                                                                        backgroundColor =
+                                                                                VetNutriColors
+                                                                                        .Secondary
+                                                                ),
+                                                        modifier = Modifier.fillMaxWidth()
+                                                ) {
+                                                        Text(
+                                                                "Importer des références nutritionnelles (.vbnr.json)",
+                                                                color = Color.White
+                                                        )
+                                                }
+                                        }
                                 }
                                 3 -> { // Excel Import/Export
-                                        ExcelImportExportSection(
-                                                modifier = Modifier.fillMaxWidth()
-                                        )
+                                        ExcelImportExportSection(modifier = Modifier.fillMaxWidth())
                                 }
                                 4 -> { // Recettes
                                         RecipeEditView(
-                                                viewModel = RecipeEditViewModel(
-                                                        recipeRepository = viewModel.recipeRepository
-                                                                ?: throw IllegalStateException(
-                                                                        "RecipeRepository not available"
-                                                                ),
-                                                        foodRepository = viewModel.foodRepository
+                                                viewModel =
+                                                        RecipeEditViewModel(
+                                                                recipeRepository =
+                                                                        viewModel.recipeRepository
+                                                                                ?: throw IllegalStateException(
+                                                                                        "RecipeRepository not available"
+                                                                                ),
+                                                                foodRepository =
+                                                                        viewModel.foodRepository
+                                                                                ?: throw IllegalStateException(
+                                                                                        "FoodRepository not available"
+                                                                                )
+                                                        ),
+                                                foodRepository = viewModel.foodRepository
                                                                 ?: throw IllegalStateException(
                                                                         "FoodRepository not available"
-                                                                )
-                                                ),
-                                                foodRepository = viewModel.foodRepository
-                                                        ?: throw IllegalStateException(
-                                                                "FoodRepository not available"
-                                                        ),
+                                                                ),
                                                 modifier = Modifier.fillMaxWidth()
                                         )
                                 }
@@ -1005,9 +985,146 @@ private fun PreferencesContentWithPersistence(
                 }
         } else if (preferencesLoaded && currentPreferences != null) {
                 Column(
-                        modifier = modifier.fillMaxWidth().padding(16.dp),
+                        modifier = modifier.fillMaxWidth().padding(16.dp).verticalScroll(rememberScrollState()),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
+                        var nomUtilisateur by remember {
+                                mutableStateOf(currentPreferences!!.nomUtilisateur)
+                        }
+                        var numeroOrdre by remember {
+                                mutableStateOf(currentPreferences!!.numeroOrdre)
+                        }
+                        var adressePostale by remember {
+                                mutableStateOf(currentPreferences!!.adressePostale)
+                        }
+                        var codePostal by remember { mutableStateOf(currentPreferences!!.codePostal) }
+                        var ville by remember { mutableStateOf(currentPreferences!!.ville) }
+                        var telephone by remember { mutableStateOf(currentPreferences!!.telephone) }
+                        var email by remember { mutableStateOf(currentPreferences!!.email) }
+                        var isSavingUser by remember { mutableStateOf(false) }
+                        Text(
+                                text = "Informations utilisateur",
+                                style = MaterialTheme.typography.h6,
+                                color = VetNutriColors.Primary
+                        )
+                        Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                backgroundColor = Color.White,
+                                elevation = 2.dp
+                        ) {
+                                Column(
+                                        modifier = Modifier.padding(16.dp),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                        OutlinedTextField(
+                                                value = nomUtilisateur,
+                                                onValueChange = { nomUtilisateur = it },
+                                                label = { Text("Nom de l'utilisateur") },
+                                                singleLine = true,
+                                                modifier = Modifier.fillMaxWidth()
+                                        )
+                                        OutlinedTextField(
+                                                value = numeroOrdre,
+                                                onValueChange = { numeroOrdre = it },
+                                                label = { Text("Numéro d'ordre") },
+                                                singleLine = true,
+                                                modifier = Modifier.fillMaxWidth()
+                                        )
+                                        OutlinedTextField(
+                                                value = adressePostale,
+                                                onValueChange = { adressePostale = it },
+                                                label = { Text("Adresse postale") },
+                                                singleLine = false,
+                                                modifier = Modifier.fillMaxWidth()
+                                        )
+                                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                                OutlinedTextField(
+                                                        value = codePostal,
+                                                        onValueChange = { codePostal = it },
+                                                        label = { Text("Code postal") },
+                                                        singleLine = true,
+                                                        modifier = Modifier.weight(1f)
+                                                )
+                                                OutlinedTextField(
+                                                        value = ville,
+                                                        onValueChange = { ville = it },
+                                                        label = { Text("Ville") },
+                                                        singleLine = true,
+                                                        modifier = Modifier.weight(2f)
+                                                )
+                                        }
+                                        OutlinedTextField(
+                                                value = telephone,
+                                                onValueChange = { telephone = it },
+                                                label = { Text("Téléphone") },
+                                                singleLine = true,
+                                                modifier = Modifier.fillMaxWidth()
+                                        )
+                                        OutlinedTextField(
+                                                value = email,
+                                                onValueChange = { email = it },
+                                                label = { Text("Email") },
+                                                singleLine = true,
+                                                modifier = Modifier.fillMaxWidth()
+                                        )
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Button(
+                                                        onClick = {
+                                                                kotlinx.coroutines.GlobalScope
+                                                                        .launch {
+                                                                                try {
+                                                                                        isSavingUser =
+                                                                                                true
+                                                                                        val updated =
+                                                                                                currentPreferences!!
+                                                                                                        .copy(
+                                                                                                                nomUtilisateur =
+                                                                                                                        nomUtilisateur,
+                                                                                                                numeroOrdre =
+                                                                                                                        numeroOrdre,
+                                                                                                                adressePostale =
+                                                                                                                        adressePostale,
+                                                                                                                codePostal =
+                                                                                                                        codePostal,
+                                                                                                                ville = ville,
+                                                                                                                telephone =
+                                                                                                                        telephone,
+                                                                                                                email =
+                                                                                                                        email
+                                                                                                        )
+                                                                                        preferencesRepository
+                                                                                                .savePreferences(
+                                                                                                        updated
+                                                                                                )
+                                                                                        currentPreferences =
+                                                                                                updated
+                                                                                } catch (
+                                                                                        e:
+                                                                                                Exception) {} finally {
+                                                                                        isSavingUser =
+                                                                                                false
+                                                                                }
+                                                                        }
+                                                        },
+                                                        enabled = !isSavingUser,
+                                                        colors =
+                                                                ButtonDefaults.buttonColors(
+                                                                        backgroundColor =
+                                                                                VetNutriColors
+                                                                                        .Primary
+                                                                )
+                                                ) { Text("Enregistrer", color = Color.White) }
+                                                if (isSavingUser) {
+                                                        Spacer(modifier = Modifier.width(8.dp))
+                                                        CircularProgressIndicator(
+                                                                modifier = Modifier.size(18.dp),
+                                                                color = VetNutriColors.Primary,
+                                                                strokeWidth = 2.dp
+                                                        )
+                                                }
+                                        }
+                                }
+                        }
                         Text(
                                 text = "Expression des besoins par espèce",
                                 style = MaterialTheme.typography.h6,
@@ -1255,11 +1372,73 @@ private fun PreferencesContentSimplified(modifier: Modifier = Modifier) {
                         fr.vetbrain.vetnutri_mp.Enumer.Espece,
                         fr.vetbrain.vetnutri_mp.Enumer.TypeExpressionBesoin>()
         }
+        var nomUtilisateur by remember { mutableStateOf("") }
+        var numeroOrdre by remember { mutableStateOf("") }
+        var adressePostale by remember { mutableStateOf("") }
+        var telephone by remember { mutableStateOf("") }
+        var email by remember { mutableStateOf("") }
 
         Column(
-                modifier = modifier.fillMaxWidth().padding(16.dp),
+                modifier = modifier.fillMaxWidth().padding(16.dp).verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+                Text(
+                        text = "Informations utilisateur",
+                        style = MaterialTheme.typography.h6,
+                        color = VetNutriColors.Primary
+                )
+                Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        backgroundColor = Color.White,
+                        elevation = 2.dp
+                ) {
+                        Column(
+                                modifier = Modifier.padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                                OutlinedTextField(
+                                        value = nomUtilisateur,
+                                        onValueChange = { nomUtilisateur = it },
+                                        label = { Text("Nom de l'utilisateur") },
+                                        singleLine = true,
+                                        modifier = Modifier.fillMaxWidth()
+                                )
+                                OutlinedTextField(
+                                        value = numeroOrdre,
+                                        onValueChange = { numeroOrdre = it },
+                                        label = { Text("Numéro d'ordre") },
+                                        singleLine = true,
+                                        modifier = Modifier.fillMaxWidth()
+                                )
+                                OutlinedTextField(
+                                        value = adressePostale,
+                                        onValueChange = { adressePostale = it },
+                                        label = { Text("Adresse postale") },
+                                        singleLine = false,
+                                        modifier = Modifier.fillMaxWidth()
+                                )
+                                OutlinedTextField(
+                                        value = telephone,
+                                        onValueChange = { telephone = it },
+                                        label = { Text("Téléphone") },
+                                        singleLine = true,
+                                        modifier = Modifier.fillMaxWidth()
+                                )
+                                OutlinedTextField(
+                                        value = email,
+                                        onValueChange = { email = it },
+                                        label = { Text("Email") },
+                                        singleLine = true,
+                                        modifier = Modifier.fillMaxWidth()
+                                )
+                                Text(
+                                        text =
+                                                "Ces informations ne sont pas encore persistées dans ce mode.",
+                                        style = MaterialTheme.typography.caption,
+                                        color = Color.Gray
+                                )
+                        }
+                }
                 Text(
                         text = "Expression des besoins par espèce",
                         style = MaterialTheme.typography.h6,

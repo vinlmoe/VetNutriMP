@@ -61,11 +61,12 @@ object HtmlDocumentBuilder {
             DocumentType.PRESCRIPTION ->
                     buildPrescriptionHtml(
                             data.animal,
-                            data.ration,
                             data.conseils,
                             data.title,
                             data.additionalText,
-                            data.htmlSections
+                            data.htmlSections,
+                            data.rations,
+                            data.practitioner
                     )
         }
     }
@@ -86,12 +87,37 @@ object HtmlDocumentBuilder {
                 th { background: #f5f5f5; text-align: left; }
                 .muted { color: #666; }
                 .small { font-size: 10pt; }
+                .header-card { border: 2px solid #222; padding: 10px; margin-bottom: 12px; }
+                .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+                .right { text-align: right; }
             </style>
             <title>${title}</title>
         </head>
         <body>
             <h1>${title}</h1>
     """.trimIndent()
+    private fun buildPractitionerHeader(info: PractitionerInfo?): String {
+        if (info == null) return ""
+        val adresse = listOf(info.adressePostale, "${info.codePostal} ${info.ville}".trim())
+                .filter { it.isNotBlank() }
+                .joinToString("<br/>")
+        return """
+            <div class='header-card'>
+                <div class='two-col'>
+                    <div>
+                        <div><b>${info.nom}</b></div>
+                        <div>N° ordre: ${info.numeroOrdre}</div>
+                        <div>${adresse}</div>
+                    </div>
+                    <div class='right'>
+                        <div>Téléphone: ${info.telephone}</div>
+                        <div>Email: ${info.email}</div>
+                    </div>
+                </div>
+            </div>
+        """.trimIndent()
+    }
+
 
     private fun buildFooter(): String = """
         </body>
@@ -141,6 +167,15 @@ object HtmlDocumentBuilder {
         """.trimIndent()
     }
 
+    private fun buildRationsBlocks(rations: List<Ration>): String {
+        if (rations.isEmpty()) return ""
+        return rations.joinToString("\n") { ration ->
+            val header = if (ration.name.isNotBlank()) "<h2>Ration: ${ration.name}</h2>" else ""
+            val block = buildRationBlock(ration)
+            "<div class='section'>${header}${block}</div>"
+        }
+    }
+
     private fun buildReferencesBlock(reference: ReferenceEv?): String {
         if (reference == null) return ""
         return """
@@ -182,15 +217,17 @@ object HtmlDocumentBuilder {
 
     private fun buildPrescriptionHtml(
             animal: AnimalEv?,
-            ration: Ration?,
             conseils: List<String>,
             title: String,
             additionalText: String,
-            htmlSections: List<HtmlSection> = emptyList()
+            htmlSections: List<HtmlSection> = emptyList(),
+            rations: List<Ration> = emptyList(),
+            practitioner: PractitionerInfo? = null
     ): String {
         return buildHeader(if (title.isNotBlank()) title else "Ordonnance nutritionnelle") +
+                buildPractitionerHeader(practitioner) +
                 buildAnimalBlock(animal) +
-                buildRationBlock(ration) +
+                buildRationsBlocks(rations) +
                 buildConseilsBlock(conseils) +
                 buildAdditionalTextBlock(additionalText) +
                 buildHtmlSectionsBlock(htmlSections) +
