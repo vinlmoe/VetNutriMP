@@ -225,17 +225,23 @@ class AnimalDetailViewModel(
                             aliment
                         }
 
+                // Récupérer la version courante de la ration par son UUID (source de vérité)
+                val consultationCourante: ConsultationEv? = _selectedConsultation.value
+                val rationCourante: Ration =
+                        consultationCourante?.rations?.firstOrNull { it.uuid == ration.uuid }
+                                ?: ration
+
                 val alimentRation =
                         AlimentRation(
                                 uuid = Uuid.random().toString(),
                                 aliment = alimentComplet,
                                 quantite = quantite,
-                                refRation = ration.uuid,
+                                refRation = rationCourante.uuid,
                                 refAlimUnif = alimentComplet.uuid
                         )
 
-                // Créer une copie de la ration avec le nouvel aliment
-                val updatedRation = ration.copy()
+                // Créer une copie de la ration courante avec le nouvel aliment
+                val updatedRation = rationCourante.copy()
                 updatedRation.alimentMutableList.add(alimentRation)
 
                 // Mettre à jour la ration dans la consultation

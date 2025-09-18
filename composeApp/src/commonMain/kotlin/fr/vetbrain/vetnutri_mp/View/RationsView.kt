@@ -391,6 +391,11 @@ fun RationsView(
                                                                 viewModel.selectRation(
                                                                         updatedRation
                                                                 )
+
+                                                                // Mettre à jour la référence locale
+                                                                // pour les ajouts suivants
+                                                                rationForAddAliment =
+                                                                        updatedRation
                                                         }
                                                 }
 

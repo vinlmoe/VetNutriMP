@@ -9,6 +9,16 @@ enum class DocumentType {
     PRESCRIPTION
 }
 
+data class PractitionerInfo(
+        val nom: String,
+        val numeroOrdre: String,
+        val adressePostale: String,
+        val codePostal: String,
+        val ville: String,
+        val telephone: String,
+        val email: String
+)
+
 data class ExportData(
         val animal: AnimalEv?,
         val ration: Ration?,
@@ -16,5 +26,7 @@ data class ExportData(
         val conseils: List<String> = emptyList(),
         val title: String = "",
         val additionalText: String = "",
-        val htmlSections: List<HtmlSection> = emptyList()
+        val htmlSections: List<HtmlSection> = emptyList(),
+        val rations: List<Ration> = emptyList(),
+        val practitioner: PractitionerInfo? = null
 )
