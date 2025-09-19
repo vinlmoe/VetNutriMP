@@ -355,7 +355,16 @@ private fun calculerValeurNutrimentDansRation(
 
             if (valeurNutrimentPour100g != null) {
                 // Calculer la contribution pondérée par la quantité
-                val contributionIngredient = (valeurNutrimentPour100g * quantiteIngredient) / 100.0
+                val contributionIngredient = if (nutriment is AAEnum) {
+                    // Pour les acides aminés, les valeurs sont en % de protéines
+                    // Il faut multiplier par la teneur en protéines de l'aliment
+                    val teneurProteines = alimentRation.aliment?.getNutrient(NutrientMain.PROTEINE) ?: 0.0
+                    val valeurAminoAcideEnPourcentAliment = (valeurNutrimentPour100g * teneurProteines) / 100.0
+                    (valeurAminoAcideEnPourcentAliment * quantiteIngredient) / 100.0
+                } else {
+                    // Pour les autres nutriments, calcul normal
+                    (valeurNutrimentPour100g * quantiteIngredient) / 100.0
+                }
                 valeurTotale += contributionIngredient
 
                 // Calculer le pourcentage d'apport de cet ingrédient

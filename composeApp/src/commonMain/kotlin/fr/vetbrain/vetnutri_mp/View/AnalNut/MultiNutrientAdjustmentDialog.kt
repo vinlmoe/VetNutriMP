@@ -80,19 +80,16 @@ private fun obtenirCapMinDepuisReference(referenceUtilisee: ReferenceEv): Double
         // Essayer d'abord CAP OPTIMIN (priorité maximale)
         val capOptiminRef = referenceUtilisee.obtenirNutrimentRef(NutrientAnalysis.PCa, Reflevel.OPTIMIN)
         if (capOptiminRef != null && capOptiminRef.quantite > 0) {
-                println("DEBUG: CAP OPTIMIN trouvé: ${capOptiminRef.quantite}")
                 return capOptiminRef.quantite.toDouble()
         }
-        
+
         // Si OPTIMIN n'existe pas, essayer CAP MIN
         val capMinRef = referenceUtilisee.obtenirNutrimentRef(NutrientAnalysis.PCa, Reflevel.MIN)
         if (capMinRef != null && capMinRef.quantite > 0) {
-                println("DEBUG: CAP MIN trouvé: ${capMinRef.quantite}")
                 return capMinRef.quantite.toDouble()
         }
-        
+
         // Valeur par défaut si aucune référence n'est trouvée
-        println("DEBUG: Aucune référence CAP trouvée, utilisation de 1.0 par défaut")
         return 1.0
 }
 
@@ -1080,11 +1077,10 @@ suspend fun calculerAjustement(
                         nutrimentsTraites.add(nutrientLabel)
                 }
 
-                // Vérification et ajustement CAP après tous les nutriments
-                val calciumSelectionne: Boolean = adjustmentData.any { it.selectedNutrient == NutrientMacro.CAL.label && !it.isLocked }
-                println("DEBUG: Calcium sélectionné: $calciumSelectionne")
-                
-                if (calciumSelectionne) {
+        // Vérification et ajustement CAP après tous les nutriments
+        val calciumSelectionne: Boolean = adjustmentData.any { it.selectedNutrient == NutrientMacro.CAL.label && !it.isLocked }
+
+        if (calciumSelectionne) {
                         val capMinRequis: Double = obtenirCapMinDepuisReference(referenceUtilisee)
                         val alimentsCalcium = adjustmentData.filter { 
                                 it.selectedNutrient == NutrientMacro.CAL.label && !it.isLocked 
@@ -1117,22 +1113,17 @@ suspend fun calculerAjustement(
                                                 totalPhosphore += (pPar100g * quantite) / 100.0
                                         }
                                 }
-                                
-                                println("DEBUG: Itération $iterations - Total Calcium: ${String.format("%.4f", totalCalcium)}, Total Phosphore: ${String.format("%.4f", totalPhosphore)}")
                                         
                                         if (totalPhosphore > 0.0) {
                                                 val ratioActuel: Double = totalCalcium / totalPhosphore
-                                                println("DEBUG: Ratio Ca/P actuel: ${String.format("%.4f", ratioActuel)}, CAP requis: ${String.format("%.4f", capMinRequis)}")
                                                 
                                                 // Vérifier si le ratio est suffisant (avec une petite tolérance)
                                                 if (ratioActuel >= capMinRequis - 0.001) {
-                                                        println("DEBUG: Ratio CAP atteint après $iterations itérations (${String.format("%.4f", ratioActuel)} >= ${String.format("%.4f", capMinRequis)})")
                                                         break
                                                 }
                                                 
                                                 // Calculer le facteur d'ajustement nécessaire
                                                 val facteurAjustement: Double = capMinRequis / ratioActuel
-                                                println("DEBUG: Facteur d'ajustement nécessaire: ${String.format("%.4f", facteurAjustement)}")
                                                 
                                                 // Ajuster les aliments calcium proportionnellement
                                                 var ajustementEffectue = false
@@ -1149,16 +1140,13 @@ suspend fun calculerAjustement(
                                                                         quantite = quantiteArrondie
                                                                 )
                                                                 ajustementEffectue = true
-                                                                println("DEBUG: Aliment ${alimentData.alimentRation.aliment?.nom}: ${String.format("%.2f", quantiteActuelle)}g → ${String.format("%.2f", quantiteArrondie)}g")
                                                         }
                                                 }
                                                 
                                                 if (!ajustementEffectue) {
-                                                        println("DEBUG: Aucun ajustement possible")
                                                         break
                                                 }
                                         } else {
-                                                println("DEBUG: Aucun phosphore détecté")
                                                 break
                                         }
                                         
@@ -1166,7 +1154,39 @@ suspend fun calculerAjustement(
                                 }
                                 
                                 if (iterations >= maxIterations) {
-                                        println("DEBUG: Maximum d'itérations atteint pour l'ajustement CAP")
+                                        // Maximum d'itérations atteint pour l'ajustement CAP
+                                }
+                        }
+                        
+                        // Synchroniser les quantités ajustées avec la ration originale
+                        for (i in adjustedAliments.indices) {
+                                val alimentRation = adjustedAliments[i]
+                                val alimentRationOriginal = ration.alimentMutableList.find {
+                                        it.uuid == alimentRation.uuid
+                                }
+                                if (alimentRationOriginal != null) {
+                                        val index = ration.alimentMutableList.indexOf(alimentRationOriginal)
+                                        if (index >= 0) {
+                                                ration.alimentMutableList[index] = alimentRationOriginal.copy(
+                                                        quantite = alimentRation.quantite
+                                                )
+                                        }
+                                }
+                        }
+                }
+
+                // Synchroniser les quantités ajustées avec la ration originale AVANT l'ajustement énergétique
+                for (i in adjustedAliments.indices) {
+                        val alimentRation = adjustedAliments[i]
+                        val alimentRationOriginal = ration.alimentMutableList.find {
+                                it.uuid == alimentRation.uuid
+                        }
+                        if (alimentRationOriginal != null) {
+                                val index = ration.alimentMutableList.indexOf(alimentRationOriginal)
+                                if (index >= 0) {
+                                        ration.alimentMutableList[index] = alimentRationOriginal.copy(
+                                                quantite = alimentRation.quantite
+                                        )
                                 }
                         }
                 }

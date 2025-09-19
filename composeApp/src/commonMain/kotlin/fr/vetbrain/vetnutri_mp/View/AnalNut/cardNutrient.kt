@@ -341,29 +341,36 @@ fun AnalyseNutritionnelleCard(
                                                     ?: TypeExpressionBesoin.DEFAULT
                                     
                                     // Convertir la valeur selon l'unité des préférences pour le graphique bullet
-                                    val apportConverti = when (typeExpr) {
-                                        TypeExpressionBesoin.PAR_KG -> {
-                                            poidsAnimal?.let { poids ->
-                                                if (poids > 0) apport / poids else apport
-                                            } ?: apport
-                                        }
-                                        TypeExpressionBesoin.PAR_KG_METABOLIQUE -> {
-                                            poidsMetabolique?.let { poidsMetab ->
-                                                if (poidsMetab > 0) apport / poidsMetab else apport
-                                            } ?: apport
-                                        }
-                                        TypeExpressionBesoin.PAR_KCAL -> {
-                                            besoinEnergetiqueEntretien?.let { bee ->
-                                                if (bee > 0) (apport / bee) * 1000 else apport
-                                            } ?: apport
-                                        }
-                                        TypeExpressionBesoin.PAR_KJ -> {
-                                            besoinEnergetiqueEntretien?.let { bee ->
-                                                if (bee > 0) {
-                                                    val beeEnKj = bee * 4.184
-                                                    (apport / beeEnKj) * 1000
-                                                } else apport
-                                            } ?: apport
+                                    // Mais pas pour les ratios (CAP, KNA, O6O3, etc.) qui sont des valeurs pures
+                                    val isRatio = valeur.nutriment is NutrientAnalysis && valeur.unite.displayName.isBlank()
+                                    val apportConverti = if (isRatio) {
+                                        // Pour les ratios, utiliser la valeur brute sans conversion
+                                        apport
+                                    } else {
+                                        when (typeExpr) {
+                                            TypeExpressionBesoin.PAR_KG -> {
+                                                poidsAnimal?.let { poids ->
+                                                    if (poids > 0) apport / poids else apport
+                                                } ?: apport
+                                            }
+                                            TypeExpressionBesoin.PAR_KG_METABOLIQUE -> {
+                                                poidsMetabolique?.let { poidsMetab ->
+                                                    if (poidsMetab > 0) apport / poidsMetab else apport
+                                                } ?: apport
+                                            }
+                                            TypeExpressionBesoin.PAR_KCAL -> {
+                                                besoinEnergetiqueEntretien?.let { bee ->
+                                                    if (bee > 0) (apport / bee) * 1000 else apport
+                                                } ?: apport
+                                            }
+                                            TypeExpressionBesoin.PAR_KJ -> {
+                                                besoinEnergetiqueEntretien?.let { bee ->
+                                                    if (bee > 0) {
+                                                        val beeEnKj = bee * 4.184
+                                                        (apport / beeEnKj) * 1000
+                                                    } else apport
+                                                } ?: apport
+                                            }
                                         }
                                     }
                                     
@@ -790,7 +797,7 @@ private fun NutrimentCard(
                     verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                        text = nom,
+                        text = obtenirNomTraduitNutriment(nom, valeurNutritionnelle.nutriment),
                         style = MaterialTheme.typography.caption,
                         fontWeight = FontWeight.Bold,
                         color = VetNutriColors.Primary,
