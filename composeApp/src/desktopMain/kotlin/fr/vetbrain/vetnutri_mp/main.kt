@@ -19,13 +19,23 @@ import fr.vetbrain.vetnutri_mp.ViewModel.SettingsViewModel
 import java.io.File
 import javax.swing.JFileChooser
 import javax.swing.filechooser.FileNameExtensionFilter
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
+
+// Configuration du gestionnaire d'exceptions pour desktop (accessible globalement)
+private val exceptionHandler = CoroutineExceptionHandler { _, throwable ->
+    println("Exception dans coroutine: ${throwable.message}")
+    throwable.printStackTrace()
+}
 
 // L'entrée principale de l'application
 fun main(args: Array<String> = emptyArray()) {
+    
     // Initialisation de la localisation
     LocalizationManager.initialize()
 
@@ -181,7 +191,7 @@ actual fun importAnimalsFromFile(viewModel: AnimalListViewModel) {
             val jsonContent = selectedFile.readText()
 
             // Lancer l'importation dans un thread séparé
-            GlobalScope.launch { viewModel.importAnimalsFromJson(jsonContent) }
+            GlobalScope.launch(exceptionHandler) { viewModel.importAnimalsFromJson(jsonContent) }
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -222,7 +232,7 @@ actual fun importFoodsFromFile(viewModel: SettingsViewModel) {
             if (foodsJson.isNotEmpty()) {
 
                 // Lancer l'importation dans un thread séparé
-                GlobalScope.launch {
+                GlobalScope.launch(exceptionHandler) {
                     val importResult = viewModel.importFoodsFromList(foodsJson)
                 }
             } else {}
@@ -289,23 +299,24 @@ actual fun importNutritionalRequirementsFromFile(viewModel: ImportViewModel) {
 
     viewModel.updateNutritionalRequirementImportResultMessage("🔄 Lecture du fichier en cours...")
 
-    // Import/parse/sauvegarde sur IO pour ne pas bloquer l’UI
-    GlobalScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+    // Import/parse/sauvegarde sur IO pour ne pas bloquer l'UI
+    GlobalScope.launch(exceptionHandler) {
         try {
             ImportUtils.clearResolutionsProblematiques()
-            val jsonContent = selectedFile!!.readText()
+            val jsonContent = withContext(Dispatchers.IO) { selectedFile!!.readText() }
             viewModel.updateNutritionalRequirementImportResultMessage(
                     "🔄 Importation en cours avec sauvegarde automatique..."
             )
 
-            val references =
-                    ImportUtils.importNutritionalRequirementsFromJson(
-                            jsonContent = jsonContent,
-                            databaseReferenceEvRepository = viewModel.databaseReferenceEvRepository,
-                            equationRepository = viewModel.equationRepository,
-                            biblioRefRepository = viewModel.biblioRefRepository,
-                            sauvegarderEnBase = true
-                    )
+            val references = withContext(Dispatchers.IO) {
+                ImportUtils.importNutritionalRequirementsFromJson(
+                        jsonContent = jsonContent,
+                        databaseReferenceEvRepository = viewModel.databaseReferenceEvRepository,
+                        equationRepository = viewModel.equationRepository,
+                        biblioRefRepository = viewModel.biblioRefRepository,
+                        sauvegarderEnBase = true
+                )
+            }
 
             if (references.isNotEmpty()) {
                 val rapportResolutions = ImportUtils.genererRapportResolutionsProblematiques()
@@ -380,9 +391,9 @@ actual fun importApiFromFile(viewModel: SettingsViewModel) {
     }
 
     viewModel.startApiImport()
-    kotlinx.coroutines.GlobalScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+    kotlinx.coroutines.GlobalScope.launch(exceptionHandler) {
         try {
-            val content = selectedFile!!.readText()
+            val content = withContext(Dispatchers.IO) { selectedFile!!.readText() }
             val exportRepo =
                     fr.vetbrain.vetnutri_mp.Repository.ExportImportRepository(
                             animalRepository = viewModel.animalRepository,
@@ -397,20 +408,21 @@ actual fun importApiFromFile(viewModel: SettingsViewModel) {
             // Découper l'import en étapes et mettre à jour la progression/logs via callbacks
             // simples
             viewModel.appendApiImportLog("Lecture du fichier terminée")
-            val counts =
-                    exportRepo.importAll(
-                            apiJson = content,
-                            listener =
-                                    fr.vetbrain.vetnutri_mp.Repository.ExportImportRepository
-                                            .ImportProgressListener(
-                                                    onProgress = { p ->
-                                                        viewModel.updateApiImportProgress(p)
-                                                    },
-                                                    onLog = { msg ->
-                                                        viewModel.appendApiImportLog(msg)
-                                                    }
-                                            )
-                    )
+            val counts = withContext(Dispatchers.IO) {
+                exportRepo.importAll(
+                        apiJson = content,
+                        listener =
+                                fr.vetbrain.vetnutri_mp.Repository.ExportImportRepository
+                                        .ImportProgressListener(
+                                                onProgress = { p ->
+                                                    viewModel.updateApiImportProgress(p)
+                                                },
+                                                onLog = { msg ->
+                                                    viewModel.appendApiImportLog(msg)
+                                                }
+                                        )
+                )
+            }
             viewModel.updateApiImportProgress(1.0)
             val total = counts.animals + counts.foods + counts.equations + counts.references + counts.conseils
             viewModel.appendApiImportLog(
