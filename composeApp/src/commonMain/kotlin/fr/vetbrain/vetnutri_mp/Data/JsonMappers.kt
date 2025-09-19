@@ -73,17 +73,21 @@ fun AlimentEvJson.toData(): AlimentEv {
             val nutrientKey = nutrientQuantity.nut
             val value = nutrientQuantity.value
 
-            val nutrient = AllNutrientResolver(nutrientKey)
+            // Essayer d'abord la résolution directe
+            var nutrient = AllNutrientResolver(nutrientKey)
+            
+            // Si la résolution échoue, essayer de nettoyer la clé
+            if (nutrient == null) {
+                val cleanedKey = nutrientKey.trim().replace("_", " ")
+                nutrient = AllNutrientResolver(cleanedKey)
+            }
+            
+            // Si la résolution réussit, ajouter le nutriment
             if (nutrient != null) {
                 nutrientMap[nutrient] = NutrientQuantity(value, nutrient.label)
             } else {
-                // Essayer de nettoyer la clé pour trouver une correspondance
-                val cleanedKey = nutrientKey.trim().replace("_", " ")
-                val nutrientAfterClean = AllNutrientResolver(cleanedKey)
-                if (nutrientAfterClean != null) {
-                    nutrientMap[nutrientAfterClean] =
-                            NutrientQuantity(value, nutrientAfterClean.label)
-                }
+                // Log pour débogage - nutriment non résolu
+                println("⚠️ [NUTRIENT] Nutriment non résolu: '$nutrientKey' (valeur: $value)")
             }
         }
     }
@@ -136,17 +140,21 @@ fun AlimentEvJson.toData(ratUUID: String): AlimentEv {
             val nutrientKey = nutrientQuantity.nut
             val value = nutrientQuantity.value
 
-            val nutrient = AllNutrientResolver(nutrientKey)
+            // Essayer d'abord la résolution directe
+            var nutrient = AllNutrientResolver(nutrientKey)
+            
+            // Si la résolution échoue, essayer de nettoyer la clé
+            if (nutrient == null) {
+                val cleanedKey = nutrientKey.trim().replace("_", " ")
+                nutrient = AllNutrientResolver(cleanedKey)
+            }
+            
+            // Si la résolution réussit, ajouter le nutriment
             if (nutrient != null) {
                 nutrientMap[nutrient] = NutrientQuantity(value, nutrient.label)
             } else {
-                // Essayer de nettoyer la clé pour trouver une correspondance
-                val cleanedKey = nutrientKey.trim().replace("_", " ")
-                val nutrientAfterClean = AllNutrientResolver(cleanedKey)
-                if (nutrientAfterClean != null) {
-                    nutrientMap[nutrientAfterClean] =
-                            NutrientQuantity(value, nutrientAfterClean.label)
-                }
+                // Log pour débogage - nutriment non résolu
+                println("⚠️ [NUTRIENT] Nutriment non résolu: '$nutrientKey' (valeur: $value)")
             }
         }
     }

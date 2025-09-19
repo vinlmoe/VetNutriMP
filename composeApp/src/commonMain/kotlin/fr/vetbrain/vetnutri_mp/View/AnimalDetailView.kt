@@ -47,8 +47,6 @@ import fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.SettingsViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.*
 
 typealias RecipeRepo = fr.vetbrain.vetnutri_mp.Repository.RecipeRepository
 
@@ -59,12 +57,7 @@ typealias RecipeRepo = fr.vetbrain.vetnutri_mp.Repository.RecipeRepository
 private fun generateDefaultPdfFileName(animal: AnimalEv?, consultation: ConsultationEv?): String {
     val animalId = animal?.id ?: "ID_INCONNU"
     val animalName = animal?.nom ?: "NOM_INCONNU"
-    val consultationDate = if (consultation?.date != null) {
-        val formatter = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-        formatter.format(consultation.date)
-    } else {
-        "DATE_INCONNUE"
-    }
+    val consultationDate = consultation?.date?.toString() ?: "DATE_INCONNUE"
     return "${animalId}_${animalName}_${consultationDate}.pdf"
 }
 

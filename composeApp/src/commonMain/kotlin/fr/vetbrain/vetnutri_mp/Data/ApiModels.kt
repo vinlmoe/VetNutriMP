@@ -247,8 +247,21 @@ fun FoodApi.toDomain(): AlimentEv {
                         rationUUID = rationId
                 )
         nutrients.forEach { (label, value) ->
-                fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver.AllNutrientResolver(label)?.let {
-                        aliment.setNutrient(it, value)
+                // Essayer d'abord la résolution directe
+                var nutrient = fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver.AllNutrientResolver(label)
+                
+                // Si la résolution échoue, essayer de nettoyer la clé
+                if (nutrient == null) {
+                        val cleanedKey = label.trim().replace("_", " ")
+                        nutrient = fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver.AllNutrientResolver(cleanedKey)
+                }
+                
+                // Si la résolution réussit, ajouter le nutriment
+                if (nutrient != null) {
+                        aliment.setNutrient(nutrient, value)
+                } else {
+                        // Log pour débogage - nutriment non résolu
+                        println("⚠️ [NUTRIENT] Nutriment non résolu: '$label' (valeur: $value)")
                 }
         }
         return aliment
