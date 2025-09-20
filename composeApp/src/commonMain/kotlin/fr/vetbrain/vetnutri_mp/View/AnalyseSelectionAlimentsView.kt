@@ -48,6 +48,7 @@ import fr.vetbrain.vetnutri_mp.Enumer.GroupAlim
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.AlimIndic
 import fr.vetbrain.vetnutri_mp.Localization.translateEnum
+import fr.vetbrain.vetnutri_mp.Utils.DataB
 
 /**
  * Vue de sélection d'aliments avec deux listes (gauche et droite) et boutons de sélection.
@@ -109,12 +110,14 @@ fun AnalyseSelectionAlimentsView(
                 else -> aliment.typeAliment == sel
             }
 
-        // Filtre par groupe d'aliment
-        val matchesGroup =
-            when (val sel = filters.selectedFoodGroup) {
-                null -> true
-                GroupAlim.ALL -> true
-                else -> aliment.group == sel
+        // Filtre par base de données
+        val matchesDataB =
+            when (val dataBFilter = filters.dataB) {
+                null -> true // null = pas de filtre
+                "" -> true // chaîne vide = pas de filtre
+                else -> {
+                    aliment.dataB?.trim() == dataBFilter.trim() // Comparaison exacte
+                }
             }
 
         // Filtre par espèce
@@ -139,7 +142,7 @@ fun AnalyseSelectionAlimentsView(
                 aliment.indicat.contains(indication)
             }
 
-        matchesSearch && matchesType && matchesGroup && matchesEspece && matchesIndications
+        matchesSearch && matchesType && matchesDataB && matchesEspece && matchesIndications
     }
 
     Card(
@@ -219,14 +222,33 @@ fun AnalyseSelectionAlimentsView(
                             )
                         }
 
-                        // Groupe d'aliment
+                        // Base de données
                         Box(modifier = Modifier.weight(1f)) {
+                            val dataBOptions = remember(aliments) {
+                                val options = listOf("") + aliments
+                                    .mapNotNull { it.dataB?.trim() }
+                                    .filter { it.isNotEmpty() }
+                                    .distinct()
+                                    .sorted()
+                                options
+                            }
+                            val selectedDataB = filters.dataB ?: ""
+
                             DropdownField(
-                                label = "Groupe",
-                                selectedValue = filters.selectedFoodGroup,
-                                options = GroupAlim.entries,
-                                onValueChange = { filters = filters.copy(selectedFoodGroup = it) },
-                                valueToString = { it.translateEnum() },
+                                label = "Base",
+                                selectedValue = selectedDataB,
+                                options = dataBOptions,
+                                onValueChange = {
+                                    val newDataB = if (it.isEmpty()) null else it
+                                    filters = filters.copy(dataB = newDataB)
+                                },
+                                valueToString = {
+                                    if (it.isEmpty()) "Toutes"
+                                    else {
+                                        val dataBEnum = DataB.fromCode(it)
+                                        dataBEnum?.displayName ?: it
+                                    }
+                                },
                                 modifier = Modifier.fillMaxWidth(),
                                 height = 40.dp,
                                 fontSize = 12.sp,
