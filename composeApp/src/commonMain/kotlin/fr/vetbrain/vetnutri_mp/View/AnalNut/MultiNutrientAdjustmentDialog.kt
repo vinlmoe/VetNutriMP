@@ -1076,8 +1076,7 @@ suspend fun calculerAjustement(
 
                         nutrimentsTraites.add(nutrientLabel)
                 }
-
-                // Synchroniser les quantités ajustées avec la ration originale AVANT l'ajustement énergétique
+          // Synchroniser les quantités ajustées avec la ration originale AVANT l'ajustement énergétique
                 for (i in adjustedAliments.indices) {
                         val alimentRation = adjustedAliments[i]
                         val alimentRationOriginal = ration.alimentMutableList.find {
