@@ -3,6 +3,7 @@ package fr.vetbrain.vetnutri_mp.Export
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
 import fr.vetbrain.vetnutri_mp.Data.Ration
 import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
+import fr.vetbrain.vetnutri_mp.Data.PreferencesEspece
 
 enum class DocumentType {
     RATION_ANALYSIS,
@@ -28,5 +29,10 @@ data class ExportData(
         val additionalText: String = "",
         val htmlSections: List<HtmlSection> = emptyList(),
         val rations: List<Ration> = emptyList(),
-        val practitioner: PractitionerInfo? = null
+        val practitioner: PractitionerInfo? = null,
+        val preferences: PreferencesEspece? = null,
+        val poidsAnimal: Double? = null,
+        val poidsMetabolique: Double? = null,
+        val besoinEnergetiqueEntretien: Double? = null,
+        val bulletGraphImages: Map<String, Map<String, String>> = emptyMap()
 )

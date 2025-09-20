@@ -3,6 +3,7 @@ package fr.vetbrain.vetnutri_mp.Export
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
 import fr.vetbrain.vetnutri_mp.Data.Ration
 import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
+import fr.vetbrain.vetnutri_mp.Data.PreferencesEspece
 import fr.vetbrain.vetnutri_mp.Enumer.ContEnum
 import fr.vetbrain.vetnutri_mp.Utils.NumberUtils
 import fr.vetbrain.vetnutri_mp.Utils.TextUtils
@@ -56,7 +57,8 @@ object HtmlDocumentBuilder {
                             data.reference,
                             data.title,
                             data.additionalText,
-                            data.htmlSections
+                            data.htmlSections,
+                            data.bulletGraphImages
                     )
             DocumentType.PRESCRIPTION ->
                     buildPrescriptionHtml(
@@ -66,7 +68,13 @@ object HtmlDocumentBuilder {
                             data.additionalText,
                             data.htmlSections,
                             data.rations,
-                            data.practitioner
+                            data.practitioner,
+                            data.reference,
+                            data.preferences,
+                            data.poidsAnimal,
+                            data.poidsMetabolique,
+                            data.besoinEnergetiqueEntretien,
+                            data.bulletGraphImages
                     )
         }
     }
@@ -90,6 +98,12 @@ object HtmlDocumentBuilder {
                 .header-card { border: 2px solid #222; padding: 10px; margin-bottom: 12px; }
                 .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
                 .right { text-align: right; }
+                
+                /* Styles pour les bullet graphs */
+                .bullet-graphs-container { margin-top: 12px; }
+                .bullet-graph-item { margin-bottom: 20px; padding: 12px; border: 1px solid #ddd; border-radius: 6px; background: #fafafa; }
+                .bullet-graph-item h3 { margin: 0 0 8px 0; font-size: 12pt; color: #333; }
+                .bullet-graph-image { max-width: 100%; height: auto; border: 1px solid #ccc; border-radius: 4px; }
             </style>
             <title>${title}</title>
         </head>
@@ -167,12 +181,26 @@ object HtmlDocumentBuilder {
         """.trimIndent()
     }
 
-    private fun buildRationsBlocks(rations: List<Ration>): String {
+    private fun buildRationsBlocks(
+            rations: List<Ration>,
+            reference: ReferenceEv? = null,
+            animal: AnimalEv? = null,
+            preferences: PreferencesEspece? = null,
+            poidsAnimal: Double? = null,
+            poidsMetabolique: Double? = null,
+            besoinEnergetiqueEntretien: Double? = null,
+            bulletGraphImages: Map<String, Map<String, String>> = emptyMap()
+    ): String {
         if (rations.isEmpty()) return ""
         return rations.joinToString("\n") { ration ->
             val header = if (ration.name.isNotBlank()) "<h2>Ration: ${ration.name}</h2>" else ""
             val block = buildRationBlock(ration)
-            "<div class='section'>${header}${block}</div>"
+            val rationImages = bulletGraphImages[ration.uuid] ?: emptyMap()
+            val bulletGraphs = buildNutrientAnalysisBulletGraphs(
+                    ration, reference, animal, preferences, 
+                    poidsAnimal, poidsMetabolique, besoinEnergetiqueEntretien, rationImages
+            )
+            "<div class='section'>${header}${block}${bulletGraphs}</div>"
         }
     }
 
@@ -204,7 +232,8 @@ object HtmlDocumentBuilder {
             reference: ReferenceEv?,
             title: String,
             additionalText: String,
-            htmlSections: List<HtmlSection> = emptyList()
+            htmlSections: List<HtmlSection> = emptyList(),
+            bulletGraphImages: Map<String, Map<String, String>> = emptyMap()
     ): String {
         return buildHeader(if (title.isNotBlank()) title else "Analyse de ration") +
                 buildAnimalBlock(animal) +
@@ -212,6 +241,16 @@ object HtmlDocumentBuilder {
                 buildReferencesBlock(reference) +
                 buildAdditionalTextBlock(additionalText) +
                 buildHtmlSectionsBlock(htmlSections) +
+                buildRationsBlocks(
+                    listOfNotNull(ration),
+                    reference,
+                    animal,
+                    null, // preferences
+                    null, // poidsAnimal
+                    null, // poidsMetabolique
+                    null, // besoinEnergetiqueEntretien
+                    bulletGraphImages
+                ) +
                 buildFooter()
     }
 
@@ -222,12 +261,18 @@ object HtmlDocumentBuilder {
             additionalText: String,
             htmlSections: List<HtmlSection> = emptyList(),
             rations: List<Ration> = emptyList(),
-            practitioner: PractitionerInfo? = null
+            practitioner: PractitionerInfo? = null,
+            reference: ReferenceEv? = null,
+            preferences: PreferencesEspece? = null,
+            poidsAnimal: Double? = null,
+            poidsMetabolique: Double? = null,
+            besoinEnergetiqueEntretien: Double? = null,
+            bulletGraphImages: Map<String, Map<String, String>> = emptyMap()
     ): String {
         return buildHeader(if (title.isNotBlank()) title else "Ordonnance nutritionnelle") +
                 buildPractitionerHeader(practitioner) +
                 buildAnimalBlock(animal) +
-                buildRationsBlocks(rations) +
+                buildRationsBlocks(rations, reference, animal, preferences, poidsAnimal, poidsMetabolique, besoinEnergetiqueEntretien, bulletGraphImages) +
                 buildConseilsBlock(conseils) +
                 buildAdditionalTextBlock(additionalText) +
                 buildHtmlSectionsBlock(htmlSections) +
@@ -263,4 +308,63 @@ object HtmlDocumentBuilder {
             </div>
         """.trimIndent()
     }
+
+    /**
+     * Génère les bullet graphs pour l'analyse nutritionnelle d'une ration
+     */
+    private fun buildNutrientAnalysisBulletGraphs(
+        ration: Ration,
+        reference: ReferenceEv?,
+        animal: AnimalEv?,
+        preferences: PreferencesEspece?,
+        poidsAnimal: Double?,
+        poidsMetabolique: Double?,
+        besoinEnergetiqueEntretien: Double?,
+        bulletGraphImages: Map<String, String> = emptyMap()
+    ): String {
+        println("DEBUG: buildNutrientAnalysisBulletGraphs appelé avec ${bulletGraphImages.size} images")
+        bulletGraphImages.forEach { (name, path) ->
+            println("DEBUG: Image $name -> $path")
+        }
+        
+        if (reference == null || animal == null) {
+            println("DEBUG: Reference ou animal manquant")
+            return ""
+        }
+
+        if (bulletGraphImages.isEmpty()) {
+            println("DEBUG: Aucune image de bullet graph fournie")
+            return """
+                <div class='section'>
+                    <h2>Analyse nutritionnelle - Bullet Graphs</h2>
+                    <div class='bullet-graphs-container'>
+                        <p><em>Les bullet graphs d'analyse nutritionnelle seront affichés ici pour chaque nutriment de la ration.</em></p>
+                        <p>Ration: ${ration.name}</p>
+                        <p>Référence: ${reference.nom}</p>
+                        <p>DEBUG: Aucune image fournie (${bulletGraphImages.size} images)</p>
+                    </div>
+                </div>
+            """.trimIndent()
+        }
+
+        val bulletGraphsHtml = bulletGraphImages.entries.joinToString("\n") { (nutrientName, imagePath) ->
+            """
+                <div class='bullet-graph-item'>
+                    <h3>$nutrientName</h3>
+                    <img src='$imagePath' alt='Bullet graph pour $nutrientName' class='bullet-graph-image' />
+                    <p>DEBUG: Chemin image: $imagePath</p>
+                </div>
+            """.trimIndent()
+        }
+
+        return """
+            <div class='section'>
+                <h2>Analyse nutritionnelle - Bullet Graphs</h2>
+                <div class='bullet-graphs-container'>
+                    $bulletGraphsHtml
+                </div>
+            </div>
+        """.trimIndent()
+    }
+
 }

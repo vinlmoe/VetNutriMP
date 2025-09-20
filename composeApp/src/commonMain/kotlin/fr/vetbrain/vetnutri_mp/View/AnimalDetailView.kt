@@ -887,116 +887,116 @@ private fun WideScreenLayout(
                                                                 )
                                                 ) {
                                                         item {
-                                                                Text(
-                                                                        "Export des documents",
-                                                                        style = MaterialTheme.typography.h6,
-                                                                        color = VetNutriColors.Primary
-                                                                )
+                                                        Text(
+                                                                "Export des documents",
+                                                                style = MaterialTheme.typography.h6,
+                                                                color = VetNutriColors.Primary
+                                                        )
                                                         }
                                                         item {
-                                                                Text(
-                                                                        text =
-                                                                                if (selectedRation != null)
-                                                                                        "Ration sélectionnée: ${selectedRation!!.name}"
-                                                                                else
-                                                                                        "Aucune ration sélectionnée",
-                                                                        color =
-                                                                                MaterialTheme.colors
-                                                                                        .onSurface.copy(
-                                                                                        alpha = 0.7f
-                                                                                )
-                                                                )
+                                                        Text(
+                                                                text =
+                                                                        if (selectedRation != null)
+                                                                                "Ration sélectionnée: ${selectedRation!!.name}"
+                                                                        else
+                                                                                "Aucune ration sélectionnée",
+                                                                color =
+                                                                        MaterialTheme.colors
+                                                                                .onSurface.copy(
+                                                                                alpha = 0.7f
+                                                                        )
+                                                        )
                                                         }
 
                                                         // Section pour les conseils personnalisés
                                                         item {
-                                                                Text(
-                                                                        "Conseils personnalisés:",
-                                                                        style =
-                                                                                MaterialTheme.typography
-                                                                                        .subtitle1,
-                                                                        color = VetNutriColors.Primary
-                                                                )
+                                                        Text(
+                                                                "Conseils personnalisés:",
+                                                                style =
+                                                                        MaterialTheme.typography
+                                                                                .subtitle1,
+                                                                color = VetNutriColors.Primary
+                                                        )
                                                         }
 
                                                         // Affichage des conseils sélectionnés
                                                         if (selectedConseils.isNotEmpty()) {
                                                                 item {
-                                                                        Column(
-                                                                                modifier =
-                                                                                        Modifier.fillMaxWidth(),
-                                                                                verticalArrangement =
-                                                                                        Arrangement
-                                                                                                .spacedBy(
-                                                                                                        4.dp
-                                                                                                )
-                                                                        ) {
-                                                                                selectedConseils.forEach {
-                                                                                        conseil ->
-                                                                                        Card(
+                                                                Column(
+                                                                        modifier =
+                                                                                Modifier.fillMaxWidth(),
+                                                                        verticalArrangement =
+                                                                                Arrangement
+                                                                                        .spacedBy(
+                                                                                                4.dp
+                                                                                        )
+                                                                ) {
+                                                                        selectedConseils.forEach {
+                                                                                conseil ->
+                                                                                Card(
+                                                                                        modifier =
+                                                                                                Modifier.fillMaxWidth(),
+                                                                                        elevation =
+                                                                                                2.dp
+                                                                                ) {
+                                                                                        Row(
                                                                                                 modifier =
-                                                                                                        Modifier.fillMaxWidth(),
-                                                                                                elevation =
-                                                                                                        2.dp
+                                                                                                        Modifier.fillMaxWidth()
+                                                                                                                .padding(
+                                                                                                                        8.dp
+                                                                                                                ),
+                                                                                                horizontalArrangement =
+                                                                                                        Arrangement
+                                                                                                                .SpaceBetween,
+                                                                                                verticalAlignment =
+                                                                                                        Alignment
+                                                                                                                .CenterVertically
                                                                                         ) {
-                                                                                                Row(
+                                                                                                Column(
                                                                                                         modifier =
-                                                                                                                Modifier.fillMaxWidth()
-                                                                                                                        .padding(
-                                                                                                                                8.dp
-                                                                                                                        ),
-                                                                                                        horizontalArrangement =
-                                                                                                                Arrangement
-                                                                                                                        .SpaceBetween,
-                                                                                                        verticalAlignment =
-                                                                                                                Alignment
-                                                                                                                        .CenterVertically
+                                                                                                                Modifier.weight(
+                                                                                                                        1f
+                                                                                                                )
                                                                                                 ) {
-                                                                                                        Column(
-                                                                                                                modifier =
-                                                                                                                        Modifier.weight(
-                                                                                                                                1f
-                                                                                                                        )
-                                                                                                        ) {
-                                                                                                                Text(
-                                                                                                                        text =
-                                                                                                                                conseil.title,
-                                                                                                                        style =
-                                                                                                                                MaterialTheme
-                                                                                                                                        .typography
-                                                                                                                                        .body2,
-                                                                                                                        fontWeight =
-                                                                                                                                FontWeight
-                                                                                                                                        .Medium
-                                                                                                                )
-                                                                                                                Text(
-                                                                                                                        text =
-                                                                                                                                "Catégorie: ${conseil.category.name}",
-                                                                                                                        style =
-                                                                                                                                MaterialTheme
-                                                                                                                                        .typography
-                                                                                                                                        .caption,
-                                                                                                                        color =
-                                                                                                                                Color.Gray
-                                                                                                                )
+                                                                                                        Text(
+                                                                                                                text =
+                                                                                                                        conseil.title,
+                                                                                                                style =
+                                                                                                                        MaterialTheme
+                                                                                                                                .typography
+                                                                                                                                .body2,
+                                                                                                                fontWeight =
+                                                                                                                        FontWeight
+                                                                                                                                .Medium
+                                                                                                        )
+                                                                                                        Text(
+                                                                                                                text =
+                                                                                                                        "Catégorie: ${conseil.category.name}",
+                                                                                                                style =
+                                                                                                                        MaterialTheme
+                                                                                                                                .typography
+                                                                                                                                .caption,
+                                                                                                                color =
+                                                                                                                        Color.Gray
+                                                                                                        )
+                                                                                                }
+                                                                                                IconButton(
+                                                                                                        onClick = {
+                                                                                                                selectedConseils =
+                                                                                                                        selectedConseils
+                                                                                                                                .filter {
+                                                                                                                                        it.id !=
+                                                                                                                                                conseil.id
+                                                                                                                                }
                                                                                                         }
-                                                                                                        IconButton(
-                                                                                                                onClick = {
-                                                                                                                        selectedConseils =
-                                                                                                                                selectedConseils
-                                                                                                                                        .filter {
-                                                                                                                                                it.id !=
-                                                                                                                                                        conseil.id
-                                                                                                                                        }
-                                                                                                                }
-                                                                                                        ) {
-                                                                                                                Icon(
-                                                                                                                        Icons.Default
-                                                                                                                                .Delete,
-                                                                                                                        "Supprimer",
-                                                                                                                        tint =
-                                                                                                                                Color.Red
-                                                                                                                )
+                                                                                                ) {
+                                                                                                        Icon(
+                                                                                                                Icons.Default
+                                                                                                                        .Delete,
+                                                                                                                "Supprimer",
+                                                                                                                tint =
+                                                                                                                        Color.Red
+                                                                                                        )
                                                                                                         }
                                                                                                 }
                                                                                         }
@@ -1007,186 +1007,252 @@ private fun WideScreenLayout(
 
                                                         // Bouton pour ajouter des conseils
                                                         item {
-                                                                Button(
-                                                                        onClick = {
-                                                                                showSearchDialog = true
-                                                                        },
-                                                                        modifier = Modifier.fillMaxWidth(),
-                                                                        colors =
-                                                                                ButtonDefaults.buttonColors(
-                                                                                        backgroundColor =
-                                                                                                VetNutriColors
-                                                                                                        .Secondary,
-                                                                                        contentColor =
-                                                                                                VetNutriColors
-                                                                                                        .OnSecondary
-                                                                                )
-                                                                ) {
-                                                                        Icon(Icons.Default.Add, "Ajouter")
-                                                                        Spacer(
-                                                                                modifier =
-                                                                                        Modifier.width(8.dp)
+                                                        Button(
+                                                                onClick = {
+                                                                        showSearchDialog = true
+                                                                },
+                                                                modifier = Modifier.fillMaxWidth(),
+                                                                colors =
+                                                                        ButtonDefaults.buttonColors(
+                                                                                backgroundColor =
+                                                                                        VetNutriColors
+                                                                                                .Secondary,
+                                                                                contentColor =
+                                                                                        VetNutriColors
+                                                                                                .OnSecondary
                                                                         )
-                                                                        Text("Ajouter des conseils")
+                                                        ) {
+                                                                Icon(Icons.Default.Add, "Ajouter")
+                                                                Spacer(
+                                                                        modifier =
+                                                                                Modifier.width(8.dp)
+                                                                )
+                                                                Text("Ajouter des conseils")
                                                                 }
                                                         }
 
                                                         item {
-                                                                Spacer(modifier = Modifier.height(16.dp))
+                                                        Spacer(modifier = Modifier.height(16.dp))
                                                         }
 
                                                         // Section pour les sections HTML créées
                                                         // localement
                                                         if (localHtmlSections.isNotEmpty()) {
                                                                 item {
-                                                                        Text(
-                                                                                "Sections HTML créées localement (${localHtmlSections.size}):",
-                                                                                style =
-                                                                                        MaterialTheme
-                                                                                                .typography
-                                                                                                .subtitle1,
-                                                                                color =
-                                                                                        VetNutriColors
-                                                                                                .Primary
-                                                                        )
+                                                                Text(
+                                                                        "Sections HTML créées localement (${localHtmlSections.size}):",
+                                                                        style =
+                                                                                MaterialTheme
+                                                                                        .typography
+                                                                                        .subtitle1,
+                                                                        color =
+                                                                                VetNutriColors
+                                                                                        .Primary
+                                                                )
                                                                 }
                                                                 item {
-                                                                        Column(
-                                                                                modifier =
-                                                                                        Modifier.fillMaxWidth(),
-                                                                                verticalArrangement =
-                                                                                        Arrangement
-                                                                                                .spacedBy(
-                                                                                                        4.dp
-                                                                                                )
-                                                                        ) {
-                                                                                localHtmlSections.forEach {
-                                                                                        section ->
-                                                                                        Card(
+                                                                Column(
+                                                                        modifier =
+                                                                                Modifier.fillMaxWidth(),
+                                                                        verticalArrangement =
+                                                                                Arrangement
+                                                                                        .spacedBy(
+                                                                                                4.dp
+                                                                                        )
+                                                                ) {
+                                                                        localHtmlSections.forEach {
+                                                                                section ->
+                                                                                Card(
+                                                                                        modifier =
+                                                                                                Modifier.fillMaxWidth(),
+                                                                                        elevation =
+                                                                                                2.dp
+                                                                                ) {
+                                                                                        Row(
                                                                                                 modifier =
-                                                                                                        Modifier.fillMaxWidth(),
-                                                                                                elevation =
-                                                                                                        2.dp
+                                                                                                        Modifier.fillMaxWidth()
+                                                                                                                .padding(
+                                                                                                                        8.dp
+                                                                                                                ),
+                                                                                                horizontalArrangement =
+                                                                                                        Arrangement
+                                                                                                                .SpaceBetween,
+                                                                                                verticalAlignment =
+                                                                                                        Alignment
+                                                                                                                .CenterVertically
                                                                                         ) {
-                                                                                                Row(
+                                                                                                Column(
                                                                                                         modifier =
-                                                                                                                Modifier.fillMaxWidth()
-                                                                                                                        .padding(
-                                                                                                                                8.dp
-                                                                                                                        ),
-                                                                                                        horizontalArrangement =
-                                                                                                                Arrangement
-                                                                                                                        .SpaceBetween,
-                                                                                                        verticalAlignment =
-                                                                                                                Alignment
-                                                                                                                        .CenterVertically
+                                                                                                                Modifier.weight(
+                                                                                                                        1f
+                                                                                                                )
                                                                                                 ) {
-                                                                                                        Column(
-                                                                                                                modifier =
-                                                                                                                        Modifier.weight(
-                                                                                                                                1f
-                                                                                                                        )
-                                                                                                        ) {
-                                                                                                                Text(
-                                                                                                                        text =
-                                                                                                                                section.title,
-                                                                                                                        style =
-                                                                                                                                MaterialTheme
-                                                                                                                                        .typography
-                                                                                                                                        .body2,
-                                                                                                                        fontWeight =
-                                                                                                                                FontWeight
-                                                                                                                                        .Medium
-                                                                                                                )
-                                                                                                                Text(
-                                                                                                                        text =
-                                                                                                                                "${section.content.blocks.size} blocs",
-                                                                                                                        style =
-                                                                                                                                MaterialTheme
-                                                                                                                                        .typography
-                                                                                                                                        .caption,
-                                                                                                                        color =
-                                                                                                                                Color.Gray
-                                                                                                                )
+                                                                                                        Text(
+                                                                                                                text =
+                                                                                                                        section.title,
+                                                                                                                style =
+                                                                                                                        MaterialTheme
+                                                                                                                                .typography
+                                                                                                                                .body2,
+                                                                                                                fontWeight =
+                                                                                                                        FontWeight
+                                                                                                                                .Medium
+                                                                                                        )
+                                                                                                        Text(
+                                                                                                                text =
+                                                                                                                        "${section.content.blocks.size} blocs",
+                                                                                                                style =
+                                                                                                                        MaterialTheme
+                                                                                                                                .typography
+                                                                                                                                .caption,
+                                                                                                                color =
+                                                                                                                        Color.Gray
+                                                                                                        )
+                                                                                                }
+                                                                                                IconButton(
+                                                                                                        onClick = {
+                                                                                                                localHtmlSections =
+                                                                                                                        localHtmlSections
+                                                                                                                                .filter {
+                                                                                                                                        it.id !=
+                                                                                                                                                section.id
+                                                                                                                                }
                                                                                                         }
-                                                                                                        IconButton(
-                                                                                                                onClick = {
-                                                                                                                        localHtmlSections =
-                                                                                                                                localHtmlSections
-                                                                                                                                        .filter {
-                                                                                                                                                it.id !=
-                                                                                                                                                        section.id
-                                                                                                                                        }
-                                                                                                                }
-                                                                                                        ) {
-                                                                                                                Icon(
-                                                                                                                        Icons.Default
-                                                                                                                                .Delete,
-                                                                                                                        "Supprimer",
-                                                                                                                        tint =
-                                                                                                                                Color.Red
-                                                                                                                )
-                                                                                                        }
+                                                                                                ) {
+                                                                                                        Icon(
+                                                                                                                Icons.Default
+                                                                                                                        .Delete,
+                                                                                                                "Supprimer",
+                                                                                                                tint =
+                                                                                                                        Color.Red
+                                                                                                        )
                                                                                                 }
                                                                                         }
                                                                                 }
                                                                         }
                                                                 }
+                                                                }
                                                                 item {
-                                                                        Spacer(
-                                                                                modifier =
-                                                                                        Modifier.height(
-                                                                                                16.dp
-                                                                                        )
-                                                                        )
+                                                                Spacer(
+                                                                        modifier =
+                                                                                Modifier.height(
+                                                                                        16.dp
+                                                                                )
+                                                                )
                                                                 }
                                                         }
 
                                                         // Bouton pour accéder à l'éditeur de texte
                                                         // enrichi
                                                         item {
-                                                                Button(
-                                                                        onClick = {
-                                                                                showRichTextEditor = true
-                                                                        },
-                                                                        modifier = Modifier.fillMaxWidth(),
-                                                                        colors =
-                                                                                ButtonDefaults.buttonColors(
-                                                                                        backgroundColor =
-                                                                                                VetNutriColors
-                                                                                                        .Secondary,
-                                                                                        contentColor =
-                                                                                                VetNutriColors
-                                                                                                        .OnSecondary
+                                                        Button(
+                                                                onClick = {
+                                                                        showRichTextEditor = true
+                                                                },
+                                                                modifier = Modifier.fillMaxWidth(),
+                                                                colors =
+                                                                        ButtonDefaults.buttonColors(
+                                                                                backgroundColor =
+                                                                                        VetNutriColors
+                                                                                                .Secondary,
+                                                                                contentColor =
+                                                                                        VetNutriColors
+                                                                                                .OnSecondary
+                                                                        )
+                                                        ) {
+                                                                Icon(
+                                                                        Icons.Default.Edit,
+                                                                        "Éditeur HTML"
+                                                                )
+                                                                Spacer(
+                                                                        modifier =
+                                                                                Modifier.width(
+                                                                                        AppSizes.paddingSmall
                                                                                 )
-                                                                ) {
-                                                                        Icon(
-                                                                                Icons.Default.Edit,
-                                                                                "Éditeur HTML"
-                                                                        )
-                                                                        Spacer(
-                                                                                modifier =
-                                                                                        Modifier.width(
-                                                                                                AppSizes.paddingSmall
-                                                                                        )
-                                                                        )
-                                                                        Text(
-                                                                                "Créer des sections HTML personnalisées"
-                                                                        )
-                                                                }
+                                                                )
+                                                                Text(
+                                                                        "Créer des sections HTML personnalisées"
+                                                                )
+                                                        }
                                                         }
 
 
 
                                                         item {
-                                                                Row(
-                                                                        horizontalArrangement =
-                                                                                Arrangement.spacedBy(
-                                                                                        AppSizes.paddingSmall
-                                                                                )
-                                                                ) {
+                                                        Row(
+                                                                horizontalArrangement =
+                                                                        Arrangement.spacedBy(
+                                                                                AppSizes.paddingSmall
+                                                                        )
+                                                        ) {
                                                                 Button(
                                                                         onClick = {
+                                                                                // Générer les images de bullet graphs pour l'analyse de manière synchrone
+                                                                                val bulletGraphImages = mutableMapOf<String, Map<String, String>>()
+                                                                                
+                                                                                selectedRation?.let { ration ->
+                                                                                        try {
+                                                                                                // Charger les préférences de manière synchrone
+                                                                                                val prefsStorage = createPreferencesStorage()
+                                                                                                val prefsRepo = PreferencesRepository(prefsStorage)
+                                                                                                
+                                                                                                // Charger les préférences de manière synchrone
+                                                                                                kotlinx.coroutines.runBlocking {
+                                                                                                        prefsRepo.loadPreferences()
+                                                                                                }
+                                                                                                val prefs = prefsRepo.preferences
+                                                                                                val prefsEspece = prefs?.getPreferencesEspece(animalDetails?.getEspece() ?: fr.vetbrain.vetnutri_mp.Enumer.Espece.CHIEN)
+                                                                                                
+                                                                                                val ref = referenceUtilisee
+                                                                                                if (prefsEspece != null && ref != null && animalDetails != null) {
+                                                                                                        // Générer les images avec la logique de RationsView
+                                                                                                        val images = fr.vetbrain.vetnutri_mp.Export.BulletGraphImageCapture.generateRationBulletGraphImages(
+                                                                                                                ration = ration,
+                                                                                                                reference = ref,
+                                                                                                                animal = animalDetails,
+                                                                                                                preferences = prefsEspece,
+                                                                                                                poidsAnimal = selectedConsultation?.effectiveWeight?.toDouble(),
+                                                                                                                poidsMetabolique = null, // Temporairement null
+                                                                                                                besoinEnergetiqueEntretien = null, // Temporairement null
+                                                                                                                equationRepository = equationRepository
+                                                                                                        )
+                                                                                                        
+                                                                                                        // Convertir les ByteArray en chemins de fichiers temporaires
+                                                                                                        val imagePaths = images.mapValues { (_, imageBytes) ->
+                                                                                                                val tempFile = fr.vetbrain.vetnutri_mp.Export.BulletGraphImageCapture.saveImageToTempFile(imageBytes, "temp")
+                                                                                                                "file://${tempFile.absolutePath}"
+                                                                                                        }
+                                                                                                        
+                                                                                                        bulletGraphImages[ration.uuid] = imagePaths
+                                                                                                        println("DEBUG: Généré ${imagePaths.size} images de bullet graphs")
+                                                                                                } else {
+                                                                                                        println("DEBUG: Données manquantes - prefsEspece: ${prefsEspece != null}, ref: ${ref != null}, animal: ${animalDetails != null}")
+                                                                                                        
+                                                                                                        // Générer des images de test même sans les vraies données
+                                                                                                        println("DEBUG: Génération d'images de test...")
+                                                                                                        val testImages = mutableMapOf<String, ByteArray>()
+                                                                                                        listOf("PROTEINE", "LIPIDE", "ENA", "CELLULOSE", "CENDRE", "CAL", "PHOS").forEach { nom ->
+                                                                                                                val imageBytes = fr.vetbrain.vetnutri_mp.Export.BulletGraphImageCapture.generateBulletGraphImage(
+                                                                                                                        nom, 25.0, 15.0, 40.0, 20.0, 35.0, "g/kg DM"
+                                                                                                                )
+                                                                                                                testImages[nom] = imageBytes
+                                                                                                        }
+                                                                                                        
+                                                                                                        val testImagePaths = testImages.mapValues { (_, imageBytes) ->
+                                                                                                                val tempFile = fr.vetbrain.vetnutri_mp.Export.BulletGraphImageCapture.saveImageToTempFile(imageBytes, "test")
+                                                                                                                "file://${tempFile.absolutePath}"
+                                                                                                        }
+                                                                                                        
+                                                                                                        bulletGraphImages[ration.uuid] = testImagePaths
+                                                                                                        println("DEBUG: Généré ${testImagePaths.size} images de test")
+                                                                                                }
+                                                                                        } catch (e: Exception) {
+                                                                                                // En cas d'erreur, continuer sans les images
+                                                                                                println("Erreur génération bullet graphs: ${e.message}")
+                                                                                                e.printStackTrace()
+                                                                                        }
+                                                                                }
+                                                                                
                                                                                 previewHtml =
                                                                                         HtmlDocumentBuilder
                                                                                                 .buildHtml(
@@ -1204,7 +1270,12 @@ private fun WideScreenLayout(
                                                                                                                 additionalText =
                                                                                                                         additionalText,
                                                                                                                 htmlSections =
-                                                                                                                        getSelectedConseils()
+                                                                                                                        getSelectedConseils(),
+                                                                                                                preferences = null,
+                                                                                                                poidsAnimal = selectedConsultation?.effectiveWeight?.toDouble(),
+                                                                                                                poidsMetabolique = null,
+                                                                                                                besoinEnergetiqueEntretien = null,
+                                                                                                                bulletGraphImages = bulletGraphImages
                                                                                                         )
                                                                                                 )
                                                                                 showPreview = true
@@ -1231,7 +1302,7 @@ private fun WideScreenLayout(
                                                                                                 )
                                                                                                 val allRations = selectedConsultation?.rations?.toList() ?: emptyList()
                                                                                                 
-                                                                                                // Générer la prévisualisation
+                                                                                                // Générer la prévisualisation (sans bullet graphs pour l'ordonnance)
                                                                                                 previewHtml =
                                                                                                         HtmlDocumentBuilder
                                                                                                                 .buildHtml(
@@ -1243,7 +1314,7 @@ private fun WideScreenLayout(
                                                                                                                                 ration =
                                                                                                                                         null,
                                                                                                                                 reference =
-                                                                                                                                        null,
+                                                                                                                                        referenceUtilisee,
                                                                                                                                 conseils =
                                                                                                                                         listOf(
                                                                                                                                                 "Fractionner la ration en 2-3 repas",
@@ -1256,24 +1327,34 @@ private fun WideScreenLayout(
                                                                                                                                 htmlSections =
                                                                                                                                         getSelectedConseils(),
                                                                                                                                 rations = allRations,
-                                                                                                                                practitioner = practitioner
+                                                                                                                                practitioner = practitioner,
+                                                                                                                                preferences = null,
+                                                                                                                                poidsAnimal = selectedConsultation?.effectiveWeight?.toDouble(),
+                                                                                                                                poidsMetabolique = null,
+                                                                                                                                besoinEnergetiqueEntretien = null
                                                                                                                         )
                                                                                                                 )
                                                                                                 showPreview = true
                                                                                         } catch (e: Exception) {
                                                                                                 // En cas d'erreur, prévisualiser sans les informations du prescripteur
+                                                                                                val allRations = selectedConsultation?.rations?.toList() ?: emptyList()
+                                                                                                
                                                                                                 previewHtml = HtmlDocumentBuilder.buildHtml(
                                                                                                         DocumentType.PRESCRIPTION,
                                                                                                         ExportData(
                                                                                                                 animal = animalDetails,
                                                                                                                 ration = null,
-                                                                                                                reference = null,
+                                                                                                                reference = referenceUtilisee,
                                                                                                                 conseils = emptyList(),
                                                                                                                 title = "Ordonnance nutritionnelle",
                                                                                                                 additionalText = additionalText,
                                                                                                                 htmlSections = getSelectedConseils(),
-                                                                                                                rations = selectedConsultation?.rations?.toList() ?: emptyList(),
-                                                                                                                practitioner = null
+                                                                                                                rations = allRations,
+                                                                                                                practitioner = null,
+                                                                                                                preferences = null,
+                                                                                                                poidsAnimal = selectedConsultation?.effectiveWeight?.toDouble(),
+                                                                                                                poidsMetabolique = null,
+                                                                                                                besoinEnergetiqueEntretien = null
                                                                                                         )
                                                                                                 )
                                                                                                 showPreview = true
@@ -1290,34 +1371,34 @@ private fun WideScreenLayout(
 
                                                         // Texte additionnel
                                                         item {
-                                                                OutlinedTextField(
-                                                                        value = additionalText,
-                                                                        onValueChange = {
-                                                                                additionalText = it
-                                                                        },
-                                                                        modifier = Modifier.fillMaxWidth(),
-                                                                        label = {
-                                                                                Text(
-                                                                                        "Texte additionnel (apparaît en fin de document)"
-                                                                                )
-                                                                        },
-                                                                        maxLines = 6
-                                                                )
+                                                        OutlinedTextField(
+                                                                value = additionalText,
+                                                                onValueChange = {
+                                                                        additionalText = it
+                                                                },
+                                                                modifier = Modifier.fillMaxWidth(),
+                                                                label = {
+                                                                        Text(
+                                                                                "Texte additionnel (apparaît en fin de document)"
+                                                                        )
+                                                                },
+                                                                maxLines = 6
+                                                        )
                                                         }
                                                 }
                                         }
-                                        
+
                                         // Dialogue de prévisualisation HTML (en dehors du LazyColumn)
-                                        HtmlPreviewDialog(
-                                                html = previewHtml,
-                                                isVisible = showPreview,
-                                                onConfirmExport = {
-                                                        val isPrescription =
-                                                                previewHtml
-                                                                        .contains(
-                                                                                "Ordonnance nutritionnelle"
-                                                                        )
-                                                        if (isPrescription) {
+                                                        HtmlPreviewDialog(
+                                                                html = previewHtml,
+                                                                isVisible = showPreview,
+                                                                onConfirmExport = {
+                                                                        val isPrescription =
+                                                                                previewHtml
+                                                                                        .contains(
+                                                                                                "Ordonnance nutritionnelle"
+                                                                                        )
+                                                                        if (isPrescription) {
                                                                 // Charger les préférences utilisateur pour l'en-tête praticien
                                                                 val prefsStorage = createPreferencesStorage()
                                                                 val prefsRepo = PreferencesRepository(prefsStorage)
@@ -1341,7 +1422,7 @@ private fun WideScreenLayout(
                                                                                         ExportData(
                                                                                                 animal = animalDetails,
                                                                                                 ration = null,
-                                                                                                reference = null,
+                                                                                                reference = referenceUtilisee,
                                                                                                 conseils = listOf(
                                                                                                         "Fractionner la ration en 2-3 repas",
                                                                                                         "Veiller à l'hydratation"
@@ -1350,7 +1431,11 @@ private fun WideScreenLayout(
                                                                                                 additionalText = additionalText,
                                                                                                 htmlSections = getSelectedConseils(),
                                                                                                 rations = allRations,
-                                                                                                practitioner = practitioner
+                                                                                                practitioner = practitioner,
+                                                                                                preferences = null,
+                                                                                                poidsAnimal = selectedConsultation?.effectiveWeight?.toDouble(),
+                                                                                                poidsMetabolique = null,
+                                                                                                besoinEnergetiqueEntretien = null
                                                                                         ),
                                                                                         defaultFileName = generateDefaultPdfFileName(animalDetails, selectedConsultation)
                                                                                 )
@@ -1361,21 +1446,87 @@ private fun WideScreenLayout(
                                                                                         ExportData(
                                                                                                 animal = animalDetails,
                                                                                                 ration = null,
-                                                                                                reference = null,
+                                                                                                reference = referenceUtilisee,
                                                                                                 conseils = emptyList(),
                                                                                                 title = "Ordonnance nutritionnelle",
                                                                                                 additionalText = additionalText,
                                                                                                 htmlSections = getSelectedConseils(),
                                                                                                 rations = selectedConsultation?.rations?.toList() ?: emptyList(),
-                                                                                                practitioner = null
+                                                                                                practitioner = null,
+                                                                                                preferences = null,
+                                                                                                poidsAnimal = selectedConsultation?.effectiveWeight?.toDouble(),
+                                                                                                poidsMetabolique = null,
+                                                                                                besoinEnergetiqueEntretien = null
                                                                                         ),
                                                                                         defaultFileName = generateDefaultPdfFileName(animalDetails, selectedConsultation)
                                                                                 )
                                                                         }
                                                                 }
-                                                        } else {
-                                                                PdfExporter
-                                                                        .exportDocument(
+                                                                        } else {
+                                                                                // Générer les bullet graphs pour l'export PDF d'analyse de ration
+                                                                                val bulletGraphImages = mutableMapOf<String, Map<String, String>>()
+                                                                                
+                                                                                selectedRation?.let { ration ->
+                                                                                        try {
+                                                                                                // Charger les préférences de manière synchrone
+                                                                                                val prefsStorage = createPreferencesStorage()
+                                                                                                val prefsRepo = PreferencesRepository(prefsStorage)
+                                                                                                
+                                                                                                kotlinx.coroutines.runBlocking {
+                                                                                                        prefsRepo.loadPreferences()
+                                                                                                }
+                                                                                                val prefs = prefsRepo.preferences
+                                                                                                val prefsEspece = prefs?.getPreferencesEspece(animalDetails?.getEspece() ?: fr.vetbrain.vetnutri_mp.Enumer.Espece.CHIEN)
+                                                                                                
+                                                                                                val ref = referenceUtilisee
+                                                                                                if (prefsEspece != null && ref != null && animalDetails != null) {
+                                                                                                        // Générer les images avec la logique de RationsView
+                                                                                                        val images = fr.vetbrain.vetnutri_mp.Export.BulletGraphImageCapture.generateRationBulletGraphImages(
+                                                                                                                ration = ration,
+                                                                                                                reference = ref,
+                                                                                                                animal = animalDetails,
+                                                                                                                preferences = prefsEspece,
+                                                                                                                poidsAnimal = selectedConsultation?.effectiveWeight?.toDouble(),
+                                                                                                                poidsMetabolique = null,
+                                                                                                                besoinEnergetiqueEntretien = null,
+                                                                                                                equationRepository = equationRepository
+                                                                                                        )
+                                                                                                        
+                                                                                                        // Convertir les ByteArray en chemins de fichiers temporaires
+                                                                                                        val imagePaths = images.mapValues { (_, imageBytes) ->
+                                                                                                                val tempFile = fr.vetbrain.vetnutri_mp.Export.BulletGraphImageCapture.saveImageToTempFile(imageBytes, "export")
+                                                                                                                "file://${tempFile.absolutePath}"
+                                                                                                        }
+                                                                                                        
+                                                                                                        bulletGraphImages[ration.uuid] = imagePaths
+                                                                                                        println("DEBUG: Export PDF - Généré ${imagePaths.size} images de bullet graphs")
+                                                                                                } else {
+                                                                                                        // Générer des images de test même sans les vraies données
+                                                                                                        println("DEBUG: Export PDF - Génération d'images de test...")
+                                                                                                        val testImages = mutableMapOf<String, ByteArray>()
+                                                                                                        listOf("PROTEINE", "LIPIDE", "ENA", "CELLULOSE", "CENDRE", "CAL", "PHOS").forEach { nom ->
+                                                                                                                val imageBytes = fr.vetbrain.vetnutri_mp.Export.BulletGraphImageCapture.generateBulletGraphImage(
+                                                                                                                        nom, 25.0, 15.0, 40.0, 20.0, 35.0, "g/kg DM"
+                                                                                                                )
+                                                                                                                testImages[nom] = imageBytes
+                                                                                                        }
+                                                                                                        
+                                                                                                        val testImagePaths = testImages.mapValues { (_, imageBytes) ->
+                                                                                                                val tempFile = fr.vetbrain.vetnutri_mp.Export.BulletGraphImageCapture.saveImageToTempFile(imageBytes, "export_test")
+                                                                                                                "file://${tempFile.absolutePath}"
+                                                                                                        }
+                                                                                                        
+                                                                                                        bulletGraphImages[ration.uuid] = testImagePaths
+                                                                                                        println("DEBUG: Export PDF - Généré ${testImagePaths.size} images de test")
+                                                                                                }
+                                                                                        } catch (e: Exception) {
+                                                                                                println("Erreur génération bullet graphs pour export PDF: ${e.message}")
+                                                                                                e.printStackTrace()
+                                                                                        }
+                                                                                }
+                                                                                
+                                                                                PdfExporter
+                                                                                        .exportDocument(
                                                                                 DocumentType
                                                                                         .RATION_ANALYSIS,
                                                                                 ExportData(
@@ -1390,16 +1541,21 @@ private fun WideScreenLayout(
                                                                                         additionalText =
                                                                                                 additionalText,
                                                                                         htmlSections =
-                                                                                                getSelectedConseils()
+                                                                                                getSelectedConseils(),
+                                                                                        preferences = null,
+                                                                                        poidsAnimal = selectedConsultation?.effectiveWeight?.toDouble(),
+                                                                                        poidsMetabolique = null,
+                                                                                        besoinEnergetiqueEntretien = null,
+                                                                                        bulletGraphImages = bulletGraphImages
                                                                                 ),
                                                                                 defaultFileName =
                                                                                         "analyse_ration.pdf"
                                                                         )
-                                                        }
-                                                        showPreview = false
-                                                },
-                                                onDismiss = { showPreview = false }
-                                        )
+                                                                        }
+                                                                        showPreview = false
+                                                                },
+                                                                onDismiss = { showPreview = false }
+                                                        )
                                 }
                         }
 
@@ -2275,50 +2431,50 @@ private fun NarrowScreenLayout(
                                                                                         )
                                                                 ) {
                                                                         item {
-                                                                                Text(
-                                                                                        "Export des documents",
-                                                                                        style =
-                                                                                                MaterialTheme
-                                                                                                        .typography
-                                                                                                        .h6,
-                                                                                        color =
-                                                                                                VetNutriColors
-                                                                                                        .Primary
-                                                                                )
+                                                                        Text(
+                                                                                "Export des documents",
+                                                                                style =
+                                                                                        MaterialTheme
+                                                                                                .typography
+                                                                                                .h6,
+                                                                                color =
+                                                                                        VetNutriColors
+                                                                                                .Primary
+                                                                        )
                                                                         }
                                                                         item {
-                                                                                Text(
-                                                                                        text =
-                                                                                                if (selectedRation !=
-                                                                                                                null
+                                                                        Text(
+                                                                                text =
+                                                                                        if (selectedRation !=
+                                                                                                        null
+                                                                                        )
+                                                                                                "Ration sélectionnée: ${selectedRation!!.name}"
+                                                                                        else
+                                                                                                "Aucune ration sélectionnée",
+                                                                                color =
+                                                                                        MaterialTheme
+                                                                                                .colors
+                                                                                                .onSurface
+                                                                                                .copy(
+                                                                                                        alpha =
+                                                                                                                0.7f
                                                                                                 )
-                                                                                                        "Ration sélectionnée: ${selectedRation!!.name}"
-                                                                                                else
-                                                                                                        "Aucune ration sélectionnée",
-                                                                                        color =
-                                                                                                MaterialTheme
-                                                                                                        .colors
-                                                                                                        .onSurface
-                                                                                                        .copy(
-                                                                                                                alpha =
-                                                                                                                        0.7f
-                                                                                                        )
-                                                                                )
+                                                                        )
                                                                         }
 
                                                                         // Section pour les conseils
                                                                         // personnalisés
                                                                         item {
-                                                                                Text(
-                                                                                        "Conseils personnalisés:",
-                                                                                        style =
-                                                                                                MaterialTheme
-                                                                                                        .typography
-                                                                                                        .subtitle1,
-                                                                                        color =
-                                                                                                VetNutriColors
-                                                                                                        .Primary
-                                                                                )
+                                                                        Text(
+                                                                                "Conseils personnalisés:",
+                                                                                style =
+                                                                                        MaterialTheme
+                                                                                                .typography
+                                                                                                .subtitle1,
+                                                                                color =
+                                                                                        VetNutriColors
+                                                                                                .Primary
+                                                                        )
                                                                         }
 
                                                                         // Affichage des conseils
@@ -2327,74 +2483,74 @@ private fun NarrowScreenLayout(
                                                                                         .isNotEmpty()
                                                                         ) {
                                                                                 item {
-                                                                                        Column(
-                                                                                                modifier =
-                                                                                                        Modifier.fillMaxWidth(),
-                                                                                                verticalArrangement =
-                                                                                                        Arrangement
-                                                                                                                .spacedBy(
-                                                                                                                        4.dp
-                                                                                                                )
-                                                                                        ) {
-                                                                                                selectedConseils
-                                                                                                        .forEach {
-                                                                                                                conseil
-                                                                                                                ->
-                                                                                                                Card(
+                                                                                Column(
+                                                                                        modifier =
+                                                                                                Modifier.fillMaxWidth(),
+                                                                                        verticalArrangement =
+                                                                                                Arrangement
+                                                                                                        .spacedBy(
+                                                                                                                4.dp
+                                                                                                        )
+                                                                                ) {
+                                                                                        selectedConseils
+                                                                                                .forEach {
+                                                                                                        conseil
+                                                                                                        ->
+                                                                                                        Card(
+                                                                                                                modifier =
+                                                                                                                        Modifier.fillMaxWidth(),
+                                                                                                                elevation =
+                                                                                                                        2.dp
+                                                                                                        ) {
+                                                                                                                Row(
                                                                                                                         modifier =
-                                                                                                                                Modifier.fillMaxWidth(),
-                                                                                                                        elevation =
-                                                                                                                                2.dp
+                                                                                                                                Modifier.fillMaxWidth()
+                                                                                                                                        .padding(
+                                                                                                                                                8.dp
+                                                                                                                                        ),
+                                                                                                                        horizontalArrangement =
+                                                                                                                                Arrangement
+                                                                                                                                        .SpaceBetween,
+                                                                                                                        verticalAlignment =
+                                                                                                                                Alignment
+                                                                                                                                        .CenterVertically
                                                                                                                 ) {
-                                                                                                                        Row(
+                                                                                                                        Column(
                                                                                                                                 modifier =
-                                                                                                                                        Modifier.fillMaxWidth()
-                                                                                                                                                .padding(
-                                                                                                                                                        8.dp
-                                                                                                                                                ),
-                                                                                                                                horizontalArrangement =
-                                                                                                                                        Arrangement
-                                                                                                                                                .SpaceBetween,
-                                                                                                                                verticalAlignment =
-                                                                                                                                        Alignment
-                                                                                                                                                .CenterVertically
+                                                                                                                                        Modifier.weight(
+                                                                                                                                                1f
+                                                                                                                                        )
                                                                                                                         ) {
-                                                                                                                                Column(
-                                                                                                                                        modifier =
-                                                                                                                                                Modifier.weight(
-                                                                                                                                                        1f
-                                                                                                                                                )
-                                                                                                                                ) {
-                                                                                                                                        Text(
-                                                                                                                                                text =
-                                                                                                                                                        conseil.title,
-                                                                                                                                                style =
-                                                                                                                                                        MaterialTheme
-                                                                                                                                                                .typography
-                                                                                                                                                                .body2,
-                                                                                                                                                fontWeight =
-                                                                                                                                                        FontWeight
-                                                                                                                                                                .Medium
-                                                                                                                                        )
-                                                                                                                                        Text(
-                                                                                                                                                text =
-                                                                                                                                                        "Catégorie: ${conseil.category.name}",
-                                                                                                                                                style =
-                                                                                                                                                        MaterialTheme
-                                                                                                                                                                .typography
-                                                                                                                                                                .caption,
-                                                                                                                                                color =
-                                                                                                                                                        Color.Gray
-                                                                                                                                        )
-                                                                                                                                }
-                                                                                                                                IconButton(
-                                                                                                                                        onClick = {
-                                                                                                                                                selectedConseils =
-                                                                                                                                                        selectedConseils
-                                                                                                                                                                .filter {
-                                                                                                                                                                        it.id !=
-                                                                                                                                                                                conseil.id
-                                                                                                                                                                }
+                                                                                                                                Text(
+                                                                                                                                        text =
+                                                                                                                                                conseil.title,
+                                                                                                                                        style =
+                                                                                                                                                MaterialTheme
+                                                                                                                                                        .typography
+                                                                                                                                                        .body2,
+                                                                                                                                        fontWeight =
+                                                                                                                                                FontWeight
+                                                                                                                                                        .Medium
+                                                                                                                                )
+                                                                                                                                Text(
+                                                                                                                                        text =
+                                                                                                                                                "Catégorie: ${conseil.category.name}",
+                                                                                                                                        style =
+                                                                                                                                                MaterialTheme
+                                                                                                                                                        .typography
+                                                                                                                                                        .caption,
+                                                                                                                                        color =
+                                                                                                                                                Color.Gray
+                                                                                                                                )
+                                                                                                                        }
+                                                                                                                        IconButton(
+                                                                                                                                onClick = {
+                                                                                                                                        selectedConseils =
+                                                                                                                                                selectedConseils
+                                                                                                                                                        .filter {
+                                                                                                                                                                it.id !=
+                                                                                                                                                                        conseil.id
+                                                                                                                                                        }
                                                                                                                                 }
                                                                                                                         ) {
                                                                                                                                 Icon(
@@ -2405,58 +2561,58 @@ private fun NarrowScreenLayout(
                                                                                                                                                 Color.Red
                                                                                                                                 )
                                                                                                                         }
+                                                                                                                        }
                                                                                                                 }
                                                                                                         }
                                                                                                 }
-                                                                                        }
                                                                                 }
                                                                         }
 
                                                                         // Bouton pour ajouter des
                                                                         // conseils
                                                                         item {
-                                                                                Button(
-                                                                                        onClick = {
-                                                                                                showSearchDialog =
-                                                                                                        true
-                                                                                        },
+                                                                        Button(
+                                                                                onClick = {
+                                                                                        showSearchDialog =
+                                                                                                true
+                                                                                },
+                                                                                modifier =
+                                                                                        Modifier.fillMaxWidth(),
+                                                                                colors =
+                                                                                        ButtonDefaults
+                                                                                                .buttonColors(
+                                                                                                        backgroundColor =
+                                                                                                                VetNutriColors
+                                                                                                                        .Secondary,
+                                                                                                        contentColor =
+                                                                                                                VetNutriColors
+                                                                                                                        .OnSecondary
+                                                                                                )
+                                                                        ) {
+                                                                                Icon(
+                                                                                        Icons.Default
+                                                                                                .Add,
+                                                                                        "Ajouter"
+                                                                                )
+                                                                                Spacer(
                                                                                         modifier =
-                                                                                                Modifier.fillMaxWidth(),
-                                                                                        colors =
-                                                                                                ButtonDefaults
-                                                                                                        .buttonColors(
-                                                                                                                backgroundColor =
-                                                                                                                        VetNutriColors
-                                                                                                                                .Secondary,
-                                                                                                                contentColor =
-                                                                                                                        VetNutriColors
-                                                                                                                                .OnSecondary
-                                                                                                        )
-                                                                                ) {
-                                                                                        Icon(
-                                                                                                Icons.Default
-                                                                                                        .Add,
-                                                                                                "Ajouter"
-                                                                                        )
-                                                                                        Spacer(
-                                                                                                modifier =
-                                                                                                        Modifier.width(
-                                                                                                                8.dp
-                                                                                                        )
-                                                                                        )
-                                                                                        Text(
-                                                                                                "Ajouter des conseils"
-                                                                                        )
+                                                                                                Modifier.width(
+                                                                                                        8.dp
+                                                                                                )
+                                                                                )
+                                                                                Text(
+                                                                                        "Ajouter des conseils"
+                                                                                )
                                                                                 }
                                                                         }
 
                                                                         item {
-                                                                                Spacer(
-                                                                                        modifier =
-                                                                                                Modifier.height(
-                                                                                                        16.dp
-                                                                                                )
-                                                                                )
+                                                                        Spacer(
+                                                                                modifier =
+                                                                                        Modifier.height(
+                                                                                                16.dp
+                                                                                        )
+                                                                        )
                                                                         }
 
                                                                         // Section pour les sections
@@ -2465,27 +2621,27 @@ private fun NarrowScreenLayout(
                                                                                         .isNotEmpty()
                                                                         ) {
                                                                                 item {
-                                                                                        Text(
-                                                                                                "Sections HTML créées localement (${localHtmlSections.size}):",
-                                                                                                style =
-                                                                                                        MaterialTheme
-                                                                                                                .typography
-                                                                                                                .subtitle1,
-                                                                                                color =
-                                                                                                        VetNutriColors
-                                                                                                                .Primary
-                                                                                        )
+                                                                                Text(
+                                                                                        "Sections HTML créées localement (${localHtmlSections.size}):",
+                                                                                        style =
+                                                                                                MaterialTheme
+                                                                                                        .typography
+                                                                                                        .subtitle1,
+                                                                                        color =
+                                                                                                VetNutriColors
+                                                                                                        .Primary
+                                                                                )
                                                                                 }
                                                                                 item {
-                                                                                        Column(
-                                                                                                modifier =
-                                                                                                        Modifier.fillMaxWidth(),
-                                                                                                verticalArrangement =
-                                                                                                        Arrangement
-                                                                                                                .spacedBy(
-                                                                                                                        4.dp
-                                                                                                                )
-                                                                                        ) {
+                                                                                Column(
+                                                                                        modifier =
+                                                                                                Modifier.fillMaxWidth(),
+                                                                                        verticalArrangement =
+                                                                                                Arrangement
+                                                                                                        .spacedBy(
+                                                                                                                4.dp
+                                                                                                        )
+                                                                                ) {
                                                                                         localHtmlSections
                                                                                                 .forEach {
                                                                                                         section
@@ -2558,15 +2714,15 @@ private fun NarrowScreenLayout(
                                                                                                                 }
                                                                                                         }
                                                                                                 }
-                                                                                        }
+                                                                                }
                                                                                 }
                                                                                 item {
-                                                                                        Spacer(
-                                                                                                modifier =
-                                                                                                        Modifier.height(
-                                                                                                                16.dp
-                                                                                                        )
-                                                                                        )
+                                                                                Spacer(
+                                                                                        modifier =
+                                                                                                Modifier.height(
+                                                                                                        16.dp
+                                                                                                )
+                                                                                )
                                                                                 }
                                                                         }
 
@@ -2574,38 +2730,38 @@ private fun NarrowScreenLayout(
                                                                         // l'éditeur de texte
                                                                         // enrichi
                                                                         item {
-                                                                                Button(
-                                                                                        onClick = {
-                                                                                                showRichTextEditor =
-                                                                                                        true
-                                                                                        },
+                                                                        Button(
+                                                                                onClick = {
+                                                                                        showRichTextEditor =
+                                                                                                true
+                                                                                },
+                                                                                modifier =
+                                                                                        Modifier.fillMaxWidth(),
+                                                                                colors =
+                                                                                        ButtonDefaults
+                                                                                                .buttonColors(
+                                                                                                        backgroundColor =
+                                                                                                                VetNutriColors
+                                                                                                                        .Secondary,
+                                                                                                        contentColor =
+                                                                                                                VetNutriColors
+                                                                                                                        .OnSecondary
+                                                                                                )
+                                                                        ) {
+                                                                                Icon(
+                                                                                        Icons.Default
+                                                                                                .Edit,
+                                                                                        "Éditeur HTML"
+                                                                                )
+                                                                                Spacer(
                                                                                         modifier =
-                                                                                                Modifier.fillMaxWidth(),
-                                                                                        colors =
-                                                                                                ButtonDefaults
-                                                                                                        .buttonColors(
-                                                                                                                backgroundColor =
-                                                                                                                        VetNutriColors
-                                                                                                                                .Secondary,
-                                                                                                                contentColor =
-                                                                                                                        VetNutriColors
-                                                                                                                                .OnSecondary
-                                                                                                        )
-                                                                                ) {
-                                                                                        Icon(
-                                                                                                Icons.Default
-                                                                                                        .Edit,
-                                                                                                "Éditeur HTML"
-                                                                                        )
-                                                                                        Spacer(
-                                                                                                modifier =
-                                                                                                        Modifier.width(
-                                                                                                                AppSizes.paddingSmall
-                                                                                                        )
-                                                                                        )
-                                                                                        Text(
-                                                                                                "Créer des sections HTML"
-                                                                                        )
+                                                                                                Modifier.width(
+                                                                                                        AppSizes.paddingSmall
+                                                                                                )
+                                                                                )
+                                                                                Text(
+                                                                                        "Créer des sections HTML"
+                                                                                )
                                                                                 }
                                                                         }
 
@@ -2622,13 +2778,13 @@ private fun NarrowScreenLayout(
                                                                                 }
 
                                                                         item {
-                                                                                Row(
-                                                                                        horizontalArrangement =
-                                                                                                Arrangement
-                                                                                                        .spacedBy(
-                                                                                                                AppSizes.paddingSmall
-                                                                                                        )
-                                                                                ) {
+                                                                        Row(
+                                                                                horizontalArrangement =
+                                                                                        Arrangement
+                                                                                                .spacedBy(
+                                                                                                        AppSizes.paddingSmall
+                                                                                                )
+                                                                        ) {
                                                                                 Button(
                                                                                         onClick = {
                                                                                                 PdfExporter
