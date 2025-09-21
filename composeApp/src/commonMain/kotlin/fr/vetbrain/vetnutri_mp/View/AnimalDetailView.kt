@@ -755,6 +755,8 @@ private fun WideScreenLayout(
                                                 viewModel.selectedRation.collectAsState()
                                         val referenceUtilisee by
                                                 viewModel.referenceUtilisee.collectAsState()
+                                        val besoinEnergetiqueStandard by viewModel.besoinEnergetiqueStandard.collectAsState()
+                                        val poidsMetabolique by viewModel.poidsMetabolique.collectAsState()
 
                                         if (showRichTextEditor) {
                                                 // Éditeur de texte enrichi
@@ -1212,8 +1214,8 @@ private fun WideScreenLayout(
                                                                                                                 animal = animalDetails,
                                                                                                                 preferences = prefsEspece,
                                                                                                                 poidsAnimal = selectedConsultation?.effectiveWeight?.toDouble(),
-                                                                                                                poidsMetabolique = null, // Temporairement null
-                                                                                                                besoinEnergetiqueEntretien = null, // Temporairement null
+                                                                                                                poidsMetabolique = poidsMetabolique,
+                                                                                                                besoinEnergetiqueEntretien = besoinEnergetiqueStandard,
                                                                                                                 equationRepository = equationRepository
                                                                                                         )
                                                                                                         
@@ -1273,8 +1275,8 @@ private fun WideScreenLayout(
                                                                                                                         getSelectedConseils(),
                                                                                                                 preferences = null,
                                                                                                                 poidsAnimal = selectedConsultation?.effectiveWeight?.toDouble(),
-                                                                                                                poidsMetabolique = null,
-                                                                                                                besoinEnergetiqueEntretien = null,
+                                                                                                                poidsMetabolique = poidsMetabolique,
+                                                                                                                besoinEnergetiqueEntretien = besoinEnergetiqueStandard,
                                                                                                                 bulletGraphImages = bulletGraphImages
                                                                                                         )
                                                                                                 )
@@ -1487,8 +1489,8 @@ private fun WideScreenLayout(
                                                                                                                 animal = animalDetails,
                                                                                                                 preferences = prefsEspece,
                                                                                                                 poidsAnimal = selectedConsultation?.effectiveWeight?.toDouble(),
-                                                                                                                poidsMetabolique = null,
-                                                                                                                besoinEnergetiqueEntretien = null,
+                                                                                                                poidsMetabolique = poidsMetabolique,
+                                                                                                                besoinEnergetiqueEntretien = besoinEnergetiqueStandard,
                                                                                                                 equationRepository = equationRepository
                                                                                                         )
                                                                                                         
