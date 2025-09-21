@@ -1221,8 +1221,8 @@ private fun WideScreenLayout(
                                                                                                         
                                                                                                         // Convertir les ByteArray en chemins de fichiers temporaires
                                                                                                         val imagePaths = images.mapValues { (_, imageBytes) ->
-                                                                                                                val tempFile = fr.vetbrain.vetnutri_mp.Export.BulletGraphImageCapture.saveImageToTempFile(imageBytes, "temp")
-                                                                                                                "file://${tempFile.absolutePath}"
+                                                        val tempFilePath = fr.vetbrain.vetnutri_mp.Export.BulletGraphImageCapture.saveImageToTempFile(imageBytes, "temp")
+                                                        "file://$tempFilePath"
                                                                                                         }
                                                                                                         
                                                                                                         bulletGraphImages[ration.uuid] = imagePaths
@@ -1241,8 +1241,8 @@ private fun WideScreenLayout(
                                                                                                         }
                                                                                                         
                                                                                                         val testImagePaths = testImages.mapValues { (_, imageBytes) ->
-                                                                                                                val tempFile = fr.vetbrain.vetnutri_mp.Export.BulletGraphImageCapture.saveImageToTempFile(imageBytes, "test")
-                                                                                                                "file://${tempFile.absolutePath}"
+                                                                                                                val tempFilePath = fr.vetbrain.vetnutri_mp.Export.BulletGraphImageCapture.saveImageToTempFile(imageBytes, "test")
+                                                                                                                "file://$tempFilePath"
                                                                                                         }
                                                                                                         
                                                                                                         bulletGraphImages[ration.uuid] = testImagePaths
@@ -1496,8 +1496,8 @@ private fun WideScreenLayout(
                                                                                                         
                                                                                                         // Convertir les ByteArray en chemins de fichiers temporaires
                                                                                                         val imagePaths = images.mapValues { (_, imageBytes) ->
-                                                                                                                val tempFile = fr.vetbrain.vetnutri_mp.Export.BulletGraphImageCapture.saveImageToTempFile(imageBytes, "export")
-                                                                                                                "file://${tempFile.absolutePath}"
+                                                                                                                val tempFilePath = fr.vetbrain.vetnutri_mp.Export.BulletGraphImageCapture.saveImageToTempFile(imageBytes, "export")
+                                                                                                                "file://$tempFilePath"
                                                                                                         }
                                                                                                         
                                                                                                         bulletGraphImages[ration.uuid] = imagePaths
@@ -1514,8 +1514,8 @@ private fun WideScreenLayout(
                                                                                                         }
                                                                                                         
                                                                                                         val testImagePaths = testImages.mapValues { (_, imageBytes) ->
-                                                                                                                val tempFile = fr.vetbrain.vetnutri_mp.Export.BulletGraphImageCapture.saveImageToTempFile(imageBytes, "export_test")
-                                                                                                                "file://${tempFile.absolutePath}"
+                                                                                                                val tempFilePath = fr.vetbrain.vetnutri_mp.Export.BulletGraphImageCapture.saveImageToTempFile(imageBytes, "export_test")
+                                                                                                                "file://$tempFilePath"
                                                                                                         }
                                                                                                         
                                                                                                         bulletGraphImages[ration.uuid] = testImagePaths
