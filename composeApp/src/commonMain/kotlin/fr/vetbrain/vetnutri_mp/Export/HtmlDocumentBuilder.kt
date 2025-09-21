@@ -472,26 +472,18 @@ object HtmlDocumentBuilder {
         besoinEnergetiqueEntretien: Double?,
         bulletGraphImages: Map<String, String> = emptyMap()
     ): String {
-        println("DEBUG: buildNutrientAnalysisBulletGraphs appelé avec ${bulletGraphImages.size} images")
-        bulletGraphImages.forEach { (name, path) ->
-            println("DEBUG: Image $name -> $path")
-        }
-        
-        if (reference == null || animal == null) {
-            println("DEBUG: Reference ou animal manquant")
-            return ""
-        }
+       
 
         if (bulletGraphImages.isEmpty()) {
-            println("DEBUG: Aucune image de bullet graph fournie")
+           
             return """
                 <div class='section'>
                     <h2>Analyse nutritionnelle - Bullet Graphs</h2>
                     <div class='bullet-graphs-container'>
                         <p><em>Les bullet graphs d'analyse nutritionnelle seront affichés ici pour chaque nutriment de la ration.</em></p>
                         <p>Ration: ${ration.name}</p>
-                        <p>Référence: ${reference.nom}</p>
-                        <p>DEBUG: Aucune image fournie (${bulletGraphImages.size} images)</p>
+                        <p>Référence: ${reference?.nom ?: "Non spécifiée"}</p>
+                      
                     </div>
                 </div>
             """.trimIndent()
@@ -534,7 +526,7 @@ object HtmlDocumentBuilder {
 
             """
                 <div class='bullet-graph-item'>
-                    <h3>$nomTraduit ($valeurAffichee)</h3>
+              
                     <img src='$imagePath' alt='Bullet graph pour $nomTraduit' class='bullet-graph-image' />
                 </div>
             """.trimIndent()

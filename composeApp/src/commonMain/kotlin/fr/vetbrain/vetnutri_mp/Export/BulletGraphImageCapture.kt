@@ -65,6 +65,8 @@ object BulletGraphImageCapture {
         
         // Parcourir tous les nutriments disponibles et ne générer des bullet graphs que pour ceux qui ont au moins une référence
         valeursNutritionnelles.forEach { (nomNutriment, valeurNutritionnelle) ->
+            // Obtenir le nom traduit du nutriment
+            val nomTraduit = obtenirNomTraduitNutriment(nomNutriment, valeurNutritionnelle.nutriment)
             try {
                 val nutrient = valeurNutritionnelle.nutriment
                 val valeurApportAbsolue = valeurNutritionnelle.valeur
@@ -189,6 +191,7 @@ object BulletGraphImageCapture {
                     // Utiliser la même logique que ReferenceBulletGraph pour générer l'image
                     val imageBytes = generateBulletGraphImageFromComposable(
                         nomNutriment,
+                        nomTraduit,
                         valeurApport,
                         minRefConverti,
                         optiminRefConverti,
@@ -220,6 +223,7 @@ object BulletGraphImageCapture {
      */
     private fun generateBulletGraphImageFromComposable(
         nomNutriment: String,
+        nomTraduit: String,
         valeurApport: Double,
         minRefConverti: Double?,
         optiminRefConverti: Double?,
@@ -251,7 +255,7 @@ object BulletGraphImageCapture {
         
         // Générer l'image en utilisant la même logique de couleurs que ReferenceBulletGraph
         return generateBulletGraphImageWithReferenceLogic(
-            nomNutriment,
+            nomTraduit,
             valeurApport,
             minRefConverti,
             optiminRefConverti,
@@ -280,161 +284,28 @@ object BulletGraphImageCapture {
         val width = 500f
         val height = 80f
         
-        // Pour Desktop, utiliser BufferedImage avec Graphics2D pour le dessin de texte
-        return try {
-            // Créer un BufferedImage
-            val bufferedImage = java.awt.image.BufferedImage(width.toInt(), height.toInt(), java.awt.image.BufferedImage.TYPE_INT_ARGB)
-            val graphics2D = bufferedImage.createGraphics()
-            
-            // Activer l'antialiasing
-            graphics2D.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON)
-            graphics2D.setRenderingHint(java.awt.RenderingHints.KEY_TEXT_ANTIALIASING, java.awt.RenderingHints.VALUE_TEXT_ANTIALIAS_ON)
-            
-            // Dessiner le bullet graph
-            drawBulletGraphOnBufferedImage(
-                graphics2D = graphics2D,
-                nomNutriment = nomNutriment,
-                valeurApport = valeurApport,
-                minRefConverti = minRefConverti,
-                optiminRefConverti = optiminRefConverti,
-                optimaxRefConverti = optimaxRefConverti,
-                maxRefConverti = maxRefConverti,
-                maxAxis = maxAxis,
-                bornes = bornes,
-                unite = unite,
-                width = width,
-                height = height
-            )
-            
-            // Convertir en ByteArray
-            val outputStream = java.io.ByteArrayOutputStream()
-            javax.imageio.ImageIO.write(bufferedImage, "PNG", outputStream)
-            val result = outputStream.toByteArray()
-            outputStream.close()
-            graphics2D.dispose()
-            
-            println("DEBUG: ImageBitmap.toByteArray() - Taille générée: ${result.size} bytes")
-            result
-        } catch (e: Exception) {
-            println("DEBUG: Erreur lors de la génération d'image avec BufferedImage: ${e.message}")
-            e.printStackTrace()
-            
-            // Fallback vers Compose Multiplatform
-            val imageBitmap = ImageBitmap(width.toInt(), height.toInt())
-            val canvas = Canvas(imageBitmap)
-            
-            drawBulletGraphOnCanvas(
-                canvas = canvas,
-                nomNutriment = nomNutriment,
-                valeurApport = valeurApport,
-                minRefConverti = minRefConverti,
-                optiminRefConverti = optiminRefConverti,
-                optimaxRefConverti = optimaxRefConverti,
-                maxRefConverti = maxRefConverti,
-                maxAxis = maxAxis,
-                bornes = bornes,
-                unite = unite,
-                width = width,
-                height = height
-            )
-            
-            imageBitmap.toByteArray()
-        }
+        // Utiliser Compose Multiplatform pour toutes les plateformes
+        val imageBitmap = ImageBitmap(width.toInt(), height.toInt())
+        val canvas = Canvas(imageBitmap)
+        
+        drawBulletGraphOnCanvas(
+            canvas = canvas,
+            nomNutriment = nomNutriment,
+            valeurApport = valeurApport,
+            minRefConverti = minRefConverti,
+            optiminRefConverti = optiminRefConverti,
+            optimaxRefConverti = optimaxRefConverti,
+            maxRefConverti = maxRefConverti,
+            maxAxis = maxAxis,
+            bornes = bornes,
+            unite = unite,
+            width = width,
+            height = height
+        )
+        
+        return imageBitmap.toByteArray()
     }
     
-    /**
-     * Dessine le bullet graph sur un BufferedImage avec Graphics2D (pour Desktop)
-     */
-    private fun drawBulletGraphOnBufferedImage(
-        graphics2D: java.awt.Graphics2D,
-        nomNutriment: String,
-        valeurApport: Double,
-        minRefConverti: Double?,
-        optiminRefConverti: Double?,
-        optimaxRefConverti: Double?,
-        maxRefConverti: Double?,
-        maxAxis: Double,
-        bornes: List<Double>,
-        unite: String,
-        width: Float,
-        height: Float
-    ) {
-        // Calculer les positions (même logique que KoalaPlot)
-        val startX = 50f
-        val endX = width - 50f
-        val barY = height / 2 - 15f
-        val barHeight = 30f
-        val scale = (endX - startX) / maxAxis
-        
-        // Dessiner les intervalles colorés (MÊME LOGIQUE que ReferenceBulletGraph lignes 556-600)
-        for (i in 0 until bornes.size - 1) {
-            val start = bornes[i]
-            val end = bornes[i + 1]
-            if (end <= start) continue
-            
-            val x1 = startX + (start * scale).toFloat()
-            val x2 = startX + (end * scale).toFloat()
-            val intervalWidth = x2 - x1
-            
-            // MÊME LOGIQUE de couleurs que ReferenceBulletGraph lignes 563-607
-            val color = when {
-                // Rouge : 0 à MIN (si MIN existe)
-                minRefConverti != null && start == 0.0 && end == minRefConverti -> java.awt.Color(0xFFE53E3E.toInt())
-                // Rouge : MAX à maxAxis (si MAX existe)
-                maxRefConverti != null && start == maxRefConverti && end == maxAxis -> java.awt.Color(0xFFE53E3E.toInt())
-                // Bleu : MIN à OPTIMIN
-                minRefConverti != null && optiminRefConverti != null && start == minRefConverti && end == optiminRefConverti -> java.awt.Color(0xFF3182CE.toInt())
-                // Bleu : OPTIMAX à MAX
-                optimaxRefConverti != null && maxRefConverti != null && start == optimaxRefConverti && end == maxRefConverti -> java.awt.Color(0xFF3182CE.toInt())
-                // Bleu : OPTIMAX à maxAxis (si pas de MAX)
-                optimaxRefConverti != null && maxRefConverti == null && start == optimaxRefConverti && end == maxAxis -> java.awt.Color(0xFF3182CE.toInt())
-                // Bleu : MIN à OPTIMIN (si pas de MIN)
-                minRefConverti == null && optiminRefConverti != null && start == 0.0 && end == optiminRefConverti -> java.awt.Color(0xFF3182CE.toInt())
-                // Vert : tout le reste (par défaut)
-                else -> java.awt.Color(0xFF38A169.toInt())
-            }
-            
-            graphics2D.color = color
-            graphics2D.fillRect(x1.toInt(), barY.toInt(), intervalWidth.toInt(), barHeight.toInt())
-        }
-        
-        // Dessiner la barre principale (apport) - MÊME LOGIQUE que ReferenceBulletGraph ligne 536-540
-        val apportX = startX + (valeurApport * scale).toFloat()
-        graphics2D.color = java.awt.Color(0xFF4A5568.toInt()) // Couleur grise pour l'apport
-        graphics2D.fillRect(startX.toInt(), (barY + 10f).toInt(), (apportX - startX).toInt(), 10)
-        
-        // Dessiner les marqueurs de référence
-        minRefConverti?.let { ref ->
-            val x = startX + (ref * scale).toFloat()
-            graphics2D.color = java.awt.Color(0xFFE53E3E.toInt()) // Rouge
-            graphics2D.fillRect(x.toInt(), (barY - 5f).toInt(), 2, (barHeight + 10).toInt())
-        }
-        
-        optiminRefConverti?.let { ref ->
-            val x = startX + (ref * scale).toFloat()
-            graphics2D.color = java.awt.Color(0xFF3182CE.toInt()) // Bleu
-            graphics2D.fillRect(x.toInt(), (barY - 5f).toInt(), 2, (barHeight + 10).toInt())
-        }
-        
-        optimaxRefConverti?.let { ref ->
-            val x = startX + (ref * scale).toFloat()
-            graphics2D.color = java.awt.Color(0xFF3182CE.toInt()) // Bleu
-            graphics2D.fillRect(x.toInt(), (barY - 5f).toInt(), 2, (barHeight + 10).toInt())
-        }
-        
-        maxRefConverti?.let { ref ->
-            val x = startX + (ref * scale).toFloat()
-            graphics2D.color = java.awt.Color(0xFFE53E3E.toInt()) // Rouge
-            graphics2D.fillRect(x.toInt(), (barY - 5f).toInt(), 2, (barHeight + 10).toInt())
-        }
-        
-        // Dessiner le titre du nutriment avec la quantité
-        val titleText = "$nomNutriment (${String.format("%.1f", valeurApport)} $unite)"
-        graphics2D.color = java.awt.Color.BLACK
-        graphics2D.font = java.awt.Font("Arial", java.awt.Font.PLAIN, 14)
-        graphics2D.drawString(titleText, 10f, 20f)
-        println("DEBUG: Texte dessiné sur BufferedImage: '$titleText' à (10, 20)")
-    }
     
     /**
      * Dessine le bullet graph sur un Canvas Compose
@@ -577,7 +448,7 @@ object BulletGraphImageCapture {
         }
         
         // Dessiner le titre du nutriment avec la quantité
-        val titleText = "$nomNutriment (${String.format("%.1f", valeurApport)} $unite)"
+        val titleText = "$nomNutriment (${(valeurApport * 10).toInt() / 10.0} $unite)"
         drawTextOnCanvas(canvas, titleText, 10f, 20f, 14f, Color.Black)
     }
     
@@ -777,24 +648,7 @@ object BulletGraphImageCapture {
      * Obtient le répertoire temporaire de manière multiplatform
      */
     private fun getTempDirectory(): okio.Path {
-        return when {
-            // Desktop (JVM)
-            System.getProperty("java.io.tmpdir") != null -> {
-                System.getProperty("java.io.tmpdir")!!.toPath()
-            }
-            // Android
-            System.getenv("TMPDIR") != null -> {
-                System.getenv("TMPDIR")!!.toPath()
-            }
-            // iOS
-            System.getenv("TMP") != null -> {
-                System.getenv("TMP")!!.toPath()
-            }
-            // Fallback
-            else -> {
-                "/tmp".toPath()
-            }
-        }
+        return FileSystem.SYSTEM_TEMPORARY_DIRECTORY
     }
     
     
@@ -1019,3 +873,76 @@ expect fun drawTextOnCanvas(
     textSize: Float,
     color: Color
 )
+
+/**
+ * Obtient le nom traduit d'un nutriment - copié depuis HtmlDocumentBuilder.kt
+ */
+private fun obtenirNomTraduitNutriment(nomNutriment: String, nutrient: Nutrient): String {
+    return when (nutrient) {
+        is fr.vetbrain.vetnutri_mp.Enumer.NutrientMain -> {
+            when (nutrient) {
+                fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.PROTEINE -> "Protéines"
+                fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.LIPIDE -> "Lipides"
+                fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.CELLULOSE -> "Cellulose"
+                fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.ENERGIE -> "Énergie"
+                else -> nomNutriment
+            }
+        }
+        is fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro -> {
+            when (nutrient) {
+                fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro.CAL -> "Calcium"
+                fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro.PHOS -> "Phosphore"
+                fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro.MG -> "Magnésium"
+                fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro.NA -> "Sodium"
+                fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro.K -> "Potassium"
+                fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro.CHL -> "Chlore"
+                else -> nomNutriment
+            }
+        }
+        is fr.vetbrain.vetnutri_mp.Enumer.NutrientMin -> {
+            when (nutrient) {
+                fr.vetbrain.vetnutri_mp.Enumer.NutrientMin.FE -> "Fer"
+                fr.vetbrain.vetnutri_mp.Enumer.NutrientMin.CU -> "Cuivre"
+                fr.vetbrain.vetnutri_mp.Enumer.NutrientMin.ZN -> "Zinc"
+                fr.vetbrain.vetnutri_mp.Enumer.NutrientMin.MN -> "Manganèse"
+                fr.vetbrain.vetnutri_mp.Enumer.NutrientMin.I -> "Iode"
+                fr.vetbrain.vetnutri_mp.Enumer.NutrientMin.SE -> "Sélénium"
+                else -> nomNutriment
+            }
+        }
+        is fr.vetbrain.vetnutri_mp.Enumer.NutrientVitam -> {
+            when (nutrient) {
+                fr.vetbrain.vetnutri_mp.Enumer.NutrientVitam.VITA -> "Vitamine A"
+                fr.vetbrain.vetnutri_mp.Enumer.NutrientVitam.VITD -> "Vitamine D"
+                fr.vetbrain.vetnutri_mp.Enumer.NutrientVitam.VITE -> "Vitamine E"
+                fr.vetbrain.vetnutri_mp.Enumer.NutrientVitam.VITK -> "Vitamine K"
+                fr.vetbrain.vetnutri_mp.Enumer.NutrientVitam.VITB1 -> "Vitamine B1"
+                fr.vetbrain.vetnutri_mp.Enumer.NutrientVitam.VITB2 -> "Vitamine B2"
+                fr.vetbrain.vetnutri_mp.Enumer.NutrientVitam.VITB3 -> "Vitamine B3"
+                fr.vetbrain.vetnutri_mp.Enumer.NutrientVitam.VITB5 -> "Vitamine B5"
+                fr.vetbrain.vetnutri_mp.Enumer.NutrientVitam.VITB6 -> "Vitamine B6"
+                fr.vetbrain.vetnutri_mp.Enumer.NutrientVitam.VITB9 -> "Vitamine B9"
+                fr.vetbrain.vetnutri_mp.Enumer.NutrientVitam.VITB12 -> "Vitamine B12"
+                fr.vetbrain.vetnutri_mp.Enumer.NutrientVitam.CHOLINE -> "Choline"
+                else -> nomNutriment
+            }
+        }
+        is fr.vetbrain.vetnutri_mp.Enumer.NutrientLipid -> {
+            when (nutrient) {
+                fr.vetbrain.vetnutri_mp.Enumer.NutrientLipid.AG182 -> "Acide linoléique"
+                fr.vetbrain.vetnutri_mp.Enumer.NutrientLipid.AG183 -> "Acide α-linolénique"
+                fr.vetbrain.vetnutri_mp.Enumer.NutrientLipid.O3 -> "Oméga-3"
+                fr.vetbrain.vetnutri_mp.Enumer.NutrientLipid.O6 -> "Oméga-6"
+                fr.vetbrain.vetnutri_mp.Enumer.NutrientLipid.EPADHA -> "EPA/DHA"
+                else -> nomNutriment
+            }
+        }
+        is fr.vetbrain.vetnutri_mp.Enumer.NutrientAnalysis -> {
+            when (nutrient) {
+                fr.vetbrain.vetnutri_mp.Enumer.NutrientAnalysis.PCa -> "Rapport Ca/P"
+                else -> nomNutriment
+            }
+        }
+        else -> nomNutriment
+    }
+}

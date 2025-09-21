@@ -5,29 +5,26 @@ import androidx.compose.ui.graphics.toAwtImage
 import androidx.compose.ui.graphics.Canvas
 import androidx.compose.ui.graphics.Color
 import java.awt.image.BufferedImage
-import java.io.ByteArrayOutputStream
 import javax.imageio.ImageIO
+import java.io.ByteArrayOutputStream
 
 /**
- * Implémentation Desktop (JVM) pour la conversion ImageBitmap vers ByteArray
+ * Implémentation Desktop pour ImageBitmap.toByteArray()
  */
 actual fun ImageBitmap.toByteArray(): ByteArray {
     return try {
         val awtImage = this.toAwtImage()
         val outputStream = ByteArrayOutputStream()
         ImageIO.write(awtImage, "PNG", outputStream)
-        val result = outputStream.toByteArray()
-        println("DEBUG: ImageBitmap.toByteArray() - Taille générée: ${result.size} bytes")
-        result
+        outputStream.toByteArray()
     } catch (e: Exception) {
-        println("DEBUG: Erreur ImageBitmap.toByteArray(): ${e.message}")
-        e.printStackTrace()
+        println("DEBUG: Erreur lors de la conversion ImageBitmap vers ByteArray: ${e.message}")
         ByteArray(0)
     }
 }
 
 /**
- * Implémentation Desktop (JVM) pour le dessin de texte sur Canvas
+ * Implémentation Desktop pour drawTextOnCanvas
  */
 actual fun drawTextOnCanvas(
     canvas: Canvas,
