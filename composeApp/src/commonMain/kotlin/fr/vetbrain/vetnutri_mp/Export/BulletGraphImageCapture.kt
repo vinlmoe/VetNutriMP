@@ -1,26 +1,34 @@
 package fr.vetbrain.vetnutri_mp.Export
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.*
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.text.TextMeasurer
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import fr.vetbrain.vetnutri_mp.Data.*
 import fr.vetbrain.vetnutri_mp.Enumer.*
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Utils.TextUtils
 import fr.vetbrain.vetnutri_mp.View.AnalNut.ReferenceBulletGraph
-import java.awt.Color as AwtColor
-import java.awt.Font
-import java.awt.Graphics2D
-import java.awt.RenderingHints
-import java.awt.image.BufferedImage
-import java.io.ByteArrayOutputStream
-import java.io.File
-import javax.imageio.ImageIO
 import kotlinx.coroutines.runBlocking
+import okio.FileSystem
+import okio.Path.Companion.toPath
+import okio.buffer
+import okio.use
 
 /**
  * Service pour générer des images de bullet graphs en utilisant directement les composables KoalaPlot
@@ -269,24 +277,93 @@ object BulletGraphImageCapture {
         bornes: List<Double>,
         unite: String
     ): ByteArray {
-        val width = 500
-        val height = 80
-        val image = BufferedImage(width, height, BufferedImage.TYPE_INT_RGB)
-        val g2d = image.createGraphics()
+        val width = 500f
+        val height = 80f
         
-        // Configuration du rendu
-        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
-        g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON)
-        
-        // Fond blanc
-        g2d.color = AwtColor.WHITE
-        g2d.fillRect(0, 0, width, height)
-        
+        // Pour Desktop, utiliser BufferedImage avec Graphics2D pour le dessin de texte
+        return try {
+            // Créer un BufferedImage
+            val bufferedImage = java.awt.image.BufferedImage(width.toInt(), height.toInt(), java.awt.image.BufferedImage.TYPE_INT_ARGB)
+            val graphics2D = bufferedImage.createGraphics()
+            
+            // Activer l'antialiasing
+            graphics2D.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON)
+            graphics2D.setRenderingHint(java.awt.RenderingHints.KEY_TEXT_ANTIALIASING, java.awt.RenderingHints.VALUE_TEXT_ANTIALIAS_ON)
+            
+            // Dessiner le bullet graph
+            drawBulletGraphOnBufferedImage(
+                graphics2D = graphics2D,
+                nomNutriment = nomNutriment,
+                valeurApport = valeurApport,
+                minRefConverti = minRefConverti,
+                optiminRefConverti = optiminRefConverti,
+                optimaxRefConverti = optimaxRefConverti,
+                maxRefConverti = maxRefConverti,
+                maxAxis = maxAxis,
+                bornes = bornes,
+                unite = unite,
+                width = width,
+                height = height
+            )
+            
+            // Convertir en ByteArray
+            val outputStream = java.io.ByteArrayOutputStream()
+            javax.imageio.ImageIO.write(bufferedImage, "PNG", outputStream)
+            val result = outputStream.toByteArray()
+            outputStream.close()
+            graphics2D.dispose()
+            
+            println("DEBUG: ImageBitmap.toByteArray() - Taille générée: ${result.size} bytes")
+            result
+        } catch (e: Exception) {
+            println("DEBUG: Erreur lors de la génération d'image avec BufferedImage: ${e.message}")
+            e.printStackTrace()
+            
+            // Fallback vers Compose Multiplatform
+            val imageBitmap = ImageBitmap(width.toInt(), height.toInt())
+            val canvas = Canvas(imageBitmap)
+            
+            drawBulletGraphOnCanvas(
+                canvas = canvas,
+                nomNutriment = nomNutriment,
+                valeurApport = valeurApport,
+                minRefConverti = minRefConverti,
+                optiminRefConverti = optiminRefConverti,
+                optimaxRefConverti = optimaxRefConverti,
+                maxRefConverti = maxRefConverti,
+                maxAxis = maxAxis,
+                bornes = bornes,
+                unite = unite,
+                width = width,
+                height = height
+            )
+            
+            imageBitmap.toByteArray()
+        }
+    }
+    
+    /**
+     * Dessine le bullet graph sur un BufferedImage avec Graphics2D (pour Desktop)
+     */
+    private fun drawBulletGraphOnBufferedImage(
+        graphics2D: java.awt.Graphics2D,
+        nomNutriment: String,
+        valeurApport: Double,
+        minRefConverti: Double?,
+        optiminRefConverti: Double?,
+        optimaxRefConverti: Double?,
+        maxRefConverti: Double?,
+        maxAxis: Double,
+        bornes: List<Double>,
+        unite: String,
+        width: Float,
+        height: Float
+    ) {
         // Calculer les positions (même logique que KoalaPlot)
-        val startX = 50
-        val endX = width - 50
-        val barY = height / 2 - 15
-        val barHeight = 30
+        val startX = 50f
+        val endX = width - 50f
+        val barY = height / 2 - 15f
+        val barHeight = 30f
         val scale = (endX - startX) / maxAxis
         
         // Dessiner les intervalles colorés (MÊME LOGIQUE que ReferenceBulletGraph lignes 556-600)
@@ -295,80 +372,213 @@ object BulletGraphImageCapture {
             val end = bornes[i + 1]
             if (end <= start) continue
             
-            val x1 = startX + (start * scale).toInt()
-            val x2 = startX + (end * scale).toInt()
+            val x1 = startX + (start * scale).toFloat()
+            val x2 = startX + (end * scale).toFloat()
             val intervalWidth = x2 - x1
             
             // MÊME LOGIQUE de couleurs que ReferenceBulletGraph lignes 563-607
             val color = when {
                 // Rouge : 0 à MIN (si MIN existe)
-                minRefConverti != null && start == 0.0 && end == minRefConverti -> AwtColor(0xE53E3E) // VetNutriColors.Error
+                minRefConverti != null && start == 0.0 && end == minRefConverti -> java.awt.Color(0xFFE53E3E.toInt())
                 // Rouge : MAX à maxAxis (si MAX existe)
-                maxRefConverti != null && start == maxRefConverti && end == maxAxis -> AwtColor(0xE53E3E) // VetNutriColors.Error
+                maxRefConverti != null && start == maxRefConverti && end == maxAxis -> java.awt.Color(0xFFE53E3E.toInt())
                 // Bleu : MIN à OPTIMIN
-                minRefConverti != null && optiminRefConverti != null && start == minRefConverti && end == optiminRefConverti -> AwtColor(0x3182CE) // VetNutriColors.Primary
+                minRefConverti != null && optiminRefConverti != null && start == minRefConverti && end == optiminRefConverti -> java.awt.Color(0xFF3182CE.toInt())
                 // Bleu : OPTIMAX à MAX
-                optimaxRefConverti != null && maxRefConverti != null && start == optimaxRefConverti && end == maxRefConverti -> AwtColor(0x3182CE) // VetNutriColors.Primary
+                optimaxRefConverti != null && maxRefConverti != null && start == optimaxRefConverti && end == maxRefConverti -> java.awt.Color(0xFF3182CE.toInt())
                 // Bleu : OPTIMAX à maxAxis (si pas de MAX)
-                optimaxRefConverti != null && maxRefConverti == null && start == optimaxRefConverti && end == maxAxis -> AwtColor(0x3182CE) // VetNutriColors.Primary
+                optimaxRefConverti != null && maxRefConverti == null && start == optimaxRefConverti && end == maxAxis -> java.awt.Color(0xFF3182CE.toInt())
                 // Bleu : MIN à OPTIMIN (si pas de MIN)
-                minRefConverti == null && optiminRefConverti != null && start == 0.0 && end == optiminRefConverti -> AwtColor(0x3182CE) // VetNutriColors.Primary
+                minRefConverti == null && optiminRefConverti != null && start == 0.0 && end == optiminRefConverti -> java.awt.Color(0xFF3182CE.toInt())
                 // Vert : tout le reste (par défaut)
-                else -> AwtColor(0x38A169) // VetNutriColors.Success
+                else -> java.awt.Color(0xFF38A169.toInt())
             }
             
-            g2d.color = color
-            g2d.fillRect(x1, barY, intervalWidth, barHeight)
+            graphics2D.color = color
+            graphics2D.fillRect(x1.toInt(), barY.toInt(), intervalWidth.toInt(), barHeight.toInt())
         }
         
         // Dessiner la barre principale (apport) - MÊME LOGIQUE que ReferenceBulletGraph ligne 536-540
-        val apportX = startX + (valeurApport * scale).toInt()
-        g2d.color = AwtColor(0x4A5568) // Couleur grise pour l'apport
-        g2d.fillRect(startX, barY + 10, (apportX - startX).coerceAtLeast(1), 10)
+        val apportX = startX + (valeurApport * scale).toFloat()
+        graphics2D.color = java.awt.Color(0xFF4A5568.toInt()) // Couleur grise pour l'apport
+        graphics2D.fillRect(startX.toInt(), (barY + 10f).toInt(), (apportX - startX).toInt(), 10)
         
         // Dessiner les marqueurs de référence
         minRefConverti?.let { ref ->
-            val x = startX + (ref * scale).toInt()
-            g2d.color = AwtColor(0xE53E3E) // Rouge
-            g2d.fillRect(x, barY - 5, 2, barHeight + 10)
+            val x = startX + (ref * scale).toFloat()
+            graphics2D.color = java.awt.Color(0xFFE53E3E.toInt()) // Rouge
+            graphics2D.fillRect(x.toInt(), (barY - 5f).toInt(), 2, (barHeight + 10).toInt())
         }
         
         optiminRefConverti?.let { ref ->
-            val x = startX + (ref * scale).toInt()
-            g2d.color = AwtColor(0x3182CE) // Bleu
-            g2d.fillRect(x, barY - 5, 2, barHeight + 10)
+            val x = startX + (ref * scale).toFloat()
+            graphics2D.color = java.awt.Color(0xFF3182CE.toInt()) // Bleu
+            graphics2D.fillRect(x.toInt(), (barY - 5f).toInt(), 2, (barHeight + 10).toInt())
         }
         
         optimaxRefConverti?.let { ref ->
-            val x = startX + (ref * scale).toInt()
-            g2d.color = AwtColor(0x3182CE) // Bleu
-            g2d.fillRect(x, barY - 5, 2, barHeight + 10)
+            val x = startX + (ref * scale).toFloat()
+            graphics2D.color = java.awt.Color(0xFF3182CE.toInt()) // Bleu
+            graphics2D.fillRect(x.toInt(), (barY - 5f).toInt(), 2, (barHeight + 10).toInt())
         }
         
         maxRefConverti?.let { ref ->
-            val x = startX + (ref * scale).toInt()
-            g2d.color = AwtColor(0xE53E3E) // Rouge
-            g2d.fillRect(x, barY - 5, 2, barHeight + 10)
+            val x = startX + (ref * scale).toFloat()
+            graphics2D.color = java.awt.Color(0xFFE53E3E.toInt()) // Rouge
+            graphics2D.fillRect(x.toInt(), (barY - 5f).toInt(), 2, (barHeight + 10).toInt())
         }
         
-        // Ajouter le titre et l'unité
-        g2d.color = AwtColor.BLACK
-        g2d.font = Font("Arial", Font.BOLD, 12)
-        g2d.drawString(nomNutriment, 10, 20)
+        // Dessiner le titre du nutriment avec la quantité
+        val titleText = "$nomNutriment (${String.format("%.1f", valeurApport)} $unite)"
+        graphics2D.color = java.awt.Color.BLACK
+        graphics2D.font = java.awt.Font("Arial", java.awt.Font.PLAIN, 14)
+        graphics2D.drawString(titleText, 10f, 20f)
+        println("DEBUG: Texte dessiné sur BufferedImage: '$titleText' à (10, 20)")
+    }
+    
+    /**
+     * Dessine le bullet graph sur un Canvas Compose
+     */
+    private fun drawBulletGraphOnCanvas(
+        canvas: Canvas,
+        nomNutriment: String,
+        valeurApport: Double,
+        minRefConverti: Double?,
+        optiminRefConverti: Double?,
+        optimaxRefConverti: Double?,
+        maxRefConverti: Double?,
+        maxAxis: Double,
+        bornes: List<Double>,
+        unite: String,
+        width: Float,
+        height: Float
+    ) {
+        // Calculer les positions (même logique que KoalaPlot)
+        val startX = 50f
+        val endX = width - 50f
+        val barY = height / 2 - 15f
+        val barHeight = 30f
+        val scale = (endX - startX) / maxAxis
         
-        g2d.font = Font("Arial", Font.PLAIN, 10)
-        g2d.drawString("$unite", 10, height - 10)
+        // Dessiner les intervalles colorés (MÊME LOGIQUE que ReferenceBulletGraph lignes 556-600)
+        for (i in 0 until bornes.size - 1) {
+            val start = bornes[i]
+            val end = bornes[i + 1]
+            if (end <= start) continue
+            
+            val x1 = startX + (start * scale).toFloat()
+            val x2 = startX + (end * scale).toFloat()
+            val intervalWidth = x2 - x1
+            
+            // MÊME LOGIQUE de couleurs que ReferenceBulletGraph lignes 563-607
+            val color = when {
+                // Rouge : 0 à MIN (si MIN existe)
+                minRefConverti != null && start == 0.0 && end == minRefConverti -> Color(0xFFE53E3E) // VetNutriColors.Error
+                // Rouge : MAX à maxAxis (si MAX existe)
+                maxRefConverti != null && start == maxRefConverti && end == maxAxis -> Color(0xFFE53E3E) // VetNutriColors.Error
+                // Bleu : MIN à OPTIMIN
+                minRefConverti != null && optiminRefConverti != null && start == minRefConverti && end == optiminRefConverti -> Color(0xFF3182CE) // VetNutriColors.Primary
+                // Bleu : OPTIMAX à MAX
+                optimaxRefConverti != null && maxRefConverti != null && start == optimaxRefConverti && end == maxRefConverti -> Color(0xFF3182CE) // VetNutriColors.Primary
+                // Bleu : OPTIMAX à maxAxis (si pas de MAX)
+                optimaxRefConverti != null && maxRefConverti == null && start == optimaxRefConverti && end == maxAxis -> Color(0xFF3182CE) // VetNutriColors.Primary
+                // Bleu : MIN à OPTIMIN (si pas de MIN)
+                minRefConverti == null && optiminRefConverti != null && start == 0.0 && end == optiminRefConverti -> Color(0xFF3182CE) // VetNutriColors.Primary
+                // Vert : tout le reste (par défaut)
+                else -> Color(0xFF38A169) // VetNutriColors.Success
+            }
+            
+            val paint = Paint().apply {
+                this.color = color
+                style = PaintingStyle.Fill
+            }
+            canvas.drawRect(
+                left = x1,
+                top = barY,
+                right = x1 + intervalWidth,
+                bottom = barY + barHeight,
+                paint = paint
+            )
+        }
         
-        // Ajouter la valeur d'apport
-        g2d.font = Font("Arial", Font.BOLD, 10)
-        g2d.drawString("${TextUtils.formatDecimal(valeurApport, 1)}", endX - 50, 20)
+        // Dessiner la barre principale (apport) - MÊME LOGIQUE que ReferenceBulletGraph ligne 536-540
+        val apportX = startX + (valeurApport * scale).toFloat()
+        val apportPaint = Paint().apply {
+            color = Color(0xFF4A5568) // Couleur grise pour l'apport
+            style = PaintingStyle.Fill
+        }
+        canvas.drawRect(
+            left = startX,
+            top = barY + 10f,
+            right = apportX,
+            bottom = barY + 10f + 10f,
+            paint = apportPaint
+        )
         
-        g2d.dispose()
+        // Dessiner les marqueurs de référence
+        minRefConverti?.let { ref ->
+            val x = startX + (ref * scale).toFloat()
+            val redPaint = Paint().apply {
+                color = Color(0xFFE53E3E) // Rouge
+                style = PaintingStyle.Fill
+            }
+            canvas.drawRect(
+                left = x,
+                top = barY - 5f,
+                right = x + 2f,
+                bottom = barY - 5f + barHeight + 10f,
+                paint = redPaint
+            )
+        }
         
-        // Convertir en ByteArray
-        val baos = ByteArrayOutputStream()
-        ImageIO.write(image, "PNG", baos)
-        return baos.toByteArray()
+        optiminRefConverti?.let { ref ->
+            val x = startX + (ref * scale).toFloat()
+            val bluePaint = Paint().apply {
+                color = Color(0xFF3182CE) // Bleu
+                style = PaintingStyle.Fill
+            }
+            canvas.drawRect(
+                left = x,
+                top = barY - 5f,
+                right = x + 2f,
+                bottom = barY - 5f + barHeight + 10f,
+                paint = bluePaint
+            )
+        }
+        
+        optimaxRefConverti?.let { ref ->
+            val x = startX + (ref * scale).toFloat()
+            val bluePaint = Paint().apply {
+                color = Color(0xFF3182CE) // Bleu
+                style = PaintingStyle.Fill
+            }
+            canvas.drawRect(
+                left = x,
+                top = barY - 5f,
+                right = x + 2f,
+                bottom = barY - 5f + barHeight + 10f,
+                paint = bluePaint
+            )
+        }
+        
+        maxRefConverti?.let { ref ->
+            val x = startX + (ref * scale).toFloat()
+            val redPaint = Paint().apply {
+                color = Color(0xFFE53E3E) // Rouge
+                style = PaintingStyle.Fill
+            }
+            canvas.drawRect(
+                left = x,
+                top = barY - 5f,
+                right = x + 2f,
+                bottom = barY - 5f + barHeight + 10f,
+                paint = redPaint
+            )
+        }
+        
+        // Dessiner le titre du nutriment avec la quantité
+        val titleText = "$nomNutriment (${String.format("%.1f", valeurApport)} $unite)"
+        drawTextOnCanvas(canvas, titleText, 10f, 20f, 14f, Color.Black)
     }
     
     /**
@@ -383,126 +593,208 @@ object BulletGraphImageCapture {
         optimaxRef: Double,
         unite: String
     ): ByteArray {
-        val width = 400
-        val height = 80
-        val image = BufferedImage(width, height, BufferedImage.TYPE_INT_RGB)
-        val g2d = image.createGraphics()
+        val width = 400f
+        val height = 80f
         
-        // Configuration du rendu
-        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
-        g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON)
-        
-        // Fond blanc
-        g2d.color = AwtColor.WHITE
-        g2d.fillRect(0, 0, width, height)
+        // Créer une ImageBitmap avec Compose Multiplatform
+        val imageBitmap = ImageBitmap(width.toInt(), height.toInt())
+        val canvas = Canvas(imageBitmap)
         
         // Calculer les positions
         val maxValue = maxOf(valeurApport, maxRef, optimaxRef)
         val minValue = minOf(0.0, minRef, optiminRef)
         val range = maxValue - minValue
-        val scale = (width - 100) / range // 100px pour les labels
+        val scale = (width - 100f) / range.toFloat() // 100px pour les labels
         
-        val startX = 50
-        val barY = height / 2 - 10
-        val barHeight = 20
+        val startX = 50f
+        val barY = height / 2 - 10f
+        val barHeight = 20f
         
         // Dessiner les barres de référence
         if (minRef > 0) {
-            val x = startX + (minRef - minValue) * scale
-            g2d.color = AwtColor.RED
-            g2d.fillRect(x.toInt(), barY, 2, barHeight)
+            val x = startX + ((minRef - minValue) * scale).toFloat()
+            val redPaint = Paint().apply {
+                color = Color.Red
+                style = PaintingStyle.Fill
+            }
+            canvas.drawRect(
+                left = x,
+                top = barY,
+                right = x + 2f,
+                bottom = barY + barHeight,
+                paint = redPaint
+            )
         }
         
         if (optiminRef > 0) {
-            val x = startX + (optiminRef - minValue) * scale
-            g2d.color = AwtColor.BLUE
-            g2d.fillRect(x.toInt(), barY, 2, barHeight)
+            val x = startX + ((optiminRef - minValue) * scale).toFloat()
+            val bluePaint = Paint().apply {
+                color = Color.Blue
+                style = PaintingStyle.Fill
+            }
+            canvas.drawRect(
+                left = x,
+                top = barY,
+                right = x + 2f,
+                bottom = barY + barHeight,
+                paint = bluePaint
+            )
         }
         
         if (optimaxRef > 0) {
-            val x = startX + (optimaxRef - minValue) * scale
-            g2d.color = AwtColor.BLUE
-            g2d.fillRect(x.toInt(), barY, 2, barHeight)
+            val x = startX + ((optimaxRef - minValue) * scale).toFloat()
+            val bluePaint = Paint().apply {
+                color = Color.Blue
+                style = PaintingStyle.Fill
+            }
+            canvas.drawRect(
+                left = x,
+                top = barY,
+                right = x + 2f,
+                bottom = barY + barHeight,
+                paint = bluePaint
+            )
         }
         
         if (maxRef > 0) {
-            val x = startX + (maxRef - minValue) * scale
-            g2d.color = AwtColor.RED
-            g2d.fillRect(x.toInt(), barY, 2, barHeight)
+            val x = startX + ((maxRef - minValue) * scale).toFloat()
+            val redPaint = Paint().apply {
+                color = Color.Red
+                style = PaintingStyle.Fill
+            }
+            canvas.drawRect(
+                left = x,
+                top = barY,
+                right = x + 2f,
+                bottom = barY + barHeight,
+                paint = redPaint
+            )
         }
         
         // Dessiner la barre principale (apport)
-        val apportX = startX + (valeurApport - minValue) * scale
-        g2d.color = AwtColor.GRAY
-        g2d.fillRect(startX, barY + 5, (apportX - startX).toInt(), 10)
+        val apportX = startX + ((valeurApport - minValue) * scale).toFloat()
+        val grayPaint = Paint().apply {
+            color = Color.Gray
+            style = PaintingStyle.Fill
+        }
+        canvas.drawRect(
+            left = startX,
+            top = barY + 5f,
+            right = apportX,
+            bottom = barY + 5f + 10f,
+            paint = grayPaint
+        )
         
         // Dessiner les zones colorées
         if (minRef > 0) {
-            val x = startX + (minRef - minValue) * scale
-            g2d.color = AwtColor(255, 200, 200) // Rouge clair
-            g2d.fillRect(startX, barY, (x - startX).toInt(), barHeight)
+            val x = startX + ((minRef - minValue) * scale).toFloat()
+            val lightRedPaint = Paint().apply {
+                color = Color(0xFFFFC8C8) // Rouge clair
+                style = PaintingStyle.Fill
+            }
+            canvas.drawRect(
+                left = startX,
+                top = barY,
+                right = x,
+                bottom = barY + barHeight,
+                paint = lightRedPaint
+            )
         }
         
         if (optiminRef > 0 && optimaxRef > 0) {
-            val x1 = startX + (optiminRef - minValue) * scale
-            val x2 = startX + (optimaxRef - minValue) * scale
-            g2d.color = AwtColor(200, 255, 200) // Vert clair
-            g2d.fillRect(x1.toInt(), barY, (x2 - x1).toInt(), barHeight)
+            val x1 = startX + ((optiminRef - minValue) * scale).toFloat()
+            val x2 = startX + ((optimaxRef - minValue) * scale).toFloat()
+            val lightGreenPaint = Paint().apply {
+                color = Color(0xFFC8FFC8) // Vert clair
+                style = PaintingStyle.Fill
+            }
+            canvas.drawRect(
+                left = x1,
+                top = barY,
+                right = x2,
+                bottom = barY + barHeight,
+                paint = lightGreenPaint
+            )
         }
         
         if (maxRef > 0) {
-            val x = startX + (maxRef - minValue) * scale
-            g2d.color = AwtColor(255, 200, 200) // Rouge clair
-            g2d.fillRect(x.toInt(), barY, (width - x.toInt() - 50), barHeight)
+            val x = startX + ((maxRef - minValue) * scale).toFloat()
+            val lightRedPaint = Paint().apply {
+                color = Color(0xFFFFC8C8) // Rouge clair
+                style = PaintingStyle.Fill
+            }
+            canvas.drawRect(
+                left = x,
+                top = barY,
+                right = width - 50f,
+                bottom = barY + barHeight,
+                paint = lightRedPaint
+            )
         }
         
         // Dessiner les bordures
-        g2d.color = AwtColor.BLACK
-        g2d.drawRect(startX, barY, width - 100, barHeight)
-        
-        // Ajouter le texte
-        g2d.font = Font("Arial", Font.BOLD, 12)
-        g2d.color = AwtColor.BLACK
-        
-        // Nom du nutriment
-        g2d.drawString(nomNutriment, 10, 20)
-        
-        // Valeur d'apport
-        g2d.drawString("${TextUtils.formatDecimal(valeurApport, 1)} $unite", 10, height - 10)
-        
-        // Valeurs de référence
-        var yOffset = 35
-        if (minRef > 0) {
-            g2d.drawString("Min: ${TextUtils.formatDecimal(minRef, 1)}", 10, yOffset)
-            yOffset += 15
+        val strokePaint = Paint().apply {
+            color = Color.Black
+            style = PaintingStyle.Stroke
+            strokeWidth = 1f
         }
-        if (optiminRef > 0) {
-            g2d.drawString("OptiMin: ${TextUtils.formatDecimal(optiminRef, 1)}", 10, yOffset)
-            yOffset += 15
-        }
-        if (optimaxRef > 0) {
-            g2d.drawString("OptiMax: ${TextUtils.formatDecimal(optimaxRef, 1)}", 10, yOffset)
-            yOffset += 15
-        }
-        if (maxRef > 0) {
-            g2d.drawString("Max: ${TextUtils.formatDecimal(maxRef, 1)}", 10, yOffset)
-        }
+        canvas.drawRect(
+            left = startX,
+            top = barY,
+            right = width - 50f,
+            bottom = barY + barHeight,
+            paint = strokePaint
+        )
         
-        g2d.dispose()
+        // Dessiner des indicateurs visuels pour les valeurs
+        drawValueIndicators(canvas, nomNutriment, valeurApport, unite, minRef, optiminRef, optimaxRef, maxRef, width.toInt(), height.toInt())
         
-        // Convertir en ByteArray
-        val baos = ByteArrayOutputStream()
-        ImageIO.write(image, "png", baos)
-        return baos.toByteArray()
+        // Convertir en ByteArray (PNG) - implémentation multiplatform
+        return imageBitmap.toByteArray()
     }
     
     /**
      * Sauvegarde un ByteArray d'image dans un fichier temporaire
      */
-    fun saveImageToTempFile(imageBytes: ByteArray, prefix: String): File {
-        val tempFile = File.createTempFile("${prefix}_bullet_graph", ".png")
-        tempFile.writeBytes(imageBytes)
-        return tempFile
+    fun saveImageToTempFile(imageBytes: ByteArray, prefix: String): String {
+        // Utiliser okio pour la gestion des fichiers multiplatform
+        val timestamp = kotlinx.datetime.Clock.System.now().toEpochMilliseconds()
+        val randomId = (1000..9999).random() // ID aléatoire pour éviter les collisions
+        val tempFileName = "${prefix}_bullet_graph_${timestamp}_${randomId}.png"
+        
+        // Utiliser le répertoire temporaire multiplatform
+        val tempDir = getTempDirectory()
+        val tempPath = tempDir.resolve(tempFileName)
+        
+        FileSystem.SYSTEM.write(tempPath) {
+            write(imageBytes)
+        }
+        
+        return tempPath.toString()
+    }
+    
+    /**
+     * Obtient le répertoire temporaire de manière multiplatform
+     */
+    private fun getTempDirectory(): okio.Path {
+        return when {
+            // Desktop (JVM)
+            System.getProperty("java.io.tmpdir") != null -> {
+                System.getProperty("java.io.tmpdir")!!.toPath()
+            }
+            // Android
+            System.getenv("TMPDIR") != null -> {
+                System.getenv("TMPDIR")!!.toPath()
+            }
+            // iOS
+            System.getenv("TMP") != null -> {
+                System.getenv("TMP")!!.toPath()
+            }
+            // Fallback
+            else -> {
+                "/tmp".toPath()
+            }
+        }
     }
     
     
@@ -654,4 +946,76 @@ object BulletGraphImageCapture {
             else -> valeur
         }
     }
+    
+    /**
+     * Dessine des indicateurs visuels pour les valeurs (nom, quantité, unité)
+     */
+    private fun drawValueIndicators(
+        canvas: Canvas,
+        nomNutriment: String,
+        valeurApport: Double,
+        unite: String,
+        minRef: Double,
+        optiminRef: Double,
+        optimaxRef: Double,
+        maxRef: Double,
+        width: Int,
+        height: Int
+    ) {
+        // Dessiner un rectangle de fond pour le titre
+        val titleBackgroundPaint = Paint().apply {
+            color = Color(0xFFF0F0F0)
+            style = PaintingStyle.Fill
+        }
+        canvas.drawRect(0f, 0f, width.toFloat(), 30f, titleBackgroundPaint)
+        
+        // Dessiner des barres colorées pour représenter la valeur
+        val barWidth = (valeurApport * 2).toFloat().coerceAtMost(width.toFloat() - 20f)
+        val valueBarPaint = Paint().apply {
+            color = when {
+                valeurApport > 0 -> Color(0xFF4CAF50) // Vert pour les valeurs positives
+                else -> Color(0xFFF44336) // Rouge pour les valeurs nulles/négatives
+            }
+            style = PaintingStyle.Fill
+        }
+        canvas.drawRect(10f, 5f, 10f + barWidth, 25f, valueBarPaint)
+        
+        // Dessiner des marqueurs pour les références
+        val maxValue = maxOf(minRef, optiminRef, optimaxRef, maxRef)
+        if (maxValue > 0) {
+            val referenceBarPaint = Paint().apply {
+                color = Color(0xFF2196F3) // Bleu pour les références
+                style = PaintingStyle.Fill
+            }
+            
+            // Marqueur pour la valeur minimale
+            if (minRef > 0) {
+                val minX = 10f + (minRef * 2).toFloat().coerceAtMost(width.toFloat() - 20f)
+                canvas.drawRect(minX, 5f, minX + 2f, 25f, referenceBarPaint)
+            }
+            
+            // Marqueur pour la valeur optimale minimale
+            if (optiminRef > 0) {
+                val optiMinX = 10f + (optiminRef * 2).toFloat().coerceAtMost(width.toFloat() - 20f)
+                canvas.drawRect(optiMinX, 5f, optiMinX + 2f, 25f, referenceBarPaint)
+            }
+        }
+    }
 }
+
+/**
+ * Convertit un ImageBitmap en ByteArray (PNG) - implémentation spécifique par plateforme
+ */
+expect fun ImageBitmap.toByteArray(): ByteArray
+
+/**
+ * Dessine du texte sur un Canvas - implémentation spécifique par plateforme
+ */
+expect fun drawTextOnCanvas(
+    canvas: Canvas,
+    text: String,
+    x: Float,
+    y: Float,
+    textSize: Float,
+    color: Color
+)
