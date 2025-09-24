@@ -1009,6 +1009,9 @@ class AnimalDetailViewModel(
 
         // Mettre à jour la ration dans la consultation
         updateRationInConsultation(updatedRation)
+
+        // Relancer l'analyse pour garantir la recomposition complète des sections dépendantes
+        analyserRationSelectionnee()
     }
 
     /**
