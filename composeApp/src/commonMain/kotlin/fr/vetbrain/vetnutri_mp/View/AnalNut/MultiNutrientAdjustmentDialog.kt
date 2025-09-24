@@ -1076,106 +1076,7 @@ suspend fun calculerAjustement(
 
                         nutrimentsTraites.add(nutrientLabel)
                 }
-
-        // Vérification et ajustement CAP après tous les nutriments
-        val calciumSelectionne: Boolean = adjustmentData.any { it.selectedNutrient == NutrientMacro.CAL.label && !it.isLocked }
-
-        if (calciumSelectionne) {
-                        val capMinRequis: Double = obtenirCapMinDepuisReference(referenceUtilisee)
-                        val alimentsCalcium = adjustmentData.filter { 
-                                it.selectedNutrient == NutrientMacro.CAL.label && !it.isLocked 
-                        }
-                        
-                        if (alimentsCalcium.isNotEmpty()) {
-                                // Ajustement itératif pour respecter le ratio CAP
-                                var iterations = 0
-                                val maxIterations = 10
-                                
-                        while (iterations < maxIterations) {
-                                // Utiliser la même logique que le système pour calculer les totaux
-                                var totalCalcium: Double = 0.0
-                                var totalPhosphore: Double = 0.0
-                                
-                                // Recalculer les totaux avec les quantités actuelles (même logique que calculerQuantiteTotaleNutriment)
-                                for (i in adjustedAliments.indices) {
-                                        val aliment = adjustedAliments[i].aliment ?: continue
-                                        val quantite = adjustedAliments[i].quantite.toDouble()
-                                        
-                                        // Calcium
-                                        val calPar100g = aliment.getNutrient(NutrientMacro.CAL)
-                                        if (calPar100g != null) {
-                                                totalCalcium += (calPar100g * quantite) / 100.0
-                                        }
-                                        
-                                        // Phosphore
-                                        val pPar100g = aliment.getNutrient(NutrientMacro.PHOS)
-                                        if (pPar100g != null) {
-                                                totalPhosphore += (pPar100g * quantite) / 100.0
-                                        }
-                                }
-                                        
-                                        if (totalPhosphore > 0.0) {
-                                                val ratioActuel: Double = totalCalcium / totalPhosphore
-                                                
-                                                // Vérifier si le ratio est suffisant (avec une petite tolérance)
-                                                if (ratioActuel >= capMinRequis - 0.001) {
-                                                        break
-                                                }
-                                                
-                                                // Calculer le facteur d'ajustement nécessaire
-                                                val facteurAjustement: Double = capMinRequis / ratioActuel
-                                                
-                                                // Ajuster les aliments calcium proportionnellement
-                                                var ajustementEffectue = false
-                                                for (alimentData in alimentsCalcium) {
-                                                        val index = adjustedAliments.indexOfFirst { 
-                                                                it.uuid == alimentData.alimentRation.uuid 
-                                                        }
-                                                        if (index >= 0) {
-                                                                val quantiteActuelle: Double = adjustedAliments[index].quantite.toDouble()
-                                                                val nouvelleQuantite: Double = quantiteActuelle * facteurAjustement
-                                                                // Arrondir au centième de gramme pour éviter les erreurs de précision
-                                                                val quantiteArrondie: Double = kotlin.math.round(nouvelleQuantite * 100.0) / 100.0
-                                                                adjustedAliments[index] = adjustedAliments[index].copy(
-                                                                        quantite = quantiteArrondie
-                                                                )
-                                                                ajustementEffectue = true
-                                                        }
-                                                }
-                                                
-                                                if (!ajustementEffectue) {
-                                                        break
-                                                }
-                                        } else {
-                                                break
-                                        }
-                                        
-                                        iterations++
-                                }
-                                
-                                if (iterations >= maxIterations) {
-                                        // Maximum d'itérations atteint pour l'ajustement CAP
-                                }
-                        }
-                        
-                        // Synchroniser les quantités ajustées avec la ration originale
-                        for (i in adjustedAliments.indices) {
-                                val alimentRation = adjustedAliments[i]
-                                val alimentRationOriginal = ration.alimentMutableList.find {
-                                        it.uuid == alimentRation.uuid
-                                }
-                                if (alimentRationOriginal != null) {
-                                        val index = ration.alimentMutableList.indexOf(alimentRationOriginal)
-                                        if (index >= 0) {
-                                                ration.alimentMutableList[index] = alimentRationOriginal.copy(
-                                                        quantite = alimentRation.quantite
-                                                )
-                                        }
-                                }
-                        }
-                }
-
-                // Synchroniser les quantités ajustées avec la ration originale AVANT l'ajustement énergétique
+          // Synchroniser les quantités ajustées avec la ration originale AVANT l'ajustement énergétique
                 for (i in adjustedAliments.indices) {
                         val alimentRation = adjustedAliments[i]
                         val alimentRationOriginal = ration.alimentMutableList.find {
@@ -1322,6 +1223,109 @@ suspend fun calculerAjustement(
                 }
                 */
                 */
+
+                // TROISIÈME ÉTAPE : Ajustement final du ratio CAP après tous les ajustements
+                val calciumSelectionne: Boolean = adjustmentData.any { it.selectedNutrient == NutrientMacro.CAL.label && !it.isLocked }
+
+                if (calciumSelectionne) {
+                        val capMinRequis: Double = obtenirCapMinDepuisReference(referenceUtilisee)
+                        val alimentsCalcium = adjustmentData.filter { 
+                                it.selectedNutrient == NutrientMacro.CAL.label && !it.isLocked 
+                        }
+                        
+                        if (alimentsCalcium.isNotEmpty()) {
+                                // Ajustement itératif pour respecter le ratio CAP
+                                var iterations = 0
+                                val maxIterations = 10
+                                
+                        while (iterations < maxIterations) {
+                                // Utiliser la même logique que le système pour calculer les totaux
+                                var totalCalcium: Double = 0.0
+                                var totalPhosphore: Double = 0.0
+                                
+                                // Recalculer les totaux avec les quantités actuelles (même logique que calculerQuantiteTotaleNutriment)
+                                for (i in adjustedAliments.indices) {
+                                        val aliment = adjustedAliments[i].aliment ?: continue
+                                        val quantite = adjustedAliments[i].quantite.toDouble()
+                                        
+                                        // Calcium
+                                        val calPar100g = aliment.getNutrient(NutrientMacro.CAL)
+                                        if (calPar100g != null) {
+                                                totalCalcium += (calPar100g * quantite) / 100.0
+                                        }
+                                        
+                                        // Phosphore
+                                        val pPar100g = aliment.getNutrient(NutrientMacro.PHOS)
+                                        if (pPar100g != null) {
+                                                totalPhosphore += (pPar100g * quantite) / 100.0
+                                        }
+                                }
+                                        
+                                        if (totalPhosphore > 0.0) {
+                                                val ratioActuel: Double = totalCalcium / totalPhosphore
+                                                
+                                                // Vérifier si le ratio est suffisant (avec une petite tolérance)
+                                                if (ratioActuel >= capMinRequis ) {
+                                                        break
+                                                }
+                                                
+                                                // Calculer le facteur d'ajustement nécessaire
+                                                val facteurAjustement: Double = capMinRequis / ratioActuel
+                                                
+                                                // Ajuster les aliments calcium proportionnellement
+                                                var ajustementEffectue = false
+                                                for (alimentData in alimentsCalcium) {
+                                                        val index = adjustedAliments.indexOfFirst { 
+                                                                it.uuid == alimentData.alimentRation.uuid 
+                                                        }
+                                                        if (index >= 0) {
+                                                                val quantiteActuelle: Double = adjustedAliments[index].quantite.toDouble()
+                                                                val aliment = adjustedAliments[index].aliment ?: continue
+                                                                val PhosAct: Double = adjustedAliments[index].quantite.toDouble() * (aliment.getNutrient(NutrientMacro.PHOS) ?: 0.0) / 100.0
+                                                                val CalAct: Double = adjustedAliments[index].quantite.toDouble() * (aliment.getNutrient(NutrientMacro.CAL) ?: 0.0) / 100.0
+                                                                val calPar100g = aliment.getNutrient(NutrientMacro.CAL) ?: 0.0
+                                                                val pPar100g = aliment.getNutrient(NutrientMacro.PHOS) ?: 0.0
+                                                                val nouvelleQuantite: Double = (capMinRequis * (totalPhosphore - PhosAct) - (totalCalcium - CalAct)) / ((calPar100g - capMinRequis * pPar100g) / 100.0)
+                                                                // Arrondir au centième de gramme pour éviter les erreurs de précision
+                                                                val quantiteArrondie: Double = kotlin.math.round(nouvelleQuantite * 100.0) / 100.0
+                                                                adjustedAliments[index] = adjustedAliments[index].copy(
+                                                                        quantite = quantiteArrondie
+                                                                )
+                                                                ajustementEffectue = true
+                                                        }
+                                                }
+                                                
+                                                if (!ajustementEffectue) {
+                                                        break
+                                                }
+                                        } else {
+                                                break
+                                        }
+                                        
+                                        iterations++
+                                }
+                                
+                                if (iterations >= maxIterations) {
+                                        // Maximum d'itérations atteint pour l'ajustement CAP
+                                }
+                        }
+                        
+                        // Synchroniser les quantités ajustées avec la ration originale
+                        for (i in adjustedAliments.indices) {
+                                val alimentRation = adjustedAliments[i]
+                                val alimentRationOriginal = ration.alimentMutableList.find {
+                                        it.uuid == alimentRation.uuid
+                                }
+                                if (alimentRationOriginal != null) {
+                                        val index = ration.alimentMutableList.indexOf(alimentRationOriginal)
+                                        if (index >= 0) {
+                                                ration.alimentMutableList[index] = alimentRationOriginal.copy(
+                                                        quantite = alimentRation.quantite
+                                                )
+                                        }
+                                }
+                        }
+                }
 
                 // Arrondi final pour stabiliser l'UI - arrondi au gramme
                 for (i in adjustedAliments.indices) {
@@ -1891,9 +1895,16 @@ private fun adjustRationForMultipleNutrients(
                                                         }
                                                         if (index >= 0) {
                                                                 val quantiteActuelle: Double = adjustedAliments[index].quantite.toDouble()
-                                                                val nouvelleQuantite: Double = quantiteActuelle * facteurAjustement
+                                                                val aliment = adjustedAliments[index].aliment ?: continue
+                                                                val PhosAct: Double = adjustedAliments[index].quantite.toDouble() * (aliment.getNutrient(NutrientMacro.PHOS) ?: 0.0) / 100.0
+                                                                val CalAct: Double = adjustedAliments[index].quantite.toDouble() * (aliment.getNutrient(NutrientMacro.CAL) ?: 0.0) / 100.0
+                                                                val calPar100g = aliment.getNutrient(NutrientMacro.CAL) ?: 0.0
+                                                                val pPar100g = aliment.getNutrient(NutrientMacro.PHOS) ?: 0.0
+                                                                val nouvelleQuantite: Double = (capMinRequis * (totalPhosphore - PhosAct) - (totalCalcium - CalAct)) / ((calPar100g - capMinRequis * pPar100g) / 100.0)
+                                                                // Arrondir au centième de gramme pour éviter les erreurs de précision
+                                                                val quantiteArrondie: Double = kotlin.math.round(nouvelleQuantite * 100.0) / 100.0
                                                                 adjustedAliments[index] = adjustedAliments[index].copy(
-                                                                        quantite = kotlin.math.round(nouvelleQuantite)
+                                                                        quantite = quantiteArrondie
                                                                 )
                                                                 ajustementEffectue = true
                                                         }

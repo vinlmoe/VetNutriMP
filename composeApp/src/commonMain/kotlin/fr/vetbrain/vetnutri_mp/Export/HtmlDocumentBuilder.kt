@@ -3,11 +3,162 @@ package fr.vetbrain.vetnutri_mp.Export
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
 import fr.vetbrain.vetnutri_mp.Data.Ration
 import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
+import fr.vetbrain.vetnutri_mp.Data.PreferencesEspece
+import fr.vetbrain.vetnutri_mp.Data.analyserValeursNutritionnellesRation
 import fr.vetbrain.vetnutri_mp.Enumer.ContEnum
+import fr.vetbrain.vetnutri_mp.Enumer.NutrientLipid
+import fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro
+import fr.vetbrain.vetnutri_mp.Enumer.NutrientMain
+import fr.vetbrain.vetnutri_mp.Enumer.NutrientMin
+import fr.vetbrain.vetnutri_mp.Enumer.NutrientOther
+import fr.vetbrain.vetnutri_mp.Enumer.NutrientVitam
+import fr.vetbrain.vetnutri_mp.Enumer.AAEnum
+import fr.vetbrain.vetnutri_mp.Enumer.NutrientAnalysis
+import fr.vetbrain.vetnutri_mp.Enumer.TypeExpressionBesoin
+import fr.vetbrain.vetnutri_mp.Localization.translateEnum
+import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Utils.NumberUtils
 import fr.vetbrain.vetnutri_mp.Utils.TextUtils
+import kotlinx.coroutines.runBlocking
 
 object HtmlDocumentBuilder {
+
+    /**
+     * Obtient le nom traduit d'un nutriment selon son type en utilisant les traductions JSON
+     */
+    private fun obtenirNomTraduitNutriment(nom: String, nutriment: Any): String {
+        return when (nutriment) {
+            is NutrientLipid -> nutriment.translateEnum()
+            is NutrientMacro -> nutriment.translateEnum()
+            is NutrientMain -> nutriment.translateEnum()
+            is NutrientMin -> nutriment.translateEnum()
+            is NutrientOther -> nutriment.translateEnum()
+            is NutrientVitam -> nutriment.translateEnum()
+            is AAEnum -> nutriment.translateEnum()
+            is NutrientAnalysis -> nutriment.translateEnum()
+            else -> nom // Fallback sur le nom original si le type n'est pas reconnu
+        }
+    }
+
+    /**
+     * Calcule l'affichage d'un nutriment selon le type d'expression des besoins choisi
+     * @param valeurNutritionnelle Valeur nutritionnelle du nutriment
+     * @param typeExpressionBesoin Type d'expression des besoins (préférences utilisateur)
+     * @param poidsMetabolique Poids métabolique de l'animal
+     * @param poidsAnimal Poids vif de l'animal
+     * @param besoinEnergetiqueEntretien Besoin énergétique d'entretien (BEE)
+     * @return Pair<valeur formatée, unité d'affichage>
+     */
+    private fun calculerAffichageNutriment(
+        valeurNutritionnelle: fr.vetbrain.vetnutri_mp.Data.ValeurNutritionnelle,
+        typeExpressionBesoin: TypeExpressionBesoin?,
+        poidsMetabolique: Double?,
+        poidsAnimal: Double?,
+        besoinEnergetiqueEntretien: Double?
+    ): Pair<String, String> {
+
+        val valeurAbsolue = valeurNutritionnelle.valeur
+        val uniteOriginale = valeurNutritionnelle.unite.displayName
+
+        // Cas spécial: nutriments d'analyse/ratio sans unité (ex: CAP, KNA, O6O3...)
+        // - Ne pas afficher d'unité
+        // - Ne pas appliquer de transformation UnitReqEnum
+        val isUnitEmpty = uniteOriginale.isBlank()
+        val isAnalysis = valeurNutritionnelle.nutriment is NutrientAnalysis
+        if (isAnalysis && isUnitEmpty) {
+            return Pair(TextUtils.formatDecimal(valeurAbsolue, 2), "")
+        }
+
+        // Si pas de type d'expression défini, affichage par défaut
+        val typeExpression = typeExpressionBesoin ?: TypeExpressionBesoin.DEFAULT
+
+        return when (typeExpression) {
+            TypeExpressionBesoin.PAR_KG -> {
+                // Par kg de poids vif
+                poidsAnimal?.let { poids ->
+                    if (poids > 0) {
+                        val valeurParKg = valeurAbsolue / poids
+                        Pair(TextUtils.formatDecimal(valeurParKg, 2), "$uniteOriginale/kg")
+                    } else {
+                        // Si pas de poids disponible, garder l'unité originale mais indiquer le type
+                        // d'expression
+                        Pair(
+                            TextUtils.formatDecimal(valeurAbsolue, 2),
+                            "$uniteOriginale (par kg si poids disponible)"
+                        )
+                    }
+                }
+                    ?: Pair(
+                        TextUtils.formatDecimal(valeurAbsolue, 2),
+                        "$uniteOriginale (par kg si poids disponible)"
+                    )
+            }
+            TypeExpressionBesoin.PAR_KG_METABOLIQUE -> {
+                // Par kg de poids métabolique (kg^0.75)
+                poidsMetabolique?.let { poidsMetab ->
+                    if (poidsMetab > 0) {
+                        val valeurParKgMetab = valeurAbsolue / poidsMetab
+                        Pair(
+                            TextUtils.formatDecimal(valeurParKgMetab, 2),
+                            "$uniteOriginale/kg${TextUtils.toSuperscript("0.75")}"
+                        )
+                    } else {
+                        // Si pas de poids métabolique disponible, garder l'unité originale mais
+                        // indiquer le type d'expression
+                        Pair(
+                            TextUtils.formatDecimal(valeurAbsolue, 2),
+                            "$uniteOriginale (par kg^0.75 si poids métabolique disponible)"
+                        )
+                    }
+                }
+                    ?: Pair(
+                        TextUtils.formatDecimal(valeurAbsolue, 2),
+                        "$uniteOriginale (par kg^0.75 si poids métabolique disponible)"
+                    )
+            }
+            TypeExpressionBesoin.PAR_KCAL -> {
+                // Par 1000 kcal de BEE (Besoin Énergétique d'Entretien)
+                besoinEnergetiqueEntretien?.let { bee ->
+                    if (bee > 0) {
+                        val valeurPar1000Kcal = (valeurAbsolue / bee) * 1000
+                        Pair(TextUtils.formatDecimal(valeurPar1000Kcal, 2), "$uniteOriginale/1000 kcal")
+                    } else {
+                        // Si pas de BEE disponible, garder l'unité originale mais indiquer le type
+                        // d'expression
+                        Pair(
+                            TextUtils.formatDecimal(valeurAbsolue, 2),
+                            "$uniteOriginale (par 1000 kcal si BEE disponible)"
+                        )
+                    }
+                }
+                    ?: Pair(
+                        TextUtils.formatDecimal(valeurAbsolue, 2),
+                        "$uniteOriginale (par 1000 kcal si BEE disponible)"
+                    )
+            }
+            TypeExpressionBesoin.PAR_KJ -> {
+                // Par 1000 kJ de BEE (conversion : 1 kcal = 4.184 kJ)
+                besoinEnergetiqueEntretien?.let { bee ->
+                    if (bee > 0) {
+                        val beeEnKj = bee * 4.184 // Conversion kcal vers kJ
+                        val valeurPar1000Kj = (valeurAbsolue / beeEnKj) * 1000
+                        Pair(TextUtils.formatDecimal(valeurPar1000Kj, 2), "$uniteOriginale/1000 kJ")
+                    } else {
+                        // Si pas de BEE disponible, garder l'unité originale mais indiquer le type
+                        // d'expression
+                        Pair(
+                            TextUtils.formatDecimal(valeurAbsolue, 2),
+                            "$uniteOriginale (par 1000 kJ si BEE disponible)"
+                        )
+                    }
+                }
+                    ?: Pair(
+                        TextUtils.formatDecimal(valeurAbsolue, 2),
+                        "$uniteOriginale (par 1000 kJ si BEE disponible)"
+                    )
+            }
+        }
+    }
 
     /**
      * Calcule la quantité en unités (sachet, cuillère, etc.) pour un aliment ration
@@ -56,7 +207,8 @@ object HtmlDocumentBuilder {
                             data.reference,
                             data.title,
                             data.additionalText,
-                            data.htmlSections
+                            data.htmlSections,
+                            data.bulletGraphImages
                     )
             DocumentType.PRESCRIPTION ->
                     buildPrescriptionHtml(
@@ -66,7 +218,13 @@ object HtmlDocumentBuilder {
                             data.additionalText,
                             data.htmlSections,
                             data.rations,
-                            data.practitioner
+                            data.practitioner,
+                            data.reference,
+                            data.preferences,
+                            data.poidsAnimal,
+                            data.poidsMetabolique,
+                            data.besoinEnergetiqueEntretien,
+                            data.bulletGraphImages
                     )
         }
     }
@@ -90,6 +248,12 @@ object HtmlDocumentBuilder {
                 .header-card { border: 2px solid #222; padding: 10px; margin-bottom: 12px; }
                 .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
                 .right { text-align: right; }
+                
+                /* Styles pour les bullet graphs */
+                .bullet-graphs-container { margin-top: 12px; }
+                .bullet-graph-item { margin-bottom: 20px; padding: 12px; border: 1px solid #ddd; border-radius: 6px; background: #fafafa; }
+                .bullet-graph-item h3 { margin: 0 0 8px 0; font-size: 12pt; color: #333; }
+                .bullet-graph-image { max-width: 100%; height: auto; border: 1px solid #ccc; border-radius: 4px; }
             </style>
             <title>${title}</title>
         </head>
@@ -167,12 +331,26 @@ object HtmlDocumentBuilder {
         """.trimIndent()
     }
 
-    private fun buildRationsBlocks(rations: List<Ration>): String {
+    private fun buildRationsBlocks(
+            rations: List<Ration>,
+            reference: ReferenceEv? = null,
+            animal: AnimalEv? = null,
+            preferences: PreferencesEspece? = null,
+            poidsAnimal: Double? = null,
+            poidsMetabolique: Double? = null,
+            besoinEnergetiqueEntretien: Double? = null,
+            bulletGraphImages: Map<String, Map<String, String>> = emptyMap()
+    ): String {
         if (rations.isEmpty()) return ""
         return rations.joinToString("\n") { ration ->
             val header = if (ration.name.isNotBlank()) "<h2>Ration: ${ration.name}</h2>" else ""
             val block = buildRationBlock(ration)
-            "<div class='section'>${header}${block}</div>"
+            val rationImages = bulletGraphImages[ration.uuid] ?: emptyMap()
+            val bulletGraphs = buildNutrientAnalysisBulletGraphs(
+                    ration, reference, animal, preferences, 
+                    poidsAnimal, poidsMetabolique, besoinEnergetiqueEntretien, rationImages
+            )
+            "<div class='section'>${header}${block}${bulletGraphs}</div>"
         }
     }
 
@@ -204,14 +382,25 @@ object HtmlDocumentBuilder {
             reference: ReferenceEv?,
             title: String,
             additionalText: String,
-            htmlSections: List<HtmlSection> = emptyList()
+            htmlSections: List<HtmlSection> = emptyList(),
+            bulletGraphImages: Map<String, Map<String, String>> = emptyMap()
     ): String {
         return buildHeader(if (title.isNotBlank()) title else "Analyse de ration") +
                 buildAnimalBlock(animal) +
-                buildRationBlock(ration) +
+                
                 buildReferencesBlock(reference) +
                 buildAdditionalTextBlock(additionalText) +
                 buildHtmlSectionsBlock(htmlSections) +
+                buildRationsBlocks(
+                    listOfNotNull(ration),
+                    reference,
+                    animal,
+                    null, // preferences
+                    null, // poidsAnimal
+                    null, // poidsMetabolique
+                    null, // besoinEnergetiqueEntretien
+                    bulletGraphImages
+                ) +
                 buildFooter()
     }
 
@@ -222,12 +411,18 @@ object HtmlDocumentBuilder {
             additionalText: String,
             htmlSections: List<HtmlSection> = emptyList(),
             rations: List<Ration> = emptyList(),
-            practitioner: PractitionerInfo? = null
+            practitioner: PractitionerInfo? = null,
+            reference: ReferenceEv? = null,
+            preferences: PreferencesEspece? = null,
+            poidsAnimal: Double? = null,
+            poidsMetabolique: Double? = null,
+            besoinEnergetiqueEntretien: Double? = null,
+            bulletGraphImages: Map<String, Map<String, String>> = emptyMap()
     ): String {
         return buildHeader(if (title.isNotBlank()) title else "Ordonnance nutritionnelle") +
                 buildPractitionerHeader(practitioner) +
                 buildAnimalBlock(animal) +
-                buildRationsBlocks(rations) +
+                buildRationsBlocks(rations, reference, animal, preferences, poidsAnimal, poidsMetabolique, besoinEnergetiqueEntretien, bulletGraphImages) +
                 buildConseilsBlock(conseils) +
                 buildAdditionalTextBlock(additionalText) +
                 buildHtmlSectionsBlock(htmlSections) +
@@ -263,4 +458,88 @@ object HtmlDocumentBuilder {
             </div>
         """.trimIndent()
     }
+
+    /**
+     * Génère les bullet graphs pour l'analyse nutritionnelle d'une ration
+     */
+    private fun buildNutrientAnalysisBulletGraphs(
+        ration: Ration,
+        reference: ReferenceEv?,
+        animal: AnimalEv?,
+        preferences: PreferencesEspece?,
+        poidsAnimal: Double?,
+        poidsMetabolique: Double?,
+        besoinEnergetiqueEntretien: Double?,
+        bulletGraphImages: Map<String, String> = emptyMap()
+    ): String {
+       
+
+        if (bulletGraphImages.isEmpty()) {
+           
+            return """
+                <div class='section'>
+                    <h2>Analyse nutritionnelle - Bullet Graphs</h2>
+                    <div class='bullet-graphs-container'>
+                        <p><em>Les bullet graphs d'analyse nutritionnelle seront affichés ici pour chaque nutriment de la ration.</em></p>
+                        <p>Ration: ${ration.name}</p>
+                        <p>Référence: ${reference?.nom ?: "Non spécifiée"}</p>
+                      
+                    </div>
+                </div>
+            """.trimIndent()
+        }
+
+        // Obtenir les valeurs nutritionnelles pour calculer les affichages
+        val valeursNutritionnelles = runBlocking {
+            try {
+                analyserValeursNutritionnellesRation(ration)
+            } catch (e: Exception) {
+                println("DEBUG: Erreur lors de l'analyse des valeurs nutritionnelles: ${e.message}")
+                emptyMap()
+            }
+        }
+
+        // Obtenir le type d'expression des besoins depuis les préférences
+        val typeExpressionBesoin = preferences?.getTypeExpressionBesoinEnum() ?: TypeExpressionBesoin.DEFAULT
+
+        val bulletGraphsHtml = bulletGraphImages.entries.joinToString("\n") { (nutrientName, imagePath) ->
+            // Trouver la valeur nutritionnelle correspondante
+            val valeurNutritionnelle = valeursNutritionnelles[nutrientName]
+            val nomTraduit = if (valeurNutritionnelle != null) {
+                obtenirNomTraduitNutriment(nutrientName, valeurNutritionnelle.nutriment)
+            } else {
+                nutrientName
+            }
+            
+            val valeurAffichee = if (valeurNutritionnelle != null) {
+                val (valeur, unite) = calculerAffichageNutriment(
+                    valeurNutritionnelle = valeurNutritionnelle,
+                    typeExpressionBesoin = typeExpressionBesoin,
+                    poidsMetabolique = poidsMetabolique,
+                    poidsAnimal = poidsAnimal,
+                    besoinEnergetiqueEntretien = besoinEnergetiqueEntretien
+                )
+                if (unite.isNotBlank()) "$valeur $unite" else valeur
+            } else {
+                "Valeur non disponible"
+            }
+
+            """
+                <div class='bullet-graph-item'>
+              
+                    <img src='$imagePath' alt='Bullet graph pour $nomTraduit' class='bullet-graph-image' />
+                </div>
+            """.trimIndent()
+        }
+
+        return """
+            <div class='section'>
+                <h2>Analyse nutritionnelle - Bullet Graphs</h2>
+                <div class='bullet-graphs-container'>
+                    $bulletGraphsHtml
+                </div>
+            </div>
+        """.trimIndent()
+    }
+
 }

@@ -338,6 +338,25 @@ private fun WideScreenLayout(
                         isLoadingConseils = false
                 }
         }
+        
+        // Variables pour la prévisualisation et l'export
+        var showPreview by remember {
+                mutableStateOf(false)
+        }
+        var previewHtml by remember {
+                mutableStateOf("")
+        }
+        var additionalText by remember {
+                mutableStateOf("")
+        }
+        
+        // Fonction pour récupérer les conseils sélectionnés (conseils + sections locales)
+        val getSelectedConseils:
+                () -> List<fr.vetbrain.vetnutri_mp.Export.HtmlSection> =
+                {
+                        selectedConseils + localHtmlSections
+                }
+        
         Row(modifier = Modifier.fillMaxSize()) {
                 // Sidebar
                 Column(
@@ -736,6 +755,8 @@ private fun WideScreenLayout(
                                                 viewModel.selectedRation.collectAsState()
                                         val referenceUtilisee by
                                                 viewModel.referenceUtilisee.collectAsState()
+                                        val besoinEnergetiqueStandard by viewModel.besoinEnergetiqueStandard.collectAsState()
+                                        val poidsMetabolique by viewModel.poidsMetabolique.collectAsState()
 
                                         if (showRichTextEditor) {
                                                 // Éditeur de texte enrichi
@@ -856,7 +877,7 @@ private fun WideScreenLayout(
                                                 }
                                         } else {
                                                 // Section export normale
-                                                Column(
+                                                LazyColumn(
                                                         modifier =
                                                                 Modifier.fillMaxSize()
                                                                         .padding(
@@ -867,11 +888,14 @@ private fun WideScreenLayout(
                                                                         AppSizes.paddingMedium
                                                                 )
                                                 ) {
+                                                        item {
                                                         Text(
                                                                 "Export des documents",
                                                                 style = MaterialTheme.typography.h6,
                                                                 color = VetNutriColors.Primary
                                                         )
+                                                        }
+                                                        item {
                                                         Text(
                                                                 text =
                                                                         if (selectedRation != null)
@@ -884,8 +908,10 @@ private fun WideScreenLayout(
                                                                                 alpha = 0.7f
                                                                         )
                                                         )
+                                                        }
 
                                                         // Section pour les conseils personnalisés
+                                                        item {
                                                         Text(
                                                                 "Conseils personnalisés:",
                                                                 style =
@@ -893,9 +919,11 @@ private fun WideScreenLayout(
                                                                                 .subtitle1,
                                                                 color = VetNutriColors.Primary
                                                         )
+                                                        }
 
                                                         // Affichage des conseils sélectionnés
                                                         if (selectedConseils.isNotEmpty()) {
+                                                                item {
                                                                 Column(
                                                                         modifier =
                                                                                 Modifier.fillMaxWidth(),
@@ -971,6 +999,7 @@ private fun WideScreenLayout(
                                                                                                                 tint =
                                                                                                                         Color.Red
                                                                                                         )
+                                                                                                        }
                                                                                                 }
                                                                                         }
                                                                                 }
@@ -979,6 +1008,7 @@ private fun WideScreenLayout(
                                                         }
 
                                                         // Bouton pour ajouter des conseils
+                                                        item {
                                                         Button(
                                                                 onClick = {
                                                                         showSearchDialog = true
@@ -1000,13 +1030,17 @@ private fun WideScreenLayout(
                                                                                 Modifier.width(8.dp)
                                                                 )
                                                                 Text("Ajouter des conseils")
+                                                                }
                                                         }
 
+                                                        item {
                                                         Spacer(modifier = Modifier.height(16.dp))
+                                                        }
 
                                                         // Section pour les sections HTML créées
                                                         // localement
                                                         if (localHtmlSections.isNotEmpty()) {
+                                                                item {
                                                                 Text(
                                                                         "Sections HTML créées localement (${localHtmlSections.size}):",
                                                                         style =
@@ -1017,6 +1051,8 @@ private fun WideScreenLayout(
                                                                                 VetNutriColors
                                                                                         .Primary
                                                                 )
+                                                                }
+                                                                item {
                                                                 Column(
                                                                         modifier =
                                                                                 Modifier.fillMaxWidth(),
@@ -1097,16 +1133,20 @@ private fun WideScreenLayout(
                                                                                 }
                                                                         }
                                                                 }
+                                                                }
+                                                                item {
                                                                 Spacer(
                                                                         modifier =
                                                                                 Modifier.height(
                                                                                         16.dp
                                                                                 )
                                                                 )
+                                                                }
                                                         }
 
                                                         // Bouton pour accéder à l'éditeur de texte
                                                         // enrichi
+                                                        item {
                                                         Button(
                                                                 onClick = {
                                                                         showRichTextEditor = true
@@ -1136,28 +1176,11 @@ private fun WideScreenLayout(
                                                                         "Créer des sections HTML personnalisées"
                                                                 )
                                                         }
-
-                                                        var showPreview by remember {
-                                                                mutableStateOf(false)
-                                                        }
-                                                        var previewHtml by remember {
-                                                                mutableStateOf("")
-                                                        }
-                                                        var additionalText by remember {
-                                                                mutableStateOf("")
                                                         }
 
-                                                        // Fonction pour récupérer les conseils
-                                                        // sélectionnés (conseils + sections
-                                                        // locales)
-                                                        val getSelectedConseils:
-                                                                () -> List<
-                                                                                fr.vetbrain.vetnutri_mp.Export.HtmlSection> =
-                                                                {
-                                                                        selectedConseils +
-                                                                                localHtmlSections
-                                                                }
 
+
+                                                        item {
                                                         Row(
                                                                 horizontalArrangement =
                                                                         Arrangement.spacedBy(
@@ -1166,6 +1189,72 @@ private fun WideScreenLayout(
                                                         ) {
                                                                 Button(
                                                                         onClick = {
+                                                                                // Générer les images de bullet graphs pour l'analyse de manière synchrone
+                                                                                val bulletGraphImages = mutableMapOf<String, Map<String, String>>()
+                                                                                
+                                                                                selectedRation?.let { ration ->
+                                                                                        try {
+                                                                                                // Charger les préférences de manière synchrone
+                                                                                                val prefsStorage = createPreferencesStorage()
+                                                                                                val prefsRepo = PreferencesRepository(prefsStorage)
+                                                                                                
+                                                                                                // Charger les préférences de manière synchrone
+                                                                                                kotlinx.coroutines.runBlocking {
+                                                                                                        prefsRepo.loadPreferences()
+                                                                                                }
+                                                                                                val prefs = prefsRepo.preferences
+                                                                                                val prefsEspece = prefs?.getPreferencesEspece(animalDetails?.getEspece() ?: fr.vetbrain.vetnutri_mp.Enumer.Espece.CHIEN)
+                                                                                                
+                                                                                                val ref = referenceUtilisee
+                                                                                                if (prefsEspece != null && ref != null && animalDetails != null) {
+                                                                                                        // Générer les images avec la logique de RationsView
+                                                                                                        val images = fr.vetbrain.vetnutri_mp.Export.BulletGraphImageCapture.generateRationBulletGraphImages(
+                                                                                                                ration = ration,
+                                                                                                                reference = ref,
+                                                                                                                animal = animalDetails,
+                                                                                                                preferences = prefsEspece,
+                                                                                                                poidsAnimal = selectedConsultation?.effectiveWeight?.toDouble(),
+                                                                                                                poidsMetabolique = poidsMetabolique,
+                                                                                                                besoinEnergetiqueEntretien = besoinEnergetiqueStandard,
+                                                                                                                equationRepository = equationRepository
+                                                                                                        )
+                                                                                                        
+                                                                                                        // Convertir les ByteArray en chemins de fichiers temporaires
+                                                                                                        val imagePaths = images.mapValues { (_, imageBytes) ->
+                                                        val tempFilePath = fr.vetbrain.vetnutri_mp.Export.BulletGraphImageCapture.saveImageToTempFile(imageBytes, "temp")
+                                                        "file://$tempFilePath"
+                                                                                                        }
+                                                                                                        
+                                                                                                        bulletGraphImages[ration.uuid] = imagePaths
+                                                                                                        println("DEBUG: Généré ${imagePaths.size} images de bullet graphs")
+                                                                                                } else {
+                                                                                                        println("DEBUG: Données manquantes - prefsEspece: ${prefsEspece != null}, ref: ${ref != null}, animal: ${animalDetails != null}")
+                                                                                                        
+                                                                                                        // Générer des images de test même sans les vraies données
+                                                                                                        println("DEBUG: Génération d'images de test...")
+                                                                                                        val testImages = mutableMapOf<String, ByteArray>()
+                                                                                                        listOf("PROTEINE", "LIPIDE", "ENA", "CELLULOSE", "CENDRE", "CAL", "PHOS").forEach { nom ->
+                                                                                                                val imageBytes = fr.vetbrain.vetnutri_mp.Export.BulletGraphImageCapture.generateBulletGraphImage(
+                                                                                                                        nom, 25.0, 15.0, 40.0, 20.0, 35.0, "g/kg DM"
+                                                                                                                )
+                                                                                                                testImages[nom] = imageBytes
+                                                                                                        }
+                                                                                                        
+                                                                                                        val testImagePaths = testImages.mapValues { (_, imageBytes) ->
+                                                                                                                val tempFilePath = fr.vetbrain.vetnutri_mp.Export.BulletGraphImageCapture.saveImageToTempFile(imageBytes, "test")
+                                                                                                                "file://$tempFilePath"
+                                                                                                        }
+                                                                                                        
+                                                                                                        bulletGraphImages[ration.uuid] = testImagePaths
+                                                                                                        println("DEBUG: Généré ${testImagePaths.size} images de test")
+                                                                                                }
+                                                                                        } catch (e: Exception) {
+                                                                                                // En cas d'erreur, continuer sans les images
+                                                                                                println("Erreur génération bullet graphs: ${e.message}")
+                                                                                                e.printStackTrace()
+                                                                                        }
+                                                                                }
+                                                                                
                                                                                 previewHtml =
                                                                                         HtmlDocumentBuilder
                                                                                                 .buildHtml(
@@ -1183,7 +1272,12 @@ private fun WideScreenLayout(
                                                                                                                 additionalText =
                                                                                                                         additionalText,
                                                                                                                 htmlSections =
-                                                                                                                        getSelectedConseils()
+                                                                                                                        getSelectedConseils(),
+                                                                                                                preferences = null,
+                                                                                                                poidsAnimal = selectedConsultation?.effectiveWeight?.toDouble(),
+                                                                                                                poidsMetabolique = poidsMetabolique,
+                                                                                                                besoinEnergetiqueEntretien = besoinEnergetiqueStandard,
+                                                                                                                bulletGraphImages = bulletGraphImages
                                                                                                         )
                                                                                                 )
                                                                                 showPreview = true
@@ -1209,6 +1303,8 @@ private fun WideScreenLayout(
                                                                                                         email = prefs.email
                                                                                                 )
                                                                                                 val allRations = selectedConsultation?.rations?.toList() ?: emptyList()
+                                                                                                
+                                                                                                // Générer la prévisualisation (sans bullet graphs pour l'ordonnance)
                                                                                                 previewHtml =
                                                                                                         HtmlDocumentBuilder
                                                                                                                 .buildHtml(
@@ -1220,7 +1316,7 @@ private fun WideScreenLayout(
                                                                                                                                 ration =
                                                                                                                                         null,
                                                                                                                                 reference =
-                                                                                                                                        null,
+                                                                                                                                        referenceUtilisee,
                                                                                                                                 conseils =
                                                                                                                                         listOf(
                                                                                                                                                 "Fractionner la ration en 2-3 repas",
@@ -1233,23 +1329,34 @@ private fun WideScreenLayout(
                                                                                                                                 htmlSections =
                                                                                                                                         getSelectedConseils(),
                                                                                                                                 rations = allRations,
-                                                                                                                                practitioner = practitioner
+                                                                                                                                practitioner = practitioner,
+                                                                                                                                preferences = null,
+                                                                                                                                poidsAnimal = selectedConsultation?.effectiveWeight?.toDouble(),
+                                                                                                                                poidsMetabolique = null,
+                                                                                                                                besoinEnergetiqueEntretien = null
                                                                                                                         )
                                                                                                                 )
                                                                                                 showPreview = true
                                                                                         } catch (e: Exception) {
+                                                                                                // En cas d'erreur, prévisualiser sans les informations du prescripteur
+                                                                                                val allRations = selectedConsultation?.rations?.toList() ?: emptyList()
+                                                                                                
                                                                                                 previewHtml = HtmlDocumentBuilder.buildHtml(
                                                                                                         DocumentType.PRESCRIPTION,
                                                                                                         ExportData(
                                                                                                                 animal = animalDetails,
                                                                                                                 ration = null,
-                                                                                                                reference = null,
+                                                                                                                reference = referenceUtilisee,
                                                                                                                 conseils = emptyList(),
                                                                                                                 title = "Ordonnance nutritionnelle",
                                                                                                                 additionalText = additionalText,
                                                                                                                 htmlSections = getSelectedConseils(),
-                                                                                                                rations = selectedConsultation?.rations?.toList() ?: emptyList(),
-                                                                                                                practitioner = null
+                                                                                                                rations = allRations,
+                                                                                                                practitioner = null,
+                                                                                                                preferences = null,
+                                                                                                                poidsAnimal = selectedConsultation?.effectiveWeight?.toDouble(),
+                                                                                                                poidsMetabolique = null,
+                                                                                                                besoinEnergetiqueEntretien = null
                                                                                                         )
                                                                                                 )
                                                                                                 showPreview = true
@@ -1258,12 +1365,14 @@ private fun WideScreenLayout(
                                                                         }
                                                                 ) {
                                                                         Text(
-                                                                                "Exporter ordonnance PDF"
+                                                                                "Prévisualiser ordonnance"
                                                                         )
+                                                                }
                                                                 }
                                                         }
 
                                                         // Texte additionnel
+                                                        item {
                                                         OutlinedTextField(
                                                                 value = additionalText,
                                                                 onValueChange = {
@@ -1277,7 +1386,11 @@ private fun WideScreenLayout(
                                                                 },
                                                                 maxLines = 6
                                                         )
+                                                        }
+                                                }
+                                        }
 
+                                        // Dialogue de prévisualisation HTML (en dehors du LazyColumn)
                                                         HtmlPreviewDialog(
                                                                 html = previewHtml,
                                                                 isVisible = showPreview,
@@ -1288,61 +1401,163 @@ private fun WideScreenLayout(
                                                                                                 "Ordonnance nutritionnelle"
                                                                                         )
                                                                         if (isPrescription) {
-                                                                                PdfExporter
-                                                                                        .exportDocument(
-                                                                                                DocumentType
-                                                                                                        .PRESCRIPTION,
-                                                                                                ExportData(
-                                                                                                        animal =
-                                                                                                                animalDetails,
-                                                                                                        ration =
-                                                                                                                selectedRation,
-                                                                                                        reference =
-                                                                                                                null,
-                                                                                                        conseils =
-                                                                                                                listOf(
-                                                                                                                        "Fractionner la ration en 2-3 repas",
-                                                                                                                        "Veiller à l'hydratation"
-                                                                                                                ),
-                                                                                                        title =
-                                                                                                                "Ordonnance nutritionnelle",
-                                                                                                        additionalText =
-                                                                                                                additionalText,
-                                                                                                        htmlSections =
-                                                                                                                getSelectedConseils()
+                                                                // Charger les préférences utilisateur pour l'en-tête praticien
+                                                                val prefsStorage = createPreferencesStorage()
+                                                                val prefsRepo = PreferencesRepository(prefsStorage)
+                                                                kotlinx.coroutines.GlobalScope.launch {
+                                                                        try {
+                                                                                prefsRepo.loadPreferences()
+                                                                                val prefs = prefsRepo.preferences
+                                                                                val practitioner = fr.vetbrain.vetnutri_mp.Export.PractitionerInfo(
+                                                                                        nom = prefs.nomUtilisateur,
+                                                                                        numeroOrdre = prefs.numeroOrdre,
+                                                                                        adressePostale = prefs.adressePostale,
+                                                                                        codePostal = prefs.codePostal,
+                                                                                        ville = prefs.ville,
+                                                                                        telephone = prefs.telephone,
+                                                                                        email = prefs.email
+                                                                                )
+                                                                                val allRations = selectedConsultation?.rations?.toList() ?: emptyList()
+                                                                                
+                                                                                PdfExporter.exportDocument(
+                                                                                        DocumentType.PRESCRIPTION,
+                                                                                        ExportData(
+                                                                                                animal = animalDetails,
+                                                                                                ration = null,
+                                                                                                reference = referenceUtilisee,
+                                                                                                conseils = listOf(
+                                                                                                        "Fractionner la ration en 2-3 repas",
+                                                                                                        "Veiller à l'hydratation"
                                                                                                 ),
-                                                                                                defaultFileName =
-                                                                                                        generateDefaultPdfFileName(animalDetails, selectedConsultation)
-                                                                                        )
+                                                                                                title = "Ordonnance nutritionnelle",
+                                                                                                additionalText = additionalText,
+                                                                                                htmlSections = getSelectedConseils(),
+                                                                                                rations = allRations,
+                                                                                                practitioner = practitioner,
+                                                                                                preferences = null,
+                                                                                                poidsAnimal = selectedConsultation?.effectiveWeight?.toDouble(),
+                                                                                                poidsMetabolique = null,
+                                                                                                besoinEnergetiqueEntretien = null
+                                                                                        ),
+                                                                                        defaultFileName = generateDefaultPdfFileName(animalDetails, selectedConsultation)
+                                                                                )
+                                                                        } catch (e: Exception) {
+                                                                                // En cas d'erreur, exporter sans les informations du prescripteur
+                                                                                PdfExporter.exportDocument(
+                                                                                        DocumentType.PRESCRIPTION,
+                                                                                        ExportData(
+                                                                                                animal = animalDetails,
+                                                                                                ration = null,
+                                                                                                reference = referenceUtilisee,
+                                                                                                conseils = emptyList(),
+                                                                                                title = "Ordonnance nutritionnelle",
+                                                                                                additionalText = additionalText,
+                                                                                                htmlSections = getSelectedConseils(),
+                                                                                                rations = selectedConsultation?.rations?.toList() ?: emptyList(),
+                                                                                                practitioner = null,
+                                                                                                preferences = null,
+                                                                                                poidsAnimal = selectedConsultation?.effectiveWeight?.toDouble(),
+                                                                                                poidsMetabolique = null,
+                                                                                                besoinEnergetiqueEntretien = null
+                                                                                        ),
+                                                                                        defaultFileName = generateDefaultPdfFileName(animalDetails, selectedConsultation)
+                                                                                )
+                                                                        }
+                                                                }
                                                                         } else {
+                                                                                // Générer les bullet graphs pour l'export PDF d'analyse de ration
+                                                                                val bulletGraphImages = mutableMapOf<String, Map<String, String>>()
+                                                                                
+                                                                                selectedRation?.let { ration ->
+                                                                                        try {
+                                                                                                // Charger les préférences de manière synchrone
+                                                                                                val prefsStorage = createPreferencesStorage()
+                                                                                                val prefsRepo = PreferencesRepository(prefsStorage)
+                                                                                                
+                                                                                                kotlinx.coroutines.runBlocking {
+                                                                                                        prefsRepo.loadPreferences()
+                                                                                                }
+                                                                                                val prefs = prefsRepo.preferences
+                                                                                                val prefsEspece = prefs?.getPreferencesEspece(animalDetails?.getEspece() ?: fr.vetbrain.vetnutri_mp.Enumer.Espece.CHIEN)
+                                                                                                
+                                                                                                val ref = referenceUtilisee
+                                                                                                if (prefsEspece != null && ref != null && animalDetails != null) {
+                                                                                                        // Générer les images avec la logique de RationsView
+                                                                                                        val images = fr.vetbrain.vetnutri_mp.Export.BulletGraphImageCapture.generateRationBulletGraphImages(
+                                                                                                                ration = ration,
+                                                                                                                reference = ref,
+                                                                                                                animal = animalDetails,
+                                                                                                                preferences = prefsEspece,
+                                                                                                                poidsAnimal = selectedConsultation?.effectiveWeight?.toDouble(),
+                                                                                                                poidsMetabolique = poidsMetabolique,
+                                                                                                                besoinEnergetiqueEntretien = besoinEnergetiqueStandard,
+                                                                                                                equationRepository = equationRepository
+                                                                                                        )
+                                                                                                        
+                                                                                                        // Convertir les ByteArray en chemins de fichiers temporaires
+                                                                                                        val imagePaths = images.mapValues { (_, imageBytes) ->
+                                                                                                                val tempFilePath = fr.vetbrain.vetnutri_mp.Export.BulletGraphImageCapture.saveImageToTempFile(imageBytes, "export")
+                                                                                                                "file://$tempFilePath"
+                                                                                                        }
+                                                                                                        
+                                                                                                        bulletGraphImages[ration.uuid] = imagePaths
+                                                                                                        println("DEBUG: Export PDF - Généré ${imagePaths.size} images de bullet graphs")
+                                                                                                } else {
+                                                                                                        // Générer des images de test même sans les vraies données
+                                                                                                        println("DEBUG: Export PDF - Génération d'images de test...")
+                                                                                                        val testImages = mutableMapOf<String, ByteArray>()
+                                                                                                        listOf("PROTEINE", "LIPIDE", "ENA", "CELLULOSE", "CENDRE", "CAL", "PHOS").forEach { nom ->
+                                                                                                                val imageBytes = fr.vetbrain.vetnutri_mp.Export.BulletGraphImageCapture.generateBulletGraphImage(
+                                                                                                                        nom, 25.0, 15.0, 40.0, 20.0, 35.0, "g/kg DM"
+                                                                                                                )
+                                                                                                                testImages[nom] = imageBytes
+                                                                                                        }
+                                                                                                        
+                                                                                                        val testImagePaths = testImages.mapValues { (_, imageBytes) ->
+                                                                                                                val tempFilePath = fr.vetbrain.vetnutri_mp.Export.BulletGraphImageCapture.saveImageToTempFile(imageBytes, "export_test")
+                                                                                                                "file://$tempFilePath"
+                                                                                                        }
+                                                                                                        
+                                                                                                        bulletGraphImages[ration.uuid] = testImagePaths
+                                                                                                        println("DEBUG: Export PDF - Généré ${testImagePaths.size} images de test")
+                                                                                                }
+                                                                                        } catch (e: Exception) {
+                                                                                                println("Erreur génération bullet graphs pour export PDF: ${e.message}")
+                                                                                                e.printStackTrace()
+                                                                                        }
+                                                                                }
+                                                                                
                                                                                 PdfExporter
                                                                                         .exportDocument(
-                                                                                                DocumentType
-                                                                                                        .RATION_ANALYSIS,
-                                                                                                ExportData(
-                                                                                                        animal =
-                                                                                                                animalDetails,
-                                                                                                        ration =
-                                                                                                                selectedRation,
-                                                                                                        reference =
-                                                                                                                referenceUtilisee,
-                                                                                                        title =
-                                                                                                                "Analyse de ration",
-                                                                                                        additionalText =
-                                                                                                                additionalText,
-                                                                                                        htmlSections =
-                                                                                                                getSelectedConseils()
-                                                                                                ),
-                                                                                                defaultFileName =
-                                                                                                        "analyse_ration.pdf"
-                                                                                        )
+                                                                                DocumentType
+                                                                                        .RATION_ANALYSIS,
+                                                                                ExportData(
+                                                                                        animal =
+                                                                                                animalDetails,
+                                                                                        ration =
+                                                                                                selectedRation,
+                                                                                        reference =
+                                                                                                referenceUtilisee,
+                                                                                        title =
+                                                                                                "Analyse de ration",
+                                                                                        additionalText =
+                                                                                                additionalText,
+                                                                                        htmlSections =
+                                                                                                getSelectedConseils(),
+                                                                                        preferences = null,
+                                                                                        poidsAnimal = selectedConsultation?.effectiveWeight?.toDouble(),
+                                                                                        poidsMetabolique = null,
+                                                                                        besoinEnergetiqueEntretien = null,
+                                                                                        bulletGraphImages = bulletGraphImages
+                                                                                ),
+                                                                                defaultFileName =
+                                                                                        "analyse_ration.pdf"
+                                                                        )
                                                                         }
                                                                         showPreview = false
                                                                 },
                                                                 onDismiss = { showPreview = false }
                                                         )
-                                                }
-                                        }
                                 }
                         }
 
@@ -2205,7 +2420,7 @@ private fun NarrowScreenLayout(
                                                                 }
                                                         } else {
                                                                 // Section export normale
-                                                                Column(
+                                                                LazyColumn(
                                                                         modifier =
                                                                                 Modifier.fillMaxSize()
                                                                                         .padding(
@@ -2217,6 +2432,7 @@ private fun NarrowScreenLayout(
                                                                                                 AppSizes.paddingMedium
                                                                                         )
                                                                 ) {
+                                                                        item {
                                                                         Text(
                                                                                 "Export des documents",
                                                                                 style =
@@ -2227,6 +2443,8 @@ private fun NarrowScreenLayout(
                                                                                         VetNutriColors
                                                                                                 .Primary
                                                                         )
+                                                                        }
+                                                                        item {
                                                                         Text(
                                                                                 text =
                                                                                         if (selectedRation !=
@@ -2244,9 +2462,11 @@ private fun NarrowScreenLayout(
                                                                                                                 0.7f
                                                                                                 )
                                                                         )
+                                                                        }
 
                                                                         // Section pour les conseils
                                                                         // personnalisés
+                                                                        item {
                                                                         Text(
                                                                                 "Conseils personnalisés:",
                                                                                 style =
@@ -2257,12 +2477,14 @@ private fun NarrowScreenLayout(
                                                                                         VetNutriColors
                                                                                                 .Primary
                                                                         )
+                                                                        }
 
                                                                         // Affichage des conseils
                                                                         // sélectionnés
                                                                         if (selectedConseils
                                                                                         .isNotEmpty()
                                                                         ) {
+                                                                                item {
                                                                                 Column(
                                                                                         modifier =
                                                                                                 Modifier.fillMaxWidth(),
@@ -2341,6 +2563,7 @@ private fun NarrowScreenLayout(
                                                                                                                                                 Color.Red
                                                                                                                                 )
                                                                                                                         }
+                                                                                                                        }
                                                                                                                 }
                                                                                                         }
                                                                                                 }
@@ -2349,6 +2572,7 @@ private fun NarrowScreenLayout(
 
                                                                         // Bouton pour ajouter des
                                                                         // conseils
+                                                                        item {
                                                                         Button(
                                                                                 onClick = {
                                                                                         showSearchDialog =
@@ -2381,20 +2605,24 @@ private fun NarrowScreenLayout(
                                                                                 Text(
                                                                                         "Ajouter des conseils"
                                                                                 )
+                                                                                }
                                                                         }
 
+                                                                        item {
                                                                         Spacer(
                                                                                 modifier =
                                                                                         Modifier.height(
                                                                                                 16.dp
                                                                                         )
                                                                         )
+                                                                        }
 
                                                                         // Section pour les sections
                                                                         // HTML créées localement
                                                                         if (localHtmlSections
                                                                                         .isNotEmpty()
                                                                         ) {
+                                                                                item {
                                                                                 Text(
                                                                                         "Sections HTML créées localement (${localHtmlSections.size}):",
                                                                                         style =
@@ -2405,6 +2633,8 @@ private fun NarrowScreenLayout(
                                                                                                 VetNutriColors
                                                                                                         .Primary
                                                                                 )
+                                                                                }
+                                                                                item {
                                                                                 Column(
                                                                                         modifier =
                                                                                                 Modifier.fillMaxWidth(),
@@ -2487,17 +2717,21 @@ private fun NarrowScreenLayout(
                                                                                                         }
                                                                                                 }
                                                                                 }
+                                                                                }
+                                                                                item {
                                                                                 Spacer(
                                                                                         modifier =
                                                                                                 Modifier.height(
                                                                                                         16.dp
                                                                                                 )
                                                                                 )
+                                                                                }
                                                                         }
 
                                                                         // Bouton pour accéder à
                                                                         // l'éditeur de texte
                                                                         // enrichi
+                                                                        item {
                                                                         Button(
                                                                                 onClick = {
                                                                                         showRichTextEditor =
@@ -2530,6 +2764,7 @@ private fun NarrowScreenLayout(
                                                                                 Text(
                                                                                         "Créer des sections HTML"
                                                                                 )
+                                                                                }
                                                                         }
 
                                                                         // Fonction pour récupérer
@@ -2544,6 +2779,7 @@ private fun NarrowScreenLayout(
                                                                                                 localHtmlSections
                                                                                 }
 
+                                                                        item {
                                                                         Row(
                                                                                 horizontalArrangement =
                                                                                         Arrangement
@@ -2610,6 +2846,7 @@ private fun NarrowScreenLayout(
                                                                                         Text(
                                                                                                 "Exporter ordonnance PDF"
                                                                                         )
+                                                                                }
                                                                                 }
                                                                         }
                                                                 }
