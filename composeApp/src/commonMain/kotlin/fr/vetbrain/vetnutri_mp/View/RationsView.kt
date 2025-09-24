@@ -1453,55 +1453,58 @@ fun RationsView(
                 }
 
                 // Dialog de confirmation de suppression de ration
-                if (showDeleteRationDialog && rationToDelete != null) {
-                        AlertDialog(
-                                onDismissRequest = {
-                                        showDeleteRationDialog = false
-                                        rationToDelete = null
-                                },
-                                title = {
-                                        Text(
-                                                "Confirmer la suppression",
-                                                style = MaterialTheme.typography.h6,
-                                                color = VetNutriColors.Error
-                                        )
-                                },
-                                text = {
-                                        Text(
-                                                "Êtes-vous sûr de vouloir supprimer la ration '${rationToDelete!!.name}' ?\n\nCette action est irréversible.",
-                                                style = MaterialTheme.typography.body1
-                                        )
-                                },
-                                confirmButton = {
-                                        Button(
-                                                onClick = {
-                                                        viewModel.removeRationFromConsultation(
-                                                                rationToDelete!!
-                                                        )
-                                                        showSnackbar(
-                                                                "Ration '${rationToDelete!!.name}' supprimée"
-                                                        )
-                                                        showDeleteRationDialog = false
-                                                        rationToDelete = null
-                                                },
-                                                colors =
-                                                        ButtonDefaults.buttonColors(
-                                                                backgroundColor =
-                                                                        VetNutriColors.Error,
-                                                                contentColor =
-                                                                        VetNutriColors.OnError
-                                                        )
-                                        ) { Text("Supprimer") }
-                                },
-                                dismissButton = {
-                                        TextButton(
-                                                onClick = {
-                                                        showDeleteRationDialog = false
-                                                        rationToDelete = null
-                                                }
-                                        ) { Text("Annuler") }
-                                }
-                        )
+                if (showDeleteRationDialog) {
+                        val rationCible = rationToDelete
+                        if (rationCible != null) {
+                                AlertDialog(
+                                        onDismissRequest = {
+                                                showDeleteRationDialog = false
+                                                rationToDelete = null
+                                        },
+                                        title = {
+                                                Text(
+                                                        "Confirmer la suppression",
+                                                        style = MaterialTheme.typography.h6,
+                                                        color = VetNutriColors.Error
+                                                )
+                                        },
+                                        text = {
+                                                Text(
+                                                        "Êtes-vous sûr de vouloir supprimer la ration '${rationCible.name}' ?\n\nCette action est irréversible.",
+                                                        style = MaterialTheme.typography.body1
+                                                )
+                                        },
+                                        confirmButton = {
+                                                Button(
+                                                        onClick = {
+                                                                viewModel.removeRationFromConsultation(
+                                                                        rationCible
+                                                                )
+                                                                showSnackbar(
+                                                                        "Ration '${rationCible.name}' supprimée"
+                                                                )
+                                                                showDeleteRationDialog = false
+                                                                rationToDelete = null
+                                                        },
+                                                        colors =
+                                                                ButtonDefaults.buttonColors(
+                                                                        backgroundColor =
+                                                                                VetNutriColors.Error,
+                                                                        contentColor =
+                                                                                VetNutriColors.OnError
+                                                                )
+                                                ) { Text("Supprimer") }
+                                        },
+                                        dismissButton = {
+                                                TextButton(
+                                                        onClick = {
+                                                                showDeleteRationDialog = false
+                                                                rationToDelete = null
+                                                        }
+                                                ) { Text("Annuler") }
+                                        }
+                                )
+                        }
                 }
         }
 }
