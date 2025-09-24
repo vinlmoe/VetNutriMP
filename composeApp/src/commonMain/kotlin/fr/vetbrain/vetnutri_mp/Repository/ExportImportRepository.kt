@@ -80,6 +80,12 @@ class ExportImportRepository(
                                 }
                         } else domainAnimals
                 val animals: List<AnimalApi> = animalsWithConsultations.map { it.toApi() }
+                // Forcer le chargement frais des aliments (avec nutriments) avant export
+                if (foodRepository is DatabaseFoodRepository) {
+                        try {
+                                foodRepository.forceRefresh()
+                        } catch (_: Exception) {}
+                }
                 val foods = foodRepository?.getAllFoods()?.map { it.toApi() } ?: emptyList()
 
                 // Rassembler toutes les rations depuis les consultations (depuis le domaine)
@@ -175,6 +181,12 @@ class ExportImportRepository(
                                 .toList()
                 val animals: List<AnimalApi> = filteredDomainAnimals.map { it.toApi() }
 
+                // Forcer le chargement frais des aliments (avec nutriments) avant export filtré
+                if (options.includeFoods && foodRepository is DatabaseFoodRepository) {
+                        try {
+                                foodRepository.forceRefresh()
+                        } catch (_: Exception) {}
+                }
                 val allFoods =
                         if (options.includeFoods) (foodRepository?.getAllFoods() ?: emptyList())
                         else emptyList()
