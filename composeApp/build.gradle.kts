@@ -24,6 +24,8 @@ kotlin {
 
     jvm("desktop")
 
+
+
     sourceSets {
         sourceSets.iosMain { kotlin.srcDir("build/generated/ksp/metadata") }
         androidMain.dependencies {
@@ -52,7 +54,6 @@ kotlin {
             implementation(libs.androidx.lifecycle.runtime.compose)
             implementation(libs.androidx.room.runtime)
             implementation(libs.androidx.room.paging)
-
             implementation(libs.okio)
             implementation(libs.okio)
             implementation(libs.kotlinx.serialization.json)
@@ -67,15 +68,13 @@ kotlin {
 
         val desktopMain by getting {
             dependencies {
+                implementation(compose.desktop.currentOs) // ✅ auto-resolve skiko
                 implementation(libs.kotlinx.coroutines.core)
                 implementation(libs.kotlinx.coroutines.test)
                 implementation(libs.kotlinx.coroutines.swing)
-
-                implementation(libs.skiko.awt)
                 //  implementation(libs.junit.jupiter)
                 // implementation(libs.junit.junit)
-                implementation(compose.desktop.macos_arm64)
-                implementation(compose.desktop.macos_x64)
+
                 /*    implementation(libs.xerial.sqlite.jdbc)
                 implementation(libs.androidx.sqlite.sqlite.framework3)
                 implementation(libs.androidx.sqlite.sqlite.ktx)*/
@@ -84,6 +83,8 @@ kotlin {
                 implementation("com.openhtmltopdf:openhtmltopdf-pdfbox:1.0.10")
             }
         }
+
+
 
         val iosMain by getting {
             kotlin.srcDir("build/generated/ksp/metadata")
@@ -108,8 +109,8 @@ android {
         applicationId = "fr.vetbrain.vetnutri_mp"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 22
-        versionName = "3.1.22"
+        versionCode = 17
+        versionName = "3.1.16B"
 
         // Configuration de Room
 
@@ -139,13 +140,21 @@ compose.desktop {
         mainClass = "fr.vetbrain.vetnutri_mp.MainKt"
 
         nativeDistributions {
-            targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-            packageName = "fr.vetbrain.vetnutri_mp"
-            packageVersion = "3.1.22"
+            targetFormats(TargetFormat.Dmg, TargetFormat.Exe, TargetFormat.Deb)
+            packageName = "VetNutriMP"
+            packageVersion = "3.1.16"
+            description = "Application de nutrition vétérinaire multiplateforme"
+            copyright = "© 2024 VetBrain"
+            vendor = "VetBrain"
 
             // Configuration des icônes pour chaque plateforme
             macOS { iconFile.set(project.file("src/desktopMain/resources/icon.icns")) }
-            windows { iconFile.set(project.file("src/desktopMain/resources/icon.ico")) }
+            windows { 
+                iconFile.set(project.file("src/desktopMain/resources/icon.ico"))
+                // Configuration pour un exécutable portable
+                menuGroup = "VetNutriMP"
+                upgradeUuid = "18159995-d967-4cd2-8885-77BFA97CFA9F"
+            }
             linux { iconFile.set(project.file("src/desktopMain/resources/icon.png")) }
         }
     }
