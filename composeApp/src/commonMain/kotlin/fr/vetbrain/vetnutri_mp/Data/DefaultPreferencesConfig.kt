@@ -68,7 +68,11 @@ object DefaultPreferencesConfig {
                 listOf(
                         0, // Vitamine A
                         2, // Vitamine D
-                        3 // Vitamine E
+                        3, // Vitamine E
+                        5,  // Thiamine (B1)
+                        10, // Biotine (B8)
+         11, // Acide folique (B9)
+        12 // Cyanocobalamine (B12)
                 )
         // Vitamines non sélectionnées par défaut :
         // 1,  // Vitamine C
@@ -88,9 +92,15 @@ object DefaultPreferencesConfig {
         /** Acides gras sélectionnés par défaut */
         val LIPID =
                 listOf(
-                        0 // Acides gras saturés
+                      15, // EPA (C20:5-n3)
+         16, // DHA (C22:6-n3)
+         17, // Cholestérol
+         18, // Oméga 3
+         19, // Oméga 6
+         20  // EPA+DHA
                 )
         // Acides gras non sélectionnés par défaut :
+        //  0 // Acides gras saturés
         // 1,  // Acides gras mono-insaturés
         // 2,  // Acides gras poly-insaturés
         // 3,  // C4:0 (Butyrique)
@@ -181,7 +191,10 @@ object DefaultPreferencesConfig {
         /** NutrientAnalysis (Analyses et ratios - CAP sélectionné par défaut) */
         val ANA: List<Int> =
                 listOf(
-                        1 // P/Ca (Rapport phosphocalcique) - CAP
+                        1, // P/Ca (Rapport phosphocalcique) - CAP
+                        0,  // K/Na (Rapport potassium/sodium)
+         2,  // O6/O3 (Rapport oméga 6/oméga 3)
+         3  // Zn/Cu (Rapport zinc/cuivre)
                 )
         // NutrientAnalysis disponibles (non sélectionnés par défaut) :
         // 0,  // K/Na (Rapport potassium/sodium)
