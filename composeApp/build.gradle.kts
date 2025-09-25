@@ -24,14 +24,13 @@ kotlin {
 
     jvm("desktop")
 
-
-
     sourceSets {
         sourceSets.iosMain { kotlin.srcDir("build/generated/ksp/metadata") }
         androidMain.dependencies {
             implementation(libs.androidx.activity.compose)
             implementation(libs.androidx.room.runtime)
             implementation(libs.androidx.room.paging)
+           
             // implementation(libs.androidx.sqlite.sqlite.ktx)
 
         }
@@ -83,8 +82,6 @@ kotlin {
                 implementation("com.openhtmltopdf:openhtmltopdf-pdfbox:1.0.10")
             }
         }
-
-
 
         val iosMain by getting {
             kotlin.srcDir("build/generated/ksp/metadata")
@@ -149,7 +146,7 @@ compose.desktop {
 
             // Configuration des icônes pour chaque plateforme
             macOS { iconFile.set(project.file("src/desktopMain/resources/icon.icns")) }
-            windows { 
+            windows {
                 iconFile.set(project.file("src/desktopMain/resources/icon.ico"))
                 // Configuration pour un exécutable portable
                 menuGroup = "VetNutriMP"
@@ -162,7 +159,6 @@ compose.desktop {
 
 dependencies {
     implementation("org.jetbrains.compose.material:material-icons-extended:1.7.3")
-    implementation(libs.skiko.awt)
     implementation(libs.androidx.sqlite.bundled)
     implementation(kotlin("test"))
     implementation(kotlin("test-common"))
