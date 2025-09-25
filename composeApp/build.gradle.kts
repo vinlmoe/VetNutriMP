@@ -30,7 +30,6 @@ kotlin {
             implementation(libs.androidx.activity.compose)
             implementation(libs.androidx.room.runtime)
             implementation(libs.androidx.room.paging)
-           
             // implementation(libs.androidx.sqlite.sqlite.ktx)
 
         }
@@ -106,8 +105,8 @@ android {
         applicationId = "fr.vetbrain.vetnutri_mp"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 17
-        versionName = "3.1.16B"
+        versionCode = 28
+        versionName = "3.1.28"
 
         // Configuration de Room
 
@@ -139,7 +138,7 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Exe, TargetFormat.Deb)
             packageName = "VetNutriMP"
-            packageVersion = "3.1.16"
+            packageVersion = "3.1.28"
             description = "Application de nutrition vétérinaire multiplateforme"
             copyright = "© 2024 VetBrain"
             vendor = "VetBrain"
@@ -159,6 +158,7 @@ compose.desktop {
 
 dependencies {
     implementation("org.jetbrains.compose.material:material-icons-extended:1.7.3")
+  
     implementation(libs.androidx.sqlite.bundled)
     implementation(kotlin("test"))
     implementation(kotlin("test-common"))
