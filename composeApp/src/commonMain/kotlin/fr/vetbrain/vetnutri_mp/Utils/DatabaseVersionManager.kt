@@ -153,13 +153,8 @@ class DatabaseVersionManager {
 
                 if (version != null) {
                     _jsonVersion.value = version
-                    // Sauvegarder la version JSON lue
-                    val storage = createPreferencesStorage()
-                    storage.saveString(KEY_JSON_VERSION, version)
-
                     if (timestamp != null) {
                         _jsonTimestamp.value = timestamp
-                        storage.saveString(KEY_JSON_TIMESTAMP, timestamp.toString())
                     }
                 }
             }

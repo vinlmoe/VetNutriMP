@@ -1,5 +1,5 @@
 {
-    "version": "3.1.23",
+    "version": "3.1.27",
     "generatedAtEpochMs": 1757917545321,
     "animals": [],
     "foods": [
@@ -575560,6 +575560,13 @@
             ],
             "nutrients": [
                 {
+                    "nutrientLabel": "CAP",
+                    "reflevel": "OPTIMIN",
+                    "quantity": 1.2,
+                    "uniteReqId": 0,
+                    "biblioRefId": "default-biblio"
+                },
+                {
                     "nutrientLabel": "I",
                     "reflevel": "MIN",
                     "quantity": 175.0,
@@ -576286,6 +576293,13 @@
                 "d95b85dc-b49d-4309-9a7e-d434773a3085"
             ],
             "nutrients": [
+                {
+                    "nutrientLabel": "CAP",
+                    "reflevel": "OPTIMIN",
+                    "quantity": 1.2,
+                    "uniteReqId": 0,
+                    "biblioRefId": "default-biblio"
+                },
                 {
                     "nutrientLabel": "CAP",
                     "reflevel": "OPTIMAX",
@@ -577643,6 +577657,13 @@
             "nutrients": [
                 {
                     "nutrientLabel": "CAP",
+                    "reflevel": "OPTIMIN",
+                    "quantity": 1.2,
+                    "uniteReqId": 0,
+                    "biblioRefId": "default-biblio"
+                },
+                {
+                    "nutrientLabel": "CAP",
                     "reflevel": "OPTIMAX",
                     "quantity": 2.0,
                     "uniteReqId": 0,
@@ -578565,7 +578586,13 @@
                 "260e2b26-acd0-497c-89c8-3dc27ccb824d",
                 "d95b85dc-b49d-4309-9a7e-d434773a3085"
             ],
-            "nutrients": [
+            "nutrients": [       {
+                "nutrientLabel": "CAP",
+                "reflevel": "OPTIMIN",
+                "quantity": 1.2,
+                "uniteReqId": 0,
+                "biblioRefId": "default-biblio"
+            },
                 {
                     "nutrientLabel": "CAP",
                     "reflevel": "OPTIMAX",
@@ -580078,6 +580105,13 @@
             "nutrients": [
                 {
                     "nutrientLabel": "CAP",
+                    "reflevel": "OPTIMIN",
+                    "quantity": 1.2,
+                    "uniteReqId": 0,
+                    "biblioRefId": "default-biblio"
+                },
+                {
+                    "nutrientLabel": "CAP",
                     "reflevel": "OPTIMAX",
                     "quantity": 2.0,
                     "uniteReqId": 0,
@@ -581090,6 +581124,13 @@
             "nutrients": [
                 {
                     "nutrientLabel": "CAP",
+                    "reflevel": "OPTIMIN",
+                    "quantity": 1.2,
+                    "uniteReqId": 0,
+                    "biblioRefId": "default-biblio"
+                },
+                {
+                    "nutrientLabel": "CAP",
                     "reflevel": "OPTIMAX",
                     "quantity": 2.0,
                     "uniteReqId": 0,
@@ -581325,6 +581366,13 @@
                 "d95b85dc-b49d-4309-9a7e-d434773a3085"
             ],
             "nutrients": [
+                {
+                    "nutrientLabel": "CAP",
+                    "reflevel": "OPTIMIN",
+                    "quantity": 1.2,
+                    "uniteReqId": 0,
+                    "biblioRefId": "default-biblio"
+                },
                 {
                     "nutrientLabel": "CAP",
                     "reflevel": "OPTIMAX",
@@ -582003,6 +582051,13 @@
                 "d95b85dc-b49d-4309-9a7e-d434773a3085"
             ],
             "nutrients": [
+                {
+                    "nutrientLabel": "CAP",
+                    "reflevel": "OPTIMIN",
+                    "quantity": 1.2,
+                    "uniteReqId": 0,
+                    "biblioRefId": "default-biblio"
+                },
                 {
                     "nutrientLabel": "CAP",
                     "reflevel": "OPTIMAX",
@@ -582948,6 +583003,7 @@
                 "d95b85dc-b49d-4309-9a7e-d434773a3085"
             ],
             "nutrients": [
+                
                 {
                     "nutrientLabel": "CAP",
                     "reflevel": "OPTIMAX",
@@ -582959,6 +583015,13 @@
                     "nutrientLabel": "CAP",
                     "reflevel": "MIN",
                     "quantity": 1.0,
+                    "uniteReqId": 0,
+                    "biblioRefId": "default-biblio"
+                },
+                {
+                    "nutrientLabel": "CAP",
+                    "reflevel": "OPTIMIN",
+                    "quantity": 1.2,
                     "uniteReqId": 0,
                     "biblioRefId": "default-biblio"
                 },
@@ -583626,6 +583689,13 @@
                 "d95b85dc-b49d-4309-9a7e-d434773a3085"
             ],
             "nutrients": [
+                {
+                    "nutrientLabel": "CAP",
+                    "reflevel": "OPTIMIN",
+                    "quantity": 1.2,
+                    "uniteReqId": 0,
+                    "biblioRefId": "default-biblio"
+                },
                 {
                     "nutrientLabel": "CAP",
                     "reflevel": "OPTIMAX",
@@ -584440,6 +584510,13 @@
             "nutrients": [
                 {
                     "nutrientLabel": "CAP",
+                    "reflevel": "OPTIMIN",
+                    "quantity": 1.2,
+                    "uniteReqId": 0,
+                    "biblioRefId": "default-biblio"
+                },
+                {
+                    "nutrientLabel": "CAP",
                     "reflevel": "OPTIMAX",
                     "quantity": 2.0,
                     "uniteReqId": 0,
@@ -585146,6 +585223,13 @@
             "nutrients": [
                 {
                     "nutrientLabel": "CAP",
+                    "reflevel": "OPTIMIN",
+                    "quantity": 1.2,
+                    "uniteReqId": 0,
+                    "biblioRefId": "default-biblio"
+                },
+                {
+                    "nutrientLabel": "CAP",
                     "reflevel": "OPTIMAX",
                     "quantity": 2.0,
                     "uniteReqId": 0,
@@ -585752,6 +585836,13 @@
                 "d95b85dc-b49d-4309-9a7e-d434773a3085"
             ],
             "nutrients": [
+                {
+                    "nutrientLabel": "CAP",
+                    "reflevel": "OPTIMIN",
+                    "quantity": 1.2,
+                    "uniteReqId": 0,
+                    "biblioRefId": "default-biblio"
+                },
                 {
                     "nutrientLabel": "CAP",
                     "reflevel": "OPTIMAX",
@@ -586479,6 +586570,13 @@
                 "d95b85dc-b49d-4309-9a7e-d434773a3085"
             ],
             "nutrients": [
+                {
+                    "nutrientLabel": "CAP",
+                    "reflevel": "OPTIMIN",
+                    "quantity": 1.2,
+                    "uniteReqId": 0,
+                    "biblioRefId": "default-biblio"
+                },
                 {
                     "nutrientLabel": "CAP",
                     "reflevel": "OPTIMAX",

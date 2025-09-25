@@ -10,8 +10,8 @@
 		058557BB273AAA24004C7B11 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 058557BA273AAA24004C7B11 /* Assets.xcassets */; };
 		058557D9273AAEEB004C7B11 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 058557D8273AAEEB004C7B11 /* Preview Assets.xcassets */; };
 		2152FB042600AC8F00CF470E /* iOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2152FB032600AC8F00CF470E /* iOSApp.swift */; };
-		6A2106D62E6203BF00FE13EF /* strings_fr.json in Resources */ = {isa = PBXBuildFile; fileRef = 6A2106D52E6203BF00FE13EF /* strings_fr.json */; };
-		6A71E31D2E68E6F500AD003B /* vetnutri_export_init.json in Resources */ = {isa = PBXBuildFile; fileRef = 6A71E31C2E68E6F500AD003B /* vetnutri_export_init.json */; };
+		6A9D9E342E852BC300D4C0E1 /* strings_fr.json in Resources */ = {isa = PBXBuildFile; fileRef = 6A9D9E332E852BC300D4C0E1 /* strings_fr.json */; };
+		6A9D9E362E852BD600D4C0E1 /* vetnutri_export_init.json in Resources */ = {isa = PBXBuildFile; fileRef = 6A9D9E352E852BD600D4C0E1 /* vetnutri_export_init.json */; };
 		6AE565C02E50F3A5000F5E5C /* File.txt in Resources */ = {isa = PBXBuildFile; fileRef = 6AE565BF2E50F3A5000F5E5C /* File.txt */; };
 		7555FF83242A565900829871 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7555FF82242A565900829871 /* ContentView.swift */; };
 /* End PBXBuildFile section */
@@ -20,9 +20,9 @@
 		058557BA273AAA24004C7B11 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		058557D8273AAEEB004C7B11 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		2152FB032600AC8F00CF470E /* iOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSApp.swift; sourceTree = "<group>"; };
-		6A2106D52E6203BF00FE13EF /* strings_fr.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = strings_fr.json; sourceTree = "<group>"; };
 		6A2107072E62300B00FE13EF /* vetnutri.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = vetnutri.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		6A71E31C2E68E6F500AD003B /* vetnutri_export_init.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = vetnutri_export_init.json; sourceTree = "<group>"; };
+		6A9D9E332E852BC300D4C0E1 /* strings_fr.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = strings_fr.json; sourceTree = "<group>"; };
+		6A9D9E352E852BD600D4C0E1 /* vetnutri_export_init.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = vetnutri_export_init.json; sourceTree = "<group>"; };
 		6AE565BF2E50F3A5000F5E5C /* File.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = File.txt; sourceTree = "<group>"; };
 		6AF671EA2E5F60C300865922 /* TestPlan.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = TestPlan.xctestplan; sourceTree = "<group>"; };
 		7555FF7B242A565900829871 /* VetNutri MP.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "VetNutri MP.app"; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -101,11 +101,11 @@
 				058557BA273AAA24004C7B11 /* Assets.xcassets */,
 				7555FF82242A565900829871 /* ContentView.swift */,
 				7555FF8C242A565B00829871 /* Info.plist */,
-				6A2106D52E6203BF00FE13EF /* strings_fr.json */,
 				2152FB032600AC8F00CF470E /* iOSApp.swift */,
 				058557D7273AAEEB004C7B11 /* Preview Content */,
 				6AE565BF2E50F3A5000F5E5C /* File.txt */,
-				6A71E31C2E68E6F500AD003B /* vetnutri_export_init.json */,
+				6A9D9E332E852BC300D4C0E1 /* strings_fr.json */,
+				6A9D9E352E852BD600D4C0E1 /* vetnutri_export_init.json */,
 			);
 			path = iosApp;
 			sourceTree = "<group>";
@@ -215,10 +215,10 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				6A9D9E342E852BC300D4C0E1 /* strings_fr.json in Resources */,
+				6A9D9E362E852BD600D4C0E1 /* vetnutri_export_init.json in Resources */,
 				058557D9273AAEEB004C7B11 /* Preview Assets.xcassets in Resources */,
-				6A71E31D2E68E6F500AD003B /* vetnutri_export_init.json in Resources */,
 				058557BB273AAA24004C7B11 /* Assets.xcassets in Resources */,
-				6A2106D62E6203BF00FE13EF /* strings_fr.json in Resources */,
 				6AE565C02E50F3A5000F5E5C /* File.txt in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

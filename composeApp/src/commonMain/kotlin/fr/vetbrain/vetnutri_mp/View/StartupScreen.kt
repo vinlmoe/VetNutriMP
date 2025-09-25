@@ -61,7 +61,8 @@ fun StartupScreen(
         var newVersionAvailable by remember { mutableStateOf<String?>(null) }
 
         // Variable pour afficher le bouton de mise à jour par défaut au démarrage
-        var showUpdateButtonByDefault by remember { mutableStateOf(true) }
+        // Désactivé par défaut pour minimiser le bouton quand aucune mise à jour n'est requise
+        var showUpdateButtonByDefault by remember { mutableStateOf(false) }
 
         // Informations sur les versions JSON
         var currentJsonVersion by remember { mutableStateOf<String?>(null) }

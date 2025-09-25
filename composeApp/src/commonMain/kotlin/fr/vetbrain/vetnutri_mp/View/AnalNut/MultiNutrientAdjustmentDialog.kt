@@ -1285,7 +1285,7 @@ suspend fun calculerAjustement(
                                                                 val CalAct: Double = adjustedAliments[index].quantite.toDouble() * (aliment.getNutrient(NutrientMacro.CAL) ?: 0.0) / 100.0
                                                                 val calPar100g = aliment.getNutrient(NutrientMacro.CAL) ?: 0.0
                                                                 val pPar100g = aliment.getNutrient(NutrientMacro.PHOS) ?: 0.0
-                                                                val nouvelleQuantite: Double = (capMinRequis * (totalPhosphore - PhosAct) - (totalCalcium - CalAct)) / ((calPar100g - capMinRequis * pPar100g) / 100.0)
+                                                                val nouvelleQuantite: Double = 1.2 * (capMinRequis * (totalPhosphore - PhosAct) - (totalCalcium - CalAct)) / ((calPar100g - capMinRequis * pPar100g) / 100.0)
                                                                 // Arrondir au centième de gramme pour éviter les erreurs de précision
                                                                 val quantiteArrondie: Double = kotlin.math.round(nouvelleQuantite * 100.0) / 100.0
                                                                 adjustedAliments[index] = adjustedAliments[index].copy(
