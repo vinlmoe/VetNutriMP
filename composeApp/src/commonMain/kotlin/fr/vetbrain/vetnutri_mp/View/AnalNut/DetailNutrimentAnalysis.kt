@@ -27,6 +27,7 @@ import fr.vetbrain.vetnutri_mp.Data.Ration
 import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
 import fr.vetbrain.vetnutri_mp.Data.ValeurNutritionnelle
 import fr.vetbrain.vetnutri_mp.Enumer.*
+import fr.vetbrain.vetnutri_mp.Utils.GraphFormattingUtils
 import fr.vetbrain.vetnutri_mp.Utils.NumberUtils
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
@@ -47,30 +48,10 @@ import io.github.koalaplot.core.util.ExperimentalKoalaPlotApi
 import io.github.koalaplot.core.xygraph.FloatLinearAxisModel
 
 /**
- * Formate les labels de l'axe des abscisses des bullet graphs selon les critères :
- * - Si la valeur maximale < 1 : 2 chiffres après la virgule
- * - Si la valeur maximale < 5 : 1 chiffre après la virgule  
- * - Sinon : pas de chiffre après la virgule
+ * Formate les labels de l'axe des abscisses des bullet graphs avec formatage intelligent
  */
 private fun formaterLabelAxeBullet(valeur: Double, valeurMaximale: Double): String {
-    return when {
-        valeurMaximale < 1.0 -> {
-            // 2 chiffres après la virgule
-            NumberUtils.format(valeur.toDouble(), 2)
-        }
-        valeurMaximale < 5.0 -> {
-            // 1 chiffre après la virgule
-            NumberUtils.format(valeur.toDouble(), 1)
-        }
-        else -> {
-            // Pas de chiffre après la virgule
-            if (valeur % 1.0 == 0.0) {
-                valeur.toInt().toString()
-            } else {
-                NumberUtils.format(valeur.toDouble(), 0)
-            }
-        }
-    }
+    return GraphFormattingUtils.formatSmartDecimal(valeur)
 }
 
 // Fonction locale InfoRow po

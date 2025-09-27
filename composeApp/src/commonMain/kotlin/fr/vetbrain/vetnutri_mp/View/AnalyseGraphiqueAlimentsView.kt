@@ -32,6 +32,7 @@ import fr.vetbrain.vetnutri_mp.Enumer.*
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
+import fr.vetbrain.vetnutri_mp.Utils.GraphFormattingUtils
 import io.github.koalaplot.core.*
 import io.github.koalaplot.core.bar.DefaultVerticalBar
 import io.github.koalaplot.core.bar.VerticalBarPlot
@@ -874,6 +875,49 @@ private fun GraphiqueNuagePoints(
                     style = MaterialTheme.typography.caption,
                     color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
             )
+            
+            // Informations supplémentaires selon le type de graphique
+            when (ongletActif) {
+                "densite_energetique" -> {
+                    val avgDensity = alimentsAnalyses.map { it.densiteEnergetique }.average()
+                    Text(
+                            text = "Densité moyenne: ${GraphFormattingUtils.formatEnergyDensity(avgDensity)}",
+                            style = MaterialTheme.typography.caption,
+                            color = VetNutriColors.Primary.copy(alpha = 0.8f),
+                            fontWeight = FontWeight.Medium
+                    )
+                }
+                "protein_lipid" -> {
+                    val avgProtein = alimentsAnalyses.map { it.pourcentageProteines }.average()
+                    val avgLipid = alimentsAnalyses.map { it.pourcentageLipides }.average()
+                    Text(
+                            text = "Moyennes - Protéines: ${GraphFormattingUtils.formatPercentage(avgProtein)} | Lipides: ${GraphFormattingUtils.formatPercentage(avgLipid)}",
+                            style = MaterialTheme.typography.caption,
+                            color = VetNutriColors.Primary.copy(alpha = 0.8f),
+                            fontWeight = FontWeight.Medium
+                    )
+                }
+                "phosphore_protein" -> {
+                    val avgPhosphore = alimentsAnalyses.map { it.phosphorePer1000Kcal }.average()
+                    val avgProtein = alimentsAnalyses.map { it.proteinePer1000Kcal }.average()
+                    Text(
+                            text = "Moyennes - Phosphore: ${GraphFormattingUtils.formatNutrientPer1000Kcal(avgPhosphore)} | Protéines: ${GraphFormattingUtils.formatNutrientPer1000Kcal(avgProtein)}",
+                            style = MaterialTheme.typography.caption,
+                            color = VetNutriColors.Primary.copy(alpha = 0.8f),
+                            fontWeight = FontWeight.Medium
+                    )
+                }
+                "calcium_phosphore" -> {
+                    val avgCalcium = alimentsAnalyses.map { it.calciumPer1000Kcal }.average()
+                    val avgPhosphore = alimentsAnalyses.map { it.phosphorePer1000Kcal }.average()
+                    Text(
+                            text = "Moyennes - Calcium: ${GraphFormattingUtils.formatNutrientPer1000Kcal(avgCalcium)} | Phosphore: ${GraphFormattingUtils.formatNutrientPer1000Kcal(avgPhosphore)}",
+                            style = MaterialTheme.typography.caption,
+                            color = VetNutriColors.Primary.copy(alpha = 0.8f),
+                            fontWeight = FontWeight.Medium
+                    )
+                }
+            }
 
             // Légende des lignes de référence pour le graphique Calcium/Phosphore
             if (ongletActif == "calcium_phosphore") {
@@ -1499,11 +1543,19 @@ private fun AlimentRow(
                 fontWeight = FontWeight.Bold,
                 color = VetNutriColors.Primary
         )
-        Text(
-                text = data.aliment.nom ?: "Sans nom",
-                modifier = Modifier.weight(0.4f),
-                style = MaterialTheme.typography.caption
-        )
+        Column(modifier = Modifier.weight(0.4f)) {
+                Text(
+                        text = data.aliment.nom ?: "Sans nom",
+                        style = MaterialTheme.typography.caption,
+                        fontWeight = FontWeight.Medium
+                )
+                Text(
+                        text = "Densité: ${GraphFormattingUtils.formatEnergyDensity(data.densiteEnergetique)}",
+                        style = MaterialTheme.typography.caption,
+                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f),
+                        fontSize = 10.sp
+                )
+        }
         Text(
                 text = data.aliment.gamme ?: "-",
                 modifier = Modifier.weight(0.25f),
