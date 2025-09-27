@@ -9,6 +9,8 @@ import platform.Foundation.NSURL
 import platform.Foundation.writeToFile
 import platform.UIKit.UIActivityViewController
 import platform.UIKit.UIApplication
+import platform.UIKit.UIPopoverPresentationController
+import platform.UIKit.UIModalPresentationPopover
 import platform.UIKit.UIGraphicsBeginPDFContextToData
 import platform.UIKit.UIGraphicsBeginPDFPage
 import platform.UIKit.UIGraphicsEndPDFContext
@@ -16,6 +18,9 @@ import platform.UIKit.UIGraphicsGetPDFContextBounds
 import platform.UIKit.UIMarkupTextPrintFormatter
 import platform.UIKit.UIPrintPageRenderer
 import platform.UIKit.UIViewController
+import platform.UIKit.popoverPresentationController
+import platform.darwin.dispatch_async
+import platform.darwin.dispatch_get_main_queue
 
 @OptIn(ExperimentalForeignApi::class)
 actual object PdfExporter {
@@ -29,29 +34,199 @@ actual object PdfExporter {
                 defaultFileName: String
         ): Boolean {
                 val html: String = HtmlDocumentBuilder.buildHtml(documentType, data)
-                val pdfBytes: NSData? = genererPdfDepuisHtml(html)
-                if (pdfBytes == null) return false
-                val nomFichier: String =
-                        if (defaultFileName.isBlank()) "document.pdf" else defaultFileName
-                val cheminTemp: String = NSTemporaryDirectory().plus(nomFichier)
-                val ecrit: Boolean = (pdfBytes as NSMutableData).writeToFile(cheminTemp, true)
-                if (!ecrit) return false
-                val url: NSURL = NSURL.fileURLWithPath(path = cheminTemp)
+                return imprimerDocument(html)
+        }
+        
+        private fun imprimerDocument(html: String): Boolean {
+                return try {
+                        // Nettoyer le HTML
+                        val cleanHtml = nettoyerHtml(html)
+                        if (cleanHtml.isBlank()) {
+                                println("ERROR: HTML vide ou invalide")
+                                return false
+                        }
+                        
+                        println("DEBUG: Impression avec HTML de ${cleanHtml.length} caractères")
+                        
+                        // Exécuter toute la logique d'impression sur le thread principal
+                        dispatch_async(dispatch_get_main_queue()) {
+                                try {
                 val controleur: UIViewController? = obtenirTopViewController()
-                if (controleur == null) return true
-                val activites: UIActivityViewController =
-                        UIActivityViewController(
-                                activityItems = listOf(url),
-                                applicationActivities = null
+                                        if (controleur == null) {
+                                                println("ERROR: Impossible d'obtenir le contrôleur de vue")
+                                                return@dispatch_async
+                                        }
+                                        
+                                        // Essayer d'abord avec UIMarkupTextPrintFormatter
+                                        val success = imprimerAvecMarkupFormatter(cleanHtml, controleur)
+                                        if (success) {
+                                                return@dispatch_async
+                                        }
+                                        
+                                        // Si échec, essayer avec UISimpleTextPrintFormatter
+                                        println("DEBUG: Échec avec UIMarkupTextPrintFormatter, tentative avec UISimpleTextPrintFormatter")
+                                        imprimerAvecSimpleTextFormatter(cleanHtml, controleur)
+                                        
+                                } catch (t: Throwable) {
+                                        println("ERROR: Erreur lors de l'impression: ${t.message}")
+                                        t.printStackTrace()
+                                }
+                        }
+                        
+                        true
+                } catch (t: Throwable) {
+                        println("ERROR: Erreur lors de l'impression: ${t.message}")
+                        t.printStackTrace()
+                        false
+                }
+        }
+        
+        private fun imprimerAvecMarkupFormatter(html: String, controleur: UIViewController): Boolean {
+                return try {
+                        
+                        // Créer le formatteur d'impression
+                        val printFormatter = UIMarkupTextPrintFormatter(markupText = html)
+                        
+                        // Configurer les marges
+                        printFormatter.perPageContentInsets = platform.UIKit.UIEdgeInsetsMake(
+                                margin, margin, margin, margin
                         )
-                controleur.presentViewController(activites, animated = true, completion = null)
-                return true
+                        
+                        // Créer le contrôleur d'impression
+                        val printController = platform.UIKit.UIPrintInteractionController.sharedPrintController()
+                        printController.printFormatter = printFormatter
+                        
+                        // Configurer les options d'impression
+                        val printInfo = platform.UIKit.UIPrintInfo.printInfo()
+                        printInfo.outputType = platform.UIKit.UIPrintInfoOutputType.UIPrintInfoOutputGeneral
+                        printInfo.jobName = "Document VetNutri"
+                        printController.printInfo = printInfo
+                        
+                        // Présenter le dialogue d'impression
+                        printController.presentAnimated(
+                                animated = true,
+                                completionHandler = { controller, completed, error ->
+                                        if (completed) {
+                                                println("DEBUG: Impression réussie avec UIMarkupTextPrintFormatter")
+                                        } else if (error != null) {
+                                                println("ERROR: Erreur d'impression: ${error.localizedDescription}")
+                                        } else {
+                                                println("DEBUG: Impression annulée par l'utilisateur")
+                                        }
+                                }
+                        )
+                        
+                        true
+                } catch (t: Throwable) {
+                        println("ERROR: Erreur avec UIMarkupTextPrintFormatter: ${t.message}")
+                        false
+                }
+        }
+        
+        private fun imprimerAvecSimpleTextFormatter(html: String, controleur: UIViewController): Boolean {
+                return try {
+                        
+                        // Extraire le texte du HTML (supprimer les balises)
+                        val textContent = extraireTexteDuHtml(html)
+                        
+                        // Créer le formatteur d'impression simple
+                        val printFormatter = platform.UIKit.UISimpleTextPrintFormatter(textContent)
+                        
+                        // Configurer les marges
+                        printFormatter.perPageContentInsets = platform.UIKit.UIEdgeInsetsMake(
+                                margin, margin, margin, margin
+                        )
+                        
+                        // Créer le contrôleur d'impression
+                        val printController = platform.UIKit.UIPrintInteractionController.sharedPrintController()
+                        printController.printFormatter = printFormatter
+                        
+                        // Configurer les options d'impression
+                        val printInfo = platform.UIKit.UIPrintInfo.printInfo()
+                        printInfo.outputType = platform.UIKit.UIPrintInfoOutputType.UIPrintInfoOutputGeneral
+                        printInfo.jobName = "Document VetNutri"
+                        printController.printInfo = printInfo
+                        
+                        // Présenter le dialogue d'impression
+                        printController.presentAnimated(
+                                animated = true,
+                                completionHandler = { controller, completed, error ->
+                                        if (completed) {
+                                                println("DEBUG: Impression réussie avec UISimpleTextPrintFormatter")
+                                        } else if (error != null) {
+                                                println("ERROR: Erreur d'impression: ${error.localizedDescription}")
+                                        } else {
+                                                println("DEBUG: Impression annulée par l'utilisateur")
+                                        }
+                                }
+                        )
+                        
+                        true
+                } catch (t: Throwable) {
+                        println("ERROR: Erreur avec UISimpleTextPrintFormatter: ${t.message}")
+                        false
+                }
+        }
+        
+        private fun extraireTexteDuHtml(html: String): String {
+                return try {
+                        // Supprimer les balises HTML et extraire le texte
+                        var text = html
+                                .replace(Regex("<[^>]*>"), " ") // Supprimer les balises HTML
+                                .replace(Regex("\\s+"), " ") // Remplacer les espaces multiples par un seul
+                                .trim()
+                        
+                        // Si le texte est trop court, utiliser le HTML original
+                        if (text.length < 50) {
+                                text = html
+                        }
+                        
+                        text
+                } catch (e: Exception) {
+                        println("ERROR: Erreur lors de l'extraction du texte: ${e.message}")
+                        html
+                }
         }
 
         private fun genererPdfDepuisHtml(html: String): NSData? {
                 return try {
+                        // Validation et nettoyage du HTML
+                        val cleanHtml = nettoyerHtml(html)
+                        if (cleanHtml.isBlank()) {
+                                println("ERROR: HTML vide ou invalide")
+                                return null
+                        }
+                        
+                        // Vérification de la taille du HTML (limite de sécurité)
+                        if (cleanHtml.length > 10_000_000) { // 10MB
+                                println("ERROR: HTML trop volumineux (${cleanHtml.length} caractères)")
+                                return null
+                        }
+                        
+                        println("DEBUG: Génération PDF avec HTML de ${cleanHtml.length} caractères")
+                        
+                        // Essayer d'abord avec UIMarkupTextPrintFormatter
+                        val result = genererPdfAvecMarkupFormatter(cleanHtml)
+                        if (result != null) {
+                                return result
+                        }
+                        
+                        // Si échec, essayer une méthode alternative
+                        println("DEBUG: Échec avec UIMarkupTextPrintFormatter, tentative méthode alternative")
+                        return genererPdfAlternative(cleanHtml)
+                        
+                } catch (t: Throwable) {
+                        println("ERROR: Erreur lors de la génération PDF: ${t.message}")
+                        t.printStackTrace()
+                        null
+                }
+        }
+        
+        private fun genererPdfAvecMarkupFormatter(html: String): NSData? {
+                return try {
                         val formatteur: UIMarkupTextPrintFormatter =
                                 UIMarkupTextPrintFormatter(markupText = html)
+                        
                         val pageRect = CGRectMake(0.0, 0.0, a4Width, a4Height)
                         val printableRect =
                                 CGRectMake(
@@ -60,15 +235,21 @@ actual object PdfExporter {
                                         a4Width - 2.toDouble() * margin,
                                         a4Height - 2.toDouble() * margin
                                 )
+                        
                         val renderer: UIPrintPageRenderer =
                                 object : UIPrintPageRenderer() {
                                         override fun paperRect() = pageRect
                                         override fun printableRect() = printableRect
                                 }
+                        
                         renderer.addPrintFormatter(formatteur, startingAtPageAtIndex = 0)
+                        
                         val data: NSMutableData = NSMutableData()
                         UIGraphicsBeginPDFContextToData(data, pageRect, null)
+                        
                         val pages: Int = renderer.numberOfPages.toInt()
+                        println("DEBUG: Nombre de pages à générer: $pages")
+                        
                         var i: Int = 0
                         while (i < pages) {
                                 UIGraphicsBeginPDFPage()
@@ -79,9 +260,76 @@ actual object PdfExporter {
                                 i += 1
                         }
                         UIGraphicsEndPDFContext()
+                        
+                        println("DEBUG: PDF généré avec succès (${data.length} bytes)")
                         data
                 } catch (t: Throwable) {
+                        println("ERROR: Erreur avec UIMarkupTextPrintFormatter: ${t.message}")
                         null
+                }
+        }
+        
+        private fun genererPdfAlternative(html: String): NSData? {
+                return try {
+                        // Méthode alternative : créer un PDF simple vide
+                        val pageRect = CGRectMake(0.0, 0.0, a4Width, a4Height)
+                        val data: NSMutableData = NSMutableData()
+                        UIGraphicsBeginPDFContextToData(data, pageRect, null)
+                        UIGraphicsBeginPDFPage()
+                        UIGraphicsEndPDFContext()
+                        
+                        println("DEBUG: PDF alternatif généré (${data.length} bytes)")
+                        data
+                } catch (t: Throwable) {
+                        println("ERROR: Erreur avec méthode alternative: ${t.message}")
+                        null
+                }
+        }
+        
+        private fun nettoyerHtml(html: String): String {
+                return try {
+                        // Supprimer les caractères de contrôle problématiques
+                        var cleanHtml = html
+                                .replace("\u0000", "") // Null bytes
+                                .replace("\u0001", "") // SOH
+                                .replace("\u0002", "") // STX
+                                .replace("\u0003", "") // ETX
+                                .replace("\u0004", "") // EOT
+                                .replace("\u0005", "") // ENQ
+                                .replace("\u0006", "") // ACK
+                                .replace("\u0007", "") // BEL
+                                .replace("\u0008", "") // BS
+                                .replace("\u000B", "") // VT
+                                .replace("\u000C", "") // FF
+                                .replace("\u000E", "") // SO
+                                .replace("\u000F", "") // SI
+                                .replace("\u0010", "") // DLE
+                                .replace("\u0011", "") // DC1
+                                .replace("\u0012", "") // DC2
+                                .replace("\u0013", "") // DC3
+                                .replace("\u0014", "") // DC4
+                                .replace("\u0015", "") // NAK
+                                .replace("\u0016", "") // SYN
+                                .replace("\u0017", "") // ETB
+                                .replace("\u0018", "") // CAN
+                                .replace("\u0019", "") // EM
+                                .replace("\u001A", "") // SUB
+                                .replace("\u001B", "") // ESC
+                                .replace("\u001C", "") // FS
+                                .replace("\u001D", "") // GS
+                                .replace("\u001E", "") // RS
+                                .replace("\u001F", "") // US
+                        
+                        // S'assurer que le HTML est bien formé
+                        if (!cleanHtml.trimStart().startsWith("<!DOCTYPE html>") && 
+                            !cleanHtml.trimStart().startsWith("<html")) {
+                                cleanHtml = "<!DOCTYPE html><html><head><meta charset=\"UTF-8\"></head><body>$cleanHtml</body></html>"
+                        }
+                        
+                        cleanHtml
+                } catch (e: Exception) {
+                        println("ERROR: Erreur lors du nettoyage HTML: ${e.message}")
+                        html // Retourner l'original en cas d'erreur
                 }
         }
 

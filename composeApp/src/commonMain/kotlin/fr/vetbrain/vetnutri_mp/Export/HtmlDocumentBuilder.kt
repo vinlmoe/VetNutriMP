@@ -339,17 +339,22 @@ object HtmlDocumentBuilder {
             poidsAnimal: Double? = null,
             poidsMetabolique: Double? = null,
             besoinEnergetiqueEntretien: Double? = null,
-            bulletGraphImages: Map<String, Map<String, String>> = emptyMap()
+            bulletGraphImages: Map<String, Map<String, String>> = emptyMap(),
+            includeBulletGraphs: Boolean = true
     ): String {
         if (rations.isEmpty()) return ""
         return rations.joinToString("\n") { ration ->
             val header = if (ration.name.isNotBlank()) "<h2>Ration: ${ration.name}</h2>" else ""
             val block = buildRationBlock(ration)
             val rationImages = bulletGraphImages[ration.uuid] ?: emptyMap()
-            val bulletGraphs = buildNutrientAnalysisBulletGraphs(
-                    ration, reference, animal, preferences, 
-                    poidsAnimal, poidsMetabolique, besoinEnergetiqueEntretien, rationImages
-            )
+            val bulletGraphs = if (includeBulletGraphs) {
+                buildNutrientAnalysisBulletGraphs(
+                        ration, reference, animal, preferences,
+                        poidsAnimal, poidsMetabolique, besoinEnergetiqueEntretien, rationImages
+                )
+            } else {
+                ""
+            }
             "<div class='section'>${header}${block}${bulletGraphs}</div>"
         }
     }
@@ -422,7 +427,7 @@ object HtmlDocumentBuilder {
         return buildHeader(if (title.isNotBlank()) title else "Ordonnance nutritionnelle") +
                 buildPractitionerHeader(practitioner) +
                 buildAnimalBlock(animal) +
-                buildRationsBlocks(rations, reference, animal, preferences, poidsAnimal, poidsMetabolique, besoinEnergetiqueEntretien, bulletGraphImages) +
+                buildRationsBlocks(rations, reference, animal, preferences, poidsAnimal, poidsMetabolique, besoinEnergetiqueEntretien, bulletGraphImages, includeBulletGraphs = false) +
                 buildConseilsBlock(conseils) +
                 buildAdditionalTextBlock(additionalText) +
                 buildHtmlSectionsBlock(htmlSections) +
