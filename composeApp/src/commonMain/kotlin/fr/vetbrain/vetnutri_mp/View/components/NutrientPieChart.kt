@@ -98,25 +98,14 @@ fun NutrientPieChart(
                 modifier = Modifier.fillMaxWidth(),
                 contentAlignment = Alignment.Center
             ) {
-                PieChart(
-                    values = nutrientData.map { it.value.toFloat() },
-                    slice = { index ->
-                        val data = nutrientData[index]
-                        DefaultSlice(data.color)
-                    },
-                    label = { index ->
-                        val data = nutrientData[index]
-                        Text(
-                            text = "${data.name}\n${TextUtils.formatDecimal(data.percentage, 1)}%",
-                            style = MaterialTheme.typography.caption,
-                            color = Color.White
-                        )
-                    },
-                    labelConnector = { index ->
-                        StraightLineConnector()
-                    },
-                    modifier = Modifier.size(200.dp)
-                )
+                 PieChart(
+                     values = nutrientData.map { it.value.toFloat() },
+                     slice = { index ->
+                         val data = nutrientData[index]
+                         DefaultSlice(data.color)
+                     },
+                     modifier = Modifier.size(200.dp)
+                 )
             }
 
             // Légende des couleurs
