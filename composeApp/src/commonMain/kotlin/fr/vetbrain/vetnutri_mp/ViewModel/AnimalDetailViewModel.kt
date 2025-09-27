@@ -206,6 +206,19 @@ class AnimalDetailViewModel(
         }
     }
 
+    /** Charge un aliment complet avec toutes ses données nutritionnelles */
+    fun loadCompleteFood(uuid: String, onComplete: (AlimentEv?) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val alimentComplet = AlimentRepository.getAlimentByUUID(uuid)
+                onComplete(alimentComplet)
+            } catch (e: Exception) {
+                e.printStackTrace()
+                onComplete(null)
+            }
+        }
+    }
+
     /** Ajoute un aliment à une ration */
     @OptIn(ExperimentalUuidApi::class)
     fun addAlimentToRation(ration: Ration, aliment: AlimentEv, quantite: Double) {

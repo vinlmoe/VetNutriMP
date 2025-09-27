@@ -24,13 +24,16 @@ import fr.vetbrain.vetnutri_mp.Components.BasicAppTextField
 import fr.vetbrain.vetnutri_mp.Components.DropdownField
 import fr.vetbrain.vetnutri_mp.Components.MultiSelectDropdownField
 import fr.vetbrain.vetnutri_mp.Data.AlimentEv
+import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
 import fr.vetbrain.vetnutri_mp.Enumer.*
 import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
+import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Utils.DataB
 import fr.vetbrain.vetnutri_mp.Utils.DataBMapping
 import fr.vetbrain.vetnutri_mp.Utils.TextUtils
+import fr.vetbrain.vetnutri_mp.View.components.NutrientPieChart
 
 /** État partagé pour les filtres de recherche d'aliments */
 data class FoodSearchFilters(
@@ -53,7 +56,9 @@ data class FoodSearchConfig(
         val onFoodAction: ((AlimentEv, String) -> Unit)? = null,
         val availableActions: List<String> = emptyList(),
         val isLoading: Boolean = false,
-        val selectedFood: AlimentEv? = null
+        val selectedFood: AlimentEv? = null,
+        val referenceEv: ReferenceEv? = null,
+        val equationRepository: EquationRepository? = null
 )
 
 /** Types de layout disponibles */
@@ -962,6 +967,8 @@ private fun FoodDetailsPanel(
                 } else {
                         AlimentDetailsContent(
                                 aliment = config.selectedFood!!,
+                                referenceEv = config.referenceEv,
+                                equationRepository = config.equationRepository,
                                 modifier = Modifier.fillMaxSize()
                         )
                 }
@@ -970,37 +977,45 @@ private fun FoodDetailsPanel(
 
 /** Contenu des détails de l'aliment */
 @Composable
-private fun AlimentDetailsContent(aliment: AlimentEv, modifier: Modifier = Modifier) {
-        Column(
+private fun AlimentDetailsContent(aliment: AlimentEv, referenceEv: ReferenceEv? = null, equationRepository: EquationRepository? = null, modifier: Modifier = Modifier) {
+        LazyColumn(
                 modifier = modifier.padding(AppSizes.paddingMedium),
                 verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
         ) {
-                Text(
-                        text = "Détails de l'aliment",
-                        style = MaterialTheme.typography.h6,
-                        color = VetNutriColors.Primary
-                )
+                item {
+                        Text(
+                                text = "Détails de l'aliment",
+                                style = MaterialTheme.typography.h6,
+                                color = VetNutriColors.Primary
+                        )
+                }
 
-                Divider()
+                item { Divider() }
 
                 // Informations générales
-                Text(
-                        text = aliment.nom ?: "Sans nom",
-                        style = MaterialTheme.typography.h6,
-                        fontWeight = FontWeight.Bold
-                )
+                item {
+                        Text(
+                                text = aliment.nom ?: "Sans nom",
+                                style = MaterialTheme.typography.h6,
+                                fontWeight = FontWeight.Bold
+                        )
+                }
 
                 if (!aliment.brand.isNullOrEmpty()) {
-                        DetailRow("Marque", aliment.brand!!)
+                        item { DetailRow("Marque", aliment.brand!!) }
                 }
 
                 if (!aliment.gamme.isNullOrEmpty()) {
-                        DetailRow("Gamme", aliment.gamme!!)
+                        item { DetailRow("Gamme", aliment.gamme!!) }
                 }
 
-                aliment.typeAliment?.let { type -> DetailRow("Type", type.translateEnum()) }
+                aliment.typeAliment?.let { type -> 
+                        item { DetailRow("Type", type.translateEnum()) }
+                }
 
-                aliment.group?.let { group -> DetailRow("Groupe", group.translateEnum()) }
+                aliment.group?.let { group -> 
+                        item { DetailRow("Groupe", group.translateEnum()) }
+                }
 
                 // Espèces ciblées (hors ALL)
                 val species =
@@ -1008,7 +1023,7 @@ private fun AlimentDetailsContent(aliment: AlimentEv, modifier: Modifier = Modif
                                 it.translateEnum()
                         }
                 if (species.isNotEmpty()) {
-                        DetailRow("Espèces", species.joinToString(", "))
+                        item { DetailRow("Espèces", species.joinToString(", ")) }
                 }
 
                 // Indications principales (hors ALL/AUTRE)
@@ -1017,22 +1032,24 @@ private fun AlimentDetailsContent(aliment: AlimentEv, modifier: Modifier = Modif
                                 .filter { it != AlimIndic.ALL && it != AlimIndic.AUTRE }
                                 .map { it.translateEnum() }
                 if (indications.isNotEmpty()) {
-                        DetailRow("Indications", indications.joinToString(", "))
+                        item { DetailRow("Indications", indications.joinToString(", ")) }
                 }
 
                 if (!aliment.ingredients.isNullOrEmpty()) {
-                        DetailRow("Ingrédients", aliment.ingredients!!)
+                        item { DetailRow("Ingrédients", aliment.ingredients!!) }
                 }
 
-                Divider()
+                item { Divider() }
 
                 // Informations nutritionnelles principales (si disponibles)
                 if (aliment.valMap.isNotEmpty()) {
-                        Text(
-                                text = "Composition nutritionnelle (pour 100g)",
-                                style = MaterialTheme.typography.subtitle1,
-                                fontWeight = FontWeight.Bold
-                        )
+                        item {
+                                Text(
+                                        text = "Composition nutritionnelle (pour 100g)",
+                                        style = MaterialTheme.typography.subtitle1,
+                                        fontWeight = FontWeight.Bold
+                                )
+                        }
 
                         // Afficher quelques nutriments clés
                         val nutrientsToShow =
@@ -1050,13 +1067,25 @@ private fun AlimentDetailsContent(aliment: AlimentEv, modifier: Modifier = Modif
                                 if (nutrient != null) {
                                         val value = aliment.valMap[nutrient]
                                         if (value != null) {
-                                                DetailRow(
-                                                        nutrient.label,
-                                                        "${TextUtils.formatDecimal(value.value.toDouble(), 1)} ${value.unit ?: ""}"
-                                                )
+                                                item {
+                                                        DetailRow(
+                                                                nutrient.label,
+                                                                "${TextUtils.formatDecimal(value.value.toDouble(), 1)} ${value.unit ?: ""}"
+                                                        )
+                                                }
                                         }
                                 }
                         }
+                }
+
+                // Graphique en secteurs des nutriments
+                item {
+                        NutrientPieChart(
+                            aliment = aliment,
+                            referenceEv = referenceEv,
+                            equationRepository = equationRepository,
+                            modifier = Modifier.fillMaxWidth()
+                        )
                 }
         }
 }

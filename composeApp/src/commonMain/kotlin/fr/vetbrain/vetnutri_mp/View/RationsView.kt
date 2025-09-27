@@ -326,6 +326,7 @@ fun RationsView(
                                 showAddAlimentView = false
                                 rationForAddAliment = null
                         },
+                        equationRepository = equationRepository,
                         onAddAliment = { aliment, quantite ->
                                 // Ajout asynchrone pour garantir la version complète de l'aliment
                                 coroutineScope.launch {

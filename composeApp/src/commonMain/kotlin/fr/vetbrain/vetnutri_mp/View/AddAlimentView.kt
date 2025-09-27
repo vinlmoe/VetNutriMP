@@ -31,6 +31,7 @@ import fr.vetbrain.vetnutri_mp.View.components.FoodSearchComponent
 import fr.vetbrain.vetnutri_mp.View.components.FoodSearchConfig
 import fr.vetbrain.vetnutri_mp.View.components.FoodSearchFilters
 import fr.vetbrain.vetnutri_mp.View.components.FoodSearchLayout
+import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 
 /**
  * Vue complète pour ajouter un aliment à une ration
@@ -46,13 +47,15 @@ fun AddAlimentView(
         ration: Ration,
         onNavigateBack: () -> Unit,
         onAddAliment: (AlimentEv, Double) -> Unit,
+        equationRepository: EquationRepository? = null,
         modifier: Modifier = Modifier
 ) {
         // États pour les filtres - maintenant gérés par FoodSearchComponent
         var filters by remember { mutableStateOf(FoodSearchFilters()) }
 
-        // État pour l'aliment sélectionné
+        // État pour l'aliment sélectionné (version complète avec données nutritionnelles)
         var selectedFood by remember { mutableStateOf<AlimentEv?>(null) }
+        var isLoadingCompleteFood by remember { mutableStateOf(false) }
         
         // État pour le message de confirmation
         var showConfirmation by remember { mutableStateOf(false) }
@@ -74,17 +77,27 @@ fun AddAlimentView(
         // Observer la liste des aliments depuis le ViewModel
         val availableFoods by viewModel.availableFoods.collectAsState()
         val isLoadingFoods by viewModel.isLoadingFoods.collectAsState()
+        val referenceUtilisee by viewModel.referenceUtilisee.collectAsState()
 
         // Configuration pour FoodSearchComponent
-        val searchConfig = remember(isLoadingFoods, selectedFood) {
+        val searchConfig = remember(isLoadingFoods, selectedFood, isLoadingCompleteFood, referenceUtilisee, equationRepository) {
                 FoodSearchConfig(
                         layout = FoodSearchLayout.HORIZONTAL,
                         showFilters = true,
                         showSearchBar = true,
                         showResultsCount = true,
-                        onFoodSelected = { aliment -> selectedFood = aliment },
-                        isLoading = isLoadingFoods,
-                        selectedFood = selectedFood
+                        onFoodSelected = { aliment -> 
+                            // Charger l'aliment complet avec ses données nutritionnelles
+                            isLoadingCompleteFood = true
+                            viewModel.loadCompleteFood(aliment.uuid) { alimentComplet ->
+                                selectedFood = alimentComplet
+                                isLoadingCompleteFood = false
+                            }
+                        },
+                        isLoading = isLoadingFoods || isLoadingCompleteFood,
+                        selectedFood = selectedFood,
+                        referenceEv = referenceUtilisee,
+                        equationRepository = equationRepository
                 )
                 }
 
