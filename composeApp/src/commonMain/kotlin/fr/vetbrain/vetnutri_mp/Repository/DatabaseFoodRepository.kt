@@ -217,14 +217,11 @@ class DatabaseFoodRepository(
 
     init {
         // Initialiser le flow au démarrage
-        println("DEBUG: Initialisation du repository")
         coroutineScope.launch {
             try {
                 val initialFoods = getAllFoodsFresh()
                 _foodsFlow.value = initialFoods
-                println("DEBUG: Repository initialisé avec ${initialFoods.size} aliments")
             } catch (e: Exception) {
-                println("DEBUG: Erreur lors de l'initialisation du repository: ${e.message}")
                 _foodsFlow.value = emptyList()
             }
         }
@@ -233,13 +230,9 @@ class DatabaseFoodRepository(
     /** Met à jour le Flow avec la liste actuelle des aliments */
     private suspend fun refreshFoodsFlow() {
         try {
-            println("DEBUG: refreshFoodsFlow() appelé")
             val foods = getAllFoodsFresh()
-            println("DEBUG: refreshFoodsFlow() - ${foods.size} aliments récupérés")
             _foodsFlow.value = foods
-            println("DEBUG: refreshFoodsFlow() - Flow mis à jour")
         } catch (e: Exception) {
-            println("DEBUG: Erreur dans refreshFoodsFlow(): ${e.message}")
             e.printStackTrace()
         }
     }
@@ -405,7 +398,6 @@ class DatabaseFoodRepository(
      * @return Un Flow émettant la liste des aliments à chaque modification
      */
     override fun observeAllFoods(): Flow<List<AlimentEv>> {
-        println("DEBUG: observeAllFoods() appelé - Flow créé")
         return _foodsFlow.asStateFlow()
     }
 
@@ -993,7 +985,6 @@ class DatabaseFoodRepository(
                 // Convertir en FoodEntity et insérer
                 val foodEntity = food.toFoodEntity().copy(RefRation = null)
                 foodDao.insertFood(foodEntity)
-                println("DEBUG: Aliment inséré en base: ${foodEntity.nameDef}")
 
                 // Ajout d'un espèce par défaut "AUTRE" si la liste est vide pour éviter l'erreur de
                 // clé étrangère
@@ -1019,33 +1010,26 @@ class DatabaseFoodRepository(
                     nutrientValueDao.insertNutrientValues(nutrientValues)
                 }
             } catch (e: Exception) {
-                println("DEBUG: Erreur dans insertFood(): ${e.message}")
                 e.printStackTrace()
                 throw e
             }
         }
 
         // Mettre à jour le Flow pour notifier les observateurs (dans le contexte Main)
-        println("DEBUG: isBatchMode = $isBatchMode")
         if (!isBatchMode) {
-            println("DEBUG: Lancement de refreshFoodsFlow()")
             coroutineScope.launch {
                 try {
                     refreshFoodsFlow()
                 } catch (e: Exception) {
-                    println("DEBUG: Erreur lors de refreshFoodsFlow(): ${e.message}")
                     // Fallback: essayer de mettre à jour le Flow directement
                     try {
                         val foods = getAllFoodsFresh()
                         _foodsFlow.value = foods
-                        println("DEBUG: Mise à jour directe du Flow réussie")
                     } catch (e2: Exception) {
-                        println("DEBUG: Échec de la mise à jour directe: ${e2.message}")
+                        // Ignore
                     }
                 }
             }
-        } else {
-            println("DEBUG: Mode batch activé, pas de refresh automatique")
         }
     }
 
