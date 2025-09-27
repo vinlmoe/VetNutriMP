@@ -129,7 +129,6 @@ fun FoodListView(
                                 filters = filters,
                                 onFiltersChange = { newFilters ->
                                         // Mettre à jour le ViewModel avec les nouveaux filtres
-                                        println("DEBUG FoodListView - onFiltersChange appelé avec dataB: ${newFilters.dataB}")
                                         viewModel.setSearchQuery(newFilters.searchQuery)
                                         viewModel.setSelectedFoodType(newFilters.selectedFoodType)
                                         // Pas de setSelectedFoodGroup car on ne filtre plus par groupe
@@ -138,7 +137,6 @@ fun FoodListView(
                                                 viewModel.setSelectedIndication(indication)
                                         } ?: viewModel.setSelectedIndication(null)
                                         viewModel.setSelectedDataB(newFilters.dataB)
-                                        println("DEBUG FoodListView - Mise à jour ViewModel terminée")
                                 },
                                 config = searchConfig,
                                         modifier = Modifier.fillMaxWidth()

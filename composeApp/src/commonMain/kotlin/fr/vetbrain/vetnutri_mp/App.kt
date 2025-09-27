@@ -154,22 +154,17 @@ fun App(appDatabase: AppDatabase) {
 
     // Initialisation des services au démarrage
     LaunchedEffect(Unit) {
-        println("DEBUG: Début de l'initialisation des services")
         startupService.initialize()
-        println("DEBUG: startupService.initialize() terminé")
         
         // Attendre que les services soient initialisés
         delay(2000) // Augmenté à 2 secondes
-        println("DEBUG: Délai d'attente terminé")
         
         // Récupérer le service de sauvegarde après initialisation
         val service = startupService.getBackupService()
         backupService = service
-        println("DEBUG: backupService initialisé: ${service != null}")
         
         // Vérifier s'il y a des sauvegardes disponibles au démarrage
         val availableBackups = startupService.getAvailableBackups()
-        println("DEBUG: Sauvegardes disponibles: ${availableBackups.size}")
         // Ne plus afficher automatiquement le dialog de restauration
     }
 
@@ -664,7 +659,6 @@ fun App(appDatabase: AppDatabase) {
                                             currentScreen = Screen.SpeciesPreferences
                                         },
                                         onBackupClick = {
-                                            println("DEBUG: Bouton backup cliqué, backupRestoreViewModel: ${backupRestoreViewModel != null}")
                                             currentScreen = Screen.BackupRestore
                                         }
                                 )
