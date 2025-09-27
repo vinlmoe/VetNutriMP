@@ -252,6 +252,7 @@ fun FoodSearchComponent(
         }
 }
 
+
 /** Layout vertical simple (comme FoodListView) */
 @Composable
 private fun VerticalLayout(
@@ -305,6 +306,7 @@ private fun VerticalLayout(
         }
 }
 
+
 /** Layout horizontal à deux colonnes (comme AddAlimentView) */
 @Composable
 private fun HorizontalLayout(
@@ -353,6 +355,7 @@ private fun HorizontalLayout(
         }
 }
 
+
 /** Layout compact pour les petits espaces */
 @Composable
 private fun CompactLayout(
@@ -400,6 +403,7 @@ private fun CompactLayout(
                 )
         }
 }
+
 
 /** Barre de recherche */
 @Composable
@@ -558,6 +562,7 @@ private fun FiltersSection(
         }
 }
 
+
 /** Carte des filtres (pour le layout horizontal) */
 @Composable
 private fun FiltersCard(
@@ -610,6 +615,7 @@ private fun FiltersCard(
                 }
         }
 }
+
 
 /** Filtres compacts (pour le layout compact) */
 @Composable
@@ -714,6 +720,7 @@ private fun CompactFilters(
         }
 }
 
+
 /** Compteur de résultats */
 @Composable
 private fun ResultsCount(totalCount: Int, filteredCount: Int, modifier: Modifier = Modifier) {
@@ -755,6 +762,7 @@ private fun FoodSearchResults(
                 }
         }
 }
+
 
 /** Élément de liste d'aliment */
 @Composable
@@ -945,6 +953,7 @@ private fun FoodListItem(
         }
 }
 
+
 /** Panneau de détails (pour le layout horizontal) */
 @Composable
 private fun FoodDetailsPanel(
@@ -974,6 +983,7 @@ private fun FoodDetailsPanel(
                 }
         }
 }
+
 
 /** Contenu des détails de l'aliment */
 @Composable
@@ -1051,31 +1061,6 @@ private fun AlimentDetailsContent(aliment: AlimentEv, referenceEv: ReferenceEv? 
                                 )
                         }
 
-                        // Afficher quelques nutriments clés
-                        val nutrientsToShow =
-                                listOf(
-                                        "PROTEINE",
-                                        "LIPIDE",
-                                        "ENA",
-                                        "CELLULOSE",
-                                        "CENDRE",
-                                        "HUMIDITE"
-                                )
-                        nutrientsToShow.forEach { nutrientLabel ->
-                                val nutrient =
-                                        aliment.valMap.keys.find { it.label == nutrientLabel }
-                                if (nutrient != null) {
-                                        val value = aliment.valMap[nutrient]
-                                        if (value != null) {
-                                                item {
-                                                        DetailRow(
-                                                                nutrient.label,
-                                                                "${TextUtils.formatDecimal(value.value.toDouble(), 1)} ${value.unit ?: ""}"
-                                                        )
-                                                }
-                                        }
-                                }
-                        }
                 }
 
                 // Graphique en secteurs des nutriments
@@ -1107,3 +1092,5 @@ private fun DetailRow(label: String, value: String) {
                 )
         }
 }
+
+
