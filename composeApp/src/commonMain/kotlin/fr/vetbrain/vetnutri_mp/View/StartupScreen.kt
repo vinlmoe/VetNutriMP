@@ -101,34 +101,29 @@ fun StartupScreen(
                         // Charger les informations de version JSON
                         currentJsonVersion = databaseVersionManager.getStoredJsonVersion()
 
-                        // Lire et vérifier la version du JSON intégré
+                        // Lire et vérifier la version du JSON intégré de manière optimisée
                         try {
-                                val embeddedJson =
+                                val resourceReader = fr.vetbrain.vetnutri_mp.Localization.ResourceReader()
+                                
+                                // Essayer de lire seulement la version d'abord (plus efficace)
+                                val embeddedJsonVersion = try {
+                                        resourceReader.readJsonVersion("vetnutri_export_init.json")
+                                } catch (e: Exception) {
                                         try {
-                                                fr.vetbrain.vetnutri_mp.Localization
-                                                        .ResourceReader()
-                                                        .readResource("vetnutri_export_init.json")
-                                        } catch (e: Exception) {
-                                                fr.vetbrain.vetnutri_mp.Localization
-                                                        .ResourceReader()
-                                                        .readResource(
-                                                                "data/vetnutri_export_init.json"
-                                                        )
+                                                resourceReader.readJsonVersion("data/vetnutri_export_init.json")
+                                        } catch (e2: Exception) {
+                                                null
                                         }
-
-                                if (embeddedJson.isNotEmpty()) {
-                                        databaseVersionManager.readEmbeddedJsonVersion(embeddedJson)
-                                        embeddedJsonVersion =
-                                                databaseVersionManager.jsonVersion.value
-
+                                }
+                                
+                                if (embeddedJsonVersion != null) {
                                         // Vérifier si une mise à jour JSON est nécessaire
-                                        jsonUpdateAvailable =
-                                                databaseVersionManager.isJsonUpdateNeeded(
-                                                        embeddedJson
-                                                )
-
-                                        // Afficher automatiquement le dialogue de mise à jour si
-                                        // nécessaire
+                                        // (comparaison simple de version sans charger tout le JSON)
+                                        val currentStoredVersion = databaseVersionManager.getStoredJsonVersion()
+                                        jsonUpdateAvailable = currentStoredVersion == null || 
+                                                databaseVersionManager.compareVersions(embeddedJsonVersion, currentStoredVersion) > 0
+                                        
+                                        // Afficher automatiquement le dialogue de mise à jour si nécessaire
                                         // (seulement si aucune autre mise à jour n'est en cours)
                                         if (jsonUpdateAvailable && !isUpdatingDatabase) {
                                                 showJsonUpdateDialog = true
