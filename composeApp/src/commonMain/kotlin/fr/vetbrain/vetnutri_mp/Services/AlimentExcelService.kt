@@ -83,13 +83,47 @@ class AlimentExcelService {
             "UUID Ration"
         )
 
-        // Ajouter les colonnes de nutriments
+        // Ajouter les colonnes de nutriments avec unité dans l'en-tête
         AlimentExcelRow.ALL_NUTRIENTS.forEach { nutrient ->
-            headers.add("$nutrient (valeur)")
-            headers.add("$nutrient (unité)")
+            // Trouver le nutriment correspondant pour obtenir son unité
+            val nutrientEnum = findNutrientByLabel(nutrient)
+            val unitName = nutrientEnum?.ue?.displayName ?: ""
+            headers.add("$nutrient ($unitName)")
         }
 
         return headers
+    }
+
+    /**
+     * Trouve un nutriment par son label dans tous les enums
+     */
+    private fun findNutrientByLabel(label: String): Nutrient? {
+        // Chercher dans NutrientMain
+        NutrientMain.values().forEach { nutrient ->
+            if (nutrient.label == label) return nutrient
+        }
+        
+        // Chercher dans NutrientVitam
+        NutrientVitam.values().forEach { nutrient ->
+            if (nutrient.label == label) return nutrient
+        }
+        
+        // Chercher dans NutrientMin
+        NutrientMin.values().forEach { nutrient ->
+            if (nutrient.label == label) return nutrient
+        }
+        
+        // Chercher dans NutrientLipid
+        NutrientLipid.values().forEach { nutrient ->
+            if (nutrient.label == label) return nutrient
+        }
+        
+        // Chercher dans AAEnum
+        AAEnum.values().forEach { nutrient ->
+            if (nutrient.label == label) return nutrient
+        }
+        
+        return null
     }
 
     /**
@@ -118,9 +152,8 @@ class AlimentExcelService {
 
         // Ajouter les valeurs des nutriments
         AlimentExcelRow.ALL_NUTRIENTS.forEach { nutrient ->
-            val nutrientData = row.nutriments[nutrient]
-            values.add(nutrientData?.first?.toString() ?: "")
-            values.add(escapeCsvValue(nutrientData?.second ?: ""))
+            val valeur = row.nutriments[nutrient]
+            values.add(valeur?.toString() ?: "")
         }
 
         return values.joinToString(";")
@@ -167,13 +200,11 @@ class AlimentExcelService {
         val rationUUID = values[currentIndex++].takeIf { it.isNotBlank() }
 
         // Nutriments
-        val nutrimentsMap = mutableMapOf<String, Pair<Double?, String?>>()
+        val nutrimentsMap = mutableMapOf<String, Double?>()
         AlimentExcelRow.ALL_NUTRIENTS.forEach { nutrient ->
             val valeur = values[currentIndex++].toDoubleOrNull()
-            val unite = values[currentIndex++].takeIf { it.isNotBlank() }
-
             if (valeur != null) {
-                nutrimentsMap[nutrient] = Pair(valeur, unite)
+                nutrimentsMap[nutrient] = valeur
             }
         }
 

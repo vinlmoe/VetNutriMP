@@ -40,8 +40,8 @@ data class AlimentExcelRow(
         val rationUUID: String? = null,
 
         // Nutriments - colonnes dynamiques pour chaque nutriment
-        // Le format sera : Map<nutrientLabel, Pair<valeur, unite>>
-        val nutriments: Map<String, Pair<Double?, String?>> = emptyMap()
+        // Le format sera : Map<nutrientLabel, valeur>
+        val nutriments: Map<String, Double?> = emptyMap()
 ) {
 
     companion object {
@@ -139,11 +139,11 @@ data class AlimentExcelRow(
 
         /** Convertit un AlimentEv en AlimentExcelRow */
         fun fromAlimentEv(alimentEv: AlimentEv): AlimentExcelRow {
-            val nutrimentsMap = mutableMapOf<String, Pair<Double?, String?>>()
+            val nutrimentsMap = mutableMapOf<String, Double?>()
 
             // Ajouter tous les nutriments
             alimentEv.valMap.forEach { (nutrient, quantity) ->
-                nutrimentsMap[nutrient.label] = Pair(quantity.value, quantity.unit)
+                nutrimentsMap[nutrient.label] = quantity.value
             }
 
             return AlimentExcelRow(
@@ -162,7 +162,7 @@ data class AlimentExcelRow(
                     deprecated = alimentEv.deprecated,
                     dataB = alimentEv.dataB,
                     especes = alimentEv.especes.joinToString(", "),
-                    indications = alimentEv.indicat.joinToString(", ") { it.label },
+                    indications = alimentEv.indicat.joinToString(", ") { it.nameToString() },
                     rationUUID = alimentEv.rationUUID,
                     nutriments = nutrimentsMap
             )
@@ -200,14 +200,11 @@ data class AlimentExcelRow(
                     )
                     .apply {
                         // Ajouter les nutriments
-                        row.nutriments.forEach { (nutrientLabel, pair) ->
-                            val (valeur, unite) = pair
+                        row.nutriments.forEach { (nutrientLabel, valeur) ->
                             if (valeur != null) {
                                 // Trouver le nutriment correspondant
                                 getNutrientFromLabel(nutrientLabel)?.let { nutrient ->
                                     setNutrient(nutrient, valeur)
-                                    // Note: L'unité pourrait être utilisée pour validation si
-                                    // nécessaire
                                 }
                             }
                         }
