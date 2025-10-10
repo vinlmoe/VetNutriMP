@@ -22,7 +22,10 @@ class MathParser {
      */
     fun evaluer(expr: String, vars: Map<String, Double> = emptyMap()): Double {
         this.expression = expr.replace(" ", "") // Supprimer les espaces
-        this.variables = vars
+        // Remplacer les valeurs null par 0 pour éviter les erreurs dans les calculs
+        this.variables = vars.mapValues { (_, value) -> 
+            if (value.isNaN() || value.isInfinite()) 0.0 else value 
+        }
         this.position = 0
 
         if (expression.isEmpty()) {
@@ -256,8 +259,8 @@ class MathParser {
             return parseFunction(name)
         }
 
-        // C'est une variable
-        return variables[name] ?: throw MathParserException("Variable non définie: '$name'")
+        // C'est une variable - retourner 0.0 si la variable n'est pas définie (au lieu de lever une exception)
+        return variables[name] ?: 0.0
     }
 
     private fun parseFunction(functionName: String): Double {

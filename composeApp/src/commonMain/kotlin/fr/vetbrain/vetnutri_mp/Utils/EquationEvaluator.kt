@@ -99,27 +99,28 @@ object EquationEvaluator {
         }
 
         // Nutriments de la ration (tous nutriments utiles pour ratios)
+        // Remplacer les valeurs null par 0 pour éviter les erreurs dans les calculs
         NutrientMain.entries.forEach { nutrient ->
             val v = ration.getNutrient(nutrient)?.toDouble() ?: 0.0
-            variables[nutrient.label] = v
+            variables[nutrient.label] = if (v.isNaN() || v.isInfinite()) 0.0 else v
             // Log léger pour diagnostiquer en cas de pb d'équations
             // 
         }
         NutrientLipid.entries.forEach { nutrient ->
             val v = ration.getNutrient(nutrient)?.toDouble() ?: 0.0
-            variables[nutrient.label] = v
+            variables[nutrient.label] = if (v.isNaN() || v.isInfinite()) 0.0 else v
         }
         NutrientVitam.entries.forEach { nutrient ->
             val v = ration.getNutrient(nutrient)?.toDouble() ?: 0.0
-            variables[nutrient.label] = v
+            variables[nutrient.label] = if (v.isNaN() || v.isInfinite()) 0.0 else v
         }
         NutrientMacro.entries.forEach { nutrient ->
             val v = ration.getNutrient(nutrient)?.toDouble() ?: 0.0
-            variables[nutrient.label] = v
+            variables[nutrient.label] = if (v.isNaN() || v.isInfinite()) 0.0 else v
         }
         NutrientMin.entries.forEach { nutrient ->
             val v = ration.getNutrient(nutrient)?.toDouble() ?: 0.0
-            variables[nutrient.label] = v
+            variables[nutrient.label] = if (v.isNaN() || v.isInfinite()) 0.0 else v
         }
 
         val res = ExpressionMathematique.evaluer(expression, variables)
@@ -400,17 +401,28 @@ object EquationEvaluator {
 
         // Injecter les nutriments de l'aliment comme variables (directs uniquement ici pour éviter
         // toute récursivité au sein des équations complémentaires)
+        // Remplacer les valeurs null par 0 pour éviter les erreurs dans les calculs
         aliment.aliment?.let { alim ->
-            for (n in NutrientMain.entries) variables[n.label] =
-                    alim.getNutrient(n)?.toDouble() ?: 0.0
-            for (n in NutrientLipid.entries) variables[n.label] =
-                    alim.getNutrient(n)?.toDouble() ?: 0.0
-            for (n in NutrientVitam.entries) variables[n.label] =
-                    alim.getNutrient(n)?.toDouble() ?: 0.0
-            for (n in NutrientMacro.entries) variables[n.label] =
-                    alim.getNutrient(n)?.toDouble() ?: 0.0
-            for (n in NutrientMin.entries) variables[n.label] =
-                    alim.getNutrient(n)?.toDouble() ?: 0.0
+            for (n in NutrientMain.entries) {
+                val v = alim.getNutrient(n)?.toDouble() ?: 0.0
+                variables[n.label] = if (v.isNaN() || v.isInfinite()) 0.0 else v
+            }
+            for (n in NutrientLipid.entries) {
+                val v = alim.getNutrient(n)?.toDouble() ?: 0.0
+                variables[n.label] = if (v.isNaN() || v.isInfinite()) 0.0 else v
+            }
+            for (n in NutrientVitam.entries) {
+                val v = alim.getNutrient(n)?.toDouble() ?: 0.0
+                variables[n.label] = if (v.isNaN() || v.isInfinite()) 0.0 else v
+            }
+            for (n in NutrientMacro.entries) {
+                val v = alim.getNutrient(n)?.toDouble() ?: 0.0
+                variables[n.label] = if (v.isNaN() || v.isInfinite()) 0.0 else v
+            }
+            for (n in NutrientMin.entries) {
+                val v = alim.getNutrient(n)?.toDouble() ?: 0.0
+                variables[n.label] = if (v.isNaN() || v.isInfinite()) 0.0 else v
+            }
         }
 
         val r = ExpressionMathematique.evaluer(expression, variables)
