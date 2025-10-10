@@ -19,7 +19,6 @@ import fr.vetbrain.vetnutri_mp.Enumer.NutrientMain
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.TextUtils
-import fr.vetbrain.vetnutri_mp.Utils.GraphFormattingUtils
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import kotlinx.coroutines.runBlocking
 import io.github.koalaplot.core.*
@@ -166,7 +165,7 @@ private fun NutrientLegendItem(
         
         // Valeur et pourcentage
         Text(
-            text = "${GraphFormattingUtils.formatSmartDecimal(value)}g (${GraphFormattingUtils.formatPercentage(percentage)})",
+            text = "${TextUtils.formatDecimal(value, 1)}g (${TextUtils.formatDecimal(percentage, 1)}%)",
             style = MaterialTheme.typography.body2,
             color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
         )
