@@ -106,8 +106,8 @@ android {
         applicationId = "fr.vetbrain.vetnutri_mp"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 30
-        versionName = "3.1.30"
+        versionCode = 31
+        versionName = "3.1.31"
 
         // Configuration de Room
 

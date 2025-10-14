@@ -350,6 +350,75 @@ object EquationEvaluator {
         return total
     }
 
+    /**
+     * Calcule l'énergie additionnelle issue des références maladies via des équations ENERCOMP.
+     * - Somme toutes les équations avec kind == ENERCOMP présentes dans les références maladies.
+     * - Retourne 0 si aucune équation n'est définie ou en cas d'échec d'évaluation.
+     * - Borne à ≥ 0 pour éviter d'introduire des valeurs négatives.
+     */
+    suspend fun calculerEnergieAdditionnelle(
+            referencesMaladies: List<ReferenceEv>,
+            poidsCorps: Double,
+            besoinEnergetiqueApresK: Double,
+            besoinEnergetiqueStandard: Double,
+            poidsMetabolique: Double,
+            variablesSupp: List<SupplementalvariableP> = emptyList(),
+            ration: Ration,
+            preferences: PreferencesEspece? = null,
+            equationRepository: EquationRepository? = null
+    ): Double {
+        if (referencesMaladies.isEmpty()) return 0.0
+
+        // Construire les variables communes à toutes les évaluations ENERCOMP
+        val variables: MutableMap<String, Double> = mutableMapOf()
+        variables["BW"] = poidsCorps
+        variables["BEE"] = besoinEnergetiqueStandard
+        variables["BE"] = besoinEnergetiqueApresK
+        variables["MW"] = poidsMetabolique
+        for (variable in variablesSupp) {
+            variable.variable?.let { varKind ->
+                variables[varKind.variable] = variable.varue?.toDouble() ?: 0.0
+            }
+        }
+
+        // Injecter les nutriments agrégés de la ration (avec compléments si disponibles)
+        suspend fun sommeRation(n: Nutrient): Double {
+            var s = 0.0
+            for (aliment in ration.alimentMutableList) {
+                val v =
+                        aliment.getNutrientWithComplementary(
+                                nutrient = n,
+                                preferences = preferences,
+                                equationRepository = equationRepository,
+                                referenceEv = null
+                        )?.toDouble() ?: 0.0
+                s += (v * aliment.quantite.toDouble()) / 100.0
+            }
+            return s
+        }
+        for (n in NutrientMain.entries) variables[n.label] = sommeRation(n)
+        for (n in NutrientLipid.entries) variables[n.label] = sommeRation(n)
+        for (n in NutrientVitam.entries) variables[n.label] = sommeRation(n)
+        for (n in NutrientMacro.entries) variables[n.label] = sommeRation(n)
+        for (n in NutrientMin.entries) variables[n.label] = sommeRation(n)
+
+        var total = 0.0
+        for (ref in referencesMaladies) {
+            // ENERCOMP est porté par des équations dans equationsNut avec kind == ENERCOMP
+            val eqs = ref.equationsNut.filter {
+                it.kind == fr.vetbrain.vetnutri_mp.Enumer.EquationKind.ENERCOMP && it.equationScript.isNotBlank()
+            }
+            if (eqs.isEmpty()) continue
+            for (eq in eqs) {
+                val res = ExpressionMathematique.evaluer(eq.equationScript, variables)
+                if (res != null && !res.isNaN() && !res.isInfinite()) total += res
+            }
+        }
+        if (total.isNaN() || total.isInfinite()) return 0.0
+        if (total < 0.0) return 0.0
+        return total
+    }
+
     /** Construit un jeu de variables de base pour les équations de `ReferenceEv`. */
     fun construireVariablesPourReference(
             poidsCorps: Double,

@@ -129,8 +129,8 @@ class EquationViewModel(
 
     /** Obtient le nom d'affichage d'une variable sous le format "label (displayName)" */
     private fun getVariableDisplayName(variable: String): String? {
-        // Vérifier si c'est une variable VariableKind
-        val variableKind = VariableKind.entries.find { it.label == variable }
+        // Vérifier si c'est une variable VariableKind (par label court ou identifiant long)
+        val variableKind = VariableKind.entries.find { it.label == variable || it.variable == variable }
         if (variableKind != null) {
             return "${variableKind.translateEnum()} (${variableKind.dup})"
         }
@@ -582,6 +582,9 @@ class EquationViewModel(
                         } else {
                             "Équation sauvegardée avec des variables non reconnues"
                         }
+                // Recharger immédiatement les listes utilisées par les écrans d'édition
+                loadEquations()
+                loadBiblioRefs()
             } catch (e: Exception) {
                 _operationMessage.value = "Erreur lors de la sauvegarde: ${e.message}"
                 _saveSuccessful.value = false
@@ -639,8 +642,8 @@ class EquationViewModel(
             // Vérifier que toutes les variables sont reconnues
             val unrecognizedVariables =
                     variablesInExpression.filter { variable ->
-                        // Vérifier si la variable est reconnue dans VariableKind
-                        VariableKind.values().none { it.label == variable } &&
+                        // Vérifier si la variable est reconnue dans VariableKind (label court ou identifiant long)
+                        VariableKind.values().none { it.label == variable || it.variable == variable } &&
                                 // Vérifier si c'est une variable de nutriment
                                 !isNutrientVariable(variable)
                     }

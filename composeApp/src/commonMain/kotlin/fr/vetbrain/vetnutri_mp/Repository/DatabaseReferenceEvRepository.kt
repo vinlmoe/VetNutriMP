@@ -462,6 +462,23 @@ class DatabaseReferenceEvRepository(
             )
         }
 
+        // Si la référence est une maladie, l'énergie complémentaire est portée par une unique équation ENERCOMP
+        // On sérialise ce lien via le type d'équation "ENERCOMP" (unique)
+        if (referenceEv.maladie) {
+            val enercomp = referenceEv.equationsNut.firstOrNull {
+                it.kind == fr.vetbrain.vetnutri_mp.Enumer.EquationKind.ENERCOMP
+            }
+            if (enercomp != null) {
+                relations.add(
+                        ReferenceEvEquationEntity(
+                                referenceEvId = referenceEv.uuid,
+                                equationId = enercomp.uuid,
+                                equationType = "ENERCOMP"
+                        )
+                )
+            }
+        }
+
         // Équations nutritionnelles additionnelles (complémentaires, etc.)
         // Nous utilisons equationType = uuid de l'équation pour permettre plusieurs lignes
         if (referenceEv.equationsNut.isNotEmpty()) {

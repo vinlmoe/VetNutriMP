@@ -32,6 +32,7 @@ fun SectionValeursMetaboliques(
         besoinEnergetiqueTotal: Double?,
         kObserve: Double,
         kCalcule: Double,
+        besoinComplementaire: Double = 0.0,
         onExpand: () -> Unit,
         modifier: Modifier = Modifier
 ) {
@@ -101,6 +102,21 @@ fun SectionValeursMetaboliques(
                                     "${TextUtils.formatDecimal(it, 0)} kcal/j"
                                 }
                                         ?: "Non calculé"
+                )
+
+                // Besoin complémentaire et BE final
+                if (besoinComplementaire > 0.0) {
+                    LigneInfoLocaleCompacte(
+                            label = "Besoin complémentaire",
+                            value = "${TextUtils.formatDecimal(besoinComplementaire, 0)} kcal/j"
+                    )
+                }
+                LigneInfoLocaleCompacte(
+                        label = "BE final",
+                        value =
+                                besoinEnergetiqueTotal?.let {
+                                    "${TextUtils.formatDecimal(it, 0)} kcal/j"
+                                } ?: "Non calculé"
                 )
             }
         }
@@ -386,6 +402,8 @@ fun SectionBilanEnergetique(
         pourcentageCouverture: Double,
         kObserve: Double,
         kCalcule: Double,
+        energieAdditionnelle: Double? = null,
+        beFinal: Double? = null,
         modifier: Modifier = Modifier
 ) {
     BoxWithConstraints(modifier = modifier) {
@@ -479,6 +497,22 @@ fun SectionBilanEnergetique(
                                 color = VetNutriColors.Primary
                         )
                     }
+
+                    // Besoin complémentaire
+                    if ((energieAdditionnelle ?: 0.0) > 0.0) {
+                        LigneInfoLocaleCompacte(
+                                label = "Besoin complémentaire",
+                                value = "${TextUtils.formatDecimal(energieAdditionnelle ?: 0.0, 0)} kcal/j"
+                        )
+                    }
+
+                    // BE final
+                    beFinal?.let { be ->
+                        LigneInfoLocaleCompacte(
+                                label = "BE final",
+                                value = "${TextUtils.formatDecimal(be, 0)} kcal/j"
+                        )
+                    }
                 }
             } else {
                 // Mode large : structure originale
@@ -546,6 +580,22 @@ fun SectionBilanEnergetique(
                                 style = MaterialTheme.typography.caption,
                                 fontWeight = FontWeight.Medium,
                                 color = VetNutriColors.Primary
+                        )
+                    }
+
+                    // Besoin complémentaire
+                    if ((energieAdditionnelle ?: 0.0) > 0.0) {
+                        LigneInfoLocaleCompacte(
+                                label = "Besoin complémentaire",
+                                value = "${TextUtils.formatDecimal(energieAdditionnelle ?: 0.0, 0)} kcal/j"
+                        )
+                    }
+
+                    // BE final
+                    beFinal?.let { be ->
+                        LigneInfoLocaleCompacte(
+                                label = "BE final",
+                                value = "${TextUtils.formatDecimal(be, 0)} kcal/j"
                         )
                     }
                 }
