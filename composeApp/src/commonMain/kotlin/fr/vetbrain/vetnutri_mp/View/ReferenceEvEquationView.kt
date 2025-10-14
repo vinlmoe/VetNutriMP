@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import fr.vetbrain.vetnutri_mp.Components.ConfirmDialog
 import fr.vetbrain.vetnutri_mp.Components.TopBarWithActions
@@ -357,15 +358,28 @@ fun ReferenceEvEquationView(
                                                                                         AppSizes.paddingMedium
                                                                                 )
                                                         ) {
-                                                                Text(
-                                                                        text =
-                                                                                "Équations nutritionnelles associées",
-                                                                        style =
-                                                                                MaterialTheme
-                                                                                        .typography
-                                                                                        .subtitle1,
-                                                                        fontWeight = FontWeight.Bold
-                                                                )
+                                                                Row(
+                                                                        modifier = Modifier.fillMaxWidth(),
+                                                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                                                        verticalAlignment = Alignment.CenterVertically
+                                                                ) {
+                                                                        Text(
+                                                                                text =
+                                                                                        "Équations nutritionnelles associées",
+                                                                                style =
+                                                                                        MaterialTheme
+                                                                                                .typography
+                                                                                                .subtitle1,
+                                                                                fontWeight = FontWeight.Bold
+                                                                        )
+                                                                        if (currentReferenceEv.maladie) {
+                                                                                Text(
+                                                                                        text = "(Associez une équation ENERCOMP pour la référence complémentaire)",
+                                                                                        style = MaterialTheme.typography.caption,
+                                                                                        color = VetNutriColors.Primary
+                                                                                )
+                                                                        }
+                                                                }
 
                                                                 Spacer(
                                                                         modifier =
@@ -394,8 +408,12 @@ fun ReferenceEvEquationView(
                                                                         // équations associées
                                                                         currentReferenceEv
                                                                                 .equationsNut
-                                                                                .forEach { equation
-                                                                                        ->
+                                                                                .forEach { equation ->
+                                                                                        val isEnercomp =
+                                                                                                equation.kind ==
+                                                                                                        fr.vetbrain.vetnutri_mp.Enumer
+                                                                                                                .EquationKind
+                                                                                                                .ENERCOMP
                                                                                         Row(
                                                                                                 modifier =
                                                                                                         Modifier.fillMaxWidth(),
@@ -406,35 +424,35 @@ fun ReferenceEvEquationView(
                                                                                                         Alignment
                                                                                                                 .CenterVertically
                                                                                         ) {
-                                                                                                Text(
-                                                                                                        text =
-                                                                                                                equation.name,
-                                                                                                        style =
-                                                                                                                MaterialTheme
-                                                                                                                        .typography
-                                                                                                                        .body1
-                                                                                                )
+                                                                                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                                                                                        Text(
+                                                                                                                text = equation.name,
+                                                                                                                style = MaterialTheme.typography.body1
+                                                                                                        )
+                                                                                                        if (isEnercomp) {
+                                                                                                                Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
+                                                                                                                Text(
+                                                                                                                        text = "ENERCOMP",
+                                                                                                                        style = MaterialTheme.typography.caption,
+                                                                                                                        color = VetNutriColors.Secondary
+                                                                                                                )
+                                                                                                        }
+                                                                                                }
                                                                                                 IconButton(
                                                                                                         onClick = {
-                                                                                                                viewModel
-                                                                                                                        .toggleNutritionEquation(
-                                                                                                                                equation
-                                                                                                                        )
+                                                                                                                viewModel.toggleNutritionEquation(equation)
                                                                                                         }
                                                                                                 ) {
                                                                                                         Icon(
-                                                                                                                Icons.Default
-                                                                                                                        .Delete,
-                                                                                                                contentDescription =
-                                                                                                                        "Retirer"
+                                                                                                                Icons.Default.Delete,
+                                                                                                                contentDescription = "Retirer"
                                                                                                         )
                                                                                                 }
                                                                                         }
                                                                                         Divider(
                                                                                                 modifier =
                                                                                                         Modifier.padding(
-                                                                                                                vertical =
-                                                                                                                        AppSizes.paddingSmall
+                                                                                                                vertical = AppSizes.paddingSmall
                                                                                                         )
                                                                                         )
                                                                                 }
@@ -556,6 +574,11 @@ fun ReferenceEvEquationView(
 
                                                 // Liste des équations disponibles
                                                 items(combinedEquations) { equation ->
+                                                        val isEnercomp =
+                                                                equation.kind ==
+                                                                        fr.vetbrain.vetnutri_mp.Enumer
+                                                                                .EquationKind
+                                                                                .ENERCOMP
                                                         EquationItem(
                                                                 equation = equation,
                                                                 onEdit = {
@@ -593,6 +616,13 @@ fun ReferenceEvEquationView(
                                                                                         equation.uuid
                                                                         }
                                                         )
+                                                        if (isEnercomp && !currentReferenceEv.maladie) {
+                                                                Text(
+                                                                        text = "(ENERCOMP n'a d'effet que si la référence est une maladie)",
+                                                                        style = MaterialTheme.typography.caption,
+                                                                        color = Color.Gray
+                                                                )
+                                                        }
                                                 }
                                         }
                                 }

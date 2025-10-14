@@ -95,7 +95,7 @@ fun ConsultationFullScreenEditView(
                         }
                 }
 
-        // Filtrer les références de maladies par espèce
+        // Filtrer les références complémentaires par espèce
         val referencesMaladies =
                 remember(availableReferences, animalEspece) {
                         if (animalEspece != null) {
@@ -120,8 +120,15 @@ fun ConsultationFullScreenEditView(
 
         // Fonction pour sauvegarder et retourner
         val saveAndGoBack = {
-                // Extraire les variables requises
-                val variablesRequises = extraireVariablesRequises(referenceGeneraleSelectionnee)
+                // Extraire les variables requises (inclure ENERCOMP des maladies sélectionnées)
+                val selectedDiseaseRefs = referencesMaladies.filter { maladieRef ->
+                        editedConsultation.referencesMaladies.contains(maladieRef.uuid)
+                }
+                val variablesRequises =
+                        extraireVariablesRequises(
+                                reference = referenceGeneraleSelectionnee,
+                                referencesMaladies = selectedDiseaseRefs
+                        )
 
                 // Vérifier les variables supplémentaires manquantes
                 val variablesManquantes =
@@ -726,14 +733,16 @@ fun ConsultationFullScreenEditView(
                         }
 
                         // Section Variables Supplémentaires
-                        val variablesRequises =
-                                remember(referenceGeneraleSelectionnee) {
-                                        val variables =
-                                                extraireVariablesRequises(
-                                                        referenceGeneraleSelectionnee
-                                                )
-                                        variables
-                                }
+        val variablesRequises =
+                remember(referenceGeneraleSelectionnee, editedConsultation.referencesMaladies, referencesMaladies) {
+                        val selectedDiseaseRefs = referencesMaladies.filter { maladieRef ->
+                                editedConsultation.referencesMaladies.contains(maladieRef.uuid)
+                        }
+                        extraireVariablesRequises(
+                                reference = referenceGeneraleSelectionnee,
+                                referencesMaladies = selectedDiseaseRefs
+                        )
+                }
 
                         // Debug des équations disponibles
                         LaunchedEffect(referenceGeneraleSelectionnee) {
@@ -1482,7 +1491,7 @@ private fun ReferenceMaladieDialog(
         onReferenceSelected: (List<String>) -> Unit,
         onReferenceRemoved: (List<String>) -> Unit
 ) {
-        // Les références arrivent déjà filtrées par espèce et maladie
+        // Les références arrivent déjà filtrées par espèce et type complémentaire
         var searchText by remember { mutableStateOf("") }
 
         // Filtrer les références selon le texte de recherche
@@ -1503,14 +1512,14 @@ private fun ReferenceMaladieDialog(
 
         AlertDialog(
                 onDismissRequest = { onReferenceSelected(references) },
-                title = { Text("Gérer les références de maladies") },
+                title = { Text("Gérer les références complémentaires") },
                 text = {
                         Column(modifier = Modifier.width(500.dp).height(400.dp)) {
                                 // Barre de recherche
                                 OutlinedTextField(
                                         value = searchText,
                                         onValueChange = { searchText = it },
-                                        label = { Text("Rechercher une référence de maladie") },
+                                        label = { Text("Rechercher une référence complémentaire") },
                                         leadingIcon = {
                                                 Icon(
                                                         AppIcons.Search,
@@ -1618,7 +1627,8 @@ private fun ReferenceMaladieDialog(
 
 /** Fonction pour extraire les variables requises par les équations d'une référence */
 private fun extraireVariablesRequises(
-        reference: fr.vetbrain.vetnutri_mp.Data.ReferenceEv?
+        reference: fr.vetbrain.vetnutri_mp.Data.ReferenceEv?,
+        referencesMaladies: List<fr.vetbrain.vetnutri_mp.Data.ReferenceEv> = emptyList()
 ): List<fr.vetbrain.vetnutri_mp.Enumer.VariableKind> {
         if (reference == null) return emptyList()
 
@@ -1676,7 +1686,7 @@ private fun extraireVariablesRequises(
                 }
         }
 
-        // Extraire les variables des équations nutritionnelles
+        // Extraire les variables des équations nutritionnelles (référence générale)
         reference.equationsNut.forEach { equation ->
                 if (equation.equationScript.isNotBlank()) {
                         val variables =
@@ -1684,6 +1694,21 @@ private fun extraireVariablesRequises(
                                         equation.equationScript
                                 )
                         scriptVariables.addAll(variables)
+                }
+        }
+
+        // Inclure uniquement les variables des équations ENERCOMP des références maladies sélectionnées
+        referencesMaladies.forEach { refMaladie ->
+                refMaladie.equationsNut.forEach { eq ->
+                        if (eq.kind == fr.vetbrain.vetnutri_mp.Enumer.EquationKind.ENERCOMP &&
+                                        eq.equationScript.isNotBlank()
+                        ) {
+                                val variables =
+                                        fr.vetbrain.vetnutri_mp.Utils.ExpressionEvaluator.extraireVariables(
+                                                eq.equationScript
+                                        )
+                                scriptVariables.addAll(variables)
+                        }
                 }
         }
 
@@ -1698,8 +1723,11 @@ private fun extraireVariablesRequises(
                 } else {}
         }
 
-        // Exclure BW (Body Weight) car c'est le poids qui est déjà saisi
-        variablesRequises.remove(fr.vetbrain.vetnutri_mp.Enumer.VariableKind.BW)
+        // Exclure les variables calculées/pilotées par le système
+        variablesRequises.remove(fr.vetbrain.vetnutri_mp.Enumer.VariableKind.BW) // Poids saisi
+        variablesRequises.remove(fr.vetbrain.vetnutri_mp.Enumer.VariableKind.MW) // Poids métabolique calculé
+        variablesRequises.remove(fr.vetbrain.vetnutri_mp.Enumer.VariableKind.BEE) // BEE calculé/résolu
+        variablesRequises.remove(fr.vetbrain.vetnutri_mp.Enumer.VariableKind.BE) // BE dérivé (après K et compl.)
 
         return variablesRequises.toList().sortedBy { it.label }
 }

@@ -86,6 +86,13 @@ fun EquationEditView(
         }
     }
 
+    // Navigation explicite sur succès même sans message
+    LaunchedEffect(saveSuccessful) {
+        if (saveSuccessful) {
+            onNavigateBack()
+        }
+    }
+
     // Titre dynamique basé sur l'opération (création ou édition)
     val title = if (equationId == null) "Nouvelle équation" else "Modifier l'équation"
 
@@ -210,6 +217,8 @@ private fun EquationEditTab(
                                         EquationType.INDICATOR
                                 fr.vetbrain.vetnutri_mp.Enumer.EquationKind.NEED ->
                                         EquationType.NEED
+                                fr.vetbrain.vetnutri_mp.Enumer.EquationKind.ENERCOMP ->
+                                    EquationType.ENERCOMP
                                 fr.vetbrain.vetnutri_mp.Enumer.EquationKind
                                         .COMPLEMENTARY_NUTRIENT ->
                                         EquationType.COMPLEMENTARY_NUTRIENT

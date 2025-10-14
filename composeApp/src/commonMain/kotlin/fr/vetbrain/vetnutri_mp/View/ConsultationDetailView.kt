@@ -579,7 +579,7 @@ fun AppConsultationDetailView(
                                                 ) {
                                                         Text(
                                                                 text =
-                                                                        "Aucune référence de maladie",
+                                                                        "Aucune référence complémentaire",
                                                                 style =
                                                                         MaterialTheme.typography
                                                                                 .body2,
@@ -649,7 +649,7 @@ fun AppConsultationDetailView(
                                                                 }
                                                 }
 
-                                                // Bouton pour ajouter une référence de maladie
+                                                // Bouton pour ajouter une référence complémentaire
                                                 OutlinedButton(
                                                         onClick = {
                                                                 // TODO: Ouvrir le sélecteur de
@@ -668,7 +668,7 @@ fun AppConsultationDetailView(
                                                         Icon(
                                                                 AppIcons.Add,
                                                                 contentDescription =
-                                                                        "Ajouter une référence de maladie",
+                                                                        "Ajouter une référence complémentaire",
                                                                 modifier =
                                                                         Modifier.size(
                                                                                 AppSizes.iconSizeSmall
@@ -680,7 +680,7 @@ fun AppConsultationDetailView(
                                                                                 AppSizes.paddingSmall
                                                                         )
                                                         )
-                                                        Text("Ajouter une référence de maladie")
+                                                        Text("Ajouter une référence complémentaire")
                                                 }
                                         } else {
                                                 // Mode affichage des références pour consultation
@@ -720,7 +720,7 @@ fun AppConsultationDetailView(
                                                         ) {
                                                                 Text(
                                                                         text =
-                                                                                "Aucune référence de maladie",
+                                                                                "Aucune référence complémentaire",
                                                                         style =
                                                                                 MaterialTheme
                                                                                         .typography
