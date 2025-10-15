@@ -1,25 +1,25 @@
 package fr.vetbrain.vetnutri_mp.ExcelPlatform
 
-import fr.vetbrain.vetnutri_mp.Utils.FileUtils
 import java.io.File
 import javax.swing.JFileChooser
 import javax.swing.filechooser.FileNameExtensionFilter
 
-/**
- * Implémentation Desktop des opérations de fichiers Excel/CSV
- */
-
+/** Implémentation Desktop des opérations de fichiers Excel/CSV */
 actual fun openCsvFileForImport(): String? {
-    val fileChooser = JFileChooser().apply {
-        dialogTitle = "Importer un fichier CSV"
-        fileFilter = FileNameExtensionFilter("Fichiers CSV (*.csv)", "csv")
-        fileFilter = FileNameExtensionFilter("Fichiers Excel (*.xlsx, *.xls)", "xlsx", "xls")
-    }
+    // Approche synchrone simple pour éviter les problèmes de coroutines
+    val fileChooser =
+            JFileChooser().apply {
+                dialogTitle = "Importer un fichier CSV"
+                fileFilter = FileNameExtensionFilter("Fichiers CSV (*.csv)", "csv")
+                fileFilter =
+                        FileNameExtensionFilter("Fichiers Excel (*.xlsx, *.xls)", "xlsx", "xls")
+            }
 
     return if (fileChooser.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) {
         try {
             File(fileChooser.selectedFile.absolutePath).readText()
         } catch (e: Exception) {
+            e.printStackTrace()
             null
         }
     } else {
@@ -28,11 +28,12 @@ actual fun openCsvFileForImport(): String? {
 }
 
 actual fun saveCsvFileForExport(csvContent: String, defaultFileName: String): Boolean {
-    val fileChooser = JFileChooser().apply {
-        dialogTitle = "Exporter vers CSV"
-        selectedFile = File(defaultFileName)
-        fileFilter = FileNameExtensionFilter("Fichiers CSV (*.csv)", "csv")
-    }
+    val fileChooser =
+            JFileChooser().apply {
+                dialogTitle = "Exporter vers CSV"
+                selectedFile = File(defaultFileName)
+                fileFilter = FileNameExtensionFilter("Fichiers CSV (*.csv)", "csv")
+            }
 
     return if (fileChooser.showSaveDialog(null) == JFileChooser.APPROVE_OPTION) {
         try {

@@ -107,16 +107,16 @@ class ExportImportRepository(
 
                 // Récupérer toutes les recettes
                 
-                
                 val recipes =
                         recipeRepository?.getAllRecipesAsRecette()?.map { it.toApi() }
                                 ?: emptyList()
-                
 
                 // Récupérer tous les conseils
                 val conseils =
                         try {
-                                conseilRepository?.getConseilsActifs()?.getOrThrow()?.map { it.toApi() }
+                                conseilRepository?.getConseilsActifs()?.getOrThrow()?.map {
+                                        it.toApi()
+                                }
                                         ?: emptyList()
                         } catch (e: Exception) {
                                 emptyList()
@@ -227,20 +227,19 @@ class ExportImportRepository(
 
                 // Récupérer les recettes selon les options
                 
-                
-                
                 val recipes =
                         if (options.includeRecipes) {
                                 recipeRepository?.getAllRecipesAsRecette()?.map { it.toApi() }
                                         ?: emptyList()
                         } else emptyList()
-                
 
                 // Récupérer les conseils selon les options
                 val conseils =
                         if (options.includeConseils) {
                                 try {
-                                        conseilRepository?.getConseilsActifs()?.getOrThrow()?.map { it.toApi() }
+                                        conseilRepository?.getConseilsActifs()?.getOrThrow()?.map {
+                                                it.toApi()
+                                        }
                                                 ?: emptyList()
                                 } catch (e: Exception) {
                                         emptyList()
@@ -278,11 +277,11 @@ class ExportImportRepository(
                 listener: ImportProgressListener? = null
         ): ImportCounts {
 
-                listener?.onProgress(0.02)
-                listener?.onLog("Lecture/Parsing du JSON…")
+                listener?.onProgress?.invoke(0.02)
+                listener?.onLog?.invoke("Lecture/Parsing du JSON…")
                 val envelope = jsonPretty.decodeFromString<ApiEnvelope>(apiJson)
 
-                listener?.onLog(
+                listener?.onLog?.invoke(
                         "Contenu: animals=${envelope.animals.size}, foods=${envelope.foods.size}, rations=${envelope.rations.size}, recipes=${envelope.recipes.size}, equations=${envelope.equations.size}, biblioRefs=${envelope.biblioRefs.size}, references=${envelope.references.size}, conseils=${envelope.conseils.size}"
                 )
                 var animalsImported: Int = 0
@@ -307,13 +306,15 @@ class ExportImportRepository(
                 fun advance(units: Int = 1) {
                         processedUnits += units
                         val p = 0.1 + 0.9 * (processedUnits.toDouble() / totalUnits.toDouble())
-                        listener?.onProgress(p.coerceIn(0.0, 1.0))
+                        listener?.onProgress?.invoke(p.coerceIn(0.0, 1.0))
                 }
-                listener?.onProgress(0.1)
+                listener?.onProgress?.invoke(0.1)
 
                 // 1) Références biblio (aucune dépendance)
                 if (envelope.biblioRefs.isNotEmpty() && biblioRepository != null) {
-                        listener?.onLog("Import des bibliographies (${envelope.biblioRefs.size})…")
+                        listener?.onLog?.invoke(
+                                "Import des bibliographies (${envelope.biblioRefs.size})…"
+                        )
                         for (b in envelope.biblioRefs) {
                                 try {
                                         biblioRepository.insertBiblioRef(
@@ -330,39 +331,45 @@ class ExportImportRepository(
                                         biblioImported++
                                         advance()
                                 } catch (e: Exception) {
-                                        listener?.onLog("Erreur biblioRef ${b.uuid}: ${e.message}")
+                                        listener?.onLog?.invoke(
+                                                "Erreur biblioRef ${b.uuid}: ${e.message}"
+                                        )
                                         advance()
                                 }
                         }
-                        listener?.onLog("Bibliographies importées=$biblioImported")
+                        listener?.onLog?.invoke("Bibliographies importées=$biblioImported")
                 }
 
                 // 2) Équations (aucune dépendance)
                 if (envelope.equations.isNotEmpty() && equationRepository != null) {
-                        listener?.onLog("Import des équations (${envelope.equations.size})…")
+                        listener?.onLog?.invoke(
+                                "Import des équations (${envelope.equations.size})…"
+                        )
                         for (eqApi in envelope.equations) {
                                 val eq = eqApi.toDomain()
                                 equationRepository.saveEquation(eq)
                                 equationsImported++
                                 advance()
                         }
-                        listener?.onLog("Équations importées=$equationsImported")
+                        listener?.onLog?.invoke("Équations importées=$equationsImported")
                 }
 
                 // 3) Aliments (aucune dépendance)
                 if (envelope.foods.isNotEmpty() && foodRepository != null) {
-                        listener?.onLog("Import des aliments (${envelope.foods.size})…")
+                        listener?.onLog?.invoke("Import des aliments (${envelope.foods.size})…")
                         if (foodRepository is DatabaseFoodRepository) {
                                 try {
                                         val aliments = envelope.foods.map { it.toDomain() }
                                         val res = foodRepository.importFoodsDomain(aliments)
                                         foodsImported += res.importedCount + res.updatedCount
                                         advance(envelope.foods.size)
-                                        listener?.onLog(
+                                        listener?.onLog?.invoke(
                                                 "Aliments importés=${res.importedCount}, mis à jour=${res.updatedCount}, erreurs=${res.errorCount}"
                                         )
                                 } catch (e: Exception) {
-                                        listener?.onLog("Erreur import bulk aliments: ${e.message}")
+                                        listener?.onLog?.invoke(
+                                                "Erreur import bulk aliments: ${e.message}"
+                                        )
                                 }
                         } else {
                                 // Fallback: insertion/MAJ unitaire si repo non-DB
@@ -373,19 +380,19 @@ class ExportImportRepository(
                                                 foodsImported++
                                                 advance()
                                         } catch (e: Exception) {
-                                                listener?.onLog(
+                                                listener?.onLog?.invoke(
                                                         "Erreur aliment ${api.uuid}: ${e.message}"
                                                 )
                                                 advance()
                                         }
                                 }
                         }
-                        listener?.onLog("Aliments importés=$foodsImported")
+                        listener?.onLog?.invoke("Aliments importés=$foodsImported")
                 }
 
                 // 4) Références nutritionnelles (avec liens vers équations et biblio)
                 if (envelope.references.isNotEmpty() && referenceRepository != null) {
-                        listener?.onLog(
+                        listener?.onLog?.invoke(
                                 "Import des références nutritionnelles (${envelope.references.size})…"
                         )
                         // Construire un cache d'équations
@@ -438,75 +445,164 @@ class ExportImportRepository(
                                         
                                         // 🔧 AJOUT : Importer les nutriments
                                         if (refApi.nutrients.isNotEmpty()) {
-                                            listener?.onLog("Import des nutriments pour ${refApi.nom} (${refApi.nutrients.size} nutriments)")
+                                                listener?.onLog?.invoke(
+                                                        "Import des nutriments pour ${refApi.nom} (${refApi.nutrients.size} nutriments)"
+                                                )
                                             for (nutrientApi in refApi.nutrients) {
                                                 try {
-                                                    // 🔍 LOG DIAGNOSTIC : Tracer l'import des nutriments
-                                                    
-                                                    
-                                                    // Résoudre le nutriment (supporte aussi NutrientAnalysis)
-                                                    val nutrient = fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver.AllNutrientResolver(nutrientApi.nutrientLabel)
+                                                                // 🔍 LOG DIAGNOSTIC : Tracer
+                                                                // l'import des nutriments
+
+                                                                // Résoudre le nutriment (supporte
+                                                                // aussi NutrientAnalysis)
+                                                                val nutrient =
+                                                                        fr.vetbrain.vetnutri_mp
+                                                                                .Enumer
+                                                                                .NutrientResolver
+                                                                                .AllNutrientResolver(
+                                                                                        nutrientApi
+                                                                                                .nutrientLabel
+                                                                                )
                                                     if (nutrient != null) {
-                                                        // Créer la référence bibliographique
-                                                        val biblio = if (nutrientApi.biblioRefId != null) {
-                                                            biblioCache[nutrientApi.biblioRefId] ?: BiblioRef()
+                                                                        // Créer la référence
+                                                                        // bibliographique
+                                                                        val biblio =
+                                                                                if (nutrientApi
+                                                                                                .biblioRefId !=
+                                                                                                null
+                                                                                ) {
+                                                                                        biblioCache[
+                                                                                                nutrientApi
+                                                                                                        .biblioRefId]
+                                                                                                ?: BiblioRef()
                                                         } else {
                                                             BiblioRef()
                                                         }
                                                         
-                                                        // Définir le nutriment dans la référence
-                                                        val reflevel = when (nutrientApi.reflevel) {
-                                                            "MIN" -> fr.vetbrain.vetnutri_mp.Enumer.Reflevel.MIN
-                                                            "MAX" -> fr.vetbrain.vetnutri_mp.Enumer.Reflevel.MAX
-                                                            "OPTIMIN" -> fr.vetbrain.vetnutri_mp.Enumer.Reflevel.OPTIMIN
-                                                            "OPTIMAX" -> fr.vetbrain.vetnutri_mp.Enumer.Reflevel.OPTIMAX
-                                                            else -> fr.vetbrain.vetnutri_mp.Enumer.Reflevel.MIN
-                                                        }
-                                                        
-                                                        val unitReq = fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum.getById(nutrientApi.uniteReqId)
+                                                                        // Définir le nutriment dans
+                                                                        // la référence
+                                                                        val reflevel =
+                                                                                when (nutrientApi
+                                                                                                .reflevel
+                                                                                ) {
+                                                                                        "MIN" ->
+                                                                                                fr.vetbrain
+                                                                                                        .vetnutri_mp
+                                                                                                        .Enumer
+                                                                                                        .Reflevel
+                                                                                                        .MIN
+                                                                                        "MAX" ->
+                                                                                                fr.vetbrain
+                                                                                                        .vetnutri_mp
+                                                                                                        .Enumer
+                                                                                                        .Reflevel
+                                                                                                        .MAX
+                                                                                        "OPTIMIN" ->
+                                                                                                fr.vetbrain
+                                                                                                        .vetnutri_mp
+                                                                                                        .Enumer
+                                                                                                        .Reflevel
+                                                                                                        .OPTIMIN
+                                                                                        "OPTIMAX" ->
+                                                                                                fr.vetbrain
+                                                                                                        .vetnutri_mp
+                                                                                                        .Enumer
+                                                                                                        .Reflevel
+                                                                                                        .OPTIMAX
+                                                                                        else ->
+                                                                                                fr.vetbrain
+                                                                                                        .vetnutri_mp
+                                                                                                        .Enumer
+                                                                                                        .Reflevel
+                                                                                                        .MIN
+                                                                                }
+
+                                                                        val unitReq =
+                                                                                fr.vetbrain
+                                                                                        .vetnutri_mp
+                                                                                        .Enumer
+                                                                                        .UnitReqEnum
+                                                                                        .getById(
+                                                                                                nutrientApi
+                                                                                                        .uniteReqId
+                                                                                        )
                                                         
                                                         ref.definirNutriment(
-                                                            valeur = nutrientApi.quantity,
+                                                                                valeur =
+                                                                                        nutrientApi
+                                                                                                .quantity,
                                                             nutrient = nutrient,
-                                                            niveauRef = reflevel,
+                                                                                niveauRef =
+                                                                                        reflevel,
                                                             uniteReq = unitReq,
                                                             biblio = biblio
                                                         )
-                                                        
-                                                        
                                                     } else {
                                                         
-                                                        listener?.onLog("⚠️ Nutriment non résolu: ${nutrientApi.nutrientLabel}")
+                                                                        listener?.onLog?.invoke(
+                                                                                "⚠️ Nutriment non résolu: ${nutrientApi.nutrientLabel}"
+                                                                        )
                                                     }
                                                 } catch (e: Exception) {
                                                     
-                                                    listener?.onLog("Erreur nutriment ${nutrientApi.nutrientLabel}: ${e.message}")
+                                                                listener?.onLog?.invoke(
+                                                                        "Erreur nutriment ${nutrientApi.nutrientLabel}: ${e.message}"
+                                                                )
+                                                        }
                                                 }
-                                            }
                                         }
-                                        
-                                        // 🔧 AJOUT : Importer les coefficients
+
+                                        // 🔧 AJUSTEMENT : Importer les coefficients en supprimant
+                                        // d'abord les valeurs par défaut "Normal"
                                         if (refApi.coefficients.isNotEmpty()) {
-                                            listener?.onLog("Import des coefficients pour ${refApi.nom} (${refApi.coefficients.size} coefficients)")
+                                                // Nettoyer les coefficients par défaut ajoutés au
+                                                // constructeur (évite les doublons)
+                                                ref.getModk1().clear()
+                                                ref.getModk2().clear()
+                                                ref.getModk3().clear()
+                                                ref.getModk4().clear()
+                                                ref.getModk5().clear()
+
+                                                listener?.onLog?.invoke(
+                                                        "Import des coefficients pour ${refApi.nom} (${refApi.coefficients.size} coefficients)"
+                                                )
                                             for (coefApi in refApi.coefficients) {
                                                 try {
-                                                    val coef = fr.vetbrain.vetnutri_mp.Data.CoefP(
-                                                        uuid = coefApi.uuid,
-                                                        description = coefApi.description,
-                                                        coef = coefApi.coef,
-                                                        groupUUID = coefApi.groupUUID
+                                                                val coef =
+                                                                        fr.vetbrain.vetnutri_mp.Data
+                                                                                .CoefP(
+                                                                                        uuid =
+                                                                                                coefApi.uuid,
+                                                                                        description =
+                                                                                                coefApi.description,
+                                                                                        coef =
+                                                                                                coefApi.coef,
+                                                                                        groupUUID =
+                                                                                                coefApi.groupUUID
                                                     )
                                                     
                                                     when (coefApi.groupType) {
-                                                        "k1" -> ref.getModk1().add(coef)
-                                                        "k2" -> ref.getModk2().add(coef)
-                                                        "k3" -> ref.getModk3().add(coef)
-                                                        "k4" -> ref.getModk4().add(coef)
-                                                        "k5" -> ref.getModk5().add(coef)
+                                                                        "k1" ->
+                                                                                ref.getModk1()
+                                                                                        .add(coef)
+                                                                        "k2" ->
+                                                                                ref.getModk2()
+                                                                                        .add(coef)
+                                                                        "k3" ->
+                                                                                ref.getModk3()
+                                                                                        .add(coef)
+                                                                        "k4" ->
+                                                                                ref.getModk4()
+                                                                                        .add(coef)
+                                                                        "k5" ->
+                                                                                ref.getModk5()
+                                                                                        .add(coef)
                                                     }
                                                 } catch (e: Exception) {
-                                                    listener?.onLog("Erreur coefficient ${coefApi.uuid}: ${e.message}")
-                                                }
+                                                                listener?.onLog?.invoke(
+                                                                        "Erreur coefficient ${coefApi.uuid}: ${e.message}"
+                                                                )
+                                                        }
                                             }
                                         }
                                         
@@ -514,18 +610,20 @@ class ExportImportRepository(
                                         referencesImported++
                                         advance()
                                 } catch (e: Exception) {
-                                        listener?.onLog(
+                                        listener?.onLog?.invoke(
                                                 "Erreur referenceEv ${refApi.uuid}: ${e.message}"
                                         )
                                         advance()
                                 }
                         }
-                        listener?.onLog("Références nutritionnelles importées=$referencesImported")
+                        listener?.onLog?.invoke(
+                                "Références nutritionnelles importées=$referencesImported"
+                        )
                 }
 
                 // 5) Animaux + consultations/rations (dépendent des aliments et références)
                 if (envelope.animals.isNotEmpty()) {
-                        listener?.onLog("Import des animaux (${envelope.animals.size})…")
+                        listener?.onLog?.invoke("Import des animaux (${envelope.animals.size})…")
                         // rations
                         var existingFoodIdsForRations: MutableSet<String> = mutableSetOf()
                         if (foodRepository != null) {
@@ -594,7 +692,7 @@ class ExportImportRepository(
                                                         consultationRepository.saveConsultation(
                                                                 consult
                                                         )
-                                                        listener?.onLog(
+                                                        listener?.onLog?.invoke(
                                                                 "Consultation ${consult.uuid}: rations=${consult.rations.size}"
                                                         )
                                                 }
@@ -611,17 +709,14 @@ class ExportImportRepository(
                         }
                         animalsImported++
                         advance()
-                        listener?.onLog(
+                        listener?.onLog?.invoke(
                                 "Animaux importés=$animalsImported, rations liées=$rationsImported"
                         )
                 }
 
                 // 6) Recettes (dépendent des aliments)
                 if (envelope.recipes.isNotEmpty() && recipeRepository != null) {
-                        listener?.onLog("Import des recettes (${envelope.recipes.size})…")
-                        
-                        
-                        
+                        listener?.onLog?.invoke("Import des recettes (${envelope.recipes.size})…")
 
                         // Construire un cache des aliments existants pour vérifier les références
                         val existingFoodIds: Set<String> =
@@ -632,7 +727,6 @@ class ExportImportRepository(
                                                 emptySet()
                                         }
                                 } else emptySet()
-                        
 
                         for (recipeApi in envelope.recipes) {
                                 try {
@@ -712,24 +806,27 @@ class ExportImportRepository(
                                         recipesImported++
                                         advance()
                                 } catch (e: Exception) {
-                                        listener?.onLog(
+                                        listener?.onLog?.invoke(
                                                 "Erreur recette ${recipeApi.uuid}: ${e.message}"
                                         )
                                         advance()
                                 }
                         }
-                        listener?.onLog("Recettes importées=$recipesImported")
+                        listener?.onLog?.invoke("Recettes importées=$recipesImported")
                 }
 
                 // 7) Conseils (aucune dépendance)
                 if (envelope.conseils.isNotEmpty() && conseilRepository != null) {
-                        listener?.onLog("Import des conseils (${envelope.conseils.size})…")
+                        listener?.onLog?.invoke("Import des conseils (${envelope.conseils.size})…")
                         for (conseilApi in envelope.conseils) {
                                 try {
                                         val conseil = conseilApi.toDomain()
                                         // Vérifier si le conseil existe déjà
-                                        val existingConseil = try {
-                                                conseilRepository.getConseilsActifs().getOrThrow()
+                                        val existingConseil =
+                                                try {
+                                                        conseilRepository
+                                                                .getConseilsActifs()
+                                                                .getOrThrow()
                                                         .find { it.id == conseil.id }
                                         } catch (e: Exception) {
                                                 null
@@ -740,11 +837,13 @@ class ExportImportRepository(
                                         conseilsImported++
                                         advance()
                                 } catch (e: Exception) {
-                                        listener?.onLog("Erreur conseil ${conseilApi.id}: ${e.message}")
+                                        listener?.onLog?.invoke(
+                                                "Erreur conseil ${conseilApi.id}: ${e.message}"
+                                        )
                                         advance()
                                 }
                         }
-                        listener?.onLog("Conseils importés=$conseilsImported")
+                        listener?.onLog?.invoke("Conseils importés=$conseilsImported")
                 }
 
                 return ImportCounts(

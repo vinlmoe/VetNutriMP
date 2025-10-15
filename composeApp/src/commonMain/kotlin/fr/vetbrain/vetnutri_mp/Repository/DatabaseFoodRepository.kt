@@ -73,12 +73,14 @@ class DatabaseFoodRepository(
      */
     suspend fun importFoodsDomain(aliments: List<AlimentEv>): FoodImportResult {
         return withContext(AppDispatchers.IO) {
+            
             var importCount: Int = 0
             var updateCount: Int = 0
             var errorCount: Int = 0
             val nonResolvedNutrients: MutableMap<String, Int> = mutableMapOf()
             try {
                 beginBatch()
+                
                 val existingFoodUUIDs: Set<String> =
                         try {
                             foodDao.getAllFoodIds().toSet()
@@ -102,17 +104,17 @@ class DatabaseFoodRepository(
                             val entity: FoodEntity = aliment.toFoodEntity().copy(RefRation = null)
                             newEntities.add(entity)
                             // Générer les nutriments depuis la map domaine
-                            allNutrientValues.addAll(
-                                    aliment.valMap.toNutrientValueEntities(aliment.uuid)
-                            )
+                            val nutrientValues = aliment.valMap.toNutrientValueEntities(aliment.uuid)
+                            allNutrientValues.addAll(nutrientValues)
                             importCount++
                         } else {
                             updateIds.add(aliment.uuid)
                         }
-                    } catch (_: Exception) {
+                    } catch (e: Exception) {
                         errorCount++
                     }
                 }
+                
 
                 // Préparer les updates en se basant sur l'état existant
                 if (updateIds.isNotEmpty()) {
@@ -157,29 +159,36 @@ class DatabaseFoodRepository(
                     }
                 }
 
-                // Nettoyer et réinsérer les nutriments pour tous les aliments traités
-                val allIds: List<String> = buildList {
-                    addAll(newEntities.map { it.uuid })
-                    addAll(updateEntities.map { it.uuid })
-                }
-                if (allIds.isNotEmpty()) {
-                    try {
-                        allIds.chunked(500).forEach { part ->
-                            nutrientValueDao?.deleteAllForAliments(part)
-                        }
-                    } catch (_: Exception) {}
-                }
+                // Nettoyer et réinsérer les nutriments SEULEMENT si on a des données de nutriments à importer
                 if (allNutrientValues.isNotEmpty() && nutrientValueDao != null) {
+                    val allIds: List<String> = buildList {
+                        addAll(newEntities.map { it.uuid })
+                        addAll(updateEntities.map { it.uuid })
+                    }
+                    
+                    // Supprimer les nutriments existants SEULEMENT si on va les remplacer
+                    if (allIds.isNotEmpty()) {
+                        try {
+                            allIds.chunked(500).forEach { part ->
+                                nutrientValueDao.deleteAllForAliments(part)
+                            }
+                        } catch (e: Exception) {
+                            // Erreur silencieuse
+                        }
+                    }
+                    // Insérer les nouveaux nutriments
                     try {
                         allNutrientValues.chunked(1000).forEach { chunk ->
                             nutrientValueDao.insertNutrientValues(chunk)
                         }
-                    } catch (_: Exception) {
+                    } catch (e: Exception) {
                         // Fallback insertion élément par élément
                         allNutrientValues.forEach { nv ->
                             try {
                                 nutrientValueDao.insertNutrientValues(listOf(nv))
-                            } catch (_: Exception) {}
+                            } catch (fallbackError: Exception) {
+                                // Erreur silencieuse
+                            }
                         }
                     }
                 }
@@ -198,7 +207,7 @@ class DatabaseFoodRepository(
                     )
                 }
             }
-            return@withContext FoodImportResult(
+            val result = FoodImportResult(
                     importedCount = importCount,
                     updatedCount = updateCount,
                     errorCount = errorCount,
@@ -212,6 +221,8 @@ class DatabaseFoodRepository(
                     nonResolvedNutrientsCount = nonResolvedNutrients.size,
                     nonResolvedNutrients = nonResolvedNutrients.keys.toList()
             )
+            
+            return@withContext result
         }
     }
 
@@ -734,14 +745,17 @@ class DatabaseFoodRepository(
                         errorCount += updateEntities.size
                     }
                 }
-                if (updateIds.isNotEmpty()) {
-                    try {
-                        updateIds.chunked(500).forEach { part ->
-                            nutrientValueDao?.deleteAllForAliments(part)
-                        }
-                    } catch (_: Exception) {}
-                }
+                // Nettoyer et réinsérer les nutriments SEULEMENT si on a des données de nutriments à importer
                 if (allNutrientValues.isNotEmpty() && nutrientValueDao != null) {
+                    // Supprimer les nutriments existants SEULEMENT si on va les remplacer
+                    if (updateIds.isNotEmpty()) {
+                        try {
+                            updateIds.chunked(500).forEach { part ->
+                                nutrientValueDao.deleteAllForAliments(part)
+                            }
+                        } catch (_: Exception) {}
+                    }
+                    // Insérer les nouveaux nutriments
                     try {
                         allNutrientValues.chunked(1000).forEach { chunk ->
                             nutrientValueDao.insertNutrientValues(chunk)

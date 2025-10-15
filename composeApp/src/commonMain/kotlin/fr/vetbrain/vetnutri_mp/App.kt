@@ -328,7 +328,7 @@ fun App(appDatabase: AppDatabase) {
     val onDatabaseReady: () -> Unit = { showStartupScreen = false }
 
     VetNutriTheme {
-        Box(modifier = Modifier.fillMaxSize()) {
+        Box(modifier = Modifier.fillMaxSize().imePadding()) {
             if (showStartupScreen) {
                 // Afficher l'écran de démarrage
                 StartupScreen(

@@ -198,52 +198,23 @@ data class AlimentExcelRow(
                                             ?: mutableListOf(),
                             rationUUID = row.rationUUID
                     )
-                    .apply {
-                        // Ajouter les nutriments
-                        row.nutriments.forEach { (nutrientLabel, valeur) ->
-                            if (valeur != null) {
-                                // Trouver le nutriment correspondant
-                                getNutrientFromLabel(nutrientLabel)?.let { nutrient ->
-                                    setNutrient(nutrient, valeur)
-                                }
-                            }
-                        }
+        .apply {
+            // Ajouter les nutriments
+            row.nutriments.forEach { (nutrientLabel, valeur) ->
+                if (valeur != null) {
+                    // Trouver le nutriment correspondant
+                    getNutrientFromLabel(nutrientLabel)?.let { nutrient ->
+                        setNutrient(nutrient, valeur)
                     }
+                }
+            }
+        }
         }
 
         /** Trouve un nutriment par son label dans tous les enums */
         private fun getNutrientFromLabel(label: String): Nutrient? {
-            // Chercher dans NutrientMain
-            NutrientMain.getByLabel(label)?.let {
-                return it
-            }
-
-            // Chercher dans NutrientVitam
-            NutrientVitam.getByLabel(label)?.let {
-                return it
-            }
-
-            // Chercher dans NutrientMin
-            NutrientMin.getByLabel(label)?.let {
-                return it
-            }
-
-            // Chercher dans NutrientMacro
-            NutrientMacro.getByLabel(label)?.let {
-                return it
-            }
-
-            // Chercher dans NutrientLipid
-            NutrientLipid.getByLabel(label)?.let {
-                return it
-            }
-
-            // Chercher dans NutrientOther
-            NutrientOther.getByLabel(label)?.let {
-                return it
-            }
-
-            return null
+            // Utiliser le NutrientResolver qui gère tous les cas spéciaux et la normalisation
+            return NutrientResolver.AllNutrientResolver(label)
         }
     }
 }
