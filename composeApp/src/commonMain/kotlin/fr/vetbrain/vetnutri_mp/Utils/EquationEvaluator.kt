@@ -482,16 +482,12 @@ object EquationEvaluator {
 
         // Logs d'entrée
         try {
-            println("[ENERCOMP] Début calcul énergie additionnelle")
-            println(
-                    "[ENERCOMP] Références maladies: ${referencesMaladies.size}, BW=${poidsCorps}, BEE=${besoinEnergetiqueStandard}, BE=${besoinEnergetiqueApresK}, MW=${poidsMetabolique}"
-            )
+          
             if (variablesSupp.isNotEmpty()) {
                 val supp = variablesSupp.joinToString { v -> "${v.variable?.variable}=${v.varue}" }
-                println("[ENERCOMP] Variables supp: ${supp}")
+              
             }
-            println("[ENERCOMP] Nb aliments ration: ${ration.alimentMutableList.size}")
-        } catch (_: Throwable) {}
+           } catch (_: Throwable) {}
 
         // Injecter les nutriments agrégés de la ration (avec compléments si disponibles)
         suspend fun sommeRation(n: Nutrient): Double {
@@ -520,11 +516,9 @@ object EquationEvaluator {
         try {
             val debugKeys = listOf("ENERGIE", "PROTEINE", "LIPIDE", "ENA")
             val dbg = debugKeys.map { k -> "$k=${variables[k] ?: 0.0}" }.joinToString(", ")
-            println("[ENERCOMP] Nutriments agrégés (échantillon): ${dbg}")
             // Log complet des variables (peut être volumineux)
             val all = variables.entries.sortedBy { it.key }.joinToString(", ") { (k, v) -> "$k=$v" }
-            println("[ENERCOMP] Variables (toutes): ${all}")
-        } catch (_: Throwable) {}
+               } catch (_: Throwable) {}
 
         var total = 0.0
         for (ref in referencesMaladies) {
@@ -537,32 +531,25 @@ object EquationEvaluator {
             if (eqs.isEmpty()) continue
             for (eq in eqs) {
                 try {
-                    println(
-                            "[ENERCOMP] Vars clés avant eval -> D=${variables["D"] ?: 0.0}, CW=${variables["CW"] ?: 0.0}, BW=${variables["BW"] ?: 0.0}"
-                    )
-                } catch (_: Throwable) {}
+                         } catch (_: Throwable) {}
                 val res = ExpressionMathematique.evaluer(eq.equationScript, variables)
                 try {
-                    println("[ENERCOMP] ${ref.nom} -> eq='${eq.equationScript.take(60)}' => ${res}")
-                } catch (_: Throwable) {}
+                  } catch (_: Throwable) {}
                 if (res != null && !res.isNaN() && !res.isInfinite()) total += res
             }
         }
         if (total.isNaN() || total.isInfinite()) {
             try {
-                println("[ENERCOMP] Résultat invalide (NaN/Inf)")
-            } catch (_: Throwable) {}
+               } catch (_: Throwable) {}
             return 0.0
         }
         if (total < 0.0) {
             try {
-                println("[ENERCOMP] Résultat négatif, clamp à 0")
-            } catch (_: Throwable) {}
+               } catch (_: Throwable) {}
             return 0.0
         }
         try {
-            println("[ENERCOMP] Total énergie additionnelle = ${total}")
-        } catch (_: Throwable) {}
+            } catch (_: Throwable) {}
         return total
     }
 
