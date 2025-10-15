@@ -94,6 +94,11 @@ kotlin {
     }
 }
 
+// Configuration pour exclure les dépendances Android problématiques sur desktop
+configurations.all {
+    exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-android")
+}
+
 android {
     namespace = "fr.vetbrain.vetnutri_mp"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
@@ -159,7 +164,7 @@ compose.desktop {
 
 dependencies {
     implementation("org.jetbrains.compose.material:material-icons-extended:1.7.3")
-  
+
     implementation(libs.androidx.sqlite.bundled)
     implementation(kotlin("test"))
     implementation(kotlin("test-common"))

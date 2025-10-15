@@ -85,9 +85,6 @@ fun AlimentEvJson.toData(): AlimentEv {
             // Si la résolution réussit, ajouter le nutriment
             if (nutrient != null) {
                 nutrientMap[nutrient] = NutrientQuantity(value, nutrient.label)
-            } else {
-                // Log pour débogage - nutriment non résolu
-                println("⚠️ [NUTRIENT] Nutriment non résolu: '$nutrientKey' (valeur: $value)")
             }
         }
     }
@@ -152,9 +149,6 @@ fun AlimentEvJson.toData(ratUUID: String): AlimentEv {
             // Si la résolution réussit, ajouter le nutriment
             if (nutrient != null) {
                 nutrientMap[nutrient] = NutrientQuantity(value, nutrient.label)
-            } else {
-                // Log pour débogage - nutriment non résolu
-                println("⚠️ [NUTRIENT] Nutriment non résolu: '$nutrientKey' (valeur: $value)")
             }
         }
     }

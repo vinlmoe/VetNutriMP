@@ -52,13 +52,17 @@ class ExcelFoodService(
         }
 
         try {
-            // Convertir les AlimentEv en AlimentEvJson pour l'import
-            val alimentsJson = parseResult.aliments.map { aliment ->
-                aliment.toAlimentEvJson()
+            // Utiliser le repository pour l'import avec persistance complète des nutriments
+            val importResult = if (foodRepository is fr.vetbrain.vetnutri_mp.Repository.DatabaseFoodRepository) {
+                // Utiliser importFoodsDomain pour la persistance complète (aliments + nutriments)
+                foodRepository.importFoodsDomain(parseResult.aliments)
+            } else {
+                // Fallback pour les autres implémentations
+                val alimentsJson = parseResult.aliments.map { aliment ->
+                    aliment.toAlimentEvJson()
+                }
+                foodRepository.importFoods(alimentsJson)
             }
-
-            // Utiliser le repository pour l'import
-            val importResult = foodRepository.importFoods(alimentsJson)
 
             ExcelImportResult(
                 success = true,

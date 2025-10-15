@@ -573,7 +573,7 @@ object Mappers {
         // Cette méthode est utilisée dans le processus d'import pour convertir les valeurs
         // nutritionnelles en entités de base de données.
         fun Map<Nutrient, fr.vetbrain.vetnutri_mp.Data.NutrientQuantity>.toNutrientValueEntities(
-                alimentUuid: String
+alimentUuid: String
         ): List<NutrientValueEntity> {
                 return mapNotNull { (nutrient, nutrientQuantity) ->
                         // Ne créer des entités que pour les valeurs strictement positives

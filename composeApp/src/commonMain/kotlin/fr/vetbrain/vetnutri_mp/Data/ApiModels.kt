@@ -468,11 +468,38 @@ fun Equation.toApi(): EquationApi {
 
 // Mappers API -> domaine pour les équations
 fun EquationApi.toDomain(): Equation {
+        // Résolution robuste du kind (tolérant à la casse et aux alias)
+        val resolvedKind = run {
+                val raw = kind.trim()
+                // essayer directement
+                runCatching {
+                        fr.vetbrain.vetnutri_mp.Enumer.EquationKind.valueOf(raw)
+                }.getOrElse {
+                        // essayer en uppercase (pour des valeurs comme "ENErcomp")
+                        runCatching {
+                                fr.vetbrain.vetnutri_mp.Enumer.EquationKind.valueOf(raw.uppercase())
+                        }.getOrElse {
+                                // alias connus
+                                when (raw.lowercase()) {
+                                        "enercomp", "energycomp", "energycomposition", "energycompdesc" ->
+                                                fr.vetbrain.vetnutri_mp.Enumer.EquationKind.ENERCOMP
+                                        "complnut", "complementary", "complementarynutrient" ->
+                                                fr.vetbrain.vetnutri_mp.Enumer.EquationKind.COMPLEMENTARY_NUTRIENT
+                                        "energyneed" -> fr.vetbrain.vetnutri_mp.Enumer.EquationKind.ENERGYNEED
+                                        "energydensity" -> fr.vetbrain.vetnutri_mp.Enumer.EquationKind.ENERGYDENSITY
+                                        "mw", "metabolicweight" -> fr.vetbrain.vetnutri_mp.Enumer.EquationKind.MW
+                                        "indicator" -> fr.vetbrain.vetnutri_mp.Enumer.EquationKind.INDICATOR
+                                        "need", "needeq" -> fr.vetbrain.vetnutri_mp.Enumer.EquationKind.NEED
+                                        else -> fr.vetbrain.vetnutri_mp.Enumer.EquationKind.ENERGYNEED
+                                }
+                        }
+                }
+        }
         return Equation(
                 uuid = uuid,
                 name = name,
                 specie = specie?.let { fr.vetbrain.vetnutri_mp.Enumer.Espece.valueOf(it) },
-                kind = fr.vetbrain.vetnutri_mp.Enumer.EquationKind.valueOf(kind),
+                kind = resolvedKind,
                 nutrient =
                         nutrient?.let {
                                 // Utiliser le resolver "global" qui couvre aussi NutrientAnalysis

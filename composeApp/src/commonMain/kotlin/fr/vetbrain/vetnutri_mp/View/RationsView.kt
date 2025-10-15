@@ -175,6 +175,9 @@ fun RationsView(
                 val beK = beApresK
                 val maladies = referencesMaladiesResolues
                 if (consultation != null && ration != null && prefsApp != null && mw != null && bee != null && beK != null) {
+                        try {
+                                println("[ENERCOMP][UI] Inputs -> BW=${consultation.effectiveWeight?.toDouble() ?: consultation.weight?.toDouble() ?: 0.0}, BEE=${bee}, BE=${beK}, MW=${mw}, refs=${maladies.size}, aliments=${ration.alimentMutableList.size}")
+                        } catch (_: Throwable) {}
                         val prefsEspece = animal?.getEspece()?.let { prefsApp.getPreferencesEspece(it) }
                         val add = EquationEvaluator.calculerEnergieAdditionnelle(
                                 referencesMaladies = maladies,
@@ -189,6 +192,9 @@ fun RationsView(
                         )
                         energieAdditionnelle = add
                         besoinEnergetiqueTotalFinal = beK.let { it + add }
+                        try {
+                                println("[ENERCOMP][UI] Résultat -> add=${add}, BE_final=${besoinEnergetiqueTotalFinal}")
+                        } catch (_: Throwable) {}
                 } else {
                         energieAdditionnelle = 0.0
                         besoinEnergetiqueTotalFinal = beK

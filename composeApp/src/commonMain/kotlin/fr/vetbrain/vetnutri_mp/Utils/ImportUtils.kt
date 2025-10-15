@@ -1815,6 +1815,8 @@ object ImportUtils {
                         2 -> fr.vetbrain.vetnutri_mp.Enumer.EquationKind.MW
                         3 -> fr.vetbrain.vetnutri_mp.Enumer.EquationKind.INDICATOR
                         4 -> fr.vetbrain.vetnutri_mp.Enumer.EquationKind.NEED
+                        5 -> fr.vetbrain.vetnutri_mp.Enumer.EquationKind.COMPLEMENTARY_NUTRIENT
+                        6 -> fr.vetbrain.vetnutri_mp.Enumer.EquationKind.ENERCOMP
                         else -> fr.vetbrain.vetnutri_mp.Enumer.EquationKind.ENERGYNEED
                     }
 

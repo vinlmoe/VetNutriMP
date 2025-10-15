@@ -36,6 +36,7 @@ class AlimentExcelService {
      */
     fun importFromCsv(csvContent: String): ImportResult {
         val lines = csvContent.lines().filter { it.isNotBlank() }
+        
         if (lines.isEmpty()) {
             return ImportResult(emptyList(), listOf("Le fichier CSV est vide"))
         }
@@ -52,9 +53,11 @@ class AlimentExcelService {
                 val aliment = AlimentExcelRow.toAlimentEv(row)
                 aliments.add(aliment)
             } catch (e: Exception) {
-                errors.add("Erreur ligne ${index + 2}: ${e.message}")
+                val errorMsg = "Erreur ligne ${index + 2}: ${e.message}"
+                errors.add(errorMsg)
             }
         }
+
 
         return ImportResult(aliments, errors)
     }
@@ -168,43 +171,51 @@ class AlimentExcelService {
             throw IllegalArgumentException("Nombre de colonnes incorrect: attendu ${headers.size}, trouvé ${values.size}")
         }
 
-        var currentIndex = 0
+        // Créer une map header -> valeur pour un accès par nom
+        val headerValueMap = headers.zip(values).toMap()
 
         // Informations de base
-        val uuid = values[currentIndex++]
-        val nom = values[currentIndex++].takeIf { it.isNotBlank() }
-        val brand = values[currentIndex++].takeIf { it.isNotBlank() }
-        val gamme = values[currentIndex++].takeIf { it.isNotBlank() }
-        val ingredients = values[currentIndex++].takeIf { it.isNotBlank() }
+        val uuid = headerValueMap["UUID"] ?: ""
+        val nom = headerValueMap["Nom"]?.takeIf { it.isNotBlank() }
+        val brand = headerValueMap["Marque"]?.takeIf { it.isNotBlank() }
+        val gamme = headerValueMap["Gamme"]?.takeIf { it.isNotBlank() }
+        val ingredients = headerValueMap["Ingrédients"]?.takeIf { it.isNotBlank() }
 
         // Classification
-        val groupAlim = values[currentIndex++].takeIf { it.isNotBlank() }
-        val typeAliment = values[currentIndex++].takeIf { it.isNotBlank() }
-        val contEnum = values[currentIndex++].takeIf { it.isNotBlank() }
+        val groupAlim = headerValueMap["Groupe Alimentaire"]?.takeIf { it.isNotBlank() }
+        val typeAliment = headerValueMap["Type Aliment"]?.takeIf { it.isNotBlank() }
+        val contEnum = headerValueMap["Conditionnement"]?.takeIf { it.isNotBlank() }
 
         // Prix et quantité
-        val price = values[currentIndex++].toDoubleOrNull()
-        val categPrice = values[currentIndex++].takeIf { it.isNotBlank() }
-        val quantInt = values[currentIndex++].toDoubleOrNull()
+        val price = headerValueMap["Prix"]?.toDoubleOrNull()
+        val categPrice = headerValueMap["Catégorie Prix"]?.takeIf { it.isNotBlank() }
+        val quantInt = headerValueMap["Quantité Interne"]?.toDoubleOrNull()
 
         // Statuts
-        val consistent = values[currentIndex++].toBooleanStrictOrNull() ?: false
-        val deprecated = values[currentIndex++].toBooleanStrictOrNull() ?: false
-        val dataB = values[currentIndex++].takeIf { it.isNotBlank() }
+        val consistent = headerValueMap["Consistant"]?.toBooleanStrictOrNull() ?: false
+        val deprecated = headerValueMap["Obsolète"]?.toBooleanStrictOrNull() ?: false
+        val dataB = headerValueMap["Données Base"]?.takeIf { it.isNotBlank() }
 
         // Espèces et indications
-        val especes = values[currentIndex++].takeIf { it.isNotBlank() }
-        val indications = values[currentIndex++].takeIf { it.isNotBlank() }
+        val especes = headerValueMap["Espèces"]?.takeIf { it.isNotBlank() }
+        val indications = headerValueMap["Indications"]?.takeIf { it.isNotBlank() }
 
         // Ration
-        val rationUUID = values[currentIndex++].takeIf { it.isNotBlank() }
+        val rationUUID = headerValueMap["UUID Ration"]?.takeIf { it.isNotBlank() }
 
-        // Nutriments
+        // Nutriments - correspondance par nom de colonne
         val nutrimentsMap = mutableMapOf<String, Double?>()
+        
         AlimentExcelRow.ALL_NUTRIENTS.forEach { nutrient ->
-            val valeur = values[currentIndex++].toDoubleOrNull()
-            if (valeur != null) {
-                nutrimentsMap[nutrient] = valeur
+            // Chercher la colonne correspondante (format: "PROTEINE (g/kg MS)" ou "PROTEINE")
+            val nutrientHeader = headers.find { header ->
+                header.startsWith("$nutrient (") || header == nutrient
+            }
+            if (nutrientHeader != null) {
+                val valeur = headerValueMap[nutrientHeader]?.toDoubleOrNull()
+                if (valeur != null) {
+                    nutrimentsMap[nutrient] = valeur
+                }
             }
         }
 

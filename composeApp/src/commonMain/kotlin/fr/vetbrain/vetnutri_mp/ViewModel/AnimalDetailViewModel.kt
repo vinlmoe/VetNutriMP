@@ -296,6 +296,9 @@ class AnimalDetailViewModel(
                 val preferences = preferencesRepository.getPreferencesForSpecies(animal.getEspece())
                 _speciesPreferences.value = preferences
                 _typeExpressionBesoin.value = preferences.getTypeExpressionBesoinEnum()
+                // Charger aussi les références disponibles pour que les références complémentaires
+                // soient prêtes lors de la sélection automatique de consultation
+                chargerReferencesDisponibles()
             } catch (e: Exception) {
 
                 _speciesPreferences.value = null
@@ -359,6 +362,10 @@ class AnimalDetailViewModel(
 
     fun selectConsultation(consultation: ConsultationEv) {
         viewModelScope.launch {
+            // Assurer que les références sont disponibles avant d'effectuer des calculs dépendants
+            if (_availableReferences.value.isEmpty()) {
+                chargerReferencesDisponibles()
+            }
             val fullConsultation = consultationRepository.getConsultationById(consultation.uuid)
             _selectedConsultation.value = fullConsultation
 

@@ -189,42 +189,44 @@ fun ExcelImportExportSection(
 
                                 Button(
                                         onClick = {
-                                                coroutineScope.launch {
-                                                        isImporting = true
-                                                        try {
-                                                                if (excelFoodService != null && csvSupported) {
-                                                                        // Import réel avec sélection de fichier
-                                                                        val csv = openCsvFileForImport()
-                                                                        if (csv != null) {
+                                                // Ouvrir le fichier CSV en dehors du contexte coroutine (comme les autres file browsers)
+                                                val csv = openCsvFileForImport()
+                                                if (csv != null) {
+                                                        coroutineScope.launch {
+                                                                isImporting = true
+                                                                try {
+                                                                        if (excelFoodService != null && csvSupported) {
+                                                                                // Import réel avec le contenu du fichier
                                                                                 csvContent = csv
-                                                                                val result = excelFoodService.previewCsvImport(csv)
+                                                                                val result = excelFoodService.importFoodsFromCsv(csv)
                                                                                 importResult = result
                                                                                 showImportDialog = true
                                                                         } else {
-                                                                                importResult = ExcelFoodService.ExcelImportResult(
+                                                                                // Fallback: utiliser l'exemple
+                                                                                val csvExample = excelFoodService?.generateExampleCsv() ?: "Exemple CSV"
+                                                                                csvContent = csvExample
+                                                                                val result = excelFoodService?.previewCsvImport(csvExample) ?: ExcelFoodService.ExcelImportResult(
                                                                                         success = false,
-                                                                                        message = "Aucun fichier sélectionné"
+                                                                                        message = "Service non disponible"
                                                                                 )
+                                                                                importResult = result
+                                                                                showImportDialog = true
                                                                         }
-                                                                } else {
-                                                                        // Fallback: utiliser l'exemple
-                                                                        val csv = excelFoodService?.generateExampleCsv() ?: "Exemple CSV"
-                                                                csvContent = csv
-                                                                        val result = excelFoodService?.previewCsvImport(csv) ?: ExcelFoodService.ExcelImportResult(
+                                                                } catch (e: Exception) {
+                                                                        importResult = ExcelFoodService.ExcelImportResult(
                                                                                 success = false,
-                                                                                message = "Service non disponible"
+                                                                                message = "Erreur lors de la préparation: ${e.message}"
                                                                         )
-                                                                        importResult = result
-                                                                        showImportDialog = true
+                                                                } finally {
+                                                                        isImporting = false
                                                                 }
-                                                        } catch (e: Exception) {
-                                                                importResult = ExcelFoodService.ExcelImportResult(
-                                                                        success = false,
-                                                                        message = "Erreur lors de la préparation: ${e.message}"
-                                                                )
-                                                        } finally {
-                                                                isImporting = false
                                                         }
+                                                } else {
+                                                        // Aucun fichier sélectionné
+                                                        importResult = ExcelFoodService.ExcelImportResult(
+                                                                success = false,
+                                                                message = "Aucun fichier sélectionné"
+                                                        )
                                                 }
                                         },
                                         enabled = !isExporting && !isImporting,
