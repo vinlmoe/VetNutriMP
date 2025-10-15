@@ -119,7 +119,7 @@ fun RationsView(
         // Récupération des valeurs métaboliques calculées
         val poidsMetabolique by viewModel.poidsMetabolique.collectAsState()
         val besoinEnergetiqueStandard by viewModel.besoinEnergetiqueStandard.collectAsState()
-        val besoinEnergetiqueTotal by viewModel.besoinEnergetiqueTotal.collectAsState()
+        // Le BE final devient la seule valeur de BE utilisée dans la vue
         val referenceUtilisee by viewModel.referenceUtilisee.collectAsState()
 
         // L'énergie apportée sera calculée plus bas après chargement des préférences
@@ -149,9 +149,9 @@ fun RationsView(
                 preferencesApplication = preferencesRepository.preferences
         }
 
-        // États pour énergie additionnelle (patho) et BE total final
+        // États pour énergie additionnelle (patho) et BE total (final)
         var energieAdditionnelle by remember { mutableStateOf(0.0) }
-        var besoinEnergetiqueTotalFinal by remember { mutableStateOf<Double?>(null) }
+        var besoinEnergetiqueTotal by remember { mutableStateOf<Double?>(null) }
 
         // Calcul du BE après K et de l'énergie additionnelle, puis du BE total final
         val beApresK = remember(besoinEnergetiqueStandard, kCalcule) {
@@ -191,20 +191,20 @@ fun RationsView(
                                 equationRepository = equationRepository
                         )
                         energieAdditionnelle = add
-                        besoinEnergetiqueTotalFinal = beK.let { it + add }
+                        besoinEnergetiqueTotal = beK.let { it + add }
                         try {
-                                println("[ENERCOMP][UI] Résultat -> add=${add}, BE_final=${besoinEnergetiqueTotalFinal}")
+                                println("[ENERCOMP][UI] Résultat -> add=${add}, BE_final=${besoinEnergetiqueTotal}")
                         } catch (_: Throwable) {}
                 } else {
                         energieAdditionnelle = 0.0
-                        besoinEnergetiqueTotalFinal = beK
+                        besoinEnergetiqueTotal = beK
                 }
         }
 
         // Calcul du pourcentage de couverture avec le BE total final
         val pourcentageCouverture =
-                remember(energieApportee, besoinEnergetiqueTotalFinal) {
-                        besoinEnergetiqueTotalFinal?.let { besoin ->
+                remember(energieApportee, besoinEnergetiqueTotal) {
+                        besoinEnergetiqueTotal?.let { besoin ->
                                 if (besoin > 0) (energieApportee / besoin) * 100.0 else 0.0
                         }
                                 ?: 0.0
@@ -534,7 +534,7 @@ fun RationsView(
                                                                 besoinEnergetiqueStandard =
                                                                         besoinEnergetiqueStandard,
                                                                 besoinEnergetiqueTotal =
-                                                                        besoinEnergetiqueTotalFinal,
+                                                                        besoinEnergetiqueTotal,
                                                                 kObserve = kObserve,
                                                                 kCalcule = kCalcule,
                                                                 besoinComplementaire = energieAdditionnelle,
@@ -567,7 +567,7 @@ fun RationsView(
                                                                 kObserve = kObserve,
                                                                 kCalcule = kCalcule,
                                                                 energieAdditionnelle = energieAdditionnelle,
-                                                                beFinal = besoinEnergetiqueTotalFinal,
+                                                                beFinal = besoinEnergetiqueTotal,
                                                                 modifier = Modifier.fillMaxWidth()
                                                         )
                                                         Divider()
@@ -985,7 +985,7 @@ fun RationsView(
                                                                         kObserve = kObserve,
                                                                         kCalcule = kCalcule,
                                                                         energieAdditionnelle = energieAdditionnelle,
-                                                                        beFinal = besoinEnergetiqueTotalFinal,
+                                                                        beFinal = besoinEnergetiqueTotal,
                                                                         modifier = Modifier.weight(1f)
                                                                 )
                                                         }
