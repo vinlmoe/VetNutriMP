@@ -819,3 +819,8 @@ data class ResultatValidation(
         val variablesManquantes: List<String> = emptyList(),
         val variablesReconnues: List<String> = emptyList()
 )
+
+
+
+
+

@@ -537,7 +537,7 @@ fun RationsView(
                                                                         besoinEnergetiqueTotal,
                                                                 kObserve = kObserve,
                                                                 kCalcule = kCalcule,
-                                                                besoinComplementaire = energieAdditionnelle,
+                                                               energieAdditionnelle = energieAdditionnelle,
                                                                 onExpand = {
                                                                         showMetabolicValuesDialog =
                                                                                 true
@@ -566,7 +566,7 @@ fun RationsView(
                                                                         pourcentageCouverture,
                                                                 kObserve = kObserve,
                                                                 kCalcule = kCalcule,
-                                                                energieAdditionnelle = energieAdditionnelle,
+                                                        
                                                                 beFinal = besoinEnergetiqueTotal,
                                                                 modifier = Modifier.fillMaxWidth()
                                                         )
@@ -952,6 +952,7 @@ fun RationsView(
                                                                                 besoinEnergetiqueTotal,
                                                                         kObserve = kObserve,
                                                                         kCalcule = kCalcule,
+                                                                         energieAdditionnelle = energieAdditionnelle,
                                                                         onExpand = {
                                                                                 showMetabolicValuesDialog =
                                                                                         true
@@ -984,7 +985,7 @@ fun RationsView(
                                                                                 pourcentageCouverture,
                                                                         kObserve = kObserve,
                                                                         kCalcule = kCalcule,
-                                                                        energieAdditionnelle = energieAdditionnelle,
+                                                                       
                                                                         beFinal = besoinEnergetiqueTotal,
                                                                         modifier = Modifier.weight(1f)
                                                                 )

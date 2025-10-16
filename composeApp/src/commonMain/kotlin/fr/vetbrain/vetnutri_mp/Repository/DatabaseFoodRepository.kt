@@ -1094,6 +1094,11 @@ class DatabaseFoodRepository(
             // Supprimer l'aliment lui-même
             foodDao.deleteFood(uuid)
         }
+        // Invalider le cache et rafraîchir le Flow pour notifier les observateurs
+        clearCache()
+        if (!isBatchMode) {
+            coroutineScope.launch { refreshFoodsFlow() }
+        }
     }
 
     /**

@@ -203,18 +203,45 @@ class AlimentExcelService {
         // Ration
         val rationUUID = headerValueMap["UUID Ration"]?.takeIf { it.isNotBlank() }
 
-        // Nutriments - correspondance par nom de colonne
+        // Nutriments - correspondance robuste par résolution de label
         val nutrimentsMap = mutableMapOf<String, Double?>()
-        
-        AlimentExcelRow.ALL_NUTRIENTS.forEach { nutrient ->
-            // Chercher la colonne correspondante (format: "PROTEINE (g/kg MS)" ou "PROTEINE")
-            val nutrientHeader = headers.find { header ->
-                header.startsWith("$nutrient (") || header == nutrient
-            }
-            if (nutrientHeader != null) {
-                val valeur = headerValueMap[nutrientHeader]?.toDoubleOrNull()
-                if (valeur != null) {
-                    nutrimentsMap[nutrient] = valeur
+        val fixedHeaders = setOf(
+                "UUID",
+                "Nom",
+                "Marque",
+                "Gamme",
+                "Ingrédients",
+                "Groupe Alimentaire",
+                "Type Aliment",
+                "Conditionnement",
+                "Prix",
+                "Catégorie Prix",
+                "Quantité Interne",
+                "Consistant",
+                "Obsolète",
+                "Données Base",
+                "Espèces",
+                "Indications",
+                "UUID Ration"
+        )
+
+        headers.forEach { header ->
+            if (header !in fixedHeaders) {
+                val rawName = header.substringBefore("(").trim().removeSuffix("")
+                val valueStr = headerValueMap[header]
+                val value = valueStr?.toDoubleOrNull()
+                if (value != null) {
+                    val resolved = fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver.AllNutrientResolver(rawName)
+                    if (resolved != null) {
+                        nutrimentsMap[resolved.label] = value
+                    } else {
+                        // Fallback: essayer aussi sans espaces/avec normalisation simple
+                        val alt = rawName.replace("_", " ").replace("-", " ").trim()
+                        val resolvedAlt = fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver.AllNutrientResolver(alt)
+                        if (resolvedAlt != null) {
+                            nutrimentsMap[resolvedAlt.label] = value
+                        }
+                    }
                 }
             }
         }
