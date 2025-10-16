@@ -32,6 +32,7 @@ kotlin {
             implementation(libs.androidx.room.paging)
             implementation(libs.androidx.core.ktx)
             // implementation(libs.androidx.sqlite.sqlite.ktx)
+            implementation(libs.kotlinx.coroutines.android)
 
         }
 
@@ -94,8 +95,8 @@ kotlin {
     }
 }
 
-// Configuration pour exclure les dépendances Android problématiques sur desktop
-configurations.all {
+// Configuration: exclure uniquement côté Desktop les artefacts Android
+configurations.matching { it.name.contains("desktop", ignoreCase = true) }.configureEach {
     exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-android")
 }
 
@@ -111,8 +112,8 @@ android {
         applicationId = "fr.vetbrain.vetnutri_mp"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 31
-        versionName = "3.1.31"
+        versionCode = 33
+        versionName = "3.1.33"
 
         // Configuration de Room
 
@@ -144,7 +145,7 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Exe, TargetFormat.Deb)
             packageName = "VetNutriMP"
-            packageVersion = "3.1.31"
+            packageVersion = "3.1.33"
             description = "Application de nutrition vétérinaire multiplateforme"
             copyright = "© 2024 VetBrain"
             vendor = "VetBrain"
