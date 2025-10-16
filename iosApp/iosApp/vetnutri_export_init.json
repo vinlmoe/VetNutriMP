@@ -1,5 +1,5 @@
 {
-    "version": "3.1.27",
+    "version": "3.1.33",
     "generatedAtEpochMs": 1757917545321,
     "animals": [],
     "foods": [
@@ -648,6 +648,219 @@
                 "VITB1": 1.73304,
                 "VITB3": 2.125,
                 "VITB6": 1.2352
+            }
+        },
+        {
+            "uuid": "Osa-25-002",
+            "name": "OSALIM SENIOR+",
+            "group": "ALL",
+            "kind": "COMPLEMENTAIRE",
+            "brand": "Osalia",
+            "price": 0.0,
+            "categoryPrice": "v",
+            "ingredients": "",
+            "gamme": "Physiologique",
+            "presentation": "NO",
+            "presentationQuantity": 5.0,
+            "deprecated": false,
+            "dataB": "VF24",
+            "consistent": false,
+            "rationId": "",
+            "species": [
+                "CHIEN"
+            ],
+            "indications": [
+                "SEN"
+            ],
+            "nutrients": {
+                "HUMIDITE": 2.0,
+                "PROTEINE": 3.6,
+                "LIPIDE": 12.9,
+                "ENA": 34.8,
+                "CELLULOSE": 7.3,
+                "CENDRE": 39.4,
+                "FIBRESOL": 0.9,
+                "VITA": 25000.0,
+                "VITD": 5000.0,
+                "VITE": 500.0,
+                "VITB1": 28.0,
+                "VITB2": 40.0,
+                "VITB3": 150.0,
+                "VITB6": 10.0,
+                "VITB8": 1000.0,
+                "VITB9": 30000.0,
+                "VITB12": 160.0,
+                "CHOLINE": 100.0,
+                "CU": 12.0,
+                "ZN": 150.0,
+                "I": 3400.0,
+                "SE": 400.0,
+                "CAL": 11.3,
+                "NA": 1.0,
+                "K": 0.04,
+                "AG205": 0.35,
+                "AG226": 0.25,
+                "O3": 0.6,
+                "TAURINE": 0.1
+            }
+        },
+        {
+            "uuid": "Osa-25-001",
+            "name": "OSALIM SKIN+",
+            "group": "ALL",
+            "kind": "COMPLEMENTAIRE",
+            "brand": "Osalia",
+            "price": 0.0,
+            "categoryPrice": "v",
+            "ingredients": "",
+            "gamme": "Dermatologie",
+            "presentation": "NO",
+            "presentationQuantity": 5.0,
+            "deprecated": false,
+            "dataB": "VF24",
+            "consistent": false,
+            "rationId": "",
+            "species": [
+                "CHIEN"
+            ],
+            "indications": [
+                "DERM"
+            ],
+            "nutrients": {
+                "HUMIDITE": 3.0,
+                "PROTEINE": 9.0,
+                "LIPIDE": 1.4,
+                "ENA": 18.4,
+                "CENDRE": 61.7,
+                "VITA": 25000.0,
+                "VITD": 5000.0,
+                "VITE": 500.0,
+                "VITB1": 28.0,
+                "VITB2": 40.0,
+                "VITB3": 150.0,
+                "VITB6": 10.0,
+                "VITB8": 2600.0,
+                "VITB9": 30000.0,
+                "VITB12": 160.0,
+                "CHOLINE": 100.0,
+                "CU": 30.0,
+                "ZN": 300.0,
+                "I": 3400.0,
+                "SE": 400.0,
+                "CAL": 15.0,
+                "PHOS": 5.0,
+                "NA": 4.5,
+                "K": 0.2,
+                "AG205": 0.06,
+                "AG226": 0.042,
+                "O3": 0.1,
+                "O6": 0.35,
+                "TAURINE": 0.1
+            }
+        },
+        {
+            "uuid": "Osa-25-003",
+            "name": "OSALIM DIGEST+",
+            "group": "ALL",
+            "kind": "COMPLEMENTAIRE",
+            "brand": "Osalia",
+            "price": 0.0,
+            "categoryPrice": "v",
+            "ingredients": "",
+            "gamme": "Digestif",
+            "presentation": "NO",
+            "presentationQuantity": 5.0,
+            "deprecated": false,
+            "dataB": "VF24",
+            "consistent": false,
+            "rationId": "",
+            "species": [
+                "CHIEN"
+            ],
+            "indications": [
+                "GI"
+            ],
+            "nutrients": {
+                "HUMIDITE": 3.0,
+                "PROTEINE": 5.8,
+                "LIPIDE": 0.6,
+                "ENA": 31.2,
+                "CELLULOSE": 5.6,
+                "CENDRE": 53.8,
+                "FIBRESOL": 1.0,
+                "VITA": 25000.0,
+                "VITD": 5000.0,
+                "VITE": 500.0,
+                "VITB1": 28.0,
+                "VITB2": 40.0,
+                "VITB3": 150.0,
+                "VITB6": 10.0,
+                "VITB8": 1000.0,
+                "VITB9": 30000.0,
+                "VITB12": 160.0,
+                "CHOLINE": 100.0,
+                "CU": 12.0,
+                "ZN": 150.0,
+                "I": 3400.0,
+                "SE": 400.0,
+                "CAL": 14.8,
+                "PHOS": 5.0,
+                "NA": 2.4,
+                "K": 0.06,
+                "TAURINE": 0.1
+            }
+        },
+        {
+            "uuid": "Osa-25-004",
+            "name": "OSALIM PHYSIO+",
+            "group": "ALL",
+            "kind": "COMPLEMENTAIRE",
+            "brand": "Osalia",
+            "price": 0.0,
+            "categoryPrice": "v",
+            "ingredients": "",
+            "gamme": "Physiologique",
+            "presentation": "NO",
+            "presentationQuantity": 5.0,
+            "deprecated": false,
+            "dataB": "VF24",
+            "consistent": false,
+            "rationId": "",
+            "species": [
+                "CHIEN"
+            ],
+            "indications": [
+                "PHYS"
+            ],
+            "nutrients": {
+                "PROTEINE": 5.1,
+                "LIPIDE": 0.3,
+                "ENA": 20.1,
+                "CELLULOSE": 6.8,
+                "CENDRE": 65.2,
+                "VITA": 25000.0,
+                "VITD": 5000.0,
+                "VITE": 500.0,
+                "VITB1": 28.0,
+                "VITB2": 40.0,
+                "VITB3": 150.0,
+                "VITB6": 10.0,
+                "VITB8": 1000.0,
+                "VITB9": 30000.0,
+                "VITB12": 160.0,
+                "CHOLINE": 100.0,
+                "CU": 12.0,
+                "ZN": 150.0,
+                "I": 3400.0,
+                "SE": 400.0,
+                "CAL": 19.4,
+                "PHOS": 6.5,
+                "MG": 0.4,
+                "NA": 2.1,
+                "AG205": 0.35,
+                "AG226": 0.25,
+                "O3": 0.6,
+                "TAURINE": 0.1
             }
         },
         {
@@ -575127,6 +575340,15 @@
             "ratio": true
         },
         {
+            "uuid": "59d7e573-949b-4156-8615-f7850a7569aa",
+            "name": "Besoin endurance",
+            "specie": "CHIEN",
+            "kind": "ENERCOMP",
+            "script": "D*(1.77*BW^0.6+1.25*BW^0.75)*(BW+CW)/BW",
+            "variables": [],
+            "ratio": false
+        },
+        {
             "uuid": "c1d0b1e0-870d-4ca7-83e3-fc1d6bb20f73",
             "name": "Ratio potassium sodium",
             "specie": "CH",
@@ -575324,6 +575546,58 @@
         }
     ],
     "references": [
+        {
+            "uuid": "f0bfc8e0-3ab3-44eb-9914-fe4c7af6db08",
+            "nom": "Déplacement long",
+            "description": "",
+            "maladie": true,
+            "nomMaladie": "Besoin energétique exercice",
+            "nomEnergie": "",
+            "consistent": 0,
+            "espece": "CHIEN",
+            "stadePhysio": "ADULTE",
+            "equationsNut": [
+                "59d7e573-949b-4156-8615-f7850a7569aa"
+            ],
+            "nutrients": [],
+            "coefficients": [
+                {
+                    "uuid": "f0bfc8e0-3ab3-44eb-9914-fe4c7af6db08_k1_0",
+                    "groupType": "k1",
+                    "description": "Normal",
+                    "coef": 1.0,
+                    "groupUUID": 0
+                },
+                {
+                    "uuid": "f0bfc8e0-3ab3-44eb-9914-fe4c7af6db08_k2_0",
+                    "groupType": "k2",
+                    "description": "Normal",
+                    "coef": 1.0,
+                    "groupUUID": 1
+                },
+                {
+                    "uuid": "f0bfc8e0-3ab3-44eb-9914-fe4c7af6db08_k3_0",
+                    "groupType": "k3",
+                    "description": "Normal",
+                    "coef": 1.0,
+                    "groupUUID": 2
+                },
+                {
+                    "uuid": "f0bfc8e0-3ab3-44eb-9914-fe4c7af6db08_k4_0",
+                    "groupType": "k4",
+                    "description": "Normal",
+                    "coef": 1.0,
+                    "groupUUID": 3
+                },
+                {
+                    "uuid": "f0bfc8e0-3ab3-44eb-9914-fe4c7af6db08_k5_0",
+                    "groupType": "k5",
+                    "description": "Normal",
+                    "coef": 1.0,
+                    "groupUUID": 4
+                }
+            ]
+        },
         {
             "uuid": "03f44571-9b09-4406-bdd4-21cb3ba235ea",
             "nom": "Cardio (>C1) et plus",
@@ -577462,34 +577736,7 @@
                     "coef": 1.0,
                     "groupUUID": 0
                 },
-                {
-                    "uuid": "1d17d4fc-16ba-4f61-9e9c-13004b93e57e_k1_1",
-                    "groupType": "k1",
-                    "description": "Normal",
-                    "coef": 1.0,
-                    "groupUUID": 0
-                },
-                {
-                    "uuid": "1d17d4fc-16ba-4f61-9e9c-13004b93e57e_k1_2",
-                    "groupType": "k1",
-                    "description": "Normal",
-                    "coef": 1.0,
-                    "groupUUID": 0
-                },
-                {
-                    "uuid": "1d17d4fc-16ba-4f61-9e9c-13004b93e57e_k1_3",
-                    "groupType": "k1",
-                    "description": "Normal",
-                    "coef": 1.0,
-                    "groupUUID": 0
-                },
-                {
-                    "uuid": "1d17d4fc-16ba-4f61-9e9c-13004b93e57e_k1_4",
-                    "groupType": "k1",
-                    "description": "Normal",
-                    "coef": 1.0,
-                    "groupUUID": 0
-                },
+               
                 {
                     "uuid": "1d17d4fc-16ba-4f61-9e9c-13004b93e57e_k2_0",
                     "groupType": "k2",
@@ -577497,34 +577744,7 @@
                     "coef": 1.0,
                     "groupUUID": 1
                 },
-                {
-                    "uuid": "1d17d4fc-16ba-4f61-9e9c-13004b93e57e_k2_1",
-                    "groupType": "k2",
-                    "description": "Normal",
-                    "coef": 1.0,
-                    "groupUUID": 1
-                },
-                {
-                    "uuid": "1d17d4fc-16ba-4f61-9e9c-13004b93e57e_k2_2",
-                    "groupType": "k2",
-                    "description": "Normal",
-                    "coef": 1.0,
-                    "groupUUID": 1
-                },
-                {
-                    "uuid": "1d17d4fc-16ba-4f61-9e9c-13004b93e57e_k2_3",
-                    "groupType": "k2",
-                    "description": "Normal",
-                    "coef": 1.0,
-                    "groupUUID": 1
-                },
-                {
-                    "uuid": "1d17d4fc-16ba-4f61-9e9c-13004b93e57e_k2_4",
-                    "groupType": "k2",
-                    "description": "Normal",
-                    "coef": 1.0,
-                    "groupUUID": 1
-                },
+             
                 {
                     "uuid": "1d17d4fc-16ba-4f61-9e9c-13004b93e57e_k3_0",
                     "groupType": "k3",
@@ -577532,34 +577752,7 @@
                     "coef": 1.0,
                     "groupUUID": 2
                 },
-                {
-                    "uuid": "1d17d4fc-16ba-4f61-9e9c-13004b93e57e_k3_1",
-                    "groupType": "k3",
-                    "description": "Normal",
-                    "coef": 1.0,
-                    "groupUUID": 2
-                },
-                {
-                    "uuid": "1d17d4fc-16ba-4f61-9e9c-13004b93e57e_k3_2",
-                    "groupType": "k3",
-                    "description": "Normal",
-                    "coef": 1.0,
-                    "groupUUID": 2
-                },
-                {
-                    "uuid": "1d17d4fc-16ba-4f61-9e9c-13004b93e57e_k3_3",
-                    "groupType": "k3",
-                    "description": "Normal",
-                    "coef": 1.0,
-                    "groupUUID": 2
-                },
-                {
-                    "uuid": "1d17d4fc-16ba-4f61-9e9c-13004b93e57e_k3_4",
-                    "groupType": "k3",
-                    "description": "Normal",
-                    "coef": 1.0,
-                    "groupUUID": 2
-                },
+             
                 {
                     "uuid": "1d17d4fc-16ba-4f61-9e9c-13004b93e57e_k4_0",
                     "groupType": "k4",
@@ -577574,62 +577767,15 @@
                     "coef": 1.0,
                     "groupUUID": 3
                 },
-                {
-                    "uuid": "1d17d4fc-16ba-4f61-9e9c-13004b93e57e_k4_2",
-                    "groupType": "k4",
-                    "description": "Normal",
-                    "coef": 1.0,
-                    "groupUUID": 3
-                },
-                {
-                    "uuid": "1d17d4fc-16ba-4f61-9e9c-13004b93e57e_k4_3",
-                    "groupType": "k4",
-                    "description": "Normal",
-                    "coef": 1.0,
-                    "groupUUID": 3
-                },
-                {
-                    "uuid": "1d17d4fc-16ba-4f61-9e9c-13004b93e57e_k4_4",
-                    "groupType": "k4",
-                    "description": "Normal",
-                    "coef": 1.0,
-                    "groupUUID": 3
-                },
+           
                 {
                     "uuid": "1d17d4fc-16ba-4f61-9e9c-13004b93e57e_k5_0",
                     "groupType": "k5",
                     "description": "Normal",
                     "coef": 1.0,
                     "groupUUID": 4
-                },
-                {
-                    "uuid": "1d17d4fc-16ba-4f61-9e9c-13004b93e57e_k5_1",
-                    "groupType": "k5",
-                    "description": "Normal",
-                    "coef": 1.0,
-                    "groupUUID": 4
-                },
-                {
-                    "uuid": "1d17d4fc-16ba-4f61-9e9c-13004b93e57e_k5_2",
-                    "groupType": "k5",
-                    "description": "Normal",
-                    "coef": 1.0,
-                    "groupUUID": 4
-                },
-                {
-                    "uuid": "1d17d4fc-16ba-4f61-9e9c-13004b93e57e_k5_3",
-                    "groupType": "k5",
-                    "description": "Normal",
-                    "coef": 1.0,
-                    "groupUUID": 4
-                },
-                {
-                    "uuid": "1d17d4fc-16ba-4f61-9e9c-13004b93e57e_k5_4",
-                    "groupType": "k5",
-                    "description": "Normal",
-                    "coef": 1.0,
-                    "groupUUID": 4
                 }
+              
             ]
         },
         {
@@ -581367,51 +581513,9 @@
             ],
             "nutrients": [
                 {
-                    "nutrientLabel": "CAP",
-                    "reflevel": "OPTIMIN",
-                    "quantity": 1.2,
-                    "uniteReqId": 0,
-                    "biblioRefId": "default-biblio"
-                },
-                {
-                    "nutrientLabel": "CAP",
-                    "reflevel": "OPTIMAX",
-                    "quantity": 2.0,
-                    "uniteReqId": 0,
-                    "biblioRefId": "default-biblio"
-                },
-                {
-                    "nutrientLabel": "CAP",
-                    "reflevel": "MIN",
-                    "quantity": 1.0,
-                    "uniteReqId": 0,
-                    "biblioRefId": "default-biblio"
-                },
-                {
                     "nutrientLabel": "I",
                     "reflevel": "MIN",
                     "quantity": 320.0,
-                    "uniteReqId": 1,
-                    "biblioRefId": "1"
-                },
-                {
-                    "nutrientLabel": "PROTEINE",
-                    "reflevel": "MIN",
-                    "quantity": 40.0,
-                    "uniteReqId": 1,
-                    "biblioRefId": "1"
-                },
-                {
-                    "nutrientLabel": "VITB5",
-                    "reflevel": "MIN",
-                    "quantity": 1.15,
-                    "uniteReqId": 1,
-                    "biblioRefId": "1"
-                },
-                {
-                    "nutrientLabel": "MG",
-                    "reflevel": "MIN",
-                    "quantity": 0.05,
                     "uniteReqId": 1,
                     "biblioRefId": "1"
                 },
@@ -581430,9 +581534,44 @@
                     "biblioRefId": "1"
                 },
                 {
+                    "nutrientLabel": "VITB5",
+                    "reflevel": "MIN",
+                    "quantity": 1.15,
+                    "uniteReqId": 1,
+                    "biblioRefId": "1"
+                },
+                {
+                    "nutrientLabel": "CAP",
+                    "reflevel": "MIN",
+                    "quantity": 1.0,
+                    "uniteReqId": 0,
+                    "biblioRefId": "default-biblio"
+                },
+                {
                     "nutrientLabel": "VITB9",
                     "reflevel": "MIN",
                     "quantity": 150.0,
+                    "uniteReqId": 1,
+                    "biblioRefId": "1"
+                },
+                {
+                    "nutrientLabel": "NA",
+                    "reflevel": "MIN",
+                    "quantity": 0.16,
+                    "uniteReqId": 1,
+                    "biblioRefId": "1"
+                },
+                {
+                    "nutrientLabel": "LYSINE",
+                    "reflevel": "MIN",
+                    "quantity": 0.68,
+                    "uniteReqId": 1,
+                    "biblioRefId": "1"
+                },
+                {
+                    "nutrientLabel": "PROTEINE",
+                    "reflevel": "MIN",
+                    "quantity": 40.0,
                     "uniteReqId": 1,
                     "biblioRefId": "1"
                 },
@@ -581444,9 +581583,9 @@
                     "biblioRefId": "1"
                 },
                 {
-                    "nutrientLabel": "NA",
+                    "nutrientLabel": "MG",
                     "reflevel": "MIN",
-                    "quantity": 0.16,
+                    "quantity": 0.05,
                     "uniteReqId": 1,
                     "biblioRefId": "1"
                 },
@@ -581465,9 +581604,9 @@
                     "biblioRefId": "1"
                 },
                 {
-                    "nutrientLabel": "LYSINE",
-                    "reflevel": "MIN",
-                    "quantity": 0.68,
+                    "nutrientLabel": "AG182",
+                    "reflevel": "MAX",
+                    "quantity": 13.8,
                     "uniteReqId": 1,
                     "biblioRefId": "1"
                 },
@@ -581486,23 +581625,9 @@
                     "biblioRefId": "1"
                 },
                 {
-                    "nutrientLabel": "AG182",
-                    "reflevel": "MAX",
-                    "quantity": 13.8,
-                    "uniteReqId": 1,
-                    "biblioRefId": "1"
-                },
-                {
                     "nutrientLabel": "AG204",
                     "reflevel": "MAX",
                     "quantity": 0.5,
-                    "uniteReqId": 1,
-                    "biblioRefId": "1"
-                },
-                {
-                    "nutrientLabel": "LIPIDE",
-                    "reflevel": "MAX",
-                    "quantity": 82.5,
                     "uniteReqId": 1,
                     "biblioRefId": "1"
                 },
@@ -581514,9 +581639,9 @@
                     "biblioRefId": "1"
                 },
                 {
-                    "nutrientLabel": "O6",
-                    "reflevel": "OPTIMIN",
-                    "quantity": 1.4,
+                    "nutrientLabel": "LIPIDE",
+                    "reflevel": "MAX",
+                    "quantity": 82.5,
                     "uniteReqId": 1,
                     "biblioRefId": "1"
                 },
@@ -581528,6 +581653,90 @@
                     "biblioRefId": "1"
                 },
                 {
+                    "nutrientLabel": "CAL",
+                    "reflevel": "OPTIMIN",
+                    "quantity": 0.72,
+                    "uniteReqId": 1,
+                    "biblioRefId": "1"
+                },
+                {
+                    "nutrientLabel": "AG182",
+                    "reflevel": "OPTIMIN",
+                    "quantity": 1.4,
+                    "uniteReqId": 1,
+                    "biblioRefId": "1"
+                },
+                {
+                    "nutrientLabel": "O6",
+                    "reflevel": "OPTIMIN",
+                    "quantity": 1.4,
+                    "uniteReqId": 1,
+                    "biblioRefId": "1"
+                },
+                {
+                    "nutrientLabel": "ARGININE",
+                    "reflevel": "OPTIMIN",
+                    "quantity": 1.93,
+                    "uniteReqId": 1,
+                    "biblioRefId": "1"
+                },
+                {
+                    "nutrientLabel": "VITA",
+                    "reflevel": "OPTIMIN",
+                    "quantity": 832.0,
+                    "uniteReqId": 1,
+                    "biblioRefId": "1"
+                },
+                {
+                    "nutrientLabel": "CHL",
+                    "reflevel": "OPTIMIN",
+                    "quantity": 0.24,
+                    "uniteReqId": 1,
+                    "biblioRefId": "1"
+                },
+                {
+                    "nutrientLabel": "SE",
+                    "reflevel": "OPTIMIN",
+                    "quantity": 75.0,
+                    "uniteReqId": 1,
+                    "biblioRefId": "1"
+                },
+                {
+                    "nutrientLabel": "VITB12",
+                    "reflevel": "OPTIMIN",
+                    "quantity": 5.6,
+                    "uniteReqId": 1,
+                    "biblioRefId": "1"
+                },
+                {
+                    "nutrientLabel": "VITB2",
+                    "reflevel": "OPTIMIN",
+                    "quantity": 1.0,
+                    "uniteReqId": 1,
+                    "biblioRefId": "1"
+                },
+                {
+                    "nutrientLabel": "VITB9",
+                    "reflevel": "OPTIMIN",
+                    "quantity": 188.0,
+                    "uniteReqId": 1,
+                    "biblioRefId": "1"
+                },
+                {
+                    "nutrientLabel": "PROTEINE",
+                    "reflevel": "OPTIMIN",
+                    "quantity": 70.0,
+                    "uniteReqId": 1,
+                    "biblioRefId": "2"
+                },
+                {
+                    "nutrientLabel": "CELLULOSE",
+                    "reflevel": "OPTIMIN",
+                    "quantity": 1.0,
+                    "uniteReqId": 1,
+                    "biblioRefId": "test-1"
+                },
+                {
                     "nutrientLabel": "VITK",
                     "reflevel": "OPTIMIN",
                     "quantity": 0.25,
@@ -581535,9 +581744,23 @@
                     "biblioRefId": "1"
                 },
                 {
-                    "nutrientLabel": "FE",
+                    "nutrientLabel": "ZN",
                     "reflevel": "OPTIMIN",
-                    "quantity": 20.0,
+                    "quantity": 18.5,
+                    "uniteReqId": 1,
+                    "biblioRefId": "1"
+                },
+                {
+                    "nutrientLabel": "TRYPTOPHANE",
+                    "reflevel": "OPTIMIN",
+                    "quantity": 0.33,
+                    "uniteReqId": 1,
+                    "biblioRefId": "1"
+                },
+                {
+                    "nutrientLabel": "PHOS",
+                    "reflevel": "OPTIMIN",
+                    "quantity": 0.64,
                     "uniteReqId": 1,
                     "biblioRefId": "1"
                 },
@@ -581549,6 +581772,27 @@
                     "biblioRefId": "1"
                 },
                 {
+                    "nutrientLabel": "PHENYLALANINE",
+                    "reflevel": "OPTIMIN",
+                    "quantity": 1.0,
+                    "uniteReqId": 1,
+                    "biblioRefId": "1"
+                },
+                {
+                    "nutrientLabel": "VITB3",
+                    "reflevel": "OPTIMIN",
+                    "quantity": 10.0,
+                    "uniteReqId": 1,
+                    "biblioRefId": "1"
+                },
+                {
+                    "nutrientLabel": "VITD",
+                    "reflevel": "OPTIMIN",
+                    "quantity": 70.0,
+                    "uniteReqId": 1,
+                    "biblioRefId": "1"
+                },
+                {
                     "nutrientLabel": "MG",
                     "reflevel": "OPTIMIN",
                     "quantity": 0.1,
@@ -581556,9 +581800,16 @@
                     "biblioRefId": "1"
                 },
                 {
-                    "nutrientLabel": "CAL",
+                    "nutrientLabel": "LIPIDE",
                     "reflevel": "OPTIMIN",
-                    "quantity": 0.72,
+                    "quantity": 22.5,
+                    "uniteReqId": 1,
+                    "biblioRefId": "1"
+                },
+                {
+                    "nutrientLabel": "METHIONINE",
+                    "reflevel": "OPTIMIN",
+                    "quantity": 0.43,
                     "uniteReqId": 1,
                     "biblioRefId": "1"
                 },
@@ -581570,16 +581821,121 @@
                     "biblioRefId": "1"
                 },
                 {
-                    "nutrientLabel": "CELLULOSE",
+                    "nutrientLabel": "CU",
                     "reflevel": "OPTIMIN",
-                    "quantity": 1.0,
+                    "quantity": 1.2,
                     "uniteReqId": 1,
-                    "biblioRefId": "test-1"
+                    "biblioRefId": "1"
                 },
                 {
-                    "nutrientLabel": "VITB12",
+                    "nutrientLabel": "VITB5",
                     "reflevel": "OPTIMIN",
-                    "quantity": 5.6,
+                    "quantity": 1.43,
+                    "uniteReqId": 1,
+                    "biblioRefId": "1"
+                },
+                {
+                    "nutrientLabel": "MN",
+                    "reflevel": "OPTIMIN",
+                    "quantity": 1.2,
+                    "uniteReqId": 1,
+                    "biblioRefId": "1"
+                },
+                {
+                    "nutrientLabel": "K",
+                    "reflevel": "OPTIMIN",
+                    "quantity": 1.3,
+                    "uniteReqId": 1,
+                    "biblioRefId": "1"
+                },
+                {
+                    "nutrientLabel": "FE",
+                    "reflevel": "OPTIMIN",
+                    "quantity": 20.0,
+                    "uniteReqId": 1,
+                    "biblioRefId": "1"
+                },
+                {
+                    "nutrientLabel": "CAP",
+                    "reflevel": "OPTIMIN",
+                    "quantity": 1.2,
+                    "uniteReqId": 0,
+                    "biblioRefId": "default-biblio"
+                },
+                {
+                    "nutrientLabel": "VITE",
+                    "reflevel": "OPTIMIN",
+                    "quantity": 10.0,
+                    "uniteReqId": 1,
+                    "biblioRefId": "1"
+                },
+                {
+                    "nutrientLabel": "LYSINE",
+                    "reflevel": "OPTIMIN",
+                    "quantity": 0.85,
+                    "uniteReqId": 1,
+                    "biblioRefId": "1"
+                },
+                {
+                    "nutrientLabel": "NA",
+                    "reflevel": "OPTIMIN",
+                    "quantity": 0.17,
+                    "uniteReqId": 1,
+                    "biblioRefId": "1"
+                },
+                {
+                    "nutrientLabel": "EPADHA",
+                    "reflevel": "OPTIMIN",
+                    "quantity": 0.025,
+                    "uniteReqId": 1,
+                    "biblioRefId": "1"
+                },
+                {
+                    "nutrientLabel": "VITB8",
+                    "reflevel": "OPTIMIN",
+                    "quantity": 18.75,
+                    "uniteReqId": 1,
+                    "biblioRefId": "default-biblio"
+                },
+                {
+                    "nutrientLabel": "VITB1",
+                    "reflevel": "OPTIMIN",
+                    "quantity": 1.4,
+                    "uniteReqId": 1,
+                    "biblioRefId": "1"
+                },
+                {
+                    "nutrientLabel": "HISTIDINE",
+                    "reflevel": "OPTIMIN",
+                    "quantity": 0.65,
+                    "uniteReqId": 1,
+                    "biblioRefId": "1"
+                },
+                {
+                    "nutrientLabel": "VALINE",
+                    "reflevel": "OPTIMIN",
+                    "quantity": 1.28,
+                    "uniteReqId": 1,
+                    "biblioRefId": "1"
+                },
+                {
+                    "nutrientLabel": "AG204",
+                    "reflevel": "OPTIMIN",
+                    "quantity": 0.015,
+                    "uniteReqId": 1,
+                    "biblioRefId": "1"
+                },
+                {
+                    "nutrientLabel": "ISOLEUCINE",
+                    "reflevel": "OPTIMIN",
+                    "quantity": 1.08,
+                    "uniteReqId": 1,
+                    "biblioRefId": "1"
+                },
+                {
+                    "nutrientLabel": "THREONINE",
+                    "reflevel": "OPTIMIN",
+                    "quantity": 1.3,
                     "uniteReqId": 1,
                     "biblioRefId": "1"
                 },
@@ -581598,223 +581954,6 @@
                     "biblioRefId": "1"
                 },
                 {
-                    "nutrientLabel": "VITB8",
-                    "reflevel": "OPTIMIN",
-                    "quantity": 18.75,
-                    "uniteReqId": 1,
-                    "biblioRefId": "default-biblio"
-                },
-                {
-                    "nutrientLabel": "LIPIDE",
-                    "reflevel": "OPTIMIN",
-                    "quantity": 22.5,
-                    "uniteReqId": 1,
-                    "biblioRefId": "1"
-                },
-                {
-                    "nutrientLabel": "MN",
-                    "reflevel": "OPTIMIN",
-                    "quantity": 1.2,
-                    "uniteReqId": 1,
-                    "biblioRefId": "1"
-                },
-                {
-                    "nutrientLabel": "LYSINE",
-                    "reflevel": "OPTIMIN",
-                    "quantity": 0.85,
-                    "uniteReqId": 1,
-                    "biblioRefId": "1"
-                },
-                {
-                    "nutrientLabel": "K",
-                    "reflevel": "OPTIMIN",
-                    "quantity": 1.3,
-                    "uniteReqId": 1,
-                    "biblioRefId": "1"
-                },
-                {
-                    "nutrientLabel": "VITA",
-                    "reflevel": "OPTIMIN",
-                    "quantity": 832.0,
-                    "uniteReqId": 1,
-                    "biblioRefId": "1"
-                },
-                {
-                    "nutrientLabel": "VITB1",
-                    "reflevel": "OPTIMIN",
-                    "quantity": 1.4,
-                    "uniteReqId": 1,
-                    "biblioRefId": "1"
-                },
-                {
-                    "nutrientLabel": "AG204",
-                    "reflevel": "OPTIMIN",
-                    "quantity": 0.015,
-                    "uniteReqId": 1,
-                    "biblioRefId": "1"
-                },
-                {
-                    "nutrientLabel": "CU",
-                    "reflevel": "OPTIMIN",
-                    "quantity": 1.2,
-                    "uniteReqId": 1,
-                    "biblioRefId": "1"
-                },
-                {
-                    "nutrientLabel": "PHENYLALANINE",
-                    "reflevel": "OPTIMIN",
-                    "quantity": 1.0,
-                    "uniteReqId": 1,
-                    "biblioRefId": "1"
-                },
-                {
-                    "nutrientLabel": "NA",
-                    "reflevel": "OPTIMIN",
-                    "quantity": 0.17,
-                    "uniteReqId": 1,
-                    "biblioRefId": "1"
-                },
-                {
-                    "nutrientLabel": "VITD",
-                    "reflevel": "OPTIMIN",
-                    "quantity": 70.0,
-                    "uniteReqId": 1,
-                    "biblioRefId": "1"
-                },
-                {
-                    "nutrientLabel": "ISOLEUCINE",
-                    "reflevel": "OPTIMIN",
-                    "quantity": 1.08,
-                    "uniteReqId": 1,
-                    "biblioRefId": "1"
-                },
-                {
-                    "nutrientLabel": "SE",
-                    "reflevel": "OPTIMIN",
-                    "quantity": 75.0,
-                    "uniteReqId": 1,
-                    "biblioRefId": "1"
-                },
-                {
-                    "nutrientLabel": "VITB5",
-                    "reflevel": "OPTIMIN",
-                    "quantity": 1.43,
-                    "uniteReqId": 1,
-                    "biblioRefId": "1"
-                },
-                {
-                    "nutrientLabel": "CHL",
-                    "reflevel": "OPTIMIN",
-                    "quantity": 0.24,
-                    "uniteReqId": 1,
-                    "biblioRefId": "1"
-                },
-                {
-                    "nutrientLabel": "VITB2",
-                    "reflevel": "OPTIMIN",
-                    "quantity": 1.0,
-                    "uniteReqId": 1,
-                    "biblioRefId": "1"
-                },
-                {
-                    "nutrientLabel": "AG182",
-                    "reflevel": "OPTIMIN",
-                    "quantity": 1.4,
-                    "uniteReqId": 1,
-                    "biblioRefId": "1"
-                },
-                {
-                    "nutrientLabel": "HISTIDINE",
-                    "reflevel": "OPTIMIN",
-                    "quantity": 0.65,
-                    "uniteReqId": 1,
-                    "biblioRefId": "1"
-                },
-                {
-                    "nutrientLabel": "VITE",
-                    "reflevel": "OPTIMIN",
-                    "quantity": 10.0,
-                    "uniteReqId": 1,
-                    "biblioRefId": "1"
-                },
-                {
-                    "nutrientLabel": "TRYPTOPHANE",
-                    "reflevel": "OPTIMIN",
-                    "quantity": 0.33,
-                    "uniteReqId": 1,
-                    "biblioRefId": "1"
-                },
-                {
-                    "nutrientLabel": "ZN",
-                    "reflevel": "OPTIMIN",
-                    "quantity": 18.5,
-                    "uniteReqId": 1,
-                    "biblioRefId": "1"
-                },
-                {
-                    "nutrientLabel": "EPADHA",
-                    "reflevel": "OPTIMIN",
-                    "quantity": 0.025,
-                    "uniteReqId": 1,
-                    "biblioRefId": "1"
-                },
-                {
-                    "nutrientLabel": "PROTEINE",
-                    "reflevel": "OPTIMIN",
-                    "quantity": 70.0,
-                    "uniteReqId": 1,
-                    "biblioRefId": "2"
-                },
-                {
-                    "nutrientLabel": "VITB9",
-                    "reflevel": "OPTIMIN",
-                    "quantity": 188.0,
-                    "uniteReqId": 1,
-                    "biblioRefId": "1"
-                },
-                {
-                    "nutrientLabel": "VITB3",
-                    "reflevel": "OPTIMIN",
-                    "quantity": 10.0,
-                    "uniteReqId": 1,
-                    "biblioRefId": "1"
-                },
-                {
-                    "nutrientLabel": "PHOS",
-                    "reflevel": "OPTIMIN",
-                    "quantity": 0.64,
-                    "uniteReqId": 1,
-                    "biblioRefId": "1"
-                },
-                {
-                    "nutrientLabel": "ARGININE",
-                    "reflevel": "OPTIMIN",
-                    "quantity": 1.93,
-                    "uniteReqId": 1,
-                    "biblioRefId": "1"
-                },
-                {
-                    "nutrientLabel": "METHIONINE",
-                    "reflevel": "OPTIMIN",
-                    "quantity": 0.43,
-                    "uniteReqId": 1,
-                    "biblioRefId": "1"
-                },
-                {
-                    "nutrientLabel": "VALINE",
-                    "reflevel": "OPTIMIN",
-                    "quantity": 1.28,
-                    "uniteReqId": 1,
-                    "biblioRefId": "1"
-                },
-                {
-                    "nutrientLabel": "THREONINE",
-                    "reflevel": "OPTIMIN",
-                    "quantity": 1.3,
-                    "uniteReqId": 1,
-                    "biblioRefId": "1"
-                },
-                {
                     "nutrientLabel": "I",
                     "reflevel": "OPTIMAX",
                     "quantity": 1000.0,
@@ -581822,9 +581961,9 @@
                     "biblioRefId": "2"
                 },
                 {
-                    "nutrientLabel": "FE",
+                    "nutrientLabel": "PHOS",
                     "reflevel": "OPTIMAX",
-                    "quantity": 40.0,
+                    "quantity": 2.0,
                     "uniteReqId": 1,
                     "biblioRefId": "2"
                 },
@@ -581836,11 +581975,18 @@
                     "biblioRefId": "2"
                 },
                 {
-                    "nutrientLabel": "PHOS",
+                    "nutrientLabel": "FE",
                     "reflevel": "OPTIMAX",
-                    "quantity": 2.0,
+                    "quantity": 40.0,
                     "uniteReqId": 1,
                     "biblioRefId": "2"
+                },
+                {
+                    "nutrientLabel": "CAP",
+                    "reflevel": "OPTIMAX",
+                    "quantity": 2.0,
+                    "uniteReqId": 0,
+                    "biblioRefId": "default-biblio"
                 },
                 {
                     "nutrientLabel": "NA",
@@ -581859,34 +582005,6 @@
                     "groupUUID": 0
                 },
                 {
-                    "uuid": "a4c16357-5ca0-40e0-b6a7-10fb2891c77a_k1_1",
-                    "groupType": "k1",
-                    "description": "Normal",
-                    "coef": 1.0,
-                    "groupUUID": 0
-                },
-                {
-                    "uuid": "a4c16357-5ca0-40e0-b6a7-10fb2891c77a_k1_2",
-                    "groupType": "k1",
-                    "description": "Normal",
-                    "coef": 1.0,
-                    "groupUUID": 0
-                },
-                {
-                    "uuid": "a4c16357-5ca0-40e0-b6a7-10fb2891c77a_k1_3",
-                    "groupType": "k1",
-                    "description": "Normal",
-                    "coef": 1.0,
-                    "groupUUID": 0
-                },
-                {
-                    "uuid": "a4c16357-5ca0-40e0-b6a7-10fb2891c77a_k1_4",
-                    "groupType": "k1",
-                    "description": "Normal",
-                    "coef": 1.0,
-                    "groupUUID": 0
-                },
-                {
                     "uuid": "a4c16357-5ca0-40e0-b6a7-10fb2891c77a_k2_0",
                     "groupType": "k2",
                     "description": "Normal",
@@ -581896,66 +582014,40 @@
                 {
                     "uuid": "a4c16357-5ca0-40e0-b6a7-10fb2891c77a_k2_1",
                     "groupType": "k2",
-                    "description": "Normal",
-                    "coef": 1.0,
+                    "description": "Inactif",
+                    "coef": 0.9,
                     "groupUUID": 1
                 },
                 {
                     "uuid": "a4c16357-5ca0-40e0-b6a7-10fb2891c77a_k2_2",
                     "groupType": "k2",
-                    "description": "Normal",
-                    "coef": 1.0,
+                    "description": "Actif",
+                    "coef": 1.1,
                     "groupUUID": 1
                 },
-                {
-                    "uuid": "a4c16357-5ca0-40e0-b6a7-10fb2891c77a_k2_3",
-                    "groupType": "k2",
-                    "description": "Normal",
-                    "coef": 1.0,
-                    "groupUUID": 1
-                },
-                {
-                    "uuid": "a4c16357-5ca0-40e0-b6a7-10fb2891c77a_k2_4",
-                    "groupType": "k2",
-                    "description": "Normal",
-                    "coef": 1.0,
-                    "groupUUID": 1
-                },
+        
                 {
                     "uuid": "a4c16357-5ca0-40e0-b6a7-10fb2891c77a_k3_0",
                     "groupType": "k3",
-                    "description": "Normal",
+                    "description": "Entier",
                     "coef": 1.0,
                     "groupUUID": 2
                 },
                 {
                     "uuid": "a4c16357-5ca0-40e0-b6a7-10fb2891c77a_k3_1",
                     "groupType": "k3",
-                    "description": "Normal",
-                    "coef": 1.0,
+                    "description": "Stérilisé",
+                    "coef": 0.8,
                     "groupUUID": 2
                 },
                 {
                     "uuid": "a4c16357-5ca0-40e0-b6a7-10fb2891c77a_k3_2",
                     "groupType": "k3",
-                    "description": "Normal",
-                    "coef": 1.0,
+                    "description": "Agé",
+                    "coef": 0.9,
                     "groupUUID": 2
                 },
-                {
-                    "uuid": "a4c16357-5ca0-40e0-b6a7-10fb2891c77a_k3_3",
-                    "groupType": "k3",
-                    "description": "Normal",
-                    "coef": 1.0,
-                    "groupUUID": 2
-                },
-                {
-                    "uuid": "a4c16357-5ca0-40e0-b6a7-10fb2891c77a_k3_4",
-                    "groupType": "k3",
-                    "description": "Normal",
-                    "coef": 1.0,
-                    "groupUUID": 2
-                },
+
                 {
                     "uuid": "a4c16357-5ca0-40e0-b6a7-10fb2891c77a_k4_0",
                     "groupType": "k4",
@@ -581966,24 +582058,18 @@
                 {
                     "uuid": "a4c16357-5ca0-40e0-b6a7-10fb2891c77a_k4_1",
                     "groupType": "k4",
-                    "description": "Normal",
-                    "coef": 1.0,
+                    "description": "Objectif Perte de poids",
+                    "coef": 0.8,
                     "groupUUID": 3
                 },
                 {
                     "uuid": "a4c16357-5ca0-40e0-b6a7-10fb2891c77a_k4_2",
                     "groupType": "k4",
-                    "description": "Normal",
+                    "description": "Objectif gain de poids",
                     "coef": 1.0,
                     "groupUUID": 3
                 },
-                {
-                    "uuid": "a4c16357-5ca0-40e0-b6a7-10fb2891c77a_k4_3",
-                    "groupType": "k4",
-                    "description": "Normal",
-                    "coef": 1.0,
-                    "groupUUID": 3
-                },
+           
                 {
                     "uuid": "a4c16357-5ca0-40e0-b6a7-10fb2891c77a_k4_4",
                     "groupType": "k4",

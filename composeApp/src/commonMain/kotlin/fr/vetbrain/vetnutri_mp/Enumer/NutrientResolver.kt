@@ -389,8 +389,9 @@ object NutrientResolver {
             "OMEGA_6_TOTAL",
             "N-6",
             "OMEGA 6" -> "O6"
-            "EPA", "EICOSAPENTAENOIC", "EICOSAPENTAENOIQUE", "C20_5", "C20:5" -> "EPA"
-            "DHA", "DOCOSAHEXAENOIC", "DOCOSAHEXAENOIQUE", "C22_6", "C22:6" -> "DHA"
+            // Mapper EPA/DHA vers les labels réels des lipides (AG205/AG226)
+            "EPA", "EICOSAPENTAENOIC", "EICOSAPENTAENOIQUE", "C20_5", "C20:5" -> "AG205"
+            "DHA", "DOCOSAHEXAENOIC", "DOCOSAHEXAENOIQUE", "C22_6", "C22:6" -> "AG226"
             "EPADHA", "EPA_DHA", "EPA+DHA", "EPA_PLUS_DHA", "EPA_ET_DHA" -> "EPADHA"
             "AG180", "C18_0", "C18:0", "STEARIC", "STEARIQUE" -> "AG180"
             "AG181", "C18_1", "C18:1", "OLEIC", "OLEIQUE" -> "AG181"
