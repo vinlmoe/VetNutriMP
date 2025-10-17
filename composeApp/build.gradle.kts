@@ -33,7 +33,6 @@ kotlin {
             implementation(libs.androidx.core.ktx)
             // implementation(libs.androidx.sqlite.sqlite.ktx)
             implementation(libs.kotlinx.coroutines.android)
-
         }
 
         commonMain.dependencies {
@@ -96,9 +95,9 @@ kotlin {
 }
 
 // Configuration: exclure uniquement côté Desktop les artefacts Android
-configurations.matching { it.name.contains("desktop", ignoreCase = true) }.configureEach {
+/*configurations.matching { it.name.contains("desktop", ignoreCase = true) }.configureEach {
     exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-android")
-}
+}*/
 
 android {
     namespace = "fr.vetbrain.vetnutri_mp"
@@ -170,7 +169,7 @@ dependencies {
     implementation(kotlin("test"))
     implementation(kotlin("test-common"))
     implementation(kotlin("test-annotations-common"))
-    //  add("kspCommonMainMetadata", libs.androidx.room.compiler)
+
     add("kspAndroid", libs.androidx.room.compiler)
     add("kspIosSimulatorArm64", libs.androidx.room.compiler)
     add("kspIosX64", libs.androidx.room.compiler)
