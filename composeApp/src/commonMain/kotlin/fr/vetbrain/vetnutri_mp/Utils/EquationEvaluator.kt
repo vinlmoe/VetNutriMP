@@ -824,3 +824,7 @@ data class ResultatValidation(
 
 
 
+
+
+
+
