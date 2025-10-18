@@ -838,7 +838,7 @@ class NewReferenceEvViewModel(
                         groupUUID = groupIndex
                 )
 
-        // Ajouter dans l'ArrayList de ReferenceEv
+        // Ajouter dans la MutableList de ReferenceEv
         when (groupIndex) {
             0 -> reference.getModk1().add(newCoef)
             1 -> reference.getModk2().add(newCoef)
