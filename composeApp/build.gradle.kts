@@ -12,13 +12,33 @@ plugins {
 }
 
 kotlin {
-    androidTarget { compilerOptions { jvmTarget.set(JvmTarget.JVM_11) } }
+    androidTarget { 
+        compilerOptions { 
+            jvmTarget.set(JvmTarget.JVM_11)
+            // Optimisations pour réduire l'utilisation mémoire et la complexité de compilation
+            freeCompilerArgs.addAll(
+                "-Xjvm-default=all",
+                "-Xno-param-assertions",
+                "-Xno-call-assertions",
+                "-Xno-receiver-assertions",
+                "-Xno-optimize",
+                "-Xno-inline"
+            )
+        } 
+    }
 
     listOf(iosX64(), iosArm64(), iosSimulatorArm64()).forEach { iosTarget ->
         iosTarget.binaries.framework {
             baseName = "ComposeApp"
             isStatic = true
             linkerOpts.add("-lsqlite3")
+        }
+        // Optimisations pour iOS
+        iosTarget.compilerOptions {
+            freeCompilerArgs.addAll(
+                "-Xno-optimize",
+                "-Xno-inline"
+            )
         }
     }
 
@@ -30,9 +50,8 @@ kotlin {
             implementation(libs.androidx.activity.compose)
             implementation(libs.androidx.room.runtime)
             implementation(libs.androidx.room.paging)
-            implementation(libs.androidx.core.ktx)
             // implementation(libs.androidx.sqlite.sqlite.ktx)
-            implementation(libs.kotlinx.coroutines.android)
+
         }
 
         commonMain.dependencies {
@@ -94,11 +113,6 @@ kotlin {
     }
 }
 
-// Configuration: exclure uniquement côté Desktop les artefacts Android
-/*configurations.matching { it.name.contains("desktop", ignoreCase = true) }.configureEach {
-    exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-android")
-}*/
-
 android {
     namespace = "fr.vetbrain.vetnutri_mp"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
@@ -111,8 +125,8 @@ android {
         applicationId = "fr.vetbrain.vetnutri_mp"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 33
-        versionName = "3.1.33"
+        versionCode = 28
+        versionName = "3.1.28"
 
         // Configuration de Room
 
@@ -133,6 +147,7 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+    
 }
 
 dependencies { debugImplementation(compose.uiTooling) }
@@ -144,7 +159,7 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Exe, TargetFormat.Deb)
             packageName = "VetNutriMP"
-            packageVersion = "3.1.33"
+            packageVersion = "3.1.28"
             description = "Application de nutrition vétérinaire multiplateforme"
             copyright = "© 2024 VetBrain"
             vendor = "VetBrain"
@@ -164,12 +179,12 @@ compose.desktop {
 
 dependencies {
     implementation("org.jetbrains.compose.material:material-icons-extended:1.7.3")
-
+  
     implementation(libs.androidx.sqlite.bundled)
     implementation(kotlin("test"))
     implementation(kotlin("test-common"))
     implementation(kotlin("test-annotations-common"))
-
+    //  add("kspCommonMainMetadata", libs.androidx.room.compiler)
     add("kspAndroid", libs.androidx.room.compiler)
     add("kspIosSimulatorArm64", libs.androidx.room.compiler)
     add("kspIosX64", libs.androidx.room.compiler)
@@ -182,3 +197,4 @@ dependencies {
 }
 
 room { schemaDirectory("$projectDir/schemas") }
+

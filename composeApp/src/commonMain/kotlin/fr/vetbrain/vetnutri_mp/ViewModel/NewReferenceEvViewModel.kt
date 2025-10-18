@@ -670,9 +670,9 @@ class NewReferenceEvViewModel(
                 val already = current.equationsNut.any { it.uuid == equation.uuid }
                 if (already) {
                     current.equationsNut =
-                            ArrayList(current.equationsNut.filter { it.uuid != equation.uuid })
+                            current.equationsNut.filter { it.uuid != equation.uuid }.toMutableList()
                 } else {
-                    val newList = ArrayList(current.equationsNut)
+                    val newList = current.equationsNut.toMutableList()
                     newList.add(equation)
                     current.equationsNut = newList
                 }

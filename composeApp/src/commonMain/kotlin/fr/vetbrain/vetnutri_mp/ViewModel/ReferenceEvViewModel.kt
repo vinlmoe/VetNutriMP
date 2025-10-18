@@ -259,9 +259,7 @@ class ReferenceEvViewModel(
             }
 
             // Référencer les équations nutritionnelles (pas de duplication)
-            duplicated.equationsNut = ArrayList(source.equationsNut.map { equation ->
-                equation
-            })
+            duplicated.equationsNut = source.equationsNut.toMutableList()
 
             // Référencer les nutriments avec leurs références bibliographiques existantes
             val minCount = source.getRefMapMin().size
@@ -617,15 +615,13 @@ class ReferenceEvViewModel(
                 if (isAlreadyAssociated) {
                     // Dissocier l'équation
                     updatedReference.equationsNut =
-                            ArrayList(
-                                    updatedReference.equationsNut.filter {
-                                        it.uuid != equation.uuid
-                                    }
-                            )
+                            updatedReference.equationsNut.filter {
+                                it.uuid != equation.uuid
+                            }.toMutableList()
                 } else {
                     // Associer l'équation (créer une nouvelle liste pour éviter des problèmes de
                     // référence)
-                    val newList = ArrayList(updatedReference.equationsNut)
+                    val newList = updatedReference.equationsNut.toMutableList()
                     newList.add(equation)
                     updatedReference.equationsNut = newList
                 }
