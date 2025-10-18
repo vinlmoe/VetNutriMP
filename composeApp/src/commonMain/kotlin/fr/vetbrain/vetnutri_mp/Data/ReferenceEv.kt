@@ -36,14 +36,14 @@ data class ReferenceEv(
         var equationDEcom: Equation? = null
         var equationDEraw: Equation? = null
         var equationME: Equation? = null
-        var equationsNut: MutableList<Equation> = ArrayList()
+        var equationsNut: MutableList<Equation> = mutableListOf()
 
-        // Coefficients modificateurs
-        private val modk1: ArrayList<CoefP> = ArrayList()
-        private val modk2: ArrayList<CoefP> = ArrayList()
-        private val modk3: ArrayList<CoefP> = ArrayList()
-        private val modk4: ArrayList<CoefP> = ArrayList()
-        private val modk5: ArrayList<CoefP> = ArrayList()
+        // Coefficients modificateurs - optimisé pour réduire la consommation mémoire
+        private val modk1: MutableList<CoefP> = mutableListOf()
+        private val modk2: MutableList<CoefP> = mutableListOf()
+        private val modk3: MutableList<CoefP> = mutableListOf()
+        private val modk4: MutableList<CoefP> = mutableListOf()
+        private val modk5: MutableList<CoefP> = mutableListOf()
 
         var nomk1: String = ""
         var nomk2: String = ""
@@ -277,19 +277,19 @@ data class ReferenceEv(
         // Getters publics pour l'accès aux propriétés privées
 
         /** Récupère la liste des coefficients k1 */
-        fun getModk1(): ArrayList<CoefP> = modk1
+        fun getModk1(): MutableList<CoefP> = modk1
 
         /** Récupère la liste des coefficients k2 */
-        fun getModk2(): ArrayList<CoefP> = modk2
+        fun getModk2(): MutableList<CoefP> = modk2
 
         /** Récupère la liste des coefficients k3 */
-        fun getModk3(): ArrayList<CoefP> = modk3
+        fun getModk3(): MutableList<CoefP> = modk3
 
         /** Récupère la liste des coefficients k4 */
-        fun getModk4(): ArrayList<CoefP> = modk4
+        fun getModk4(): MutableList<CoefP> = modk4
 
         /** Récupère la liste des coefficients k5 */
-        fun getModk5(): ArrayList<CoefP> = modk5
+        fun getModk5(): MutableList<CoefP> = modk5
 
         /** Récupère la map des nutriments MIN */
         fun getRefMapMin(): MutableMap<Nutrient, Nut4Ref> = refMapMin

@@ -29,6 +29,7 @@ enum class NutrientMain(
     ADF("ADFe", 14, "g", UnitEnum.BUg, "ADF", "#1A7D07");
 
     companion object {
+        // Optimisation : utiliser des maps statiques lazy pour réduire la complexité du compilateur
         private val coefMap by lazy { entries.associateBy { it.coef } }
         private val labelMap by lazy { entries.associateBy { it.label.lowercase() } }
 
@@ -38,7 +39,7 @@ enum class NutrientMain(
             return labelMap[label.lowercase()] ?: PROTEINE
         }
 
-        fun isByLabel(label: String) = entries.any { it.label.equals(label, ignoreCase = true) }
+        fun isByLabel(label: String) = labelMap.containsKey(label.lowercase())
 
         fun size() = entries.size
     }

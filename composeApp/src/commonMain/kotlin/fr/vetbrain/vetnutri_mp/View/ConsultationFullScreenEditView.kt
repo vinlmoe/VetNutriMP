@@ -1227,7 +1227,7 @@ private fun CoefficientSelector(
         nom: String,
         valeurSelectionnee: Double?,
         descriptionSelectionnee: String?,
-        coefficients: ArrayList<fr.vetbrain.vetnutri_mp.Data.CoefP>,
+        coefficients: List<fr.vetbrain.vetnutri_mp.Data.CoefP>,
         onCoefficientSelected: (fr.vetbrain.vetnutri_mp.Data.CoefP) -> Unit,
         modifier: Modifier = Modifier
 ) {
@@ -1283,7 +1283,7 @@ private fun CoefficientSelector(
 @Composable
 private fun CoefficientSelectionDialog(
         nom: String,
-        coefficients: ArrayList<fr.vetbrain.vetnutri_mp.Data.CoefP>,
+        coefficients: List<fr.vetbrain.vetnutri_mp.Data.CoefP>,
         descriptionSelectionnee: String?,
         onCoefficientSelected: (fr.vetbrain.vetnutri_mp.Data.CoefP) -> Unit,
         onDismiss: () -> Unit

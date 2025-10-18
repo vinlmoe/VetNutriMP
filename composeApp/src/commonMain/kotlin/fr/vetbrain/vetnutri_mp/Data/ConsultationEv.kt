@@ -41,36 +41,6 @@ data class ConsultationEv(
         // Propriété calculée qui retourne le poids idéal si défini, sinon le poids actuel
         val effectiveWeight: Double?
                 get() = idealWeight ?: weight
-        constructor() :
-                this(
-                        uuid = genUUID(),
-                        date = null,
-                        objectConsult = "",
-                        observation = "",
-                        cRendu = "",
-                        weight = null,
-                        idealWeight = null,
-                        water = null,
-                        bodyFat = null,
-                        methodAnalysis = "",
-                        BCS = null,
-                        k1Id = null,
-                        k1Value = null,
-                        k2Id = null,
-                        k2Value = null,
-                        k3Id = null,
-                        k3Value = null,
-                        k4Id = null,
-                        k4Value = null,
-                        k5Id = null,
-                        k5Value = null,
-                        nLittle = null,
-                        pAdult = null,
-                        coefGes = null,
-                        coefLact = null,
-                        idAnim = "",
-                        MCS = null
-                )
 
         fun getRationByID(uuid: String): Ration {
                 return rations.last { ration: Ration -> ration.uuid == uuid }
