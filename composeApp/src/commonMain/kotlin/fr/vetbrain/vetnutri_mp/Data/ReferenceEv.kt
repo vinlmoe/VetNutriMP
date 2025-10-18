@@ -7,7 +7,7 @@ import fr.vetbrain.vetnutri_mp.Enumer.StadePhysio
 import fr.vetbrain.vetnutri_mp.Enumer.UnitEnum
 import fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum
 import fr.vetbrain.vetnutri_mp.Utils.genUUID
-import kotlin.collections.ArrayList
+// import kotlin.collections.ArrayList - Remplacé par MutableList pour optimiser la mémoire
 import kotlin.collections.HashMap
 
 /**
@@ -190,8 +190,8 @@ data class ReferenceEv(
          *
          * @return La liste des équations
          */
-        fun obtenirToutesEquations(): ArrayList<Equation> {
-                val listeEquations = ArrayList<Equation>()
+        fun obtenirToutesEquations(): MutableList<Equation> {
+                val listeEquations = mutableListOf<Equation>()
 
                 equationBEE?.let { if (it.name.isNotBlank()) listeEquations.add(it) }
                 equationBW?.let { if (it.name.isNotBlank()) listeEquations.add(it) }
@@ -209,8 +209,8 @@ data class ReferenceEv(
          *
          * @return La liste des références bibliographiques
          */
-        fun obtenirToutesBiblios(): ArrayList<BiblioRef> {
-                val resultat = ArrayList<BiblioRef>()
+        fun obtenirToutesBiblios(): MutableList<BiblioRef> {
+                val resultat = mutableListOf<BiblioRef>()
 
                 // Collecte des références des différentes maps
                 for (ref in refMapMin.values) {
@@ -262,9 +262,9 @@ data class ReferenceEv(
          * @return Le tableau mis à jour
          */
         private fun ajouterBiblioAuTableau(
-                resultat: ArrayList<BiblioRef>,
+                resultat: MutableList<BiblioRef>,
                 biblio: BiblioRef?
-        ): ArrayList<BiblioRef> {
+        ): MutableList<BiblioRef> {
                 if (biblio != null &&
                                 biblio.toString() != BiblioRef().toString() &&
                                 !resultat.contains(biblio)
@@ -304,10 +304,10 @@ data class ReferenceEv(
         fun getRefMapOMax(): MutableMap<Nutrient, Nut4Ref> = refMapOMax
 
         /** Alias pour obtenirToutesEquations - pour compatibilité avec le code d'importation */
-        fun getAllEquations(): ArrayList<Equation> = obtenirToutesEquations()
+        fun getAllEquations(): MutableList<Equation> = obtenirToutesEquations()
 
         /** Alias pour obtenirToutesBiblios - pour compatibilité avec le code d'importation */
-        fun getAllBiblioRefs(): ArrayList<BiblioRef> = obtenirToutesBiblios()
+        fun getAllBiblioRefs(): MutableList<BiblioRef> = obtenirToutesBiblios()
 
         override fun toString(): String {
                 return nom
