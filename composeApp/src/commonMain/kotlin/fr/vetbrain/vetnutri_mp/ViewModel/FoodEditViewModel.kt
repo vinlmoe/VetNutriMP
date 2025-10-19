@@ -3,7 +3,7 @@ package fr.vetbrain.vetnutri_mp.ViewModel
 import androidx.compose.runtime.mutableStateListOf
 import fr.vetbrain.vetnutri_mp.Data.*
 import fr.vetbrain.vetnutri_mp.Enumer.*
-import fr.vetbrain.vetnutri_mp.Repository.AlimentRepository
+import fr.vetbrain.vetnutri_mp.Repository.FoodRepository
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
@@ -15,7 +15,7 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalUuidApi::class)
 class FoodEditViewModel(
-        private val alimentRepository: AlimentRepository,
+        private val foodRepository: FoodRepository,
         private val alimentUuid: String? = null
 ) {
     private val coroutineScope = CoroutineScope(AppDispatchers.Main)
@@ -95,7 +95,7 @@ class FoodEditViewModel(
     private fun loadAliment(uuid: String) {
         coroutineScope.launch {
             try {
-                val aliment = alimentRepository.getAlimentByUUID(uuid)
+                val aliment = foodRepository.getFood(uuid)
                 if (aliment != null) {
                     _alimentState.value = aliment
 
@@ -134,7 +134,7 @@ class FoodEditViewModel(
             // Vérifier si c'est un nouvel aliment ou une mise à jour
             val existingAliment =
                     try {
-                        alimentRepository.getAlimentByUUID(aliment.uuid)
+                        foodRepository.getFoodById(aliment.uuid)
                     } catch (e: Exception) {
                         null
                     }
@@ -144,7 +144,7 @@ class FoodEditViewModel(
             aliment.valMap.forEach { (nutrient, quantity) -> }
 
             // Sauvegarder l'aliment
-            alimentRepository.saveAliment(aliment)
+            foodRepository.updateFood(aliment)
 
             // Mettre à jour l'état local
             _alimentState.value = aliment

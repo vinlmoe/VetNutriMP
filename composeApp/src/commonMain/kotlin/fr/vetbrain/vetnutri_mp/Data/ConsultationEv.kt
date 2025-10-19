@@ -38,9 +38,30 @@ data class ConsultationEv(
         var coefficientAjustement: Double = 1.0
 ) {
 
+        // Cache pour la propriété calculée
+        private var cachedEffectiveWeight: Double? = null
+        private var lastWeight: Double? = null
+        private var lastIdealWeight: Double? = null
+
         // Propriété calculée qui retourne le poids idéal si défini, sinon le poids actuel
         val effectiveWeight: Double?
-                get() = idealWeight ?: weight
+                get() {
+                    // Utiliser le cache si les valeurs n'ont pas changé
+                    if (cachedEffectiveWeight != null &&
+                        lastWeight == weight &&
+                        lastIdealWeight == idealWeight) {
+                        return cachedEffectiveWeight
+                    }
+
+                    val result = idealWeight ?: weight
+
+                    // Mettre en cache
+                    cachedEffectiveWeight = result
+                    lastWeight = weight
+                    lastIdealWeight = idealWeight
+
+                    return result
+                }
 
         fun getRationByID(uuid: String): Ration {
                 return rations.last { ration: Ration -> ration.uuid == uuid }

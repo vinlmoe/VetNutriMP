@@ -2291,11 +2291,11 @@ object ImportUtils {
             val coefArrays = listOf("modk1", "modk2", "modk3", "modk4", "modk5")
             val referenceLists =
                     listOf(
-                            reference.getModk1(),
-                            reference.getModk2(),
-                            reference.getModk3(),
-                            reference.getModk4(),
-                            reference.getModk5()
+                            reference.modk1,
+                            reference.modk2,
+                            reference.modk3,
+                            reference.modk4,
+                            reference.modk5
                     )
 
             coefArrays.forEachIndexed { index, arrayName ->

@@ -94,7 +94,6 @@ fun RationsView(
         modifier: Modifier = Modifier,
         equationRepository: EquationRepository,
         recipeRepository: RecipeRepository,
-        foodRepository: FoodRepository
 ) {
         val animal by viewModel.animal.collectAsState()
         val selectedConsultation by viewModel.selectedConsultation.collectAsState()
@@ -284,7 +283,7 @@ fun RationsView(
         if (showRecipeDialog) {
                 RecipeDialog(
                         repository = recipeRepository,
-                        foodRepository = foodRepository,
+                        foodRepository = viewModel.foodRepository,
                         onApply = { recette ->
                                 viewModel.applyRecipeToRation(recette)
                                 showRecipeDialog = false
@@ -2166,7 +2165,7 @@ private fun CoefficientsDialog(
                                                 currentValue = selectedConsultation?.k1Value,
                                                 currentDescription = selectedConsultation?.k1Id,
                                                 availableCoefficients =
-                                                        referenceUtilisee?.getModk1()
+                                                        referenceUtilisee?.modk1
                                                                 ?: emptyList(),
                                                 onCoefficientSelected = { coef ->
                                                         selectedConsultation?.let { consultation ->
@@ -2188,7 +2187,7 @@ private fun CoefficientsDialog(
                                                 currentValue = selectedConsultation?.k2Value,
                                                 currentDescription = selectedConsultation?.k2Id,
                                                 availableCoefficients =
-                                                        referenceUtilisee?.getModk2()
+                                                        referenceUtilisee?.modk2
                                                                 ?: emptyList(),
                                                 onCoefficientSelected = { coef ->
                                                         selectedConsultation?.let { consultation ->
@@ -2210,7 +2209,7 @@ private fun CoefficientsDialog(
                                                 currentValue = selectedConsultation?.k3Value,
                                                 currentDescription = selectedConsultation?.k3Id,
                                                 availableCoefficients =
-                                                        referenceUtilisee?.getModk3()
+                                                        referenceUtilisee?.modk3
                                                                 ?: emptyList(),
                                                 onCoefficientSelected = { coef ->
                                                         selectedConsultation?.let { consultation ->
@@ -2232,7 +2231,7 @@ private fun CoefficientsDialog(
                                                 currentValue = selectedConsultation?.k4Value,
                                                 currentDescription = selectedConsultation?.k4Id,
                                                 availableCoefficients =
-                                                        referenceUtilisee?.getModk4()
+                                                        referenceUtilisee?.modk4
                                                                 ?: emptyList(),
                                                 onCoefficientSelected = { coef ->
                                                         selectedConsultation?.let { consultation ->
@@ -2254,7 +2253,7 @@ private fun CoefficientsDialog(
                                                 currentValue = selectedConsultation?.k5Value,
                                                 currentDescription = selectedConsultation?.k5Id,
                                                 availableCoefficients =
-                                                        referenceUtilisee?.getModk5()
+                                                        referenceUtilisee?.modk5
                                                                 ?: emptyList(),
                                                 onCoefficientSelected = { coef ->
                                                         selectedConsultation?.let { consultation ->

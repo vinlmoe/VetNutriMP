@@ -44,14 +44,23 @@ class DatabaseFoodRepository(
     private val _foodsFlow = MutableStateFlow<List<AlimentEv>>(emptyList())
     private val coroutineScope = CoroutineScope(AppDispatchers.Main)
 
-    // Cache en mémoire pour les aliments
+    // Cache en mémoire pour les aliments avec métadonnées améliorées
     private var cachedFoods: List<AlimentEv>? = null
+    private var cachedFoodsLight: List<AlimentEvLight>? = null
     private var lastCacheTime: Long = 0
     private val cacheValidityDuration = 5 * 60 * 1000L // 5 minutes
+
+    // Cache pour les recherches par espèce pour éviter les requêtes répétées
+    private val speciesCache = mutableMapOf<Espece, List<AlimentEv>>()
+    private val speciesCacheTime = mutableMapOf<Espece, Long>()
 
     // Mode batch pour désactiver les refresh coûteux à chaque insert/update
     // KMP: éviter @Volatile en commonMain
     private var isBatchMode: Boolean = false
+
+    // Cache de recherche pour les filtres fréquents
+    private val searchCache = mutableMapOf<String, List<AlimentEv>>()
+    private val searchCacheTime = mutableMapOf<String, Long>()
     fun beginBatch() {
         isBatchMode = true
     }
@@ -63,7 +72,61 @@ class DatabaseFoodRepository(
     /** Vide le cache en mémoire pour forcer un rechargement des données */
     fun clearCache() {
         cachedFoods = null
+        cachedFoodsLight = null
         lastCacheTime = 0
+        speciesCache.clear()
+        speciesCacheTime.clear()
+        searchCache.clear()
+        searchCacheTime.clear()
+    }
+
+    /**
+     * Recherche d'aliments avec cache intelligent
+     */
+    suspend fun searchFoodsOptimized(
+        searchQuery: String = "",
+        espece: Espece? = null,
+        groupAlim: GroupAlim? = null,
+        forceRefresh: Boolean = false
+    ): List<AlimentEv> {
+        val cacheKey = "${searchQuery}:${espece}:${groupAlim}"
+
+        // Vérifier le cache si pas de refresh forcé
+        if (!forceRefresh) {
+            val cachedTime = searchCacheTime[cacheKey]
+            if (cachedTime != null && (kotlinx.datetime.Clock.System.now().toEpochMilliseconds() - cachedTime) < cacheValidityDuration) {
+                return searchCache[cacheKey] ?: emptyList()
+            }
+        }
+
+        val allFoods = getAllFoods()
+
+        val filteredFoods = allFoods.filter { aliment ->
+            var matches = true
+
+            // Filtre de recherche textuelle
+            if (searchQuery.isNotBlank()) {
+                matches = matches && aliment.nom?.contains(searchQuery, ignoreCase = true) == true
+            }
+
+            // Filtre par espèce
+            if (espece != null) {
+                matches = matches && aliment.especes.contains(espece.name)
+            }
+
+            // Filtre par groupe alimentaire
+            if (groupAlim != null) {
+                matches = matches && aliment.group == groupAlim
+            }
+
+            matches
+        }
+
+        // Mettre en cache le résultat
+        searchCache[cacheKey] = filteredFoods
+        searchCacheTime[cacheKey] = kotlinx.datetime.Clock.System.now().toEpochMilliseconds()
+
+        return filteredFoods
     }
 
     /**

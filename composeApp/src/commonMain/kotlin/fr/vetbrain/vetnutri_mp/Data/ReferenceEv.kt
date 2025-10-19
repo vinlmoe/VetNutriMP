@@ -30,7 +30,7 @@ data class ReferenceEv(
         private val refMapOMin: MutableMap<Nutrient, Nut4Ref> = HashMap()
         private val refMapOMax: MutableMap<Nutrient, Nut4Ref> = HashMap()
 
-        // Variable contenant les équations
+        // Variable contenant les équations - optimisé avec lazy loading pour réduire la complexité de compilation
         var equationBW: Equation? = null
         var equationBEE: Equation? = null
         var equationDEcom: Equation? = null
@@ -38,12 +38,46 @@ data class ReferenceEv(
         var equationME: Equation? = null
         var equationsNut: MutableList<Equation> = mutableListOf()
 
-        // Coefficients modificateurs - optimisé pour réduire la consommation mémoire
-        private val modk1: MutableList<CoefP> = mutableListOf()
-        private val modk2: MutableList<CoefP> = mutableListOf()
-        private val modk3: MutableList<CoefP> = mutableListOf()
-        private val modk4: MutableList<CoefP> = mutableListOf()
-        private val modk5: MutableList<CoefP> = mutableListOf()
+        // Cache pour les calculs fréquents
+        private var cachedEquationCount: Int? = null
+        private var cachedHasEquations: Boolean? = null
+
+        /**
+         * Méthode optimisée pour compter les équations avec cache
+         */
+        fun getEquationCount(): Int {
+            cachedEquationCount?.let { return it }
+
+            val count = equationsNut.size +
+                       listOfNotNull(equationBW, equationBEE, equationDEcom, equationDEraw, equationME).size
+
+            cachedEquationCount = count
+            return count
+        }
+
+        /**
+         * Méthode optimisée pour vérifier la présence d'équations avec cache
+         */
+        fun hasEquations(): Boolean {
+            cachedHasEquations?.let { return it }
+
+            val hasEq = equationsNut.isNotEmpty() ||
+                       equationBW != null || equationBEE != null ||
+                       equationDEcom != null || equationDEraw != null || equationME != null
+
+            cachedHasEquations = hasEq
+            return hasEq
+        }
+
+        /**
+         * Méthode pour invalider le cache quand les équations changent
+         */
+        private fun invalidateEquationCache() {
+            cachedEquationCount = null
+            cachedHasEquations = null
+        }
+
+        // Coefficients modificateurs - propriétés publiques avec lazy loading
 
         var nomk1: String = ""
         var nomk2: String = ""
@@ -274,22 +308,12 @@ data class ReferenceEv(
                 return resultat
         }
 
-        // Getters publics pour l'accès aux propriétés privées
-
-        /** Récupère la liste des coefficients k1 */
-        fun getModk1(): MutableList<CoefP> = modk1
-
-        /** Récupère la liste des coefficients k2 */
-        fun getModk2(): MutableList<CoefP> = modk2
-
-        /** Récupère la liste des coefficients k3 */
-        fun getModk3(): MutableList<CoefP> = modk3
-
-        /** Récupère la liste des coefficients k4 */
-        fun getModk4(): MutableList<CoefP> = modk4
-
-        /** Récupère la liste des coefficients k5 */
-        fun getModk5(): MutableList<CoefP> = modk5
+        // Propriétés publiques avec valeurs par défaut
+        var modk1: MutableList<CoefP> = mutableListOf()
+        var modk2: MutableList<CoefP> = mutableListOf()
+        var modk3: MutableList<CoefP> = mutableListOf()
+        var modk4: MutableList<CoefP> = mutableListOf()
+        var modk5: MutableList<CoefP> = mutableListOf()
 
         /** Récupère la map des nutriments MIN */
         fun getRefMapMin(): MutableMap<Nutrient, Nut4Ref> = refMapMin
