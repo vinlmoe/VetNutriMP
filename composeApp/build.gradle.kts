@@ -45,7 +45,6 @@ kotlin {
     jvm("desktop")
 
     sourceSets {
-        sourceSets.iosMain { kotlin.srcDir("build/generated/ksp/metadata") }
         androidMain.dependencies {
             implementation(libs.androidx.activity.compose)
             implementation(libs.androidx.room.runtime)
@@ -102,14 +101,9 @@ kotlin {
             }
         }
 
-        val iosMain by getting {
-            kotlin.srcDir("build/generated/ksp/metadata")
+        val iosMain by creating {
             dependencies { implementation(libs.sqliter.driver) }
         }
-
-        val iosArm64Main by getting
-        val iosX64Main by getting
-        val iosSimulatorArm64Main by getting
     }
 }
 
@@ -184,7 +178,6 @@ dependencies {
     implementation(kotlin("test"))
     implementation(kotlin("test-common"))
     implementation(kotlin("test-annotations-common"))
-    //  add("kspCommonMainMetadata", libs.androidx.room.compiler)
     add("kspAndroid", libs.androidx.room.compiler)
     add("kspIosSimulatorArm64", libs.androidx.room.compiler)
     add("kspIosX64", libs.androidx.room.compiler)
