@@ -888,7 +888,7 @@ fun ConsultationFullScreenEditView(
                                                                         editedConsultation.k1Id,
                                                                 coefficients =
                                                                         referenceGeneraleSelectionnee
-                                                                                ?.getModk1()
+                                                                                ?.modk1
                                                                                 ?: arrayListOf(),
                                                                 onCoefficientSelected = { coef ->
                                                                         editedConsultation =
@@ -916,7 +916,7 @@ fun ConsultationFullScreenEditView(
                                                                         editedConsultation.k2Id,
                                                                 coefficients =
                                                                         referenceGeneraleSelectionnee
-                                                                                ?.getModk2()
+                                                                                ?.modk2
                                                                                 ?: arrayListOf(),
                                                                 onCoefficientSelected = { coef ->
                                                                         editedConsultation =
@@ -944,7 +944,7 @@ fun ConsultationFullScreenEditView(
                                                                         editedConsultation.k3Id,
                                                                 coefficients =
                                                                         referenceGeneraleSelectionnee
-                                                                                ?.getModk3()
+                                                                                ?.modk3
                                                                                 ?: arrayListOf(),
                                                                 onCoefficientSelected = { coef ->
                                                                         editedConsultation =
@@ -972,7 +972,7 @@ fun ConsultationFullScreenEditView(
                                                                         editedConsultation.k4Id,
                                                                 coefficients =
                                                                         referenceGeneraleSelectionnee
-                                                                                ?.getModk4()
+                                                                                ?.modk4
                                                                                 ?: arrayListOf(),
                                                                 onCoefficientSelected = { coef ->
                                                                         editedConsultation =
@@ -1000,7 +1000,7 @@ fun ConsultationFullScreenEditView(
                                                                         editedConsultation.k5Id,
                                                                 coefficients =
                                                                         referenceGeneraleSelectionnee
-                                                                                ?.getModk5()
+                                                                                ?.modk5
                                                                                 ?: arrayListOf(),
                                                                 onCoefficientSelected = { coef ->
                                                                         editedConsultation =

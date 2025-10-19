@@ -85,14 +85,6 @@ data class ReferenceEv(
         var nomk4: String = ""
         var nomk5: String = ""
 
-        init {
-                // Initialisation des coefficients par défaut
-                modk1.add(CoefP(description = "Normal", coef = 1.0, groupUUID = 0))
-                modk2.add(CoefP(description = "Normal", coef = 1.0, groupUUID = 1))
-                modk3.add(CoefP(description = "Normal", coef = 1.0, groupUUID = 2))
-                modk4.add(CoefP(description = "Normal", coef = 1.0, groupUUID = 3))
-                modk5.add(CoefP(description = "Normal", coef = 1.0, groupUUID = 4))
-        }
 
         // Constructeur secondaire pour compatibilité
         constructor(uuid: String? = null) : this(uuid = uuid ?: genUUID())
@@ -309,11 +301,11 @@ data class ReferenceEv(
         }
 
         // Propriétés publiques avec valeurs par défaut
-        var modk1: MutableList<CoefP> = mutableListOf()
-        var modk2: MutableList<CoefP> = mutableListOf()
-        var modk3: MutableList<CoefP> = mutableListOf()
-        var modk4: MutableList<CoefP> = mutableListOf()
-        var modk5: MutableList<CoefP> = mutableListOf()
+        var modk1: MutableList<CoefP> = mutableListOf(CoefP(description = "Normal", coef = 1.0, groupUUID = 0))
+        var modk2: MutableList<CoefP> = mutableListOf(CoefP(description = "Normal", coef = 1.0, groupUUID = 1))
+        var modk3: MutableList<CoefP> = mutableListOf(CoefP(description = "Normal", coef = 1.0, groupUUID = 2))
+        var modk4: MutableList<CoefP> = mutableListOf(CoefP(description = "Normal", coef = 1.0, groupUUID = 3))
+        var modk5: MutableList<CoefP> = mutableListOf(CoefP(description = "Normal", coef = 1.0, groupUUID = 4))
 
         /** Récupère la map des nutriments MIN */
         fun getRefMapMin(): MutableMap<Nutrient, Nut4Ref> = refMapMin

@@ -560,8 +560,8 @@ class ExportImportRepository(
                                                 ref.modk1.clear()
                                                 ref.modk2.clear()
                                                 ref.modk3.clear()
-                                                ref.getModk4().clear()
-                                                ref.getModk5().clear()
+                                                ref.modk4.clear()
+                                                ref.modk5.clear()
 
                                                 listener?.onLog?.invoke(
                                                         "Import des coefficients pour ${refApi.nom} (${refApi.coefficients.size} coefficients)"
@@ -592,10 +592,10 @@ class ExportImportRepository(
                                                                                 ref.modk3
                                                                                         .add(coef)
                                                                         "k4" ->
-                                                                                ref.getModk4()
+                                                                                ref.modk4
                                                                                         .add(coef)
                                                                         "k5" ->
-                                                                                ref.getModk5()
+                                                                                ref.modk5
                                                                                         .add(coef)
                                                     }
                                                 } catch (e: Exception) {
