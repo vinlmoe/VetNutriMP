@@ -848,10 +848,6 @@ fun SettingsView(
                                                                                         "FoodRepository not available"
                                                                                 )
                                                         ),
-                                                foodRepository = viewModel.foodRepository
-                                                                ?: throw IllegalStateException(
-                                                                        "FoodRepository not available"
-                                                                ),
                                                 modifier = Modifier.fillMaxWidth()
                                         )
                                 }

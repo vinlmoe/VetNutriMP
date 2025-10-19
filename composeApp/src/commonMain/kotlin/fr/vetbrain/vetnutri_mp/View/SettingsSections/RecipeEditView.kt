@@ -39,7 +39,6 @@ import fr.vetbrain.vetnutri_mp.ViewModel.RecipeEditViewModel
 @Composable
 fun RecipeEditView(
     viewModel: RecipeEditViewModel,
-    foodRepository: FoodRepository,
     modifier: Modifier = Modifier
 ) {
     val isEditMode = viewModel.isEditMode.value
@@ -58,7 +57,7 @@ fun RecipeEditView(
     if (showAddAlimentView) {
         // Afficher la vue d'ajout d'aliment en pleine page
         RecipeAddAlimentView(
-            foodRepository = foodRepository,
+            recipeEditViewModel = viewModel,
             onNavigateBack = {
                 showAddAlimentView = false
             },

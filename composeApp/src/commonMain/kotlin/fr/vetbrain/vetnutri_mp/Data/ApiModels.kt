@@ -536,7 +536,7 @@ fun BiblioRef.toApi(): BiblioRefApi {
 
 fun ReferenceEv.toApiRef(): ReferenceEvApi {
         val nutrients = mutableListOf<ReferenceNutrientApi>()
-        getRefMapMin().forEach { (nutrient, ref) ->
+        refMapMin.forEach { (nutrient, ref) ->
                 nutrients.add(
                         ReferenceNutrientApi(
                                 nutrientLabel = nutrient.label,
@@ -547,7 +547,7 @@ fun ReferenceEv.toApiRef(): ReferenceEvApi {
                         )
                 )
         }
-        getRefMapMax().forEach { (nutrient, ref) ->
+        refMapMax.forEach { (nutrient, ref) ->
                 nutrients.add(
                         ReferenceNutrientApi(
                                 nutrientLabel = nutrient.label,
@@ -558,7 +558,7 @@ fun ReferenceEv.toApiRef(): ReferenceEvApi {
                         )
                 )
         }
-        getRefMapOMin().forEach { (nutrient, ref) ->
+        refMapOMin.forEach { (nutrient, ref) ->
                 nutrients.add(
                         ReferenceNutrientApi(
                                 nutrientLabel = nutrient.label,
@@ -569,7 +569,7 @@ fun ReferenceEv.toApiRef(): ReferenceEvApi {
                         )
                 )
         }
-        getRefMapOMax().forEach { (nutrient, ref) ->
+        refMapOMax.forEach { (nutrient, ref) ->
                 nutrients.add(
                         ReferenceNutrientApi(
                                 nutrientLabel = nutrient.label,

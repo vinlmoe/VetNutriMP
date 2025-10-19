@@ -32,10 +32,31 @@ object EquationEvaluator {
             )
 
     /** Variables supplémentaires disponibles selon le contexte */
-    private val variablesSupplementaires = VariableKind.entries.map { it.variable }.toSet()
+    private val variablesSupplementaires by lazy { VariableKind.entries.map { it.variable }.toSet() }
 
     /** Toutes les variables disponibles dans le système */
-    val toutesLesVariables: Set<String> = variablesDeBase + variablesSupplementaires
+    val toutesLesVariables: Set<String> by lazy { variablesDeBase + variablesSupplementaires }
+
+    /** Cache pour éviter les recalculs d'expressions identiques */
+    private val expressionCache = mutableMapOf<String, Double?>()
+    private val variableCache = mutableMapOf<String, Map<String, Double>>() // Cache pour les variables pré-calculées
+
+    /** Taille maximale du cache pour éviter la fuite mémoire */
+    private const val MAX_CACHE_SIZE = 1000
+
+    /**
+     * Nettoie les caches si nécessaire pour éviter la fuite mémoire
+     */
+    private fun cleanupCacheIfNeeded() {
+        if (expressionCache.size > MAX_CACHE_SIZE) {
+            // Garder seulement les 500 entrées les plus récentes
+            val sortedEntries = expressionCache.entries.sortedByDescending { it.value?.hashCode() ?: 0 }
+            expressionCache.clear()
+            sortedEntries.take(500).forEach { (key, value) ->
+                expressionCache[key] = value
+            }
+        }
+    }
 
     /**
      * Évalue une équation pour un animal donné
@@ -112,7 +133,48 @@ object EquationEvaluator {
             }
         }
 
-        return ExpressionMathematique.evaluer(expression, variables)
+        // Nettoyer le cache si nécessaire
+        cleanupCacheIfNeeded()
+
+        // Utiliser le cache pour éviter les recalculs
+        val cacheKey = "${expression}:${variables.hashCode()}"
+        return expressionCache.getOrPut(cacheKey) {
+            ExpressionMathematique.evaluer(expression, variables)
+        }
+    }
+
+    /**
+     * Version avec cache optimisée pour les évaluations répétées
+     */
+    fun evaluerPourAnimalAvecCache(
+            expression: String,
+            poidsCorps: Double,
+            variablesSupp: List<SupplementalvariableP> = emptyList()
+    ): Double? {
+        val variables = mutableMapOf<String, Double>()
+
+        // Ajouter le poids corporel
+        variables["BW"] = poidsCorps
+
+        // Ajouter les variables supplémentaires
+        for (variable in variablesSupp) {
+            variable.variable?.let { varKind ->
+                val v = variable.varue?.toDouble() ?: 0.0
+                // Nom long (ex: "Distance", "CarriedWeiht")
+                variables[varKind.variable] = v
+                // Alias court (ex: "D", "CW")
+                variables[varKind.label] = v
+            }
+        }
+
+        // Nettoyer le cache si nécessaire
+        cleanupCacheIfNeeded()
+
+        // Utiliser le cache pour éviter les recalculs
+        val cacheKey = "${expression}:${variables.hashCode()}"
+        return expressionCache.getOrPut(cacheKey) {
+            ExpressionMathematique.evaluer(expression, variables)
+        }
     }
 
     /**

@@ -12,19 +12,20 @@ plugins {
 }
 
 kotlin {
-    androidTarget { 
-        compilerOptions { 
+    androidTarget {
+        compilerOptions {
             jvmTarget.set(JvmTarget.JVM_11)
-            // Optimisations pour réduire l'utilisation mémoire et la complexité de compilation
+            // Optimisations sélectives pour réduire la complexité sans tout désactiver
             freeCompilerArgs.addAll(
                 "-Xjvm-default=all",
                 "-Xno-param-assertions",
                 "-Xno-call-assertions",
                 "-Xno-receiver-assertions",
-                "-Xno-optimize",
-                "-Xno-inline"
+                "-Xoptimization-phase-step=15", // Réduire les étapes d'optimisation
+                "-Xinline-max-instruction-count=150", // Limiter l'inlining sélectif
+                "-Xdisable-phases=DevirtualizationAnalysis" // Désactiver seulement l'analyse problématique
             )
-        } 
+        }
     }
 
     listOf(iosX64(), iosArm64(), iosSimulatorArm64()).forEach { iosTarget ->
@@ -33,11 +34,10 @@ kotlin {
             isStatic = true
             linkerOpts.add("-lsqlite3")
         }
-        // Optimisations pour iOS
+        // Configuration iOS - Configuration basique uniquement
         iosTarget.compilerOptions {
             freeCompilerArgs.addAll(
-                "-Xno-optimize",
-                "-Xno-inline"
+                "-Xruntime-logs=all"
             )
         }
     }
