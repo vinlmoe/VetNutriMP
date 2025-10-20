@@ -43,7 +43,6 @@ private fun extraireVersionJson(contenu: String): String? {
  */
 @Composable
 fun StartupScreen(
-        foodRepository: FoodRepository,
         referenceRepository: DatabaseReferenceEvRepository?,
         settingsViewModel: SettingsViewModel,
         onDatabaseReady: () -> Unit,
@@ -84,7 +83,7 @@ fun StartupScreen(
         // Vérifier l'état de la base de données, des CGU et des versions au démarrage
         LaunchedEffect(Unit) {
                 try {
-                        val foodCount = foodRepository.getAllFoods().size
+                        val foodCount = settingsViewModel.foodRepository.getAllFoods().size
                         val referenceCount = referenceRepository?.getAllReferenceEv()?.size ?: 0
                         val conseilsCount = try {
                                 conseilRepository?.getConseilsCount()?.getOrThrow() ?: 0
@@ -211,7 +210,7 @@ fun StartupScreen(
                                                 // Mettre à jour le statut de la base de données
                                                 try {
                                                         val newFoodCount =
-                                                                foodRepository.getAllFoods().size
+                                                                settingsViewModel.foodRepository.getAllFoods().size
                                                         val newReferenceCount =
                                                                 referenceRepository
                                                                         ?.getAllReferenceEv()

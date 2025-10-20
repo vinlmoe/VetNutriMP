@@ -888,7 +888,7 @@ fun ConsultationFullScreenEditView(
                                                                         editedConsultation.k1Id,
                                                                 coefficients =
                                                                         referenceGeneraleSelectionnee
-                                                                                ?.getModk1()
+                                                                                ?.modk1
                                                                                 ?: arrayListOf(),
                                                                 onCoefficientSelected = { coef ->
                                                                         editedConsultation =
@@ -916,7 +916,7 @@ fun ConsultationFullScreenEditView(
                                                                         editedConsultation.k2Id,
                                                                 coefficients =
                                                                         referenceGeneraleSelectionnee
-                                                                                ?.getModk2()
+                                                                                ?.modk2
                                                                                 ?: arrayListOf(),
                                                                 onCoefficientSelected = { coef ->
                                                                         editedConsultation =
@@ -944,7 +944,7 @@ fun ConsultationFullScreenEditView(
                                                                         editedConsultation.k3Id,
                                                                 coefficients =
                                                                         referenceGeneraleSelectionnee
-                                                                                ?.getModk3()
+                                                                                ?.modk3
                                                                                 ?: arrayListOf(),
                                                                 onCoefficientSelected = { coef ->
                                                                         editedConsultation =
@@ -972,7 +972,7 @@ fun ConsultationFullScreenEditView(
                                                                         editedConsultation.k4Id,
                                                                 coefficients =
                                                                         referenceGeneraleSelectionnee
-                                                                                ?.getModk4()
+                                                                                ?.modk4
                                                                                 ?: arrayListOf(),
                                                                 onCoefficientSelected = { coef ->
                                                                         editedConsultation =
@@ -1000,7 +1000,7 @@ fun ConsultationFullScreenEditView(
                                                                         editedConsultation.k5Id,
                                                                 coefficients =
                                                                         referenceGeneraleSelectionnee
-                                                                                ?.getModk5()
+                                                                                ?.modk5
                                                                                 ?: arrayListOf(),
                                                                 onCoefficientSelected = { coef ->
                                                                         editedConsultation =
@@ -1227,7 +1227,7 @@ private fun CoefficientSelector(
         nom: String,
         valeurSelectionnee: Double?,
         descriptionSelectionnee: String?,
-        coefficients: ArrayList<fr.vetbrain.vetnutri_mp.Data.CoefP>,
+        coefficients: List<fr.vetbrain.vetnutri_mp.Data.CoefP>,
         onCoefficientSelected: (fr.vetbrain.vetnutri_mp.Data.CoefP) -> Unit,
         modifier: Modifier = Modifier
 ) {
@@ -1283,7 +1283,7 @@ private fun CoefficientSelector(
 @Composable
 private fun CoefficientSelectionDialog(
         nom: String,
-        coefficients: ArrayList<fr.vetbrain.vetnutri_mp.Data.CoefP>,
+        coefficients: List<fr.vetbrain.vetnutri_mp.Data.CoefP>,
         descriptionSelectionnee: String?,
         onCoefficientSelected: (fr.vetbrain.vetnutri_mp.Data.CoefP) -> Unit,
         onDismiss: () -> Unit

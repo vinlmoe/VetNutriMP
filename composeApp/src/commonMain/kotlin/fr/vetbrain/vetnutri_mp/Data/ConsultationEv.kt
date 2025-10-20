@@ -38,39 +38,30 @@ data class ConsultationEv(
         var coefficientAjustement: Double = 1.0
 ) {
 
+        // Cache pour la propriété calculée
+        private var cachedEffectiveWeight: Double? = null
+        private var lastWeight: Double? = null
+        private var lastIdealWeight: Double? = null
+
         // Propriété calculée qui retourne le poids idéal si défini, sinon le poids actuel
         val effectiveWeight: Double?
-                get() = idealWeight ?: weight
-        constructor() :
-                this(
-                        uuid = genUUID(),
-                        date = null,
-                        objectConsult = "",
-                        observation = "",
-                        cRendu = "",
-                        weight = null,
-                        idealWeight = null,
-                        water = null,
-                        bodyFat = null,
-                        methodAnalysis = "",
-                        BCS = null,
-                        k1Id = null,
-                        k1Value = null,
-                        k2Id = null,
-                        k2Value = null,
-                        k3Id = null,
-                        k3Value = null,
-                        k4Id = null,
-                        k4Value = null,
-                        k5Id = null,
-                        k5Value = null,
-                        nLittle = null,
-                        pAdult = null,
-                        coefGes = null,
-                        coefLact = null,
-                        idAnim = "",
-                        MCS = null
-                )
+                get() {
+                    // Utiliser le cache si les valeurs n'ont pas changé
+                    if (cachedEffectiveWeight != null &&
+                        lastWeight == weight &&
+                        lastIdealWeight == idealWeight) {
+                        return cachedEffectiveWeight
+                    }
+
+                    val result = idealWeight ?: weight
+
+                    // Mettre en cache
+                    cachedEffectiveWeight = result
+                    lastWeight = weight
+                    lastIdealWeight = idealWeight
+
+                    return result
+                }
 
         fun getRationByID(uuid: String): Ration {
                 return rations.last { ration: Ration -> ration.uuid == uuid }

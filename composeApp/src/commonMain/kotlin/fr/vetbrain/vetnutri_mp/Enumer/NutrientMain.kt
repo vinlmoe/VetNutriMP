@@ -29,18 +29,83 @@ enum class NutrientMain(
     ADF("ADFe", 14, "g", UnitEnum.BUg, "ADF", "#1A7D07");
 
     companion object {
+        // Optimisation : utiliser des maps statiques lazy pour réduire la complexité du compilateur
         private val coefMap by lazy { entries.associateBy { it.coef } }
         private val labelMap by lazy { entries.associateBy { it.label.lowercase() } }
 
-        fun getByCoef(coef: Int) = coefMap[coef]
+        // Cache pour les recherches fréquentes avec gestion automatique de la mémoire
+        private val coefCache = mutableMapOf<Int, NutrientMain?>()
+        private val labelCache = mutableMapOf<String, NutrientMain?>()
+        private val maxCacheSize = 15
 
-        fun getByLabel(label: String): NutrientMain {
-            return labelMap[label.lowercase()] ?: PROTEINE
+        // Compteurs pour optimiser les performances
+        private var cacheHits = 0
+        private var cacheMisses = 0
+
+        fun getByCoef(coef: Int): NutrientMain? {
+            // Vérifier le cache d'abord
+            coefCache[coef]?.let {
+                cacheHits++
+                return it
+            }
+
+            cacheMisses++
+            val result = coefMap[coef]
+
+            // Nettoyer et ajouter au cache si nécessaire (stratégie simple)
+            if (coefCache.size >= maxCacheSize) {
+                // Supprimer les entrées les moins utilisées (approximation)
+                if (cacheHits > cacheMisses * 2) {
+                    coefCache.clear()
+                    cacheHits = 0
+                    cacheMisses = 0
+                }
+            }
+
+            if (coefCache.size < maxCacheSize && result != null) {
+                coefCache[coef] = result
+            }
+
+            return result
         }
 
-        fun isByLabel(label: String) = entries.any { it.label.equals(label, ignoreCase = true) }
+        fun getByLabel(label: String): NutrientMain {
+            val lowerLabel = label.lowercase()
+
+            // Vérifier le cache d'abord
+            labelCache[lowerLabel]?.let {
+                cacheHits++
+                return it ?: PROTEINE
+            }
+
+            cacheMisses++
+            val result = labelMap[lowerLabel]
+
+            // Nettoyer et ajouter au cache si nécessaire
+            if (labelCache.size >= maxCacheSize) {
+                if (cacheHits > cacheMisses * 2) {
+                    labelCache.clear()
+                    cacheHits = 0
+                    cacheMisses = 0
+                }
+            }
+
+            if (labelCache.size < maxCacheSize && result != null) {
+                labelCache[lowerLabel] = result
+            }
+
+            return result ?: PROTEINE
+        }
+
+        fun isByLabel(label: String) = labelMap.containsKey(label.lowercase())
 
         fun size() = entries.size
+
+        // Méthode utilitaire pour vider le cache si nécessaire
+        fun clearCache() {
+            coefCache.clear()
+            labelCache.clear()
+        }
     }
 
     override fun getMNE() = MainNutrientEnum.BASE

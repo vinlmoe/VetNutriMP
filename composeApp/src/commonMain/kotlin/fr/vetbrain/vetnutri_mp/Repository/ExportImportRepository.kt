@@ -557,11 +557,11 @@ class ExportImportRepository(
                                         if (refApi.coefficients.isNotEmpty()) {
                                                 // Nettoyer les coefficients par défaut ajoutés au
                                                 // constructeur (évite les doublons)
-                                                ref.getModk1().clear()
-                                                ref.getModk2().clear()
-                                                ref.getModk3().clear()
-                                                ref.getModk4().clear()
-                                                ref.getModk5().clear()
+                                                ref.modk1.clear()
+                                                ref.modk2.clear()
+                                                ref.modk3.clear()
+                                                ref.modk4.clear()
+                                                ref.modk5.clear()
 
                                                 listener?.onLog?.invoke(
                                                         "Import des coefficients pour ${refApi.nom} (${refApi.coefficients.size} coefficients)"
@@ -583,19 +583,19 @@ class ExportImportRepository(
                                                     
                                                     when (coefApi.groupType) {
                                                                         "k1" ->
-                                                                                ref.getModk1()
+                                                                                ref.modk1
                                                                                         .add(coef)
                                                                         "k2" ->
-                                                                                ref.getModk2()
+                                                                                ref.modk2
                                                                                         .add(coef)
                                                                         "k3" ->
-                                                                                ref.getModk3()
+                                                                                ref.modk3
                                                                                         .add(coef)
                                                                         "k4" ->
-                                                                                ref.getModk4()
+                                                                                ref.modk4
                                                                                         .add(coef)
                                                                         "k5" ->
-                                                                                ref.getModk5()
+                                                                                ref.modk5
                                                                                         .add(coef)
                                                     }
                                                 } catch (e: Exception) {

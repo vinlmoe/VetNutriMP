@@ -259,9 +259,7 @@ class ReferenceEvViewModel(
             }
 
             // Référencer les équations nutritionnelles (pas de duplication)
-            duplicated.equationsNut = ArrayList(source.equationsNut.map { equation ->
-                equation
-            })
+            duplicated.equationsNut = source.equationsNut.toMutableList()
 
             // Référencer les nutriments avec leurs références bibliographiques existantes
             val minCount = source.getRefMapMin().size
@@ -315,22 +313,22 @@ class ReferenceEvViewModel(
             }
 
             // Référencer les coefficients modificateurs (pas de duplication)
-            val k1Count = source.getModk1().size
-            val k2Count = source.getModk2().size
-            val k3Count = source.getModk3().size
-            val k4Count = source.getModk4().size
-            val k5Count = source.getModk5().size
+            val k1Count = source.modk1.size
+            val k2Count = source.modk2.size
+            val k3Count = source.modk3.size
+            val k4Count = source.modk4.size
+            val k5Count = source.modk5.size
 
-            duplicated.getModk1().clear()
-            duplicated.getModk1().addAll(source.getModk1()) // Référence directe
-            duplicated.getModk2().clear()
-            duplicated.getModk2().addAll(source.getModk2()) // Référence directe
-            duplicated.getModk3().clear()
-            duplicated.getModk3().addAll(source.getModk3()) // Référence directe
-            duplicated.getModk4().clear()
-            duplicated.getModk4().addAll(source.getModk4()) // Référence directe
-            duplicated.getModk5().clear()
-            duplicated.getModk5().addAll(source.getModk5()) // Référence directe
+            duplicated.modk1.clear()
+            duplicated.modk1.addAll(source.modk1) // Référence directe
+            duplicated.modk2.clear()
+            duplicated.modk2.addAll(source.modk2) // Référence directe
+            duplicated.modk3.clear()
+            duplicated.modk3.addAll(source.modk3) // Référence directe
+            duplicated.modk4.clear()
+            duplicated.modk4.addAll(source.modk4) // Référence directe
+            duplicated.modk5.clear()
+            duplicated.modk5.addAll(source.modk5) // Référence directe
 
             // Copier les noms des coefficients
             duplicated.nomk1 = source.nomk1
@@ -617,15 +615,13 @@ class ReferenceEvViewModel(
                 if (isAlreadyAssociated) {
                     // Dissocier l'équation
                     updatedReference.equationsNut =
-                            ArrayList(
-                                    updatedReference.equationsNut.filter {
-                                        it.uuid != equation.uuid
-                                    }
-                            )
+                            updatedReference.equationsNut.filter {
+                                it.uuid != equation.uuid
+                            }.toMutableList()
                 } else {
                     // Associer l'équation (créer une nouvelle liste pour éviter des problèmes de
                     // référence)
-                    val newList = ArrayList(updatedReference.equationsNut)
+                    val newList = updatedReference.equationsNut.toMutableList()
                     newList.add(equation)
                     updatedReference.equationsNut = newList
                 }

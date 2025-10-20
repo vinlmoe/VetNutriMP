@@ -163,11 +163,11 @@ class NewReferenceEvViewModel(
         val reference = _currentReference.value
 
         // Synchroniser les listes de coefficients
-        _coefficientsK1.value = reference.getModk1().toList()
-        _coefficientsK2.value = reference.getModk2().toList()
-        _coefficientsK3.value = reference.getModk3().toList()
-        _coefficientsK4.value = reference.getModk4().toList()
-        _coefficientsK5.value = reference.getModk5().toList()
+        _coefficientsK1.value = reference.modk1.toList()
+        _coefficientsK2.value = reference.modk2.toList()
+        _coefficientsK3.value = reference.modk3.toList()
+        _coefficientsK4.value = reference.modk4.toList()
+        _coefficientsK5.value = reference.modk5.toList()
 
         // Synchroniser les noms des groupes
         _groupNames.value =
@@ -267,16 +267,16 @@ class NewReferenceEvViewModel(
         updatedRef.equationsNut = currentRef.equationsNut
 
         // Copier les coefficients (MutableList)
-        updatedRef.getModk1().clear()
-        updatedRef.getModk1().addAll(currentRef.getModk1())
-        updatedRef.getModk2().clear()
-        updatedRef.getModk2().addAll(currentRef.getModk2())
-        updatedRef.getModk3().clear()
-        updatedRef.getModk3().addAll(currentRef.getModk3())
-        updatedRef.getModk4().clear()
-        updatedRef.getModk4().addAll(currentRef.getModk4())
-        updatedRef.getModk5().clear()
-        updatedRef.getModk5().addAll(currentRef.getModk5())
+        updatedRef.modk1.clear()
+        updatedRef.modk1.addAll(currentRef.modk1)
+        updatedRef.modk2.clear()
+        updatedRef.modk2.addAll(currentRef.modk2)
+        updatedRef.modk3.clear()
+        updatedRef.modk3.addAll(currentRef.modk3)
+        updatedRef.modk4.clear()
+        updatedRef.modk4.addAll(currentRef.modk4)
+        updatedRef.modk5.clear()
+        updatedRef.modk5.addAll(currentRef.modk5)
 
         // Copier les noms des coefficients
         updatedRef.nomk1 = currentRef.nomk1
@@ -670,9 +670,9 @@ class NewReferenceEvViewModel(
                 val already = current.equationsNut.any { it.uuid == equation.uuid }
                 if (already) {
                     current.equationsNut =
-                            ArrayList(current.equationsNut.filter { it.uuid != equation.uuid })
+                            current.equationsNut.filter { it.uuid != equation.uuid }.toMutableList()
                 } else {
-                    val newList = ArrayList(current.equationsNut)
+                    val newList = current.equationsNut.toMutableList()
                     newList.add(equation)
                     current.equationsNut = newList
                 }
@@ -838,13 +838,13 @@ class NewReferenceEvViewModel(
                         groupUUID = groupIndex
                 )
 
-        // Ajouter dans l'ArrayList de ReferenceEv
+        // Ajouter dans la MutableList de ReferenceEv
         when (groupIndex) {
-            0 -> reference.getModk1().add(newCoef)
-            1 -> reference.getModk2().add(newCoef)
-            2 -> reference.getModk3().add(newCoef)
-            3 -> reference.getModk4().add(newCoef)
-            4 -> reference.getModk5().add(newCoef)
+            0 -> reference.modk1.add(newCoef)
+            1 -> reference.modk2.add(newCoef)
+            2 -> reference.modk3.add(newCoef)
+            3 -> reference.modk4.add(newCoef)
+            4 -> reference.modk5.add(newCoef)
         }
 
         // Mettre à jour le StateFlow correspondant avec une nouvelle liste
@@ -863,11 +863,11 @@ class NewReferenceEvViewModel(
         val reference = _currentReference.value
         val group =
                 when (groupIndex) {
-                    0 -> reference.getModk1()
-                    1 -> reference.getModk2()
-                    2 -> reference.getModk3()
-                    3 -> reference.getModk4()
-                    4 -> reference.getModk5()
+                    0 -> reference.modk1
+                    1 -> reference.modk2
+                    2 -> reference.modk3
+                    3 -> reference.modk4
+                    4 -> reference.modk5
                     else -> return
                 }
 
@@ -898,11 +898,11 @@ class NewReferenceEvViewModel(
         val reference = _currentReference.value
         val group =
                 when (groupIndex) {
-                    0 -> reference.getModk1()
-                    1 -> reference.getModk2()
-                    2 -> reference.getModk3()
-                    3 -> reference.getModk4()
-                    4 -> reference.getModk5()
+                    0 -> reference.modk1
+                    1 -> reference.modk2
+                    2 -> reference.modk3
+                    3 -> reference.modk4
+                    4 -> reference.modk5
                     else -> return
                 }
 
@@ -926,11 +926,11 @@ class NewReferenceEvViewModel(
      */
     private fun updateCoefficientStateFlow(groupIndex: Int, reference: ReferenceEv) {
         when (groupIndex) {
-            0 -> _coefficientsK1.value = reference.getModk1().toList()
-            1 -> _coefficientsK2.value = reference.getModk2().toList()
-            2 -> _coefficientsK3.value = reference.getModk3().toList()
-            3 -> _coefficientsK4.value = reference.getModk4().toList()
-            4 -> _coefficientsK5.value = reference.getModk5().toList()
+            0 -> _coefficientsK1.value = reference.modk1.toList()
+            1 -> _coefficientsK2.value = reference.modk2.toList()
+            2 -> _coefficientsK3.value = reference.modk3.toList()
+            3 -> _coefficientsK4.value = reference.modk4.toList()
+            4 -> _coefficientsK5.value = reference.modk5.toList()
         }
     }
 }

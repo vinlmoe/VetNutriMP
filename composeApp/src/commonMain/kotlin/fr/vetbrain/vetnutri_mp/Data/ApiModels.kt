@@ -585,7 +585,7 @@ fun ReferenceEv.toApiRef(): ReferenceEvApi {
         val coefficients = mutableListOf<ReferenceCoefficientApi>()
 
         // Ajouter les coefficients k1
-        getModk1().forEach { coef ->
+        modk1.forEach { coef ->
                 coefficients.add(
                         ReferenceCoefficientApi(
                                 uuid = coef.uuid,
@@ -598,7 +598,7 @@ fun ReferenceEv.toApiRef(): ReferenceEvApi {
         }
 
         // Ajouter les coefficients k2
-        getModk2().forEach { coef ->
+        modk2.forEach { coef ->
                 coefficients.add(
                         ReferenceCoefficientApi(
                                 uuid = coef.uuid,
@@ -611,7 +611,7 @@ fun ReferenceEv.toApiRef(): ReferenceEvApi {
         }
 
         // Ajouter les coefficients k3
-        getModk3().forEach { coef ->
+        modk3.forEach { coef ->
                 coefficients.add(
                         ReferenceCoefficientApi(
                                 uuid = coef.uuid,
@@ -624,7 +624,7 @@ fun ReferenceEv.toApiRef(): ReferenceEvApi {
         }
 
         // Ajouter les coefficients k4
-        getModk4().forEach { coef ->
+        modk4.forEach { coef ->
                 coefficients.add(
                         ReferenceCoefficientApi(
                                 uuid = coef.uuid,
@@ -637,7 +637,7 @@ fun ReferenceEv.toApiRef(): ReferenceEvApi {
         }
 
         // Ajouter les coefficients k5
-        getModk5().forEach { coef ->
+        modk5.forEach { coef ->
                 coefficients.add(
                         ReferenceCoefficientApi(
                                 uuid = coef.uuid,

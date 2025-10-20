@@ -36,7 +36,6 @@ import fr.vetbrain.vetnutri_mp.Export.HtmlPreviewDialog
 import fr.vetbrain.vetnutri_mp.Export.PdfExporter
 import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
-import fr.vetbrain.vetnutri_mp.Repository.FoodRepository
 import fr.vetbrain.vetnutri_mp.Repository.PreferencesRepository
 import fr.vetbrain.vetnutri_mp.Repository.RecipeRepository
 import fr.vetbrain.vetnutri_mp.Theme.AppIcons
@@ -234,7 +233,6 @@ fun AnimalDetailView(
         modifier: Modifier = Modifier,
         equationRepository: EquationRepository,
         recipeRepository: RecipeRepository,
-        foodRepository: FoodRepository,
         conseilRepository: fr.vetbrain.vetnutri_mp.Repository.ConseilRepository
 ) {
         val animal by viewModel.animal.collectAsState()
@@ -369,7 +367,6 @@ fun AnimalDetailView(
                                         onShowConsultationDetail = { showConsultationDetail = it },
                                         equationRepository = equationRepository,
                                         recipeRepository = recipeRepository,
-                                        foodRepository = foodRepository,
                                         conseilRepository = conseilRepository
                                 )
                         } else {
@@ -392,7 +389,6 @@ fun AnimalDetailView(
                                         scope = scope,
                                         equationRepository = equationRepository,
                                         recipeRepository = recipeRepository,
-                                        foodRepository = foodRepository,
                                         conseilRepository = conseilRepository
                                 )
                         }
@@ -456,7 +452,6 @@ private fun WideScreenLayout(
         onShowConsultationDetail: (Boolean) -> Unit,
         equationRepository: EquationRepository,
         recipeRepository: RecipeRepository,
-        foodRepository: FoodRepository,
         conseilRepository: fr.vetbrain.vetnutri_mp.Repository.ConseilRepository
 ) {
         // Scope pour les coroutines
@@ -626,7 +621,6 @@ private fun WideScreenLayout(
                                                 showSnackbar = { message -> },
                                                 equationRepository = equationRepository,
                                                 recipeRepository = recipeRepository,
-                                                foodRepository = foodRepository
                                         )
                                 }
                                 AnimalDetailSection.GRAPHIQUE -> {
@@ -743,22 +737,20 @@ private fun WideScreenLayout(
                                                                                 // depuis le
                                                                                 // repository
                                                                                 val alimentComplet =
-                                                                                        fr.vetbrain
-                                                                                                .vetnutri_mp
-                                                                                                .Repository
-                                                                                                .AlimentRepository
-                                                                                                .getAlimentByUUID(
-                                                                                                        aliment.uuid
-                                                                                                )
+                                                                                        viewModel.getAlimentCompletSync(
+                                                                                                aliment.uuid
+                                                                                        )
 
                                                                                 if (alimentComplet !=
                                                                                                 null
                                                                                 ) {
 
-                                                                                        alimentsAvecValeurs
-                                                                                                .add(
-                                                                                                        alimentComplet
-                                                                                                )
+                                                                                        if (alimentComplet is AlimentEv) {
+                                                                                                alimentsAvecValeurs
+                                                                                                        .add(
+                                                                                                                alimentComplet
+                                                                                                        )
+                                                                                                }
                                                                                 } else {
 
                                                                                         alimentsAvecValeurs
@@ -1752,7 +1744,6 @@ private fun NarrowScreenLayout(
         scope: CoroutineScope,
         equationRepository: EquationRepository,
         recipeRepository: RecipeRepository,
-        foodRepository: FoodRepository,
         conseilRepository: fr.vetbrain.vetnutri_mp.Repository.ConseilRepository
 ) {
         // État pour l'éditeur de texte enrichi
@@ -1980,7 +1971,6 @@ private fun NarrowScreenLayout(
                                                                 equationRepository =
                                                                         equationRepository,
                                                                 recipeRepository = recipeRepository,
-                                                                foodRepository = foodRepository
                                                         )
                                                 }
                                                 AnimalDetailSection.GRAPHIQUE -> {
@@ -2119,22 +2109,20 @@ private fun NarrowScreenLayout(
 
                                                                                                 // Récupérer l'aliment complet depuis le repository
                                                                                                 val alimentComplet =
-                                                                                                        fr.vetbrain
-                                                                                                                .vetnutri_mp
-                                                                                                                .Repository
-                                                                                                                .AlimentRepository
-                                                                                                                .getAlimentByUUID(
-                                                                                                                        aliment.uuid
-                                                                                                                )
+                                                                                                        viewModel.getAlimentCompletSync(
+                                                                                                                aliment.uuid
+                                                                                                        )
 
                                                                                                 if (alimentComplet !=
                                                                                                                 null
                                                                                                 ) {
 
-                                                                                                        alimentsAvecValeurs
-                                                                                                                .add(
-                                                                                                                        alimentComplet
-                                                                                                                )
+                                                                                                        if (alimentComplet is AlimentEv) {
+                                                                                                                alimentsAvecValeurs
+                                                                                                                        .add(
+                                                                                                                                alimentComplet
+                                                                                                                        )
+                                                                                                        }
                                                                                                 } else {
 
                                                                                                         alimentsAvecValeurs

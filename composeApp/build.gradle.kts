@@ -12,7 +12,21 @@ plugins {
 }
 
 kotlin {
-    androidTarget { compilerOptions { jvmTarget.set(JvmTarget.JVM_11) } }
+    androidTarget {
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_11)
+            // Optimisations sélectives pour réduire la complexité sans tout désactiver
+            freeCompilerArgs.addAll(
+                "-Xjvm-default=all",
+                "-Xno-param-assertions",
+                "-Xno-call-assertions",
+                "-Xno-receiver-assertions",
+                "-Xoptimization-phase-step=15", // Réduire les étapes d'optimisation
+                "-Xinline-max-instruction-count=150", // Limiter l'inlining sélectif
+                "-Xdisable-phases=DevirtualizationAnalysis" // Désactiver seulement l'analyse problématique
+            )
+        }
+    }
 
     listOf(iosX64(), iosArm64(), iosSimulatorArm64()).forEach { iosTarget ->
         iosTarget.binaries.framework {
@@ -20,19 +34,23 @@ kotlin {
             isStatic = true
             linkerOpts.add("-lsqlite3")
         }
+        // Configuration iOS - Configuration basique uniquement
+        iosTarget.compilerOptions {
+            freeCompilerArgs.addAll(
+                "-Xruntime-logs=all"
+            )
+        }
     }
 
     jvm("desktop")
 
     sourceSets {
-        sourceSets.iosMain { kotlin.srcDir("build/generated/ksp/metadata") }
         androidMain.dependencies {
             implementation(libs.androidx.activity.compose)
             implementation(libs.androidx.room.runtime)
             implementation(libs.androidx.room.paging)
-            implementation(libs.androidx.core.ktx)
             // implementation(libs.androidx.sqlite.sqlite.ktx)
-            implementation(libs.kotlinx.coroutines.android)
+
         }
 
         commonMain.dependencies {
@@ -83,21 +101,11 @@ kotlin {
             }
         }
 
-        val iosMain by getting {
-            kotlin.srcDir("build/generated/ksp/metadata")
+        val iosMain by creating {
             dependencies { implementation(libs.sqliter.driver) }
         }
-
-        val iosArm64Main by getting
-        val iosX64Main by getting
-        val iosSimulatorArm64Main by getting
     }
 }
-
-// Configuration: exclure uniquement côté Desktop les artefacts Android
-/*configurations.matching { it.name.contains("desktop", ignoreCase = true) }.configureEach {
-    exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-android")
-}*/
 
 android {
     namespace = "fr.vetbrain.vetnutri_mp"
@@ -111,8 +119,8 @@ android {
         applicationId = "fr.vetbrain.vetnutri_mp"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 33
-        versionName = "3.1.33"
+        versionCode = 28
+        versionName = "3.1.28"
 
         // Configuration de Room
 
@@ -133,6 +141,7 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+    
 }
 
 dependencies { debugImplementation(compose.uiTooling) }
@@ -144,7 +153,7 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Exe, TargetFormat.Deb)
             packageName = "VetNutriMP"
-            packageVersion = "3.1.33"
+            packageVersion = "3.1.28"
             description = "Application de nutrition vétérinaire multiplateforme"
             copyright = "© 2024 VetBrain"
             vendor = "VetBrain"
@@ -164,12 +173,11 @@ compose.desktop {
 
 dependencies {
     implementation("org.jetbrains.compose.material:material-icons-extended:1.7.3")
-
+  
     implementation(libs.androidx.sqlite.bundled)
     implementation(kotlin("test"))
     implementation(kotlin("test-common"))
     implementation(kotlin("test-annotations-common"))
-
     add("kspAndroid", libs.androidx.room.compiler)
     add("kspIosSimulatorArm64", libs.androidx.room.compiler)
     add("kspIosX64", libs.androidx.room.compiler)
@@ -182,3 +190,4 @@ dependencies {
 }
 
 room { schemaDirectory("$projectDir/schemas") }
+
