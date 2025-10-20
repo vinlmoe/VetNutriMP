@@ -22,8 +22,8 @@ import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Theme.AppIcons
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
+import fr.vetbrain.vetnutri_mp.Utils.NumberUtils
 import kotlin.uuid.ExperimentalUuidApi
-import kotlin.uuid.Uuid
 import kotlinx.datetime.LocalDate
 
 @OptIn(ExperimentalUuidApi::class)
@@ -32,7 +32,8 @@ fun AppConsultationDetailView(
         consultation: ConsultationEv?,
         availableReferences: List<ReferenceEv> = emptyList(),
         onDismiss: () -> Unit,
-        onSave: (ConsultationEv) -> Unit
+        onSave: (ConsultationEv) -> Unit,
+        viewModel: fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailViewModel? = null
 ) {
         // Déterminer si c'est une nouvelle consultation (UUID vide ou null)
         val isNewConsultation = consultation == null || consultation.uuid.isEmpty()
@@ -46,6 +47,21 @@ fun AppConsultationDetailView(
         var dateErrorMessage by remember(consultation) { mutableStateOf<String?>(null) }
         var weightErrorMessage by remember(consultation) { mutableStateOf<String?>(null) }
 
+        // Collecter les valeurs métaboliques calculées depuis le ViewModel
+        val poidsMetabolique by
+                viewModel?.poidsMetabolique?.collectAsState() ?: remember { mutableStateOf(null) }
+        val besoinEnergetiqueStandard by
+                viewModel?.besoinEnergetiqueStandard?.collectAsState()
+                        ?: remember { mutableStateOf(null) }
+        val besoinEnergetiqueTotal by
+                viewModel?.besoinEnergetiqueTotal?.collectAsState()
+                        ?: remember { mutableStateOf(null) }
+
+        // Déclencher les calculs métaboliques quand une consultation est sélectionnée
+        LaunchedEffect(consultation) {
+                consultation?.let { viewModel?.calculerValeursMetaboliques(it) }
+        }
+
         Scaffold(
                 floatingActionButton = {
                         if (isNewConsultation) {
@@ -56,9 +72,17 @@ fun AppConsultationDetailView(
                                                                 editedConsultation.date != null
                                                 ) {
                                                         if (editedConsultation.uuid.isEmpty()) {
-                                                                // Générer un UUID unique avec timestamp pour éviter les conflits
+                                                                // Générer un UUID unique avec
+                                                                // timestamp pour éviter les
+                                                                // conflits
                                                                 editedConsultation =
-                                                                        editedConsultation.copy(uuid = fr.vetbrain.vetnutri_mp.Utils.genUniqueUUID())
+                                                                        editedConsultation.copy(
+                                                                                uuid =
+                                                                                        fr.vetbrain
+                                                                                                .vetnutri_mp
+                                                                                                .Utils
+                                                                                                .genUniqueUUID()
+                                                                        )
                                                         }
                                                         onSave(editedConsultation)
                                                 } else if (editedConsultation.date == null) {
@@ -333,15 +357,33 @@ fun AppConsultationDetailView(
                                                         Column(modifier = Modifier.weight(1f)) {
                                                                 InfoRow(
                                                                         label = "Coefficient 1",
-                                                                        value = "Non défini"
+                                                                        value =
+                                                                                consultation
+                                                                                        ?.k1Value
+                                                                                        ?.let {
+                                                                                                NumberUtils.format(it, 2)
+                                                                                        }
+                                                                                        ?: "Non défini"
                                                                 )
                                                                 InfoRow(
                                                                         label = "Coefficient 2",
-                                                                        value = "Non défini"
+                                                                        value =
+                                                                                consultation
+                                                                                        ?.k2Value
+                                                                                        ?.let {
+                                                                                                NumberUtils.format(it, 2)
+                                                                                        }
+                                                                                        ?: "Non défini"
                                                                 )
                                                                 InfoRow(
                                                                         label = "Coefficient 3",
-                                                                        value = "Non défini"
+                                                                        value =
+                                                                                consultation
+                                                                                        ?.k3Value
+                                                                                        ?.let {
+                                                                                                NumberUtils.format(it, 2)
+                                                                                        }
+                                                                                        ?: "Non défini"
                                                                 )
                                                         }
                                                         Spacer(
@@ -353,11 +395,23 @@ fun AppConsultationDetailView(
                                                         Column(modifier = Modifier.weight(1f)) {
                                                                 InfoRow(
                                                                         label = "Coefficient 4",
-                                                                        value = "Non défini"
+                                                                        value =
+                                                                                consultation
+                                                                                        ?.k4Value
+                                                                                        ?.let {
+                                                                                                NumberUtils.format(it, 2)
+                                                                                        }
+                                                                                        ?: "Non défini"
                                                                 )
                                                                 InfoRow(
                                                                         label = "Coefficient 5",
-                                                                        value = "Non défini"
+                                                                        value =
+                                                                                consultation
+                                                                                        ?.k5Value
+                                                                                        ?.let {
+                                                                                                NumberUtils.format(it, 2)
+                                                                                        }
+                                                                                        ?: "Non défini"
                                                                 )
                                                         }
                                                 }
@@ -365,22 +419,28 @@ fun AppConsultationDetailView(
                                                 // Mode affichage - valeurs en lecture seule
                                                 InfoRow(
                                                         label = "Poids métabolique",
-                                                        value = "Non calculé" // TODO: Calculer avec
-                                                        // formule
-                                                        // appropriée
-                                                        )
+                                                        value =
+                                                                poidsMetabolique?.let {
+                                                                        NumberUtils.format(it, 2) + " kg"
+                                                                }
+                                                                        ?: "Non calculé"
+                                                )
                                                 InfoRow(
                                                         label = "Besoin énergétique à l'entretien",
-                                                        value = "Non calculé" // TODO: Calculer avec
-                                                        // formule
-                                                        // appropriée
-                                                        )
+                                                        value =
+                                                                besoinEnergetiqueStandard?.let {
+                                                                        NumberUtils.format(it, 0) + " kcal/j"
+                                                                }
+                                                                        ?: "Non calculé"
+                                                )
                                                 InfoRow(
-                                                        label = "Besoin énergétique",
-                                                        value = "Non calculé" // TODO: Calculer avec
-                                                        // formule
-                                                        // appropriée
-                                                        )
+                                                        label = "Besoin énergétique total",
+                                                        value =
+                                                                besoinEnergetiqueTotal?.let {
+                                                                        NumberUtils.format(it, 0) + " kcal/j"
+                                                                }
+                                                                        ?: "Non calculé"
+                                                )
 
                                                 // Section Coefficients
                                                 Text(
@@ -401,15 +461,33 @@ fun AppConsultationDetailView(
                                                         Column(modifier = Modifier.weight(1f)) {
                                                                 InfoRow(
                                                                         label = "Coefficient 1",
-                                                                        value = "Non défini"
+                                                                        value =
+                                                                                consultation
+                                                                                        ?.k1Value
+                                                                                        ?.let {
+                                                                                                NumberUtils.format(it, 2)
+                                                                                        }
+                                                                                        ?: "Non défini"
                                                                 )
                                                                 InfoRow(
                                                                         label = "Coefficient 2",
-                                                                        value = "Non défini"
+                                                                        value =
+                                                                                consultation
+                                                                                        ?.k2Value
+                                                                                        ?.let {
+                                                                                                NumberUtils.format(it, 2)
+                                                                                        }
+                                                                                        ?: "Non défini"
                                                                 )
                                                                 InfoRow(
                                                                         label = "Coefficient 3",
-                                                                        value = "Non défini"
+                                                                        value =
+                                                                                consultation
+                                                                                        ?.k3Value
+                                                                                        ?.let {
+                                                                                                NumberUtils.format(it, 2)
+                                                                                        }
+                                                                                        ?: "Non défini"
                                                                 )
                                                         }
                                                         Spacer(
@@ -421,11 +499,23 @@ fun AppConsultationDetailView(
                                                         Column(modifier = Modifier.weight(1f)) {
                                                                 InfoRow(
                                                                         label = "Coefficient 4",
-                                                                        value = "Non défini"
+                                                                        value =
+                                                                                consultation
+                                                                                        ?.k4Value
+                                                                                        ?.let {
+                                                                                                NumberUtils.format(it, 2)
+                                                                                        }
+                                                                                        ?: "Non défini"
                                                                 )
                                                                 InfoRow(
                                                                         label = "Coefficient 5",
-                                                                        value = "Non défini"
+                                                                        value =
+                                                                                consultation
+                                                                                        ?.k5Value
+                                                                                        ?.let {
+                                                                                                NumberUtils.format(it, 2)
+                                                                                        }
+                                                                                        ?: "Non défini"
                                                                 )
                                                         }
                                                 }
