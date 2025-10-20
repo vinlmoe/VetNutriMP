@@ -267,7 +267,8 @@ private fun ConsultationsMainView(
                                     }
                                     viewModel.stopEditingConsultation()
                                     onShowConsultationDetail(false)
-                                }
+                                },
+                                viewModel = viewModel
                         )
                     }
                 }

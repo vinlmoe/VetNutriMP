@@ -12,7 +12,21 @@ plugins {
 }
 
 kotlin {
-    androidTarget { compilerOptions { jvmTarget.set(JvmTarget.JVM_11) } }
+    androidTarget {
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_11)
+            // Optimisations sélectives pour réduire la complexité sans tout désactiver
+            freeCompilerArgs.addAll(
+                "-Xjvm-default=all",
+                "-Xno-param-assertions",
+                "-Xno-call-assertions",
+                "-Xno-receiver-assertions",
+                "-Xoptimization-phase-step=15", // Réduire les étapes d'optimisation
+                "-Xinline-max-instruction-count=150", // Limiter l'inlining sélectif
+                "-Xdisable-phases=DevirtualizationAnalysis" // Désactiver seulement l'analyse problématique
+            )
+        }
+    }
 
     listOf(iosX64(), iosArm64(), iosSimulatorArm64()).forEach { iosTarget ->
         iosTarget.binaries.framework {
@@ -20,12 +34,17 @@ kotlin {
             isStatic = true
             linkerOpts.add("-lsqlite3")
         }
+        // Configuration iOS - Configuration basique uniquement
+        iosTarget.compilerOptions {
+            freeCompilerArgs.addAll(
+                "-Xruntime-logs=all"
+            )
+        }
     }
 
     jvm("desktop")
 
     sourceSets {
-        sourceSets.iosMain { kotlin.srcDir("build/generated/ksp/metadata") }
         androidMain.dependencies {
             implementation(libs.androidx.activity.compose)
             implementation(libs.androidx.room.runtime)
@@ -82,14 +101,9 @@ kotlin {
             }
         }
 
-        val iosMain by getting {
-            kotlin.srcDir("build/generated/ksp/metadata")
+        val iosMain by creating {
             dependencies { implementation(libs.sqliter.driver) }
         }
-
-        val iosArm64Main by getting
-        val iosX64Main by getting
-        val iosSimulatorArm64Main by getting
     }
 }
 
@@ -127,6 +141,7 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+    
 }
 
 dependencies { debugImplementation(compose.uiTooling) }
@@ -163,7 +178,6 @@ dependencies {
     implementation(kotlin("test"))
     implementation(kotlin("test-common"))
     implementation(kotlin("test-annotations-common"))
-    //  add("kspCommonMainMetadata", libs.androidx.room.compiler)
     add("kspAndroid", libs.androidx.room.compiler)
     add("kspIosSimulatorArm64", libs.androidx.room.compiler)
     add("kspIosX64", libs.androidx.room.compiler)
@@ -176,3 +190,4 @@ dependencies {
 }
 
 room { schemaDirectory("$projectDir/schemas") }
+

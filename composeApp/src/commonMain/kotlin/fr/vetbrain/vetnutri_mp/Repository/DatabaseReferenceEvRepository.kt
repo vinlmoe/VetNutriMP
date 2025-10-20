@@ -143,7 +143,7 @@ class DatabaseReferenceEvRepository(
         val coefficients = mutableListOf<ReferenceEvCoefficientEntity>()
 
         // Sauvegarder les coefficients k1-k5 avec leurs UUIDs originaux
-        referenceEv.getModk1().forEach { coef ->
+        referenceEv.modk1.forEach { coef ->
             coefficients.add(
                     ReferenceEvCoefficientEntity(
                             uuid = coef.uuid, // ✅ UUID original préservé
@@ -156,7 +156,7 @@ class DatabaseReferenceEvRepository(
             )
         }
 
-        referenceEv.getModk2().forEach { coef ->
+        referenceEv.modk2.forEach { coef ->
             coefficients.add(
                     ReferenceEvCoefficientEntity(
                             uuid = coef.uuid, // ✅ UUID original préservé
@@ -169,7 +169,7 @@ class DatabaseReferenceEvRepository(
             )
         }
 
-        referenceEv.getModk3().forEach { coef ->
+        referenceEv.modk3.forEach { coef ->
             coefficients.add(
                     ReferenceEvCoefficientEntity(
                             uuid = coef.uuid, // ✅ UUID original préservé
@@ -182,7 +182,7 @@ class DatabaseReferenceEvRepository(
             )
         }
 
-        referenceEv.getModk4().forEach { coef ->
+        referenceEv.modk4.forEach { coef ->
             coefficients.add(
                     ReferenceEvCoefficientEntity(
                             uuid = coef.uuid, // ✅ UUID original préservé
@@ -195,7 +195,7 @@ class DatabaseReferenceEvRepository(
             )
         }
 
-        referenceEv.getModk5().forEach { coef ->
+        referenceEv.modk5.forEach { coef ->
             coefficients.add(
                     ReferenceEvCoefficientEntity(
                             uuid = coef.uuid, // ✅ UUID original préservé
@@ -462,6 +462,23 @@ class DatabaseReferenceEvRepository(
             )
         }
 
+        // Si la référence est une maladie, l'énergie complémentaire est portée par une unique équation ENERCOMP
+        // On sérialise ce lien via le type d'équation "ENERCOMP" (unique)
+        if (referenceEv.maladie) {
+            val enercomp = referenceEv.equationsNut.firstOrNull {
+                it.kind == fr.vetbrain.vetnutri_mp.Enumer.EquationKind.ENERCOMP
+            }
+            if (enercomp != null) {
+                relations.add(
+                        ReferenceEvEquationEntity(
+                                referenceEvId = referenceEv.uuid,
+                                equationId = enercomp.uuid,
+                                equationType = "ENERCOMP"
+                        )
+                )
+            }
+        }
+
         // Équations nutritionnelles additionnelles (complémentaires, etc.)
         // Nous utilisons equationType = uuid de l'équation pour permettre plusieurs lignes
         if (referenceEv.equationsNut.isNotEmpty()) {
@@ -483,7 +500,7 @@ class DatabaseReferenceEvRepository(
         val coefficients = mutableListOf<ReferenceEvCoefficientEntity>()
 
         // Sauvegarder les coefficients k1-k5
-        referenceEv.getModk1().forEachIndexed { index, coef ->
+        referenceEv.modk1.forEachIndexed { index, coef ->
             coefficients.add(
                     ReferenceEvCoefficientEntity(
                             uuid = "${referenceEv.uuid}_k1_$index",
@@ -496,7 +513,7 @@ class DatabaseReferenceEvRepository(
             )
         }
 
-        referenceEv.getModk2().forEachIndexed { index, coef ->
+        referenceEv.modk2.forEachIndexed { index, coef ->
             coefficients.add(
                     ReferenceEvCoefficientEntity(
                             uuid = "${referenceEv.uuid}_k2_$index",
@@ -509,7 +526,7 @@ class DatabaseReferenceEvRepository(
             )
         }
 
-        referenceEv.getModk3().forEachIndexed { index, coef ->
+        referenceEv.modk3.forEachIndexed { index, coef ->
             coefficients.add(
                     ReferenceEvCoefficientEntity(
                             uuid = "${referenceEv.uuid}_k3_$index",
@@ -522,7 +539,7 @@ class DatabaseReferenceEvRepository(
             )
         }
 
-        referenceEv.getModk4().forEachIndexed { index, coef ->
+        referenceEv.modk4.forEachIndexed { index, coef ->
             coefficients.add(
                     ReferenceEvCoefficientEntity(
                             uuid = "${referenceEv.uuid}_k4_$index",
@@ -535,7 +552,7 @@ class DatabaseReferenceEvRepository(
             )
         }
 
-        referenceEv.getModk5().forEachIndexed { index, coef ->
+        referenceEv.modk5.forEachIndexed { index, coef ->
             coefficients.add(
                     ReferenceEvCoefficientEntity(
                             uuid = "${referenceEv.uuid}_k5_$index",
@@ -656,10 +673,10 @@ class DatabaseReferenceEvRepository(
 
         // Charger chaque groupe
         coefficientsByGroup["k1"]?.let { coefList ->
-            referenceEv.getModk1().clear()
+            referenceEv.modk1.clear()
             for (coefEntity in coefList) {
                 referenceEv
-                        .getModk1()
+                        .modk1
                         .add(
                                 CoefP(
                                         uuid = coefEntity.uuid,
@@ -672,10 +689,10 @@ class DatabaseReferenceEvRepository(
         }
 
         coefficientsByGroup["k2"]?.let { coefList ->
-            referenceEv.getModk2().clear()
+            referenceEv.modk2.clear()
             for (coefEntity in coefList) {
                 referenceEv
-                        .getModk2()
+                        .modk2
                         .add(
                                 CoefP(
                                         uuid = coefEntity.uuid,
@@ -688,10 +705,10 @@ class DatabaseReferenceEvRepository(
         }
 
         coefficientsByGroup["k3"]?.let { coefList ->
-            referenceEv.getModk3().clear()
+            referenceEv.modk3.clear()
             for (coefEntity in coefList) {
                 referenceEv
-                        .getModk3()
+                        .modk3
                         .add(
                                 CoefP(
                                         uuid = coefEntity.uuid,
@@ -704,10 +721,10 @@ class DatabaseReferenceEvRepository(
         }
 
         coefficientsByGroup["k4"]?.let { coefList ->
-            referenceEv.getModk4().clear()
+            referenceEv.modk4.clear()
             for (coefEntity in coefList) {
                 referenceEv
-                        .getModk4()
+                        .modk4
                         .add(
                                 CoefP(
                                         uuid = coefEntity.uuid,
@@ -720,10 +737,10 @@ class DatabaseReferenceEvRepository(
         }
 
         coefficientsByGroup["k5"]?.let { coefList ->
-            referenceEv.getModk5().clear()
+            referenceEv.modk5.clear()
             for (coefEntity in coefList) {
                 referenceEv
-                        .getModk5()
+                        .modk5
                         .add(
                                 CoefP(
                                         uuid = coefEntity.uuid,

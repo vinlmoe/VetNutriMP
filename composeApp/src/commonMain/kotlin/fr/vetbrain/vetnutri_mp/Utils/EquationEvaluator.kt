@@ -32,10 +32,31 @@ object EquationEvaluator {
             )
 
     /** Variables supplémentaires disponibles selon le contexte */
-    private val variablesSupplementaires = VariableKind.entries.map { it.variable }.toSet()
+    private val variablesSupplementaires by lazy { VariableKind.entries.map { it.variable }.toSet() }
 
     /** Toutes les variables disponibles dans le système */
-    val toutesLesVariables: Set<String> = variablesDeBase + variablesSupplementaires
+    val toutesLesVariables: Set<String> by lazy { variablesDeBase + variablesSupplementaires }
+
+    /** Cache pour éviter les recalculs d'expressions identiques */
+    private val expressionCache = mutableMapOf<String, Double?>()
+    private val variableCache = mutableMapOf<String, Map<String, Double>>() // Cache pour les variables pré-calculées
+
+    /** Taille maximale du cache pour éviter la fuite mémoire */
+    private const val MAX_CACHE_SIZE = 1000
+
+    /**
+     * Nettoie les caches si nécessaire pour éviter la fuite mémoire
+     */
+    private fun cleanupCacheIfNeeded() {
+        if (expressionCache.size > MAX_CACHE_SIZE) {
+            // Garder seulement les 500 entrées les plus récentes
+            val sortedEntries = expressionCache.entries.sortedByDescending { it.value?.hashCode() ?: 0 }
+            expressionCache.clear()
+            sortedEntries.take(500).forEach { (key, value) ->
+                expressionCache[key] = value
+            }
+        }
+    }
 
     /**
      * Évalue une équation pour un animal donné
@@ -58,11 +79,102 @@ object EquationEvaluator {
         // Ajouter les variables supplémentaires
         for (variable in variablesSupp) {
             variable.variable?.let { varKind ->
-                variables[varKind.variable] = variable.varue?.toDouble() ?: 0.0
+                val v = variable.varue?.toDouble() ?: 0.0
+                // Nom long (ex: "Distance", "CarriedWeiht")
+                variables[varKind.variable] = v
+                // Alias court (ex: "D", "CW")
+                variables[varKind.label] = v
+                try {
+                    println(
+                            "[ENERCOMP] Map var '${varKind.variable}'=${v} et alias '${varKind.label}'=${variables[varKind.label]}"
+                    )
+                } catch (_: Throwable) {}
             }
         }
 
-        return ExpressionMathematique.evaluer(expression, variables)
+        // Mapper certains noms de variables supplémentaires vers les alias courts utilisés dans
+        // les équations (compatibilité avec scripts existants)
+        run {
+            // Aliases standards et tolérants à la casse/synonymes
+            val aliasPairs: List<Pair<String, String>> =
+                    listOf(
+                            // Masse/poids adultes
+                            "adultWeight" to "AW",
+                            "AdultWeight" to "AW",
+                            // Taille de portée
+                            "litterSize" to "L",
+                            "LitterSize" to "L",
+                            // Semaines de gestation/lactation
+                            "gestationWeek" to "wG",
+                            "WeekGestation" to "wG",
+                            "lactationWeek" to "wL",
+                            "WeekLactation" to "wL",
+                            // Score d'état corporel
+                            "bodyConditionScore" to "BCS",
+                            "BCS" to "BCS",
+                            // Distance portée (déplacements)
+                            "Distance" to "D",
+                            "distance" to "D",
+                            "dist" to "D",
+                            "D" to "D",
+                            // Poids porté (alias, correction typos)
+                            "CarriedWeight" to "CW",
+                            "CarriedWeiht" to "CW",
+                            "carriedWeight" to "CW",
+                            "CW" to "CW"
+                    )
+            // Construire une map insensible à la casse à partir des variables présentes
+            val lowerKeyToActual = variables.keys.associateBy { it.lowercase() }
+            for ((from, to) in aliasPairs) {
+                val actualKey = lowerKeyToActual[from.lowercase()]
+                if (actualKey != null && !variables.containsKey(to)) {
+                    variables[to] = variables[actualKey] ?: 0.0
+                }
+            }
+        }
+
+        // Nettoyer le cache si nécessaire
+        cleanupCacheIfNeeded()
+
+        // Utiliser le cache pour éviter les recalculs
+        val cacheKey = "${expression}:${variables.hashCode()}"
+        return expressionCache.getOrPut(cacheKey) {
+            ExpressionMathematique.evaluer(expression, variables)
+        }
+    }
+
+    /**
+     * Version avec cache optimisée pour les évaluations répétées
+     */
+    fun evaluerPourAnimalAvecCache(
+            expression: String,
+            poidsCorps: Double,
+            variablesSupp: List<SupplementalvariableP> = emptyList()
+    ): Double? {
+        val variables = mutableMapOf<String, Double>()
+
+        // Ajouter le poids corporel
+        variables["BW"] = poidsCorps
+
+        // Ajouter les variables supplémentaires
+        for (variable in variablesSupp) {
+            variable.variable?.let { varKind ->
+                val v = variable.varue?.toDouble() ?: 0.0
+                // Nom long (ex: "Distance", "CarriedWeiht")
+                variables[varKind.variable] = v
+                // Alias court (ex: "D", "CW")
+                variables[varKind.label] = v
+            }
+        }
+
+        // Nettoyer le cache si nécessaire
+        cleanupCacheIfNeeded()
+
+        // Utiliser le cache pour éviter les recalculs
+        val cacheKey = "${expression}:${variables.hashCode()}"
+        return expressionCache.getOrPut(cacheKey) {
+            ExpressionMathematique.evaluer(expression, variables)
+        }
     }
 
     /**
@@ -94,36 +206,84 @@ object EquationEvaluator {
         // Variables supplémentaires
         for (variable in variablesSupp) {
             variable.variable?.let { varKind ->
-                variables[varKind.variable] = variable.varue?.toDouble() ?: 0.0
+                val v = variable.varue?.toDouble() ?: 0.0
+                // Nom long (ex: "Distance", "CarriedWeiht")
+                variables[varKind.variable] = v
+                // Alias court (ex: "D", "CW")
+                variables[varKind.label] = v
+                try {
+                    println(
+                            "[ENERCOMP] Map var '${varKind.variable}'=${v} et alias '${varKind.label}'=${variables[varKind.label]}"
+                    )
+                } catch (_: Throwable) {}
+            }
+        }
+
+        // Appliquer les mêmes alias tolérants à la casse/synonymes que dans evaluerPourAnimal
+        run {
+            val aliasPairs: List<Pair<String, String>> =
+                    listOf(
+                            // Masse/poids adultes
+                            "adultWeight" to "AW",
+                            "AdultWeight" to "AW",
+                            // Taille de portée
+                            "litterSize" to "L",
+                            "LitterSize" to "L",
+                            // Semaines de gestation/lactation
+                            "gestationWeek" to "wG",
+                            "WeekGestation" to "wG",
+                            "lactationWeek" to "wL",
+                            "WeekLactation" to "wL",
+                            // Score d'état corporel
+                            "bodyConditionScore" to "BCS",
+                            "BCS" to "BCS",
+                            // Distance portée (déplacements)
+                            "Distance" to "D",
+                            "distance" to "D",
+                            "dist" to "D",
+                            "D" to "D",
+                            // Poids porté (alias, correction typos)
+                            "CarriedWeight" to "CW",
+                            "CarriedWeiht" to "CW",
+                            "carriedWeight" to "CW",
+                            "CW" to "CW"
+                    )
+            val lowerKeyToActual = variables.keys.associateBy { it.lowercase() }
+            for ((from, to) in aliasPairs) {
+                val actualKey = lowerKeyToActual[from.lowercase()]
+                if (actualKey != null && !variables.containsKey(to)) {
+                    variables[to] = variables[actualKey] ?: 0.0
+                }
             }
         }
 
         // Nutriments de la ration (tous nutriments utiles pour ratios)
+        // Remplacer les valeurs null par 0 pour éviter les erreurs dans les calculs
         NutrientMain.entries.forEach { nutrient ->
             val v = ration.getNutrient(nutrient)?.toDouble() ?: 0.0
-            variables[nutrient.label] = v
+            variables[nutrient.label] = if (v.isNaN() || v.isInfinite()) 0.0 else v
             // Log léger pour diagnostiquer en cas de pb d'équations
-            // 
+            //
         }
         NutrientLipid.entries.forEach { nutrient ->
             val v = ration.getNutrient(nutrient)?.toDouble() ?: 0.0
-            variables[nutrient.label] = v
+            variables[nutrient.label] = if (v.isNaN() || v.isInfinite()) 0.0 else v
         }
         NutrientVitam.entries.forEach { nutrient ->
             val v = ration.getNutrient(nutrient)?.toDouble() ?: 0.0
-            variables[nutrient.label] = v
+            variables[nutrient.label] = if (v.isNaN() || v.isInfinite()) 0.0 else v
         }
         NutrientMacro.entries.forEach { nutrient ->
             val v = ration.getNutrient(nutrient)?.toDouble() ?: 0.0
-            variables[nutrient.label] = v
+            variables[nutrient.label] = if (v.isNaN() || v.isInfinite()) 0.0 else v
         }
         NutrientMin.entries.forEach { nutrient ->
             val v = ration.getNutrient(nutrient)?.toDouble() ?: 0.0
-            variables[nutrient.label] = v
+            variables[nutrient.label] = if (v.isNaN() || v.isInfinite()) 0.0 else v
         }
 
         val res = ExpressionMathematique.evaluer(expression, variables)
-        // 
+        //
         return res
     }
 
@@ -148,7 +308,11 @@ object EquationEvaluator {
         variables["MW"] = poidsMetabolique
         for (variable in variablesSupp) {
             variable.variable?.let { varKind ->
-                variables[varKind.variable] = variable.varue?.toDouble() ?: 0.0
+                val v = variable.varue?.toDouble() ?: 0.0
+                // Nom long (ex: "Distance", "CarriedWeiht")
+                variables[varKind.variable] = v
+                // Alias court (ex: "D", "CW")
+                variables[varKind.label] = v
             }
         }
         suspend fun sommeRation(nutriment: Nutrient): Double {
@@ -164,8 +328,7 @@ object EquationEvaluator {
                 if (valeur != null) {
                     val contribution = (valeur * aliment.quantite.toDouble()) / 100.0
                     total += contribution
-                } else {
-                }
+                } else {}
             }
             return total
         }
@@ -174,8 +337,7 @@ object EquationEvaluator {
         for (n in NutrientVitam.entries) variables[n.label] = sommeRation(n)
         for (n in NutrientMacro.entries) variables[n.label] = sommeRation(n)
         for (n in NutrientMin.entries) variables[n.label] = sommeRation(n)
-        
-        
+
         val resultat = ExpressionMathematique.evaluer(expression, variables)
         return resultat
     }
@@ -349,6 +511,110 @@ object EquationEvaluator {
         return total
     }
 
+    /**
+     * Calcule l'énergie additionnelle issue des références maladies via des équations ENERCOMP.
+     * - Somme toutes les équations avec kind == ENERCOMP présentes dans les références maladies.
+     * - Retourne 0 si aucune équation n'est définie ou en cas d'échec d'évaluation.
+     * - Borne à ≥ 0 pour éviter d'introduire des valeurs négatives.
+     */
+    suspend fun calculerEnergieAdditionnelle(
+            referencesMaladies: List<ReferenceEv>,
+            poidsCorps: Double,
+            besoinEnergetiqueApresK: Double,
+            besoinEnergetiqueStandard: Double,
+            poidsMetabolique: Double,
+            variablesSupp: List<SupplementalvariableP> = emptyList(),
+            ration: Ration,
+            preferences: PreferencesEspece? = null,
+            equationRepository: EquationRepository? = null
+    ): Double {
+        if (referencesMaladies.isEmpty()) return 0.0
+
+        // Construire les variables communes à toutes les évaluations ENERCOMP
+        val variables: MutableMap<String, Double> = mutableMapOf()
+        variables["BW"] = poidsCorps
+        variables["BEE"] = besoinEnergetiqueStandard
+        variables["BE"] = besoinEnergetiqueApresK
+        variables["MW"] = poidsMetabolique
+        for (variable in variablesSupp) {
+            variable.variable?.let { varKind ->
+                variables[varKind.label] = variable.varue?.toDouble() ?: 0.0
+            }
+        }
+
+        // Logs d'entrée
+        try {
+          
+            if (variablesSupp.isNotEmpty()) {
+                val supp = variablesSupp.joinToString { v -> "${v.variable?.variable}=${v.varue}" }
+              
+            }
+           } catch (_: Throwable) {}
+
+        // Injecter les nutriments agrégés de la ration (avec compléments si disponibles)
+        suspend fun sommeRation(n: Nutrient): Double {
+            var s = 0.0
+            for (aliment in ration.alimentMutableList) {
+                val v =
+                        aliment.getNutrientWithComplementary(
+                                        nutrient = n,
+                                        preferences = preferences,
+                                        equationRepository = equationRepository,
+                                        referenceEv = null
+                                )
+                                ?.toDouble()
+                                ?: 0.0
+                s += (v * aliment.quantite.toDouble()) / 100.0
+            }
+            return s
+        }
+        for (n in NutrientMain.entries) variables[n.label] = sommeRation(n)
+        for (n in NutrientLipid.entries) variables[n.label] = sommeRation(n)
+        for (n in NutrientVitam.entries) variables[n.label] = sommeRation(n)
+        for (n in NutrientMacro.entries) variables[n.label] = sommeRation(n)
+        for (n in NutrientMin.entries) variables[n.label] = sommeRation(n)
+
+        // Log de quelques nutriments clés pour diagnostic
+        try {
+            val debugKeys = listOf("ENERGIE", "PROTEINE", "LIPIDE", "ENA")
+            val dbg = debugKeys.map { k -> "$k=${variables[k] ?: 0.0}" }.joinToString(", ")
+            // Log complet des variables (peut être volumineux)
+            val all = variables.entries.sortedBy { it.key }.joinToString(", ") { (k, v) -> "$k=$v" }
+               } catch (_: Throwable) {}
+
+        var total = 0.0
+        for (ref in referencesMaladies) {
+            // ENERCOMP est porté par des équations dans equationsNut avec kind == ENERCOMP
+            val eqs =
+                    ref.equationsNut.filter {
+                        it.kind == fr.vetbrain.vetnutri_mp.Enumer.EquationKind.ENERCOMP &&
+                                it.equationScript.isNotBlank()
+                    }
+            if (eqs.isEmpty()) continue
+            for (eq in eqs) {
+                try {
+                         } catch (_: Throwable) {}
+                val res = ExpressionMathematique.evaluer(eq.equationScript, variables)
+                try {
+                  } catch (_: Throwable) {}
+                if (res != null && !res.isNaN() && !res.isInfinite()) total += res
+            }
+        }
+        if (total.isNaN() || total.isInfinite()) {
+            try {
+               } catch (_: Throwable) {}
+            return 0.0
+        }
+        if (total < 0.0) {
+            try {
+               } catch (_: Throwable) {}
+            return 0.0
+        }
+        try {
+            } catch (_: Throwable) {}
+        return total
+    }
+
     /** Construit un jeu de variables de base pour les équations de `ReferenceEv`. */
     fun construireVariablesPourReference(
             poidsCorps: Double,
@@ -400,17 +666,28 @@ object EquationEvaluator {
 
         // Injecter les nutriments de l'aliment comme variables (directs uniquement ici pour éviter
         // toute récursivité au sein des équations complémentaires)
+        // Remplacer les valeurs null par 0 pour éviter les erreurs dans les calculs
         aliment.aliment?.let { alim ->
-            for (n in NutrientMain.entries) variables[n.label] =
-                    alim.getNutrient(n)?.toDouble() ?: 0.0
-            for (n in NutrientLipid.entries) variables[n.label] =
-                    alim.getNutrient(n)?.toDouble() ?: 0.0
-            for (n in NutrientVitam.entries) variables[n.label] =
-                    alim.getNutrient(n)?.toDouble() ?: 0.0
-            for (n in NutrientMacro.entries) variables[n.label] =
-                    alim.getNutrient(n)?.toDouble() ?: 0.0
-            for (n in NutrientMin.entries) variables[n.label] =
-                    alim.getNutrient(n)?.toDouble() ?: 0.0
+            for (n in NutrientMain.entries) {
+                val v = alim.getNutrient(n)?.toDouble() ?: 0.0
+                variables[n.label] = if (v.isNaN() || v.isInfinite()) 0.0 else v
+            }
+            for (n in NutrientLipid.entries) {
+                val v = alim.getNutrient(n)?.toDouble() ?: 0.0
+                variables[n.label] = if (v.isNaN() || v.isInfinite()) 0.0 else v
+            }
+            for (n in NutrientVitam.entries) {
+                val v = alim.getNutrient(n)?.toDouble() ?: 0.0
+                variables[n.label] = if (v.isNaN() || v.isInfinite()) 0.0 else v
+            }
+            for (n in NutrientMacro.entries) {
+                val v = alim.getNutrient(n)?.toDouble() ?: 0.0
+                variables[n.label] = if (v.isNaN() || v.isInfinite()) 0.0 else v
+            }
+            for (n in NutrientMin.entries) {
+                val v = alim.getNutrient(n)?.toDouble() ?: 0.0
+                variables[n.label] = if (v.isNaN() || v.isInfinite()) 0.0 else v
+            }
         }
 
         val r = ExpressionMathematique.evaluer(expression, variables)
@@ -604,3 +881,14 @@ data class ResultatValidation(
         val variablesManquantes: List<String> = emptyList(),
         val variablesReconnues: List<String> = emptyList()
 )
+
+
+
+
+
+
+
+
+
+
+

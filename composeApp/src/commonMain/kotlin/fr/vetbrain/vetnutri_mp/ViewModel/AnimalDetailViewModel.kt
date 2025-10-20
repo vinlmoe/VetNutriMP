@@ -14,7 +14,7 @@ import fr.vetbrain.vetnutri_mp.Data.RationAnalyzer
 import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.TypeExpressionBesoin
-import fr.vetbrain.vetnutri_mp.Repository.AlimentRepository
+import fr.vetbrain.vetnutri_mp.Repository.FoodRepository
 import fr.vetbrain.vetnutri_mp.Repository.AnimalRepository
 import fr.vetbrain.vetnutri_mp.Repository.ConsultationRepository
 import fr.vetbrain.vetnutri_mp.Repository.DatabaseReferenceEvRepository
@@ -32,6 +32,7 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
@@ -51,7 +52,8 @@ class AnimalDetailViewModel(
         private val consultationRepository: ConsultationRepository,
         private val animalRepository: AnimalRepository,
         private val databaseReferenceEvRepository: DatabaseReferenceEvRepository,
-        private val preferencesRepository: PreferencesRepository
+        private val preferencesRepository: PreferencesRepository,
+        val foodRepository: FoodRepository
 ) {
     private val viewModelScope = CoroutineScope(AppDispatchers.Main)
     private val _animal = MutableStateFlow<AnimalEv?>(null)
@@ -98,6 +100,59 @@ class AnimalDetailViewModel(
 
     // StateFlow pour stocker les résultats d'analyse de la ration sélectionnée
     private val _rationAnalyseResultat = MutableStateFlow<AnalyseResultat?>(null)
+
+    // Cache pour éviter les calculs répétés d'analyse de rations avec gestion automatique
+    private val rationAnalysisCache = mutableMapOf<String, AnalyseResultat>()
+    private val analysisCacheTime = mutableMapOf<String, Long>()
+    private val cacheValidityDuration = 2 * 60 * 1000L // 2 minutes pour l'analyse
+    private val maxCacheSize = 50
+
+    // Cache pour les données d'animaux fréquemment utilisées avec nettoyage automatique
+    private val animalDataCache = mutableMapOf<String, Any>()
+    private val animalDataCacheTime = mutableMapOf<String, Long>()
+    private val maxAnimalCacheSize = 100
+
+    /**
+     * Nettoie automatiquement les caches pour éviter les fuites mémoire
+     */
+    private fun cleanupCachesIfNeeded() {
+        val currentTime = kotlinx.datetime.Clock.System.now().toEpochMilliseconds()
+
+        // Nettoyer le cache d'analyse de rations
+        if (rationAnalysisCache.size > maxCacheSize) {
+            val entriesToRemove = analysisCacheTime.entries
+                .sortedBy { it.value }
+                .take(rationAnalysisCache.size - maxCacheSize / 2)
+                .map { it.key }
+
+            entriesToRemove.forEach { key ->
+                rationAnalysisCache.remove(key)
+                analysisCacheTime.remove(key)
+            }
+        }
+
+        // Nettoyer les entrées expirées du cache d'analyse
+        val expiredKeys = analysisCacheTime.entries.filter { (key, time) ->
+            currentTime - time > cacheValidityDuration * 2 // Supprimer les entrées très anciennes
+        }.map { it.key }
+        expiredKeys.forEach { key ->
+            analysisCacheTime.remove(key)
+            rationAnalysisCache.remove(key)
+        }
+
+        // Nettoyer le cache de données d'animaux
+        if (animalDataCache.size > maxAnimalCacheSize) {
+            val entriesToRemove = animalDataCacheTime.entries
+                .sortedBy { it.value }
+                .take(animalDataCache.size - maxAnimalCacheSize / 2)
+                .map { it.key }
+
+            entriesToRemove.forEach { key ->
+                animalDataCache.remove(key)
+                animalDataCacheTime.remove(key)
+            }
+        }
+    }
     val rationAnalyseResultat: StateFlow<AnalyseResultat?> = _rationAnalyseResultat.asStateFlow()
 
     // StateFlow pour stocker les préférences de l'espèce de l'animal
@@ -164,13 +219,13 @@ class AnimalDetailViewModel(
 
         // S'abonner au Flow réactif des aliments pour des mises à jour automatiques
         // Utiliser onEach + launchIn pour lancer l'observation en arrière-plan
-        AlimentRepository.observeAllAliments()
-                .onEach { aliments ->
+        foodRepository.observeAllFoods()
+                .onEach { aliments: List<AlimentEv> ->
 
                     // Convertir en version légère pour l'affichage (sans valMap pour les
                     // performances)
                     _availableFoods.value =
-                            aliments.map { aliment ->
+                            aliments.map { aliment: AlimentEv ->
                                 aliment.copy(
                                         valMap = mutableMapOf()
                                 ) // Vider valMap pour les performances
@@ -206,6 +261,19 @@ class AnimalDetailViewModel(
         }
     }
 
+    /** Charge un aliment complet avec toutes ses données nutritionnelles */
+    fun loadCompleteFood(uuid: String, onComplete: (AlimentEv?) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val alimentComplet = foodRepository.getFoodById(uuid)
+                onComplete(alimentComplet)
+            } catch (e: Exception) {
+                e.printStackTrace()
+                onComplete(null)
+            }
+        }
+    }
+
     /** Ajoute un aliment à une ration */
     @OptIn(ExperimentalUuidApi::class)
     fun addAlimentToRation(ration: Ration, aliment: AlimentEv, quantite: Double) {
@@ -219,7 +287,7 @@ class AnimalDetailViewModel(
                             // Utiliser la méthode statique du companion object pour éviter le
                             // problème de null
                             val alimentCompletFromRepo =
-                                    AlimentRepository.getAlimentByUUID(aliment.uuid)
+                                    foodRepository.getFoodById(aliment.uuid)
                             alimentCompletFromRepo ?: aliment
                         } else {
                             aliment
@@ -283,6 +351,9 @@ class AnimalDetailViewModel(
                 val preferences = preferencesRepository.getPreferencesForSpecies(animal.getEspece())
                 _speciesPreferences.value = preferences
                 _typeExpressionBesoin.value = preferences.getTypeExpressionBesoinEnum()
+                // Charger aussi les références disponibles pour que les références complémentaires
+                // soient prêtes lors de la sélection automatique de consultation
+                chargerReferencesDisponibles()
             } catch (e: Exception) {
 
                 _speciesPreferences.value = null
@@ -346,6 +417,10 @@ class AnimalDetailViewModel(
 
     fun selectConsultation(consultation: ConsultationEv) {
         viewModelScope.launch {
+            // Assurer que les références sont disponibles avant d'effectuer des calculs dépendants
+            if (_availableReferences.value.isEmpty()) {
+                chargerReferencesDisponibles()
+            }
             val fullConsultation = consultationRepository.getConsultationById(consultation.uuid)
             _selectedConsultation.value = fullConsultation
 
@@ -1033,7 +1108,27 @@ class AnimalDetailViewModel(
         viewModelScope.launch {
             try {
                 _isAnalyzing.value = true
-                val resultat = rationAnalyzer.analyserRation(ration, consultation)
+
+                // Nettoyer les caches si nécessaire avant l'analyse
+                cleanupCachesIfNeeded()
+
+                // Créer une clé de cache basée sur la ration et la consultation
+                val cacheKey = "${ration.uuid}:${consultation?.uuid ?: "no_consultation"}"
+
+                // Vérifier le cache
+                val cachedTime = analysisCacheTime[cacheKey]
+                val cachedResult = if (cachedTime != null && (kotlinx.datetime.Clock.System.now().toEpochMilliseconds() - cachedTime) < cacheValidityDuration) {
+                    rationAnalysisCache[cacheKey]
+                } else null
+
+                val resultat = cachedResult ?: rationAnalyzer.analyserRation(ration, consultation)
+
+                // Mettre en cache si pas déjà présent et si le cache n'est pas plein
+                if (cachedResult == null && rationAnalysisCache.size < maxCacheSize) {
+                    rationAnalysisCache[cacheKey] = resultat
+                    analysisCacheTime[cacheKey] = kotlinx.datetime.Clock.System.now().toEpochMilliseconds()
+                }
+
                 _rationAnalyseResultat.value = resultat
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -1635,7 +1730,16 @@ class AnimalDetailViewModel(
      * @return AlimentEv complet ou null si non trouvé
      */
     suspend fun getAlimentComplet(uuid: String): AlimentEv? {
-        return AlimentRepository.getAlimentByUUID(uuid)
+        return foodRepository.getFoodById(uuid)
+    }
+
+    /**
+     * Récupère un aliment complet de manière synchrone pour les besoins de l'UI
+     * @param uuid L'identifiant de l'aliment
+     * @return AlimentEv complet ou null si non trouvé
+     */
+    fun getAlimentCompletSync(uuid: String): AlimentEv? {
+        return runBlocking { foodRepository.getFoodById(uuid) }
     }
 
     // MARK: - Gestion des poids supplémentaires

@@ -32,11 +32,12 @@ fun SectionValeursMetaboliques(
         besoinEnergetiqueTotal: Double?,
         kObserve: Double,
         kCalcule: Double,
+        energieAdditionnelle: Double? = null,   
         onExpand: () -> Unit,
         modifier: Modifier = Modifier
 ) {
     BoxWithConstraints(modifier = modifier) {
-        val isNarrow = maxWidth < 400.dp // Seuil pour largeur faible
+        val isNarrow = maxWidth < 600.dp // aligner avec le seuil utilisé dans RationsView
 
         Column {
             Row(
@@ -59,49 +60,101 @@ fun SectionValeursMetaboliques(
                 }
             }
 
-            // Mode étroit : éléments qui se wrap automatiquement sur plusieurs lignes si
-            // nécessaire
-            FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall),
-                    verticalArrangement = Arrangement.spacedBy(AppSizes.paddingXSmall)
-            ) {
-                LigneInfoLocaleCompacte(
-                        label = "Poids actuel",
-                        value =
-                                selectedConsultation?.weight?.let {
-                                    "${TextUtils.formatDecimal(it.toDouble(), 1)} kg"
-                                }
-                                        ?: "Non renseigné"
-                )
-                LigneInfoLocaleCompacte(
-                        label = "Poids idéal",
-                        value =
-                                selectedConsultation?.effectiveWeight?.let {
-                                    "${TextUtils.formatDecimal(it.toDouble(), 1)} kg"
-                                }
-                                        ?: "Non calculé"
-                )
-                LigneInfoLocaleCompacte(
-                        label = "P. métabolique",
-                        value = poidsMetabolique?.let { TextUtils.formatKgPuissance075(it) }
-                                        ?: "Non calculé"
-                )
-                LigneInfoLocaleCompacte(
-                        label = "BEE standard",
-                        value =
-                                besoinEnergetiqueStandard?.let {
-                                    "${TextUtils.formatDecimal(it, 0)} kcal/j"
-                                }
-                                        ?: "Non calculé"
-                )
-                LigneInfoLocaleCompacte(
-                        label = "BE",
-                        value =
-                                besoinEnergetiqueTotal?.let {
-                                    "${TextUtils.formatDecimal(it, 0)} kcal/j"
-                                }
-                                        ?: "Non calculé"
-                )
+            if (isNarrow) {
+                // Mode étroit : éléments qui se wrap automatiquement sur plusieurs lignes
+                FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall),
+                        verticalArrangement = Arrangement.spacedBy(AppSizes.paddingXSmall)
+                ) {
+                    LigneInfoLocaleCompacte(
+                            label = "Poids actuel",
+                            value =
+                                    selectedConsultation?.weight?.let {
+                                        "${TextUtils.formatDecimal(it.toDouble(), 1)} kg"
+                                    }
+                                            ?: "Non renseigné"
+                    )
+                    LigneInfoLocaleCompacte(
+                            label = "Poids idéal",
+                            value =
+                                    selectedConsultation?.effectiveWeight?.let {
+                                        "${TextUtils.formatDecimal(it.toDouble(), 1)} kg"
+                                    }
+                                            ?: "Non calculé"
+                    )
+                    LigneInfoLocaleCompacte(
+                            label = "P. métabolique",
+                            value = poidsMetabolique?.let { TextUtils.formatKgPuissance075(it) }
+                                            ?: "Non calculé"
+                    )
+                    LigneInfoLocaleCompacte(
+                            label = "BEE standard",
+                            value =
+                                    besoinEnergetiqueStandard?.let {
+                                        "${TextUtils.formatDecimal(it, 0)} kcal/j"
+                                    }
+                                            ?: "Non calculé"
+                    )
+                    if ((energieAdditionnelle ?: 0.0) > 0.0) {
+                        LigneInfoLocaleCompacte(
+                                label = "Besoin complémentaire",
+                                value = "${TextUtils.formatDecimal(energieAdditionnelle ?: 0.0, 0)} kcal/j"
+                        )
+                    }
+                    LigneInfoLocaleCompacte(
+                            label = "BE",
+                            value =
+                                    besoinEnergetiqueTotal?.let {
+                                        "${TextUtils.formatDecimal(it, 0)} kcal/j"
+                                    } ?: "Non calculé"
+                    )
+                }
+            } else {
+                // Mode large : affichage aligné en lignes pour meilleure lisibilité
+                Column(verticalArrangement = Arrangement.spacedBy(AppSizes.paddingXSmall)) {
+                    LigneInfoLocaleCompacte(
+                            label = "Poids actuel",
+                            value =
+                                    selectedConsultation?.weight?.let {
+                                        "${TextUtils.formatDecimal(it.toDouble(), 1)} kg"
+                                    }
+                                            ?: "Non renseigné"
+                    )
+                    LigneInfoLocaleCompacte(
+                            label = "Poids idéal",
+                            value =
+                                    selectedConsultation?.effectiveWeight?.let {
+                                        "${TextUtils.formatDecimal(it.toDouble(), 1)} kg"
+                                    }
+                                            ?: "Non calculé"
+                    )
+                    LigneInfoLocaleCompacte(
+                            label = "Poids métabolique",
+                            value = poidsMetabolique?.let { TextUtils.formatKgPuissance075(it) }
+                                            ?: "Non calculé"
+                    )
+                    LigneInfoLocaleCompacte(
+                            label = "BEE standard",
+                            value =
+                                    besoinEnergetiqueStandard?.let {
+                                        "${TextUtils.formatDecimal(it, 0)} kcal/j"
+                                    }
+                                            ?: "Non calculé"
+                    )
+                    if ((energieAdditionnelle ?: 0.0) > 0.0) {
+                        LigneInfoLocaleCompacte(
+                                label = "Besoin complémentaire",
+                                value = "${TextUtils.formatDecimal(energieAdditionnelle ?: 0.0, 0)} kcal/j"
+                        )
+                    }
+                    LigneInfoLocaleCompacte(
+                            label = "BE",
+                            value =
+                                    besoinEnergetiqueTotal?.let {
+                                        "${TextUtils.formatDecimal(it, 0)} kcal/j"
+                                    } ?: "Non calculé"
+                    )
+                }
             }
         }
     }
@@ -386,6 +439,8 @@ fun SectionBilanEnergetique(
         pourcentageCouverture: Double,
         kObserve: Double,
         kCalcule: Double,
+       
+        beFinal: Double? = null,
         modifier: Modifier = Modifier
 ) {
     BoxWithConstraints(modifier = modifier) {
@@ -479,6 +534,8 @@ fun SectionBilanEnergetique(
                                 color = VetNutriColors.Primary
                         )
                     }
+
+                
                 }
             } else {
                 // Mode large : structure originale
@@ -548,6 +605,9 @@ fun SectionBilanEnergetique(
                                 color = VetNutriColors.Primary
                         )
                     }
+
+                 
+                  
                 }
             }
         }

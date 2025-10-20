@@ -36,6 +36,7 @@ class AlimentExcelService {
      */
     fun importFromCsv(csvContent: String): ImportResult {
         val lines = csvContent.lines().filter { it.isNotBlank() }
+        
         if (lines.isEmpty()) {
             return ImportResult(emptyList(), listOf("Le fichier CSV est vide"))
         }
@@ -52,9 +53,11 @@ class AlimentExcelService {
                 val aliment = AlimentExcelRow.toAlimentEv(row)
                 aliments.add(aliment)
             } catch (e: Exception) {
-                errors.add("Erreur ligne ${index + 2}: ${e.message}")
+                val errorMsg = "Erreur ligne ${index + 2}: ${e.message}"
+                errors.add(errorMsg)
             }
         }
+
 
         return ImportResult(aliments, errors)
     }
@@ -83,13 +86,47 @@ class AlimentExcelService {
             "UUID Ration"
         )
 
-        // Ajouter les colonnes de nutriments
+        // Ajouter les colonnes de nutriments avec unité dans l'en-tête
         AlimentExcelRow.ALL_NUTRIENTS.forEach { nutrient ->
-            headers.add("$nutrient (valeur)")
-            headers.add("$nutrient (unité)")
+            // Trouver le nutriment correspondant pour obtenir son unité
+            val nutrientEnum = findNutrientByLabel(nutrient)
+            val unitName = nutrientEnum?.ue?.displayName ?: ""
+            headers.add("$nutrient ($unitName)")
         }
 
         return headers
+    }
+
+    /**
+     * Trouve un nutriment par son label dans tous les enums
+     */
+    private fun findNutrientByLabel(label: String): Nutrient? {
+        // Chercher dans NutrientMain
+        NutrientMain.values().forEach { nutrient ->
+            if (nutrient.label == label) return nutrient
+        }
+        
+        // Chercher dans NutrientVitam
+        NutrientVitam.values().forEach { nutrient ->
+            if (nutrient.label == label) return nutrient
+        }
+        
+        // Chercher dans NutrientMin
+        NutrientMin.values().forEach { nutrient ->
+            if (nutrient.label == label) return nutrient
+        }
+        
+        // Chercher dans NutrientLipid
+        NutrientLipid.values().forEach { nutrient ->
+            if (nutrient.label == label) return nutrient
+        }
+        
+        // Chercher dans AAEnum
+        AAEnum.values().forEach { nutrient ->
+            if (nutrient.label == label) return nutrient
+        }
+        
+        return null
     }
 
     /**
@@ -118,9 +155,8 @@ class AlimentExcelService {
 
         // Ajouter les valeurs des nutriments
         AlimentExcelRow.ALL_NUTRIENTS.forEach { nutrient ->
-            val nutrientData = row.nutriments[nutrient]
-            values.add(nutrientData?.first?.toString() ?: "")
-            values.add(escapeCsvValue(nutrientData?.second ?: ""))
+            val valeur = row.nutriments[nutrient]
+            values.add(valeur?.toString() ?: "")
         }
 
         return values.joinToString(";")
@@ -135,45 +171,78 @@ class AlimentExcelService {
             throw IllegalArgumentException("Nombre de colonnes incorrect: attendu ${headers.size}, trouvé ${values.size}")
         }
 
-        var currentIndex = 0
+        // Créer une map header -> valeur pour un accès par nom
+        val headerValueMap = headers.zip(values).toMap()
 
         // Informations de base
-        val uuid = values[currentIndex++]
-        val nom = values[currentIndex++].takeIf { it.isNotBlank() }
-        val brand = values[currentIndex++].takeIf { it.isNotBlank() }
-        val gamme = values[currentIndex++].takeIf { it.isNotBlank() }
-        val ingredients = values[currentIndex++].takeIf { it.isNotBlank() }
+        val uuid = headerValueMap["UUID"] ?: ""
+        val nom = headerValueMap["Nom"]?.takeIf { it.isNotBlank() }
+        val brand = headerValueMap["Marque"]?.takeIf { it.isNotBlank() }
+        val gamme = headerValueMap["Gamme"]?.takeIf { it.isNotBlank() }
+        val ingredients = headerValueMap["Ingrédients"]?.takeIf { it.isNotBlank() }
 
         // Classification
-        val groupAlim = values[currentIndex++].takeIf { it.isNotBlank() }
-        val typeAliment = values[currentIndex++].takeIf { it.isNotBlank() }
-        val contEnum = values[currentIndex++].takeIf { it.isNotBlank() }
+        val groupAlim = headerValueMap["Groupe Alimentaire"]?.takeIf { it.isNotBlank() }
+        val typeAliment = headerValueMap["Type Aliment"]?.takeIf { it.isNotBlank() }
+        val contEnum = headerValueMap["Conditionnement"]?.takeIf { it.isNotBlank() }
 
         // Prix et quantité
-        val price = values[currentIndex++].toDoubleOrNull()
-        val categPrice = values[currentIndex++].takeIf { it.isNotBlank() }
-        val quantInt = values[currentIndex++].toDoubleOrNull()
+        val price = headerValueMap["Prix"]?.toDoubleOrNull()
+        val categPrice = headerValueMap["Catégorie Prix"]?.takeIf { it.isNotBlank() }
+        val quantInt = headerValueMap["Quantité Interne"]?.toDoubleOrNull()
 
         // Statuts
-        val consistent = values[currentIndex++].toBooleanStrictOrNull() ?: false
-        val deprecated = values[currentIndex++].toBooleanStrictOrNull() ?: false
-        val dataB = values[currentIndex++].takeIf { it.isNotBlank() }
+        val consistent = headerValueMap["Consistant"]?.toBooleanStrictOrNull() ?: false
+        val deprecated = headerValueMap["Obsolète"]?.toBooleanStrictOrNull() ?: false
+        val dataB = headerValueMap["Données Base"]?.takeIf { it.isNotBlank() }
 
         // Espèces et indications
-        val especes = values[currentIndex++].takeIf { it.isNotBlank() }
-        val indications = values[currentIndex++].takeIf { it.isNotBlank() }
+        val especes = headerValueMap["Espèces"]?.takeIf { it.isNotBlank() }
+        val indications = headerValueMap["Indications"]?.takeIf { it.isNotBlank() }
 
         // Ration
-        val rationUUID = values[currentIndex++].takeIf { it.isNotBlank() }
+        val rationUUID = headerValueMap["UUID Ration"]?.takeIf { it.isNotBlank() }
 
-        // Nutriments
-        val nutrimentsMap = mutableMapOf<String, Pair<Double?, String?>>()
-        AlimentExcelRow.ALL_NUTRIENTS.forEach { nutrient ->
-            val valeur = values[currentIndex++].toDoubleOrNull()
-            val unite = values[currentIndex++].takeIf { it.isNotBlank() }
+        // Nutriments - correspondance robuste par résolution de label
+        val nutrimentsMap = mutableMapOf<String, Double?>()
+        val fixedHeaders = setOf(
+                "UUID",
+                "Nom",
+                "Marque",
+                "Gamme",
+                "Ingrédients",
+                "Groupe Alimentaire",
+                "Type Aliment",
+                "Conditionnement",
+                "Prix",
+                "Catégorie Prix",
+                "Quantité Interne",
+                "Consistant",
+                "Obsolète",
+                "Données Base",
+                "Espèces",
+                "Indications",
+                "UUID Ration"
+        )
 
-            if (valeur != null) {
-                nutrimentsMap[nutrient] = Pair(valeur, unite)
+        headers.forEach { header ->
+            if (header !in fixedHeaders) {
+                val rawName = header.substringBefore("(").trim().removeSuffix("")
+                val valueStr = headerValueMap[header]
+                val value = valueStr?.toDoubleOrNull()
+                if (value != null) {
+                    val resolved = fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver.AllNutrientResolver(rawName)
+                    if (resolved != null) {
+                        nutrimentsMap[resolved.label] = value
+                    } else {
+                        // Fallback: essayer aussi sans espaces/avec normalisation simple
+                        val alt = rawName.replace("_", " ").replace("-", " ").trim()
+                        val resolvedAlt = fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver.AllNutrientResolver(alt)
+                        if (resolvedAlt != null) {
+                            nutrimentsMap[resolvedAlt.label] = value
+                        }
+                    }
+                }
             }
         }
 

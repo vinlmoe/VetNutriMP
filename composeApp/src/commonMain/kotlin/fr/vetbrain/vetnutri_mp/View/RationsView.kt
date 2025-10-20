@@ -46,6 +46,7 @@ import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.PreferencesStorage
 import fr.vetbrain.vetnutri_mp.Utils.TextUtils
 import fr.vetbrain.vetnutri_mp.Utils.createPreferencesStorage
+import fr.vetbrain.vetnutri_mp.Utils.EquationEvaluator
 import fr.vetbrain.vetnutri_mp.View.AnalNut.AnalyseNutritionnelleCard
 import fr.vetbrain.vetnutri_mp.View.AnalNut.MultiNutrientAdjustmentView
 import fr.vetbrain.vetnutri_mp.View.AnalNut.NutrientDetailDialog
@@ -93,7 +94,6 @@ fun RationsView(
         modifier: Modifier = Modifier,
         equationRepository: EquationRepository,
         recipeRepository: RecipeRepository,
-        foodRepository: FoodRepository
 ) {
         val animal by viewModel.animal.collectAsState()
         val selectedConsultation by viewModel.selectedConsultation.collectAsState()
@@ -118,29 +118,11 @@ fun RationsView(
         // Récupération des valeurs métaboliques calculées
         val poidsMetabolique by viewModel.poidsMetabolique.collectAsState()
         val besoinEnergetiqueStandard by viewModel.besoinEnergetiqueStandard.collectAsState()
-        val besoinEnergetiqueTotal by viewModel.besoinEnergetiqueTotal.collectAsState()
+        // Le BE final devient la seule valeur de BE utilisée dans la vue
         val referenceUtilisee by viewModel.referenceUtilisee.collectAsState()
 
         // L'énergie apportée sera calculée plus bas après chargement des préférences
         var energieApportee by remember { mutableStateOf(0.0) }
-
-        // Calcul du pourcentage de couverture avec le besoin énergétique total
-        val pourcentageCouverture =
-                remember(energieApportee, besoinEnergetiqueTotal) {
-                        besoinEnergetiqueTotal?.let { besoin ->
-                                if (besoin > 0) (energieApportee / besoin) * 100.0 else 0.0
-                        }
-                                ?: 0.0
-                }
-
-        // Calcul du K Observé avec le besoin énergétique de référence
-        val kObserve =
-                remember(energieApportee, besoinEnergetiqueStandard) {
-                        besoinEnergetiqueStandard?.let { besoin ->
-                                if (besoin > 0) energieApportee / besoin else 0.0
-                        }
-                                ?: 0.0
-                }
 
         // Calcul du K calculé (produit de tous les coefficients K + coefficient d'ajustement)
         val kCalcule =
@@ -157,25 +139,84 @@ fun RationsView(
                                 ?: 1.0
                 }
 
-        // Système de préférences pour le filtrage des nutriments avec logs de debug
+        // Système de préférences pour le filtrage des nutriments
         val preferencesStorage: PreferencesStorage = remember { createPreferencesStorage() }
-        val preferencesRepository: PreferencesRepository = remember {
-                PreferencesRepository(preferencesStorage)
-        }
-        var preferencesApplication by remember {
-                mutableStateOf<fr.vetbrain.vetnutri_mp.Data.PreferencesApplication?>(null)
-        }
-
-        // Charger les préférences au démarrage avec logs
+        val preferencesRepository: PreferencesRepository = remember { PreferencesRepository(preferencesStorage) }
+        var preferencesApplication by remember { mutableStateOf<fr.vetbrain.vetnutri_mp.Data.PreferencesApplication?>(null) }
         LaunchedEffect(Unit) {
                 preferencesRepository.loadPreferences()
                 preferencesApplication = preferencesRepository.preferences
+        }
 
-                // Log des préférences par espèce
-                preferencesApplication?.preferencesParEspece?.forEach { (espece, prefs) ->
-                        prefs.nutrimentsSelectionnes.forEach { (categorie, nutriments) -> }
+        // États pour énergie additionnelle (patho) et BE total (final)
+        var energieAdditionnelle by remember { mutableStateOf(0.0) }
+        var besoinEnergetiqueTotal by remember { mutableStateOf<Double?>(null) }
+
+        // Calcul du BE après K et de l'énergie additionnelle, puis du BE total final
+        val beApresK = remember(besoinEnergetiqueStandard, kCalcule) {
+                besoinEnergetiqueStandard?.let { beeVal -> beeVal * kCalcule }
+        }
+
+        LaunchedEffect(
+                selectedConsultation,
+                referenceUtilisee,
+                referencesMaladiesResolues,
+                preferencesApplication,
+                poidsMetabolique,
+                besoinEnergetiqueStandard,
+                selectedRation
+        ) {
+                val consultation = selectedConsultation
+                val ration = selectedRation
+                val prefsApp = preferencesApplication
+                val mw = poidsMetabolique
+                val bee = besoinEnergetiqueStandard
+                val beK = beApresK
+                val maladies = referencesMaladiesResolues
+                if (consultation != null && ration != null && prefsApp != null && mw != null && bee != null && beK != null) {
+                        try {
+                                println("[ENERCOMP][UI] Inputs -> BW=${consultation.effectiveWeight?.toDouble() ?: consultation.weight?.toDouble() ?: 0.0}, BEE=${bee}, BE=${beK}, MW=${mw}, refs=${maladies.size}, aliments=${ration.alimentMutableList.size}")
+                        } catch (_: Throwable) {}
+                        val prefsEspece = animal?.getEspece()?.let { prefsApp.getPreferencesEspece(it) }
+                        val add = EquationEvaluator.calculerEnergieAdditionnelle(
+                                referencesMaladies = maladies,
+                                poidsCorps = consultation.effectiveWeight?.toDouble() ?: consultation.weight?.toDouble() ?: 0.0,
+                                besoinEnergetiqueApresK = beK,
+                                besoinEnergetiqueStandard = bee,
+                                poidsMetabolique = mw,
+                                variablesSupp = consultation.suppVarp,
+                                ration = ration,
+                                preferences = prefsEspece,
+                                equationRepository = equationRepository
+                        )
+                        energieAdditionnelle = add
+                        besoinEnergetiqueTotal = beK.let { it + add }
+                        try {
+                                println("[ENERCOMP][UI] Résultat -> add=${add}, BE_final=${besoinEnergetiqueTotal}")
+                        } catch (_: Throwable) {}
+                } else {
+                        energieAdditionnelle = 0.0
+                        besoinEnergetiqueTotal = beK
                 }
         }
+
+        // Calcul du pourcentage de couverture avec le BE total final
+        val pourcentageCouverture =
+                remember(energieApportee, besoinEnergetiqueTotal) {
+                        besoinEnergetiqueTotal?.let { besoin ->
+                                if (besoin > 0) (energieApportee / besoin) * 100.0 else 0.0
+                        }
+                                ?: 0.0
+                }
+
+        // Calcul du K Observé avec le besoin énergétique de référence
+        val kObserve =
+                remember(energieApportee, besoinEnergetiqueStandard) {
+                        besoinEnergetiqueStandard?.let { besoin ->
+                                if (besoin > 0) energieApportee / besoin else 0.0
+                        }
+                                ?: 0.0
+                }
 
         // Calcul de l'énergie totale apportée par la ration sélectionnée (avec nutriments
         // complémentaires)
@@ -242,7 +283,7 @@ fun RationsView(
         if (showRecipeDialog) {
                 RecipeDialog(
                         repository = recipeRepository,
-                        foodRepository = foodRepository,
+                        foodRepository = viewModel.foodRepository,
                         onApply = { recette ->
                                 viewModel.applyRecipeToRation(recette)
                                 showRecipeDialog = false
@@ -326,6 +367,7 @@ fun RationsView(
                                 showAddAlimentView = false
                                 rationForAddAliment = null
                         },
+                        equationRepository = equationRepository,
                         onAddAliment = { aliment, quantite ->
                                 // Ajout asynchrone pour garantir la version complète de l'aliment
                                 coroutineScope.launch {
@@ -494,6 +536,7 @@ fun RationsView(
                                                                         besoinEnergetiqueTotal,
                                                                 kObserve = kObserve,
                                                                 kCalcule = kCalcule,
+                                                               energieAdditionnelle = energieAdditionnelle,
                                                                 onExpand = {
                                                                         showMetabolicValuesDialog =
                                                                                 true
@@ -522,6 +565,8 @@ fun RationsView(
                                                                         pourcentageCouverture,
                                                                 kObserve = kObserve,
                                                                 kCalcule = kCalcule,
+                                                        
+                                                                beFinal = besoinEnergetiqueTotal,
                                                                 modifier = Modifier.fillMaxWidth()
                                                         )
                                                         Divider()
@@ -906,6 +951,7 @@ fun RationsView(
                                                                                 besoinEnergetiqueTotal,
                                                                         kObserve = kObserve,
                                                                         kCalcule = kCalcule,
+                                                                         energieAdditionnelle = energieAdditionnelle,
                                                                         onExpand = {
                                                                                 showMetabolicValuesDialog =
                                                                                         true
@@ -938,6 +984,8 @@ fun RationsView(
                                                                                 pourcentageCouverture,
                                                                         kObserve = kObserve,
                                                                         kCalcule = kCalcule,
+                                                                       
+                                                                        beFinal = besoinEnergetiqueTotal,
                                                                         modifier = Modifier.weight(1f)
                                                                 )
                                                         }
@@ -2117,7 +2165,7 @@ private fun CoefficientsDialog(
                                                 currentValue = selectedConsultation?.k1Value,
                                                 currentDescription = selectedConsultation?.k1Id,
                                                 availableCoefficients =
-                                                        referenceUtilisee?.getModk1()
+                                                        referenceUtilisee?.modk1
                                                                 ?: emptyList(),
                                                 onCoefficientSelected = { coef ->
                                                         selectedConsultation?.let { consultation ->
@@ -2139,7 +2187,7 @@ private fun CoefficientsDialog(
                                                 currentValue = selectedConsultation?.k2Value,
                                                 currentDescription = selectedConsultation?.k2Id,
                                                 availableCoefficients =
-                                                        referenceUtilisee?.getModk2()
+                                                        referenceUtilisee?.modk2
                                                                 ?: emptyList(),
                                                 onCoefficientSelected = { coef ->
                                                         selectedConsultation?.let { consultation ->
@@ -2161,7 +2209,7 @@ private fun CoefficientsDialog(
                                                 currentValue = selectedConsultation?.k3Value,
                                                 currentDescription = selectedConsultation?.k3Id,
                                                 availableCoefficients =
-                                                        referenceUtilisee?.getModk3()
+                                                        referenceUtilisee?.modk3
                                                                 ?: emptyList(),
                                                 onCoefficientSelected = { coef ->
                                                         selectedConsultation?.let { consultation ->
@@ -2183,7 +2231,7 @@ private fun CoefficientsDialog(
                                                 currentValue = selectedConsultation?.k4Value,
                                                 currentDescription = selectedConsultation?.k4Id,
                                                 availableCoefficients =
-                                                        referenceUtilisee?.getModk4()
+                                                        referenceUtilisee?.modk4
                                                                 ?: emptyList(),
                                                 onCoefficientSelected = { coef ->
                                                         selectedConsultation?.let { consultation ->
@@ -2205,7 +2253,7 @@ private fun CoefficientsDialog(
                                                 currentValue = selectedConsultation?.k5Value,
                                                 currentDescription = selectedConsultation?.k5Id,
                                                 availableCoefficients =
-                                                        referenceUtilisee?.getModk5()
+                                                        referenceUtilisee?.modk5
                                                                 ?: emptyList(),
                                                 onCoefficientSelected = { coef ->
                                                         selectedConsultation?.let { consultation ->

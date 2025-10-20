@@ -297,7 +297,7 @@ fun ReferenceEvInfoTab(viewModel: NewReferenceEvViewModel, currentReference: Ref
                                 }
                         )
                         Text(
-                                text = "Est lié à une maladie",
+                                text = "Est une référence complémentaire",
                                 modifier = Modifier.padding(start = 8.dp)
                         )
                 }
@@ -309,7 +309,7 @@ fun ReferenceEvInfoTab(viewModel: NewReferenceEvViewModel, currentReference: Ref
                                 onValueChange = {
                                         viewModel.updateReferenceProperty("nomMaladie", it)
                                 },
-                                label = { Text("Nom de la maladie") },
+                                label = { Text("Nom du besoin complémentaire") },
                                 modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
                         )
                 }
@@ -516,6 +516,7 @@ fun ReferenceEvNutrientsTab(viewModel: NewReferenceEvViewModel, currentReference
 fun ReferenceEvEquationsTab(viewModel: NewReferenceEvViewModel) {
         val availableEquations by viewModel.availableEquations.collectAsState()
         val currentEquations by viewModel.currentEquations.collectAsState()
+        val currentReference by viewModel.currentReference.collectAsState()
 
         // Vérifier si la référence est pour maladie
         val isForMaladie = currentEquations.maladie
@@ -558,6 +559,16 @@ fun ReferenceEvEquationsTab(viewModel: NewReferenceEvViewModel) {
                 modifier = Modifier.fillMaxSize().padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+                // Barre d'actions locale (Rafraîchir)
+                Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically
+                ) {
+                        OutlinedButton(onClick = { viewModel.loadEquations() }) {
+                                Text("Rafraîchir les équations")
+                        }
+                }
 
                 // Afficher un message d'information si la référence est pour maladie
                 if (isForMaladie) {
@@ -583,6 +594,80 @@ fun ReferenceEvEquationsTab(viewModel: NewReferenceEvViewModel) {
                                                                 alpha = 0.7f
                                                         )
                                         )
+                                }
+                        }
+
+                        // Combobox unique ENERCOMP
+                        val enercompEquations =
+                                availableEquations.filter {
+                                        it.kind == fr.vetbrain.vetnutri_mp.Enumer.EquationKind.ENERCOMP &&
+                                                (it.specie == null || it.specie == currentReference.espece)
+                                }
+
+                        Card(modifier = Modifier.fillMaxWidth(), elevation = 4.dp) {
+                                Column(modifier = Modifier.padding(16.dp)) {
+                                        Text(
+                                                text = "Équation ENERCOMP (besoin complémentaire)",
+                                                style = MaterialTheme.typography.subtitle1,
+                                                fontWeight = FontWeight.Bold
+                                        )
+                                        Spacer(modifier = Modifier.height(8.dp))
+
+                                        var expanded by remember { mutableStateOf(false) }
+                                        val selectedEnercomp =
+                                                currentReference.equationsNut.firstOrNull {
+                                                        it.kind ==
+                                                                fr.vetbrain.vetnutri_mp.Enumer
+                                                                        .EquationKind.ENERCOMP
+                                                }
+
+                                        Box(modifier = Modifier.fillMaxWidth()) {
+                                                OutlinedButton(
+                                                        onClick = { expanded = true },
+                                                        modifier = Modifier.fillMaxWidth()
+                                                ) {
+                                                        Text(
+                                                                selectedEnercomp?.name
+                                                                        ?: "Sélectionner une équation"
+                                                        )
+                                                }
+                                                DropdownMenu(
+                                                        expanded = expanded,
+                                                        onDismissRequest = { expanded = false },
+                                                        modifier = Modifier.fillMaxWidth(0.9f)
+                                                ) {
+                                                        // Option Aucune
+                                                        DropdownMenuItem(
+                                                                onClick = {
+                                                                        if (selectedEnercomp != null) {
+                                                                                viewModel.toggleComplementaryEquation(
+                                                                                        selectedEnercomp
+                                                                                )
+                                                                        }
+                                                                        expanded = false
+                                                                }
+                                                        ) { Text("Aucune") }
+
+                                                        enercompEquations.forEach { eq ->
+                                                                DropdownMenuItem(
+                                                                        onClick = {
+                                                                                if (selectedEnercomp != null &&
+                                                                                                selectedEnercomp.uuid !=
+                                                                                                        eq.uuid
+                                                                                ) {
+                                                                                        viewModel.toggleComplementaryEquation(
+                                                                                                selectedEnercomp
+                                                                                        )
+                                                                                }
+                                                                                if (selectedEnercomp?.uuid != eq.uuid) {
+                                                                                        viewModel.toggleComplementaryEquation(eq)
+                                                                                }
+                                                                                expanded = false
+                                                                        }
+                                                                ) { Text(eq.name) }
+                                                        }
+                                                }
+                                        }
                                 }
                         }
                 } else {

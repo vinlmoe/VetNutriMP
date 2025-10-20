@@ -39,6 +39,37 @@ actual open class ResourceReader actual constructor() {
 
         return content
     }
+    
+    /**
+     * Lit une ressource de manière optimisée pour les gros fichiers.
+     * Pour iOS, utilise la même méthode que readResource car NSString.stringWithContentsOfFile
+     * est déjà optimisé.
+     */
+    actual open fun readResourceOptimized(name: String): String {
+        return readResource(name)
+    }
+    
+    /**
+     * Lit seulement le début d'une ressource JSON pour extraire la version.
+     * Pour iOS, lit le fichier complet mais c'est acceptable car les ressources iOS
+     * sont généralement plus petites.
+     */
+    actual open fun readJsonVersion(name: String): String? {
+        return try {
+            val content = readResource(name)
+            extractVersionFromJson(content)
+        } catch (e: Exception) {
+            null
+        }
+    }
+    
+    /**
+     * Extrait la version d'un JSON en cherchant le pattern "version": "x.x.x"
+     */
+    private fun extractVersionFromJson(jsonContent: String): String? {
+        val versionPattern = """"version"\s*:\s*"([^"]+)"""".toRegex()
+        return versionPattern.find(jsonContent)?.groupValues?.get(1)
+    }
 
     /** Lit un fichier utilisateur dans le répertoire des documents de l'application */
     actual open fun readUserFile(filename: String): String? {

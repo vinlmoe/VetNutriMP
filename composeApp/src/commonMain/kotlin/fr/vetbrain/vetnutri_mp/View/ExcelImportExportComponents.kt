@@ -17,7 +17,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Data.AlimentEv
-import fr.vetbrain.vetnutri_mp.Services.AlimentExcelService
+import fr.vetbrain.vetnutri_mp.Services.ExcelFoodService
+import fr.vetbrain.vetnutri_mp.ExcelPlatform.*
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import kotlinx.coroutines.launch
 
@@ -26,7 +27,8 @@ import kotlinx.coroutines.launch
  */
 @Composable
 fun ExcelImportExportSection(
-        modifier: Modifier = Modifier
+        modifier: Modifier = Modifier,
+        excelFoodService: ExcelFoodService? = null
 ) {
         // États pour la gestion des dialogues
         var showPreviewDialog by remember { mutableStateOf(false) }
@@ -38,9 +40,13 @@ fun ExcelImportExportSection(
         var isExporting by remember { mutableStateOf(false) }
         var isImporting by remember { mutableStateOf(false) }
         var exportResult by remember { mutableStateOf<String?>(null) }
-        var importResult by remember { mutableStateOf<String?>(null) }
+        var importResult by remember { mutableStateOf<ExcelFoodService.ExcelImportResult?>(null) }
+        var showImportDialog by remember { mutableStateOf(false) }
 
         val coroutineScope = rememberCoroutineScope()
+        
+        // Vérifier si les opérations CSV sont supportées
+        val csvSupported = isCsvFileOperationsSupported()
 
         Column(
                 modifier = modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
@@ -63,6 +69,15 @@ fun ExcelImportExportSection(
                                         "Cette section vous permet d'importer et exporter des aliments via des fichiers CSV compatibles Excel. Chaque aliment peut avoir jusqu'à 76 nutriments différents avec leurs unités individuelles.",
                                         style = MaterialTheme.typography.body2
                                 )
+                                
+                                if (!csvSupported) {
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Text(
+                                                "⚠️ Les opérations de fichiers CSV ne sont pas supportées sur cette plateforme.",
+                                                style = MaterialTheme.typography.body2,
+                                                color = Color(0xFFFF6B35)
+                                        )
+                                }
                         }
                 }
 
@@ -89,13 +104,19 @@ fun ExcelImportExportSection(
                                                 coroutineScope.launch {
                                                         isExporting = true
                                                         try {
-                                                                // Générer le CSV d'exemple
-                                                                val csv = AlimentExcelService.generateExampleCsv()
-
-                                                                // Pour l'instant, on affiche juste un message de succès
-                                                                // Dans une vraie implémentation, on sauvegarderait dans un fichier
-                                                                exportResult = "✅ Export d'exemple généré avec succès"
-
+                                                                if (excelFoodService != null) {
+                                                                        // Export réel avec le service
+                                                                        val csv = excelFoodService.exportAllFoodsToCsv()
+                                                                        val success = saveCsvFileForExport(csv, "aliments_export.csv")
+                                                                        exportResult = if (success) 
+                                                                                "✅ Export réussi: fichier sauvegardé" 
+                                                                        else 
+                                                                                "❌ Erreur lors de la sauvegarde du fichier"
+                                                                } else {
+                                                                        // Fallback: générer un exemple
+                                                                        val csv = excelFoodService?.generateExampleCsv() ?: "Exemple CSV"
+                                                                        exportResult = "✅ Export d'exemple généré (service non disponible)"
+                                                                }
                                                         } catch (e: Exception) {
                                                                 exportResult = "❌ Erreur d'export: ${e.message}"
                                                         } finally {
@@ -103,7 +124,7 @@ fun ExcelImportExportSection(
                                                         }
                                                 }
                                         },
-                                        enabled = !isExporting && !isImporting,
+                                        enabled = !isExporting && !isImporting && csvSupported,
                                         modifier = Modifier.fillMaxWidth()
                                 ) {
                                         if (isExporting) {
@@ -168,29 +189,44 @@ fun ExcelImportExportSection(
 
                                 Button(
                                         onClick = {
-                                                // Simulation de sélection de fichier CSV
-                                                // Dans une vraie implémentation, on utiliserait un file picker
-                                                coroutineScope.launch {
-                                                        isImporting = true
-                                                        try {
-                                                                // Pour la démonstration, on utilise l'exemple CSV
-                                                                val csv = AlimentExcelService.generateExampleCsv()
-                                                                csvContent = csv
-
-                                                                // Parser le CSV pour prévisualisation
-                                                                val service = AlimentExcelService()
-                                                                val importResult = service.importFromCsv(csv)
-
-                                                                previewAliments = importResult.aliments
-                                                                previewErrors = importResult.errors
-
-                                                                showPreviewDialog = true
-
-                                                        } catch (e: Exception) {
-                                                                importResult = "❌ Erreur lors de la préparation: ${e.message}"
-                                                        } finally {
-                                                                isImporting = false
+                                                // Ouvrir le fichier CSV en dehors du contexte coroutine (comme les autres file browsers)
+                                                val csv = openCsvFileForImport()
+                                                if (csv != null) {
+                                                        coroutineScope.launch {
+                                                                isImporting = true
+                                                                try {
+                                                                        if (excelFoodService != null && csvSupported) {
+                                                                                // Import réel avec le contenu du fichier
+                                                                                csvContent = csv
+                                                                                val result = excelFoodService.importFoodsFromCsv(csv)
+                                                                                importResult = result
+                                                                                showImportDialog = true
+                                                                        } else {
+                                                                                // Fallback: utiliser l'exemple
+                                                                                val csvExample = excelFoodService?.generateExampleCsv() ?: "Exemple CSV"
+                                                                                csvContent = csvExample
+                                                                                val result = excelFoodService?.previewCsvImport(csvExample) ?: ExcelFoodService.ExcelImportResult(
+                                                                                        success = false,
+                                                                                        message = "Service non disponible"
+                                                                                )
+                                                                                importResult = result
+                                                                                showImportDialog = true
+                                                                        }
+                                                                } catch (e: Exception) {
+                                                                        importResult = ExcelFoodService.ExcelImportResult(
+                                                                                success = false,
+                                                                                message = "Erreur lors de la préparation: ${e.message}"
+                                                                        )
+                                                                } finally {
+                                                                        isImporting = false
+                                                                }
                                                         }
+                                                } else {
+                                                        // Aucun fichier sélectionné
+                                                        importResult = ExcelFoodService.ExcelImportResult(
+                                                                success = false,
+                                                                message = "Aucun fichier sélectionné"
+                                                        )
                                                 }
                                         },
                                         enabled = !isExporting && !isImporting,
@@ -219,7 +255,7 @@ fun ExcelImportExportSection(
                 importResult?.let { result ->
                         Card(
                                 modifier = Modifier.fillMaxWidth(),
-                                backgroundColor = if (result.startsWith("✅"))
+                                backgroundColor = if (result.success)
                                         Color(0xFFE8F5E8) else Color(0xFFFFEBEE),
                                 elevation = 2.dp
                         ) {
@@ -228,12 +264,27 @@ fun ExcelImportExportSection(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                         ) {
+                                        Column(modifier = Modifier.weight(1f)) {
                                         Text(
-                                                result,
+                                                        result.message,
                                                 style = MaterialTheme.typography.body2,
-                                                color = if (result.startsWith("✅")) Color(0xFF2E7D32) else Color(0xFFC62828),
-                                                modifier = Modifier.weight(1f)
-                                        )
+                                                        color = if (result.success) Color(0xFF2E7D32) else Color(0xFFC62828)
+                                                )
+                                                if (result.importedCount > 0 || result.updatedCount > 0) {
+                                                        Text(
+                                                                "Importés: ${result.importedCount}, Mis à jour: ${result.updatedCount}",
+                                                                style = MaterialTheme.typography.caption,
+                                                                color = Color.Gray
+                                                        )
+                                                }
+                                                if (result.errorCount > 0) {
+                                                        Text(
+                                                                "Erreurs: ${result.errorCount}",
+                                                                style = MaterialTheme.typography.caption,
+                                                                color = Color(0xFFFF6B35)
+                                                        )
+                                                }
+                                        }
                                         IconButton(onClick = { importResult = null }) {
                                                 Icon(Icons.Default.Close, contentDescription = "Fermer")
                                         }
@@ -282,37 +333,162 @@ fun ExcelImportExportSection(
                                 Spacer(modifier = Modifier.height(8.dp))
 
                                 Text(
-                                        "Nutriments: 76 nutriments × 2 colonnes (valeur + unité) = 152 colonnes",
+                                        "Nutriments: 76 nutriments × 1 colonne (valeur avec unité dans l'en-tête) = 76 colonnes",
                                         style = MaterialTheme.typography.subtitle2
                                 )
                         }
                 }
         }
 
-        // Dialogue de prévisualisation plein écran
-        if (showPreviewDialog) {
-                ExcelImportPreviewDialog(
-                        aliments = previewAliments,
-                        errors = previewErrors,
+        // Dialogue d'import amélioré
+        if (showImportDialog && importResult != null) {
+                ExcelImportDialog(
+                        result = importResult!!,
                         onConfirm = {
-                                // Simulation d'import réussi
-                                importResult = "✅ Import réussi: ${previewAliments.size} aliments importés"
-                                if (previewErrors.isNotEmpty()) {
-                                        importResult += " (${previewErrors.size} erreurs ignorées)"
+                                if (csvContent != null && excelFoodService != null) {
+                                        coroutineScope.launch {
+                                                try {
+                                                        val finalResult = excelFoodService.importFoodsFromCsv(csvContent!!)
+                                                        importResult = finalResult
+                                                        showImportDialog = false
+                                                } catch (e: Exception) {
+                                                        importResult = ExcelFoodService.ExcelImportResult(
+                                                                success = false,
+                                                                message = "Erreur lors de l'import final: ${e.message}"
+                                                        )
+                                                }
+                                        }
+                                } else {
+                                        showImportDialog = false
                                 }
-                                showPreviewDialog = false
                         },
                         onCancel = {
-                                showPreviewDialog = false
-                                previewAliments = emptyList()
-                                previewErrors = emptyList()
+                                showImportDialog = false
+                                importResult = null
                         }
                 )
         }
 }
 
 /**
- * Dialogue de prévisualisation plein écran pour l'import Excel
+ * Dialogue d'import Excel amélioré
+ */
+@Composable
+fun ExcelImportDialog(
+        result: ExcelFoodService.ExcelImportResult,
+        onConfirm: () -> Unit,
+        onCancel: () -> Unit
+) {
+        AlertDialog(
+                onDismissRequest = onCancel,
+                title = {
+                        Text(
+                                if (result.previewMode) "Prévisualisation de l'import" else "Résultat de l'import",
+                                style = MaterialTheme.typography.h6,
+                                color = if (result.success) VetNutriColors.Primary else Color(0xFFFF6B35)
+                        )
+                },
+                text = {
+                        Column(
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                                Text(
+                                        result.message,
+                                        style = MaterialTheme.typography.body1
+                                )
+                                
+                                if (result.importedCount > 0 || result.updatedCount > 0) {
+                                        Row(
+                                                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                                        ) {
+                                                if (result.importedCount > 0) {
+                                                        Text(
+                                                                "Importés: ${result.importedCount}",
+                                                                style = MaterialTheme.typography.body2,
+                                                                color = VetNutriColors.Primary
+                                                        )
+                                                }
+                                                if (result.updatedCount > 0) {
+                                                        Text(
+                                                                "Mis à jour: ${result.updatedCount}",
+                                                                style = MaterialTheme.typography.body2,
+                                                                color = VetNutriColors.Secondary
+                                                        )
+                                                }
+                                        }
+                                }
+                                
+                                if (result.errorCount > 0) {
+                                        Text(
+                                                "Erreurs: ${result.errorCount}",
+                                                style = MaterialTheme.typography.body2,
+                                                color = Color(0xFFFF6B35)
+                                        )
+                                }
+                                
+                                if (result.errors.isNotEmpty()) {
+                                        Text(
+                                                "Détails des erreurs:",
+                                                style = MaterialTheme.typography.subtitle2,
+                                                modifier = Modifier.padding(top = 8.dp)
+                                        )
+                                        LazyColumn(
+                                                modifier = Modifier.height(120.dp),
+                                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                                        ) {
+                                                items(result.errors.take(5)) { error ->
+                                                        Text(
+                                                                "• $error",
+                                                                style = MaterialTheme.typography.caption,
+                                                                color = Color(0xFFFF6B35)
+                                                        )
+                                                }
+                                                if (result.errors.size > 5) {
+                                                        item {
+                                                                Text(
+                                                                        "... et ${result.errors.size - 5} autres erreurs",
+                                                                        style = MaterialTheme.typography.caption,
+                                                                        color = Color.Gray
+                                                                )
+                                                        }
+                                                }
+                                        }
+                                }
+                        }
+                },
+                confirmButton = {
+                        if (result.previewMode) {
+                                Button(
+                                        onClick = onConfirm,
+                                        colors = ButtonDefaults.buttonColors(
+                                                backgroundColor = VetNutriColors.Primary
+                                        )
+                                ) {
+                                        Text("Confirmer l'import", color = Color.White)
+                                }
+                        } else {
+                                Button(
+                                        onClick = onCancel,
+                                        colors = ButtonDefaults.buttonColors(
+                                                backgroundColor = VetNutriColors.Primary
+                                        )
+                                ) {
+                                        Text("Fermer", color = Color.White)
+                                }
+                        }
+                },
+                dismissButton = {
+                        if (result.previewMode) {
+                                OutlinedButton(onClick = onCancel) {
+                                        Text("Annuler")
+                                }
+                        }
+                }
+        )
+}
+
+/**
+ * Dialogue de prévisualisation plein écran pour l'import Excel (legacy)
  */
 @OptIn(ExperimentalMaterialApi::class)
 @Composable

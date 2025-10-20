@@ -63,8 +63,10 @@ object ComplementaryNutrientCalculator {
             variables["DENSITE_ENERGETIQUE"] = alimentRation.densiteEnergetique
 
             // Variables des nutriments disponibles dans l'aliment
+            // Remplacer les valeurs null par 0 pour éviter les erreurs dans les calculs
             alimentRation.aliment?.valMap?.forEach { (nutrient, value) ->
-                variables[nutrient.label.uppercase()] = value.value
+                val v = value.value
+                variables[nutrient.label.uppercase()] = if (v.isNaN() || v.isInfinite()) 0.0 else v
             }
 
             // Évaluer l'équation

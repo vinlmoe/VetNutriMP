@@ -32,6 +32,7 @@ import fr.vetbrain.vetnutri_mp.View.SettingsSections.RecipeEditView
 import fr.vetbrain.vetnutri_mp.ViewModel.ImportViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.RecipeEditViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.SettingsViewModel
+import fr.vetbrain.vetnutri_mp.Services.ExcelFoodService
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 
@@ -822,7 +823,15 @@ fun SettingsView(
                                         }
                                 }
                                 3 -> { // Excel Import/Export
-                                        ExcelImportExportSection(modifier = Modifier.fillMaxWidth())
+                                        val excelFoodService = remember {
+                                                viewModel.foodRepository?.let { foodRepo ->
+                                                        ExcelFoodService(foodRepo)
+                                                }
+                                        }
+                                        ExcelImportExportSection(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                excelFoodService = excelFoodService
+                                        )
                                 }
                                 4 -> { // Recettes
                                         RecipeEditView(
@@ -839,10 +848,6 @@ fun SettingsView(
                                                                                         "FoodRepository not available"
                                                                                 )
                                                         ),
-                                                foodRepository = viewModel.foodRepository
-                                                                ?: throw IllegalStateException(
-                                                                        "FoodRepository not available"
-                                                                ),
                                                 modifier = Modifier.fillMaxWidth()
                                         )
                                 }

@@ -1815,6 +1815,8 @@ object ImportUtils {
                         2 -> fr.vetbrain.vetnutri_mp.Enumer.EquationKind.MW
                         3 -> fr.vetbrain.vetnutri_mp.Enumer.EquationKind.INDICATOR
                         4 -> fr.vetbrain.vetnutri_mp.Enumer.EquationKind.NEED
+                        5 -> fr.vetbrain.vetnutri_mp.Enumer.EquationKind.COMPLEMENTARY_NUTRIENT
+                        6 -> fr.vetbrain.vetnutri_mp.Enumer.EquationKind.ENERCOMP
                         else -> fr.vetbrain.vetnutri_mp.Enumer.EquationKind.ENERGYNEED
                     }
 
@@ -2289,11 +2291,11 @@ object ImportUtils {
             val coefArrays = listOf("modk1", "modk2", "modk3", "modk4", "modk5")
             val referenceLists =
                     listOf(
-                            reference.getModk1(),
-                            reference.getModk2(),
-                            reference.getModk3(),
-                            reference.getModk4(),
-                            reference.getModk5()
+                            reference.modk1,
+                            reference.modk2,
+                            reference.modk3,
+                            reference.modk4,
+                            reference.modk5
                     )
 
             coefArrays.forEachIndexed { index, arrayName ->

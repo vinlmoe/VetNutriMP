@@ -66,9 +66,6 @@ fun App(appDatabase: AppDatabase) {
         DatabaseFoodRepository(appDatabase.foodDao(), appDatabase.nutrientValueDao())
     }
 
-    // Initialiser le repository statique AlimentRepository avec le DatabaseFoodRepository
-    AlimentRepository.initializeDatabaseFoodRepository(foodRepository)
-
     val consultationRepository = remember {
         DatabaseConsultationRepository(appDatabase.consultationDao(), foodRepository)
     }
@@ -154,22 +151,17 @@ fun App(appDatabase: AppDatabase) {
 
     // Initialisation des services au démarrage
     LaunchedEffect(Unit) {
-        println("DEBUG: Début de l'initialisation des services")
         startupService.initialize()
-        println("DEBUG: startupService.initialize() terminé")
         
         // Attendre que les services soient initialisés
         delay(2000) // Augmenté à 2 secondes
-        println("DEBUG: Délai d'attente terminé")
         
         // Récupérer le service de sauvegarde après initialisation
         val service = startupService.getBackupService()
         backupService = service
-        println("DEBUG: backupService initialisé: ${service != null}")
         
         // Vérifier s'il y a des sauvegardes disponibles au démarrage
         val availableBackups = startupService.getAvailableBackups()
-        println("DEBUG: Sauvegardes disponibles: ${availableBackups.size}")
         // Ne plus afficher automatiquement le dialog de restauration
     }
 
@@ -186,7 +178,8 @@ fun App(appDatabase: AppDatabase) {
                 consultationRepository,
                 animalRepository,
                 databaseReferenceEvRepository,
-                preferencesRepository
+                preferencesRepository,
+                foodRepository
         )
     }
     val createAnimalViewModel = remember { CreateAnimalViewModel(animalRepository) }
@@ -237,7 +230,7 @@ fun App(appDatabase: AppDatabase) {
             remember(selectedFoodUuid) {
                 mutableStateOf(
                         FoodEditViewModel(
-                                alimentRepository = AlimentRepository.getInstance(foodRepository),
+                                foodRepository = foodRepository,
                                 alimentUuid = selectedFoodUuid
                         )
                 )
@@ -333,11 +326,10 @@ fun App(appDatabase: AppDatabase) {
     val onDatabaseReady: () -> Unit = { showStartupScreen = false }
 
     VetNutriTheme {
-        Box(modifier = Modifier.fillMaxSize()) {
+        Box(modifier = Modifier.fillMaxSize().imePadding()) {
             if (showStartupScreen) {
                 // Afficher l'écran de démarrage
                 StartupScreen(
-                        foodRepository = foodRepository,
                         referenceRepository = databaseReferenceEvRepository,
                         settingsViewModel = settingsViewModel,
                         onDatabaseReady = onDatabaseReady,
@@ -427,7 +419,6 @@ fun App(appDatabase: AppDatabase) {
                                         modifier = Modifier.fillMaxWidth().weight(1f),
                                         equationRepository = equationRepository,
                                         recipeRepository = recipeRepository,
-                                        foodRepository = foodRepository,
                                         conseilRepository = conseilRepository
                                 )
                             }
@@ -664,7 +655,6 @@ fun App(appDatabase: AppDatabase) {
                                             currentScreen = Screen.SpeciesPreferences
                                         },
                                         onBackupClick = {
-                                            println("DEBUG: Bouton backup cliqué, backupRestoreViewModel: ${backupRestoreViewModel != null}")
                                             currentScreen = Screen.BackupRestore
                                         }
                                 )

@@ -28,13 +28,21 @@ import fr.vetbrain.vetnutri_mp.ViewModel.SettingsViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.SettingsViewModel.ImportResult
 import kotlinx.coroutines.launch
 
+private fun journaliserMiseAJour(message: String): Unit {
+        println("[StartupScreen] ${message}")
+}
+
+private fun extraireVersionJson(contenu: String): String? {
+        val motif: Regex = "\"version\"\\s*:\\s*\"([^\"]+)\"".toRegex()
+        return motif.find(contenu)?.groupValues?.getOrNull(1)
+}
+
 /**
  * Écran de démarrage qui affiche l'état de la base de données et permet à l'utilisateur de choisir
  * s'il souhaite la mettre à jour
  */
 @Composable
 fun StartupScreen(
-        foodRepository: FoodRepository,
         referenceRepository: DatabaseReferenceEvRepository?,
         settingsViewModel: SettingsViewModel,
         onDatabaseReady: () -> Unit,
@@ -75,7 +83,7 @@ fun StartupScreen(
         // Vérifier l'état de la base de données, des CGU et des versions au démarrage
         LaunchedEffect(Unit) {
                 try {
-                        val foodCount = foodRepository.getAllFoods().size
+                        val foodCount = settingsViewModel.foodRepository.getAllFoods().size
                         val referenceCount = referenceRepository?.getAllReferenceEv()?.size ?: 0
                         val conseilsCount = try {
                                 conseilRepository?.getConseilsCount()?.getOrThrow() ?: 0
@@ -100,44 +108,80 @@ fun StartupScreen(
 
                         // Charger les informations de version JSON
                         currentJsonVersion = databaseVersionManager.getStoredJsonVersion()
+                        val versionStockee: String = currentJsonVersion ?: "Aucune"
+                        journaliserMiseAJour("Version JSON stockée=" + versionStockee)
 
-                        // Lire et vérifier la version du JSON intégré
+                        // Lire et vérifier la version du JSON intégré de manière optimisée
                         try {
-                                val embeddedJson =
+                                val resourceReader = fr.vetbrain.vetnutri_mp.Localization.ResourceReader()
+                                // Essayer de lire seulement la version d'abord (plus efficace)
+                                val localEmbeddedJsonVersion: String? = try {
+                                        resourceReader.readJsonVersion("vetnutri_export_init.json")
+                                } catch (e: Exception) {
                                         try {
-                                                fr.vetbrain.vetnutri_mp.Localization
-                                                        .ResourceReader()
-                                                        .readResource("vetnutri_export_init.json")
-                                        } catch (e: Exception) {
-                                                fr.vetbrain.vetnutri_mp.Localization
-                                                        .ResourceReader()
-                                                        .readResource(
-                                                                "data/vetnutri_export_init.json"
-                                                        )
+                                                resourceReader.readJsonVersion("data/vetnutri_export_init.json")
+                                        } catch (e2: Exception) {
+                                                null
                                         }
-
-                                if (embeddedJson.isNotEmpty()) {
-                                        databaseVersionManager.readEmbeddedJsonVersion(embeddedJson)
-                                        embeddedJsonVersion =
-                                                databaseVersionManager.jsonVersion.value
-
-                                        // Vérifier si une mise à jour JSON est nécessaire
-                                        jsonUpdateAvailable =
-                                                databaseVersionManager.isJsonUpdateNeeded(
-                                                        embeddedJson
-                                                )
-
-                                        // Afficher automatiquement le dialogue de mise à jour si
-                                        // nécessaire
-                                        // (seulement si aucune autre mise à jour n'est en cours)
+                                }
+                                embeddedJsonVersion = localEmbeddedJsonVersion
+                                if (localEmbeddedJsonVersion != null) {
+                                        journaliserMiseAJour("Version JSON intégrée=" + localEmbeddedJsonVersion)
+                                        val currentStoredVersion: String? = databaseVersionManager.getStoredJsonVersion()
+                                        val isUpdate = currentStoredVersion == null || databaseVersionManager.compareVersions(localEmbeddedJsonVersion, currentStoredVersion) > 0
+                                        jsonUpdateAvailable = isUpdate
                                         if (jsonUpdateAvailable && !isUpdatingDatabase) {
                                                 showJsonUpdateDialog = true
+                                                val formattedIntegrated: String = databaseVersionManager.formatVersion(localEmbeddedJsonVersion)
+                                                val stored: String = currentStoredVersion ?: "Aucune"
+                                                journaliserMiseAJour("Détection nouvelle version JSON intégrée=" + formattedIntegrated + "; version stockée=" + stored + "; déclenchement du popup JSON=true")
+                                        }
+                                        val stored: String = currentStoredVersion ?: "Aucune"
+                                        val integrated: String = localEmbeddedJsonVersion
+                                        val triggered: Boolean = jsonUpdateAvailable && !isUpdatingDatabase
+                                        journaliserMiseAJour("Version JSON stockée=" + stored + "; Version JSON intégrée=" + integrated + "; popupDéclenché=" + triggered)
+                                } else {
+                                        // Fallback: lire le contenu complet et extraire la version
+                                        val candidats: List<String> = listOf(
+                                                "data/vetnutri_export_init.json",
+                                                "vetnutri_export_init.json"
+                                        )
+                                        var versionTrouvee: String? = null
+                                        for (nom in candidats) {
+                                                try {
+                                                        val contenu: String = resourceReader.readResourceOptimized(nom)
+                                                        versionTrouvee = extraireVersionJson(contenu)
+                                                        if (versionTrouvee != null) {
+                                                                embeddedJsonVersion = versionTrouvee
+                                                                break
+                                                        }
+                                                } catch (_: Exception) {
+                                                }
+                                        }
+                                        if (versionTrouvee != null) {
+                                                journaliserMiseAJour("Version JSON intégrée (fallback)=" + versionTrouvee)
+                                                // Aligner le comportement: recalcul de la mise à jour et popup éventuel
+                                                val currentStoredVersion: String? = databaseVersionManager.getStoredJsonVersion()
+                                                val isUpdate: Boolean = currentStoredVersion == null || databaseVersionManager.compareVersions(versionTrouvee, currentStoredVersion) > 0
+                                                jsonUpdateAvailable = isUpdate
+                                                if (jsonUpdateAvailable && !isUpdatingDatabase) {
+                                                        showJsonUpdateDialog = true
+                                                        val formattedIntegrated: String = databaseVersionManager.formatVersion(versionTrouvee)
+                                                        val stored: String = currentStoredVersion ?: "Aucune"
+                                                        journaliserMiseAJour("Détection nouvelle version JSON intégrée=" + formattedIntegrated + "; version stockée=" + stored + "; déclenchement du popup JSON=true")
+                                                }
+                                                val stored: String = currentStoredVersion ?: "Aucune"
+                                                val triggered: Boolean = jsonUpdateAvailable && !isUpdatingDatabase
+                                                journaliserMiseAJour("Version JSON stockée=" + stored + "; Version JSON intégrée=" + versionTrouvee + "; popupDéclenché=" + triggered)
+                                        } else {
+                                                journaliserMiseAJour("Version JSON intégrée introuvable")
                                         }
                                 }
                         } catch (e: Exception) {
                                 // En cas d'erreur, on considère qu'aucune mise à jour n'est
                                 // nécessaire
                                 jsonUpdateAvailable = false
+                                journaliserMiseAJour("Erreur lors de la lecture de la version JSON intégrée: ${e.message}")
                         }
 
                         // Attendre un peu pour montrer l'écran de démarrage
@@ -166,7 +210,7 @@ fun StartupScreen(
                                                 // Mettre à jour le statut de la base de données
                                                 try {
                                                         val newFoodCount =
-                                                                foodRepository.getAllFoods().size
+                                                                settingsViewModel.foodRepository.getAllFoods().size
                                                         val newReferenceCount =
                                                                 referenceRepository
                                                                         ?.getAllReferenceEv()
@@ -470,6 +514,7 @@ fun StartupScreen(
                                                         Button(
                                                                 onClick = {
                                                                         showUpdateDialog = true
+                                                                        journaliserMiseAJour("Ouverture du popup de mise à jour de la base (manuel)")
                                                                         // Désactiver l'affichage
                                                                         // par défaut une fois que
                                                                         // l'utilisateur a cliqué
@@ -817,15 +862,18 @@ fun StartupScreen(
 
                 // Dialogue automatique de mise à jour JSON (priorité haute)
                 if (showJsonUpdateDialog && !isUpdatingDatabase && !showUpdateDialog) {
+                        journaliserMiseAJour("Affichage du popup de mise à jour JSON")
                         JsonUpdateDialog(
                                 currentJsonVersion = currentJsonVersion,
                                 newJsonVersion = embeddedJsonVersion,
                                 onConfirm = {
                                         showJsonUpdateDialog = false
+                                        journaliserMiseAJour("Confirmation de la mise à jour JSON")
                                         // Désactiver l'affichage par défaut quand l'utilisateur
                                         // confirme la mise à jour JSON
                                         showUpdateButtonByDefault = false
                                         isUpdatingDatabase = true
+                                        journaliserMiseAJour("Début d'import JSON (isUpdatingDatabase=true)")
 
                                         coroutineScope.launch {
                                                 try {
@@ -888,6 +936,7 @@ fun StartupScreen(
                                 },
                                 onDismiss = {
                                         showJsonUpdateDialog = false
+                                        journaliserMiseAJour("Annulation du popup de mise à jour JSON")
                                         // Désactiver l'affichage par défaut quand l'utilisateur
                                         // rejette la mise à jour JSON
                                         showUpdateButtonByDefault = false
@@ -898,13 +947,16 @@ fun StartupScreen(
 
                 // Dialogue de confirmation de mise à jour
                 if (showUpdateDialog) {
+                        journaliserMiseAJour("Affichage du popup de mise à jour de la base")
                         UpdateConfirmationDialog(
                                 onConfirm = {
                                         showUpdateDialog = false
+                                        journaliserMiseAJour("Confirmation de la mise à jour de la base")
                                         // Désactiver l'affichage par défaut quand l'utilisateur
                                         // confirme la mise à jour
                                         showUpdateButtonByDefault = false
                                         isUpdatingDatabase = true
+                                        journaliserMiseAJour("Début d'import base (isUpdatingDatabase=true)")
 
                                         coroutineScope.launch {
                                                 try {
@@ -959,6 +1011,7 @@ fun StartupScreen(
                                 },
                                 onDismiss = {
                                         showUpdateDialog = false
+                                        journaliserMiseAJour("Annulation du popup de mise à jour de la base")
                                         // Désactiver l'affichage par défaut quand l'utilisateur
                                         // annule la mise à jour
                                         showUpdateButtonByDefault = false

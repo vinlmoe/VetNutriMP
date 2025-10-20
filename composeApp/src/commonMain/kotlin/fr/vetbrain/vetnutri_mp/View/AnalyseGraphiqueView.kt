@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.sp
 import fr.vetbrain.vetnutri_mp.Components.AppDatePicker
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
+import fr.vetbrain.vetnutri_mp.Utils.GraphFormattingUtils
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailViewModel
 import io.github.koalaplot.core.*
 import io.github.koalaplot.core.bar.DefaultVerticalBar
@@ -988,11 +989,9 @@ private fun PoidsTableau(
                                                 )
                                                 Text(
                                                         text =
-                                                                fr.vetbrain.vetnutri_mp.Utils
-                                                                        .TextUtils.formatDecimal(
+                                                                GraphFormattingUtils.formatWeight(
                                                                         consultationData.weight
-                                                                                .toDouble(),
-                                                                        1
+                                                                                .toDouble()
                                                                 ),
                                                         modifier = Modifier.weight(1f),
                                                         style = MaterialTheme.typography.caption
@@ -1197,8 +1196,8 @@ private fun RationsEnergieChart(
                                 XYGraph(
                                         xAxisModel = FloatLinearAxisModel(range = xRange),
                                         yAxisModel = FloatLinearAxisModel(range = yRange),
-                                        xAxisTitle = "Pourcentage d'énergie des protéines (%)",
-                                        yAxisTitle = "Pourcentage d'énergie des lipides (%)",
+                                        xAxisTitle = "Énergie des protéines (%)",
+                                        yAxisTitle = "Énergie des lipides (%)",
                                         modifier = Modifier.fillMaxSize()
                                 ) {
                                         // 🔸 LIGNES DE RÉFÉRENCE pour la répartition énergétique
@@ -1531,20 +1530,28 @@ private fun RationsEnergieChart(
                                                 horizontalArrangement = Arrangement.SpaceBetween,
                                                 verticalAlignment = Alignment.CenterVertically
                                         ) {
+                                        Column(modifier = Modifier.weight(1f)) {
                                                 Text(
                                                         text = "${data.numero}. ${data.rationName}",
                                                         style = MaterialTheme.typography.caption,
-                                                        modifier = Modifier.weight(1f)
+                                                        fontWeight = FontWeight.Medium
                                                 )
                                                 Text(
-                                                        text =
-                                                                "${data.consultationDate?.toString() ?: "Date inconnue"}",
+                                                        text = "Protéines: ${GraphFormattingUtils.formatPercentage(data.proteineEnergyPercentage)} | Lipides: ${GraphFormattingUtils.formatPercentage(data.lipideEnergyPercentage)}",
                                                         style = MaterialTheme.typography.caption,
-                                                        color =
-                                                                MaterialTheme.colors.onSurface.copy(
-                                                                        alpha = 0.7f
-                                                                )
+                                                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f),
+                                                        fontSize = 10.sp
                                                 )
+                                        }
+                                        Text(
+                                                text =
+                                                        "${data.consultationDate?.toString() ?: "Date inconnue"}",
+                                                style = MaterialTheme.typography.caption,
+                                                color =
+                                                        MaterialTheme.colors.onSurface.copy(
+                                                                alpha = 0.7f
+                                                        )
+                                        )
                                         }
                                 }
                         }
@@ -1871,13 +1878,22 @@ private fun DensiteRationsChart(
                                                                         center = center
                                                                 )
                                                         }
+                                                Column {
                                                         Text(
                                                                 text =
                                                                         "${data.numero}. ${data.rationName}",
                                                                 style =
                                                                         MaterialTheme.typography
-                                                                                .caption
+                                                                                .caption,
+                                                                fontWeight = FontWeight.Medium
                                                         )
+                                                        Text(
+                                                                text = "Densité: ${GraphFormattingUtils.formatEnergyDensity(if (isMatiereSeche) (data.energieTotale / data.matiereSeche * 100.0) else (data.energieTotale / data.poidsTotal * 100.0))}",
+                                                                style = MaterialTheme.typography.caption,
+                                                                color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f),
+                                                                fontSize = 10.sp
+                                                        )
+                                                }
                                                 }
                                                 Text(
                                                         text =
