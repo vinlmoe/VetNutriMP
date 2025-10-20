@@ -26,7 +26,7 @@ import kotlinx.datetime.Clock
  */
 class RecipeEditViewModel(
     private val recipeRepository: RecipeRepository,
-    private val foodRepository: FoodRepository
+    val foodRepository: FoodRepository
 ) {
     // Compteur pour générer des UUIDs uniques
     private var uuidCounter = 0

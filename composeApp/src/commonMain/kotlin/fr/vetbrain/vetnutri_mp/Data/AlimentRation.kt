@@ -4,6 +4,7 @@ import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientMain
 import fr.vetbrain.vetnutri_mp.Utils.genUUID
 import kotlin.uuid.ExperimentalUuidApi
+import kotlinx.coroutines.runBlocking
 
 @OptIn(ExperimentalUuidApi::class)
 data class AlimentRation(
@@ -36,6 +37,42 @@ data class AlimentRation(
         fun getNutrient(nutrient: Nutrient, referenceEv: ReferenceEv? = null): Double? {
                 // Déléguer à l'aliment sous-jacent s'il existe
                 return aliment?.getNutrient(nutrient, referenceEv)
+        }
+
+        /**
+         * Version optimisée pour éviter les calculs répétés de l'énergie
+         * Cache le résultat du calcul d'énergie pour éviter la redondance
+         */
+        private var cachedEnergie: Double? = null
+        private var cachedEnergieParams: Triple<ReferenceEv?, PreferencesEspece?, fr.vetbrain.vetnutri_mp.Repository.EquationRepository?>? = null
+
+        /**
+         * Calcule la quantité d'énergie fournie par cet aliment avec cache
+         *
+         * @param referenceEv Référence optionnelle pour calculer l'énergie via les équations
+         * @param preferences Préférences de l'espèce pour les équations complémentaires
+         * @param equationRepository Repository des équations pour les équations complémentaires
+         * @return La quantité d'énergie
+         */
+        suspend fun getEnergieWithCache(
+                referenceEv: ReferenceEv? = null,
+                preferences: PreferencesEspece? = null,
+                equationRepository: fr.vetbrain.vetnutri_mp.Repository.EquationRepository? = null
+        ): Double {
+                val currentParams = Triple(referenceEv, preferences, equationRepository)
+
+                // Retourner la valeur cachée si les paramètres sont identiques
+                if (cachedEnergie != null && cachedEnergieParams == currentParams) {
+                        return cachedEnergie!!
+                }
+
+                val result = getEnergie(referenceEv, preferences, equationRepository)
+
+                // Mettre en cache le résultat
+                cachedEnergie = result
+                cachedEnergieParams = currentParams
+
+                return result
         }
 
         /**
@@ -109,7 +146,7 @@ data class AlimentRation(
                                                 null
                                         }
                                 selectedUuids.forEach { uuid ->
-                                        val eq = equationRepository.getEquationById(uuid)
+                                        val eq = runBlocking { equationRepository.getEquationById(uuid) }
                                         if (eq != null) {
                                                 val kindOk =
                                                         eq.kind ==

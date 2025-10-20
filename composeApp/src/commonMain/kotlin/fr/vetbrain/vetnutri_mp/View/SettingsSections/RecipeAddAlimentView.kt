@@ -25,13 +25,14 @@ import fr.vetbrain.vetnutri_mp.View.components.FoodSearchComponent
 import fr.vetbrain.vetnutri_mp.View.components.FoodSearchFilters
 import fr.vetbrain.vetnutri_mp.View.components.FoodSearchConfig
 import fr.vetbrain.vetnutri_mp.View.components.FoodSearchLayout
+import fr.vetbrain.vetnutri_mp.ViewModel.RecipeEditViewModel
 
 /**
  * Vue pour ajouter un aliment à une recette
  */
 @Composable
 fun RecipeAddAlimentView(
-    foodRepository: FoodRepository,
+    recipeEditViewModel: RecipeEditViewModel,
     onNavigateBack: () -> Unit,
     onAddAliment: (AlimentEv, Double) -> Unit,
     modifier: Modifier = Modifier
@@ -56,7 +57,7 @@ fun RecipeAddAlimentView(
         try {
             println("🔍 RecipeAddAlimentView: Début du chargement des aliments...")
             kotlinx.coroutines.withContext(fr.vetbrain.vetnutri_mp.Utils.AppDispatchers.IO) {
-                val foods = foodRepository.getAllFoods()
+                val foods = recipeEditViewModel.foodRepository.getAllFoods()
                 println("🔍 RecipeAddAlimentView: ${foods.size} aliments récupérés du repository")
                 kotlinx.coroutines.withContext(fr.vetbrain.vetnutri_mp.Utils.AppDispatchers.Main) {
                     allFoods.clear()

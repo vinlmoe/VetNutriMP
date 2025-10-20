@@ -66,9 +66,6 @@ fun App(appDatabase: AppDatabase) {
         DatabaseFoodRepository(appDatabase.foodDao(), appDatabase.nutrientValueDao())
     }
 
-    // Initialiser le repository statique AlimentRepository avec le DatabaseFoodRepository
-    AlimentRepository.initializeDatabaseFoodRepository(foodRepository)
-
     val consultationRepository = remember {
         DatabaseConsultationRepository(appDatabase.consultationDao(), foodRepository)
     }
@@ -181,7 +178,8 @@ fun App(appDatabase: AppDatabase) {
                 consultationRepository,
                 animalRepository,
                 databaseReferenceEvRepository,
-                preferencesRepository
+                preferencesRepository,
+                foodRepository
         )
     }
     val createAnimalViewModel = remember { CreateAnimalViewModel(animalRepository) }
@@ -232,7 +230,7 @@ fun App(appDatabase: AppDatabase) {
             remember(selectedFoodUuid) {
                 mutableStateOf(
                         FoodEditViewModel(
-                                alimentRepository = AlimentRepository.getInstance(foodRepository),
+                                foodRepository = foodRepository,
                                 alimentUuid = selectedFoodUuid
                         )
                 )
@@ -332,7 +330,6 @@ fun App(appDatabase: AppDatabase) {
             if (showStartupScreen) {
                 // Afficher l'écran de démarrage
                 StartupScreen(
-                        foodRepository = foodRepository,
                         referenceRepository = databaseReferenceEvRepository,
                         settingsViewModel = settingsViewModel,
                         onDatabaseReady = onDatabaseReady,
@@ -422,7 +419,6 @@ fun App(appDatabase: AppDatabase) {
                                         modifier = Modifier.fillMaxWidth().weight(1f),
                                         equationRepository = equationRepository,
                                         recipeRepository = recipeRepository,
-                                        foodRepository = foodRepository,
                                         conseilRepository = conseilRepository
                                 )
                             }
