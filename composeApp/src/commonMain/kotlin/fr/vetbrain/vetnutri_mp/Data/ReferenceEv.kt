@@ -307,6 +307,30 @@ data class ReferenceEv(
         var modk4: MutableList<CoefP> = mutableListOf(CoefP(description = "Normal", coef = 1.0, groupUUID = 3))
         var modk5: MutableList<CoefP> = mutableListOf(CoefP(description = "Normal", coef = 1.0, groupUUID = 4))
 
+        /** Déduplique les coefficients K (K1..K5) par (description normalisée, valeur) */
+        fun deduplicateCoefficients() {
+                fun MutableList<CoefP>.dedupeInPlace() {
+                        val seen = mutableSetOf<Pair<String, Double>>()
+                        val iterator = this.listIterator()
+                        val retained = mutableListOf<CoefP>()
+                        while (iterator.hasNext()) {
+                                val c = iterator.next()
+                                val key = Pair((c.description ?: "").trim().lowercase(), (c.coef ?: 0.0))
+                                if (seen.add(key)) {
+                                        retained.add(c)
+                                }
+                        }
+                        clear()
+                        addAll(retained)
+                }
+
+                modk1.dedupeInPlace()
+                modk2.dedupeInPlace()
+                modk3.dedupeInPlace()
+                modk4.dedupeInPlace()
+                modk5.dedupeInPlace()
+        }
+
         /** Récupère la map des nutriments MIN */
         fun getRefMapMin(): MutableMap<Nutrient, Nut4Ref> = refMapMin
 

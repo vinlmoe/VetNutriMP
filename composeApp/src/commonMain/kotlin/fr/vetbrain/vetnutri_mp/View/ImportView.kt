@@ -3,7 +3,7 @@ package fr.vetbrain.vetnutri_mp.View
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -50,7 +50,7 @@ fun ImportView(viewModel: ImportViewModel = rememberViewModel(), onNavigateBack:
                         title = { Text("Importer des données") },
                         navigationIcon = {
                             IconButton(onClick = onNavigateBack) {
-                                Icon(Icons.Default.ArrowBack, contentDescription = "Retour")
+                                Icon(Icons.AutoMirrored.Default.ArrowBack, contentDescription = "Retour")
                             }
                         }
                 )

@@ -10,6 +10,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.automirrored.filled.FormatAlignLeft
+import androidx.compose.material.icons.automirrored.filled.FormatAlignRight
 import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -199,7 +202,7 @@ private fun EditorToolbar(
         }
 
         // Boutons listes
-        IconButton(onClick = { onAddList(false) }) { Icon(Icons.Default.List, "Liste") }
+        IconButton(onClick = { onAddList(false) }) { Icon(Icons.AutoMirrored.Default.List, "Liste") }
         IconButton(onClick = { onAddList(true) }) {
             Icon(Icons.Default.FormatListNumbered, "Liste numérotée")
         }
@@ -276,7 +279,7 @@ private fun FormattingToolbar(
                 onClick = { onFormattingChange(formatting.copy(alignment = TextAlignment.LEFT)) }
         ) {
             Icon(
-                    Icons.Default.FormatAlignLeft,
+                    Icons.AutoMirrored.Default.FormatAlignLeft,
                     "Aligner à gauche",
                     tint =
                             if (formatting.alignment == TextAlignment.LEFT) Color.Blue
@@ -300,7 +303,7 @@ private fun FormattingToolbar(
                 onClick = { onFormattingChange(formatting.copy(alignment = TextAlignment.RIGHT)) }
         ) {
             Icon(
-                    Icons.Default.FormatAlignRight,
+                    Icons.AutoMirrored.Default.FormatAlignRight,
                     "Aligner à droite",
                     tint =
                             if (formatting.alignment == TextAlignment.RIGHT) Color.Blue

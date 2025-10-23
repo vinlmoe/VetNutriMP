@@ -12,7 +12,7 @@ object NutrientBaseExt {
         get() = NutrientMain.entries
 
     /** Obsolète, utilisez NutrientMain.getByLabel() à la place */
-    fun getByLabel(label: String): NutrientMain = NutrientMain.getByLabel(label)
+    fun getByLabel(label: String): NutrientMain = NutrientMain.getByLabel(label) ?: NutrientMain.PROTEINE
 
     /** Obsolète, utilisez NutrientMain.getByCoef() à la place */
     fun getByCoef(coef: Int): NutrientMain? = NutrientMain.getByCoef(coef)

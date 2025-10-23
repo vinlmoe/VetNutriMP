@@ -279,7 +279,15 @@ fun AnalyseNutritionnelleCard(
 
                 ordreCategories.forEach { categorie ->
                     nutrimentsGroupes[categorie]?.let { nutriments ->
-                        if (nutriments.isNotEmpty()) {
+                        // Filtrer les nutriments à 0 si "tous" n'est pas sélectionné
+                        val nutrimentsAffiches =
+                                if (afficherTousLesNutriments) {
+                                    nutriments
+                                } else {
+                                    nutriments.filter { it.second.valeur > 0.0 }
+                                }
+                        // Afficher la section uniquement si elle contient des nutriments après filtrage
+                        if (nutrimentsAffiches.isNotEmpty()) {
                             // Titre de section
                             item {
                                 TitreSectionCard(
@@ -296,7 +304,7 @@ fun AnalyseNutritionnelleCard(
                                             verticalArrangement =
                                                     Arrangement.spacedBy(AppSizes.paddingXSmall)
                                     ) {
-                                        nutriments.chunked(3).forEach { rangeeNutriments ->
+                                        nutrimentsAffiches.chunked(3).forEach { rangeeNutriments ->
                                             Row(
                                                     modifier = Modifier.fillMaxWidth(),
                                                     horizontalArrangement =
@@ -331,8 +339,7 @@ fun AnalyseNutritionnelleCard(
                                 }
                             } else {
                                 // Liste de bullet graphs, un par nutriment
-                                items(items = nutriments.filter { it.second.valeur > 0.0 }) { pair
-                                    ->
+                                items(items = nutrimentsAffiches) { pair ->
                                     val nom = pair.first
                                     val valeur = pair.second
                                     val apport = valeur.valeur
@@ -1082,7 +1089,6 @@ private fun calculerBesoinAbsoluLocal(
         UnitReqEnum.PERMS -> poidsMetabolique?.let { poidsMetab: Double -> valeurRef * poidsMetab }
         UnitReqEnum.ABSOLUTE -> valeurRef
         UnitReqEnum.RATIO -> null
-        else -> null
     }
 }
 

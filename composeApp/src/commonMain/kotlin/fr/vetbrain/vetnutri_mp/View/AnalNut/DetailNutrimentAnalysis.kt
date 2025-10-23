@@ -83,8 +83,6 @@ private fun obtenirCouleurConformite(
                                 if (apportAbsolu > besoin) VetNutriColors.Error
                                 else VetNutriColors.Secondary
                         }
-                        // Autres niveaux : couleur normale
-                        else -> VetNutriColors.Secondary
                 }
         }
         // Si pas de calcul possible, couleur normale
@@ -462,6 +460,8 @@ fun ReferenceBulletGraph(
         if (valeurs.isEmpty()) return // Rien à tracer
 
         val maxAxis = (valeurs.maxOrNull() ?: 0.0) * 1.1
+        // Vérifier que maxAxis est strictement supérieur à 0 pour éviter une plage invalide (0.0..0.0)
+        if (maxAxis <= 0.0) return // Ne pas afficher le graphique si toutes les valeurs sont 0
 
         Column(modifier = Modifier.fillMaxWidth()) {
                 // Indicateur visuel si le bullet graph est cliquable
@@ -778,9 +778,6 @@ private fun convertirVersUnitePreferences(
 
                 // Vers RATIO - pas de conversion possible
                 UnitReqEnum.RATIO -> null
-
-                // Autres unités non supportées
-                else -> null
         }
 }
 
@@ -837,8 +834,9 @@ private fun ContributionsList(
                         .map { alimentRation ->
                                 val quantite: Double = alimentRation.quantite
                                 val nutrient: Nutrient = valeurNutritionnelle.nutriment
+                                val isAA: Boolean = nutrient is fr.vetbrain.vetnutri_mp.Enumer.AAEnum
                                 // Chargement asynchrone pour éviter le blocage du thread principal
-                                var valeurPour100g by remember { mutableStateOf<Double?>(null) }
+                                var valeurPour100gBrute by remember { mutableStateOf<Double?>(null) }
 
                                 LaunchedEffect(
                                         alimentRation,
@@ -855,13 +853,23 @@ private fun ContributionsList(
                                                                         equationRepository,
                                                                 referenceEv = referenceUtilisee
                                                         )
-                                                valeurPour100g = valeur?.toDouble()
+                                                valeurPour100gBrute = valeur?.toDouble()
                                         } catch (e: Exception) {
-                                                valeurPour100g = null
+                                                valeurPour100gBrute = null
                                         }
                                 }
+
+                                // Pour les AA, convertir la valeur brute (% protéines) en g/100g via protéines
+                                val valeurPour100gConvertie: Double? =
+                                        if (isAA) {
+                                                val proteines = alimentRation.aliment?.getNutrient(
+                                                        fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.PROTEINE
+                                                ) ?: 0.0
+                                                valeurPour100gBrute?.let { (it * proteines) / 100.0 }
+                                        } else valeurPour100gBrute
+
                                 val contributionCalculee: Double =
-                                        valeurPour100g?.let { valeur ->
+                                        valeurPour100gConvertie?.let { valeur ->
                                                 if (isRatioNutrient) valeur
                                                 else (valeur * quantite) / 100.0
                                         }
@@ -994,7 +1002,14 @@ private fun ContributionItem(
 ) {
         val quantite: Double = alimentRation.quantite
         val nutrient: Nutrient = valeurNutritionnelle.nutriment
-        val valeurAliment: Double? = alimentRation.aliment?.getNutrient(nutrient)
+        val valeurAlimentBrute: Double? = alimentRation.aliment?.getNutrient(nutrient)
+        val isAAItem: Boolean = nutrient is fr.vetbrain.vetnutri_mp.Enumer.AAEnum
+        val valeurAlimentAffichee: Double? = if (isAAItem && valeurAlimentBrute != null) {
+                val proteines = alimentRation.aliment?.getNutrient(
+                        fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.PROTEINE
+                ) ?: 0.0
+                (valeurAlimentBrute * proteines) / 100.0
+        } else valeurAlimentBrute
         // Chargement asynchrone des préférences pour éviter le blocage du thread principal
         var prefsEspeceItem by remember {
                 mutableStateOf<fr.vetbrain.vetnutri_mp.Data.PreferencesEspece?>(null)
@@ -1046,7 +1061,7 @@ private fun ContributionItem(
                                         modifier = Modifier.weight(1f)
                                 )
                                 val hasEqForAliment: Boolean =
-                                        (valeurAliment == null || valeurAliment <= 0.0) &&
+                                        (valeurAlimentAffichee == null || valeurAlimentAffichee <= 0.0) &&
                                                 valeurPour100gItem != null
                                 if (hasEqForAliment) {
                                         Icon(
@@ -1055,7 +1070,7 @@ private fun ContributionItem(
                                                 tint = Color(0xFFFF9800),
                                                 modifier = Modifier.size(16.dp)
                                         )
-                                } else if (valeurAliment == null) {
+                                } else if (valeurAlimentAffichee == null) {
                                         Icon(
                                                 imageVector = Icons.Filled.Warning,
                                                 contentDescription = "Information manquante",
@@ -1089,8 +1104,8 @@ private fun ContributionItem(
                                                                 }
                                                                         ?: "Valeur: NA"
                                                         } else {
-                                                                if (valeurAliment != null) {
-                                                                        "Valeur (100g): ${TextUtils.formatDecimal(valeurAliment.toDouble(), 2)} ${valeurNutritionnelle.unite.displayName}"
+                                                                if (valeurAlimentAffichee != null) {
+                                                                        "Valeur (100g): ${TextUtils.formatDecimal(valeurAlimentAffichee.toDouble(), 2)} ${valeurNutritionnelle.unite.displayName}"
                                                                 } else {
                                                                         valeurPour100gItem?.let {
                                                                                 valeur ->
@@ -1412,8 +1427,5 @@ private fun calculerBesoinAbsolu(
 
                 // Ratio - pas de calcul absolu possible
                 UnitReqEnum.RATIO -> null
-
-                // Autres unités non supportées pour le calcul absolu
-                else -> null
         }
 }

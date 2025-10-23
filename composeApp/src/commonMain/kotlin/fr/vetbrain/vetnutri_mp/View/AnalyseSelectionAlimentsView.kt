@@ -23,8 +23,8 @@ import androidx.compose.material.IconButton
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Remove
@@ -460,7 +460,7 @@ fun AnalyseSelectionAlimentsView(
                 ) {
                     Text("Voir l'analyse graphique")
                     Spacer(modifier = Modifier.width(4.dp))
-                    Icon(Icons.Default.ArrowForward, contentDescription = null)
+                    Icon(Icons.AutoMirrored.Default.ArrowForward, contentDescription = null)
                 }
             }
         }

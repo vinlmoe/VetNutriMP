@@ -662,22 +662,6 @@ object ImportUtils {
                                         newValMap[normalizedKey] = nutritionValue
                                     }
 
-                                    // Format 5: Valeur null mais clé importante
-                                    value == null && isEssentialNutrient(normalizedKey) -> {
-                                        // Pour les nutriments essentiels, mettre une valeur par
-                                        // défaut
-                                        // de 0
-                                        val nutritionValue =
-                                                JsonObject(
-                                                        mapOf(
-                                                                "value" to JsonPrimitive(0.0),
-                                                                "nut" to
-                                                                        JsonPrimitive(normalizedKey)
-                                                        )
-                                                )
-                                        newValMap[normalizedKey] = nutritionValue
-                                    }
-
                                     // Autres cas - format spécial pouvant inclure des structures
                                     // JSON imbriquées
                                     else -> {
@@ -1795,7 +1779,6 @@ object ImportUtils {
                                             }
                                         }
                                     }
-                                    else -> 0
                                 }
                             }
                         }
@@ -2268,9 +2251,6 @@ object ImportUtils {
             
             
         } catch (e: Exception) {
-            // 🔍 LOG DIAGNOSTIC : Erreur lors de l'ajout
-            
-            e.printStackTrace()
         }
     }
 
@@ -2312,6 +2292,9 @@ object ImportUtils {
                     }
                 }
             }
+
+            // Déduplication des coefficients par groupe (même nom et même valeur)
+            reference.deduplicateCoefficients()
         } catch (e: Exception) {}
     }
 

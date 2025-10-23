@@ -9,6 +9,7 @@ import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Components.TopBarSimple
 import fr.vetbrain.vetnutri_mp.Data.Equation
 import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
+import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Repository.BiblioRefRepository
 import fr.vetbrain.vetnutri_mp.Repository.DatabaseReferenceEvRepository
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
@@ -240,10 +241,35 @@ fun EquationDropdown(
 ) {
     var expanded by remember { mutableStateOf(false) }
     val displayText = selectedEquation?.name ?: "Sélectionner une équation"
+    
+    // Debug temporaire pour DM sélectionné
+    LaunchedEffect(selectedEquation) {
+        if (selectedEquation != null && (selectedEquation.name.contains("DM") || selectedEquation.equationScript.contains("DM"))) {
+            println("🔍 DEBUG DM sélectionné dans EquationDropdown:")
+            println("  - selectedEquation.name: '${selectedEquation.name}'")
+            println("  - selectedEquation.nutrient: ${selectedEquation.nutrient}")
+            if (selectedEquation.nutrient != null) {
+                val nutrient = selectedEquation.nutrient!!
+                println("  - selectedEquation.nutrient.translateEnum(): '${nutrient.translateEnum()}'")
+            }
+        }
+    }
 
     // Débogage pour vérifier les équations disponibles
     LaunchedEffect(equations) {
         equations.forEachIndexed { index, equation ->
+            // Debug temporaire pour DM
+            if (equation.name.contains("DM") || equation.equationScript.contains("DM")) {
+                println("🔍 DEBUG DM dans EquationDropdown:")
+                println("  - equation.name: '${equation.name}'")
+                println("  - equation.equationScript: '${equation.equationScript}'")
+                println("  - equation.nutrient: ${equation.nutrient}")
+                if (equation.nutrient != null) {
+                    val nutrient = equation.nutrient!!
+                    println("  - equation.nutrient.label: '${nutrient.label}'")
+                    println("  - equation.nutrient.translateEnum(): '${nutrient.translateEnum()}'")
+                }
+            }
         }
     }
 

@@ -162,6 +162,9 @@ class NewReferenceEvViewModel(
     private fun syncCoefficientsFromReference() {
         val reference = _currentReference.value
 
+        // Assainir les doublons éventuels (même nom et même valeur)
+        reference.deduplicateCoefficients()
+
         // Synchroniser les listes de coefficients
         _coefficientsK1.value = reference.modk1.toList()
         _coefficientsK2.value = reference.modk2.toList()

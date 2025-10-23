@@ -130,7 +130,8 @@ class EquationViewModel(
     /** Obtient le nom d'affichage d'une variable sous le format "label (displayName)" */
     private fun getVariableDisplayName(variable: String): String? {
         // Vérifier si c'est une variable VariableKind (par label court ou identifiant long)
-        val variableKind = VariableKind.entries.find { it.label == variable || it.variable == variable }
+        val variableKind =
+                VariableKind.entries.find { it.label == variable || it.variable == variable }
         if (variableKind != null) {
             return "${variableKind.translateEnum()} (${variableKind.dup})"
         }
@@ -252,23 +253,28 @@ class EquationViewModel(
         coroutineScope.launch(AppDispatchers.IO) {
             try {
                 // Créer une duplication complète de l'équation avec un nouvel UUID
-                val duplicated = source.copy(
-                    uuid = genUUID(),
-                    name = source.name + " (Copie)",
-                    // Conserver tous les autres champs :
-                    description = source.description,
-                    equationScript = source.equationScript,
-                    bib = source.bib, // Garder la même référence bibliographique
-                    specie = source.specie,
-                    kind = source.kind,
-                    nutrient = source.nutrient,
-                    consistent = source.consistent,
-                    variables = source.variables.toMutableList(), // Copier la liste des variables
-                    correctionFactor = source.correctionFactor,
-                    ratio = source.ratio,
-                    creationDate = source.creationDate, // Garder la date de création originale
-                    lastUpdate = source.lastUpdate // Garder la dernière mise à jour originale
-                )
+                val duplicated =
+                        source.copy(
+                                uuid = genUUID(),
+                                name = source.name + " (Copie)",
+                                // Conserver tous les autres champs :
+                                description = source.description,
+                                equationScript = source.equationScript,
+                                bib = source.bib, // Garder la même référence bibliographique
+                                specie = source.specie,
+                                kind = source.kind,
+                                nutrient = source.nutrient,
+                                consistent = source.consistent,
+                                variables =
+                                        source.variables
+                                                .toMutableList(), // Copier la liste des variables
+                                correctionFactor = source.correctionFactor,
+                                ratio = source.ratio,
+                                creationDate =
+                                        source.creationDate, // Garder la date de création originale
+                                lastUpdate = source.lastUpdate // Garder la dernière mise à jour
+                                // originale
+                                )
 
                 equationRepository.saveEquation(duplicated)
                 loadEquations()
@@ -378,6 +384,14 @@ class EquationViewModel(
         val nutrientsMin = NutrientMin.entries.map { it.label }
         val acideAmines = AAEnum.entries.map { it.label }
 
+        // Debug temporaire pour DM
+        if (variable == "DM") {
+            println("🔍 DEBUG DM dans isNutrientVariable():")
+            println("  - nutrientsMain: $nutrientsMain")
+            println("  - DM in nutrientsMain: ${variable in nutrientsMain}")
+            println("  - DM in all nutrients: ${variable in (nutrientsMain + nutrientsLipides + nutrientsVitamines + nutrientsMacro + nutrientsMin + acideAmines)}")
+        }
+
         return variable in
                 (nutrientsMain +
                         nutrientsLipides +
@@ -419,12 +433,12 @@ class EquationViewModel(
         val typeValidation = mapEquationKindToValidationType(equation.kind)
 
         return when (typeValidation) {
-            TypeEquationValidation.BESOIN_ENERGETIQUE -> EquationEvaluator.toutesLesVariables
+            TypeEquationValidation.BESOIN_ENERGETIQUE -> EquationEvaluator.toutesLesVariables!!
             TypeEquationValidation.BESOIN_NUTRITIONNEL ->
-                    EquationEvaluator.toutesLesVariables + getNutrientsVariables()
+                    EquationEvaluator.toutesLesVariables!! + getNutrientsVariables()
             TypeEquationValidation.DENSITE_ENERGETIQUE -> getNutrientsVariables()
             TypeEquationValidation.GENERALE ->
-                    EquationEvaluator.toutesLesVariables + getNutrientsVariables()
+                    EquationEvaluator.toutesLesVariables!! + getNutrientsVariables()
         }
     }
 
@@ -496,6 +510,16 @@ class EquationViewModel(
         val nutrientsMin = NutrientMin.entries.toList()
         val acideAmines = AAEnum.entries.toList()
         val nutrientAnalysis = NutrientAnalysis.entries.toList()
+
+        // Debug temporaire pour DM
+        val dmNutrient = nutrientsMain.find { it.label == "DM" }
+        if (dmNutrient != null) {
+            println("🔍 DEBUG DM dans getAllNutrients():")
+            println("  - DM trouvé: ${dmNutrient.label}")
+            println("  - DM translateEnum(): ${dmNutrient.translateEnum()}")
+        } else {
+            println("❌ DEBUG DM dans getAllNutrients(): DM NON trouvé!")
+        }
 
         return nutrientsMain +
                 nutrientsLipides +
@@ -642,8 +666,11 @@ class EquationViewModel(
             // Vérifier que toutes les variables sont reconnues
             val unrecognizedVariables =
                     variablesInExpression.filter { variable ->
-                        // Vérifier si la variable est reconnue dans VariableKind (label court ou identifiant long)
-                        VariableKind.values().none { it.label == variable || it.variable == variable } &&
+                        // Vérifier si la variable est reconnue dans VariableKind (label court ou
+                        // identifiant long)
+                        VariableKind.values().none {
+                            it.label == variable || it.variable == variable
+                        } &&
                                 // Vérifier si c'est une variable de nutriment
                                 !isNutrientVariable(variable)
                     }

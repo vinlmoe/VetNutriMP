@@ -14,10 +14,10 @@ import fr.vetbrain.vetnutri_mp.Data.RationAnalyzer
 import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.TypeExpressionBesoin
-import fr.vetbrain.vetnutri_mp.Repository.FoodRepository
 import fr.vetbrain.vetnutri_mp.Repository.AnimalRepository
 import fr.vetbrain.vetnutri_mp.Repository.ConsultationRepository
 import fr.vetbrain.vetnutri_mp.Repository.DatabaseReferenceEvRepository
+import fr.vetbrain.vetnutri_mp.Repository.FoodRepository
 import fr.vetbrain.vetnutri_mp.Repository.PreferencesRepository
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import fr.vetbrain.vetnutri_mp.Utils.ExpressionEvaluator
@@ -112,18 +112,18 @@ class AnimalDetailViewModel(
     private val animalDataCacheTime = mutableMapOf<String, Long>()
     private val maxAnimalCacheSize = 100
 
-    /**
-     * Nettoie automatiquement les caches pour éviter les fuites mémoire
-     */
+    /** Nettoie automatiquement les caches pour éviter les fuites mémoire */
     private fun cleanupCachesIfNeeded() {
         val currentTime = kotlinx.datetime.Clock.System.now().toEpochMilliseconds()
 
         // Nettoyer le cache d'analyse de rations
         if (rationAnalysisCache.size > maxCacheSize) {
-            val entriesToRemove = analysisCacheTime.entries
-                .sortedBy { it.value }
-                .take(rationAnalysisCache.size - maxCacheSize / 2)
-                .map { it.key }
+            val entriesToRemove =
+                    analysisCacheTime
+                            .entries
+                            .sortedBy { it.value }
+                            .take(rationAnalysisCache.size - maxCacheSize / 2)
+                            .map { it.key }
 
             entriesToRemove.forEach { key ->
                 rationAnalysisCache.remove(key)
@@ -132,9 +132,14 @@ class AnimalDetailViewModel(
         }
 
         // Nettoyer les entrées expirées du cache d'analyse
-        val expiredKeys = analysisCacheTime.entries.filter { (key, time) ->
-            currentTime - time > cacheValidityDuration * 2 // Supprimer les entrées très anciennes
-        }.map { it.key }
+        val expiredKeys =
+                analysisCacheTime.entries
+                        .filter { (key, time) ->
+                            currentTime - time >
+                                    cacheValidityDuration *
+                                            2 // Supprimer les entrées très anciennes
+                        }
+                        .map { it.key }
         expiredKeys.forEach { key ->
             analysisCacheTime.remove(key)
             rationAnalysisCache.remove(key)
@@ -142,10 +147,12 @@ class AnimalDetailViewModel(
 
         // Nettoyer le cache de données d'animaux
         if (animalDataCache.size > maxAnimalCacheSize) {
-            val entriesToRemove = animalDataCacheTime.entries
-                .sortedBy { it.value }
-                .take(animalDataCache.size - maxAnimalCacheSize / 2)
-                .map { it.key }
+            val entriesToRemove =
+                    animalDataCacheTime
+                            .entries
+                            .sortedBy { it.value }
+                            .take(animalDataCache.size - maxAnimalCacheSize / 2)
+                            .map { it.key }
 
             entriesToRemove.forEach { key ->
                 animalDataCache.remove(key)
@@ -219,7 +226,8 @@ class AnimalDetailViewModel(
 
         // S'abonner au Flow réactif des aliments pour des mises à jour automatiques
         // Utiliser onEach + launchIn pour lancer l'observation en arrière-plan
-        foodRepository.observeAllFoods()
+        foodRepository
+                .observeAllFoods()
                 .onEach { aliments: List<AlimentEv> ->
 
                     // Convertir en version légère pour l'affichage (sans valMap pour les
@@ -286,8 +294,7 @@ class AnimalDetailViewModel(
                         if (aliment.valMap.isEmpty()) {
                             // Utiliser la méthode statique du companion object pour éviter le
                             // problème de null
-                            val alimentCompletFromRepo =
-                                    foodRepository.getFoodById(aliment.uuid)
+                            val alimentCompletFromRepo = foodRepository.getFoodById(aliment.uuid)
                             alimentCompletFromRepo ?: aliment
                         } else {
                             aliment
@@ -1117,16 +1124,21 @@ class AnimalDetailViewModel(
 
                 // Vérifier le cache
                 val cachedTime = analysisCacheTime[cacheKey]
-                val cachedResult = if (cachedTime != null && (kotlinx.datetime.Clock.System.now().toEpochMilliseconds() - cachedTime) < cacheValidityDuration) {
-                    rationAnalysisCache[cacheKey]
-                } else null
+                val cachedResult =
+                        if (cachedTime != null &&
+                                        (kotlinx.datetime.Clock.System.now().toEpochMilliseconds() -
+                                                cachedTime) < cacheValidityDuration
+                        ) {
+                            rationAnalysisCache[cacheKey]
+                        } else null
 
                 val resultat = cachedResult ?: rationAnalyzer.analyserRation(ration, consultation)
 
                 // Mettre en cache si pas déjà présent et si le cache n'est pas plein
                 if (cachedResult == null && rationAnalysisCache.size < maxCacheSize) {
                     rationAnalysisCache[cacheKey] = resultat
-                    analysisCacheTime[cacheKey] = kotlinx.datetime.Clock.System.now().toEpochMilliseconds()
+                    analysisCacheTime[cacheKey] =
+                            kotlinx.datetime.Clock.System.now().toEpochMilliseconds()
                 }
 
                 _rationAnalyseResultat.value = resultat
@@ -1480,16 +1492,8 @@ class AnimalDetailViewModel(
             // Validation du type de poids et conversion sécurisée
             val poidsDouble: Double =
                     try {
-                        when (poids) {
-                            is Double -> poids
-                            is Float -> poids.toDouble()
-                            is Int -> poids.toDouble()
-                            is String -> poids.toDouble()
-                            else -> {
-                                return null
-                            }
-                        }
-                    } catch (e: NumberFormatException) {
+                        poids.toString().toDouble()
+                    } catch (e: Exception) {
                         return null
                     }
 

@@ -206,6 +206,23 @@ object DefaultPreferencesConfig {
         // 7,  // Phosphore non osseux (%)
         // 8,  // Protéine non osseuse (%)
         // 9   // Ratio Prot/Phos non osseux
+
+        /** Retourne une Map des nutriments par défaut pour compatibilité avec l'ancienne API */
+        fun toMap(): Map<String, List<Int>> {
+            return mapOf(
+                "BASE" to BASE,
+                "MACRO" to MACRO,
+                "MIN" to MIN,
+                "VITAM" to VITAM,
+                "LIPID" to LIPID,
+                "AMA" to AMA,
+                "ANA" to ANA,
+                "OTHER" to OTHER,
+                "INDICAT" to INDICAT,
+                "INGREDIENT" to INGREDIENT,
+                "ENERGIE" to ENERGIE
+            )
+        }
     }
 
     /** Équations complémentaires par défaut (vide par défaut) */

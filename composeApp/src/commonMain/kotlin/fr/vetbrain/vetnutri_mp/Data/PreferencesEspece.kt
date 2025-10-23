@@ -15,7 +15,7 @@ import fr.vetbrain.vetnutri_mp.Enumer.TypeExpressionBesoin
 data class PreferencesEspece(
         val espece: String = Espece.CHIEN.name,
         val typeExpressionBesoinId: Int = TypeExpressionBesoin.DEFAULT.id,
-        val nutrimentsSelectionnes: Map<String, List<Int>> = getDefaultNutrients(),
+        val nutrimentsSelectionnes: Map<String, List<Int>> = DefaultPreferencesConfig.DefaultNutrients.toMap(),
         val equationsComplementaires: Map<String, String> = emptyMap() // nutriment -> equation UUID
 ) {
     /** Obtient l'énumération TypeExpressionBesoin correspondante */

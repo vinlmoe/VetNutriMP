@@ -29,4 +29,5 @@ expect open class ResourceReader() {
      * @return true si l'écriture a réussi, false sinon
      */
     open fun writeUserFile(filename: String, content: String): Boolean
+
 }

@@ -217,6 +217,7 @@ object NutrientResolver {
             "FIBRETOT", "FIBRE_TOTALE", "TOTAL_FIBER", "DIETARY_FIBER", "FIBRETOTALE" -> "FIBRETOT"
             "FIBRSOL", "FIBRE_SOLUBLE", "SOLUBLE_FIBER", "FIBRESOLUBLE" -> "FIBRSOL"
             "FIBRINSO", "FIBRE_INSOLUBLE", "INSOLUBLE_FIBER", "FIBREINSOLUBLE" -> "FIBRINSO"
+            "DM", "MATIERE_SECHE", "MATIÈRE_SÈCHE", "DRY_MATTER", "MATERIA_SECA", "MS" -> "DM"
 
             // Vitamines
             "VITAMINEA",

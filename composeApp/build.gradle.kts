@@ -17,14 +17,15 @@ kotlin {
             jvmTarget.set(JvmTarget.JVM_11)
             // Optimisations sélectives pour réduire la complexité sans tout désactiver
             freeCompilerArgs.addAll(
-                "-Xjvm-default=all",
-                "-Xno-param-assertions",
-                "-Xno-call-assertions",
-                "-Xno-receiver-assertions",
-                "-Xoptimization-phase-step=15", // Réduire les étapes d'optimisation
-                "-Xinline-max-instruction-count=150", // Limiter l'inlining sélectif
-                "-Xdisable-phases=DevirtualizationAnalysis" // Désactiver seulement l'analyse problématique
-            )
+                    "-Xjvm-default=all",
+                    "-Xno-param-assertions",
+                    "-Xno-call-assertions",
+                    "-Xno-receiver-assertions",
+                    "-Xoptimization-phase-step=15", // Réduire les étapes d'optimisation
+                    "-Xinline-max-instruction-count=150", // Limiter l'inlining sélectif
+                    "-Xdisable-phases=DevirtualizationAnalysis" // Désactiver seulement l'analyse
+                    // problématique
+                    )
         }
     }
 
@@ -35,11 +36,10 @@ kotlin {
             linkerOpts.add("-lsqlite3")
         }
         // Configuration iOS - Configuration basique uniquement
-        iosTarget.compilerOptions {
-            freeCompilerArgs.addAll(
-                "-Xruntime-logs=all"
-            )
-        }
+        iosTarget.compilerOptions { freeCompilerArgs.addAll("-Xruntime-logs=all",
+            // C'est l'argument qui désactive la phase gourmande en mémoire
+                     "-Xdisable-phases=DevirtualizationAnalysis,DCEPhase,StaticInitializersOptimization,RemoveRedundantCallsToStaticInitializersPhase"
+              ) }
     }
 
     jvm("desktop")
@@ -101,9 +101,7 @@ kotlin {
             }
         }
 
-        val iosMain by creating {
-            dependencies { implementation(libs.sqliter.driver) }
-        }
+        val iosMain by creating { dependencies { implementation(libs.sqliter.driver) } }
     }
 }
 
@@ -119,8 +117,8 @@ android {
         applicationId = "fr.vetbrain.vetnutri_mp"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 28
-        versionName = "3.1.28"
+        versionCode = 38
+        versionName = "3.1.38"
 
         // Configuration de Room
 
@@ -141,7 +139,6 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
-    
 }
 
 dependencies { debugImplementation(compose.uiTooling) }
@@ -153,9 +150,9 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Exe, TargetFormat.Deb)
             packageName = "VetNutriMP"
-            packageVersion = "3.1.28"
+            packageVersion = "3.1.38"
             description = "Application de nutrition vétérinaire multiplateforme"
-            copyright = "© 2024 VetBrain"
+            copyright = "© 2025 VetBrain"
             vendor = "VetBrain"
 
             // Configuration des icônes pour chaque plateforme
@@ -173,7 +170,7 @@ compose.desktop {
 
 dependencies {
     implementation("org.jetbrains.compose.material:material-icons-extended:1.7.3")
-  
+
     implementation(libs.androidx.sqlite.bundled)
     implementation(kotlin("test"))
     implementation(kotlin("test-common"))

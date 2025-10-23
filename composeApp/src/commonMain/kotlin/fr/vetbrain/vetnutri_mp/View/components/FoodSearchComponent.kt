@@ -4,6 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -42,7 +43,8 @@ data class FoodSearchFilters(
         val selectedFoodGroup: GroupAlim? = null,
         val selectedEspece: Espece? = null,
         val selectedIndications: Set<AlimIndic> = emptySet(),
-        val dataB: String? = null
+        val dataB: String? = null,
+        val aminoOnly: Boolean = false
 )
 
 /** Configuration du composant de recherche d'aliments */
@@ -527,19 +529,20 @@ private fun FiltersSection(
                                                 val newDataB = if (it.isEmpty()) null else it
                                                 // Créer un nouvel objet complètement différent pour
                                                 // forcer le re-rendu
-                                                val newFilters =
-                                                        FoodSearchFilters(
-                                                                searchQuery = filters.searchQuery,
-                                                                selectedFoodType =
-                                                                        filters.selectedFoodType,
-                                                                selectedFoodGroup =
-                                                                        filters.selectedFoodGroup,
-                                                                selectedEspece =
-                                                                        filters.selectedEspece,
-                                                                selectedIndications =
-                                                                        filters.selectedIndications,
-                                                                dataB = newDataB
-                                                        )
+                                val newFilters =
+                                        FoodSearchFilters(
+                                                searchQuery = filters.searchQuery,
+                                                selectedFoodType =
+                                                        filters.selectedFoodType,
+                                                selectedFoodGroup =
+                                                        filters.selectedFoodGroup,
+                                                selectedEspece =
+                                                        filters.selectedEspece,
+                                                selectedIndications =
+                                                        filters.selectedIndications,
+                                                dataB = newDataB,
+                                                aminoOnly = filters.aminoOnly
+                                        )
                                                 onFiltersChange(newFilters)
                                         },
                                         valueToString = {
@@ -582,14 +585,30 @@ private fun FiltersCard(
                                 color = VetNutriColors.Primary
                         )
 
-                        // Barre de recherche
-                        SearchBar(
-                                searchQuery = filters.searchQuery,
-                                onSearchQueryChange = {
-                                        onFiltersChange(filters.copy(searchQuery = it))
-                                },
-                                modifier = Modifier.fillMaxWidth()
-                        )
+                        // Barre de recherche + raccourci Ac. Aminé sur la même ligne
+                        Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall),
+                                verticalAlignment = Alignment.CenterVertically
+                        ) {
+                                SearchBar(
+                                        searchQuery = filters.searchQuery,
+                                        onSearchQueryChange = {
+                                                onFiltersChange(filters.copy(searchQuery = it))
+                                        },
+                                        modifier = Modifier.weight(1f)
+                                )
+                                OutlinedButton(
+                                        onClick = { onFiltersChange(filters.copy(aminoOnly = !filters.aminoOnly)) },
+                                        border = ButtonDefaults.outlinedBorder,
+                                        colors = ButtonDefaults.outlinedButtonColors(
+                                                backgroundColor = if (filters.aminoOnly) VetNutriColors.Primary.copy(alpha = 0.08f) else MaterialTheme.colors.surface,
+                                                contentColor = if (filters.aminoOnly) VetNutriColors.Primary else MaterialTheme.colors.onSurface
+                                        )
+                                ) {
+                                        Text(text = "Ac. Aminé", style = MaterialTheme.typography.caption)
+                                }
+                        }
 
                         // Filtres
                         FiltersSection(
@@ -687,7 +706,8 @@ private fun CompactFilters(
                                                 selectedFoodGroup = filters.selectedFoodGroup,
                                                 selectedEspece = filters.selectedEspece,
                                                 selectedIndications = filters.selectedIndications,
-                                                dataB = newDataB
+                                                dataB = newDataB,
+                                                aminoOnly = filters.aminoOnly
                                         )
                                 onFiltersChange(newFilters)
                         },
@@ -739,6 +759,9 @@ private fun FoodSearchResults(
         config: FoodSearchConfig,
         modifier: Modifier = Modifier
 ) {
+        // État pour conserver la position de scroll
+        val listState = rememberLazyListState()
+        
         if (config.isLoading) {
                 Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator()
@@ -749,6 +772,7 @@ private fun FoodSearchResults(
                 }
         } else {
                 LazyColumn(
+                        state = listState,
                         modifier = modifier,
                         verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
                 ) {

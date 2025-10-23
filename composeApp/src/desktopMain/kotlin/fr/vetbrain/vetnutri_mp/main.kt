@@ -482,3 +482,26 @@ actual fun openJsonFileContent(): String? {
     }
     return contenu
 }
+
+actual fun exportPdfDocument(
+    documentType: fr.vetbrain.vetnutri_mp.Export.DocumentType,
+    data: fr.vetbrain.vetnutri_mp.Export.ExportData,
+    defaultFileName: String
+): Boolean {
+    val html: String = fr.vetbrain.vetnutri_mp.Export.HtmlDocumentBuilder.buildHtml(documentType, data)
+    return try {
+        val baos = java.io.ByteArrayOutputStream()
+        com.openhtmltopdf.pdfboxout.PdfRendererBuilder().withHtmlContent(html, null).toStream(baos).run()
+        val bytes = baos.toByteArray()
+        
+        // Appel direct comme dans exportJsonToFile
+        fr.vetbrain.vetnutri_mp.Utils.FileUtils.saveBinaryFileDialog(
+            bytes = bytes,
+            defaultFileName = defaultFileName.ifBlank { "document.pdf" }
+        )
+    } catch (t: Throwable) {
+        println("PDF export failed: ${t.message}")
+        t.printStackTrace()
+        false
+    }
+}

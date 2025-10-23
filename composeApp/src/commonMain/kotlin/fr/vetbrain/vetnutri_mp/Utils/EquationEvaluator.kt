@@ -23,38 +23,49 @@ import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 object EquationEvaluator {
 
     /** Variables de base toujours disponibles dans les équations vétérinaires */
-    private val variablesDeBase =
-            setOf(
-                    "BW", // Body Weight - Poids corporel
-                    "BEE", // Basic Energy Expenditure - Besoin énergétique de base
-                    "MW", // Metabolic Weight - Poids métabolique
-                    "iBW" // Ideal Body Weight - Poids corporel idéal
-            )
+    private var variablesDeBase: Set<String>? = null
 
     /** Variables supplémentaires disponibles selon le contexte */
-    private val variablesSupplementaires by lazy { VariableKind.entries.map { it.variable }.toSet() }
+    private var variablesSupplementaires: Set<String>? = null
 
     /** Toutes les variables disponibles dans le système */
-    val toutesLesVariables: Set<String> by lazy { variablesDeBase + variablesSupplementaires }
+    var toutesLesVariables: Set<String>? = null
 
     /** Cache pour éviter les recalculs d'expressions identiques */
     private val expressionCache = mutableMapOf<String, Double?>()
-    private val variableCache = mutableMapOf<String, Map<String, Double>>() // Cache pour les variables pré-calculées
+    private val variableCache =
+            mutableMapOf<String, Map<String, Double>>() // Cache pour les variables pré-calculées
 
     /** Taille maximale du cache pour éviter la fuite mémoire */
     private const val MAX_CACHE_SIZE = 1000
 
-    /**
-     * Nettoie les caches si nécessaire pour éviter la fuite mémoire
-     */
+    /** Initialise les variables de base de manière paresseuse */
+    private fun initializeVariables() {
+        if (variablesDeBase == null) {
+            variablesDeBase =
+                    setOf(
+                            "BW", // Body Weight - Poids corporel
+                            "BEE", // Basic Energy Expenditure - Besoin énergétique de base
+                            "MW", // Metabolic Weight - Poids métabolique
+                            "iBW" // Ideal Body Weight - Poids corporel idéal
+                    )
+        }
+        if (variablesSupplementaires == null) {
+            variablesSupplementaires = VariableKind.entries.map { it.variable }.toSet()
+        }
+        if (toutesLesVariables == null) {
+            toutesLesVariables = variablesDeBase!! + variablesSupplementaires!!
+        }
+    }
+
+    /** Nettoie les caches si nécessaire pour éviter la fuite mémoire */
     private fun cleanupCacheIfNeeded() {
         if (expressionCache.size > MAX_CACHE_SIZE) {
             // Garder seulement les 500 entrées les plus récentes
-            val sortedEntries = expressionCache.entries.sortedByDescending { it.value?.hashCode() ?: 0 }
+            val sortedEntries =
+                    expressionCache.entries.sortedByDescending { it.value?.hashCode() ?: 0 }
             expressionCache.clear()
-            sortedEntries.take(500).forEach { (key, value) ->
-                expressionCache[key] = value
-            }
+            sortedEntries.take(500).forEach { (key, value) -> expressionCache[key] = value }
         }
     }
 
@@ -71,6 +82,7 @@ object EquationEvaluator {
             poidsCorps: Double,
             variablesSupp: List<SupplementalvariableP> = emptyList()
     ): Double? {
+        initializeVariables()
         val variables = mutableMapOf<String, Double>()
 
         // Ajouter le poids corporel
@@ -143,9 +155,7 @@ object EquationEvaluator {
         }
     }
 
-    /**
-     * Version avec cache optimisée pour les évaluations répétées
-     */
+    /** Version avec cache optimisée pour les évaluations répétées */
     fun evaluerPourAnimalAvecCache(
             expression: String,
             poidsCorps: Double,
@@ -544,12 +554,11 @@ object EquationEvaluator {
 
         // Logs d'entrée
         try {
-          
+
             if (variablesSupp.isNotEmpty()) {
                 val supp = variablesSupp.joinToString { v -> "${v.variable?.variable}=${v.varue}" }
-              
             }
-           } catch (_: Throwable) {}
+        } catch (_: Throwable) {}
 
         // Injecter les nutriments agrégés de la ration (avec compléments si disponibles)
         suspend fun sommeRation(n: Nutrient): Double {
@@ -580,7 +589,7 @@ object EquationEvaluator {
             val dbg = debugKeys.map { k -> "$k=${variables[k] ?: 0.0}" }.joinToString(", ")
             // Log complet des variables (peut être volumineux)
             val all = variables.entries.sortedBy { it.key }.joinToString(", ") { (k, v) -> "$k=$v" }
-               } catch (_: Throwable) {}
+        } catch (_: Throwable) {}
 
         var total = 0.0
         for (ref in referencesMaladies) {
@@ -592,26 +601,21 @@ object EquationEvaluator {
                     }
             if (eqs.isEmpty()) continue
             for (eq in eqs) {
-                try {
-                         } catch (_: Throwable) {}
+                try {} catch (_: Throwable) {}
                 val res = ExpressionMathematique.evaluer(eq.equationScript, variables)
-                try {
-                  } catch (_: Throwable) {}
+                try {} catch (_: Throwable) {}
                 if (res != null && !res.isNaN() && !res.isInfinite()) total += res
             }
         }
         if (total.isNaN() || total.isInfinite()) {
-            try {
-               } catch (_: Throwable) {}
+            try {} catch (_: Throwable) {}
             return 0.0
         }
         if (total < 0.0) {
-            try {
-               } catch (_: Throwable) {}
+            try {} catch (_: Throwable) {}
             return 0.0
         }
-        try {
-            } catch (_: Throwable) {}
+        try {} catch (_: Throwable) {}
         return total
     }
 
@@ -753,15 +757,19 @@ object EquationEvaluator {
         // Extraire les variables utilisées
         val variablesUtilisees = ExpressionMathematique.extraireVariables(expression)
 
+        // Initialiser les variables si nécessaire
+        initializeVariables()
+
         // Déterminer les variables disponibles selon le type d'équation
         val variablesDisponibles =
                 when (typeEquation) {
                     TypeEquationValidation.BESOIN_ENERGETIQUE ->
-                            variablesDeBase + variablesSupplementaires
+                            variablesDeBase!! + variablesSupplementaires!!
                     TypeEquationValidation.BESOIN_NUTRITIONNEL ->
-                            toutesLesVariables + getNutrientsVariables()
+                            toutesLesVariables!! + getNutrientsVariables()
                     TypeEquationValidation.DENSITE_ENERGETIQUE -> getNutrientsVariables()
-                    TypeEquationValidation.GENERALE -> toutesLesVariables + getNutrientsVariables()
+                    TypeEquationValidation.GENERALE ->
+                            toutesLesVariables!! + getNutrientsVariables()
                 }
 
         // Vérifier les variables manquantes
@@ -881,14 +889,3 @@ data class ResultatValidation(
         val variablesManquantes: List<String> = emptyList(),
         val variablesReconnues: List<String> = emptyList()
 )
-
-
-
-
-
-
-
-
-
-
-

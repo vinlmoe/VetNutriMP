@@ -26,86 +26,24 @@ enum class NutrientMain(
     FIBRESOL("Fibre soluble", 11, "g", UnitEnum.BUg, "FIBRESOL", "#20C300"),
     FIBRETOT("Fibre totale", 12, "g", UnitEnum.BUg, "FIBRETOT", "#1A7D07"),
     NDF("NDF", 13, "g", UnitEnum.BUg, "NDF", "#20C300"),
-    ADF("ADFe", 14, "g", UnitEnum.BUg, "ADF", "#1A7D07");
-
+    ADF("ADFe", 14, "g", UnitEnum.BUg, "ADF", "#1A7D07"),
+    DM("Matière sèche", 15, "g", UnitEnum.BUg, "DM", "#5DFFFA");
     companion object {
-        // Optimisation : utiliser des maps statiques lazy pour réduire la complexité du compilateur
+        // Maps statiques optimisées - accès O(1)
         private val coefMap by lazy { entries.associateBy { it.coef } }
         private val labelMap by lazy { entries.associateBy { it.label.lowercase() } }
 
-        // Cache pour les recherches fréquentes avec gestion automatique de la mémoire
-        private val coefCache = mutableMapOf<Int, NutrientMain?>()
-        private val labelCache = mutableMapOf<String, NutrientMain?>()
-        private val maxCacheSize = 15
+        /** Recherche par coefficient - O(1) thread-safe */
+        fun getByCoef(coef: Int): NutrientMain? = coefMap[coef]
 
-        // Compteurs pour optimiser les performances
-        private var cacheHits = 0
-        private var cacheMisses = 0
+        /** Recherche par label - O(1) thread-safe */
+        fun getByLabel(label: String): NutrientMain? = labelMap[label.lowercase()]
 
-        fun getByCoef(coef: Int): NutrientMain? {
-            // Vérifier le cache d'abord
-            coefCache[coef]?.let {
-                cacheHits++
-                return it
-            }
+        /** Vérification d'existence par label - O(1) */
+        fun isByLabel(label: String): Boolean = labelMap.containsKey(label.lowercase())
 
-            cacheMisses++
-            val result = coefMap[coef]
-
-            // Nettoyer et ajouter au cache si nécessaire (stratégie simple)
-            if (coefCache.size >= maxCacheSize) {
-                // Supprimer les entrées les moins utilisées (approximation)
-                if (cacheHits > cacheMisses * 2) {
-                    coefCache.clear()
-                    cacheHits = 0
-                    cacheMisses = 0
-                }
-            }
-
-            if (coefCache.size < maxCacheSize && result != null) {
-                coefCache[coef] = result
-            }
-
-            return result
-        }
-
-        fun getByLabel(label: String): NutrientMain {
-            val lowerLabel = label.lowercase()
-
-            // Vérifier le cache d'abord
-            labelCache[lowerLabel]?.let {
-                cacheHits++
-                return it ?: PROTEINE
-            }
-
-            cacheMisses++
-            val result = labelMap[lowerLabel]
-
-            // Nettoyer et ajouter au cache si nécessaire
-            if (labelCache.size >= maxCacheSize) {
-                if (cacheHits > cacheMisses * 2) {
-                    labelCache.clear()
-                    cacheHits = 0
-                    cacheMisses = 0
-                }
-            }
-
-            if (labelCache.size < maxCacheSize && result != null) {
-                labelCache[lowerLabel] = result
-            }
-
-            return result ?: PROTEINE
-        }
-
-        fun isByLabel(label: String) = labelMap.containsKey(label.lowercase())
-
-        fun size() = entries.size
-
-        // Méthode utilitaire pour vider le cache si nécessaire
-        fun clearCache() {
-            coefCache.clear()
-            labelCache.clear()
-        }
+        /** Taille de l'énumération */
+        fun size(): Int = entries.size
     }
 
     override fun getMNE() = MainNutrientEnum.BASE
