@@ -41,6 +41,17 @@ class FoodEditViewModel(
 
     private fun loadNutrients() {
         // Charger tous les types de nutriments
+        
+        // Debug temporaire pour DM
+        println("🔍 DEBUG DM dans FoodEditViewModel.loadNutrients():")
+        println("  - NutrientMain.entries.size: ${NutrientMain.entries.size}")
+        println("  - NutrientMain.entries: ${NutrientMain.entries.map { it.label }}")
+        val dmNutrient = NutrientMain.entries.find { it.label == "DM" }
+        if (dmNutrient != null) {
+            println("  - DM trouvé: ${dmNutrient.label}")
+        } else {
+            println("  - DM NON trouvé dans NutrientMain.entries!")
+        }
 
         // Nutriments principaux
         NutrientMain.entries.forEach { nutrient ->
@@ -121,16 +132,20 @@ class FoodEditViewModel(
     }
 
     fun getAllNutrients(): List<Nutrient> {
-        // Si la liste est vide, retourner les clés de l'aliment actuel
+        // Debug temporaire pour DM
+        println("🔍 DEBUG DM dans FoodEditViewModel.getAllNutrients():")
+        println("  - _allNutrients.size: ${_allNutrients.size}")
+        println("  - _allNutrients.isEmpty(): ${_allNutrients.isEmpty()}")
         if (_allNutrients.isEmpty()) {
+            println("  - Retour des clés de l'aliment actuel: ${_alimentState.value.valMap.keys.size}")
             return _alimentState.value.valMap.keys.toList()
         }
+        println("  - Retour de _allNutrients: ${_allNutrients.size}")
         return _allNutrients
     }
 
     suspend fun saveAliment(aliment: AlimentEv) {
         try {
-
             // Vérifier si c'est un nouvel aliment ou une mise à jour
             val existingAliment =
                     try {
@@ -139,12 +154,14 @@ class FoodEditViewModel(
                         null
                     }
 
-            if (existingAliment != null) {} else {}
-
-            aliment.valMap.forEach { (nutrient, quantity) -> }
-
-            // Sauvegarder l'aliment
-            foodRepository.updateFood(aliment)
+            // Sauvegarder l'aliment selon le cas
+            if (existingAliment != null) {
+                // Aliment existant : mise à jour
+                foodRepository.updateFood(aliment)
+            } else {
+                // Nouvel aliment : insertion
+                foodRepository.insertFood(aliment)
+            }
 
             // Mettre à jour l'état local
             _alimentState.value = aliment

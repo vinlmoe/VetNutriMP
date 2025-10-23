@@ -264,7 +264,18 @@ private fun EquationEditTab(
                     options = listOf(null) + allNutrients,
                     onValueChange = { viewModel.updateNutrient(it) },
                     valueToString = { nutrient ->
-                        nutrient?.translateEnum() ?: "Aucun nutriment sélectionné"
+                        if (nutrient != null) {
+                            val translated = nutrient.translateEnum()
+                            // Debug temporaire pour DM
+                            if (nutrient.label == "DM") {
+                                println("🔍 DEBUG DM dans EquationEditView:")
+                                println("  - nutrient.label: ${nutrient.label}")
+                                println("  - nutrient.translateEnum(): $translated")
+                            }
+                            translated
+                        } else {
+                            "Aucun nutriment sélectionné"
+                        }
                     }
             )
 
@@ -353,8 +364,9 @@ private fun EquationEditTab(
                     }
             val nutrientsMain =
                     fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.entries.map {
-                        "${it.translateEnum()} - ${it.nameToString()}" to it.label
+                        "${it.translateEnum()} - ${it.label}" to it.label
                     }
+                  
             val nutrientsLipides =
                     fr.vetbrain.vetnutri_mp.Enumer.NutrientLipid.entries.map {
                         "${it.translateEnum()} - ${it.label}" to it.label
@@ -398,7 +410,7 @@ private fun EquationEditTab(
                     )
 
             // Combiner toutes les variables et les trier par nom d'affichage
-            (variableKindList +
+            val allVariables = (variableKindList +
                             nutrientsMain +
                             nutrientsLipides +
                             nutrientsVitamines +
@@ -409,6 +421,17 @@ private fun EquationEditTab(
                             nutrientsAnalysis +
                             systemVariables)
                     .sortedBy { it.first }
+            
+            // Debug temporaire pour voir si DM est dans la liste finale
+            val dmInList = allVariables.find { it.second == "DM" }
+            if (dmInList != null) {
+                println("  - DM trouvé dans allVariables: '${dmInList.first}' -> '${dmInList.second}'")
+            } else {
+                println("  - DM NON trouvé dans allVariables!")
+                println("  - Liste des labels: ${allVariables.map { it.second }}")
+            }
+            
+            allVariables
         }
 
         Box {

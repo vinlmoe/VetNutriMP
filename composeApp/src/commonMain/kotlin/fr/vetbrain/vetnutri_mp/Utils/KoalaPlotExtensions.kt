@@ -36,11 +36,17 @@ object KoalaPlotExtensions {
      * Optimisé pour afficher des valeurs de 0 à 100 avec des ticks appropriés
      */
     fun createSmartPercentageAxisModel(range: ClosedFloatingPointRange<Float>): FloatLinearAxisModel {
-        val tickIncrement = when {
-            range.endInclusive - range.start <= 10f -> 1f  // 1% par tick pour petites plages
-            range.endInclusive - range.start <= 50f -> 5f  // 5% par tick pour moyennes plages
+        val rangeSize = range.endInclusive - range.start
+        
+        // Calculer l'incrément souhaité
+        val desiredIncrement = when {
+            rangeSize <= 10f -> 1f  // 1% par tick pour petites plages
+            rangeSize <= 50f -> 5f  // 5% par tick pour moyennes plages
             else -> 10f  // 10% par tick pour grandes plages
         }
+        
+        // S'assurer que l'incrément ne dépasse jamais la plage
+        val tickIncrement = desiredIncrement.coerceAtMost(rangeSize)
         
         return FloatLinearAxisModel(
             range = range,
@@ -63,11 +69,17 @@ object KoalaPlotExtensions {
      * Optimisé pour les valeurs de densité
      */
     fun createSmartDensityAxisModel(range: ClosedFloatingPointRange<Float>): FloatLinearAxisModel {
-        val tickIncrement = when {
-            range.endInclusive - range.start <= 50f -> 10f   // 10 kcal/100g par tick
-            range.endInclusive - range.start <= 200f -> 25f // 25 kcal/100g par tick
+        val rangeSize = range.endInclusive - range.start
+        
+        // Calculer l'incrément souhaité
+        val desiredIncrement = when {
+            rangeSize <= 50f -> 10f   // 10 kcal/100g par tick
+            rangeSize <= 200f -> 25f // 25 kcal/100g par tick
             else -> 50f  // 50 kcal/100g par tick
         }
+        
+        // S'assurer que l'incrément ne dépasse jamais la plage
+        val tickIncrement = desiredIncrement.coerceAtMost(rangeSize)
         
         return FloatLinearAxisModel(
             range = range,
@@ -78,17 +90,22 @@ object KoalaPlotExtensions {
     /**
      * Calcule un incrément de tick optimal basé sur la plage de valeurs
      * Cela aide à contrôler le nombre de décimales affichées sur les axes
+     * IMPORTANT: L'incrément ne peut jamais dépasser la taille de la plage
      */
     private fun calculateOptimalTickIncrement(range: ClosedFloatingPointRange<Float>): Float {
         val rangeSize = range.endInclusive - range.start
         
-        return when {
+        // Calculer l'incrément souhaité
+        val desiredIncrement = when {
             rangeSize <= 1f -> 0.1f      // 1 décimale pour petites plages
-            rangeSize <= 5f -> 0.5f      // 1 décimale pour moyennes plages
+            rangeSize <= 5f -> 0.5f       // 1 décimale pour moyennes plages
             rangeSize <= 20f -> 2f       // Entiers pour plages normales
             rangeSize <= 100f -> 10f     // Entiers pour grandes plages
             rangeSize <= 500f -> 50f     // Entiers pour très grandes plages
             else -> 100f                 // Entiers pour plages énormes
         }
+        
+        // S'assurer que l'incrément ne dépasse jamais la plage
+        return desiredIncrement.coerceAtMost(rangeSize)
     }
 }

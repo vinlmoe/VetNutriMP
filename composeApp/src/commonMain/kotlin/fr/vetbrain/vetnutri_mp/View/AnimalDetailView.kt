@@ -82,7 +82,7 @@ private fun handlePdfExport(
         // Export ordonnance avec informations praticien
         val prefsStorage = createPreferencesStorage()
         val prefsRepo = PreferencesRepository(prefsStorage)
-        scope.launch {
+        scope.launch(fr.vetbrain.vetnutri_mp.Utils.AppDispatchers.Main) {
             try {
                 prefsRepo.loadPreferences()
                 val prefs = prefsRepo.preferences
@@ -97,9 +97,9 @@ private fun handlePdfExport(
                 )
                 val allRations = selectedConsultation?.rations?.toList() ?: emptyList()
                 
-                PdfExporter.exportDocument(
-                    DocumentType.PRESCRIPTION,
-                    ExportData(
+                fr.vetbrain.vetnutri_mp.exportPdfDocument(
+                    documentType = DocumentType.PRESCRIPTION,
+                    data = ExportData(
                         animal = animalDetails,
                         ration = null,
                         reference = referenceUtilisee,
@@ -118,9 +118,9 @@ private fun handlePdfExport(
                 )
             } catch (e: Exception) {
                 // En cas d'erreur, exporter sans les informations du prescripteur
-                PdfExporter.exportDocument(
-                    DocumentType.PRESCRIPTION,
-                    ExportData(
+                fr.vetbrain.vetnutri_mp.exportPdfDocument(
+                    documentType = DocumentType.PRESCRIPTION,
+                    data = ExportData(
                         animal = animalDetails,
                         ration = null,
                         reference = referenceUtilisee,
@@ -832,6 +832,7 @@ private fun WideScreenLayout(
                                                                                                                 animal.getEspece()
                                                                                                         )
                                                                                         },
+                                                                        viewModel = viewModel,
                                                                         onClose = {
                                                                                 viewModel
                                                                                         .hideAnalyseGraphique()
@@ -1370,7 +1371,7 @@ private fun WideScreenLayout(
                                                                                                 val prefsEspece = prefs?.getPreferencesEspece(animalDetails?.getEspece() ?: fr.vetbrain.vetnutri_mp.Enumer.Espece.CHIEN)
                                                                                                 
                                                                                                 val ref = referenceUtilisee
-                                                                                                if (prefsEspece != null && ref != null && animalDetails != null) {
+                                                                                                if (prefsEspece != null && ref != null) {
                                                                                                         // Générer les images avec la logique de RationsView
                                                                                                         val images = fr.vetbrain.vetnutri_mp.Export.BulletGraphImageCapture.generateRationBulletGraphImages(
                                                                                                                 ration = ration,
@@ -1392,7 +1393,7 @@ private fun WideScreenLayout(
                                                                                                         bulletGraphImages[ration.uuid] = imagePaths
                                                                                                         println("DEBUG: Généré ${imagePaths.size} images de bullet graphs")
                                                                                                 } else {
-                                                                                                        println("DEBUG: Données manquantes - prefsEspece: ${prefsEspece != null}, ref: ${ref != null}, animal: ${animalDetails != null}")
+                                                                                                        println("DEBUG: Données manquantes - prefsEspece: ${prefsEspece != null}, ref: ${ref != null}")
                                                                                                         
                                                                                                         // Générer des images de test même sans les vraies données
                                                                                                         println("DEBUG: Génération d'images de test...")
@@ -2113,9 +2114,7 @@ private fun NarrowScreenLayout(
                                                                                                                 aliment.uuid
                                                                                                         )
 
-                                                                                                if (alimentComplet !=
-                                                                                                                null
-                                                                                                ) {
+                                                                                                if (alimentComplet != null) {
 
                                                                                                         if (alimentComplet is AlimentEv) {
                                                                                                                 alimentsAvecValeurs
@@ -2210,6 +2209,7 @@ private fun NarrowScreenLayout(
                                                                                                                                 animal.getEspece()
                                                                                                                         )
                                                                                                         },
+                                                                                        viewModel = viewModel,
                                                                                         onClose = {
                                                                                                 viewModel
                                                                                                         .hideAnalyseGraphique()
@@ -2865,7 +2865,7 @@ private fun NarrowScreenLayout(
                                                                                                                         val prefsEspece = prefs?.getPreferencesEspece(animalDetails?.getEspece() ?: fr.vetbrain.vetnutri_mp.Enumer.Espece.CHIEN)
                                                                                                                         
                                                                                                                         val ref = referenceUtilisee
-                                                                                                                        if (prefsEspece != null && ref != null && animalDetails != null) {
+                                                                                                                        if (prefsEspece != null && ref != null) {
                                                                                                                                 // Générer les images avec la logique de RationsView
                                                                                                                                 val images = fr.vetbrain.vetnutri_mp.Export.BulletGraphImageCapture.generateRationBulletGraphImages(
                                                                                                                                         ration = ration,
@@ -2887,7 +2887,7 @@ private fun NarrowScreenLayout(
                                                                                                                                 bulletGraphImages[ration.uuid] = imagePaths
                                                                                                                                 println("DEBUG: Généré ${imagePaths.size} images de bullet graphs")
                                                                                                                         } else {
-                                                                                                                                println("DEBUG: Données manquantes - prefsEspece: ${prefsEspece != null}, ref: ${ref != null}, animal: ${animalDetails != null}")
+                                                                                                                                println("DEBUG: Données manquantes - prefsEspece: ${prefsEspece != null}, ref: ${ref != null}")
                                                                                                                                 
                                                                                                                                 // Générer des images de test même sans les vraies données
                                                                                                                                 println("DEBUG: Génération d'images de test...")

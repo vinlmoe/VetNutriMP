@@ -38,6 +38,9 @@ class SettingsViewModel(
                 null,
         internal val conseilRepository: fr.vetbrain.vetnutri_mp.Repository.ConseilRepository? = null
 ) {
+    // Instance statique de Json pour éviter la création redondante
+    private val json = Json { ignoreUnknownKeys = true }
+    
     private val _uiScale = MutableStateFlow(1.0)
     val uiScale: StateFlow<Double> = _uiScale.asStateFlow()
 
@@ -224,8 +227,7 @@ class SettingsViewModel(
      */
     suspend fun importFoodsFromJson(jsonContent: String): FoodImportResult {
         // Utilisation de kotlinx.serialization pour parser le JSON
-        val alimentsJson =
-                Json { ignoreUnknownKeys = true }.decodeFromString<List<AlimentEvJson>>(jsonContent)
+        val alimentsJson = json.decodeFromString<List<AlimentEvJson>>(jsonContent)
         return foodRepository.importFoods(alimentsJson)
     }
 

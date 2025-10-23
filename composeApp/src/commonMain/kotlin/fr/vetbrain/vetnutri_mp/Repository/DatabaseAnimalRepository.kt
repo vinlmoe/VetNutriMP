@@ -400,9 +400,7 @@ class DatabaseAnimalRepository(
                                                         if (alimentJson.UUIDunif != null &&
                                                                         alimentJson.alime != null
                                                         ) {
-                                                                val nomAliment =
-                                                                        alimentJson.alime.nom
-                                                                                ?: "Sans nom"
+                                                                val nomAliment = alimentJson.alime.nom
                                                                 foodNamesMap[alimentJson.UUIDunif] =
                                                                         nomAliment
 

@@ -51,13 +51,15 @@ actual open class ResourceReader actual constructor() {
     
     /**
      * Lit seulement le début d'une ressource JSON pour extraire la version.
-     * Pour iOS, lit le fichier complet mais c'est acceptable car les ressources iOS
-     * sont généralement plus petites.
+     * Évite de charger tout le fichier en mémoire (optimisation pour les gros fichiers).
      */
     actual open fun readJsonVersion(name: String): String? {
         return try {
-            val content = readResource(name)
-            extractVersionFromJson(content)
+            // Pour iOS, lire seulement les premières lignes pour éviter de charger 18MB
+            val fullContent = readResource(name)
+            // Prendre seulement les 50 premières lignes
+            val firstLines = fullContent.lines().take(50).joinToString("\n")
+            extractVersionFromJson(firstLines)
         } catch (e: Exception) {
             null
         }

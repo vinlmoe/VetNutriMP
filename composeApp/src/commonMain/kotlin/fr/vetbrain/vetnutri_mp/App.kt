@@ -44,6 +44,13 @@ expect fun exportJsonToFile(content: String, defaultFileName: String): Boolean
 
 expect fun openJsonFileContent(): String?
 
+// Export PDF - implémenté par plateforme
+expect fun exportPdfDocument(
+    documentType: fr.vetbrain.vetnutri_mp.Export.DocumentType,
+    data: fr.vetbrain.vetnutri_mp.Export.ExportData,
+    defaultFileName: String
+): Boolean
+
 // Service de gestion des fichiers
 expect fun createFileService(): FileService
 

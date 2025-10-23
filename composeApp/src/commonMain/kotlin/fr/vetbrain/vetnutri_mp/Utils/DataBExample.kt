@@ -48,6 +48,7 @@ object DataBExample {
             "4" -> DataB.GENERIQUE
             "5" -> DataB.ALIMENT_BARF
             "VF24" -> DataB.VETFOOD_2024
+            "CHEVAL" -> DataB.CHEVAL
             else -> null
         }
     }

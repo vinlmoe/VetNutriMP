@@ -9,6 +9,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -127,7 +128,7 @@ fun RecipeEditView(
                         navigationIcon = {
                             IconButton(onClick = { viewModel.cancelEditing() }) {
                                 Icon(
-                                    Icons.Default.ArrowBack,
+                                    Icons.AutoMirrored.Default.ArrowBack,
                                     contentDescription = "Retour"
                                 )
                             }

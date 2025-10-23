@@ -576,6 +576,66 @@ fun MultiNutrientAdjustmentView(
                                                                         },
                                                         modifier = Modifier.weight(1f)
                                                 ) { Text("Ajuster") }
+
+                                                // Nouveau bouton: Ajuster l'énergie en conservant les proportions (quantités égales)
+                                                OutlinedButton(
+                                                        onClick = {
+                                                                scope.launch {
+                                                                        isProcessing = true
+                                                                        processingMessage = "Ajustement énergie (quantités égales) en cours..."
+
+                                                                        try {
+                                                                                // Calculer l'énergie actuelle de la ration
+                                                                                var energieActuelle = 0.0
+                                                                                for (alimentRation in ration.alimentMutableList) {
+                                                                                        if (alimentRation.quantite > 0.0) {
+                                                                                                val e = alimentRation.getEnergie(
+                                                                                                        referenceUtilisee,
+                                                                                                        null,
+                                                                                                        null
+                                                                                                )
+                                                                                                energieActuelle += e
+                                                                                        }
+                                                                                }
+
+                                                                                if (energieActuelle <= 0.0) {
+                                                                                        val result = RationAdjustmentResult(
+                                                                                                success = false,
+                                                                                                message = "Énergie actuelle nulle, ajustement impossible",
+                                                                                                adjustedAliments = null
+                                                                                        )
+                                                                                        preview = result
+                                                                                } else {
+                                                                                        val facteur = besoinEnergetiqueTotal / energieActuelle
+                                                                                        // Appliquer le même facteur à toutes les quantités
+                                                                                        val adjustedAliments = ration.alimentMutableList.map { ar ->
+                                                                                                val nouvelleQuantite = kotlin.math.round(ar.quantite * facteur)
+                                                                                                ar.copy(quantite = nouvelleQuantite)
+                                                                                        }
+                                                                                        val result = RationAdjustmentResult(
+                                                                                                success = true,
+                                                                                                message = "Ajustement énergie (quantités égales) appliqué. Facteur: ${TextUtils.formatDecimal(facteur, 3)}",
+                                                                                                adjustedAliments = adjustedAliments
+                                                                                        )
+                                                                                        preview = result
+                                                                                        // Appliquer immédiatement comme l'action "Ajuster"
+                                                                                        onConfirm(result)
+                                                                                }
+                                                                        } catch (e: Exception) {
+                                                                                val result = RationAdjustmentResult(
+                                                                                        success = false,
+                                                                                        message = "Erreur: ${e.message}"
+                                                                                )
+                                                                                preview = result
+                                                                        } finally {
+                                                                                isProcessing = false
+                                                                                processingMessage = ""
+                                                                        }
+                                                                }
+                                                        },
+                                                        enabled = !isProcessing,
+                                                        modifier = Modifier.weight(1f)
+                                                ) { Text("Quantité égale (Sanalio)") }
                                         }
 
                                         // Affichage du message de traitement
@@ -745,8 +805,7 @@ private fun AlimentAdjustmentItem(
                 remember(aliment, referenceUtilisee) {
                         val labels = mutableSetOf<String>()
                         val valMap = aliment.valMap
-                        if (valMap != null) {
-                                for ((nutr, qty) in valMap.entries) {
+                        for ((nutr, qty) in valMap.entries) {
                                         if (qty.value > 0) {
                                                 // Vérifier que le nutriment a au moins une
                                                 // référence disponible
@@ -763,7 +822,6 @@ private fun AlimentAdjustmentItem(
                                                 }
                                         }
                                 }
-                        }
                         // Ajouter ÉNERGIE car elle peut maintenant être sélectionnée comme
                         // nutriment cible
                         // (l'énergie est toujours disponible, pas besoin de vérifier les

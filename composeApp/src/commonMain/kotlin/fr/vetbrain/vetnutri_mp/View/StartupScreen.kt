@@ -19,18 +19,28 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import fr.vetbrain.vetnutri_mp.Repository.DatabaseReferenceEvRepository
-import fr.vetbrain.vetnutri_mp.Repository.FoodRepository
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.DatabaseChangeNotifier
 import fr.vetbrain.vetnutri_mp.Utils.DatabaseVersionManager
 import fr.vetbrain.vetnutri_mp.Utils.TermsAcceptanceStorage
+import fr.vetbrain.vetnutri_mp.Utils.UpdateChecker
 import fr.vetbrain.vetnutri_mp.ViewModel.SettingsViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.SettingsViewModel.ImportResult
+import fr.vetbrain.vetnutri_mp.Enumer.TextConstant
+import fr.vetbrain.vetnutri_mp.getPlatform
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.ui.tooling.preview.Preview
 
-private fun journaliserMiseAJour(message: String): Unit {
-        println("[StartupScreen] ${message}")
-}
+/** État de la base de données */
+data class DatabaseStatus(
+        val foodCount: Int,
+        val referenceCount: Int,
+        val conseilsCount: Int = 0,
+        val needsUpdate: Boolean,
+        val error: String? = null
+)
+
+private fun journaliserMiseAJour(message: String): Unit {}
 
 private fun extraireVersionJson(contenu: String): String? {
         val motif: Regex = "\"version\"\\s*:\\s*\"([^\"]+)\"".toRegex()
@@ -78,6 +88,13 @@ fun StartupScreen(
         var jsonUpdateAvailable by remember { mutableStateOf(false) }
         var showJsonUpdateDialog by remember { mutableStateOf(false) }
 
+        // Variables pour la vérification de mise à jour de l'application (desktop uniquement)
+        var appUpdateResult by remember { mutableStateOf<UpdateChecker.UpdateCheckResult?>(null) }
+        var showAppUpdateDialog by remember { mutableStateOf(false) }
+        var showAppUpdateErrorDialog by remember { mutableStateOf(false) }
+        var appUpdateError by remember { mutableStateOf<String?>(null) }
+        var isCheckingAppUpdate by remember { mutableStateOf(false) }
+
         val coroutineScope = rememberCoroutineScope()
 
         // Vérifier l'état de la base de données, des CGU et des versions au démarrage
@@ -85,11 +102,28 @@ fun StartupScreen(
                 try {
                         val foodCount = settingsViewModel.foodRepository.getAllFoods().size
                         val referenceCount = referenceRepository?.getAllReferenceEv()?.size ?: 0
-                        val conseilsCount = try {
-                                conseilRepository?.getConseilsCount()?.getOrThrow() ?: 0
-                        } catch (e: Exception) {
-                                0
-                        }
+
+                        // Assainir les doublons de coefficients K (même nom et même valeur) au démarrage
+                        try {
+                                if (referenceRepository != null) {
+                                        val allRefs = referenceRepository.getAllReferenceEv()
+                                        for (ref in allRefs) {
+                                                val before = listOf(ref.modk1.size, ref.modk2.size, ref.modk3.size, ref.modk4.size, ref.modk5.size)
+                                                ref.deduplicateCoefficients()
+                                                val after = listOf(ref.modk1.size, ref.modk2.size, ref.modk3.size, ref.modk4.size, ref.modk5.size)
+                                                if (after != before) {
+                                                        // Persister uniquement si modification
+                                                        referenceRepository.updateReferenceEv(ref)
+                                                }
+                                        }
+                                }
+                        } catch (_: Exception) {}
+                        val conseilsCount =
+                                try {
+                                        conseilRepository?.getConseilsCount()?.getOrThrow() ?: 0
+                                } catch (e: Exception) {
+                                        0
+                                }
 
                         databaseStatus =
                                 DatabaseStatus(
@@ -113,75 +147,196 @@ fun StartupScreen(
 
                         // Lire et vérifier la version du JSON intégré de manière optimisée
                         try {
-                                val resourceReader = fr.vetbrain.vetnutri_mp.Localization.ResourceReader()
+                                val resourceReader =
+                                        fr.vetbrain.vetnutri_mp.Localization.ResourceReader()
                                 // Essayer de lire seulement la version d'abord (plus efficace)
-                                val localEmbeddedJsonVersion: String? = try {
-                                        resourceReader.readJsonVersion("vetnutri_export_init.json")
-                                } catch (e: Exception) {
+                                val localEmbeddedJsonVersion: String? =
                                         try {
-                                                resourceReader.readJsonVersion("data/vetnutri_export_init.json")
-                                        } catch (e2: Exception) {
-                                                null
+                                                resourceReader.readJsonVersion(
+                                                        "vetnutri_export_init.json"
+                                                )
+                                        } catch (e: Exception) {
+                                                try {
+                                                        resourceReader.readJsonVersion(
+                                                                "data/vetnutri_export_init.json"
+                                                        )
+                                                } catch (e2: Exception) {
+                                                        null
+                                                }
                                         }
-                                }
                                 embeddedJsonVersion = localEmbeddedJsonVersion
                                 if (localEmbeddedJsonVersion != null) {
-                                        journaliserMiseAJour("Version JSON intégrée=" + localEmbeddedJsonVersion)
-                                        val currentStoredVersion: String? = databaseVersionManager.getStoredJsonVersion()
-                                        val isUpdate = currentStoredVersion == null || databaseVersionManager.compareVersions(localEmbeddedJsonVersion, currentStoredVersion) > 0
+                                        journaliserMiseAJour(
+                                                "Version JSON intégrée=" + localEmbeddedJsonVersion
+                                        )
+                                        val currentStoredVersion: String? =
+                                                databaseVersionManager.getStoredJsonVersion()
+                                        val isUpdate =
+                                                currentStoredVersion == null ||
+                                                        databaseVersionManager.compareVersions(
+                                                                localEmbeddedJsonVersion,
+                                                                currentStoredVersion
+                                                        ) > 0
                                         jsonUpdateAvailable = isUpdate
                                         if (jsonUpdateAvailable && !isUpdatingDatabase) {
                                                 showJsonUpdateDialog = true
-                                                val formattedIntegrated: String = databaseVersionManager.formatVersion(localEmbeddedJsonVersion)
-                                                val stored: String = currentStoredVersion ?: "Aucune"
-                                                journaliserMiseAJour("Détection nouvelle version JSON intégrée=" + formattedIntegrated + "; version stockée=" + stored + "; déclenchement du popup JSON=true")
+                                                val formattedIntegrated: String =
+                                                        databaseVersionManager.formatVersion(
+                                                                localEmbeddedJsonVersion
+                                                        )
+                                                val stored: String =
+                                                        currentStoredVersion ?: "Aucune"
+                                                journaliserMiseAJour(
+                                                        "Détection nouvelle version JSON intégrée=" +
+                                                                formattedIntegrated +
+                                                                "; version stockée=" +
+                                                                stored +
+                                                                "; déclenchement du popup JSON=true"
+                                                )
                                         }
                                         val stored: String = currentStoredVersion ?: "Aucune"
                                         val integrated: String = localEmbeddedJsonVersion
-                                        val triggered: Boolean = jsonUpdateAvailable && !isUpdatingDatabase
-                                        journaliserMiseAJour("Version JSON stockée=" + stored + "; Version JSON intégrée=" + integrated + "; popupDéclenché=" + triggered)
-                                } else {
-                                        // Fallback: lire le contenu complet et extraire la version
-                                        val candidats: List<String> = listOf(
-                                                "data/vetnutri_export_init.json",
-                                                "vetnutri_export_init.json"
+                                        val triggered: Boolean =
+                                                jsonUpdateAvailable && !isUpdatingDatabase
+                                        journaliserMiseAJour(
+                                                "Version JSON stockée=" +
+                                                        stored +
+                                                        "; Version JSON intégrée=" +
+                                                        integrated +
+                                                        "; popupDéclenché=" +
+                                                        triggered
                                         )
+                                } else {
+                                        // Fallback: lire seulement les premières lignes pour
+                                        // extraire la version
+                                        val candidats: List<String> =
+                                                listOf(
+                                                        "data/vetnutri_export_init.json",
+                                                        "vetnutri_export_init.json"
+                                                )
                                         var versionTrouvee: String? = null
                                         for (nom in candidats) {
                                                 try {
-                                                        val contenu: String = resourceReader.readResourceOptimized(nom)
-                                                        versionTrouvee = extraireVersionJson(contenu)
+                                                        // ⚠️ CRITIQUE: Ne lire que les premières
+                                                        // lignes au lieu du fichier complet 18MB
+                                                        val contenuPartiel: String =
+                                                                resourceReader
+                                                                        .readResourceOptimized(nom)
+                                                        val lignes =
+                                                                contenuPartiel
+                                                                        .lines()
+                                                                        .take(
+                                                                                50
+                                                                        ) // Seulement 50 premières
+                                                        // lignes
+                                                        val contenuReduit =
+                                                                lignes.joinToString("\n")
+                                                        versionTrouvee =
+                                                                extraireVersionJson(contenuReduit)
                                                         if (versionTrouvee != null) {
                                                                 embeddedJsonVersion = versionTrouvee
                                                                 break
                                                         }
-                                                } catch (_: Exception) {
-                                                }
+                                                } catch (_: Exception) {}
                                         }
                                         if (versionTrouvee != null) {
-                                                journaliserMiseAJour("Version JSON intégrée (fallback)=" + versionTrouvee)
-                                                // Aligner le comportement: recalcul de la mise à jour et popup éventuel
-                                                val currentStoredVersion: String? = databaseVersionManager.getStoredJsonVersion()
-                                                val isUpdate: Boolean = currentStoredVersion == null || databaseVersionManager.compareVersions(versionTrouvee, currentStoredVersion) > 0
+                                                journaliserMiseAJour(
+                                                        "Version JSON intégrée (fallback)=" +
+                                                                versionTrouvee
+                                                )
+                                                // Aligner le comportement: recalcul de la mise à
+                                                // jour et popup éventuel
+                                                val currentStoredVersion: String? =
+                                                        databaseVersionManager
+                                                                .getStoredJsonVersion()
+                                                val isUpdate: Boolean =
+                                                        currentStoredVersion == null ||
+                                                                databaseVersionManager
+                                                                        .compareVersions(
+                                                                                versionTrouvee,
+                                                                                currentStoredVersion
+                                                                        ) > 0
                                                 jsonUpdateAvailable = isUpdate
                                                 if (jsonUpdateAvailable && !isUpdatingDatabase) {
                                                         showJsonUpdateDialog = true
-                                                        val formattedIntegrated: String = databaseVersionManager.formatVersion(versionTrouvee)
-                                                        val stored: String = currentStoredVersion ?: "Aucune"
-                                                        journaliserMiseAJour("Détection nouvelle version JSON intégrée=" + formattedIntegrated + "; version stockée=" + stored + "; déclenchement du popup JSON=true")
+                                                        val formattedIntegrated: String =
+                                                                databaseVersionManager
+                                                                        .formatVersion(
+                                                                                versionTrouvee
+                                                                        )
+                                                        val stored: String =
+                                                                currentStoredVersion ?: "Aucune"
+                                                        journaliserMiseAJour(
+                                                                "Détection nouvelle version JSON intégrée=" +
+                                                                        formattedIntegrated +
+                                                                        "; version stockée=" +
+                                                                        stored +
+                                                                        "; déclenchement du popup JSON=true"
+                                                        )
                                                 }
-                                                val stored: String = currentStoredVersion ?: "Aucune"
-                                                val triggered: Boolean = jsonUpdateAvailable && !isUpdatingDatabase
-                                                journaliserMiseAJour("Version JSON stockée=" + stored + "; Version JSON intégrée=" + versionTrouvee + "; popupDéclenché=" + triggered)
+                                                val stored: String =
+                                                        currentStoredVersion ?: "Aucune"
+                                                val triggered: Boolean =
+                                                        jsonUpdateAvailable && !isUpdatingDatabase
+                                                journaliserMiseAJour(
+                                                        "Version JSON stockée=" +
+                                                                stored +
+                                                                "; Version JSON intégrée=" +
+                                                                versionTrouvee +
+                                                                "; popupDéclenché=" +
+                                                                triggered
+                                                )
                                         } else {
-                                                journaliserMiseAJour("Version JSON intégrée introuvable")
+                                                journaliserMiseAJour(
+                                                        "Version JSON intégrée introuvable"
+                                                )
                                         }
                                 }
                         } catch (e: Exception) {
                                 // En cas d'erreur, on considère qu'aucune mise à jour n'est
                                 // nécessaire
                                 jsonUpdateAvailable = false
-                                journaliserMiseAJour("Erreur lors de la lecture de la version JSON intégrée: ${e.message}")
+                                journaliserMiseAJour(
+                                        "Erreur lors de la lecture de la version JSON intégrée: ${e.message}"
+                                )
+                        }
+
+                        // Vérification de mise à jour de l'application (desktop uniquement)
+                        val platform = getPlatform()
+                        val isDesktop = platform.name.contains("Java") || platform.name.contains("Windows") || platform.name.contains("Linux")
+                        
+                        if (isDesktop) {
+                                try {
+                                        isCheckingAppUpdate = true
+                                        val updateChecker = UpdateChecker()
+                                        val currentAppVersion = TextConstant.VERSION.value
+                                        val updateResult = updateChecker.checkForUpdate(currentAppVersion)
+                                        
+                                        appUpdateResult = updateResult
+                                        
+                                if (updateResult.isUpdateAvailable) {
+                                        showAppUpdateDialog = true
+                                        journaliserMiseAJour("=".repeat(50))
+                                        journaliserMiseAJour("🔗 MISE À JOUR DISPONIBLE")
+                                        journaliserMiseAJour("=".repeat(50))
+                                        journaliserMiseAJour("📋 Version actuelle: ${updateResult.currentVersion}")
+                                        journaliserMiseAJour("🆕 Nouvelle version: ${updateResult.newVersion}")
+                                        journaliserMiseAJour("📥 URL: ${updateResult.downloadUrl}")
+                                        journaliserMiseAJour("=".repeat(50))
+                                } else if (updateResult.error != null) {
+                                                appUpdateError = updateResult.error
+                                                showAppUpdateErrorDialog = true
+                                                journaliserMiseAJour("Erreur vérification mise à jour: ${updateResult.error}")
+                                        }
+                                } catch (e: Exception) {
+                                        appUpdateError = "Erreur lors de la vérification de mise à jour: ${e.message}"
+                                        showAppUpdateErrorDialog = true
+                                        journaliserMiseAJour("Erreur vérification mise à jour: ${e.message}")
+                                } finally {
+                                        isCheckingAppUpdate = false
+                                }
+                        } else {
+                                journaliserMiseAJour("Vérification de mise à jour ignorée (plateforme non-desktop: ${platform.name})")
                         }
 
                         // Attendre un peu pour montrer l'écran de démarrage
@@ -210,7 +365,9 @@ fun StartupScreen(
                                                 // Mettre à jour le statut de la base de données
                                                 try {
                                                         val newFoodCount =
-                                                                settingsViewModel.foodRepository.getAllFoods().size
+                                                                settingsViewModel.foodRepository
+                                                                        .getAllFoods()
+                                                                        .size
                                                         val newReferenceCount =
                                                                 referenceRepository
                                                                         ?.getAllReferenceEv()
@@ -359,6 +516,28 @@ fun StartupScreen(
                                                 style = MaterialTheme.typography.body1,
                                                 textAlign = TextAlign.Center
                                         )
+                                        
+                                        // Indicateur de vérification de mise à jour (desktop uniquement)
+                                        val platform = getPlatform()
+                                        val isDesktop = platform.name.contains("Java") || platform.name.contains("Windows") || platform.name.contains("Linux")
+                                        
+                                        if (isDesktop && isCheckingAppUpdate) {
+                                                Spacer(modifier = Modifier.height(16.dp))
+                                                
+                                                CircularProgressIndicator(
+                                                        color = VetNutriColors.Secondary,
+                                                        modifier = Modifier.size(32.dp)
+                                                )
+                                                
+                                                Spacer(modifier = Modifier.height(8.dp))
+                                                
+                                                Text(
+                                                        text = "Vérification des mises à jour...",
+                                                        style = MaterialTheme.typography.body2,
+                                                        color = VetNutriColors.Secondary,
+                                                        textAlign = TextAlign.Center
+                                                )
+                                        }
                                 } else {
                                         databaseStatus?.let { status ->
                                                 DatabaseStatusCard(status = status)
@@ -514,7 +693,9 @@ fun StartupScreen(
                                                         Button(
                                                                 onClick = {
                                                                         showUpdateDialog = true
-                                                                        journaliserMiseAJour("Ouverture du popup de mise à jour de la base (manuel)")
+                                                                        journaliserMiseAJour(
+                                                                                "Ouverture du popup de mise à jour de la base (manuel)"
+                                                                        )
                                                                         // Désactiver l'affichage
                                                                         // par défaut une fois que
                                                                         // l'utilisateur a cliqué
@@ -584,25 +765,52 @@ fun StartupScreen(
                                                                                 "Continuer sans mise à jour"
                                                                         )
                                                                 }
-                                                                
-                                                                Spacer(modifier = Modifier.height(8.dp))
-                                                                
-                                                                // Bouton pour restaurer une sauvegarde
+
+                                                                Spacer(
+                                                                        modifier =
+                                                                                Modifier.height(
+                                                                                        8.dp
+                                                                                )
+                                                                )
+
+                                                                // Bouton pour restaurer une
+                                                                // sauvegarde
                                                                 OutlinedButton(
-                                                                        onClick = onShowBackupDialog,
-                                                                        modifier = Modifier.fillMaxWidth()
-                                                                                .height(48.dp),
-                                                                        colors = ButtonDefaults.outlinedButtonColors(
-                                                                                contentColor = VetNutriColors.Secondary
-                                                                        )
+                                                                        onClick =
+                                                                                onShowBackupDialog,
+                                                                        modifier =
+                                                                                Modifier.fillMaxWidth()
+                                                                                        .height(
+                                                                                                48.dp
+                                                                                        ),
+                                                                        colors =
+                                                                                ButtonDefaults
+                                                                                        .outlinedButtonColors(
+                                                                                                contentColor =
+                                                                                                        VetNutriColors
+                                                                                                                .Secondary
+                                                                                        )
                                                                 ) {
                                                                         Icon(
-                                                                                imageVector = Icons.Default.Download,
-                                                                                contentDescription = null,
-                                                                                modifier = Modifier.size(18.dp)
+                                                                                imageVector =
+                                                                                        Icons.Default
+                                                                                                .Download,
+                                                                                contentDescription =
+                                                                                        null,
+                                                                                modifier =
+                                                                                        Modifier.size(
+                                                                                                18.dp
+                                                                                        )
                                                                         )
-                                                                        Spacer(modifier = Modifier.width(8.dp))
-                                                                        Text("Restaurer une sauvegarde")
+                                                                        Spacer(
+                                                                                modifier =
+                                                                                        Modifier.width(
+                                                                                                8.dp
+                                                                                        )
+                                                                        )
+                                                                        Text(
+                                                                                "Restaurer une sauvegarde"
+                                                                        )
                                                                 }
                                                         }
                                                 } else {
@@ -642,25 +850,52 @@ fun StartupScreen(
                                                                                 fontSize = 16.sp
                                                                         )
                                                                 }
-                                                                
-                                                                Spacer(modifier = Modifier.height(8.dp))
-                                                                
-                                                                // Bouton pour restaurer une sauvegarde
+
+                                                                Spacer(
+                                                                        modifier =
+                                                                                Modifier.height(
+                                                                                        8.dp
+                                                                                )
+                                                                )
+
+                                                                // Bouton pour restaurer une
+                                                                // sauvegarde
                                                                 OutlinedButton(
-                                                                        onClick = onShowBackupDialog,
-                                                                        modifier = Modifier.fillMaxWidth()
-                                                                                .height(48.dp),
-                                                                        colors = ButtonDefaults.outlinedButtonColors(
-                                                                                contentColor = VetNutriColors.Secondary
-                                                                        )
+                                                                        onClick =
+                                                                                onShowBackupDialog,
+                                                                        modifier =
+                                                                                Modifier.fillMaxWidth()
+                                                                                        .height(
+                                                                                                48.dp
+                                                                                        ),
+                                                                        colors =
+                                                                                ButtonDefaults
+                                                                                        .outlinedButtonColors(
+                                                                                                contentColor =
+                                                                                                        VetNutriColors
+                                                                                                                .Secondary
+                                                                                        )
                                                                 ) {
                                                                         Icon(
-                                                                                imageVector = Icons.Default.Download,
-                                                                                contentDescription = null,
-                                                                                modifier = Modifier.size(18.dp)
+                                                                                imageVector =
+                                                                                        Icons.Default
+                                                                                                .Download,
+                                                                                contentDescription =
+                                                                                        null,
+                                                                                modifier =
+                                                                                        Modifier.size(
+                                                                                                18.dp
+                                                                                        )
                                                                         )
-                                                                        Spacer(modifier = Modifier.width(8.dp))
-                                                                        Text("Restaurer une sauvegarde")
+                                                                        Spacer(
+                                                                                modifier =
+                                                                                        Modifier.width(
+                                                                                                8.dp
+                                                                                        )
+                                                                        )
+                                                                        Text(
+                                                                                "Restaurer une sauvegarde"
+                                                                        )
                                                                 }
                                                         }
                                                 }
@@ -873,7 +1108,9 @@ fun StartupScreen(
                                         // confirme la mise à jour JSON
                                         showUpdateButtonByDefault = false
                                         isUpdatingDatabase = true
-                                        journaliserMiseAJour("Début d'import JSON (isUpdatingDatabase=true)")
+                                        journaliserMiseAJour(
+                                                "Début d'import JSON (isUpdatingDatabase=true)"
+                                        )
 
                                         coroutineScope.launch {
                                                 try {
@@ -936,7 +1173,9 @@ fun StartupScreen(
                                 },
                                 onDismiss = {
                                         showJsonUpdateDialog = false
-                                        journaliserMiseAJour("Annulation du popup de mise à jour JSON")
+                                        journaliserMiseAJour(
+                                                "Annulation du popup de mise à jour JSON"
+                                        )
                                         // Désactiver l'affichage par défaut quand l'utilisateur
                                         // rejette la mise à jour JSON
                                         showUpdateButtonByDefault = false
@@ -951,12 +1190,16 @@ fun StartupScreen(
                         UpdateConfirmationDialog(
                                 onConfirm = {
                                         showUpdateDialog = false
-                                        journaliserMiseAJour("Confirmation de la mise à jour de la base")
+                                        journaliserMiseAJour(
+                                                "Confirmation de la mise à jour de la base"
+                                        )
                                         // Désactiver l'affichage par défaut quand l'utilisateur
                                         // confirme la mise à jour
                                         showUpdateButtonByDefault = false
                                         isUpdatingDatabase = true
-                                        journaliserMiseAJour("Début d'import base (isUpdatingDatabase=true)")
+                                        journaliserMiseAJour(
+                                                "Début d'import base (isUpdatingDatabase=true)"
+                                        )
 
                                         coroutineScope.launch {
                                                 try {
@@ -964,7 +1207,9 @@ fun StartupScreen(
                                                         // données (forcée)
                                                         val result =
                                                                 settingsViewModel
-                                                                        .relaunchAutomaticImport(forceImport = true)
+                                                                        .relaunchAutomaticImport(
+                                                                                forceImport = true
+                                                                        )
 
                                                         // Mettre à jour le statut
                                                         when (result) {
@@ -1011,7 +1256,9 @@ fun StartupScreen(
                                 },
                                 onDismiss = {
                                         showUpdateDialog = false
-                                        journaliserMiseAJour("Annulation du popup de mise à jour de la base")
+                                        journaliserMiseAJour(
+                                                "Annulation du popup de mise à jour de la base"
+                                        )
                                         // Désactiver l'affichage par défaut quand l'utilisateur
                                         // annule la mise à jour
                                         showUpdateButtonByDefault = false
@@ -1079,6 +1326,24 @@ fun StartupScreen(
                                 }
                         }
                 }
+        }
+        
+        // Dialogues de mise à jour de l'application
+        if (showAppUpdateDialog && appUpdateResult != null) {
+                UpdateDialog(
+                        updateResult = appUpdateResult!!,
+                        onDismiss = { showAppUpdateDialog = false }
+                )
+        }
+        
+        if (showAppUpdateErrorDialog && appUpdateError != null) {
+                UpdateErrorDialog(
+                        errorMessage = appUpdateError!!,
+                        onDismiss = { 
+                                showAppUpdateErrorDialog = false
+                                appUpdateError = null
+                        }
+                )
         }
 }
 
@@ -1461,12 +1726,3 @@ private fun TermsAndConditionsDialog(onAccept: () -> Unit, onDismiss: () -> Unit
                 dismissButton = { OutlinedButton(onClick = onDismiss) { Text("Fermer") } }
         )
 }
-
-/** État de la base de données */
-data class DatabaseStatus(
-        val foodCount: Int,
-        val referenceCount: Int,
-        val conseilsCount: Int = 0,
-        val needsUpdate: Boolean,
-        val error: String? = null
-)

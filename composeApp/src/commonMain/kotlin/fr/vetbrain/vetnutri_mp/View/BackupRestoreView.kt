@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -57,7 +58,7 @@ fun BackupRestoreView(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = onBack) {
-                    Icon(Icons.Default.ArrowBack, contentDescription = "Retour")
+                    Icon(Icons.AutoMirrored.Default.ArrowBack, contentDescription = "Retour")
                 }
                 Text("Sauvegardes et Restauration", style = MaterialTheme.typography.h5, fontWeight = FontWeight.Bold)
             }

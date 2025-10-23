@@ -136,6 +136,8 @@ class DatabaseFoodRepository(
      */
     suspend fun importFoodsDomain(aliments: List<AlimentEv>): FoodImportResult {
         return withContext(AppDispatchers.IO) {
+            println("[REPOSITORY-INFO] === DÉBUT IMPORT FOODS DOMAIN ===")
+            println("[REPOSITORY-INFO] Nombre d'aliments à importer: ${aliments.size}")
             
             var importCount: Int = 0
             var updateCount: Int = 0
@@ -156,11 +158,18 @@ class DatabaseFoodRepository(
                 val allNutrientValues: MutableList<NutrientValueEntity> = mutableListOf()
 
                 // Pré-traiter insert vs update
-                aliments.forEach { aliment ->
+                aliments.forEachIndexed { index, aliment ->
+                    println("[REPOSITORY-INFO] --- Traitement aliment ${index + 1}/${aliments.size} ---")
+                    println("[REPOSITORY-INFO] Nom: '${aliment.nom}', UUID: '${aliment.uuid}'")
+                    println("[REPOSITORY-INFO] Espèces: ${aliment.especes}")
+                    println("[REPOSITORY-INFO] Indications: ${aliment.indicat}")
+                    println("[REPOSITORY-INFO] Nutriments: ${aliment.valMap.size}")
+                    
                     try {
                         if (aliment.uuid.isBlank()) {
+                            println("[REPOSITORY-ERROR] UUID vide pour l'aliment: '${aliment.nom}'")
                             errorCount++
-                            return@forEach
+                            return@forEachIndexed
                         }
                         val belongs: Boolean = existingFoodUUIDs.contains(aliment.uuid)
                         if (!belongs) {
@@ -174,6 +183,8 @@ class DatabaseFoodRepository(
                             updateIds.add(aliment.uuid)
                         }
                     } catch (e: Exception) {
+                        println("[REPOSITORY-ERROR] Erreur lors du traitement de l'aliment '${aliment.nom}': ${e.message}")
+                        println("[REPOSITORY-ERROR] Stack trace: ${e.stackTraceToString()}")
                         errorCount++
                     }
                 }
@@ -284,6 +295,10 @@ class DatabaseFoodRepository(
                     nonResolvedNutrientsCount = nonResolvedNutrients.size,
                     nonResolvedNutrients = nonResolvedNutrients.keys.toList()
             )
+            
+            println("[REPOSITORY-INFO] === RÉSULTAT IMPORT FOODS DOMAIN ===")
+            println("[REPOSITORY-INFO] Importés: $importCount, Mis à jour: $updateCount, Erreurs: $errorCount")
+            println("[REPOSITORY-INFO] Nutriments non résolus: ${nonResolvedNutrients.size}")
             
             return@withContext result
         }
@@ -700,7 +715,7 @@ class DatabaseFoodRepository(
                                                     )
                                                             1
                                                     else 0,
-                                            deprecated = if (food.deprecated == true) 1 else 0,
+                                            deprecated = if (food.deprecated) 1 else 0,
                                             DataB = food.DataB ?: "",
                                             RefRation = null,
                                             RefAlimUnif = null,

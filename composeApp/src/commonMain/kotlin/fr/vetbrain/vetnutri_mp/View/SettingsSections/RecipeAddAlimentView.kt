@@ -5,8 +5,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -55,20 +55,16 @@ fun RecipeAddAlimentView(
     
     LaunchedEffect(Unit) {
         try {
-            println("🔍 RecipeAddAlimentView: Début du chargement des aliments...")
             kotlinx.coroutines.withContext(fr.vetbrain.vetnutri_mp.Utils.AppDispatchers.IO) {
                 val foods = recipeEditViewModel.foodRepository.getAllFoods()
-                println("🔍 RecipeAddAlimentView: ${foods.size} aliments récupérés du repository")
                 kotlinx.coroutines.withContext(fr.vetbrain.vetnutri_mp.Utils.AppDispatchers.Main) {
                     allFoods.clear()
                     allFoods.addAll(foods)
                     isLoading = false
-                    println("🔍 RecipeAddAlimentView: ${allFoods.size} aliments ajoutés à la liste locale")
                 }
             }
         } catch (e: Exception) {
-            println("❌ RecipeAddAlimentView: Erreur lors du chargement: ${e.message}")
-            e.printStackTrace()
+            
             isLoading = false
         }
     }
@@ -79,7 +75,7 @@ fun RecipeAddAlimentView(
                 title = { Text("Ajouter un aliment à la recette") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Retour")
+                        Icon(Icons.AutoMirrored.Default.ArrowBack, contentDescription = "Retour")
                     }
                 },
                 backgroundColor = VetNutriColors.Primary,

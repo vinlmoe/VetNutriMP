@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.Utils
 
+import kotlin.math.pow
+
 /** Utilitaires pour le formatage de texte */
 object TextUtils {
 
@@ -56,13 +58,17 @@ object TextUtils {
         return "$signe$partieEntiere.$decimaleStr"
     }
 
+    // Pré-calcul des puissances de 10 pour éviter les boucles
+    private val powerOf10 = (0..10).associateWith { calculatePowerOf10(it) }
+
     private fun d10(exp: Int): Long {
+        return powerOf10[exp] ?: calculatePowerOf10(exp)
+    }
+
+    private fun calculatePowerOf10(exp: Int): Long {
+        // Calcul simple des puissances de 10
         var res: Long = 1
-        var i: Int = 0
-        while (i < exp) {
-            res *= 10
-            i += 1
-        }
+        repeat(exp) { res *= 10 }
         return res
     }
 

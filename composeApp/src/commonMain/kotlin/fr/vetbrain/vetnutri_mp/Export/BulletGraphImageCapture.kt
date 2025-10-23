@@ -113,7 +113,6 @@ object BulletGraphImageCapture {
                                 } else valeurApportAbsolue
                             } ?: valeurApportAbsolue
                         }
-                        else -> valeurApportAbsolue
                     }
                 }
                 
@@ -896,7 +895,6 @@ private fun obtenirNomTraduitNutriment(nomNutriment: String, nutrient: Nutrient)
                 fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro.NA -> "Sodium"
                 fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro.K -> "Potassium"
                 fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro.CHL -> "Chlore"
-                else -> nomNutriment
             }
         }
         is fr.vetbrain.vetnutri_mp.Enumer.NutrientMin -> {
@@ -907,7 +905,6 @@ private fun obtenirNomTraduitNutriment(nomNutriment: String, nutrient: Nutrient)
                 fr.vetbrain.vetnutri_mp.Enumer.NutrientMin.MN -> "Manganèse"
                 fr.vetbrain.vetnutri_mp.Enumer.NutrientMin.I -> "Iode"
                 fr.vetbrain.vetnutri_mp.Enumer.NutrientMin.SE -> "Sélénium"
-                else -> nomNutriment
             }
         }
         is fr.vetbrain.vetnutri_mp.Enumer.NutrientVitam -> {

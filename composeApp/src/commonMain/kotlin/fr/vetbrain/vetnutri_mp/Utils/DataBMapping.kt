@@ -10,7 +10,8 @@ enum class DataB(val code: String, val displayName: String) {
     PETFOOD_DIVERS("2", "PetFood Divers"),
     GENERIQUE("4", "Générique"),
     ALIMENT_BARF("5", "Aliment Barf"),
-    VETFOOD_2024("VF24", "VetFood 2024");
+    VETFOOD_2024("VF24", "VetFood 2024"),
+    CHEVAL("CHEVAL", "Cheval");
 
     companion object {
         private const val DEFAULT_DISPLAY_NAME = "Base de données inconnue"

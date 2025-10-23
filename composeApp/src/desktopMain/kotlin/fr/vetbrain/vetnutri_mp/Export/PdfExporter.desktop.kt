@@ -15,12 +15,26 @@ actual object PdfExporter {
             val baos = ByteArrayOutputStream()
             PdfRendererBuilder().withHtmlContent(html, null).toStream(baos).run()
             val bytes = baos.toByteArray()
-            FileUtils.saveBinaryFileDialog(
-                    bytes = bytes,
-                    defaultFileName = defaultFileName.ifBlank { "document.pdf" }
-            )
-        } catch (t: Throwable) {
             
+            // Utiliser SwingUtilities.invokeAndWait comme dans exportJsonToFile
+            var result = false
+            if (javax.swing.SwingUtilities.isEventDispatchThread()) {
+                result = FileUtils.saveBinaryFileDialog(
+                        bytes = bytes,
+                        defaultFileName = defaultFileName.ifBlank { "document.pdf" }
+                )
+            } else {
+                javax.swing.SwingUtilities.invokeAndWait {
+                    result = FileUtils.saveBinaryFileDialog(
+                            bytes = bytes,
+                            defaultFileName = defaultFileName.ifBlank { "document.pdf" }
+                    )
+                }
+            }
+            result
+        } catch (t: Throwable) {
+            println("PDF export failed: ${t.message}")
+            t.printStackTrace()
             false
         }
     }

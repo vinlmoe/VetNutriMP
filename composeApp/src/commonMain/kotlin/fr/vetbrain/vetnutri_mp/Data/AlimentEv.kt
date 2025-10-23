@@ -43,12 +43,23 @@ data class AlimentEv(
                         return null
                 }
 
-                // Si c'est l'énergie (NutrientEnergy ou NutrientMain.ENERGIE) et qu'on a une
-                // référence avec des équations, utiliser les équations
-                if (referenceEv != null &&
-                                (nutrient is NutrientEnergy || nutrient == NutrientMain.ENERGIE)
-                ) {
-                        return calculerEnergieViaReference(referenceEv)
+                // Si c'est l'énergie (NutrientEnergy ou NutrientMain.ENERGIE), vérifier d'abord
+                // si l'aliment a une valeur d'énergie définie avant d'utiliser les équations
+                if (nutrient is NutrientEnergy || nutrient == NutrientMain.ENERGIE) {
+                        // D'abord vérifier si l'aliment a une valeur d'énergie définie
+                        val energieDefinie = valMap[nutrient]?.value
+                        if (energieDefinie != null && energieDefinie > 0.0) {
+                                return energieDefinie
+                        }
+                        
+                        // Si pas d'énergie définie et qu'on a une référence avec des équations,
+                        // utiliser les équations
+                        if (referenceEv != null) {
+                                return calculerEnergieViaReference(referenceEv)
+                        }
+                        
+                        // Si pas d'énergie définie et pas de référence, retourner null
+                        return null
                 }
 
                 // Sinon, retourner la valeur stockée

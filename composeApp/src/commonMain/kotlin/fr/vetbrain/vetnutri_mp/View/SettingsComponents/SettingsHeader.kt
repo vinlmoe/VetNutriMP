@@ -5,7 +5,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -76,7 +76,7 @@ fun SettingsHeader(
                     .scale(backScale)
             ) {
                 Icon(
-                    imageVector = Icons.Default.ArrowBack,
+                    imageVector = Icons.AutoMirrored.Default.ArrowBack,
                     contentDescription = "Retour",
                     modifier = Modifier.size(AppSizes.iconSizeMedium),
                     tint = VetNutriColors.Primary

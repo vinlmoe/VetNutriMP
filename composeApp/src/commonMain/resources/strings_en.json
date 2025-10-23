@@ -52,6 +52,7 @@
         "percentage": "%",
         "internationalUnit": "IU",
         "bcs": "BCS",
+        "nutrition.dryMatter": "Dry Matter",
         "bodyWeight": "Body weight (kg)",
         "adultWeight": "Adult Weight",
         "finalWeight": "Final Weight (kg)",

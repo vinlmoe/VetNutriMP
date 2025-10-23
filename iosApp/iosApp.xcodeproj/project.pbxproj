@@ -10,21 +10,33 @@
 		058557BB273AAA24004C7B11 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 058557BA273AAA24004C7B11 /* Assets.xcassets */; };
 		058557D9273AAEEB004C7B11 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 058557D8273AAEEB004C7B11 /* Preview Assets.xcassets */; };
 		2152FB042600AC8F00CF470E /* iOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2152FB032600AC8F00CF470E /* iOSApp.swift */; };
+		6A4979C02EB29D2600DAFC22 /* vetnutri_export_init.json in Resources */ = {isa = PBXBuildFile; fileRef = 6A4979BF2EB29D2600DAFC22 /* vetnutri_export_init.json */; };
 		6A9D9E342E852BC300D4C0E1 /* strings_fr.json in Resources */ = {isa = PBXBuildFile; fileRef = 6A9D9E332E852BC300D4C0E1 /* strings_fr.json */; };
 		6AE565C02E50F3A5000F5E5C /* File.txt in Resources */ = {isa = PBXBuildFile; fileRef = 6AE565BF2E50F3A5000F5E5C /* File.txt */; };
-		6AF564382EA104E900ABC752 /* vetnutri_export_init.json in Resources */ = {isa = PBXBuildFile; fileRef = 6AF564372EA104E900ABC752 /* vetnutri_export_init.json */; };
-		6AF564392EA104E900ABC752 /* vetnutri_export_init.json in Resources */ = {isa = PBXBuildFile; fileRef = 6AF564372EA104E900ABC752 /* vetnutri_export_init.json */; };
 		7555FF83242A565900829871 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7555FF82242A565900829871 /* ContentView.swift */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		6AACF24F2EAA569A002658FC /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 8;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		058557BA273AAA24004C7B11 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		058557D8273AAEEB004C7B11 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		2152FB032600AC8F00CF470E /* iOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSApp.swift; sourceTree = "<group>"; };
 		6A2107072E62300B00FE13EF /* vetnutri.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = vetnutri.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		6A4979BF2EB29D2600DAFC22 /* vetnutri_export_init.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = vetnutri_export_init.json; sourceTree = "<group>"; };
 		6A9D9E332E852BC300D4C0E1 /* strings_fr.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = strings_fr.json; sourceTree = "<group>"; };
+		6AAFF5482EAB47B900268D22 /* test.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = test.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		6AE565BF2E50F3A5000F5E5C /* File.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = File.txt; sourceTree = "<group>"; };
-		6AF564372EA104E900ABC752 /* vetnutri_export_init.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = vetnutri_export_init.json; sourceTree = "<group>"; };
 		6AF671EA2E5F60C300865922 /* TestPlan.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = TestPlan.xctestplan; sourceTree = "<group>"; };
 		7555FF7B242A565900829871 /* VetNutri MP.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "VetNutri MP.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		7555FF82242A565900829871 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -34,6 +46,13 @@
 
 /* Begin PBXFrameworksBuildPhase section */
 		6A2107042E62300B00FE13EF /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		6AAFF5452EAB47B900268D22 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -81,6 +100,7 @@
 			children = (
 				7555FF7B242A565900829871 /* VetNutri MP.app */,
 				6A2107072E62300B00FE13EF /* vetnutri.app */,
+				6AAFF5482EAB47B900268D22 /* test.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -95,7 +115,7 @@
 				058557D7273AAEEB004C7B11 /* Preview Content */,
 				6AE565BF2E50F3A5000F5E5C /* File.txt */,
 				6A9D9E332E852BC300D4C0E1 /* strings_fr.json */,
-				6AF564372EA104E900ABC752 /* vetnutri_export_init.json */,
+				6A4979BF2EB29D2600DAFC22 /* vetnutri_export_init.json */,
 			);
 			path = iosApp;
 			sourceTree = "<group>";
@@ -130,15 +150,34 @@
 			productReference = 6A2107072E62300B00FE13EF /* vetnutri.app */;
 			productType = "com.apple.product-type.application";
 		};
+		6AAFF5472EAB47B900268D22 /* test */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 6AAFF5552EAB47BA00268D22 /* Build configuration list for PBXNativeTarget "test" */;
+			buildPhases = (
+				6AAFF5442EAB47B900268D22 /* Sources */,
+				6AAFF5452EAB47B900268D22 /* Frameworks */,
+				6AAFF5462EAB47B900268D22 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = test;
+			packageProductDependencies = (
+			);
+			productName = test;
+			productReference = 6AAFF5482EAB47B900268D22 /* test.app */;
+			productType = "com.apple.product-type.application";
+		};
 		7555FF7A242A565900829871 /* VetNutri ios */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 7555FFA5242A565B00829871 /* Build configuration list for PBXNativeTarget "VetNutri ios" */;
 			buildPhases = (
-				F36B1CEB2AD83DDC00CB74D5 /* Compile Kotlin Framework */,
-				7555FF77242A565900829871 /* Sources */,
+				6AAFF5432EAB476100268D22 /* ShellScript */,
 				B92378962B6B1156000C7307 /* Frameworks */,
+				7555FF77242A565900829871 /* Sources */,
 				7555FF79242A565900829871 /* Resources */,
-				6A3C8E052EA399C30096918B /* Run Script */,
+				6AACF24F2EAA569A002658FC /* CopyFiles */,
 			);
 			buildRules = (
 			);
@@ -158,12 +197,15 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
-				LastSwiftUpdateCheck = 1640;
+				LastSwiftUpdateCheck = 2600;
 				LastUpgradeCheck = 1540;
 				ORGANIZATIONNAME = orgName;
 				TargetAttributes = {
 					6A2107062E62300B00FE13EF = {
 						CreatedOnToolsVersion = 16.4;
+					};
+					6AAFF5472EAB47B900268D22 = {
+						CreatedOnToolsVersion = 26.0.1;
 					};
 					7555FF7A242A565900829871 = {
 						CreatedOnToolsVersion = 11.3.1;
@@ -187,6 +229,7 @@
 			targets = (
 				6A2107062E62300B00FE13EF /* vetnutri */,
 				7555FF7A242A565900829871 /* VetNutri ios */,
+				6AAFF5472EAB47B900268D22 /* test */,
 			);
 		};
 /* End PBXProject section */
@@ -196,7 +239,13 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				6AF564392EA104E900ABC752 /* vetnutri_export_init.json in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		6AAFF5462EAB47B900268D22 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -205,7 +254,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				6A9D9E342E852BC300D4C0E1 /* strings_fr.json in Resources */,
-				6AF564382EA104E900ABC752 /* vetnutri_export_init.json in Resources */,
+				6A4979C02EB29D2600DAFC22 /* vetnutri_export_init.json in Resources */,
 				058557D9273AAEEB004C7B11 /* Preview Assets.xcassets in Resources */,
 				058557BB273AAA24004C7B11 /* Assets.xcassets in Resources */,
 				6AE565C02E50F3A5000F5E5C /* File.txt in Resources */,
@@ -215,7 +264,7 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
-		6A3C8E052EA399C30096918B /* Run Script */ = {
+		6AAFF5432EAB476100268D22 /* ShellScript */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -224,38 +273,25 @@
 			);
 			inputPaths = (
 			);
-			name = "Run Script";
 			outputFileListPaths = (
 			);
 			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "
-";
-		};
-		F36B1CEB2AD83DDC00CB74D5 /* Compile Kotlin Framework */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-			);
-			name = "Compile Kotlin Framework";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "if [ \"YES\" = \"$OVERRIDE_KOTLIN_BUILD_IDE_SUPPORTED\" ]; then\n  echo \"Skipping Gradle build task invocation due to OVERRIDE_KOTLIN_BUILD_IDE_SUPPORTED environment variable set to \\\"YES\\\"\"\n  exit 0\nfi\ncd \"$SRCROOT/..\"\n./gradlew :composeApp:linkReleaseFrameworkIosArm64\n";
+			shellScript = "if [ \"YES\" = \"$OVERRIDE_KOTLIN_BUILD_IDE_SUPPORTED\" ]; then\n  echo \"Skipping Gradle build task invocation due to OVERRIDE_KOTLIN_BUILD_IDE_SUPPORTED environment variable set to \\\"YES\\\"\"\n  exit 0\nfi\ncd \"$SRCROOT/..\"\n./gradlew :composeApp:embedAndSignAppleFrameworkForXcode\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		6A2107032E62300B00FE13EF /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		6AAFF5442EAB47B900268D22 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -352,6 +388,84 @@
 				SDKROOT = macosx;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		6AAFF5562EAB47BA00268D22 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = N8M75AVX29;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = fr.vetbrain.test;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		6AAFF5572EAB47BA00268D22 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = N8M75AVX29;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = fr.vetbrain.test;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};
@@ -492,7 +606,9 @@
 				ENABLE_PREVIEWS = YES;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
-					"$(SRCROOT)/../shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)\n$(SRCROOT)/../composeApp/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)",
+					"$(SRCROOT)/../shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)",
+					"$(SRCROOT)/../composeApp/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)",
+					"$(PROJECT_DIR)",
 				);
 				INFOPLIST_FILE = iosApp/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = VetNutri;
@@ -536,7 +652,9 @@
 				ENABLE_PREVIEWS = YES;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
-					"$(SRCROOT)/../shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)\n$(SRCROOT)/../composeApp/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)",
+					"$(SRCROOT)/../shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)",
+					"$(SRCROOT)/../composeApp/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)",
+					"$(PROJECT_DIR)",
 				);
 				INFOPLIST_FILE = iosApp/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = VetNutri;
@@ -574,6 +692,15 @@
 			buildConfigurations = (
 				6A2107162E62300E00FE13EF /* Debug */,
 				6A2107172E62300E00FE13EF /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		6AAFF5552EAB47BA00268D22 /* Build configuration list for PBXNativeTarget "test" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6AAFF5562EAB47BA00268D22 /* Debug */,
+				6AAFF5572EAB47BA00268D22 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
