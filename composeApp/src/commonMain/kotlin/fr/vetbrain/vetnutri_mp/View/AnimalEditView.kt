@@ -8,6 +8,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme as M3MaterialTheme
+import androidx.compose.material3.Text as M3Text
+import androidx.compose.material3.TextButton as M3TextButton
+import androidx.compose.material3.lightColorScheme
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -23,8 +31,12 @@ import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
+import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AnimalEditView(
         animal: AnimalEv,
@@ -41,6 +53,7 @@ fun AnimalEditView(
         var birthDateText by remember { mutableStateOf(animal.birthdate?.toString() ?: "") }
         var isDateValid by remember { mutableStateOf(true) }
         var isDead by remember { mutableStateOf(animal.dead) }
+        var isDatePickerVisible by remember { mutableStateOf(false) }
 
         val scrollState = rememberScrollState()
 
@@ -131,6 +144,15 @@ fun AnimalEditView(
                                                 contentDescription = "Date de naissance",
                                                 tint = VetNutriColors.Primary
                                         )
+                                },
+                                trailingIcon = {
+                                        IconButton(onClick = { isDatePickerVisible = true }) {
+                                                Icon(
+                                                        imageVector = Icons.Default.DateRange,
+                                                        contentDescription = General.DATE_PICKER.translate(),
+                                                        tint = VetNutriColors.Primary
+                                                )
+                                        }
                                 }
                         )
 
@@ -140,6 +162,50 @@ fun AnimalEditView(
                                         color = MaterialTheme.colors.error,
                                         style = MaterialTheme.typography.caption
                                 )
+                        }
+
+                        if (isDatePickerVisible) {
+                                val pickerState = rememberDatePickerState()
+                                val vetNutriColorScheme = lightColorScheme(
+                                        primary = VetNutriColors.Primary,
+                                        onPrimary = VetNutriColors.OnPrimary,
+                                        secondary = VetNutriColors.Secondary,
+                                        onSecondary = VetNutriColors.OnSecondary,
+                                        error = VetNutriColors.Error,
+                                        onError = VetNutriColors.OnError,
+                                        background = VetNutriColors.Background,
+                                        onBackground = VetNutriColors.OnBackground,
+                                        surface = VetNutriColors.Background,
+                                        onSurface = VetNutriColors.OnBackground,
+                                        surfaceVariant = VetNutriColors.Background
+                                )
+                                M3MaterialTheme(colorScheme = vetNutriColorScheme) {
+                                        DatePickerDialog(
+                                                onDismissRequest = { isDatePickerVisible = false },
+                                                confirmButton = {
+                                                        M3TextButton(
+                                                                onClick = {
+                                                                        val selected: Long? = pickerState.selectedDateMillis
+                                                                        if (selected != null) {
+                                                                                val date = Instant.fromEpochMilliseconds(selected)
+                                                                                        .toLocalDateTime(TimeZone.currentSystemDefault())
+                                                                                        .date
+                                                                                birthDateText = date.toString()
+                                                                                isDateValid = true
+                                                                        }
+                                                                        isDatePickerVisible = false
+                                                                }
+                                                        ) { M3Text(General.VALIDATE.translate()) }
+                                                },
+                                                dismissButton = {
+                                                        M3TextButton(onClick = { isDatePickerVisible = false }) {
+                                                                M3Text(General.CANCEL.translate())
+                                                        }
+                                                }
+                                        ) {
+                                                DatePicker(state = pickerState)
+                                        }
+                                }
                         }
 
                         // Sexe avec ComboBox
