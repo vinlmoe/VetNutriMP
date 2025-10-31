@@ -60,6 +60,7 @@ kotlin {
             implementation(compose.runtime)
             implementation(compose.foundation)
             implementation(compose.material)
+            implementation(compose.material3)
             implementation(compose.ui)
             implementation("org.jetbrains.compose.ui:ui-util:1.7.0")
             implementation(libs.kotlinx.coroutines.core)

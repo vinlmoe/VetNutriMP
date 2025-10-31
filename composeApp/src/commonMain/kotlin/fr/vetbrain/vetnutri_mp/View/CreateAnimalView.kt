@@ -4,6 +4,14 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme as M3MaterialTheme
+import androidx.compose.material3.Text as M3Text
+import androidx.compose.material3.TextButton as M3TextButton
+import androidx.compose.material3.lightColorScheme
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -18,10 +26,12 @@ import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.CreateAnimalViewModel
 import kotlin.uuid.ExperimentalUuidApi
+import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 
-@OptIn(ExperimentalUuidApi::class, ExperimentalMaterialApi::class)
+@OptIn(ExperimentalUuidApi::class, ExperimentalMaterialApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun CreateAnimalView(
         viewModel: CreateAnimalViewModel,
@@ -34,6 +44,7 @@ fun CreateAnimalView(
         val saveSuccess = viewModel.saveSuccess.collectAsState().value
         var dateText by remember { mutableStateOf(animal.birthdate?.toString() ?: "") }
         var showDateError by remember { mutableStateOf(false) }
+        var isDatePickerVisible by remember { mutableStateOf(false) }
 
         LaunchedEffect(saveSuccess) {
                 if (saveSuccess) {
@@ -134,6 +145,10 @@ fun CreateAnimalView(
                                 isError = showDateError
                         )
 
+                        TextButton(onClick = { isDatePickerVisible = true }) {
+                                Text("general.selectDate".translate())
+                        }
+
                         if (showDateError) {
                                 Text(
                                         text = "error.invalidValue".translate(),
@@ -157,6 +172,50 @@ fun CreateAnimalView(
                                         showDateError = false
                                 }
                         ) { Text("general.today".translate()) }
+
+                        if (isDatePickerVisible) {
+                                val pickerState = rememberDatePickerState()
+                                val vetNutriColorScheme = lightColorScheme(
+                                        primary = VetNutriColors.Primary,
+                                        onPrimary = VetNutriColors.OnPrimary,
+                                        secondary = VetNutriColors.Secondary,
+                                        onSecondary = VetNutriColors.OnSecondary,
+                                        error = VetNutriColors.Error,
+                                        onError = VetNutriColors.OnError,
+                                        background = VetNutriColors.Background,
+                                        onBackground = VetNutriColors.OnBackground,
+                                        surface = VetNutriColors.Surface,
+                                        onSurface = VetNutriColors.OnSurface
+                                )
+                                M3MaterialTheme(colorScheme = vetNutriColorScheme) {
+                                        DatePickerDialog(
+                                                onDismissRequest = { isDatePickerVisible = false },
+                                                confirmButton = {
+                                                        M3TextButton(
+                                                                onClick = {
+                                                                        val selected: Long? = pickerState.selectedDateMillis
+                                                                        if (selected != null) {
+                                                                                val date = Instant.fromEpochMilliseconds(selected)
+                                                                                        .toLocalDateTime(TimeZone.currentSystemDefault())
+                                                                                        .date
+                                                                                dateText = date.toString()
+                                                                                viewModel.updateAnimal(animal.copy(birthdate = date))
+                                                                                showDateError = false
+                                                                        }
+                                                                        isDatePickerVisible = false
+                                                                }
+                                                        ) { M3Text("general.confirm".translate()) }
+                                                },
+                                                dismissButton = {
+                                                        M3TextButton(onClick = { isDatePickerVisible = false }) {
+                                                                M3Text("general.cancel".translate())
+                                                        }
+                                                }
+                                        ) {
+                                                DatePicker(state = pickerState)
+                                        }
+                                }
+                        }
 
                         ComboBox(
                                 items = Espece.values().toList(),
