@@ -184,8 +184,9 @@ fun CreateAnimalView(
                                         onError = VetNutriColors.OnError,
                                         background = VetNutriColors.Background,
                                         onBackground = VetNutriColors.OnBackground,
-                                        surface = VetNutriColors.Surface,
-                                        onSurface = VetNutriColors.OnSurface
+                                        surface = VetNutriColors.Background,
+                                        onSurface = VetNutriColors.OnBackground,
+                                        surfaceVariant = VetNutriColors.Background
                                 )
                                 M3MaterialTheme(colorScheme = vetNutriColorScheme) {
                                         DatePickerDialog(

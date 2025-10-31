@@ -118,8 +118,8 @@ android {
         applicationId = "fr.vetbrain.vetnutri_mp"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 38
-        versionName = "3.1.38"
+        versionCode = 39
+        versionName = "3.1.39"
 
         // Configuration de Room
 
@@ -151,7 +151,7 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Exe, TargetFormat.Deb)
             packageName = "VetNutriMP"
-            packageVersion = "3.1.38"
+            packageVersion = "3.1.39"
             description = "Application de nutrition vétérinaire multiplateforme"
             copyright = "© 2025 VetBrain"
             vendor = "VetBrain"
