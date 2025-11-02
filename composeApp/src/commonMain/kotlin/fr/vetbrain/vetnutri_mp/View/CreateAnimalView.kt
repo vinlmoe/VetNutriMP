@@ -15,7 +15,9 @@ import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import fr.vetbrain.vetnutri_mp.Components.AutocompleteTextField
 import fr.vetbrain.vetnutri_mp.Components.ComboBox
+import kotlinx.coroutines.launch
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.Sex
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Animal as AnimalKeys
@@ -45,6 +47,19 @@ fun CreateAnimalView(
         var dateText by remember { mutableStateOf(animal.birthdate?.toString() ?: "") }
         var showDateError by remember { mutableStateOf(false) }
         var isDatePickerVisible by remember { mutableStateOf(false) }
+        var availableRaces by remember { mutableStateOf<List<String>>(emptyList()) }
+        val coroutineScope = rememberCoroutineScope()
+
+        // Charger les races disponibles pour l'espèce actuelle
+        LaunchedEffect(animal.specieId) {
+                coroutineScope.launch {
+                        try {
+                                availableRaces = viewModel.getRacesBySpecies(animal.specieId)
+                        } catch (e: Exception) {
+                                availableRaces = emptyList()
+                        }
+                }
+        }
 
         LaunchedEffect(saveSuccess) {
                 if (saveSuccess) {
@@ -117,12 +132,30 @@ fun CreateAnimalView(
                                 modifier = Modifier.fillMaxWidth()
                         )
 
-                        OutlinedTextField(
+                        ComboBox(
+                                items = Espece.valuesExcept(Espece.CH).toList(),
+                                init = animal.getEspece(),
+                                label = AnimalKeys.SPECIES.translate(),
+                                onItemSelected = { selectedLabel ->
+                                        val selectedEspece =
+                                                Espece.values().find { it.label == selectedLabel }
+                                        selectedEspece?.let {
+                                                viewModel.updateAnimal(
+                                                        animal.copy().apply { specieId = it.label }
+                                                )
+                                        }
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                itemLabelProvider = { it.translateEnum() }
+                        )
+
+                        AutocompleteTextField(
                                 value = animal.race,
                                 onValueChange = { newBreed: String ->
                                         viewModel.updateAnimal(animal.copy(race = newBreed))
                                 },
-                                label = { Text(AnimalKeys.BREED.translate()) },
+                                suggestions = availableRaces,
+                                label = AnimalKeys.BREED.translate(),
                                 modifier = Modifier.fillMaxWidth()
                         )
 
@@ -217,23 +250,6 @@ fun CreateAnimalView(
                                         }
                                 }
                         }
-
-                        ComboBox(
-                                items = Espece.values().toList(),
-                                init = animal.getEspece(),
-                                label = AnimalKeys.SPECIES.translate(),
-                                onItemSelected = { selectedLabel ->
-                                        val selectedEspece =
-                                                Espece.values().find { it.label == selectedLabel }
-                                        selectedEspece?.let {
-                                                viewModel.updateAnimal(
-                                                        animal.copy().apply { specieId = it.label }
-                                                )
-                                        }
-                                },
-                                modifier = Modifier.fillMaxWidth(),
-                                itemLabelProvider = { it.translateEnum() }
-                        )
 
                         ComboBox(
                                 items = Sex.values().toList(),
