@@ -994,6 +994,17 @@ class DatabaseAnimalRepository(
                 }
         }
 
+        override suspend fun getRacesBySpecies(specieId: String): List<String> {
+                return withContext(AppDispatchers.Default) {
+                        val allAnimals = animalDao.getAllAnimals()
+                        allAnimals
+                                .filter { it.specieId == specieId && !it.race.isNullOrBlank() }
+                                .mapNotNull { it.race }
+                                .distinct()
+                                .sorted()
+                }
+        }
+
         /**
          * Récupère le repository des aliments
          *
