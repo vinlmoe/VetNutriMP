@@ -305,39 +305,73 @@ fun StartupScreen(
                         val platform = getPlatform()
                         val isDesktop = platform.name.contains("Java") || platform.name.contains("Windows") || platform.name.contains("Linux")
                         
+                        journaliserMiseAJour("=".repeat(50))
+                        journaliserMiseAJour("🔍 DÉBUT VÉRIFICATION MISE À JOUR")
+                        journaliserMiseAJour("Plateforme détectée: ${platform.name}")
+                        journaliserMiseAJour("Est desktop: $isDesktop")
+                        
                         if (isDesktop) {
                                 try {
                                         isCheckingAppUpdate = true
+                                        journaliserMiseAJour("Initialisation de UpdateChecker...")
+                                        
                                         val updateChecker = UpdateChecker()
                                         val currentAppVersion = TextConstant.VERSION.value
+                                        
+                                        journaliserMiseAJour("Version actuelle de l'application: $currentAppVersion")
+                                        journaliserMiseAJour("Appel de checkForUpdate()...")
+                                        
                                         val updateResult = updateChecker.checkForUpdate(currentAppVersion)
+                                        
+                                        journaliserMiseAJour("Résultat reçu de checkForUpdate():")
+                                        journaliserMiseAJour("  - isUpdateAvailable: ${updateResult.isUpdateAvailable}")
+                                        journaliserMiseAJour("  - currentVersion: ${updateResult.currentVersion}")
+                                        journaliserMiseAJour("  - newVersion: ${updateResult.newVersion}")
+                                        journaliserMiseAJour("  - downloadUrl: ${updateResult.downloadUrl}")
+                                        journaliserMiseAJour("  - error: ${updateResult.error}")
                                         
                                         appUpdateResult = updateResult
                                         
-                                if (updateResult.isUpdateAvailable) {
-                                        showAppUpdateDialog = true
-                                        journaliserMiseAJour("=".repeat(50))
-                                        journaliserMiseAJour("🔗 MISE À JOUR DISPONIBLE")
-                                        journaliserMiseAJour("=".repeat(50))
-                                        journaliserMiseAJour("📋 Version actuelle: ${updateResult.currentVersion}")
-                                        journaliserMiseAJour("🆕 Nouvelle version: ${updateResult.newVersion}")
-                                        journaliserMiseAJour("📥 URL: ${updateResult.downloadUrl}")
-                                        journaliserMiseAJour("=".repeat(50))
-                                } else if (updateResult.error != null) {
+                                        if (updateResult.isUpdateAvailable) {
+                                                showAppUpdateDialog = true
+                                                journaliserMiseAJour("=".repeat(50))
+                                                journaliserMiseAJour("🔗 MISE À JOUR DISPONIBLE")
+                                                journaliserMiseAJour("=".repeat(50))
+                                                journaliserMiseAJour("📋 Version actuelle: ${updateResult.currentVersion}")
+                                                journaliserMiseAJour("🆕 Nouvelle version: ${updateResult.newVersion}")
+                                                journaliserMiseAJour("📥 URL: ${updateResult.downloadUrl}")
+                                                journaliserMiseAJour("=".repeat(50))
+                                        } else if (updateResult.error != null) {
                                                 appUpdateError = updateResult.error
                                                 showAppUpdateErrorDialog = true
-                                                journaliserMiseAJour("Erreur vérification mise à jour: ${updateResult.error}")
+                                                journaliserMiseAJour("❌ ERREUR LORS DE LA VÉRIFICATION:")
+                                                journaliserMiseAJour("Message d'erreur: ${updateResult.error}")
+                                                journaliserMiseAJour("Stack trace complet:")
+                                                journaliserMiseAJour(updateResult.error ?: "Aucun détail")
+                                        } else {
+                                                journaliserMiseAJour("✓ Aucune mise à jour disponible")
+                                                journaliserMiseAJour("Version actuelle ($currentAppVersion) est à jour")
                                         }
                                 } catch (e: Exception) {
                                         appUpdateError = "Erreur lors de la vérification de mise à jour: ${e.message}"
                                         showAppUpdateErrorDialog = true
-                                        journaliserMiseAJour("Erreur vérification mise à jour: ${e.message}")
+                                        journaliserMiseAJour("❌ EXCEPTION CAPTURÉE LORS DE LA VÉRIFICATION:")
+                                        journaliserMiseAJour("Type d'exception: ${e::class.simpleName}")
+                                        journaliserMiseAJour("Message: ${e.message}")
+                                        journaliserMiseAJour("Cause: ${e.cause?.message ?: "Aucune"}")
+                                        journaliserMiseAJour("Stack trace: ${e.stackTraceToString()}")
+                                        journaliserMiseAJour("Fin de l'exception")
                                 } finally {
                                         isCheckingAppUpdate = false
+                                        journaliserMiseAJour("Vérification terminée (isCheckingAppUpdate = false)")
                                 }
                         } else {
                                 journaliserMiseAJour("Vérification de mise à jour ignorée (plateforme non-desktop: ${platform.name})")
                         }
+                        
+                        journaliserMiseAJour("=".repeat(50))
+                        journaliserMiseAJour("FIN VÉRIFICATION MISE À JOUR")
+                        journaliserMiseAJour("=".repeat(50))
 
                         // Attendre un peu pour montrer l'écran de démarrage
                         kotlinx.coroutines.delay(2000)
