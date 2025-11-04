@@ -54,7 +54,9 @@ class ExportImportRepository(
                 val includeEquations: Boolean = true,
                 val includeConseils: Boolean = true,
                 val animalIds: Set<String> = emptySet(),
-                val foodIds: Set<String> = emptySet()
+                val foodIds: Set<String> = emptySet(),
+                val referenceIds: Set<String> = emptySet(),
+                val equationIds: Set<String> = emptySet()
         )
 
         /**
@@ -193,8 +195,9 @@ class ExportImportRepository(
                 val foods: List<FoodApi> =
                         allFoods.asSequence()
                                 .filter {
-                                        options.foodIds.isEmpty() ||
-                                                options.foodIds.contains(it.uuid)
+                                        // Si foodIds est vide, ne rien exporter (pas tous les aliments)
+                                        // Si foodIds n'est pas vide, exporter seulement ceux dans la liste
+                                        options.foodIds.isNotEmpty() && options.foodIds.contains(it.uuid)
                                 }
                                 .map { it.toApi() }
                                 .toList()
@@ -214,16 +217,32 @@ class ExportImportRepository(
                                         }
                                         .toList()
                         } else emptyList()
-                val equations =
+                val allEquations =
                         if (options.includeEquations)
-                                (equationRepository?.getAllEquations()?.map { it.toApi() }
-                                        ?: emptyList())
+                                (equationRepository?.getAllEquations() ?: emptyList())
                         else emptyList()
-                val references =
+                val equations: List<fr.vetbrain.vetnutri_mp.Data.EquationApi> =
+                        allEquations.asSequence()
+                                .filter {
+                                        // Si equationIds est vide, ne rien exporter (pas toutes les équations)
+                                        // Si equationIds n'est pas vide, exporter seulement celles dans la liste
+                                        options.equationIds.isNotEmpty() && options.equationIds.contains(it.uuid)
+                                }
+                                .map { it.toApi() }
+                                .toList()
+                val allReferences =
                         if (options.includeEquations) {
-                                referenceRepository?.getAllReferenceEv()?.map { it.toApiRef() }
-                                        ?: emptyList()
+                                referenceRepository?.getAllReferenceEv() ?: emptyList()
                         } else emptyList()
+                val references: List<fr.vetbrain.vetnutri_mp.Data.ReferenceEvApi> =
+                        allReferences.asSequence()
+                                .filter {
+                                        // Si referenceIds est vide, ne rien exporter (pas toutes les références)
+                                        // Si referenceIds n'est pas vide, exporter seulement celles dans la liste
+                                        options.referenceIds.isNotEmpty() && options.referenceIds.contains(it.uuid)
+                                }
+                                .map { it.toApiRef() }
+                                .toList()
 
                 // Récupérer les recettes selon les options
                 

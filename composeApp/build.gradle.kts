@@ -36,10 +36,13 @@ kotlin {
             linkerOpts.add("-lsqlite3")
         }
         // Configuration iOS - Configuration basique uniquement
-        iosTarget.compilerOptions { freeCompilerArgs.addAll("-Xruntime-logs=all",
-            // C'est l'argument qui désactive la phase gourmande en mémoire
-                     "-Xdisable-phases=DevirtualizationAnalysis,DCEPhase,StaticInitializersOptimization,RemoveRedundantCallsToStaticInitializersPhase"
-              ) }
+        iosTarget.compilerOptions {
+            freeCompilerArgs.addAll(
+                    "-Xruntime-logs=all",
+                    // C'est l'argument qui désactive la phase gourmande en mémoire
+                    "-Xdisable-phases=DevirtualizationAnalysis,DCEPhase,StaticInitializersOptimization,RemoveRedundantCallsToStaticInitializersPhase"
+            )
+        }
     }
 
     jvm("desktop")
@@ -99,6 +102,8 @@ kotlin {
                 implementation(libs.compose.ui.test.manifest)
                 implementation("com.openhtmltopdf:openhtmltopdf-core:1.0.10")
                 implementation("com.openhtmltopdf:openhtmltopdf-pdfbox:1.0.10")
+                implementation(libs.ktor.client.okhttp)
+                implementation(libs.ktor.client.content.negotiation)
             }
         }
 

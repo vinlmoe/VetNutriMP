@@ -17,6 +17,8 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -36,17 +38,24 @@ import fr.vetbrain.vetnutri_mp.Export.HtmlPreviewDialog
 import fr.vetbrain.vetnutri_mp.Export.PdfExporter
 import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
+import fr.vetbrain.vetnutri_mp.Repository.ExportImportRepository
 import fr.vetbrain.vetnutri_mp.Repository.PreferencesRepository
 import fr.vetbrain.vetnutri_mp.Repository.RecipeRepository
 import fr.vetbrain.vetnutri_mp.Theme.AppIcons
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
+import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import fr.vetbrain.vetnutri_mp.Utils.createPreferencesStorage
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailSection
+import fr.vetbrain.vetnutri_mp.exportJsonToFile
+import kotlinx.coroutines.withContext
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.SettingsViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import fr.vetbrain.vetnutri_mp.Service.JsonShareService
+import fr.vetbrain.vetnutri_mp.Service.ShareOptions
+import fr.vetbrain.vetnutri_mp.Components.ShareLinkDialog
 
 typealias RecipeRepo = fr.vetbrain.vetnutri_mp.Repository.RecipeRepository
 
@@ -59,6 +68,283 @@ private fun generateDefaultPdfFileName(animal: AnimalEv?, consultation: Consulta
     val animalName = animal?.nom ?: "NOM_INCONNU"
     val consultationDate = consultation?.date?.toString() ?: "DATE_INCONNUE"
     return "${animalId}_${animalName}_${consultationDate}.pdf"
+}
+
+/**
+ * Fonction pour exporter un animal complet avec toutes ses données associées (références, rations, consultations, aliments)
+ * Utilise un sélecteur de fichier pour choisir l'emplacement de sauvegarde
+ */
+private suspend fun exporterAnimalComplet(
+        animal: AnimalEv,
+        viewModel: AnimalDetailViewModel,
+        settingsViewModel: SettingsViewModel,
+        equationRepository: EquationRepository,
+        recipeRepository: RecipeRepository,
+        conseilRepository: fr.vetbrain.vetnutri_mp.Repository.ConseilRepository,
+        snackbarHostState: SnackbarHostState
+) {
+        try {
+                // Créer le repository d'export/import avec tous les repositories nécessaires depuis settingsViewModel (sur IO)
+                val exportImportRepository = withContext(AppDispatchers.IO) {
+                        ExportImportRepository(
+                                animalRepository = settingsViewModel.animalRepository,
+                                foodRepository = settingsViewModel.foodRepository,
+                                equationRepository = settingsViewModel.equationRepository ?: equationRepository,
+                                referenceRepository = settingsViewModel.referenceEvRepository,
+                                biblioRepository = settingsViewModel.biblioRefRepository,
+                                consultationRepository = settingsViewModel.consultationRepository,
+                                recipeRepository = settingsViewModel.recipeRepository ?: recipeRepository,
+                                conseilRepository = settingsViewModel.conseilRepository ?: conseilRepository
+                        )
+                }
+                
+                // Collecter tous les aliments utilisés dans les rations de l'animal (sur IO)
+                val foodIds = withContext(AppDispatchers.IO) {
+                        val ids = mutableSetOf<String>()
+                        animal.consultations.forEach { consultation ->
+                                consultation.rations.forEach { ration ->
+                                        ration.alimentMutableList.forEach { alimentRation ->
+                                                // Collecter l'ID depuis refAlimUnif ou depuis l'aliment complet
+                                                alimentRation.refAlimUnif?.takeIf { it.isNotBlank() }?.let { ids.add(it) }
+                                                alimentRation.aliment?.uuid?.takeIf { it.isNotBlank() }?.let { ids.add(it) }
+                                        }
+                                }
+                        }
+                        ids
+                }
+                
+                // Collecter toutes les références nutritionnelles utilisées dans les consultations (sur IO)
+                val (referenceIds, equationIds) = withContext(AppDispatchers.IO) {
+                        val refIds = mutableSetOf<String>()
+                        val eqIds = mutableSetOf<String>()
+                        
+                        animal.consultations.forEach { consultation ->
+                                // Référence générale
+                                consultation.referenceGeneraleId?.let { refId ->
+                                        refIds.add(refId)
+                                        // Charger la référence pour obtenir ses équations
+                                        val reference = settingsViewModel.referenceEvRepository?.getReferenceEvById(refId)
+                                        reference?.let { ref ->
+                                                // Collecter toutes les équations de la référence
+                                                ref.obtenirToutesEquations().forEach { equation ->
+                                                        eqIds.add(equation.uuid)
+                                                }
+                                        }
+                                }
+                                // Références maladies
+                                consultation.referencesMaladies.forEach { refId ->
+                                        refIds.add(refId)
+                                        // Charger la référence pour obtenir ses équations
+                                        val reference = settingsViewModel.referenceEvRepository?.getReferenceEvById(refId)
+                                        reference?.let { ref ->
+                                                // Collecter toutes les équations de la référence
+                                                ref.obtenirToutesEquations().forEach { equation ->
+                                                        eqIds.add(equation.uuid)
+                                                }
+                                        }
+                                }
+                        }
+                        Pair(refIds, eqIds)
+                }
+                
+                // Exporter avec sélection (sur IO)
+                // Note: Les références bibliographiques sont automatiquement incluses dans l'export
+                // car elles sont liées aux références nutritionnelles et équations exportées
+                val jsonContent = withContext(AppDispatchers.IO) {
+                        val exportOptions = ExportImportRepository.ExportSelectionOptions(
+                                includeAnimals = true,
+                                includeFoods = true,
+                                includeRations = true,
+                                includeRecipes = false,
+                                includeEquations = true,
+                                includeConseils = false,
+                                animalIds = setOf(animal.uuid),
+                                foodIds = foodIds,
+                                referenceIds = referenceIds,
+                                equationIds = equationIds
+                        )
+                        exportImportRepository.exportWithSelection(exportOptions)
+                }
+                
+                // Générer le nom de fichier
+                val fileName = "${animal.id ?: animal.uuid}_${animal.nom}_export.json"
+                
+                // Sauvegarder le fichier avec sélecteur (sur Main pour l'UI)
+                val success = withContext(AppDispatchers.Main) {
+                        exportJsonToFile(jsonContent, fileName)
+                }
+                
+                // Afficher le résultat (déjà sur Main)
+                if (success) {
+                        snackbarHostState.showSnackbar(
+                                message = "Animal exporté avec succès: $fileName",
+                                duration = SnackbarDuration.Short
+                        )
+                } else {
+                        snackbarHostState.showSnackbar(
+                                message = "Export annulé ou erreur lors de l'export",
+                                duration = SnackbarDuration.Long
+                        )
+                }
+        } catch (e: Exception) {
+                e.printStackTrace()
+                snackbarHostState.showSnackbar(
+                        message = "Erreur lors de l'export: ${e.message}",
+                        duration = SnackbarDuration.Long
+                )
+        }
+}
+
+/**
+ * Fonction pour partager un animal complet en ligne via jsonbin.io
+ * Génère un lien de partage unique que l'utilisateur peut partager
+ */
+private suspend fun partagerAnimalEnLigne(
+        animal: AnimalEv,
+        viewModel: AnimalDetailViewModel,
+        settingsViewModel: SettingsViewModel,
+        equationRepository: EquationRepository,
+        recipeRepository: RecipeRepository,
+        conseilRepository: fr.vetbrain.vetnutri_mp.Repository.ConseilRepository,
+        snackbarHostState: SnackbarHostState,
+        onShareLinkGenerated: (fr.vetbrain.vetnutri_mp.Service.ShareLink) -> Unit
+) {
+        try {
+                // Créer le repository d'export/import avec tous les repositories nécessaires depuis settingsViewModel (sur IO)
+                val exportImportRepository = withContext(AppDispatchers.IO) {
+                        ExportImportRepository(
+                                animalRepository = settingsViewModel.animalRepository,
+                                foodRepository = settingsViewModel.foodRepository,
+                                equationRepository = settingsViewModel.equationRepository ?: equationRepository,
+                                referenceRepository = settingsViewModel.referenceEvRepository,
+                                biblioRepository = settingsViewModel.biblioRefRepository,
+                                consultationRepository = settingsViewModel.consultationRepository,
+                                recipeRepository = settingsViewModel.recipeRepository ?: recipeRepository,
+                                conseilRepository = settingsViewModel.conseilRepository ?: conseilRepository
+                        )
+                }
+                
+                // Collecter tous les aliments utilisés dans les rations de l'animal (sur IO)
+                val foodIds = withContext(AppDispatchers.IO) {
+                        val ids = mutableSetOf<String>()
+                        animal.consultations.forEach { consultation ->
+                                consultation.rations.forEach { ration ->
+                                        ration.alimentMutableList.forEach { alimentRation ->
+                                                alimentRation.refAlimUnif?.takeIf { it.isNotBlank() }?.let { ids.add(it) }
+                                                alimentRation.aliment?.uuid?.takeIf { it.isNotBlank() }?.let { ids.add(it) }
+                                        }
+                                }
+                        }
+                        ids
+                }
+                
+                // Collecter toutes les références nutritionnelles utilisées dans les consultations (sur IO)
+                val (referenceIds, equationIds) = withContext(AppDispatchers.IO) {
+                        val refIds = mutableSetOf<String>()
+                        val eqIds = mutableSetOf<String>()
+                        
+                        animal.consultations.forEach { consultation ->
+                                consultation.referenceGeneraleId?.let { refId ->
+                                        refIds.add(refId)
+                                        val reference = settingsViewModel.referenceEvRepository?.getReferenceEvById(refId)
+                                        reference?.let { ref ->
+                                                ref.obtenirToutesEquations().forEach { equation ->
+                                                        eqIds.add(equation.uuid)
+                                                }
+                                        }
+                                }
+                                consultation.referencesMaladies.forEach { refId ->
+                                        refIds.add(refId)
+                                        val reference = settingsViewModel.referenceEvRepository?.getReferenceEvById(refId)
+                                        reference?.let { ref ->
+                                                ref.obtenirToutesEquations().forEach { equation ->
+                                                        eqIds.add(equation.uuid)
+                                                }
+                                        }
+                                }
+                        }
+                        Pair(refIds, eqIds)
+                }
+                
+                // Exporter avec sélection (sur IO)
+                val jsonContent = withContext(AppDispatchers.IO) {
+                        val exportOptions = ExportImportRepository.ExportSelectionOptions(
+                                includeAnimals = true,
+                                includeFoods = true,
+                                includeRations = true,
+                                includeRecipes = false,
+                                includeEquations = true,
+                                includeConseils = false,
+                                animalIds = setOf(animal.uuid),
+                                foodIds = foodIds,
+                                referenceIds = referenceIds,
+                                equationIds = equationIds
+                        )
+                        exportImportRepository.exportWithSelection(exportOptions)
+                }
+                
+                // Générer le nom de fichier
+                val fileName = "${animal.id ?: animal.uuid}_${animal.nom}_export.json"
+                
+                // Vérifier si un binId existe déjà pour cet animal (sur IO)
+                val preferencesStorage = createPreferencesStorage()
+                val binIdKey = "jsonbin_animal_${animal.uuid}"
+                val existingBinId = withContext(AppDispatchers.IO) {
+                        preferencesStorage.getString(binIdKey, "")
+                }
+                
+                println("🔵 [AnimalDetailView] BinId existant pour ${animal.uuid}: ${if (existingBinId.isNotEmpty()) existingBinId else "aucun"}")
+                
+                // Uploader sur jsonbin.io (sur IO)
+                val shareService = fr.vetbrain.vetnutri_mp.Service.createJsonShareService()
+                val shareOptions = fr.vetbrain.vetnutri_mp.Service.ShareOptions(
+                        fileName = fileName,
+                        expiresInHours = 168, // 7 jours par défaut
+                        binName = animal.uuid, // Utiliser l'UUID de l'animal comme nom du bin pour identification
+                        binId = existingBinId.takeIf { it.isNotEmpty() } // Utiliser le binId existant pour mise à jour
+                )
+                
+                val shareResult = withContext(AppDispatchers.IO) {
+                        shareService.uploadJson(jsonContent, shareOptions)
+                }
+                
+                // Gérer le résultat (sur Main pour l'UI)
+                withContext(AppDispatchers.Main) {
+                        shareResult.fold(
+                                onSuccess = { shareLink ->
+                                        // Sauvegarder le binId pour cet animal (sur IO)
+                                        withContext(AppDispatchers.IO) {
+                                                preferencesStorage.saveString(binIdKey, shareLink.binId)
+                                                println("✅ [AnimalDetailView] BinId sauvegardé pour ${animal.uuid}: ${shareLink.binId}")
+                                        }
+                                        onShareLinkGenerated(shareLink)
+                                        val message = if (existingBinId.isNotEmpty()) {
+                                                "Fichier mis à jour avec succès !"
+                                        } else {
+                                                "Fichier uploadé avec succès !"
+                                        }
+                                        snackbarHostState.showSnackbar(
+                                                message = message,
+                                                duration = SnackbarDuration.Short
+                                        )
+                                },
+                                onFailure = { error ->
+                                        snackbarHostState.showSnackbar(
+                                                message = "Erreur lors du partage en ligne: ${error.message}",
+                                                duration = SnackbarDuration.Long
+                                        )
+                                }
+                        )
+                }
+        } catch (e: Exception) {
+                e.printStackTrace()
+                withContext(AppDispatchers.Main) {
+                        snackbarHostState.showSnackbar(
+                                message = "Erreur lors du partage: ${e.message}",
+                                duration = SnackbarDuration.Long
+                        )
+                }
+        }
 }
 
 /**
@@ -358,6 +644,7 @@ fun AnimalDetailView(
                                         onNavigateBack = handleNavigateBack,
                                         onOpenSettings = handleOpenSettings,
                                         viewModel = viewModel,
+                                        settingsViewModel = settingsViewModel,
                                         isEditing = isEditing,
                                         onIsEditingChange = { isEditing = it },
                                         onShowDeleteConfirmation = {
@@ -378,6 +665,7 @@ fun AnimalDetailView(
                                         onNavigateBack = handleNavigateBack,
                                         onOpenSettings = handleOpenSettings,
                                         viewModel = viewModel,
+                                        settingsViewModel = settingsViewModel,
                                         isEditing = isEditing,
                                         onIsEditingChange = { isEditing = it },
                                         onShowDeleteConfirmation = {
@@ -445,6 +733,7 @@ private fun WideScreenLayout(
         onNavigateBack: () -> Unit,
         onOpenSettings: () -> Unit,
         viewModel: AnimalDetailViewModel,
+        settingsViewModel: SettingsViewModel,
         isEditing: Boolean,
         onIsEditingChange: (Boolean) -> Unit,
         onShowDeleteConfirmation: () -> Unit,
@@ -456,6 +745,13 @@ private fun WideScreenLayout(
 ) {
         // Scope pour les coroutines
         val scope = rememberCoroutineScope()
+        
+        // État pour les messages Snackbar
+        val snackbarHostState = remember { SnackbarHostState() }
+        
+        // État pour le partage en ligne
+        var shareLink by remember { mutableStateOf<fr.vetbrain.vetnutri_mp.Service.ShareLink?>(null) }
+        var showShareDialog by remember { mutableStateOf(false) }
         
         // État pour l'éditeur de texte enrichi
         var currentHtmlContent by remember {
@@ -542,7 +838,73 @@ private fun WideScreenLayout(
 
                         Spacer(modifier = Modifier.weight(1.0f))
 
+                        // Bouton exporter animal
+                        Button(
+                                onClick = {
+                                        scope.launch {
+                                                exporterAnimalComplet(
+                                                        animal = animalDetails,
+                                                        viewModel = viewModel,
+                                                        settingsViewModel = settingsViewModel,
+                                                        equationRepository = equationRepository,
+                                                        recipeRepository = recipeRepository,
+                                                        conseilRepository = conseilRepository,
+                                                        snackbarHostState = snackbarHostState
+                                                )
+                                        }
+                                },
+                                colors =
+                                        ButtonDefaults.buttonColors(
+                                                backgroundColor = VetNutriColors.Primary,
+                                                contentColor = VetNutriColors.OnPrimary
+                                        ),
+                                modifier = Modifier.fillMaxWidth()
+                        ) {
+                                Icon(
+                                        imageVector = Icons.Default.Download,
+                                        contentDescription = "Exporter"
+                                )
+                                Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
+                                Text(text = "Exporter animal")
+                        }
+                        
+                        // Bouton partager en ligne
+                        Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
+                        Button(
+                                onClick = {
+                                        scope.launch {
+                                                partagerAnimalEnLigne(
+                                                        animal = animalDetails,
+                                                        viewModel = viewModel,
+                                                        settingsViewModel = settingsViewModel,
+                                                        equationRepository = equationRepository,
+                                                        recipeRepository = recipeRepository,
+                                                        conseilRepository = conseilRepository,
+                                                        snackbarHostState = snackbarHostState,
+                                                        onShareLinkGenerated = { link ->
+                                                                shareLink = link
+                                                                showShareDialog = true
+                                                        }
+                                                )
+                                        }
+                                },
+                                colors =
+                                        ButtonDefaults.buttonColors(
+                                                backgroundColor = VetNutriColors.Secondary,
+                                                contentColor = VetNutriColors.OnSecondary
+                                        ),
+                                modifier = Modifier.fillMaxWidth()
+                        ) {
+                                Icon(
+                                        imageVector = Icons.Default.Share,
+                                        contentDescription = "Partager"
+                                )
+                                Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
+                                Text(text = "Partager en ligne")
+                        }
+
                         // Bouton retour
+                        Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
                         Button(
                                 onClick = onNavigateBack,
                                 colors =
@@ -574,8 +936,23 @@ private fun WideScreenLayout(
                         )
                 }
 
-                // Contenu principal
+                // Contenu principal avec SnackbarHost
                 Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                        SnackbarHost(hostState = snackbarHostState)
+                        
+                        // Dialog de partage
+                        shareLink?.let { link ->
+                                if (showShareDialog) {
+                                        ShareLinkDialog(
+                                                shareLink = link,
+                                                onDismiss = {
+                                                        showShareDialog = false
+                                                        shareLink = null
+                                                },
+                                                onShare = null // Peut être utilisé pour ouvrir le Share Sheet natif
+                                        )
+                                }
+                        }
                         when (currentSection) {
                                 AnimalDetailSection.IDENTIFICATION -> {
                                         if (isEditing) {
@@ -1736,6 +2113,7 @@ private fun NarrowScreenLayout(
         onNavigateBack: () -> Unit,
         onOpenSettings: () -> Unit,
         viewModel: AnimalDetailViewModel,
+        settingsViewModel: SettingsViewModel,
         isEditing: Boolean,
         onIsEditingChange: (Boolean) -> Unit,
         onShowDeleteConfirmation: () -> Unit,
@@ -1747,6 +2125,13 @@ private fun NarrowScreenLayout(
         recipeRepository: RecipeRepository,
         conseilRepository: fr.vetbrain.vetnutri_mp.Repository.ConseilRepository
 ) {
+        // État pour les messages Snackbar
+        val snackbarHostState = remember { SnackbarHostState() }
+        
+        // État pour le partage en ligne
+        var shareLink by remember { mutableStateOf<fr.vetbrain.vetnutri_mp.Service.ShareLink?>(null) }
+        var showShareDialog by remember { mutableStateOf(false) }
+        
         // État pour l'éditeur de texte enrichi
         var currentHtmlContent by remember {
                 mutableStateOf(fr.vetbrain.vetnutri_mp.Export.RichTextContent())
@@ -1839,7 +2224,73 @@ private fun NarrowScreenLayout(
 
                                 Spacer(modifier = Modifier.weight(1f))
 
+                                // Bouton exporter animal
+                                Button(
+                                        onClick = {
+                                                scope.launch {
+                                                        exporterAnimalComplet(
+                                                                animal = animalDetails,
+                                                                viewModel = viewModel,
+                                                                settingsViewModel = settingsViewModel,
+                                                                equationRepository = equationRepository,
+                                                                recipeRepository = recipeRepository,
+                                                                conseilRepository = conseilRepository,
+                                                                snackbarHostState = snackbarHostState
+                                                        )
+                                                }
+                                        },
+                                        colors =
+                                                ButtonDefaults.buttonColors(
+                                                        backgroundColor = VetNutriColors.Primary,
+                                                        contentColor = VetNutriColors.OnPrimary
+                                                ),
+                                        modifier = Modifier.fillMaxWidth()
+                                ) {
+                                        Icon(
+                                                imageVector = Icons.Default.Download,
+                                                contentDescription = "Exporter"
+                                        )
+                                        Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
+                                        Text(text = "Exporter animal")
+                                }
+                                
+                                // Bouton partager en ligne
+                                Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
+                                Button(
+                                        onClick = {
+                                                scope.launch {
+                                                        partagerAnimalEnLigne(
+                                                                animal = animalDetails,
+                                                                viewModel = viewModel,
+                                                                settingsViewModel = settingsViewModel,
+                                                                equationRepository = equationRepository,
+                                                                recipeRepository = recipeRepository,
+                                                                conseilRepository = conseilRepository,
+                                                                snackbarHostState = snackbarHostState,
+                                                                onShareLinkGenerated = { link ->
+                                                                        shareLink = link
+                                                                        showShareDialog = true
+                                                                }
+                                                        )
+                                                }
+                                        },
+                                        colors =
+                                                ButtonDefaults.buttonColors(
+                                                        backgroundColor = VetNutriColors.Secondary,
+                                                        contentColor = VetNutriColors.OnSecondary
+                                                ),
+                                        modifier = Modifier.fillMaxWidth()
+                                ) {
+                                        Icon(
+                                                imageVector = Icons.Default.Share,
+                                                contentDescription = "Partager"
+                                        )
+                                        Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
+                                        Text(text = "Partager en ligne")
+                                }
+
                                 // Bouton retour
+                                Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
                                 Button(
                                         onClick = onNavigateBack,
                                         colors =
@@ -1910,8 +2361,9 @@ private fun NarrowScreenLayout(
                                         thickness = AppSizes.dividerHeight
                                 )
 
-                                // Contenu principal
+                                // Contenu principal avec SnackbarHost
                                 Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                                        SnackbarHost(hostState = snackbarHostState)
                                         when (currentSection) {
                                                 AnimalDetailSection.IDENTIFICATION -> {
                                                         if (isEditing) {
