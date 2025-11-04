@@ -1700,7 +1700,7 @@ private fun TermsAndConditionsDialog(onAccept: () -> Unit, onDismiss: () -> Unit
 
                                 Text(
                                         text =
-                                                "⚠️ IMPORTANT : Ces conditions doivent être acceptées à CHAQUE démarrage",
+                                                "⚠️ IMPORTANT : Logiciel Gratuit - Pas de garantie de fonctionnement",
                                         style = MaterialTheme.typography.body2,
                                         color = MaterialTheme.colors.error,
                                         fontWeight = FontWeight.Bold,
@@ -1728,7 +1728,7 @@ private fun TermsAndConditionsDialog(onAccept: () -> Unit, onDismiss: () -> Unit
                                 )
                                 Text(
                                         text =
-                                                "• La responsabilité de l'utilisateur reste entière dans l'application",
+                                                "• La responsabilité de l'utilisateur reste entière il doit vérifier les calculs et recommandations avant de les appliquer",
                                         style = MaterialTheme.typography.body2,
                                         modifier = Modifier.padding(bottom = 4.dp)
                                 )
@@ -1757,6 +1757,6 @@ private fun TermsAndConditionsDialog(onAccept: () -> Unit, onDismiss: () -> Unit
                                         )
                         ) { Text("J'accepte les conditions") }
                 },
-                dismissButton = { OutlinedButton(onClick = onDismiss) { Text("Fermer") } }
+                dismissButton = { OutlinedButton(onClick = onDismiss) { Text("Fermer") } }  
         )
 }
