@@ -41,6 +41,7 @@ data class AnimalEvJson(
         val dateNaiss: LocalDate = LocalDate(2023, 1, 1),
         val race: String = "",
         val resume: String = "",
+        val jsonbinId: String? = null, // ID du bin jsonbin.io pour le partage en ligne
         val listWeight: List<WeightDateJson> = listOf(),
         val list: ListConsultEvJson? = null,
         val consultations: List<ConsultationEvJson>? = null

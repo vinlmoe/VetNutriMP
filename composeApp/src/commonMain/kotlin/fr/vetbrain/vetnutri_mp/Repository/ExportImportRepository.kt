@@ -195,9 +195,9 @@ class ExportImportRepository(
                 val foods: List<FoodApi> =
                         allFoods.asSequence()
                                 .filter {
-                                        // Si foodIds est vide, ne rien exporter (pas tous les aliments)
+                                        // Si foodIds est vide, exporter TOUS les aliments
                                         // Si foodIds n'est pas vide, exporter seulement ceux dans la liste
-                                        options.foodIds.isNotEmpty() && options.foodIds.contains(it.uuid)
+                                        options.foodIds.isEmpty() || options.foodIds.contains(it.uuid)
                                 }
                                 .map { it.toApi() }
                                 .toList()
@@ -224,9 +224,15 @@ class ExportImportRepository(
                 val equations: List<fr.vetbrain.vetnutri_mp.Data.EquationApi> =
                         allEquations.asSequence()
                                 .filter {
-                                        // Si equationIds est vide, ne rien exporter (pas toutes les équations)
-                                        // Si equationIds n'est pas vide, exporter seulement celles dans la liste
-                                        options.equationIds.isNotEmpty() && options.equationIds.contains(it.uuid)
+                                        // Logique de filtrage des équations :
+                                        // - Si equationIds est vide ET animalIds est vide → export général : exporter TOUTES les équations
+                                        // - Si equationIds est vide ET animalIds n'est PAS vide → export sélectif : exporter AUCUNE équation (l'animal n'en utilise pas)
+                                        // - Si equationIds n'est pas vide → exporter seulement celles dans la liste
+                                        when {
+                                                options.equationIds.isNotEmpty() -> options.equationIds.contains(it.uuid)
+                                                options.animalIds.isEmpty() -> true // Export général : toutes les équations
+                                                else -> false // Export sélectif sans équations spécifiées : aucune équation
+                                        }
                                 }
                                 .map { it.toApi() }
                                 .toList()
@@ -237,9 +243,15 @@ class ExportImportRepository(
                 val references: List<fr.vetbrain.vetnutri_mp.Data.ReferenceEvApi> =
                         allReferences.asSequence()
                                 .filter {
-                                        // Si referenceIds est vide, ne rien exporter (pas toutes les références)
-                                        // Si referenceIds n'est pas vide, exporter seulement celles dans la liste
-                                        options.referenceIds.isNotEmpty() && options.referenceIds.contains(it.uuid)
+                                        // Logique de filtrage des références :
+                                        // - Si referenceIds est vide ET animalIds est vide → export général : exporter TOUTES les références
+                                        // - Si referenceIds est vide ET animalIds n'est PAS vide → export sélectif : exporter AUCUNE référence (l'animal n'en utilise pas)
+                                        // - Si referenceIds n'est pas vide → exporter seulement celles dans la liste
+                                        when {
+                                                options.referenceIds.isNotEmpty() -> options.referenceIds.contains(it.uuid)
+                                                options.animalIds.isEmpty() -> true // Export général : toutes les références
+                                                else -> false // Export sélectif sans références spécifiées : aucune référence
+                                        }
                                 }
                                 .map { it.toApiRef() }
                                 .toList()
@@ -265,11 +277,45 @@ class ExportImportRepository(
                                 }
                         } else emptyList()
 
+                // Collecter les UUIDs des biblioRefs utilisées par les références et équations exportées
+                val biblioRefIdsToExport = mutableSetOf<String>()
+                
+                // Collecter depuis les équations exportées
+                equations.forEach { eqApi ->
+                        // Les équations ont un champ bibRef qui peut être sérialisé différemment
+                        // On doit charger l'équation complète pour obtenir sa biblio
+                        equationRepository?.getAllEquations()?.find { it.uuid == eqApi.uuid }?.let { eq ->
+                                if (eq.bib.uuid.isNotBlank() && eq.bib.uuid != "default-biblio") {
+                                        biblioRefIdsToExport.add(eq.bib.uuid)
+                                }
+                        }
+                }
+                
+                // Collecter depuis les références exportées (via leurs nutriments)
+                references.forEach { refApi ->
+                        refApi.nutrients.forEach { nutrientApi ->
+                                nutrientApi.biblioRefId?.takeIf { it.isNotBlank() }?.let {
+                                        biblioRefIdsToExport.add(it)
+                                }
+                        }
+                }
+                
                 val biblioRefs =
                         try {
-                                val list =
+                                val allBiblioRefs =
                                         biblioRepository?.getAllBiblioRefs()?.first() ?: emptyList()
-                                list.map { it.toApi() }
+                                
+                                // Filtrer les biblioRefs selon le contexte d'export
+                                val filteredBiblioRefs = when {
+                                        // Export sélectif (animalIds non vide) : seulement celles utilisées
+                                        options.animalIds.isNotEmpty() -> {
+                                                allBiblioRefs.filter { it.uuid in biblioRefIdsToExport }
+                                        }
+                                        // Export général (animalIds vide) : toutes les biblioRefs
+                                        else -> allBiblioRefs
+                                }
+                                
+                                filteredBiblioRefs.map { it.toApi() }
                         } catch (e: Exception) {
                                 emptyList()
                         }
@@ -287,7 +333,7 @@ class ExportImportRepository(
                                 references = references,
                                 conseils = conseils
                         )
-                return jsonPretty.encodeToString(envelope)
+                        return jsonPretty.encodeToString(envelope)
         }
 
         /** Importe les données au format API et les sauvegarde via les repositories. */

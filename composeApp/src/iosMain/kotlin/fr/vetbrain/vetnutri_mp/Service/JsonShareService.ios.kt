@@ -5,11 +5,7 @@ import io.ktor.client.engine.darwin.Darwin
 
 actual class JsonShareService {
     private val helper = JsonShareServiceHelper(
-        httpClient = HttpClient(Darwin) {
-            engine {
-                requestTimeout = 30_000
-            }
-        }
+        httpClient = HttpClient(Darwin.create())
     )
     
     actual suspend fun uploadJson(

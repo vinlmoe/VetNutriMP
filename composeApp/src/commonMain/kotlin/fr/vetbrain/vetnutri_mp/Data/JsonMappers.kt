@@ -239,6 +239,7 @@ fun AnimalEv.toJson(): AnimalEvJson {
             dateNaiss = this.birthdate ?: LocalDate(2023, 1, 1),
             race = this.race,
             resume = this.summary,
+            jsonbinId = this.jsonbinId,
             listWeight = this.weightHistory.map { it.toJson() },
             list = ListConsultEvJson(consultations = this.consultations.map { it.toJson() })
     )
@@ -306,6 +307,7 @@ fun AnimalEvJson.toData(): AnimalEv {
             birthdate = this.dateNaiss,
             race = this.race,
             summary = this.resume,
+            jsonbinId = this.jsonbinId,
             weightHistory =
                     try {
                         this.listWeight.map { it.toData() }.toMutableList()

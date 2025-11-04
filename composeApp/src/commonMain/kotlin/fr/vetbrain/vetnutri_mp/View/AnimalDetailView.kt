@@ -286,22 +286,33 @@ private suspend fun partagerAnimalEnLigne(
                 // Générer le nom de fichier
                 val fileName = "${animal.id ?: animal.uuid}_${animal.nom}_export.json"
                 
-                // Vérifier si un binId existe déjà pour cet animal (sur IO)
-                val preferencesStorage = createPreferencesStorage()
-                val binIdKey = "jsonbin_animal_${animal.uuid}"
-                val existingBinId = withContext(AppDispatchers.IO) {
-                        preferencesStorage.getString(binIdKey, "")
+                // IMPORTANT: Recharger l'animal depuis la BDD pour s'assurer d'avoir le jsonbinId à jour
+                val animalFromDb: AnimalEv? = withContext(AppDispatchers.IO) {
+                        settingsViewModel.animalRepository.getAnimalById(animal.uuid)
                 }
                 
-                println("🔵 [AnimalDetailView] BinId existant pour ${animal.uuid}: ${if (existingBinId.isNotEmpty()) existingBinId else "aucun"}")
+                // Utiliser l'animal de la BDD si disponible, sinon l'animal du ViewModel
+                val animalToUse = animalFromDb ?: animal
+                
+                // Récupérer le binId existant directement depuis la BDD
+                val existingBinId = animalToUse.jsonbinId
+                println("🔵 [AnimalDetailView] BinId existant pour ${animal.uuid} (depuis BDD): ${existingBinId ?: "aucun"}")
+                
+                // Si l'animal du ViewModel n'a pas le jsonbinId mais qu'il existe en BDD, mettre à jour le ViewModel
+                if (animalFromDb != null && animal.jsonbinId != animalFromDb.jsonbinId) {
+                        withContext(AppDispatchers.Main) {
+                                viewModel.setAnimal(animalFromDb)
+                                println("🔄 [AnimalDetailView] Animal mis à jour dans le ViewModel avec jsonbinId: ${animalFromDb.jsonbinId}")
+                        }
+                }
                 
                 // Uploader sur jsonbin.io (sur IO)
                 val shareService = fr.vetbrain.vetnutri_mp.Service.createJsonShareService()
                 val shareOptions = fr.vetbrain.vetnutri_mp.Service.ShareOptions(
                         fileName = fileName,
                         expiresInHours = 168, // 7 jours par défaut
-                        binName = animal.uuid, // Utiliser l'UUID de l'animal comme nom du bin pour identification
-                        binId = existingBinId.takeIf { it.isNotEmpty() } // Utiliser le binId existant pour mise à jour
+                        binName = animalToUse.uuid, // Utiliser l'UUID de l'animal comme nom du bin pour identification
+                        binId = existingBinId // Utiliser le binId existant pour mise à jour
                 )
                 
                 val shareResult = withContext(AppDispatchers.IO) {
@@ -312,13 +323,23 @@ private suspend fun partagerAnimalEnLigne(
                 withContext(AppDispatchers.Main) {
                         shareResult.fold(
                                 onSuccess = { shareLink ->
-                                        // Sauvegarder le binId pour cet animal (sur IO)
+                                        // Mettre à jour le binId de l'animal et le sauvegarder en base (sur IO)
+                                        val animalToUpdate = animalToUse.copy(jsonbinId = shareLink.binId)
                                         withContext(AppDispatchers.IO) {
-                                                preferencesStorage.saveString(binIdKey, shareLink.binId)
-                                                println("✅ [AnimalDetailView] BinId sauvegardé pour ${animal.uuid}: ${shareLink.binId}")
+                                                viewModel.updateAnimal(animalToUpdate)
+                                                println("✅ [AnimalDetailView] BinId de l'animal mis à jour en base: ${shareLink.binId}")
+                                                
+                                                // Recharger l'animal depuis la BDD pour s'assurer que le jsonbinId est bien présent
+                                                val updatedAnimal: AnimalEv? = settingsViewModel.animalRepository.getAnimalById(animalToUse.uuid)
+                                                if (updatedAnimal != null) {
+                                                        withContext(AppDispatchers.Main) {
+                                                                viewModel.setAnimal(updatedAnimal)
+                                                                println("✅ [AnimalDetailView] Animal rechargé depuis la BDD avec jsonbinId: ${updatedAnimal.jsonbinId}")
+                                                        }
+                                                }
                                         }
                                         onShareLinkGenerated(shareLink)
-                                        val message = if (existingBinId.isNotEmpty()) {
+                                        val message = if (existingBinId != null) {
                                                 "Fichier mis à jour avec succès !"
                                         } else {
                                                 "Fichier uploadé avec succès !"

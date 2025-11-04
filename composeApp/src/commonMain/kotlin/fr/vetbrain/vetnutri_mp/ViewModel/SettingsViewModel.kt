@@ -246,6 +246,101 @@ class SettingsViewModel(
     }
 
     /**
+     * Importe des données depuis jsonbin.io en utilisant un binId ou une URL
+     * @param binIdOrUrl L'ID du bin ou l'URL complète jsonbin.io
+     * @return Le résultat de l'importation
+     */
+    suspend fun importFromJsonBin(binIdOrUrl: String): ImportResult {
+        return try {
+            startApiImport()
+            appendApiImportLog("🔄 Début de l'import depuis jsonbin.io...")
+            
+            // Créer le service de partage JSON
+            val shareService = fr.vetbrain.vetnutri_mp.Service.createJsonShareService()
+            
+            // Extraire le binId depuis l'URL si nécessaire
+            val binId = if (binIdOrUrl.contains("jsonbin.io")) {
+                shareService.extractBinIdFromUrl(binIdOrUrl) ?: run {
+                    finishApiImport()
+                    return ImportResult.Error("Impossible d'extraire l'ID du bin depuis l'URL: $binIdOrUrl")
+                }
+            } else {
+                binIdOrUrl
+            }
+            
+            appendApiImportLog("📥 Téléchargement du bin: $binId")
+            updateApiImportProgress(0.1)
+            
+            // Télécharger le JSON depuis jsonbin.io
+            val downloadResult = shareService.downloadJson(binId)
+            
+            val jsonContent = downloadResult.getOrElse { error ->
+                finishApiImport()
+                return ImportResult.Error("Erreur lors du téléchargement depuis jsonbin.io: ${error.message}")
+            }
+            
+            appendApiImportLog("✅ JSON téléchargé (${jsonContent.length} caractères)")
+            updateApiImportProgress(0.3)
+            
+            // Créer l'ExportImportRepository avec tous les repositories nécessaires
+            val exportImportRepo = fr.vetbrain.vetnutri_mp.Repository.ExportImportRepository(
+                animalRepository = animalRepository,
+                foodRepository = foodRepository,
+                equationRepository = equationRepository,
+                referenceRepository = referenceEvRepository,
+                biblioRepository = biblioRefRepository,
+                consultationRepository = consultationRepository,
+                recipeRepository = recipeRepository,
+                conseilRepository = conseilRepository
+            )
+            
+            appendApiImportLog("🔄 Parsing et import des données...")
+            updateApiImportProgress(0.4)
+            
+            // Importer les données avec un listener de progression
+            val importCounts = exportImportRepo.importAll(
+                apiJson = jsonContent,
+                listener = fr.vetbrain.vetnutri_mp.Repository.ExportImportRepository.ImportProgressListener(
+                    onProgress = { progress ->
+                        // Mapper la progression de 0.4 à 0.9 (car on commence à 0.4)
+                        val mappedProgress = 0.4 + (progress * 0.5)
+                        updateApiImportProgress(mappedProgress)
+                    },
+                    onLog = { message ->
+                        appendApiImportLog(message)
+                    }
+                )
+            )
+            
+            updateApiImportProgress(1.0)
+            
+            val totalCount = importCounts.animals + importCounts.foods + importCounts.equations + 
+                           importCounts.references + importCounts.biblios + importCounts.rations + 
+                           importCounts.recipes + importCounts.conseils
+            
+            appendApiImportLog("✅ Import terminé avec succès!")
+            appendApiImportLog("📊 Résultat: $totalCount éléments importés")
+            
+            finishApiImport()
+            
+            ImportResult.Success(
+                count = totalCount,
+                importedCount = importCounts.animals + importCounts.foods + importCounts.equations + 
+                              importCounts.references + importCounts.biblios + importCounts.rations + 
+                              importCounts.recipes + importCounts.conseils,
+                updatedCount = 0, // L'importAll ne retourne pas les counts de mise à jour séparément
+                deletedCount = 0,
+                errorCount = 0,
+                conseils = importCounts.conseils
+            )
+        } catch (e: Exception) {
+            finishApiImport()
+            appendApiImportLog("❌ Erreur: ${e.message}")
+            ImportResult.Error("Erreur lors de l'import depuis jsonbin.io: ${e.message}")
+        }
+    }
+
+    /**
      * Interface pour importer des références nutritionnelles depuis l'UI Cette méthode est un point
      * d'entrée pour l'importation via l'UI
      */

@@ -37,7 +37,7 @@ import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
                         ReferenceEvNutrientEntity::class,
                         HtmlSectionEntity::class,
                         HtmlSectionLibraryEntity::class],
-        version = 24,
+        version = 25,
         exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -92,7 +92,9 @@ fun getRoomDatabase(builder: RoomDatabase.Builder<AppDatabase>): AppDatabase {
                         createMigration22to23(),
                         // Migration 23→24 : Ajout des tables HTML_SECTIONS et
                         // HTML_SECTION_LIBRARIES
-                        createMigration23to24()
+                        createMigration23to24(),
+                        // Migration 24→25 : Ajout du champ jsonbinId à la table ANIMALS
+                        createMigration24to25()
                 )
                 .setDriver(BundledSQLiteDriver())
                 .setQueryCoroutineContext(AppDispatchers.IO)
@@ -401,6 +403,26 @@ fun createMigration23to24(): Migration {
                 connection.prepare("CREATE INDEX index_HTML_SECTIONS_title ON HTML_SECTIONS(title)")
                         .use { it.step() }
             } catch (e: Exception) {
+                throw e
+            }
+        }
+    }
+}
+
+/** Migration 24 → 25 : Ajout du champ jsonbinId à la table ANIMALS */
+fun createMigration24to25(): Migration {
+    return object : Migration(24, 25) {
+        override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
+            try {
+                // Ajouter la colonne jsonbinId (nullable TEXT)
+                connection.prepare(
+                    "ALTER TABLE ANIMALS ADD COLUMN jsonbinId TEXT"
+                ).use { statement -> 
+                    statement.step() 
+                }
+                println("✅ Migration 24→25 : Colonne jsonbinId ajoutée à la table ANIMALS")
+            } catch (e: Exception) {
+                println("❌ Erreur lors de la migration 24→25: ${e.message}")
                 throw e
             }
         }

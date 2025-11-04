@@ -5,8 +5,10 @@ import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.http.*
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.datetime.Clock
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import kotlinx.coroutines.withContext
 
@@ -138,7 +140,7 @@ internal class JsonShareServiceHelper(private val httpClient: HttpClient) {
                                 println("⚠️ [JsonShareService] Format réponse non standard, tentative alternative...")
                                 // Essayer de parser le format alternatif avec "metadata"
                                 try {
-                                    val jsonObj = Json.parseToJsonElement(responseText).jsonObject
+                                    val jsonObj = kotlinx.serialization.json.Json.parseToJsonElement(responseText).jsonObject
                                     val metadata = jsonObj["metadata"]?.jsonObject
                                     metadata?.get("id")?.jsonPrimitive?.content
                                 } catch (e2: Exception) {
@@ -160,7 +162,7 @@ internal class JsonShareServiceHelper(private val httpClient: HttpClient) {
                 
                 // Calculer la date d'expiration si spécifiée
                 val expiresAt = options.expiresInHours?.let { hours ->
-                    System.currentTimeMillis() + (hours * 3600 * 1000L)
+                    Clock.System.now().toEpochMilliseconds() + (hours * 3600 * 1000L)
                 }
                 
                 Result.success(ShareLink(
@@ -219,8 +221,31 @@ internal class JsonShareServiceHelper(private val httpClient: HttpClient) {
                 val responseText = response.body<String>()
                 println("🔵 [JsonShareService] Réponse JSON: ${responseText.take(200)}...")
                 val json = Json { ignoreUnknownKeys = true; isLenient = true }
-                val readResponse = json.decodeFromString<JsonBinReadResponse>(responseText)
-                val content = readResponse.record
+                
+                // jsonbin.io peut retourner record comme string ou comme objet JSON
+                // On doit parser manuellement pour gérer les deux cas
+                val content = try {
+                    // Essayer d'abord de parser avec le modèle standard (record comme string)
+                    val readResponse = json.decodeFromString<JsonBinReadResponse>(responseText)
+                    readResponse.record
+                } catch (e: Exception) {
+                    // Si ça échoue, c'est que record est un objet JSON, pas une string
+                    println("🔵 [JsonShareService] Record n'est pas une string, parsing comme objet JSON...")
+                    try {
+                        val jsonObj = kotlinx.serialization.json.Json.parseToJsonElement(responseText).jsonObject
+                        val recordElement = jsonObj["record"]
+                        if (recordElement != null) {
+                            // Convertir l'objet JSON en string
+                            json.encodeToString(JsonElement.serializer(), recordElement)
+                        } else {
+                            null
+                        }
+                    } catch (e2: Exception) {
+                        println("❌ [JsonShareService] Erreur parsing record comme objet: ${e2.message}")
+                        null
+                    }
+                }
+                
                 if (content != null) {
                     println("✅ [JsonShareService] Téléchargement réussi! Taille: ${content.length} caractères")
                     Result.success(content)
@@ -257,20 +282,29 @@ internal class JsonShareServiceHelper(private val httpClient: HttpClient) {
         // https://jsonbin.io/v3/b/1234567890
         // https://jsonbin.io/1234567890
         // jsonbin.io/1234567890
+        // https://jsonbin.io/690a000643b1c97be9982db5
         
         val patterns = listOf(
-            Regex("jsonbin\\.io/v3/b/([a-zA-Z0-9]+)"),
-            Regex("jsonbin\\.io/([a-zA-Z0-9]+)"),
-            Regex("([a-zA-Z0-9]{10,})") // ID seul (au moins 10 caractères)
+            Regex("jsonbin\\.io/v3/b/([a-zA-Z0-9]+)", RegexOption.IGNORE_CASE),
+            Regex("jsonbin\\.io/([a-zA-Z0-9]+)", RegexOption.IGNORE_CASE),
+            Regex("https?://jsonbin\\.io/v3/b/([a-zA-Z0-9]+)", RegexOption.IGNORE_CASE),
+            Regex("https?://jsonbin\\.io/([a-zA-Z0-9]+)", RegexOption.IGNORE_CASE),
+            Regex("([a-zA-Z0-9]{10,})") // ID seul (au moins 10 caractères alphanumériques)
         )
         
         for (pattern in patterns) {
-            val match = pattern.find(url)
+            val match = pattern.find(url.trim())
             if (match != null) {
-                return match.groupValues[1]
+                val extractedId = match.groupValues[1]
+                // Vérifier que l'ID extrait a au moins 10 caractères (format jsonbin.io)
+                if (extractedId.length >= 10) {
+                    println("🔵 [JsonShareService] ID extrait depuis l'URL: $extractedId")
+                    return extractedId
+                }
             }
         }
         
+        println("⚠️ [JsonShareService] Impossible d'extraire l'ID depuis l'URL: $url")
         return null
     }
 }

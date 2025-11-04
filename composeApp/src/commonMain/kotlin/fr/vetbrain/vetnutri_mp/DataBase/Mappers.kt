@@ -24,7 +24,8 @@ object Mappers {
                                 ownerName = this.ownerName,
                                 birthdate = this.birthdate?.toString() ?: "",
                                 race = this.race,
-                                summary = this.summary
+                                summary = this.summary,
+                                jsonbinId = this.jsonbinId
                         )
 
                 if (includeRelations) {
@@ -62,6 +63,7 @@ object Mappers {
                                 },
                         race = this.race ?: "",
                         summary = this.summary ?: "",
+                        jsonbinId = this.jsonbinId,
                         consultations = consultations.map { it.toData() }.toMutableList(),
                         weightHistory = weights.map { it.toData() }.toMutableList()
                 )
