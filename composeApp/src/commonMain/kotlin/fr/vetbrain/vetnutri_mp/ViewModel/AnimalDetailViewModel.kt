@@ -839,15 +839,16 @@ class AnimalDetailViewModel(
     fun updateAnimal(updatedAnimal: AnimalEv) {
         viewModelScope.launch {
 
-            // Conserver l'UUID et les consultations de l'animal original
+            // Conserver l'UUID et les consultations de l'animal original, mais préserver le jsonbinId de updatedAnimal
             val animalToUpdate =
                     _animal.value?.let { originalAnimal ->
                         updatedAnimal.copy(
                                 uuid = originalAnimal.uuid,
-                                consultations = originalAnimal.consultations
+                                consultations = originalAnimal.consultations,
+                                jsonbinId = updatedAnimal.jsonbinId // IMPORTANT: Préserver le jsonbinId de l'animal mis à jour
                         )
                     }
-                            ?: return@launch
+                            ?: updatedAnimal // Si pas d'animal original, utiliser directement updatedAnimal
 
             animalRepository.updateAnimal(animalToUpdate)
 

@@ -16,6 +16,7 @@ data class AnimalEv(
         var birthdate: LocalDate? = null,
         var race: String = "",
         var summary: String = "",
+        var jsonbinId: String? = null, // ID du bin jsonbin.io pour le partage en ligne
         var consultations: MutableList<ConsultationEv> = mutableListOf(),
         var weightHistory: MutableList<WeightDate> = mutableListOf()
 ) {

@@ -107,7 +107,12 @@ kotlin {
             }
         }
 
-        val iosMain by creating { dependencies { implementation(libs.sqliter.driver) } }
+        val iosMain by creating { 
+            dependencies { 
+                implementation(libs.sqliter.driver)
+                implementation(libs.ktor.client.darwin)
+            } 
+        }
     }
 }
 

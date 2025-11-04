@@ -593,6 +593,131 @@ fun SettingsView(
                                                         )
                                                 }
 
+                                                // Import depuis jsonbin.io
+                                                var showJsonBinImportDialog by remember {
+                                                        mutableStateOf(false)
+                                                }
+                                                var jsonBinUrlOrId by remember {
+                                                        mutableStateOf("")
+                                                }
+                                                
+                                                Button(
+                                                        onClick = {
+                                                                showJsonBinImportDialog = true
+                                                        },
+                                                        colors =
+                                                                ButtonDefaults.buttonColors(
+                                                                        backgroundColor =
+                                                                                VetNutriColors
+                                                                                        .Secondary
+                                                                ),
+                                                        modifier = Modifier.fillMaxWidth()
+                                                ) {
+                                                        Text(
+                                                                "Importer depuis jsonbin.io",
+                                                                color = Color.White
+                                                        )
+                                                }
+                                                
+                                                // Dialogue pour saisir l'URL ou l'ID jsonbin.io
+                                                if (showJsonBinImportDialog) {
+                                                        AlertDialog(
+                                                                onDismissRequest = {
+                                                                        showJsonBinImportDialog = false
+                                                                        jsonBinUrlOrId = ""
+                                                                },
+                                                                title = {
+                                                                        Text("Importer depuis jsonbin.io")
+                                                                },
+                                                                text = {
+                                                                        Column(
+                                                                                verticalArrangement =
+                                                                                        Arrangement
+                                                                                                .spacedBy(
+                                                                                                        8.dp
+                                                                                                )
+                                                                        ) {
+                                                                                Text(
+                                                                                        "Entrez l'URL ou l'ID du bin jsonbin.io à importer:",
+                                                                                        style =
+                                                                                                MaterialTheme
+                                                                                                        .typography
+                                                                                                        .body2
+                                                                                )
+                                                                                OutlinedTextField(
+                                                                                        value =
+                                                                                                jsonBinUrlOrId,
+                                                                                        onValueChange = {
+                                                                                                jsonBinUrlOrId =
+                                                                                                        it
+                                                                                        },
+                                                                                        label = {
+                                                                                                Text(
+                                                                                                        "URL ou ID du bin"
+                                                                                                )
+                                                                                        },
+                                                                                        placeholder = {
+                                                                                                Text(
+                                                                                                        "Ex: https://jsonbin.io/690a000643b1c97be9982db5 ou 690a000643b1c97be9982db5"
+                                                                                                )
+                                                                                        },
+                                                                                        modifier =
+                                                                                                Modifier.fillMaxWidth(),
+                                                                                        singleLine =
+                                                                                                true
+                                                                                )
+                                                                        }
+                                                                },
+                                                                confirmButton = {
+                                                                        Button(
+                                                                                onClick = {
+                                                                                        if (jsonBinUrlOrId.isNotBlank()) {
+                                                                                                coroutineScope.launch {
+                                                                                                        val result =
+                                                                                                                viewModel.importFromJsonBin(
+                                                                                                                        jsonBinUrlOrId.trim()
+                                                                                                                )
+                                                                                                        viewModel.setImportResult(
+                                                                                                                result
+                                                                                                        )
+                                                                                                        showJsonBinImportDialog =
+                                                                                                                false
+                                                                                                        jsonBinUrlOrId =
+                                                                                                                ""
+                                                                                                }
+                                                                                        }
+                                                                                },
+                                                                                enabled =
+                                                                                        jsonBinUrlOrId.isNotBlank(),
+                                                                                colors =
+                                                                                        ButtonDefaults.buttonColors(
+                                                                                                backgroundColor =
+                                                                                                        VetNutriColors
+                                                                                                                .Primary
+                                                                                        )
+                                                                        ) {
+                                                                                Text(
+                                                                                        "Importer",
+                                                                                        color =
+                                                                                                Color.White
+                                                                                )
+                                                                        }
+                                                                },
+                                                                dismissButton = {
+                                                                        TextButton(
+                                                                                onClick = {
+                                                                                        showJsonBinImportDialog =
+                                                                                                false
+                                                                                        jsonBinUrlOrId =
+                                                                                                ""
+                                                                                }
+                                                                        ) {
+                                                                                Text("Annuler")
+                                                                        }
+                                                                }
+                                                        )
+                                                }
+
                                                 // Dialog de résultat pour l'import API
                                                 val apiImportResult =
                                                         viewModel.importResult.collectAsState()

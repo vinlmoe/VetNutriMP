@@ -13,6 +13,7 @@ import fr.vetbrain.vetnutri_mp.DataBase.AnimalDao
 import fr.vetbrain.vetnutri_mp.DataBase.FoodDao
 import fr.vetbrain.vetnutri_mp.DataBase.FoodEntity
 import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toEntity
+import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toData
 import fr.vetbrain.vetnutri_mp.DataBase.NutrientValueDao
 import fr.vetbrain.vetnutri_mp.DataBase.SupplementalVariableEntity
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
@@ -142,6 +143,9 @@ class DatabaseAnimalRepository(
 
                         // Convertir l'animal en entité et le mettre à jour
                         val animalEntity = animal.toEntity(includeRelations = false)
+                        
+                        // DEBUG: Vérifier que le jsonbinId est bien présent dans l'entité
+                        println("🔵 [DatabaseAnimalRepository] updateAnimal - jsonbinId à sauvegarder: ${animalEntity.jsonbinId}")
 
                         animalDao.update(animalEntity)
 
@@ -156,9 +160,11 @@ class DatabaseAnimalRepository(
                                 animalDao.insertWeight(weight.toEntity())
                         }
 
-                        // Vérifier que l'animal a été correctement mis à jour
-                        val updatedAnimal = animalDao.getAnimalById(animal.uuid)
-                        if (updatedAnimal != null) {} else {}
+                        // Vérifier que l'animal a été correctement mis à jour avec le jsonbinId
+                        val updatedAnimalEntity = animalDao.getAnimalById(animal.uuid)
+                        if (updatedAnimalEntity != null) {
+                                println("🔵 [DatabaseAnimalRepository] updateAnimal - jsonbinId après mise à jour en BDD: ${updatedAnimalEntity.jsonbinId}")
+                        } else {}
                 }
         }
 
@@ -166,127 +172,17 @@ class DatabaseAnimalRepository(
                 return withContext(AppDispatchers.Default) {
                         val entity = animalDao.getAnimalById(id) ?: return@withContext null
 
-                        // Convertir l'entité en objet de domaine
-                        val animalEv =
-                                AnimalEv(
-                                        uuid = entity.uuid,
-                                        nom = entity.nom ?: "",
-                                        dead = entity.dead ?: false,
-                                        id = entity.id,
-                                        sexId = entity.sexId ?: 0,
-                                        specieId = entity.specieId ?: "",
-                                        ownerName = entity.ownerName ?: "",
-                                        birthdate =
-                                                entity.birthdate?.let { dateStr ->
-                                                        if (dateStr.isNotBlank()) {
-                                                                try {
-                                                                        LocalDate.parse(dateStr)
-                                                                } catch (e: Exception) {
-
-                                                                        null
-                                                                }
-                                                        } else {
-                                                                null
-                                                        }
-                                                },
-                                        race = entity.race ?: "",
-                                        summary = entity.summary ?: ""
-                                )
-
-                        // Charger les consultations associées
+                        // Charger les consultations et poids associés
                         val consultationEntities = animalDao.getConsultationsForAnimal(id)
-                        if (consultationEntities.isNotEmpty()) {
-                                animalEv.consultations.addAll(
-                                        consultationEntities.mapNotNull { consultEntity ->
-                                                ConsultationEv(
-                                                        uuid = consultEntity.uuid,
-                                                        idAnim = consultEntity.idAnim,
-                                                        date =
-                                                                consultEntity.date?.let { dateStr ->
-                                                                        if (dateStr.isNotBlank()) {
-                                                                                try {
-                                                                                        LocalDate
-                                                                                                .parse(
-                                                                                                        dateStr
-                                                                                                )
-                                                                                } catch (
-                                                                                        e:
-                                                                                                Exception) {
-
-                                                                                        null
-                                                                                }
-                                                                        } else {
-                                                                                null
-                                                                        }
-                                                                },
-                                                        objectConsult = consultEntity.objectConsult
-                                                                        ?: "",
-                                                        observation = consultEntity.observation
-                                                                        ?: "",
-                                                        cRendu = consultEntity.cRendu ?: "",
-                                                        weight = consultEntity.weight,
-                                                        idealWeight = consultEntity.idealWeight,
-                                                        water = consultEntity.water,
-                                                        bodyFat = consultEntity.bodyFat,
-                                                        methodAnalysis =
-                                                                consultEntity.methodAnalysis ?: "",
-                                                        BCS = consultEntity.BCS,
-                                                        k1Id = consultEntity.k1Id ?: "",
-                                                        k1Value = consultEntity.k1Value,
-                                                        k2Id = consultEntity.k2Id ?: "",
-                                                        k2Value = consultEntity.k2Value,
-                                                        k3Id = consultEntity.k3Id ?: "",
-                                                        k3Value = consultEntity.k3Value,
-                                                        k4Id = consultEntity.k4Id ?: "",
-                                                        k4Value = consultEntity.k4Value,
-                                                        k5Id = consultEntity.k5Id ?: "",
-                                                        k5Value = consultEntity.k5Value,
-                                                        nLittle = consultEntity.nLittle,
-                                                        pAdult = consultEntity.pAdult,
-                                                        coefGes = consultEntity.coefGes,
-                                                        coefLact = consultEntity.coefLact,
-                                                        MCS = consultEntity.MCS
-                                                )
-                                        }
-                                )
-                        }
-
-                        // Charger les poids associés
                         val weightEntities = animalDao.getWeightsForAnimal(id)
 
-                        if (weightEntities.isNotEmpty()) {
-                                animalEv.weightHistory.addAll(
-                                        weightEntities.mapNotNull { weightEntity ->
-                                                // Vérifier que la date n'est pas vide ou null
-                                                if (weightEntity.date.isNullOrBlank()) {
+                        // Utiliser le mapper pour convertir l'entité en objet de domaine (inclut jsonbinId)
+                        val animalEv = entity.toData(
+                                consultations = consultationEntities,
+                                weights = weightEntities
+                        )
 
-                                                        null // Ignorer ce poids
-                                                } else {
-                                                        try {
-                                                                WeightDate(
-                                                                        uuid = weightEntity.uuid,
-                                                                        refAnimal =
-                                                                                weightEntity
-                                                                                        .refAnimal,
-                                                                        date =
-                                                                                LocalDate.parse(
-                                                                                        weightEntity
-                                                                                                .date
-                                                                                ),
-                                                                        value = weightEntity.value
-                                                                )
-                                                        } catch (e: Exception) {
-
-                                                                null // Ignorer ce poids
-                                                        }
-                                                }
-                                        }
-                                )
-
-                                // DEBUG: Afficher les poids chargés
-                                animalEv.weightHistory.forEachIndexed { index, weight -> }
-                        } else {}
-
+                        // Le mapper toData() a déjà chargé les consultations et poids, donc on retourne directement
                         animalEv
                 }
         }

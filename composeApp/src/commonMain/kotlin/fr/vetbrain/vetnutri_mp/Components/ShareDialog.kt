@@ -82,7 +82,7 @@ fun ShareLinkDialog(
                 
                 // Informations supplémentaires
                 if (shareLink.expiresAt != null) {
-                    val expiresIn = (shareLink.expiresAt - System.currentTimeMillis()) / (1000 * 60 * 60)
+                    val expiresIn = (shareLink.expiresAt - kotlinx.datetime.Clock.System.now().toEpochMilliseconds()) / (1000 * 60 * 60)
                     Text(
                         "⚠️ Ce lien expirera dans ${expiresIn.toInt()} heures",
                         style = MaterialTheme.typography.caption,
