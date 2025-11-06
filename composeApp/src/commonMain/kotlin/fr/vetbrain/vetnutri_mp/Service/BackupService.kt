@@ -60,8 +60,6 @@ class BackupService(
         scope.launch {
             val backupDirectory = fileService.getBackupDirectory()
             fileService.createDirectoryIfNotExists(backupDirectory)
-                    "[BackupService] Répertoire prêt: existe=${backupDirectory.exists()} contenu=${backupDirectory.listFiles()?.size ?: 0}"
-            )
         }
 
         // Sauvegarde immédiate au démarrage
@@ -107,8 +105,6 @@ class BackupService(
             val timestamp = Clock.System.now().toEpochMilliseconds()
             val fileName = "${BACKUP_PREFIX}${timestamp}${BACKUP_EXTENSION}"
             val backupDirectory = fileService.getBackupDirectory()
-                    "[BackupService] Répertoire backup pour écriture: ${backupDirectory.absolutePath}"
-            )
             val file = PlatformFile.create("${backupDirectory.absolutePath}/$fileName")
 
             // Sauvegarder le fichier
@@ -134,9 +130,6 @@ class BackupService(
 
             // Sauvegarder les métadonnées
             saveBackupMetadata(metadata)
-
-                    "[BackupService] Sauvegarde terminée: ${metadata.fileName} taille=${metadata.fileSize}"
-            )
             Result.success(metadata)
         } catch (e: Exception) {
             Result.failure(e)
@@ -177,13 +170,9 @@ class BackupService(
                                         )
                                 )
                         if (fileService.fileExists(metadataFile)) {
-                                    "[BackupService] Suppression métadonnées: ${metadataFile.absolutePath}"
-                            )
                             fileService.deleteFile(metadataFile)
                         }
                     } catch (e: Exception) {
-                                "[BackupService] Erreur suppression rotation ${file.absolutePath}: ${e.message}"
-                        )
                     }
                 }
             }
@@ -199,8 +188,6 @@ class BackupService(
                             metadata.filePath.replace(BACKUP_EXTENSION, "_metadata.json")
                     )
             val metadataJson = json.encodeToString(metadata)
-                    "[BackupService] Écriture métadonnées: ${metadataFile.absolutePath} taille=${metadataJson.length}"
-            )
             fileService.writeText(metadataFile, metadataJson)
         } catch (e: Exception) {
         }
@@ -231,16 +218,12 @@ class BackupService(
                                             )
                                     )
                             if (fileService.fileExists(metadataFile)) {
-                                        "[BackupService] Lecture métadonnées: ${metadataFile.absolutePath}"
-                                )
                                 val metadataJson =
                                         fileService.readText(metadataFile).getOrNull() ?: ""
                                 val loaded = json.decodeFromString<BackupMetadata>(metadataJson)
                                 loaded.copy(filePath = buildBackupFilePath(loaded.fileName))
                             } else {
                                 // Créer des métadonnées basiques si le fichier n'existe pas
-                                        "[BackupService] Métadonnées absentes, création basique pour: ${file.absolutePath}"
-                                )
                                 val metadata =
                                         BackupMetadata(
                                                 fileName = file.name,
@@ -268,12 +251,8 @@ class BackupService(
                                                     )
                                             )
                                     val metadataJson = json.encodeToString(metadata)
-                                            "[BackupService] Écriture métadonnées (créées): ${createdMetadataFile.absolutePath}"
-                                    )
                                     fileService.writeText(createdMetadataFile, metadataJson)
                                 } catch (e: Exception) {
-                                            "[BackupService] Erreur écriture métadonnées (créées): ${e.message}"
-                                    )
                                 }
 
                                 metadata
@@ -296,8 +275,6 @@ class BackupService(
             val currentPath = buildBackupFilePath(metadata.fileName)
             val file = PlatformFile.create(currentPath)
             if (!fileService.fileExists(file)) {
-                        "[BackupService] Fichier de sauvegarde introuvable (chemin courant): ${file.absolutePath}"
-                )
                 return Result.failure(
                         Exception("Fichier de sauvegarde introuvable: ${file.absolutePath}")
                 )

@@ -32,6 +32,7 @@ fun BackupRestoreView(
     val error = viewModel.error.collectAsState().value
     val isRestoring = viewModel.isRestoring.collectAsState().value
     val restoreProgress = viewModel.restoreProgress.collectAsState().value
+    val restoreLog = viewModel.restoreLog.collectAsState().value
     val showRestoreResultDialog = viewModel.showRestoreResultDialog.collectAsState().value
     
     var showDeleteDialog by remember { mutableStateOf<BackupMetadata?>(null) }
