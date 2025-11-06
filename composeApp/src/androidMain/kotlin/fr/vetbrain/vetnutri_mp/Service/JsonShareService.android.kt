@@ -5,12 +5,7 @@ import io.ktor.client.engine.android.Android
 
 actual class JsonShareService {
     private val helper = JsonShareServiceHelper(
-        httpClient = HttpClient(Android) {
-            engine {
-                connectTimeout = 30_000
-                socketTimeout = 30_000
-            }
-        }
+        httpClient = HttpClient(Android.create())
     )
     
     actual suspend fun uploadJson(

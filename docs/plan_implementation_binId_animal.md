@@ -347,3 +347,5 @@ withContext(AppDispatchers.IO) {
 - Aucun impact sur les requêtes existantes car le champ est nullable
 
 
+
+

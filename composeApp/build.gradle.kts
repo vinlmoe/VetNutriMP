@@ -53,7 +53,7 @@ kotlin {
             implementation(libs.androidx.room.runtime)
             implementation(libs.androidx.room.paging)
             // implementation(libs.androidx.sqlite.sqlite.ktx)
-
+            implementation(libs.ktor.client.android)
         }
 
         commonMain.dependencies {
