@@ -166,8 +166,13 @@ compose.desktop {
             copyright = "© 2025 VetBrain"
             vendor = "VetBrain"
 
-            // Configuration des icônes pour chaque plateforme
-            macOS { iconFile.set(project.file("src/desktopMain/resources/icon.icns")) }
+            // Configuration macOS
+            macOS {
+                iconFile.set(project.file("src/desktopMain/resources/icon.icns"))
+                bundleID = "fr.vetbrain.vetnutri_mp"
+                // Note: La signature est effectuée après compilation via le script compile_and_sign_macos.sh
+                // Compose Desktop ne supporte pas encore la signature automatique dans Gradle
+            }
             windows {
                 iconFile.set(project.file("src/desktopMain/resources/icon.ico"))
                 // Configuration pour un exécutable portable
