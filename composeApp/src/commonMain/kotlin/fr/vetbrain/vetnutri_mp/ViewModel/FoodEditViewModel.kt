@@ -43,14 +43,9 @@ class FoodEditViewModel(
         // Charger tous les types de nutriments
         
         // Debug temporaire pour DM
-        println("🔍 DEBUG DM dans FoodEditViewModel.loadNutrients():")
-        println("  - NutrientMain.entries.size: ${NutrientMain.entries.size}")
-        println("  - NutrientMain.entries: ${NutrientMain.entries.map { it.label }}")
         val dmNutrient = NutrientMain.entries.find { it.label == "DM" }
         if (dmNutrient != null) {
-            println("  - DM trouvé: ${dmNutrient.label}")
         } else {
-            println("  - DM NON trouvé dans NutrientMain.entries!")
         }
 
         // Nutriments principaux
@@ -133,14 +128,9 @@ class FoodEditViewModel(
 
     fun getAllNutrients(): List<Nutrient> {
         // Debug temporaire pour DM
-        println("🔍 DEBUG DM dans FoodEditViewModel.getAllNutrients():")
-        println("  - _allNutrients.size: ${_allNutrients.size}")
-        println("  - _allNutrients.isEmpty(): ${_allNutrients.isEmpty()}")
         if (_allNutrients.isEmpty()) {
-            println("  - Retour des clés de l'aliment actuel: ${_alimentState.value.valMap.keys.size}")
             return _alimentState.value.valMap.keys.toList()
         }
-        println("  - Retour de _allNutrients: ${_allNutrients.size}")
         return _allNutrients
     }
 

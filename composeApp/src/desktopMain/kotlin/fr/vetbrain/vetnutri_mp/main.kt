@@ -29,7 +29,6 @@ import kotlinx.coroutines.withContext
 
 // Configuration du gestionnaire d'exceptions pour desktop (accessible globalement)
 private val exceptionHandler = CoroutineExceptionHandler { _, throwable ->
-    println("Exception dans coroutine: ${throwable.message}")
     throwable.printStackTrace()
 }
 
@@ -500,7 +499,6 @@ actual fun exportPdfDocument(
             defaultFileName = defaultFileName.ifBlank { "document.pdf" }
         )
     } catch (t: Throwable) {
-        println("PDF export failed: ${t.message}")
         t.printStackTrace()
         false
     }

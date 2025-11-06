@@ -24,7 +24,6 @@ actual fun ImageBitmap.toByteArray(): ByteArray {
         bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
         outputStream.toByteArray()
     } catch (e: Exception) {
-        println("DEBUG: Erreur lors de la conversion ImageBitmap vers ByteArray: ${e.message}")
         ByteArray(0)
     }
 }
@@ -50,6 +49,5 @@ actual fun drawTextOnCanvas(
         }
         androidCanvas.drawText(text, x, y, paint)
     } catch (e: Exception) {
-        println("DEBUG: Erreur lors du dessin de texte sur Android: ${e.message}")
     }
 }

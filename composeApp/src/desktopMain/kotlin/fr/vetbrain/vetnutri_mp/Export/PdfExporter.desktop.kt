@@ -33,7 +33,6 @@ actual object PdfExporter {
             }
             result
         } catch (t: Throwable) {
-            println("PDF export failed: ${t.message}")
             t.printStackTrace()
             false
         }

@@ -136,8 +136,6 @@ class DatabaseFoodRepository(
      */
     suspend fun importFoodsDomain(aliments: List<AlimentEv>): FoodImportResult {
         return withContext(AppDispatchers.IO) {
-            println("[REPOSITORY-INFO] === DÉBUT IMPORT FOODS DOMAIN ===")
-            println("[REPOSITORY-INFO] Nombre d'aliments à importer: ${aliments.size}")
             
             var importCount: Int = 0
             var updateCount: Int = 0
@@ -159,15 +157,9 @@ class DatabaseFoodRepository(
 
                 // Pré-traiter insert vs update
                 aliments.forEachIndexed { index, aliment ->
-                    println("[REPOSITORY-INFO] --- Traitement aliment ${index + 1}/${aliments.size} ---")
-                    println("[REPOSITORY-INFO] Nom: '${aliment.nom}', UUID: '${aliment.uuid}'")
-                    println("[REPOSITORY-INFO] Espèces: ${aliment.especes}")
-                    println("[REPOSITORY-INFO] Indications: ${aliment.indicat}")
-                    println("[REPOSITORY-INFO] Nutriments: ${aliment.valMap.size}")
                     
                     try {
                         if (aliment.uuid.isBlank()) {
-                            println("[REPOSITORY-ERROR] UUID vide pour l'aliment: '${aliment.nom}'")
                             errorCount++
                             return@forEachIndexed
                         }
@@ -183,8 +175,6 @@ class DatabaseFoodRepository(
                             updateIds.add(aliment.uuid)
                         }
                     } catch (e: Exception) {
-                        println("[REPOSITORY-ERROR] Erreur lors du traitement de l'aliment '${aliment.nom}': ${e.message}")
-                        println("[REPOSITORY-ERROR] Stack trace: ${e.stackTraceToString()}")
                         errorCount++
                     }
                 }
@@ -296,9 +286,6 @@ class DatabaseFoodRepository(
                     nonResolvedNutrients = nonResolvedNutrients.keys.toList()
             )
             
-            println("[REPOSITORY-INFO] === RÉSULTAT IMPORT FOODS DOMAIN ===")
-            println("[REPOSITORY-INFO] Importés: $importCount, Mis à jour: $updateCount, Erreurs: $errorCount")
-            println("[REPOSITORY-INFO] Nutriments non résolus: ${nonResolvedNutrients.size}")
             
             return@withContext result
         }
@@ -1071,7 +1058,6 @@ class DatabaseFoodRepository(
      * @param food L'aliment à insérer
      */
     override suspend fun insertFood(food: AlimentEv) {
-        println("DEBUG: insertFood() appelé pour ${food.nom}")
         withContext(AppDispatchers.IO) {
             try {
                 // Convertir en FoodEntity et insérer

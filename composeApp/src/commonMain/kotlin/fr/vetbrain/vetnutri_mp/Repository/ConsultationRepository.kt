@@ -100,7 +100,6 @@ class DatabaseConsultationRepository(
                 }
             } catch (e: Exception) {
                 // Log de l'erreur pour le débogage
-                println("Erreur lors de la sauvegarde de la consultation: ${e.message}")
                 throw e
             }
         }

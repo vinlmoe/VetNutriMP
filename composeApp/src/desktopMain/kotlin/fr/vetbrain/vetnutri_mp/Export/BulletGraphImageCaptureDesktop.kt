@@ -18,7 +18,6 @@ actual fun ImageBitmap.toByteArray(): ByteArray {
         ImageIO.write(awtImage, "PNG", outputStream)
         outputStream.toByteArray()
     } catch (e: Exception) {
-        println("DEBUG: Erreur lors de la conversion ImageBitmap vers ByteArray: ${e.message}")
         ByteArray(0)
     }
 }
@@ -36,5 +35,4 @@ actual fun drawTextOnCanvas(
 ) {
     // Note: Pour Desktop, le dessin de texte est géré directement dans drawBulletGraphOnCanvas
     // en créant un BufferedImage avec Graphics2D. Cette fonction est un placeholder.
-    println("DEBUG: drawTextOnCanvas appelé pour Desktop - texte: '$text' à ($x, $y)")
 }

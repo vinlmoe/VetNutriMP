@@ -499,7 +499,6 @@ object HtmlDocumentBuilder {
             try {
                 analyserValeursNutritionnellesRation(ration)
             } catch (e: Exception) {
-                println("DEBUG: Erreur lors de l'analyse des valeurs nutritionnelles: ${e.message}")
                 emptyMap()
             }
         }

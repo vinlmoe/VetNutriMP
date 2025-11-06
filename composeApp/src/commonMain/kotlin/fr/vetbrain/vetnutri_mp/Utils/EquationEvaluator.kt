@@ -97,7 +97,6 @@ object EquationEvaluator {
                 // Alias court (ex: "D", "CW")
                 variables[varKind.label] = v
                 try {
-                    println(
                             "[ENERCOMP] Map var '${varKind.variable}'=${v} et alias '${varKind.label}'=${variables[varKind.label]}"
                     )
                 } catch (_: Throwable) {}
@@ -222,7 +221,6 @@ object EquationEvaluator {
                 // Alias court (ex: "D", "CW")
                 variables[varKind.label] = v
                 try {
-                    println(
                             "[ENERCOMP] Map var '${varKind.variable}'=${v} et alias '${varKind.label}'=${variables[varKind.label]}"
                     )
                 } catch (_: Throwable) {}

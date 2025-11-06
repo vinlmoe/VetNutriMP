@@ -36,7 +36,6 @@ actual object PlatformHttpClient {
                     val location = connection.getHeaderField("Location")
                     if (location != null) {
                         redirectCount++
-                        println("[PlatformHttpClient] Redirection $responseCode vers: $location")
                         currentUrl = location
                         connection.disconnect()
                         continue
@@ -57,7 +56,6 @@ actual object PlatformHttpClient {
             throw IOException("Trop de redirections (max: $maxRedirects)")
             
         } catch (e: Exception) {
-            println("[PlatformHttpClient] Erreur: ${e::class.simpleName} - ${e.message}")
             e.printStackTrace()
             throw UpdateException("Impossible de récupérer le fichier de mise à jour", e)
         }
