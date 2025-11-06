@@ -296,13 +296,11 @@ private suspend fun partagerAnimalEnLigne(
                 
                 // Récupérer le binId existant directement depuis la BDD
                 val existingBinId = animalToUse.jsonbinId
-                println("🔵 [AnimalDetailView] BinId existant pour ${animal.uuid} (depuis BDD): ${existingBinId ?: "aucun"}")
                 
                 // Si l'animal du ViewModel n'a pas le jsonbinId mais qu'il existe en BDD, mettre à jour le ViewModel
                 if (animalFromDb != null && animal.jsonbinId != animalFromDb.jsonbinId) {
                         withContext(AppDispatchers.Main) {
                                 viewModel.setAnimal(animalFromDb)
-                                println("🔄 [AnimalDetailView] Animal mis à jour dans le ViewModel avec jsonbinId: ${animalFromDb.jsonbinId}")
                         }
                 }
                 
@@ -327,14 +325,12 @@ private suspend fun partagerAnimalEnLigne(
                                         val animalToUpdate = animalToUse.copy(jsonbinId = shareLink.binId)
                                         withContext(AppDispatchers.IO) {
                                                 viewModel.updateAnimal(animalToUpdate)
-                                                println("✅ [AnimalDetailView] BinId de l'animal mis à jour en base: ${shareLink.binId}")
                                                 
                                                 // Recharger l'animal depuis la BDD pour s'assurer que le jsonbinId est bien présent
                                                 val updatedAnimal: AnimalEv? = settingsViewModel.animalRepository.getAnimalById(animalToUse.uuid)
                                                 if (updatedAnimal != null) {
                                                         withContext(AppDispatchers.Main) {
                                                                 viewModel.setAnimal(updatedAnimal)
-                                                                println("✅ [AnimalDetailView] Animal rechargé depuis la BDD avec jsonbinId: ${updatedAnimal.jsonbinId}")
                                                         }
                                                 }
                                         }
@@ -498,7 +494,6 @@ private fun handlePdfExport(
                     bulletGraphImages[ration.uuid] = testImagePaths
                 }
             } catch (e: Exception) {
-                println("Erreur génération bullet graphs pour export PDF: ${e.message}")
             }
         }
         
@@ -1789,12 +1784,9 @@ private fun WideScreenLayout(
                                                                                                         }
                                                                                                         
                                                                                                         bulletGraphImages[ration.uuid] = imagePaths
-                                                                                                        println("DEBUG: Généré ${imagePaths.size} images de bullet graphs")
                                                                                                 } else {
-                                                                                                        println("DEBUG: Données manquantes - prefsEspece: ${prefsEspece != null}, ref: ${ref != null}")
                                                                                                         
                                                                                                         // Générer des images de test même sans les vraies données
-                                                                                                        println("DEBUG: Génération d'images de test...")
                                                                                                         val testImages = mutableMapOf<String, ByteArray>()
                                                                                                         listOf("PROTEINE", "LIPIDE", "ENA", "CELLULOSE", "CENDRE", "CAL", "PHOS").forEach { nom ->
                                                                                                                 val imageBytes = fr.vetbrain.vetnutri_mp.Export.BulletGraphImageCapture.generateBulletGraphImage(
@@ -1809,11 +1801,9 @@ private fun WideScreenLayout(
                                                                                                         }
                                                                                                         
                                                                                                         bulletGraphImages[ration.uuid] = testImagePaths
-                                                                                                        println("DEBUG: Généré ${testImagePaths.size} images de test")
                                                                                                 }
                                                                                         } catch (e: Exception) {
                                                                                                 // En cas d'erreur, continuer sans les images
-                                                                                                println("Erreur génération bullet graphs: ${e.message}")
                                                                                                 e.printStackTrace()
                                                                                         }
                                                                                 }
@@ -3358,12 +3348,9 @@ private fun NarrowScreenLayout(
                                                                                                                                 }
                                                                                                                                 
                                                                                                                                 bulletGraphImages[ration.uuid] = imagePaths
-                                                                                                                                println("DEBUG: Généré ${imagePaths.size} images de bullet graphs")
                                                                                                                         } else {
-                                                                                                                                println("DEBUG: Données manquantes - prefsEspece: ${prefsEspece != null}, ref: ${ref != null}")
                                                                                                                                 
                                                                                                                                 // Générer des images de test même sans les vraies données
-                                                                                                                                println("DEBUG: Génération d'images de test...")
                                                                                                                                 val testImages = mutableMapOf<String, ByteArray>()
                                                                                                                                 listOf("PROTEINE", "LIPIDE", "ENA", "CELLULOSE", "CENDRE", "CAL", "PHOS").forEach { nom ->
                                                                                                                                         val imageBytes = fr.vetbrain.vetnutri_mp.Export.BulletGraphImageCapture.generateBulletGraphImage(
@@ -3378,11 +3365,9 @@ private fun NarrowScreenLayout(
                                                                                                                                 }
                                                                                                                                 
                                                                                                                                 bulletGraphImages[ration.uuid] = testImagePaths
-                                                                                                                                println("DEBUG: Généré ${testImagePaths.size} images de test")
                                                                                                                         }
                                                                                                                 } catch (e: Exception) {
                                                                                                                         // En cas d'erreur, continuer sans les images
-                                                                                                                        println("Erreur génération bullet graphs: ${e.message}")
                                                                                                                         e.printStackTrace()
                                                                                                                 }
                                                                                                         }

@@ -189,7 +189,6 @@ class DatabaseVersionManager {
      * @return true si une mise à jour est nécessaire
      */
     suspend fun isJsonUpdateNeeded(jsonContent: String): Boolean {
-        println("🔄 [VERSION] Début de isJsonUpdateNeeded")
         try {
             // Lire la version du JSON intégré
             val jsonElement = kotlinx.serialization.json.Json.parseToJsonElement(jsonContent)
@@ -197,45 +196,37 @@ class DatabaseVersionManager {
                 val embeddedVersion = jsonElement["version"]?.toString()?.removeSurrounding("\"")
                 val embeddedTimestamp = jsonElement["generatedAtEpochMs"]?.toString()?.toLongOrNull()
 
-                println("🔄 [VERSION] Version intégrée: $embeddedVersion, Timestamp: $embeddedTimestamp")
 
                 if (embeddedVersion != null) {
                     // Récupérer la version déjà importée
                     val storedVersion = getStoredJsonVersion()
                     val storedTimestamp = getStoredJsonTimestamp()
 
-                    println("🔄 [VERSION] Version stockée: $storedVersion, Timestamp: $storedTimestamp")
 
                     // Si aucune version n'a été importée, une mise à jour est nécessaire
                     if (storedVersion == null) {
-                        println("✅ [VERSION] Aucune version stockée, mise à jour nécessaire")
                         return true
                     }
 
                     // Comparer les versions
                     val versionComparison = compareVersions(embeddedVersion, storedVersion)
-                    println("🔄 [VERSION] Comparaison des versions: $embeddedVersion vs $storedVersion = $versionComparison")
 
                     // Si les versions sont différentes
                     if (versionComparison > 0) {
-                        println("✅ [VERSION] Version intégrée plus récente, mise à jour nécessaire")
                         return true
                     }
 
                     // Si les versions sont identiques, comparer les timestamps
                     if (versionComparison == 0 && embeddedTimestamp != null && storedTimestamp != null) {
                         val timestampComparison = embeddedTimestamp > storedTimestamp
-                        println("🔄 [VERSION] Versions identiques, comparaison des timestamps: $timestampComparison")
                         return timestampComparison
                     }
 
                 }
             }
 
-            println("ℹ️ [VERSION] Aucune mise à jour nécessaire")
             return false
         } catch (e: Exception) {
-            println("💥 [VERSION] Exception dans isJsonUpdateNeeded: ${e.message}")
             e.printStackTrace()
             // En cas d'erreur, considérer qu'une mise à jour est nécessaire
             return true

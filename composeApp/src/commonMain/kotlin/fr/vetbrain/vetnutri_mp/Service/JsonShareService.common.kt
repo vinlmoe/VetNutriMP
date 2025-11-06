@@ -34,10 +34,6 @@ internal class JsonShareServiceHelper(private val httpClient: HttpClient) {
     ): Result<ShareLink> = withContext(AppDispatchers.IO) {
         try {
             val isUpdate = options.binId != null
-            println("🔵 [JsonShareService] Début de l'${if (isUpdate) "update" else "upload"} vers jsonbin.io")
-            println("🔵 [JsonShareService] Taille du JSON: ${jsonContent.length} caractères")
-            println("🔵 [JsonShareService] Options: expiresInHours=${options.expiresInHours}, isPrivate=${options.isPrivate}, binId=${options.binId}")
-            println("🔵 [JsonShareService] Clé API écriture présente: ${createUpdateApiKey != null}")
             
             // Construire l'URL
             // Si binId est fourni, on fait un PUT pour mettre à jour, sinon POST pour créer
@@ -46,7 +42,6 @@ internal class JsonShareServiceHelper(private val httpClient: HttpClient) {
             } else {
                 "$baseUrl/b"
             }
-            println("🔵 [JsonShareService] URL: $url (${if (isUpdate) "PUT" else "POST"})")
             
             // Faire la requête POST ou PUT
             val response = if (isUpdate) {
@@ -55,13 +50,11 @@ internal class JsonShareServiceHelper(private val httpClient: HttpClient) {
                         append(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                         // Utiliser X-Access-Key pour la clé d'écriture (pas X-Master-Key)
                         createUpdateApiKey?.let { key ->
-                            println("🔵 [JsonShareService] Ajout header X-Access-Key (${key.take(10)}...)")
                             append("X-Access-Key", key)
                         }
                         // Pour l'expiration lors de la mise à jour, nécessite une clé API
                         if (options.expiresInHours != null && createUpdateApiKey != null) {
                             val expirationSeconds = options.expiresInHours * 3600
-                            println("🔵 [JsonShareService] Ajout header X-Bin-Expiration: $expirationSeconds secondes")
                             append("X-Bin-Expiration", expirationSeconds.toString())
                         }
                     }
@@ -73,24 +66,20 @@ internal class JsonShareServiceHelper(private val httpClient: HttpClient) {
                         append(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                         // Utiliser X-Access-Key pour la clé d'écriture (pas X-Master-Key)
                         createUpdateApiKey?.let { key ->
-                            println("🔵 [JsonShareService] Ajout header X-Access-Key (${key.take(10)}...)")
                             append("X-Access-Key", key)
                         }
                         // Nom du bin (peut être l'UUID de l'animal pour identification)
                         // Note: jsonbin.io ne permet pas d'ID personnalisé, mais on peut nommer le bin
                         options.binName?.let { name ->
-                            println("🔵 [JsonShareService] Ajout header X-Bin-Name: $name")
                             append("X-Bin-Name", name)
                         }
                         // Pour les bins privés, nécessite une clé API
                         if (options.isPrivate && createUpdateApiKey != null) {
-                            println("🔵 [JsonShareService] Ajout header X-Bin-Private: true")
                             append("X-Bin-Private", "true")
                         }
                         // Pour l'expiration, nécessite une clé API
                         if (options.expiresInHours != null && createUpdateApiKey != null) {
                             val expirationSeconds = options.expiresInHours * 3600
-                            println("🔵 [JsonShareService] Ajout header X-Bin-Expiration: $expirationSeconds secondes")
                             append("X-Bin-Expiration", expirationSeconds.toString())
                         }
                     }
@@ -98,18 +87,9 @@ internal class JsonShareServiceHelper(private val httpClient: HttpClient) {
                 }
             }
             
-            println("🔵 [JsonShareService] Réponse reçue: status=${response.status.value}, description=${response.status.description}")
-            
-            // Afficher tous les headers de réponse pour debug
-            println("🔵 [JsonShareService] Headers de réponse:")
-            response.headers.forEach { name, values ->
-                println("🔵 [JsonShareService]   $name: ${values.joinToString(", ")}")
-            }
-            
             if (response.status.isSuccess()) {
                 // Parser la réponse JSON manuellement
                 val responseText = response.body<String>()
-                println("🔵 [JsonShareService] Réponse JSON complète: $responseText")
                 val json = Json { ignoreUnknownKeys = true; isLenient = true }
                 
                 // Si c'est une mise à jour, utiliser le binId fourni dans les options
@@ -124,7 +104,6 @@ internal class JsonShareServiceHelper(private val httpClient: HttpClient) {
                             // Si pas dans les headers, essayer le header Location
                             val locationHeader = response.headers["location"] ?: response.headers["Location"]
                             if (locationHeader != null) {
-                                println("🔵 [JsonShareService] Location header: $locationHeader")
                                 val locationMatch = Regex("/b/([a-zA-Z0-9]+)").find(locationHeader)
                                 locationMatch?.groupValues?.get(1)
                             } else {
@@ -137,14 +116,12 @@ internal class JsonShareServiceHelper(private val httpClient: HttpClient) {
                                 val createResponse = json.decodeFromString<JsonBinCreateResponse>(responseText)
                                 createResponse.id
                             } catch (e: Exception) {
-                                println("⚠️ [JsonShareService] Format réponse non standard, tentative alternative...")
                                 // Essayer de parser le format alternatif avec "metadata"
                                 try {
                                     val jsonObj = kotlinx.serialization.json.Json.parseToJsonElement(responseText).jsonObject
                                     val metadata = jsonObj["metadata"]?.jsonObject
                                     metadata?.get("id")?.jsonPrimitive?.content
                                 } catch (e2: Exception) {
-                                    println("❌ [JsonShareService] Impossible d'extraire l'ID: ${e2.message}")
                                     throw Exception("Format de réponse inattendu: $responseText")
                                 }
                             }
@@ -156,9 +133,6 @@ internal class JsonShareServiceHelper(private val httpClient: HttpClient) {
                 }
                 
                 val shareUrl = "https://jsonbin.io/$binId"
-                
-                println("✅ [JsonShareService] ${if (isUpdate) "Mise à jour" else "Upload"} réussi! Bin ID: $binId")
-                println("✅ [JsonShareService] URL de partage: $shareUrl")
                 
                 // Calculer la date d'expiration si spécifiée
                 val expiresAt = options.expiresInHours?.let { hours ->
@@ -173,53 +147,38 @@ internal class JsonShareServiceHelper(private val httpClient: HttpClient) {
                 ))
             } else {
                 val responseText = response.body<String>()
-                println("❌ [JsonShareService] Erreur HTTP: ${response.status.value} - ${response.status.description}")
-                println("❌ [JsonShareService] Réponse erreur: $responseText")
                 
                 val errorResponse = try {
                     val json = Json { ignoreUnknownKeys = true; isLenient = true }
                     json.decodeFromString<JsonBinErrorResponse>(responseText)
                 } catch (e: Exception) {
-                    println("❌ [JsonShareService] Erreur parsing réponse: ${e.message}")
                     null
                 }
                 
                 val errorMessage = "Erreur lors de l'upload: ${response.status} - ${errorResponse?.message ?: response.status.description}"
-                println("❌ [JsonShareService] $errorMessage")
                 Result.failure(Exception(errorMessage))
             }
         } catch (e: Exception) {
-            println("❌ [JsonShareService] Exception lors de l'upload: ${e.message}")
-            e.printStackTrace()
             Result.failure(Exception("Erreur lors de l'upload vers jsonbin.io: ${e.message}", e))
         }
     }
     
     suspend fun downloadJson(binId: String): Result<String> = withContext(AppDispatchers.IO) {
         try {
-            println("🔵 [JsonShareService] Début du téléchargement depuis jsonbin.io")
-            println("🔵 [JsonShareService] Bin ID: $binId")
-            println("🔵 [JsonShareService] Clé API lecture présente: ${readApiKey != null}")
-            
             val url = "$baseUrl/b/$binId"
-            println("🔵 [JsonShareService] URL: $url")
             
             val response = httpClient.get(url) {
                 headers {
                     // Utiliser X-Access-Key pour la clé de lecture (pas X-Master-Key)
                     readApiKey?.let { key ->
-                        println("🔵 [JsonShareService] Ajout header X-Access-Key (${key.take(10)}...)")
                         append("X-Access-Key", key)
                     }
                 }
             }
             
-            println("🔵 [JsonShareService] Réponse reçue: status=${response.status.value}, description=${response.status.description}")
-            
             if (response.status.isSuccess()) {
                 // Parser la réponse JSON manuellement
                 val responseText = response.body<String>()
-                println("🔵 [JsonShareService] Réponse JSON: ${responseText.take(200)}...")
                 val json = Json { ignoreUnknownKeys = true; isLenient = true }
                 
                 // jsonbin.io peut retourner record comme string ou comme objet JSON
@@ -230,7 +189,6 @@ internal class JsonShareServiceHelper(private val httpClient: HttpClient) {
                     readResponse.record
                 } catch (e: Exception) {
                     // Si ça échoue, c'est que record est un objet JSON, pas une string
-                    println("🔵 [JsonShareService] Record n'est pas une string, parsing comme objet JSON...")
                     try {
                         val jsonObj = kotlinx.serialization.json.Json.parseToJsonElement(responseText).jsonObject
                         val recordElement = jsonObj["record"]
@@ -241,38 +199,29 @@ internal class JsonShareServiceHelper(private val httpClient: HttpClient) {
                             null
                         }
                     } catch (e2: Exception) {
-                        println("❌ [JsonShareService] Erreur parsing record comme objet: ${e2.message}")
                         null
                     }
                 }
                 
                 if (content != null) {
-                    println("✅ [JsonShareService] Téléchargement réussi! Taille: ${content.length} caractères")
                     Result.success(content)
                 } else {
-                    println("❌ [JsonShareService] Le bin est vide ou inaccessible")
                     Result.failure(Exception("Le bin est vide ou inaccessible"))
                 }
             } else {
                 val responseText = response.body<String>()
-                println("❌ [JsonShareService] Erreur HTTP: ${response.status.value} - ${response.status.description}")
-                println("❌ [JsonShareService] Réponse erreur: $responseText")
                 
                 val errorResponse = try {
                     val json = Json { ignoreUnknownKeys = true; isLenient = true }
                     json.decodeFromString<JsonBinErrorResponse>(responseText)
                 } catch (e: Exception) {
-                    println("❌ [JsonShareService] Erreur parsing réponse: ${e.message}")
                     null
                 }
                 
                 val errorMessage = "Erreur lors du téléchargement: ${response.status} - ${errorResponse?.message ?: response.status.description}"
-                println("❌ [JsonShareService] $errorMessage")
                 Result.failure(Exception(errorMessage))
             }
         } catch (e: Exception) {
-            println("❌ [JsonShareService] Exception lors du téléchargement: ${e.message}")
-            e.printStackTrace()
             Result.failure(Exception("Erreur lors du téléchargement depuis jsonbin.io: ${e.message}", e))
         }
     }
@@ -298,13 +247,11 @@ internal class JsonShareServiceHelper(private val httpClient: HttpClient) {
                 val extractedId = match.groupValues[1]
                 // Vérifier que l'ID extrait a au moins 10 caractères (format jsonbin.io)
                 if (extractedId.length >= 10) {
-                    println("🔵 [JsonShareService] ID extrait depuis l'URL: $extractedId")
                     return extractedId
                 }
             }
         }
         
-        println("⚠️ [JsonShareService] Impossible d'extraire l'ID depuis l'URL: $url")
         return null
     }
 }

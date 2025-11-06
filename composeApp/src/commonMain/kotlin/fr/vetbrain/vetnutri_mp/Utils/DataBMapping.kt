@@ -77,10 +77,6 @@ enum class DataB(val code: String, val displayName: String) {
  *
  * // 3. Validation type-safe when (dataB) {
  * ```
- *     DataB.CIQUAL -> println("Base CIQUAL")
- *     DataB.FCEN -> println("Base FCEN")
- *     DataB.GENERIQUE -> println("Base Générique")
- *     null -> println("Base inconnue")
  * ```
  * }
  *

@@ -199,20 +199,11 @@ fun UpdateDialog(
                         Button(
                             onClick = {
                                 // Afficher l'URL de téléchargement de manière claire
-                                println("=".repeat(60))
-                                println("🔗 MISE À JOUR DISPONIBLE")
-                                println("=".repeat(60))
-                                println("📥 URL de téléchargement: ${updateResult.downloadUrl}")
-                                println("📋 Version actuelle: ${updateResult.currentVersion}")
-                                println("🆕 Nouvelle version: ${updateResult.newVersion}")
-                                println("=".repeat(60))
                                 
                                 // Essayer d'ouvrir l'URL dans le navigateur
                                 try {
                                     PlatformUrlOpener.openUrl(updateResult.downloadUrl)
                                 } catch (e: Exception) {
-                                    println("❌ Impossible d'ouvrir l'URL automatiquement: ${e.message}")
-                                    println("📋 Veuillez copier manuellement l'URL ci-dessus")
                                 }
                             },
                             modifier = Modifier.fillMaxWidth(),

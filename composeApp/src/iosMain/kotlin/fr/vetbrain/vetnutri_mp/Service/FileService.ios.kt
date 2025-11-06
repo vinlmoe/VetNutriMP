@@ -23,10 +23,8 @@ actual class FileService {
                                 null
                         )
                 val path = url?.path
-                println("[FileService][iOS] Résolution Documents: url='${url}', path='${path}'")
                 if (path != null && path.isNotEmpty()) path else NSHomeDirectory() + "/Documents"
             } catch (_: Exception) {
-                println(
                         "[FileService][iOS] Échec résolution URLForDirectory, utilisation de NSHomeDirectory/Documents"
                 )
                 NSHomeDirectory() + "/Documents"
@@ -37,9 +35,7 @@ actual class FileService {
         val documentsPath = resolveDocumentsPath()
         return withContext(AppDispatchers.IO) {
             val backupDir = PlatformFile.create("$documentsPath/VetNutriMP/backups")
-            println("[FileService][iOS] Répertoire backup attendu: ${backupDir.absolutePath}")
             if (!backupDir.exists()) backupDir.mkdirs()
-            println(
                     "[FileService][iOS] Répertoire backup existe=${backupDir.exists()} contenuCount=${backupDir.listFiles()?.size ?: 0}"
             )
             backupDir
@@ -50,9 +46,7 @@ actual class FileService {
         val documentsPath = resolveDocumentsPath()
         return withContext(AppDispatchers.IO) {
             val dataDir = PlatformFile.create("$documentsPath/VetNutriMP/data")
-            println("[FileService][iOS] Répertoire data attendu: ${dataDir.absolutePath}")
             if (!dataDir.exists()) dataDir.mkdirs()
-            println(
                     "[FileService][iOS] Répertoire data existe=${dataDir.exists()} contenuCount=${dataDir.listFiles()?.size ?: 0}"
             )
             dataDir
@@ -75,7 +69,6 @@ actual class FileService {
     actual suspend fun fileExists(file: PlatformFile): Boolean {
         return withContext(AppDispatchers.IO) {
             val exists = file.exists()
-            println("[FileService][iOS] Vérification existence: ${file.absolutePath} => ${exists}")
             exists
         }
     }
@@ -88,14 +81,11 @@ actual class FileService {
         return withContext(AppDispatchers.IO) {
             try {
                 if (file.exists()) {
-                    println("[FileService][iOS] Suppression fichier: ${file.absolutePath}")
                     file.delete()
                 } else {
-                    println("[FileService][iOS] Suppression ignorée (absent): ${file.absolutePath}")
                 }
                 Result.success(Unit)
             } catch (e: Exception) {
-                println("[FileService][iOS] Erreur suppression ${file.absolutePath}: ${e.message}")
                 Result.failure(e)
             }
         }
@@ -110,13 +100,11 @@ actual class FileService {
                     val filtered =
                             if (pattern != null) files.filter { it.name.matches(pattern.toRegex()) }
                             else files
-                    println(
                             "[FileService][iOS] Listing: dir=${directory.absolutePath} total=${files.size} filtrés=${filtered.size} pattern=${pattern}"
                     )
                     filtered
                 }
             } catch (_: Exception) {
-                println("[FileService][iOS] Erreur listing: dir=${directory.absolutePath}")
                 emptyList()
             }
         }
@@ -125,13 +113,11 @@ actual class FileService {
     actual suspend fun copyFile(source: PlatformFile, destination: PlatformFile): Result<Unit> {
         return withContext(AppDispatchers.IO) {
             try {
-                println(
                         "[FileService][iOS] Copie: ${source.absolutePath} => ${destination.absolutePath}"
                 )
                 source.copyTo(destination, overwrite = true)
                 Result.success(Unit)
             } catch (e: Exception) {
-                println(
                         "[FileService][iOS] Erreur copie ${source.absolutePath} => ${destination.absolutePath}: ${e.message}"
                 )
                 Result.failure(e)
@@ -142,13 +128,11 @@ actual class FileService {
     actual suspend fun moveFile(source: PlatformFile, destination: PlatformFile): Result<Unit> {
         return withContext(AppDispatchers.IO) {
             try {
-                println(
                         "[FileService][iOS] Déplacement: ${source.absolutePath} => ${destination.absolutePath}"
                 )
                 source.renameTo(destination)
                 Result.success(Unit)
             } catch (e: Exception) {
-                println(
                         "[FileService][iOS] Erreur déplacement ${source.absolutePath} => ${destination.absolutePath}: ${e.message}"
                 )
                 Result.failure(e)
@@ -159,11 +143,9 @@ actual class FileService {
     actual suspend fun writeText(file: PlatformFile, text: String): Result<Unit> {
         return withContext(AppDispatchers.IO) {
             try {
-                println("[FileService][iOS] Écriture: ${file.absolutePath} taille=${text.length}")
                 file.writeText(text)
                 Result.success(Unit)
             } catch (e: Exception) {
-                println("[FileService][iOS] Erreur écriture ${file.absolutePath}: ${e.message}")
                 Result.failure(e)
             }
         }
@@ -172,14 +154,11 @@ actual class FileService {
     actual suspend fun readText(file: PlatformFile): Result<String> {
         return withContext(AppDispatchers.IO) {
             try {
-                println("[FileService][iOS] Lecture: ${file.absolutePath}")
                 val content = file.readText()
-                println(
                         "[FileService][iOS] Lecture OK: ${file.absolutePath} taille=${content.length}"
                 )
                 Result.success(content)
             } catch (e: Exception) {
-                println("[FileService][iOS] Erreur lecture ${file.absolutePath}: ${e.message}")
                 Result.failure(e)
             }
         }

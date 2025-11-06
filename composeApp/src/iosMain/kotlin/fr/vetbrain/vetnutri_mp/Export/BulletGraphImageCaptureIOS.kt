@@ -9,7 +9,6 @@ import androidx.compose.ui.graphics.Color
  */
 actual fun ImageBitmap.toByteArray(): ByteArray {
     // TODO: Implémenter la conversion pour iOS
-    println("DEBUG: ImageBitmap.toByteArray() pour iOS - non implémenté")
     return ByteArray(0)
 }
 
@@ -25,5 +24,4 @@ actual fun drawTextOnCanvas(
     color: Color
 ) {
     // TODO: Implémenter le dessin de texte pour iOS
-    println("DEBUG: drawTextOnCanvas pour iOS - non implémenté")
 }

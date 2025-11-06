@@ -386,10 +386,6 @@ class EquationViewModel(
 
         // Debug temporaire pour DM
         if (variable == "DM") {
-            println("🔍 DEBUG DM dans isNutrientVariable():")
-            println("  - nutrientsMain: $nutrientsMain")
-            println("  - DM in nutrientsMain: ${variable in nutrientsMain}")
-            println("  - DM in all nutrients: ${variable in (nutrientsMain + nutrientsLipides + nutrientsVitamines + nutrientsMacro + nutrientsMin + acideAmines)}")
         }
 
         return variable in
@@ -514,11 +510,7 @@ class EquationViewModel(
         // Debug temporaire pour DM
         val dmNutrient = nutrientsMain.find { it.label == "DM" }
         if (dmNutrient != null) {
-            println("🔍 DEBUG DM dans getAllNutrients():")
-            println("  - DM trouvé: ${dmNutrient.label}")
-            println("  - DM translateEnum(): ${dmNutrient.translateEnum()}")
         } else {
-            println("❌ DEBUG DM dans getAllNutrients(): DM NON trouvé!")
         }
 
         return nutrientsMain +

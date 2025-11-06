@@ -261,7 +261,6 @@ fun FoodApi.toDomain(): AlimentEv {
                         aliment.setNutrient(nutrient, value)
                 } else {
                         // Log pour débogage - nutriment non résolu
-                        println("⚠️ [NUTRIENT] Nutriment non résolu: '$label' (valeur: $value)")
                 }
         }
         return aliment

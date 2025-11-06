@@ -58,11 +58,8 @@ class BackupService(
 
         // Créer le répertoire de sauvegarde s'il n'existe pas
         scope.launch {
-            println("[BackupService] Initialisation du répertoire de sauvegarde...")
             val backupDirectory = fileService.getBackupDirectory()
-            println("[BackupService] Répertoire de sauvegarde: ${backupDirectory.absolutePath}")
             fileService.createDirectoryIfNotExists(backupDirectory)
-            println(
                     "[BackupService] Répertoire prêt: existe=${backupDirectory.exists()} contenu=${backupDirectory.listFiles()?.size ?: 0}"
             )
         }
@@ -70,10 +67,8 @@ class BackupService(
         // Sauvegarde immédiate au démarrage
         scope.launch {
             try {
-                println("[BackupService] Sauvegarde immédiate au démarrage...")
                 createBackup()
             } catch (e: Exception) {
-                println("[BackupService] Erreur sauvegarde immédiate: ${e.message}")
             }
         }
 
@@ -83,10 +78,8 @@ class BackupService(
                     while (isActive) {
                         delay(BACKUP_INTERVAL_MINUTES * 60 * 1000) // 10 minutes
                         try {
-                            println("[BackupService] Sauvegarde périodique...")
                             createBackup()
                         } catch (e: Exception) {
-                            println("[BackupService] Erreur sauvegarde périodique: ${e.message}")
                         }
                     }
                 }
@@ -107,27 +100,21 @@ class BackupService(
     suspend fun createBackup(): Result<BackupMetadata> {
         return try {
             // Exporter toutes les données
-            println("[BackupService] Début création sauvegarde...")
             val jsonData = exportImportRepository.exportAll()
-            println("[BackupService] Données exportées: taille=${jsonData.length}")
             val envelope = json.decodeFromString<ApiEnvelope>(jsonData)
 
             // Créer le nom de fichier avec timestamp
             val timestamp = Clock.System.now().toEpochMilliseconds()
             val fileName = "${BACKUP_PREFIX}${timestamp}${BACKUP_EXTENSION}"
             val backupDirectory = fileService.getBackupDirectory()
-            println(
                     "[BackupService] Répertoire backup pour écriture: ${backupDirectory.absolutePath}"
             )
             val file = PlatformFile.create("${backupDirectory.absolutePath}/$fileName")
 
             // Sauvegarder le fichier
-            println("[BackupService] Écriture du fichier: ${file.absolutePath}")
             fileService.writeText(file, jsonData)
-            println("[BackupService] Fichier écrit: existe=${file.exists()} taille=${file.length}")
 
             // Gérer la rotation des fichiers
-            println("[BackupService] Gestion rotation des sauvegardes...")
             manageBackupRotation()
 
             // Créer les métadonnées
@@ -146,15 +133,12 @@ class BackupService(
                     )
 
             // Sauvegarder les métadonnées
-            println("[BackupService] Sauvegarde des métadonnées: ${file.absolutePath}")
             saveBackupMetadata(metadata)
 
-            println(
                     "[BackupService] Sauvegarde terminée: ${metadata.fileName} taille=${metadata.fileSize}"
             )
             Result.success(metadata)
         } catch (e: Exception) {
-            println("[BackupService] Erreur création sauvegarde: ${e.message}")
             Result.failure(e)
         }
     }
@@ -165,7 +149,6 @@ class BackupService(
     private suspend fun manageBackupRotation() {
         try {
             val backupDirectory = fileService.getBackupDirectory()
-            println("[BackupService] Rotation: scan du répertoire ${backupDirectory.absolutePath}")
             val backupFiles =
                     fileService.listFiles(backupDirectory).filter { file ->
                         file.isFile() &&
@@ -175,7 +158,6 @@ class BackupService(
                                         "_metadata"
                                 ) // Exclure les fichiers de métadonnées
                     }
-            println("[BackupService] Rotation: trouvés=${backupFiles.size}")
 
             if (backupFiles.size > MAX_BACKUP_FILES) {
                 // Trier par date de modification (plus ancien en premier)
@@ -183,10 +165,8 @@ class BackupService(
 
                 // Supprimer les fichiers les plus anciens
                 val filesToDelete = sortedFiles.take(backupFiles.size - MAX_BACKUP_FILES)
-                println("[BackupService] Rotation: suppression de ${filesToDelete.size} fichiers")
                 filesToDelete.forEach { file ->
                     try {
-                        println("[BackupService] Suppression ancien backup: ${file.absolutePath}")
                         fileService.deleteFile(file)
                         // Supprimer aussi le fichier de métadonnées associé
                         val metadataFile =
@@ -197,20 +177,17 @@ class BackupService(
                                         )
                                 )
                         if (fileService.fileExists(metadataFile)) {
-                            println(
                                     "[BackupService] Suppression métadonnées: ${metadataFile.absolutePath}"
                             )
                             fileService.deleteFile(metadataFile)
                         }
                     } catch (e: Exception) {
-                        println(
                                 "[BackupService] Erreur suppression rotation ${file.absolutePath}: ${e.message}"
                         )
                     }
                 }
             }
         } catch (e: Exception) {
-            println("[BackupService] Erreur rotation: ${e.message}")
         }
     }
 
@@ -222,12 +199,10 @@ class BackupService(
                             metadata.filePath.replace(BACKUP_EXTENSION, "_metadata.json")
                     )
             val metadataJson = json.encodeToString(metadata)
-            println(
                     "[BackupService] Écriture métadonnées: ${metadataFile.absolutePath} taille=${metadataJson.length}"
             )
             fileService.writeText(metadataFile, metadataJson)
         } catch (e: Exception) {
-            println("[BackupService] Erreur écriture métadonnées: ${e.message}")
         }
     }
 
@@ -235,7 +210,6 @@ class BackupService(
     suspend fun getAvailableBackups(): List<BackupMetadata> {
         return try {
             val backupDirectory = fileService.getBackupDirectory()
-            println("[BackupService] Liste backups dans: ${backupDirectory.absolutePath}")
             val backupFiles =
                     fileService.listFiles(backupDirectory).filter { file ->
                         file.isFile() &&
@@ -245,7 +219,6 @@ class BackupService(
                                         "_metadata"
                                 ) // Exclure les fichiers de métadonnées
                     }
-            println("[BackupService] Backups détectés: ${backupFiles.size}")
 
             backupFiles
                     .mapNotNull { file ->
@@ -258,7 +231,6 @@ class BackupService(
                                             )
                                     )
                             if (fileService.fileExists(metadataFile)) {
-                                println(
                                         "[BackupService] Lecture métadonnées: ${metadataFile.absolutePath}"
                                 )
                                 val metadataJson =
@@ -267,7 +239,6 @@ class BackupService(
                                 loaded.copy(filePath = buildBackupFilePath(loaded.fileName))
                             } else {
                                 // Créer des métadonnées basiques si le fichier n'existe pas
-                                println(
                                         "[BackupService] Métadonnées absentes, création basique pour: ${file.absolutePath}"
                                 )
                                 val metadata =
@@ -297,12 +268,10 @@ class BackupService(
                                                     )
                                             )
                                     val metadataJson = json.encodeToString(metadata)
-                                    println(
                                             "[BackupService] Écriture métadonnées (créées): ${createdMetadataFile.absolutePath}"
                                     )
                                     fileService.writeText(createdMetadataFile, metadataJson)
                                 } catch (e: Exception) {
-                                    println(
                                             "[BackupService] Erreur écriture métadonnées (créées): ${e.message}"
                                     )
                                 }
@@ -310,13 +279,11 @@ class BackupService(
                                 metadata
                             }
                         } catch (e: Exception) {
-                            println("[BackupService] Erreur lecture métadonnées: ${e.message}")
                             null
                         }
                     }
                     .sortedByDescending { it.createdAt }
         } catch (e: Exception) {
-            println("[BackupService] Erreur listage backups: ${e.message}")
             emptyList()
         }
     }
@@ -328,9 +295,7 @@ class BackupService(
         return try {
             val currentPath = buildBackupFilePath(metadata.fileName)
             val file = PlatformFile.create(currentPath)
-            println("[BackupService] Restauration depuis: ${file.absolutePath}")
             if (!fileService.fileExists(file)) {
-                println(
                         "[BackupService] Fichier de sauvegarde introuvable (chemin courant): ${file.absolutePath}"
                 )
                 return Result.failure(
@@ -338,16 +303,11 @@ class BackupService(
                 )
             }
 
-            println("[BackupService] Lecture fichier de sauvegarde...")
             val jsonData = fileService.readText(file).getOrNull() ?: ""
-            println("[BackupService] Lecture OK, taille=${jsonData.length}")
             // importAll retourne ImportCounts
-            println("[BackupService] Import des données...")
             val importCounts = exportImportRepository.importAll(jsonData)
-            println("[BackupService] Import terminé: ${importCounts}")
             Result.success(importCounts)
         } catch (e: Exception) {
-            println("[BackupService] Erreur restauration: ${e.message}")
             Result.failure(e)
         }
     }
@@ -362,18 +322,15 @@ class BackupService(
                             currentBackupPath.replace(BACKUP_EXTENSION, "_metadata.json")
                     )
 
-            println("[BackupService] Suppression backup: ${file.absolutePath}")
             if (fileService.fileExists(file)) {
                 fileService.deleteFile(file)
             }
-            println("[BackupService] Suppression métadonnées: ${metadataFile.absolutePath}")
             if (fileService.fileExists(metadataFile)) {
                 fileService.deleteFile(metadataFile)
             }
 
             Result.success(Unit)
         } catch (e: Exception) {
-            println("[BackupService] Erreur suppression backup: ${e.message}")
             Result.failure(e)
         }
     }

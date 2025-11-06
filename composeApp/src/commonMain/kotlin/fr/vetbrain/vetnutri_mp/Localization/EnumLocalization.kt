@@ -22,14 +22,6 @@ fun Labelable.translateEnum(): String {
         if (translatedHeuristic != nutrientHeuristicKey) {
             // Debug temporaire pour DM
             if (this.label == "DM") {
-                println("🌍 DEBUG DM translateEnum():")
-                println("  - className: $className")
-                println("  - label: ${this.label}")
-                println("  - keyFromLabel: $keyFromLabel")
-                println("  - translatedFromLabel: $translatedFromLabel")
-                println("  - nutrientHeuristicKey: $nutrientHeuristicKey")
-                println("  - translatedHeuristic: $translatedHeuristic")
-                println("  - FINAL RESULT: $translatedHeuristic")
             }
             return translatedHeuristic
         }

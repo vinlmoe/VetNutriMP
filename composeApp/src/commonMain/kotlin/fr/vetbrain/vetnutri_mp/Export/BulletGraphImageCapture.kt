@@ -123,8 +123,6 @@ object BulletGraphImageCapture {
                 val maxUnit = reference.obtenirUniteNutriment(nutrient, Reflevel.MAX)
                 
                 // Debug des valeurs brutes
-                println("DEBUG: $nomNutriment - Valeurs brutes: Min=$minRef($minUnit), OptiMin=$optiminRef($optiminUnit), OptiMax=$optimaxRef($optimaxUnit), Max=$maxRef($maxUnit)")
-                println("DEBUG: $nomNutriment - Type expression: $typeExpressionBesoin, isRatio: $isRatio, valeurApportAbsolue: $valeurApportAbsolue")
                 
                 // Conversion des valeurs de référence dans l'unité des préférences (MÊME LOGIQUE que ReferenceBulletGraph)
                 val isAnalysisNoUnit = nutrient is fr.vetbrain.vetnutri_mp.Enumer.NutrientAnalysis && 
@@ -182,7 +180,6 @@ object BulletGraphImageCapture {
                 val unite = typeExpressionBesoin.unitReqEnum.label
                 
                 // Debug des valeurs converties
-                println("DEBUG: $nomNutriment - Valeurs converties: Apport=$valeurApport, Min=${minRefConverti ?: 0.0}, OptiMin=${optiminRefConverti ?: 0.0}, OptiMax=${optimaxRefConverti ?: 0.0}, Max=${maxRefConverti ?: 0.0}, Unité=$unite")
                 
                 // Générer l'image seulement si on a des valeurs valides
                 val valeurs = listOfNotNull(valeurApport, minRefConverti, optiminRefConverti, optimaxRefConverti, maxRefConverti)
@@ -205,11 +202,9 @@ object BulletGraphImageCapture {
                         reference
                     )
                     images[nomNutriment] = imageBytes
-                    println("DEBUG: Bullet graph $nomNutriment - Apport: $valeurApport, Min: ${minRefConverti ?: 0.0}, Max: ${maxRefConverti ?: 0.0}, OptiMin: ${optiminRefConverti ?: 0.0}, OptiMax: ${optimaxRefConverti ?: 0.0}")
                 }
             } catch (e: Exception) {
                 // En cas d'erreur, ignorer ce nutriment
-                println("Erreur génération bullet graph pour $nomNutriment: ${e.message}")
                 e.printStackTrace()
             }
         }

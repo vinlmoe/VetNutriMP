@@ -39,13 +39,10 @@ class ExcelFoodService(
      * Importe des aliments depuis un fichier CSV
      */
     suspend fun importFoodsFromCsv(csvContent: String): ExcelImportResult = withContext(AppDispatchers.IO) {
-        println("[EXCEL-SERVICE-INFO] === DÉBUT IMPORT EXCEL SERVICE ===")
         
         val parseResult = csvService.importFromCsv(csvContent)
-        println("[EXCEL-SERVICE-INFO] ParseResult: ${parseResult.aliments.size} aliments, ${parseResult.errors.size} erreurs")
         
         if (parseResult.aliments.isEmpty()) {
-            println("[EXCEL-SERVICE-ERROR] Aucun aliment valide trouvé dans le fichier CSV")
             return@withContext ExcelImportResult(
                 success = false,
                 message = "Aucun aliment valide trouvé dans le fichier CSV",
@@ -56,24 +53,18 @@ class ExcelFoodService(
         }
 
         try {
-            println("[EXCEL-SERVICE-INFO] Début de l'import dans le repository...")
-            println("[EXCEL-SERVICE-INFO] Type de repository: ${foodRepository::class.simpleName}")
             
             // Utiliser le repository pour l'import avec persistance complète des nutriments
             val importResult = if (foodRepository is fr.vetbrain.vetnutri_mp.Repository.DatabaseFoodRepository) {
-                println("[EXCEL-SERVICE-INFO] Utilisation de importFoodsDomain...")
                 // Utiliser importFoodsDomain pour la persistance complète (aliments + nutriments)
                 val result = foodRepository.importFoodsDomain(parseResult.aliments)
-                println("[EXCEL-SERVICE-INFO] Résultat importFoodsDomain: imported=${result.importedCount}, updated=${result.updatedCount}, errors=${result.errorCount}")
                 result
             } else {
-                println("[EXCEL-SERVICE-INFO] Utilisation du fallback importFoods...")
                 // Fallback pour les autres implémentations
                 val alimentsJson = parseResult.aliments.map { aliment ->
                     aliment.toAlimentEvJson()
                 }
                 val result = foodRepository.importFoods(alimentsJson)
-                println("[EXCEL-SERVICE-INFO] Résultat importFoods: imported=${result.importedCount}, updated=${result.updatedCount}, errors=${result.errorCount}")
                 result
             }
 
@@ -86,18 +77,10 @@ class ExcelFoodService(
                 errors = parseResult.errors + importResult.nonResolvedNutrients
             )
             
-            println("[EXCEL-SERVICE-INFO] === RÉSULTAT FINAL ===")
-            println("[EXCEL-SERVICE-INFO] Success: ${finalResult.success}")
-            println("[EXCEL-SERVICE-INFO] Imported: ${finalResult.importedCount}")
-            println("[EXCEL-SERVICE-INFO] Updated: ${finalResult.updatedCount}")
-            println("[EXCEL-SERVICE-INFO] Errors: ${finalResult.errorCount}")
-            println("[EXCEL-SERVICE-INFO] Message: ${finalResult.message}")
             
             return@withContext finalResult
             
         } catch (e: Exception) {
-            println("[EXCEL-SERVICE-ERROR] Exception lors de l'import: ${e.message}")
-            println("[EXCEL-SERVICE-ERROR] Stack trace: ${e.stackTraceToString()}")
             
             val errorResult = ExcelImportResult(
                 success = false,
@@ -107,7 +90,6 @@ class ExcelFoodService(
                 errors = parseResult.errors + listOf("Erreur d'import: ${e.message}")
             )
             
-            println("[EXCEL-SERVICE-ERROR] Résultat d'erreur: imported=${errorResult.importedCount}, errors=${errorResult.errorCount}")
             return@withContext errorResult
         }
     }

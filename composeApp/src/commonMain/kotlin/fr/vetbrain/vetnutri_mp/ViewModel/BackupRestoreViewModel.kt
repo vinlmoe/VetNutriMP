@@ -36,7 +36,6 @@ class BackupRestoreViewModel(
     val restoreProgress: StateFlow<Double> = _restoreProgress.asStateFlow()
     
     private val _restoreLog = MutableStateFlow<String>("")
-    val restoreLog: StateFlow<String> = _restoreLog.asStateFlow()
     
     private val _showRestoreResultDialog = MutableStateFlow<ExportImportRepository.ImportCounts?>(null)
     val showRestoreResultDialog: StateFlow<ExportImportRepository.ImportCounts?> = _showRestoreResultDialog.asStateFlow()
@@ -95,33 +94,26 @@ class BackupRestoreViewModel(
             _isRestoring.value = true
             _error.value = null
             _restoreProgress.value = 0.0
-            _restoreLog.value = "Début de la restauration..."
             
             try {
                 // Simuler le progrès
                 _restoreProgress.value = 0.1
-                _restoreLog.value = "Préparation de la restauration..."
                 
                 _restoreProgress.value = 0.3
-                _restoreLog.value = "Lecture du fichier de sauvegarde..."
                 
                 val result = backupService.restoreBackup(metadata)
                 
                 _restoreProgress.value = 0.7
-                _restoreLog.value = "Import des données..."
                 
                 if (result.isSuccess) {
                     _restoreProgress.value = 1.0
-                    _restoreLog.value = "Restauration terminée avec succès!"
                     // Afficher le dialog de bilan
                     _showRestoreResultDialog.value = result.getOrNull()
                 } else {
                     _error.value = "Erreur lors de la restauration: ${result.exceptionOrNull()?.message}"
-                    _restoreLog.value = "Erreur: ${result.exceptionOrNull()?.message}"
                 }
             } catch (e: Exception) {
                 _error.value = "Erreur lors de la restauration: ${e.message}"
-                _restoreLog.value = "Erreur: ${e.message}"
             } finally {
                 _isRestoring.value = false
             }
@@ -164,7 +156,6 @@ class BackupRestoreViewModel(
      * Effacer le log de restauration
      */
     fun clearRestoreLog() {
-        _restoreLog.value = ""
     }
     
     /**

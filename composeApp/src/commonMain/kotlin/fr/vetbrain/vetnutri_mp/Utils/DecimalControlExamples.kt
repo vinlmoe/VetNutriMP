@@ -17,7 +17,6 @@ object DecimalControlExamples {
         
         valeurs.forEach { valeur ->
             val formatage = GraphFormattingUtils.formatSmartDecimal(valeur)
-            println("$valeur -> $formatage")
         }
         // Résultat:
         // 0.001 -> 0.0010
@@ -38,15 +37,12 @@ object DecimalControlExamples {
         
         // Pour les pourcentages (toujours 1 décimale)
         val pourcentageFormate = GraphFormattingUtils.formatPercentage(pourcentage)
-        println("Pourcentage: $pourcentageFormate") // "12.3%"
         
         // Pour les énergies (adaptatif)
         val energieFormatee = GraphFormattingUtils.formatEnergy(energie)
-        println("Énergie: $energieFormatee") // "150.8 kcal"
         
         // Pour les densités (adaptatif)
         val densiteFormatee = GraphFormattingUtils.formatSmartDecimal(densite)
-        println("Densité: $densiteFormatee kcal/100g") // "3.5 kcal/100g"
     }
 
     /**
@@ -60,9 +56,6 @@ object DecimalControlExamples {
         val deuxDecimales = GraphFormattingUtils.formatDecimal(valeur, 2)
         val troisDecimales = GraphFormattingUtils.formatDecimal(valeur, 3)
         
-        println("1 décimale: $uneDecimale")    // "12.3"
-        println("2 décimales: $deuxDecimales") // "12.35"
-        println("3 décimales: $troisDecimales") // "12.346"
     }
 
     /**
@@ -75,7 +68,6 @@ object DecimalControlExamples {
         
         val valeurBullet = 85.6789
         val etiquetteFormatee = GraphFormattingUtils.formatSmartDecimal(valeurBullet)
-        println("Étiquette bullet graph: $etiquetteFormatee") // "85.7"
     }
 
     /**
@@ -89,8 +81,6 @@ object DecimalControlExamples {
         val legendeX = "X: ${GraphFormattingUtils.formatSmartDecimal(pointX)}"
         val legendeY = "Y: ${GraphFormattingUtils.formatSmartDecimal(pointY)}"
         
-        println("Légende X: $legendeX") // "X: 25.7"
-        println("Légende Y: $legendeY") // "Y: 45.1"
     }
 
     /**
@@ -104,8 +94,5 @@ object DecimalControlExamples {
         val pourGraphiqueDensite = GraphFormattingUtils.formatSmartDecimal(valeur)
         val pourGraphiqueGeneral = GraphFormattingUtils.formatSmartDecimal(valeur)
         
-        println("Pourcentage: $pourGraphiquePourcentage") // "12.3%"
-        println("Densité: $pourGraphiqueDensite kcal/100g")        // "12.3 kcal/100g"
-        println("Général: $pourGraphiqueGeneral")         // "12.3"
     }
 }

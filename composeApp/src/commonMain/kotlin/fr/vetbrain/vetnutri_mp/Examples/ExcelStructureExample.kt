@@ -39,26 +39,15 @@ class ExcelStructureExample {
         val excelRow = fr.vetbrain.vetnutri_mp.Data.AlimentExcelRow.fromAlimentEv(exempleAliment)
 
         // Afficher la structure des données
-        println("=== Structure des données AlimentExcelRow ===")
-        println("Nutriments stockés : ${excelRow.nutriments.size}")
         excelRow.nutriments.forEach { (nutrientLabel, valeur) ->
-            println("  $nutrientLabel: $valeur")
         }
 
         // Générer le CSV (simulation)
-        println("\n=== Structure CSV générée ===")
-        println("Le CSV contient maintenant 1 colonne par nutriment avec l'unité dans l'en-tête :")
-        println("1. NOM_NUTRIMENT (unité) - ex: PROTEINE (g)")
-        println("2. Valeur numérique - ex: 30.0")
-        println("\nTotal colonnes: 17 (principales) + 76 (nutriments) = 93 colonnes")
     }
 
     /**
      * Exemple de structure CSV attendue
      */
     fun showExpectedCsvStructure() {
-        println("\n=== Exemple de ligne CSV ===")
-        println("UUID;Nom;Marque;...;PROTEINE (g);LIPIDE (g);ENERGIE (kcal);...")
-        println("uuid-123;Croquettes Premium Chat;Royal Canin;...;30.0;12.0;350.0;...")
     }
 }

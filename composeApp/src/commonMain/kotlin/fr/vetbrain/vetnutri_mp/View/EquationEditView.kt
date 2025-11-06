@@ -268,9 +268,6 @@ private fun EquationEditTab(
                             val translated = nutrient.translateEnum()
                             // Debug temporaire pour DM
                             if (nutrient.label == "DM") {
-                                println("🔍 DEBUG DM dans EquationEditView:")
-                                println("  - nutrient.label: ${nutrient.label}")
-                                println("  - nutrient.translateEnum(): $translated")
                             }
                             translated
                         } else {
@@ -425,10 +422,7 @@ private fun EquationEditTab(
             // Debug temporaire pour voir si DM est dans la liste finale
             val dmInList = allVariables.find { it.second == "DM" }
             if (dmInList != null) {
-                println("  - DM trouvé dans allVariables: '${dmInList.first}' -> '${dmInList.second}'")
             } else {
-                println("  - DM NON trouvé dans allVariables!")
-                println("  - Liste des labels: ${allVariables.map { it.second }}")
             }
             
             allVariables

@@ -229,7 +229,6 @@ suspend fun analyserValeursNutritionnellesRationAvecEquations(
         var auMoinsUnIngredientAUneValeur = false
 
         if (nutriment is AAEnum) {
-            println("[AA_CALC][EQUATIONS] ===== DEBUT CALCUL ${nutriment.label} =====")
         }
 
         val isRatio = kotlinx.coroutines.runBlocking {
@@ -376,12 +375,6 @@ private fun calculerValeurNutrimentDansRation(
                     val teneurProteines = alimentRation.aliment?.getNutrient(NutrientMain.PROTEINE) ?: 0.0
                     val valeurAminoAcideEnPourcentAliment = (valeurNutrimentPour100g * teneurProteines) / 100.0
                     val contribution = (valeurAminoAcideEnPourcentAliment * quantiteIngredient) / 100.0
-                    println("[AA_CALC][SIMPLE] ${nutriment.label} - Aliment: $nomIngredient")
-                    println("[AA_CALC][SIMPLE]   valeurNutrimentPour100g (%% protéines): $valeurNutrimentPour100g")
-                    println("[AA_CALC][SIMPLE]   teneurProteines (g/100g): $teneurProteines")
-                    println("[AA_CALC][SIMPLE]   quantiteIngredient (g): $quantiteIngredient")
-                    println("[AA_CALC][SIMPLE]   valeurAminoAcideEnPourcentAliment (g/100g): $valeurAminoAcideEnPourcentAliment")
-                    println("[AA_CALC][SIMPLE]   contribution (g): $contribution")
                     contribution
                 } else {
                     // Pour les autres nutriments, calcul normal
@@ -399,7 +392,6 @@ private fun calculerValeurNutrimentDansRation(
                 tousLesIngredientsOntUneValeur = false
                 if (nutriment is AAEnum) {
                     val db = try { alimentRation.aliment?.dataB } catch (e: Exception) { null }
-                    println("[AA_CALC][SIMPLE] ${nutriment.label} - Aliment: $nomIngredient : valeurNutrimentPour100g NULL (dataB=$db)")
                 }
                 contributrionsIngredients.add("$nomIngredient:NA")
             }

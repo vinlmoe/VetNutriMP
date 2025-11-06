@@ -144,9 +144,6 @@ class DatabaseAnimalRepository(
                         // Convertir l'animal en entité et le mettre à jour
                         val animalEntity = animal.toEntity(includeRelations = false)
                         
-                        // DEBUG: Vérifier que le jsonbinId est bien présent dans l'entité
-                        println("🔵 [DatabaseAnimalRepository] updateAnimal - jsonbinId à sauvegarder: ${animalEntity.jsonbinId}")
-
                         animalDao.update(animalEntity)
 
                         // Supprimer tous les poids existants pour cet animal
@@ -162,9 +159,6 @@ class DatabaseAnimalRepository(
 
                         // Vérifier que l'animal a été correctement mis à jour avec le jsonbinId
                         val updatedAnimalEntity = animalDao.getAnimalById(animal.uuid)
-                        if (updatedAnimalEntity != null) {
-                                println("🔵 [DatabaseAnimalRepository] updateAnimal - jsonbinId après mise à jour en BDD: ${updatedAnimalEntity.jsonbinId}")
-                        } else {}
                 }
         }
 

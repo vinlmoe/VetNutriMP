@@ -194,40 +194,32 @@ data class AlimentExcelRow(
 
         /** Convertit un AlimentExcelRow en AlimentEv avec logs détaillés */
         fun toAlimentEv(row: AlimentExcelRow): AlimentEv {
-            println("[CSV-CONVERSION-INFO] Conversion AlimentExcelRow -> AlimentEv")
-            println("[CSV-CONVERSION-INFO] Nom: '${row.nom}', Nutriments: ${row.nutriments.size}")
             
             // Conversion des enums avec logs
             val group = row.groupAlim?.let { 
                 val result = GroupAlim.byName(it)
-                println("[CSV-CONVERSION-INFO] Groupe alimentaire: '$it' -> $result")
                 result
             }
             
             val typeAliment = row.typeAliment?.let {
                 val result = FoodKind.values().find { fk -> fk.label == it }
-                println("[CSV-CONVERSION-INFO] Type aliment: '$it' -> $result")
                 result
             }
             
             val cont = row.contEnum?.let {
                 val result = ContEnum.getByName(it)
-                println("[CSV-CONVERSION-INFO] Conditionnement: '$it' -> $result")
                 result
             }
             
             val especes = row.especes?.split(",")?.map { it.trim() }?.toMutableList() ?: mutableListOf()
-            println("[CSV-CONVERSION-INFO] Espèces: '$row.especes' -> $especes")
             
             val indicat = row.indications?.split(",")?.mapNotNull { 
                 val trimmed = it.trim()
                 val result = AlimIndic.getFromString(trimmed)
                 if (result == null) {
-                    println("[CSV-CONVERSION-ERROR] Indication non trouvée: '$trimmed'")
                 }
                 result
             }?.toMutableList() ?: mutableListOf()
-            println("[CSV-CONVERSION-INFO] Indications: '$row.indications' -> $indicat")
             
             return AlimentEv(
                             uuid = row.uuid,
@@ -250,29 +242,23 @@ data class AlimentExcelRow(
                     )
         .apply {
             // Ajouter les nutriments avec logs
-            println("[CSV-CONVERSION-INFO] Ajout des nutriments...")
             var nutrimentSuccessCount = 0
             var nutrimentErrorCount = 0
             
             row.nutriments.forEach { (nutrientLabel, valeur) ->
                 if (valeur != null) {
-                    println("[CSV-CONVERSION-INFO] Traitement nutriment: '$nutrientLabel' = $valeur")
                     
                     // Trouver le nutriment correspondant
                     val nutrient = getNutrientFromLabel(nutrientLabel)
                     if (nutrient != null) {
                         setNutrient(nutrient, valeur)
                         nutrimentSuccessCount++
-                        println("[CSV-CONVERSION-INFO] ✅ Nutriment ajouté: '$nutrientLabel' -> ${nutrient.label}")
                     } else {
                         nutrimentErrorCount++
-                        println("[CSV-CONVERSION-ERROR] ❌ Nutriment non trouvé: '$nutrientLabel'")
                     }
                 }
             }
             
-            println("[CSV-CONVERSION-INFO] Résultat nutriments: $nutrimentSuccessCount ajoutés, $nutrimentErrorCount erreurs")
-            println("[CSV-CONVERSION-INFO] Total nutriments dans AlimentEv: ${valMap.size}")
         }
         }
 

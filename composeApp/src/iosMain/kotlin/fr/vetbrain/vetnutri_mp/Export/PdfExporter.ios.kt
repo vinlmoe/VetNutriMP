@@ -42,18 +42,15 @@ actual object PdfExporter {
                         // Nettoyer le HTML
                         val cleanHtml = nettoyerHtml(html)
                         if (cleanHtml.isBlank()) {
-                                println("ERROR: HTML vide ou invalide")
                                 return false
                         }
                         
-                        println("DEBUG: Impression avec HTML de ${cleanHtml.length} caractères")
                         
                         // Exécuter toute la logique d'impression sur le thread principal
                         dispatch_async(dispatch_get_main_queue()) {
                                 try {
                 val controleur: UIViewController? = obtenirTopViewController()
                                         if (controleur == null) {
-                                                println("ERROR: Impossible d'obtenir le contrôleur de vue")
                                                 return@dispatch_async
                                         }
                                         
@@ -64,18 +61,15 @@ actual object PdfExporter {
                                         }
                                         
                                         // Si échec, essayer avec UISimpleTextPrintFormatter
-                                        println("DEBUG: Échec avec UIMarkupTextPrintFormatter, tentative avec UISimpleTextPrintFormatter")
                                         imprimerAvecSimpleTextFormatter(cleanHtml, controleur)
                                         
                                 } catch (t: Throwable) {
-                                        println("ERROR: Erreur lors de l'impression: ${t.message}")
                                         t.printStackTrace()
                                 }
                         }
                         
                         true
                 } catch (t: Throwable) {
-                        println("ERROR: Erreur lors de l'impression: ${t.message}")
                         t.printStackTrace()
                         false
                 }
@@ -107,18 +101,14 @@ actual object PdfExporter {
                                 animated = true,
                                 completionHandler = { controller, completed, error ->
                                         if (completed) {
-                                                println("DEBUG: Impression réussie avec UIMarkupTextPrintFormatter")
                                         } else if (error != null) {
-                                                println("ERROR: Erreur d'impression: ${error.localizedDescription}")
                                         } else {
-                                                println("DEBUG: Impression annulée par l'utilisateur")
                                         }
                                 }
                         )
                         
                         true
                 } catch (t: Throwable) {
-                        println("ERROR: Erreur avec UIMarkupTextPrintFormatter: ${t.message}")
                         false
                 }
         }
@@ -152,18 +142,14 @@ actual object PdfExporter {
                                 animated = true,
                                 completionHandler = { controller, completed, error ->
                                         if (completed) {
-                                                println("DEBUG: Impression réussie avec UISimpleTextPrintFormatter")
                                         } else if (error != null) {
-                                                println("ERROR: Erreur d'impression: ${error.localizedDescription}")
                                         } else {
-                                                println("DEBUG: Impression annulée par l'utilisateur")
                                         }
                                 }
                         )
                         
                         true
                 } catch (t: Throwable) {
-                        println("ERROR: Erreur avec UISimpleTextPrintFormatter: ${t.message}")
                         false
                 }
         }
@@ -183,7 +169,6 @@ actual object PdfExporter {
                         
                         text
                 } catch (e: Exception) {
-                        println("ERROR: Erreur lors de l'extraction du texte: ${e.message}")
                         html
                 }
         }
@@ -193,17 +178,14 @@ actual object PdfExporter {
                         // Validation et nettoyage du HTML
                         val cleanHtml = nettoyerHtml(html)
                         if (cleanHtml.isBlank()) {
-                                println("ERROR: HTML vide ou invalide")
                                 return null
                         }
                         
                         // Vérification de la taille du HTML (limite de sécurité)
                         if (cleanHtml.length > 10_000_000) { // 10MB
-                                println("ERROR: HTML trop volumineux (${cleanHtml.length} caractères)")
                                 return null
                         }
                         
-                        println("DEBUG: Génération PDF avec HTML de ${cleanHtml.length} caractères")
                         
                         // Essayer d'abord avec UIMarkupTextPrintFormatter
                         val result = genererPdfAvecMarkupFormatter(cleanHtml)
@@ -212,11 +194,9 @@ actual object PdfExporter {
                         }
                         
                         // Si échec, essayer une méthode alternative
-                        println("DEBUG: Échec avec UIMarkupTextPrintFormatter, tentative méthode alternative")
                         return genererPdfAlternative(cleanHtml)
                         
                 } catch (t: Throwable) {
-                        println("ERROR: Erreur lors de la génération PDF: ${t.message}")
                         t.printStackTrace()
                         null
                 }
@@ -248,7 +228,6 @@ actual object PdfExporter {
                         UIGraphicsBeginPDFContextToData(data, pageRect, null)
                         
                         val pages: Int = renderer.numberOfPages.toInt()
-                        println("DEBUG: Nombre de pages à générer: $pages")
                         
                         var i: Int = 0
                         while (i < pages) {
@@ -261,10 +240,8 @@ actual object PdfExporter {
                         }
                         UIGraphicsEndPDFContext()
                         
-                        println("DEBUG: PDF généré avec succès (${data.length} bytes)")
                         data
                 } catch (t: Throwable) {
-                        println("ERROR: Erreur avec UIMarkupTextPrintFormatter: ${t.message}")
                         null
                 }
         }
@@ -278,10 +255,8 @@ actual object PdfExporter {
                         UIGraphicsBeginPDFPage()
                         UIGraphicsEndPDFContext()
                         
-                        println("DEBUG: PDF alternatif généré (${data.length} bytes)")
                         data
                 } catch (t: Throwable) {
-                        println("ERROR: Erreur avec méthode alternative: ${t.message}")
                         null
                 }
         }
@@ -328,7 +303,6 @@ actual object PdfExporter {
                         
                         cleanHtml
                 } catch (e: Exception) {
-                        println("ERROR: Erreur lors du nettoyage HTML: ${e.message}")
                         html // Retourner l'original en cas d'erreur
                 }
         }

@@ -17,7 +17,6 @@ object DataBExample {
     fun validateAndConvertDataB(alimentDataB: String?): DataB? {
         return DataB.fromCode(alimentDataB).also { dataB ->
             if (dataB == null && alimentDataB != null) {
-                println("⚠️ Valeur dataB inconnue: '$alimentDataB'")
             }
         }
     }
@@ -104,16 +103,13 @@ object AminogramProtectionTest {
 
         // Test 1 : VF24 + AA = null (PROTÉGÉ)
         val resultVF24 = alimentVF24.getNutrient(alanine)
-        println("VF24 + ALANINE = $resultVF24 (doit être null)")
 
         // Test 2 : CIQUAL + AA = valeur normale (NON PROTÉGÉ)
         val resultCIQUAL = alimentCIQUAL.getNutrient(alanine)
-        println("CIQUAL + ALANINE = $resultCIQUAL")
 
         // Test 3 : VF24 + autre nutriment = valeur normale (NON PROTÉGÉ)
         val energie = NutrientMain.ENERGIE
         val resultVF24Energie = alimentVF24.getNutrient(energie)
-        println("VF24 + ENERGIE = $resultVF24Energie")
     }
 
     /** Test de la protection dans l'interface d'édition */
@@ -130,8 +126,6 @@ object AminogramProtectionTest {
                             fr.vetbrain.vetnutri_mp.Data.NutrientQuantity(100.0, "ENERGIE")
                 }
 
-        println("=== Test de protection dans l'interface d'édition ===")
-        println("Aliment: ${alimentVF24.nom} (dataB: ${alimentVF24.dataB})")
 
         // Simuler ce qui se passe dans FoodEditView lors de l'initialisation
         val nutrientValues = mutableMapOf<Nutrient, String>()
@@ -141,13 +135,9 @@ object AminogramProtectionTest {
             val value = alimentVF24.getNutrient(nutrient)
             if (value != null) {
                 nutrientValues[nutrient] = value.toString()
-                println("✓ $nutrient = $value (AFFICHÉ)")
             } else {
-                println("✗ $nutrient = null (MASQUÉ - PROTÉGÉ)")
             }
         }
 
-        println("Résultat: ${nutrientValues.size} nutriments affichés dans l'interface d'édition")
-        println("Les acides aminés VF24 sont maintenant masqués dans l'interface d'édition !")
     }
 }

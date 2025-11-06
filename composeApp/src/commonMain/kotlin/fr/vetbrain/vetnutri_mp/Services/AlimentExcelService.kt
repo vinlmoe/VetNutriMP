@@ -451,15 +451,12 @@ class AlimentExcelService {
      * Fonctions de logging pour le débogage
      */
     private fun logInfo(message: String) {
-        println("[CSV-IMPORT-INFO] $message")
     }
     
     private fun logError(message: String) {
-        println("[CSV-IMPORT-ERROR] $message")
     }
     
     private fun logWarning(message: String) {
-        println("[CSV-IMPORT-WARNING] $message")
     }
 
     /**

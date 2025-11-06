@@ -17,15 +17,12 @@ class ExcelImportExportExample {
         try {
             // Exporter tous les aliments
             val csvContent = excelFoodService.exportAllFoodsToCsv()
-            println("Export CSV généré: ${csvContent.length} caractères")
             
             // Exporter une sélection d'aliments
             val selectedIds = setOf("uuid1", "uuid2", "uuid3")
             val selectedCsv = excelFoodService.exportSelectedFoodsToCsv(selectedIds)
-            println("Export sélectionné: ${selectedCsv.length} caractères")
             
         } catch (e: Exception) {
-            println("Erreur d'export: ${e.message}")
         }
     }
     
@@ -36,21 +33,13 @@ class ExcelImportExportExample {
         try {
             // Prévisualisation de l'import
             val previewResult = excelFoodService.previewCsvImport(csvContent)
-            println("Prévisualisation: ${previewResult.message}")
-            println("Aliments valides: ${previewResult.importedCount}")
-            println("Erreurs: ${previewResult.errorCount}")
             
             if (previewResult.success) {
                 // Import réel
                 val importResult = excelFoodService.importFoodsFromCsv(csvContent)
-                println("Import final: ${importResult.message}")
-                println("Importés: ${importResult.importedCount}")
-                println("Mis à jour: ${importResult.updatedCount}")
-                println("Erreurs: ${importResult.errorCount}")
             }
             
         } catch (e: Exception) {
-            println("Erreur d'import: ${e.message}")
         }
     }
     

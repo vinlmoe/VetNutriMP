@@ -63,48 +63,18 @@ class UpdateChecker {
      * @return UpdateCheckResult avec les informations de mise à jour
      */
     suspend fun checkForUpdate(currentVersion: String): UpdateCheckResult {
-        println("[UpdateChecker] Début de checkForUpdate avec version: $currentVersion")
-        println("[UpdateChecker] URL de mise à jour: $UPDATE_URL")
-        
         return try {
-            println("[UpdateChecker] Tentative de récupération du XML...")
             val xmlContent = fetchUpdateXml()
-            println("[UpdateChecker] XML récupéré avec succès (${xmlContent.length} caractères)")
-            println("[UpdateChecker] Aperçu XML (100 premiers caractères): ${xmlContent.take(100)}")
-            
-            println("[UpdateChecker] Parsing du XML...")
             val updateDescriptor = parseUpdateXml(xmlContent)
-            println("[UpdateChecker] Parsing réussi")
-            println("[UpdateChecker]  - baseUrl: ${updateDescriptor.baseUrl}")
-            println("[UpdateChecker]  - newVersion: ${updateDescriptor.entry.newVersion}")
-            println("[UpdateChecker]  - targetMediaFileId: ${updateDescriptor.entry.targetMediaFileId}")
-            
             val newVersion = updateDescriptor.entry.newVersion
-            println("[UpdateChecker] Comparaison des versions:")
-            println("[UpdateChecker]  - Version actuelle: $currentVersion")
-            println("[UpdateChecker]  - Nouvelle version: $newVersion")
-            
             val comparisonResult = compareVersions(currentVersion, newVersion)
-            println("[UpdateChecker] Résultat comparaison: $comparisonResult (-1 = actuelle < nouvelle, 0 = égales, 1 = actuelle > nouvelle)")
-            
             val isUpdateAvailable = comparisonResult < 0
-            println("[UpdateChecker] Mise à jour disponible: $isUpdateAvailable")
-            
-            val result = UpdateCheckResult(
+            UpdateCheckResult(
                 isUpdateAvailable = isUpdateAvailable,
                 currentVersion = currentVersion,
                 newVersion = if (isUpdateAvailable) newVersion else null
             )
-            println("[UpdateChecker] Résultat final créé avec succès")
-            result
-            
         } catch (e: Exception) {
-            println("[UpdateChecker] ❌ ERREUR lors de la vérification:")
-            println("[UpdateChecker] Type: ${e::class.simpleName}")
-            println("[UpdateChecker] Message: ${e.message}")
-            println("[UpdateChecker] Cause: ${e.cause?.message ?: "Aucune"}")
-            e.printStackTrace()
-            
             UpdateCheckResult(
                 isUpdateAvailable = false,
                 currentVersion = currentVersion,
@@ -118,20 +88,10 @@ class UpdateChecker {
      * Récupère le contenu XML depuis l'URL
      */
     private suspend fun fetchUpdateXml(): String = withContext(Dispatchers.Default) {
-        println("[UpdateChecker] fetchUpdateXml() - Début")
-        println("[UpdateChecker] URL: $UPDATE_URL")
-        
         try {
-            println("[UpdateChecker] Appel de PlatformHttpClient.fetchXml()...")
             val xmlContent = PlatformHttpClient.fetchXml(UPDATE_URL)
-            println("[UpdateChecker] fetchXml() réussi, contenu reçu (${xmlContent.length} caractères)")
             xmlContent
         } catch (e: Exception) {
-            println("[UpdateChecker] ❌ ERREUR dans fetchUpdateXml():")
-            println("[UpdateChecker] Type: ${e::class.simpleName}")
-            println("[UpdateChecker] Message: ${e.message}")
-            println("[UpdateChecker] Cause: ${e.cause?.message ?: "Aucune"}")
-            e.printStackTrace()
             throw UpdateException("Impossible de récupérer le fichier de mise à jour", e)
         }
     }
@@ -140,9 +100,6 @@ class UpdateChecker {
      * Parse le contenu XML pour extraire les informations de mise à jour
      */
     private fun parseUpdateXml(xmlContent: String): UpdateDescriptor {
-        println("[UpdateChecker] parseUpdateXml() - Début")
-        println("[UpdateChecker] Taille du contenu XML: ${xmlContent.length} caractères")
-        
         return try {
             // Extraction simple avec des regex
             val baseUrlRegex = """baseUrl="([^"]*)"""".toRegex()
@@ -155,7 +112,6 @@ class UpdateChecker {
             val archiveRegex = """archive="([^"]*)"""".toRegex()
             val singleBundleRegex = """singleBundle="([^"]*)"""".toRegex()
             
-            println("[UpdateChecker] Extraction des valeurs avec regex...")
             val baseUrl = baseUrlRegex.find(xmlContent)?.groupValues?.get(1) ?: ""
             val newVersion = newVersionRegex.find(xmlContent)?.groupValues?.get(1) ?: ""
             val targetMediaFileId = targetMediaFileIdRegex.find(xmlContent)?.groupValues?.get(1) ?: ""
@@ -165,17 +121,6 @@ class UpdateChecker {
             val fileSize = fileSizeRegex.find(xmlContent)?.groupValues?.get(1) ?: ""
             val archive = archiveRegex.find(xmlContent)?.groupValues?.get(1) ?: "false"
             val singleBundle = singleBundleRegex.find(xmlContent)?.groupValues?.get(1) ?: "false"
-            
-            println("[UpdateChecker] Valeurs extraites:")
-            println("[UpdateChecker]  - baseUrl: '$baseUrl'")
-            println("[UpdateChecker]  - newVersion: '$newVersion'")
-            println("[UpdateChecker]  - targetMediaFileId: '$targetMediaFileId'")
-            println("[UpdateChecker]  - updatableVersionMin: '$updatableVersionMin'")
-            println("[UpdateChecker]  - updatableVersionMax: '$updatableVersionMax'")
-            println("[UpdateChecker]  - newMediaFileId: '$newMediaFileId'")
-            println("[UpdateChecker]  - fileSize: '$fileSize'")
-            println("[UpdateChecker]  - archive: '$archive'")
-            println("[UpdateChecker]  - singleBundle: '$singleBundle'")
             
             val entry = UpdateEntry(
                 targetMediaFileId = targetMediaFileId,
@@ -188,16 +133,8 @@ class UpdateChecker {
                 singleBundle = singleBundle
             )
             
-            val descriptor = UpdateDescriptor(baseUrl = baseUrl, entry = entry)
-            println("[UpdateChecker] UpdateDescriptor créé avec succès")
-            descriptor
-            
+            UpdateDescriptor(baseUrl = baseUrl, entry = entry)
         } catch (e: Exception) {
-            println("[UpdateChecker] ❌ ERREUR dans parseUpdateXml():")
-            println("[UpdateChecker] Type: ${e::class.simpleName}")
-            println("[UpdateChecker] Message: ${e.message}")
-            println("[UpdateChecker] Cause: ${e.cause?.message ?: "Aucune"}")
-            e.printStackTrace()
             throw UpdateException("Erreur lors du parsing XML", e)
         }
     }

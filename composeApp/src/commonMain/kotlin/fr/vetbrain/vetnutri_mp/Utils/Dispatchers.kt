@@ -11,8 +11,6 @@ object AppDispatchers {
     private var _main: CoroutineDispatcher = try {
         platformDispatcher.provideMainDispatcher()
     } catch (e: Exception) {
-        println("⚠️ Erreur lors de l'initialisation du dispatcher principal: ${e.message}")
-        println("⚠️ Utilisation du fallback Dispatchers.Main")
         // Fallback pour éviter les erreurs Android sur desktop
         Dispatchers.Main
     }
@@ -28,7 +26,6 @@ object AppDispatchers {
     // Pour les opérations UI
     val Main: CoroutineDispatcher
         get() {
-            println("🔍 AppDispatchers.Main utilisé: ${_main::class.simpleName}")
             return _main
         }
 

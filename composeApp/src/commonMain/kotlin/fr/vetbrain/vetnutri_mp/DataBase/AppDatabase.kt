@@ -420,9 +420,7 @@ fun createMigration24to25(): Migration {
                 ).use { statement -> 
                     statement.step() 
                 }
-                println("✅ Migration 24→25 : Colonne jsonbinId ajoutée à la table ANIMALS")
             } catch (e: Exception) {
-                println("❌ Erreur lors de la migration 24→25: ${e.message}")
                 throw e
             }
         }
