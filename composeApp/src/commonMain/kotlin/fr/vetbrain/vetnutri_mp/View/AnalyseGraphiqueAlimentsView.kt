@@ -16,6 +16,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ZoomIn
+import androidx.compose.material.icons.filled.ZoomOut
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import kotlinx.coroutines.launch
@@ -24,6 +26,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -490,6 +495,45 @@ private suspend fun AlimentAnalyseData.getNutrimentValue(
             0.0
         }
     }
+}
+
+/**
+ * État pour gérer le zoom et le pan d'un graphique
+ */
+data class ZoomPanState(
+        val scaleX: Float = 1f,
+        val scaleY: Float = 1f,
+        val panX: Float = 0f,
+        val panY: Float = 0f
+) {
+    fun reset(): ZoomPanState = ZoomPanState()
+}
+
+/**
+ * Calcule les nouvelles plages d'axes en fonction du zoom et du pan
+ */
+private fun calculateZoomedRange(
+        originalRange: ClosedFloatingPointRange<Float>,
+        zoomPanState: ZoomPanState,
+        isXAxis: Boolean = true
+): ClosedFloatingPointRange<Float> {
+    val scale = if (isXAxis) zoomPanState.scaleX else zoomPanState.scaleY
+    val pan = if (isXAxis) zoomPanState.panX else zoomPanState.panY
+    
+    val originalSize = originalRange.endInclusive - originalRange.start
+    val newSize = originalSize / scale
+    
+    // Utiliser le centre de la plage originale comme point de référence
+    val center = (originalRange.start + originalRange.endInclusive) / 2f
+    
+    // Appliquer le pan (en unités de données)
+    val panOffset = pan
+    
+    val newStart = center - newSize / 2f + panOffset
+    val newEnd = center + newSize / 2f + panOffset
+    
+    // Permettre le zoom au-delà des limites originales
+    return newStart..newEnd
 }
 
 /**
@@ -1346,6 +1390,69 @@ private fun GraphiqueNuagePoints(
         equationRepository: EquationRepository?,
         modifier: Modifier = Modifier
 ) {
+    // États pour le zoom et le pan (uniquement pour les scatter plots)
+    val zoomPanState = remember { mutableStateOf(ZoomPanState()) }
+    val originalRanges = remember(alimentsAnalyses, ongletActif) {
+        if (alimentsAnalyses.isEmpty() || ongletActif == "densite_energetique" || ongletActif == "nutriments_perso") {
+            null
+        } else {
+            // Calculer les plages originales
+            val points = when (ongletActif) {
+                "protein_lipid" -> {
+                    alimentsAnalyses.map { data ->
+                        Point(
+                                x = data.pourcentageProteines.toFloat(),
+                                y = data.pourcentageLipides.toFloat()
+                        )
+                    }
+                }
+                "phosphore_protein" -> {
+                    alimentsAnalyses.map { data ->
+                        Point(
+                                x = data.phosphorePer1000Kcal.toFloat(),
+                                y = data.proteinePer1000Kcal.toFloat()
+                        )
+                    }
+                }
+                "calcium_phosphore" -> {
+                    alimentsAnalyses.map { data ->
+                        Point(
+                                x = data.phosphorePer1000Kcal.toFloat(),
+                                y = data.calciumPer1000Kcal.toFloat()
+                        )
+                    }
+                }
+                else -> emptyList()
+            }
+            
+            if (points.isNotEmpty()) {
+                val minX = points.minOf { it.x }.coerceAtLeast(0f)
+                val maxX = points.maxOf { it.x }
+                val minY = points.minOf { it.y }.coerceAtLeast(0f)
+                val maxY = points.maxOf { it.y }
+                
+                val xRange = when (ongletActif) {
+                    "phosphore_protein" -> (minX - minX * 0.05f)..(maxX + maxX * 0.05f)
+                    else -> (minX - minX * 0.05f)..(maxX.coerceAtMost(100f) + maxX * 0.05f)
+                }
+                
+                val yRange = when (ongletActif) {
+                    "phosphore_protein" -> (minY - minY * 0.05f)..(maxY + maxY * 0.05f)
+                    else -> (minY - minY * 0.05f)..(maxY.coerceAtMost(100f) + maxY * 0.05f)
+                }
+                
+                Pair(xRange, yRange)
+            } else {
+                null
+            }
+        }
+    }
+    
+    // Réinitialiser le zoom/pan quand l'onglet change
+    LaunchedEffect(ongletActif) {
+        zoomPanState.value = ZoomPanState()
+    }
+    
     Card(modifier = modifier, elevation = AppSizes.elevationMedium) {
         Column(modifier = Modifier.padding(AppSizes.paddingMedium)) {
             // Titre dynamique selon l'onglet
@@ -1665,51 +1772,143 @@ private fun GraphiqueNuagePoints(
                                 }
                             }
 
-                    // Calculer les plages des axes selon le type de graphique
-                    val minX = points.minOf { it.x }.coerceAtLeast(0f)
-                    val maxX = points.maxOf { it.x }
-                    val minY = points.minOf { it.y }.coerceAtLeast(0f)
-                    val maxY = points.maxOf { it.y }
-
-                    // Ajuster les plages selon le type de graphique
-                    val (xRange, yRange) =
-                            when (ongletActif) {
-                                "phosphore_protein" -> {
-                                    // Plages fixes pour une meilleure visibilité du graphique
-                                    // phosphore/protéines
-                                    val xRangeFixed = (minX - minX * 0.05f)..(maxX + maxX * 0.05f)
-                                    val yRangeFixed = (minY - minY * 0.05f)..(maxY + maxY * 0.05f)
-                                    Pair(xRangeFixed, yRangeFixed)
+                    // Utiliser les plages originales ou calculer si nécessaire
+                    val (baseXRange, baseYRange) = originalRanges ?: run {
+                        val minX = points.minOf { it.x }.coerceAtLeast(0f)
+                        val maxX = points.maxOf { it.x }
+                        val minY = points.minOf { it.y }.coerceAtLeast(0f)
+                        val maxY = points.maxOf { it.y }
+                        
+                        val xRange = when (ongletActif) {
+                            "phosphore_protein" -> (minX - minX * 0.05f)..(maxX + maxX * 0.05f)
+                            else -> (minX - minX * 0.05f)..(maxX.coerceAtMost(100f) + maxX * 0.05f)
+                        }
+                        
+                        val yRange = when (ongletActif) {
+                            "phosphore_protein" -> (minY - minY * 0.05f)..(maxY + maxY * 0.05f)
+                            else -> (minY - minY * 0.05f)..(maxY.coerceAtMost(100f) + maxY * 0.05f)
+                        }
+                        
+                        Pair(xRange, yRange)
+                    }
+                    
+                    // Calculer les plages zoomées
+                    val xRange = calculateZoomedRange(baseXRange, zoomPanState.value, isXAxis = true)
+                    val yRange = calculateZoomedRange(baseYRange, zoomPanState.value, isXAxis = false)
+                    
+                    // Boutons de zoom (pour desktop où le pinch ne fonctionne pas)
+                    Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End,
+                            verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(
+                                onClick = {
+                                    // Zoom out
+                                    val newScaleX = (zoomPanState.value.scaleX * 0.9f).coerceIn(0.5f, 5f)
+                                    val newScaleY = (zoomPanState.value.scaleY * 0.9f).coerceIn(0.5f, 5f)
+                                    zoomPanState.value = ZoomPanState(
+                                            scaleX = newScaleX,
+                                            scaleY = newScaleY,
+                                            panX = zoomPanState.value.panX,
+                                            panY = zoomPanState.value.panY
+                                    )
                                 }
-                                else -> {
-                                    // Plages automatiques avec padding pour le graphique
-                                    // protéines/lipides
-                                    val xRangeAuto =
-                                            (minX - minX * 0.05f)..(maxX.coerceAtMost(100f) +
-                                                            maxX * 0.05f)
-                                    val yRangeAuto =
-                                            (minY - minY * 0.05f)..(maxY.coerceAtMost(100f) +
-                                                            maxY * 0.05f)
-                                    Pair(xRangeAuto, yRangeAuto)
+                        ) {
+                            Icon(
+                                    imageVector = Icons.Default.ZoomOut,
+                                    contentDescription = "Zoom arrière"
+                            )
+                        }
+                        IconButton(
+                                onClick = {
+                                    // Zoom in
+                                    val newScaleX = (zoomPanState.value.scaleX * 1.1f).coerceIn(0.5f, 5f)
+                                    val newScaleY = (zoomPanState.value.scaleY * 1.1f).coerceIn(0.5f, 5f)
+                                    zoomPanState.value = ZoomPanState(
+                                            scaleX = newScaleX,
+                                            scaleY = newScaleY,
+                                            panX = zoomPanState.value.panX,
+                                            panY = zoomPanState.value.panY
+                                    )
                                 }
+                        ) {
+                            Icon(
+                                    imageVector = Icons.Default.ZoomIn,
+                                    contentDescription = "Zoom avant"
+                            )
+                        }
+                        if (zoomPanState.value.scaleX != 1f || zoomPanState.value.scaleY != 1f || 
+                            zoomPanState.value.panX != 0f || zoomPanState.value.panY != 0f) {
+                            TextButton(
+                                    onClick = { zoomPanState.value = ZoomPanState() }
+                            ) {
+                                Text("Réinitialiser", fontSize = 12.sp)
                             }
+                        }
+                    }
 
-                    // 🎯 Graphique avec numéros superposés
-                    BoxWithConstraints(modifier = Modifier.height(400.dp)) {
-                        // Graphique principal
+                    // 🎯 Graphique avec numéros superposés et zoom/pan
+                    BoxWithConstraints(modifier = Modifier.height(400.dp).clipToBounds()) {
+                        // Graphique principal avec gestes de zoom/pan
                         XYGraph(
                                 xAxisModel = FloatLinearAxisModel(range = xRange),
                                 yAxisModel = FloatLinearAxisModel(range = yRange),
-                                modifier = Modifier.fillMaxSize()
+                                xAxisTitle = when (ongletActif) {
+                                    "protein_lipid" -> "Protéines (% énergie)"
+                                    "phosphore_protein" -> if (useDryMatterPer100g) "Phosphore (g/100g MS)" else "Phosphore (g/1000 kcal)"
+                                    "calcium_phosphore" -> if (useDryMatterPer100g) "Phosphore (g/100g MS)" else "Phosphore (g/1000 kcal)"
+                                    else -> ""
+                                },
+                                yAxisTitle = when (ongletActif) {
+                                    "protein_lipid" -> "Lipides (% énergie)"
+                                    "phosphore_protein" -> if (useDryMatterPer100g) "Protéines (g/100g MS)" else "Protéines (g/1000 kcal)"
+                                    "calcium_phosphore" -> if (useDryMatterPer100g) "Calcium (g/100g MS)" else "Calcium (g/1000 kcal)"
+                                    else -> ""
+                                },
+                                modifier = Modifier
+                                        .fillMaxSize()
+                                        .clipToBounds()
+                                        .pointerInput(Unit) {
+                                            detectTransformGestures { _, pan, zoom, _ ->
+                                                // Limiter le zoom entre 0.5x et 5x
+                                                val newScaleX = (zoomPanState.value.scaleX * zoom).coerceIn(0.5f, 5f)
+                                                val newScaleY = (zoomPanState.value.scaleY * zoom).coerceIn(0.5f, 5f)
+                                                
+                                                // Calculer les plages actuelles (zoomées) pour le pan
+                                                val currentXRange = calculateZoomedRange(baseXRange, zoomPanState.value, isXAxis = true)
+                                                val currentYRange = calculateZoomedRange(baseYRange, zoomPanState.value, isXAxis = false)
+                                                
+                                                // Convertir le pan en coordonnées de données (basé sur la plage actuelle)
+                                                val panXDelta = pan.x / size.width * (currentXRange.endInclusive - currentXRange.start)
+                                                val panYDelta = -pan.y / size.height * (currentYRange.endInclusive - currentYRange.start)
+                                                
+                                                zoomPanState.value = ZoomPanState(
+                                                        scaleX = newScaleX,
+                                                        scaleY = newScaleY,
+                                                        panX = zoomPanState.value.panX + panXDelta,
+                                                        panY = zoomPanState.value.panY + panYDelta
+                                                )
+                                            }
+                                        }
                         ) {
                             // Afficher chaque point individuellement avec LinePlot et symbol
+                            // Filtrer les points qui sont dans la plage visible
                             alimentsAnalyses.forEachIndexed { index, data ->
                                 val point =
                                         points[index] // Utiliser le point calculé selon l'onglet
                                 // actif
-                                LinePlot(
-                                        data = listOf(point),
-                                        symbol = {
+                                
+                                // Vérifier si le point est dans la plage visible
+                                val isPointVisible = point.x >= xRange.start && 
+                                                    point.x <= xRange.endInclusive &&
+                                                    point.y >= yRange.start && 
+                                                    point.y <= yRange.endInclusive
+                                
+                                if (isPointVisible) {
+                                    LinePlot(
+                                            data = listOf(point),
+                                            symbol = {
                                             // Point principal avec couleur selon sélection
                                             val couleurPoint =
                                                     if (data.aliment.uuid == alimentSelectionne) {
@@ -1742,7 +1941,8 @@ private fun GraphiqueNuagePoints(
                                                 )
                                             }
                                         }
-                                )
+                                    )
+                                }
                             }
 
                             // 🔸 LIGNES DE RÉFÉRENCE pour le graphique Calcium/Phosphore
@@ -1915,9 +2115,32 @@ private fun GraphiqueNuagePoints(
                         }
 
                         // 🎯 Numéros superposés directement avec correction des marges d'axes
+                        // Marges typiques des axes KoalaPlot (estimation)
+                        // 🔧 Marges AJUSTÉES basées sur l'observation des logs (décalage
+                        // empirique)
+                        val leftAxisMargin =
+                                10.dp // Marge pour les labels de l'axe Y (augmentée)
+                        val bottomAxisMargin =
+                                15.dp // Marge pour les labels de l'axe X (augmentée)
+                        val topMargin = 10.dp // Marge supérieure
+                        val rightMargin = 20.dp // Marge droite
+
+                        // Zone de graphique effective
+                        val effectiveGraphWidth = maxWidth - leftAxisMargin - rightMargin
+                        val effectiveGraphHeight = maxHeight - bottomAxisMargin - topMargin
+                        
                         alimentsAnalyses.forEachIndexed { index, data ->
                             val point =
                                     points[index] // Utiliser le point calculé selon l'onglet actif
+                            
+                            // Vérifier si le point est dans la plage visible
+                            val isPointVisible = point.x >= xRange.start && 
+                                                point.x <= xRange.endInclusive &&
+                                                point.y >= yRange.start && 
+                                                point.y <= yRange.endInclusive
+                            
+                            if (!isPointVisible) return@forEachIndexed
+                            
                             // Calculer la position du numéro avec les vraies dimensions
                             val xPosition =
                                     ((point.x - xRange.start) /
@@ -1926,20 +2149,16 @@ private fun GraphiqueNuagePoints(
                                     1f -
                                             ((point.y - yRange.start) /
                                                     (yRange.endInclusive - yRange.start))
-
-                            // Marges typiques des axes KoalaPlot (estimation)
-                            // 🔧 Marges AJUSTÉES basées sur l'observation des logs (décalage
-                            // empirique)
-                            val leftAxisMargin =
-                                    10.dp // Marge pour les labels de l'axe Y (augmentée)
-                            val bottomAxisMargin =
-                                    15.dp // Marge pour les labels de l'axe X (augmentée)
-                            val topMargin = 10.dp // Marge supérieure
-                            val rightMargin = 20.dp // Marge droite
-
-                            // Zone de graphique effective
-                            val effectiveGraphWidth = maxWidth - leftAxisMargin - rightMargin
-                            val effectiveGraphHeight = maxHeight - bottomAxisMargin - topMargin
+                            
+                            // Vérifier si le label est dans la zone visible (avec une petite marge)
+                            val labelX = leftAxisMargin + (xPosition * effectiveGraphWidth.value).dp - 10.dp
+                            val labelY = topMargin + (yPosition * effectiveGraphHeight.value).dp - 30.dp
+                            val isLabelVisible = labelX >= (-20).dp && 
+                                                labelX <= maxWidth + 20.dp &&
+                                                labelY >= (-20).dp && 
+                                                labelY <= maxHeight + 20.dp
+                            
+                            if (!isLabelVisible) return@forEachIndexed
 
                             // Couleur selon la sélection et l'humidité
                             val numeroColor =
@@ -2183,6 +2402,14 @@ private fun GraphiqueNutrimentsPersonnalise(
         equationRepository: EquationRepository?,
         modifier: Modifier = Modifier
 ) {
+    // États pour le zoom et le pan
+    val zoomPanState = remember { mutableStateOf(ZoomPanState()) }
+    
+    // Réinitialiser le zoom/pan quand les nutriments changent
+    LaunchedEffect(nutrimentX, nutrimentY) {
+        zoomPanState.value = ZoomPanState()
+    }
+    
     if (alimentsAnalyses.isEmpty()) {
         Text(
                 text = "Aucune donnée disponible pour le graphique personnalisé",
@@ -2227,7 +2454,7 @@ private fun GraphiqueNutrimentsPersonnalise(
             return
         }
 
-        // Calculer les plages avec validation
+        // Calculer les plages de base avec validation
         val minX = points.minOf { it.x }.coerceAtLeast(0f)
         val maxX = points.maxOf { it.x }
 
@@ -2242,68 +2469,178 @@ private fun GraphiqueNutrimentsPersonnalise(
         val safeMinY = if (minY == maxY) minY * 0.9f else minY
         val safeMaxY = if (minY == maxY) maxY * 1.1f else maxY
 
-        val xRange =
+        val baseXRange =
                 (safeMinX - safeMinX * 0.05f).coerceAtLeast(0f)..(safeMaxX + safeMaxX * 0.05f)
                                 .coerceAtLeast(safeMinX + 0.1f)
-        val yRange =
+        val baseYRange =
                 (safeMinY - safeMinY * 0.05f).coerceAtLeast(0f)..(safeMaxY + safeMaxY * 0.05f)
                                 .coerceAtLeast(safeMinY + 0.1f)
-
-        XYGraph(
-                xAxisModel = FloatLinearAxisModel(range = xRange),
-                yAxisModel = FloatLinearAxisModel(range = yRange),
-                xAxisTitle = "${xOption?.displayName} (${if (useDryMatterPer100g) "/100g MS" else "/1000 kcal"})",
-                yAxisTitle = "${yOption?.displayName} (${if (useDryMatterPer100g) "/100g MS" else "/1000 kcal"})",
-                modifier = modifier
+        
+        // Calculer les plages zoomées
+        val xRange = calculateZoomedRange(baseXRange, zoomPanState.value, isXAxis = true)
+        val yRange = calculateZoomedRange(baseYRange, zoomPanState.value, isXAxis = false)
+        
+        // Boutons de zoom (pour desktop où le pinch ne fonctionne pas)
+        Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
         ) {
-            // Afficher chaque point
-            alimentsAnalyses.forEachIndexed { index, data ->
-                val point = points[index]
-                LinePlot(
-                        data = listOf(point),
-                        symbol = {
-                            val couleurPoint =
-                                    if (data.aliment.uuid == alimentSelectionne) {
-                                        Color(0xFF9C27B0) // Violet pour sélectionné
-                                    } else {
-                                        // Vérifier l'humidité pour les aliments non sélectionnés
-                                        val humidite =
-                                                data.aliment.getNutrient(NutrientMain.HUMIDITE)
-                                        if (humidite == null || humidite < 20.0) {
-                                            Color(
-                                                    0xFFFF9800
-                                            ) // Orange pour aliments sans humidité ou < 20%
-                                        } else {
-                                            VetNutriColors.Primary // Couleur normale
-                                        }
-                                    }
-
-                            androidx.compose.foundation.Canvas(modifier = Modifier.size(10.dp)) {
-                                drawCircle(color = couleurPoint, radius = 5f, center = center)
-                            }
-                        }
+            IconButton(
+                    onClick = {
+                        // Zoom out
+                        val newScaleX = (zoomPanState.value.scaleX * 0.9f).coerceIn(0.5f, 5f)
+                        val newScaleY = (zoomPanState.value.scaleY * 0.9f).coerceIn(0.5f, 5f)
+                        zoomPanState.value = ZoomPanState(
+                                scaleX = newScaleX,
+                                scaleY = newScaleY,
+                                panX = zoomPanState.value.panX,
+                                panY = zoomPanState.value.panY
+                        )
+                    }
+            ) {
+                Icon(
+                        imageVector = Icons.Default.ZoomOut,
+                        contentDescription = "Zoom arrière"
                 )
             }
+            IconButton(
+                    onClick = {
+                        // Zoom in
+                        val newScaleX = (zoomPanState.value.scaleX * 1.1f).coerceIn(0.5f, 5f)
+                        val newScaleY = (zoomPanState.value.scaleY * 1.1f).coerceIn(0.5f, 5f)
+                        zoomPanState.value = ZoomPanState(
+                                scaleX = newScaleX,
+                                scaleY = newScaleY,
+                                panX = zoomPanState.value.panX,
+                                panY = zoomPanState.value.panY
+                        )
+                    }
+            ) {
+                Icon(
+                        imageVector = Icons.Default.ZoomIn,
+                        contentDescription = "Zoom avant"
+                )
+            }
+            if (zoomPanState.value.scaleX != 1f || zoomPanState.value.scaleY != 1f || 
+                zoomPanState.value.panX != 0f || zoomPanState.value.panY != 0f) {
+                TextButton(
+                        onClick = { zoomPanState.value = ZoomPanState() }
+                ) {
+                    Text("Réinitialiser", fontSize = 12.sp)
+                }
+            }
+        }
 
-            // Numéros superposés
-            BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        BoxWithConstraints(modifier = modifier.clipToBounds()) {
+            XYGraph(
+                    xAxisModel = FloatLinearAxisModel(range = xRange),
+                    yAxisModel = FloatLinearAxisModel(range = yRange),
+                    xAxisTitle = "${xOption?.displayName} (${if (useDryMatterPer100g) "/100g MS" else "/1000 kcal"})",
+                    yAxisTitle = "${yOption?.displayName} (${if (useDryMatterPer100g) "/100g MS" else "/1000 kcal"})",
+                    modifier = Modifier
+                            .fillMaxSize()
+                            .clipToBounds()
+                            .pointerInput(Unit) {
+                                detectTransformGestures { _, pan, zoom, _ ->
+                                    // Limiter le zoom entre 0.5x et 5x
+                                    val newScaleX = (zoomPanState.value.scaleX * zoom).coerceIn(0.5f, 5f)
+                                    val newScaleY = (zoomPanState.value.scaleY * zoom).coerceIn(0.5f, 5f)
+                                    
+                                    // Calculer les plages actuelles (zoomées) pour le pan
+                                    val currentXRange = calculateZoomedRange(baseXRange, zoomPanState.value, isXAxis = true)
+                                    val currentYRange = calculateZoomedRange(baseYRange, zoomPanState.value, isXAxis = false)
+                                    
+                                    // Convertir le pan en coordonnées de données (basé sur la plage actuelle)
+                                    val panXDelta = pan.x / size.width * (currentXRange.endInclusive - currentXRange.start)
+                                    val panYDelta = -pan.y / size.height * (currentYRange.endInclusive - currentYRange.start)
+                                    
+                                    zoomPanState.value = ZoomPanState(
+                                            scaleX = newScaleX,
+                                            scaleY = newScaleY,
+                                            panX = zoomPanState.value.panX + panXDelta,
+                                            panY = zoomPanState.value.panY + panYDelta
+                                    )
+                                }
+                            }
+            ) {
+                // Afficher chaque point (uniquement ceux dans la plage visible)
                 alimentsAnalyses.forEachIndexed { index, data ->
                     val point = points[index]
+                    
+                    // Vérifier si le point est dans la plage visible
+                    val isPointVisible = point.x >= xRange.start && 
+                                        point.x <= xRange.endInclusive &&
+                                        point.y >= yRange.start && 
+                                        point.y <= yRange.endInclusive
+                    
+                    if (!isPointVisible) return@forEachIndexed
+                    
+                    LinePlot(
+                            data = listOf(point),
+                            symbol = {
+                                val couleurPoint =
+                                        if (data.aliment.uuid == alimentSelectionne) {
+                                            Color(0xFF9C27B0) // Violet pour sélectionné
+                                        } else {
+                                            // Vérifier l'humidité pour les aliments non sélectionnés
+                                            val humidite =
+                                                    data.aliment.getNutrient(NutrientMain.HUMIDITE)
+                                            if (humidite == null || humidite < 20.0) {
+                                                Color(
+                                                        0xFFFF9800
+                                                ) // Orange pour aliments sans humidité ou < 20%
+                                            } else {
+                                                VetNutriColors.Primary // Couleur normale
+                                            }
+                                        }
+
+                                androidx.compose.foundation.Canvas(modifier = Modifier.size(10.dp)) {
+                                    drawCircle(color = couleurPoint, radius = 5f, center = center)
+                                }
+                            }
+                    )
+                }
+            }
+            
+            // Numéros superposés (en dehors de XYGraph pour pouvoir utiliser maxWidth/maxHeight)
+            BoxWithConstraints(modifier = Modifier.fillMaxSize().clipToBounds()) {
+                // Marges typiques des axes KoalaPlot (estimation)
+                // 🔧 Marges AJUSTÉES basées sur l'observation des logs (décalage empirique)
+                val leftAxisMargin = 10.dp // Marge pour les labels de l'axe Y (augmentée)
+                val bottomAxisMargin = 15.dp // Marge pour les labels de l'axe X (augmentée)
+                val topMargin = 10.dp // Marge supérieure
+                val rightMargin = 20.dp // Marge droite
+
+                // Zone de graphique effective
+                val effectiveGraphWidth = maxWidth - leftAxisMargin - rightMargin
+                val effectiveGraphHeight = maxHeight - bottomAxisMargin - topMargin
+                
+                alimentsAnalyses.forEachIndexed { index, data ->
+                    val point = points[index]
+                    
+                    // Vérifier si le point est dans la plage visible
+                    val isPointVisible = point.x >= xRange.start && 
+                                        point.x <= xRange.endInclusive &&
+                                        point.y >= yRange.start && 
+                                        point.y <= yRange.endInclusive
+                    
+                    if (!isPointVisible) return@forEachIndexed
+                    
                     val xPosition =
                             ((point.x - xRange.start) / (xRange.endInclusive - xRange.start))
                     val yPosition =
                             1f - ((point.y - yRange.start) / (yRange.endInclusive - yRange.start))
-
-                    // Marges typiques des axes KoalaPlot (estimation)
-                    // 🔧 Marges AJUSTÉES basées sur l'observation des logs (décalage empirique)
-                    val leftAxisMargin = 10.dp // Marge pour les labels de l'axe Y (augmentée)
-                    val bottomAxisMargin = 15.dp // Marge pour les labels de l'axe X (augmentée)
-                    val topMargin = 10.dp // Marge supérieure
-                    val rightMargin = 20.dp // Marge droite
-
-                    // Zone de graphique effective
-                    val effectiveGraphWidth = maxWidth - leftAxisMargin - rightMargin
-                    val effectiveGraphHeight = maxHeight - bottomAxisMargin - topMargin
+                    
+                    // Vérifier si le label est dans la zone visible (avec une petite marge)
+                    val labelX = leftAxisMargin + (xPosition * effectiveGraphWidth.value).dp - 10.dp
+                    val labelY = topMargin + (yPosition * effectiveGraphHeight.value).dp - 30.dp
+                    val isLabelVisible = labelX >= (-20).dp && 
+                                        labelX <= maxWidth + 20.dp &&
+                                        labelY >= (-20).dp && 
+                                        labelY <= maxHeight + 20.dp
+                    
+                    if (!isLabelVisible) return@forEachIndexed
 
                     val numeroColor =
                             if (data.aliment.uuid == alimentSelectionne) {
