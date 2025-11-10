@@ -22,6 +22,7 @@ import fr.vetbrain.vetnutri_mp.Repository.PreferencesRepository
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.TextUtils
+import fr.vetbrain.vetnutri_mp.Utils.GraphFormattingUtils
 import kotlinx.coroutines.runBlocking
 
 /**
@@ -392,7 +393,8 @@ fun AnalyseNutritionnelleCard(
                                                     typeExpressionBesoin = typeExpr,
                                                     poidsMetabolique = poidsMetabolique,
                                                     poidsAnimal = poidsAnimal,
-                                                    besoinEnergetiqueEntretien = besoinEnergetiqueEntretien
+                                                    besoinEnergetiqueEntretien = besoinEnergetiqueEntretien,
+                                                    referenceUtilisee = referenceUtilisee
                                             )
                                             
                                             Column(
@@ -438,7 +440,8 @@ fun AnalyseNutritionnelleCard(
                                                 typeExpressionBesoin = typeExpr,
                                                 poidsMetabolique = poidsMetabolique,
                                                 poidsAnimal = poidsAnimal,
-                                                besoinEnergetiqueEntretien = besoinEnergetiqueEntretien
+                                                besoinEnergetiqueEntretien = besoinEnergetiqueEntretien,
+                                                referenceUtilisee = null
                                         )
                                         
                                         Column {
@@ -867,7 +870,8 @@ private fun NutrimentCard(
                                 typeExpressionBesoin = typeExpressionBesoin,
                                 poidsMetabolique = poidsMetabolique,
                                 poidsAnimal = poidsAnimal,
-                                besoinEnergetiqueEntretien = besoinEnergetiqueEntretien
+                                besoinEnergetiqueEntretien = besoinEnergetiqueEntretien,
+                                referenceUtilisee = referenceUtilisee
                         )
 
                 Text(
@@ -1099,6 +1103,7 @@ private fun calculerBesoinAbsoluLocal(
  * @param poidsMetabolique Poids métabolique de l'animal
  * @param poidsAnimal Poids vif de l'animal
  * @param besoinEnergetiqueEntretien Besoin énergétique d'entretien (BEE)
+ * @param referenceUtilisee Référence utilisée pour extraire la puissance de l'équation BW
  * @return Pair<valeur formatée, unité d'affichage>
  */
 private fun calculerAffichageNutriment(
@@ -1106,7 +1111,8 @@ private fun calculerAffichageNutriment(
         typeExpressionBesoin: TypeExpressionBesoin?,
         poidsMetabolique: Double?,
         poidsAnimal: Double?,
-        besoinEnergetiqueEntretien: Double?
+        besoinEnergetiqueEntretien: Double?,
+        referenceUtilisee: ReferenceEv? = null
 ): Pair<String, String> {
 
     val valeurAbsolue = valeurNutritionnelle.valeur
@@ -1119,7 +1125,7 @@ private fun calculerAffichageNutriment(
     val isAnalysis =
             valeurNutritionnelle.nutriment is fr.vetbrain.vetnutri_mp.Enumer.NutrientAnalysis
     if (isAnalysis && isUnitEmpty) {
-        return Pair(TextUtils.formatDecimal(valeurAbsolue, 2), "")
+        return Pair(GraphFormattingUtils.formatSmartDecimal(valeurAbsolue), "")
     }
 
     // Si pas de type d'expression défini, affichage par défaut
@@ -1131,42 +1137,45 @@ private fun calculerAffichageNutriment(
             poidsAnimal?.let { poids ->
                 if (poids > 0) {
                     val valeurParKg = valeurAbsolue / poids
-                    Pair(TextUtils.formatDecimal(valeurParKg, 2), "$uniteOriginale/kg")
+                    Pair(GraphFormattingUtils.formatSmartDecimal(valeurParKg), "$uniteOriginale/kg")
                 } else {
                     // Si pas de poids disponible, garder l'unité originale mais indiquer le type
                     // d'expression
                     Pair(
-                            TextUtils.formatDecimal(valeurAbsolue, 2),
+                            GraphFormattingUtils.formatSmartDecimal(valeurAbsolue),
                             "$uniteOriginale (par kg si poids disponible)"
                     )
                 }
             }
                     ?: Pair(
-                            TextUtils.formatDecimal(valeurAbsolue, 2),
+                            GraphFormattingUtils.formatSmartDecimal(valeurAbsolue),
                             "$uniteOriginale (par kg si poids disponible)"
                     )
         }
         TypeExpressionBesoin.PAR_KG_METABOLIQUE -> {
-            // Par kg de poids métabolique (kg^0.75)
+            // Par kg de poids métabolique (kg^puissance)
+            val puissance = TextUtils.extrairePuissanceEquationBW(
+                    referenceUtilisee?.equationBW?.equationScript
+            )
             poidsMetabolique?.let { poidsMetab ->
                 if (poidsMetab > 0) {
                     val valeurParKgMetab = valeurAbsolue / poidsMetab
                     Pair(
-                            TextUtils.formatDecimal(valeurParKgMetab, 2),
-                            "$uniteOriginale/kg${TextUtils.toSuperscript("0.75")}"
+                            GraphFormattingUtils.formatSmartDecimal(valeurParKgMetab),
+                            "$uniteOriginale/kg${TextUtils.toSuperscript(puissance)}"
                     )
                 } else {
                     // Si pas de poids métabolique disponible, garder l'unité originale mais
                     // indiquer le type d'expression
                     Pair(
-                            TextUtils.formatDecimal(valeurAbsolue, 2),
-                            "$uniteOriginale (par kg^0.75 si poids métabolique disponible)"
+                            GraphFormattingUtils.formatSmartDecimal(valeurAbsolue),
+                            "$uniteOriginale (par kg^$puissance si poids métabolique disponible)"
                     )
                 }
             }
                     ?: Pair(
-                            TextUtils.formatDecimal(valeurAbsolue, 2),
-                            "$uniteOriginale (par kg^0.75 si poids métabolique disponible)"
+                            GraphFormattingUtils.formatSmartDecimal(valeurAbsolue),
+                            "$uniteOriginale (par kg^$puissance si poids métabolique disponible)"
                     )
         }
         TypeExpressionBesoin.PAR_KCAL -> {
@@ -1174,18 +1183,18 @@ private fun calculerAffichageNutriment(
             besoinEnergetiqueEntretien?.let { bee ->
                 if (bee > 0) {
                     val valeurPar1000Kcal = (valeurAbsolue / bee) * 1000
-                    Pair(TextUtils.formatDecimal(valeurPar1000Kcal, 2), "$uniteOriginale/1000 kcal")
+                    Pair(GraphFormattingUtils.formatSmartDecimal(valeurPar1000Kcal), "$uniteOriginale/1000 kcal")
                 } else {
                     // Si pas de BEE disponible, garder l'unité originale mais indiquer le type
                     // d'expression
                     Pair(
-                            TextUtils.formatDecimal(valeurAbsolue, 2),
+                            GraphFormattingUtils.formatSmartDecimal(valeurAbsolue),
                             "$uniteOriginale (par 1000 kcal si BEE disponible)"
                     )
                 }
             }
                     ?: Pair(
-                            TextUtils.formatDecimal(valeurAbsolue, 2),
+                            GraphFormattingUtils.formatSmartDecimal(valeurAbsolue),
                             "$uniteOriginale (par 1000 kcal si BEE disponible)"
                     )
         }
@@ -1195,18 +1204,18 @@ private fun calculerAffichageNutriment(
                 if (bee > 0) {
                     val beeEnKj = bee * 4.184 // Conversion kcal vers kJ
                     val valeurPar1000Kj = (valeurAbsolue / beeEnKj) * 1000
-                    Pair(TextUtils.formatDecimal(valeurPar1000Kj, 2), "$uniteOriginale/1000 kJ")
+                    Pair(GraphFormattingUtils.formatSmartDecimal(valeurPar1000Kj), "$uniteOriginale/1000 kJ")
                 } else {
                     // Si pas de BEE disponible, garder l'unité originale mais indiquer le type
                     // d'expression
                     Pair(
-                            TextUtils.formatDecimal(valeurAbsolue, 2),
+                            GraphFormattingUtils.formatSmartDecimal(valeurAbsolue),
                             "$uniteOriginale (par 1000 kJ si BEE disponible)"
                     )
                 }
             }
                     ?: Pair(
-                            TextUtils.formatDecimal(valeurAbsolue, 2),
+                            GraphFormattingUtils.formatSmartDecimal(valeurAbsolue),
                             "$uniteOriginale (par 1000 kJ si BEE disponible)"
                     )
         }

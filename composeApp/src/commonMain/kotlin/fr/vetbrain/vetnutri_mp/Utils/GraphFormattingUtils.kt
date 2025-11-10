@@ -24,6 +24,10 @@ object GraphFormattingUtils {
         val absValue = abs(value)
         
         return when {
+            // Valeur zéro : pas de décimales
+            absValue == 0.0 -> {
+                "0"
+            }
             // Valeurs très petites (< 0.01) : 3-4 décimales
             absValue < 0.01 -> {
                 formatDecimal(value, 4)
@@ -40,21 +44,9 @@ object GraphFormattingUtils {
             absValue < 10.0 -> {
                 formatDecimal(value, 1)
             }
-            // Valeurs grandes (< 100) : 1 décimale si nécessaire
-            absValue < 100.0 -> {
-                if (value % 1.0 == 0.0) {
-                    value.toInt().toString()
-                } else {
-                    formatDecimal(value, 1)
-                }
-            }
-            // Valeurs très grandes : pas de décimales
+            // Valeurs >= 10 : pas de décimales
             else -> {
-                if (value % 1.0 == 0.0) {
-                    value.toInt().toString()
-                } else {
-                    formatDecimal(value, 0)
-                }
+                formatDecimal(value, 0)
             }
         }
     }

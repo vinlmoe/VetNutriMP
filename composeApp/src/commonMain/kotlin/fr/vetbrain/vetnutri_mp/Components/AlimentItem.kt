@@ -218,15 +218,25 @@ fun AlimentItem(
                                                         onValueChange = { newValue ->
                                                                 // Filtrer pour n'accepter que les
                                                                 // nombres
-                                                                // et décimaux
-                                                                if (newValue.isEmpty() ||
-                                                                                newValue.matches(
-                                                                                        Regex(
-                                                                                                "^\\d*\\.?\\d*$"
-                                                                                        )
-                                                                                )
+                                                                // et décimaux (point ou virgule)
+                                                                val texteFiltre =
+                                                                        newValue.filter { char ->
+                                                                                char.isDigit() ||
+                                                                                        char == '.' ||
+                                                                                        char == ','
+                                                                        }
+                                                                // S'assurer qu'il n'y a qu'un seul séparateur décimal
+                                                                val pointCount =
+                                                                        texteFiltre.count { it == '.' }
+                                                                val virguleCount =
+                                                                        texteFiltre.count { it == ',' }
+                                                                if (pointCount <= 1 &&
+                                                                                virguleCount <= 1 &&
+                                                                                pointCount +
+                                                                                        virguleCount <=
+                                                                                        1
                                                                 ) {
-                                                                        quantityText = newValue
+                                                                        quantityText = texteFiltre
                                                                 }
                                                         },
                                                         placeholder = "",
@@ -237,8 +247,14 @@ fun AlimentItem(
 
                                                 Button(
                                                         onClick = {
+                                                                // Normaliser la virgule en point pour la conversion
+                                                                val texteNormalise =
+                                                                        quantityText.replace(
+                                                                                ',',
+                                                                                '.'
+                                                                        )
                                                                 val newQuantity =
-                                                                        quantityText
+                                                                        texteNormalise
                                                                                 .toDoubleOrNull()
                                                                                 ?: aliment.quantite
                                                                 // Arrondir au gramme

@@ -83,6 +83,37 @@ object TextUtils {
     }
 
     /**
+     * Extrait la puissance de l'équation du poids métabolique (BW)
+     * @param equationScript Le script de l'équation (ex: "BW ^ 0.75" ou "BW^0.67")
+     * @return La puissance extraite sous forme de String, ou "0.75" par défaut
+     */
+    fun extrairePuissanceEquationBW(equationScript: String?): String {
+        if (equationScript.isNullOrBlank()) {
+            return "0.75"
+        }
+        // Patterns possibles: "BW ^ 0.75", "BW^0.75", "BW ^0.75", "BW^ 0.75", etc.
+        val pattern = Regex("""BW\s*\^\s*([0-9]+\.?[0-9]*)""", RegexOption.IGNORE_CASE)
+        val match = pattern.find(equationScript)
+        return match?.groupValues?.get(1) ?: "0.75"
+    }
+
+    /**
+     * Formate kg avec une puissance dynamique extraite de l'équation BW
+     * @param value La valeur numérique
+     * @param equationScript Le script de l'équation BW (ex: "BW ^ 0.75")
+     * @param decimales Le nombre de décimales à afficher
+     * @return Le texte formaté avec exposant Unicode
+     */
+    fun formatKgAvecPuissanceDynamique(
+            value: Double,
+            equationScript: String?,
+            decimales: Int = 2
+    ): String {
+        val puissance = extrairePuissanceEquationBW(equationScript)
+        return "${formatDecimal(value, decimales)} kg${toSuperscript(puissance)}"
+    }
+
+    /**
      * Formate une unité avec exposant
      * @param value La valeur numérique
      * @param unite L'unité de base

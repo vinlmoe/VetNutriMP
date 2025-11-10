@@ -754,6 +754,18 @@ fun AnalyseGraphiqueView(
         }
 }
 
+// Fonction helper pour normaliser le texte de poids (virgule -> point)
+private fun normaliserTextePoids(texte: String): String {
+        // Remplacer la virgule par un point pour la conversion
+        return texte.replace(',', '.')
+}
+
+// Fonction helper pour convertir le texte en poids (gère virgule et point)
+private fun convertirTexteEnPoids(texte: String): Double? {
+        val texteNormalise = normaliserTextePoids(texte)
+        return texteNormalise.toDoubleOrNull()
+}
+
 @Composable
 private fun AddWeightForm(viewModel: AnimalDetailViewModel) {
         var selectedDate by remember {
@@ -804,7 +816,19 @@ private fun AddWeightForm(viewModel: AnimalDetailViewModel) {
                         // Champ de poids
                         OutlinedTextField(
                                 value = weightText,
-                                onValueChange = { weightText = it },
+                                onValueChange = { nouveauTexte ->
+                                        // Filtrer pour n'accepter que les chiffres, point et virgule
+                                        val texteFiltre =
+                                                nouveauTexte.filter { char ->
+                                                        char.isDigit() || char == '.' || char == ','
+                                                }
+                                        // S'assurer qu'il n'y a qu'un seul séparateur décimal
+                                        val pointCount = texteFiltre.count { it == '.' }
+                                        val virguleCount = texteFiltre.count { it == ',' }
+                                        if (pointCount <= 1 && virguleCount <= 1 && pointCount + virguleCount <= 1) {
+                                                weightText = texteFiltre
+                                        }
+                                },
                                 label = { Text("Poids (kg)") },
                                 keyboardOptions =
                                         KeyboardOptions(keyboardType = KeyboardType.Decimal),
@@ -825,17 +849,18 @@ private fun AddWeightForm(viewModel: AnimalDetailViewModel) {
 
                                 Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
 
+                                val poidsValide = convertirTexteEnPoids(weightText)
+                                val isPoidsValide = poidsValide != null && poidsValide > 0
+
                                 Button(
                                         onClick = {
-                                                val weight = weightText.toDoubleOrNull()
+                                                val weight = convertirTexteEnPoids(weightText)
                                                 if (weight != null && weight > 0) {
                                                         viewModel.addWeight(selectedDate, weight)
                                                         weightText = ""
                                                 }
                                         },
-                                        enabled =
-                                                weightText.toDoubleOrNull() != null &&
-                                                        weightText.toDoubleOrNull()!! > 0,
+                                        enabled = isPoidsValide,
                                         colors =
                                                 ButtonDefaults.buttonColors(
                                                         backgroundColor = VetNutriColors.Primary

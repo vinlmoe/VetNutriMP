@@ -96,6 +96,7 @@ private fun obtenirCouleurConformite(
  * @param poidsMetabolique Poids métabolique de l'animal
  * @param poidsAnimal Poids vif de l'animal
  * @param besoinEnergetiqueEntretien Besoin énergétique d'entretien (BEE)
+ * @param referenceUtilisee Référence utilisée pour extraire la puissance de l'équation BW
  * @return Pair<valeur formatée, unité d'affichage>
  */
 private fun calculerAffichageNutriment(
@@ -103,7 +104,8 @@ private fun calculerAffichageNutriment(
         typeExpressionBesoin: TypeExpressionBesoin?,
         poidsMetabolique: Double?,
         poidsAnimal: Double?,
-        besoinEnergetiqueEntretien: Double?
+        besoinEnergetiqueEntretien: Double?,
+        referenceUtilisee: ReferenceEv? = null
 ): Pair<String, String> {
 
         val valeurAbsolue = valeurNutritionnelle.valeur
@@ -119,35 +121,38 @@ private fun calculerAffichageNutriment(
                                 if (poids > 0) {
                                         val valeurParKg = valeurAbsolue / poids
                                         Pair(
-                                                TextUtils.formatDecimal(valeurParKg, 2),
+                                                GraphFormattingUtils.formatSmartDecimal(valeurParKg),
                                                 "$uniteOriginale/kg"
                                         )
                                 } else {
                                         Pair(
-                                                TextUtils.formatDecimal(valeurAbsolue, 2),
+                                                GraphFormattingUtils.formatSmartDecimal(valeurAbsolue),
                                                 uniteOriginale
                                         )
                                 }
                         }
-                                ?: Pair(TextUtils.formatDecimal(valeurAbsolue, 2), uniteOriginale)
+                                ?: Pair(GraphFormattingUtils.formatSmartDecimal(valeurAbsolue), uniteOriginale)
                 }
                 TypeExpressionBesoin.PAR_KG_METABOLIQUE -> {
-                        // Par kg de poids métabolique (kg^0.75)
+                        // Par kg de poids métabolique (kg^puissance)
+                        val puissance = TextUtils.extrairePuissanceEquationBW(
+                                referenceUtilisee?.equationBW?.equationScript
+                        )
                         poidsMetabolique?.let { poidsMetab ->
                                 if (poidsMetab > 0) {
                                         val valeurParKgMetab = valeurAbsolue / poidsMetab
                                         Pair(
-                                                TextUtils.formatDecimal(valeurParKgMetab, 2),
-                                                "$uniteOriginale/kg${TextUtils.toSuperscript("0.75")}"
+                                                GraphFormattingUtils.formatSmartDecimal(valeurParKgMetab),
+                                                "$uniteOriginale/kg${TextUtils.toSuperscript(puissance)}"
                                         )
                                 } else {
                                         Pair(
-                                                TextUtils.formatDecimal(valeurAbsolue, 2),
+                                                GraphFormattingUtils.formatSmartDecimal(valeurAbsolue),
                                                 uniteOriginale
                                         )
                                 }
                         }
-                                ?: Pair(TextUtils.formatDecimal(valeurAbsolue, 2), uniteOriginale)
+                                ?: Pair(GraphFormattingUtils.formatSmartDecimal(valeurAbsolue), uniteOriginale)
                 }
                 TypeExpressionBesoin.PAR_KCAL -> {
                         // Par 1000 kcal de BEE (Besoin Énergétique d'Entretien)
@@ -155,17 +160,17 @@ private fun calculerAffichageNutriment(
                                 if (bee > 0) {
                                         val valeurPar1000Kcal = (valeurAbsolue / bee) * 1000
                                         Pair(
-                                                TextUtils.formatDecimal(valeurPar1000Kcal, 2),
+                                                GraphFormattingUtils.formatSmartDecimal(valeurPar1000Kcal),
                                                 "$uniteOriginale/1000 kcal"
                                         )
                                 } else {
                                         Pair(
-                                                TextUtils.formatDecimal(valeurAbsolue, 2),
+                                                GraphFormattingUtils.formatSmartDecimal(valeurAbsolue),
                                                 uniteOriginale
                                         )
                                 }
                         }
-                                ?: Pair(TextUtils.formatDecimal(valeurAbsolue, 2), uniteOriginale)
+                                ?: Pair(GraphFormattingUtils.formatSmartDecimal(valeurAbsolue), uniteOriginale)
                 }
                 TypeExpressionBesoin.PAR_KJ -> {
                         // Par 1000 kJ de BEE (conversion : 1 kcal = 4.184 kJ)
@@ -174,17 +179,17 @@ private fun calculerAffichageNutriment(
                                         val beeEnKj = bee * 4.184 // Conversion kcal vers kJ
                                         val valeurPar1000Kj = (valeurAbsolue / beeEnKj) * 1000
                                         Pair(
-                                                TextUtils.formatDecimal(valeurPar1000Kj, 2),
+                                                GraphFormattingUtils.formatSmartDecimal(valeurPar1000Kj),
                                                 "$uniteOriginale/1000 kJ"
                                         )
                                 } else {
                                         Pair(
-                                                TextUtils.formatDecimal(valeurAbsolue, 2),
+                                                GraphFormattingUtils.formatSmartDecimal(valeurAbsolue),
                                                 uniteOriginale
                                         )
                                 }
                         }
-                                ?: Pair(TextUtils.formatDecimal(valeurAbsolue, 2), uniteOriginale)
+                                ?: Pair(GraphFormattingUtils.formatSmartDecimal(valeurAbsolue), uniteOriginale)
                 }
         }
 }
@@ -237,7 +242,8 @@ fun NutrientDetailDialog(
                                         typeExpressionBesoin = typeExpressionBesoin,
                                         poidsMetabolique = poidsMetabolique,
                                         poidsAnimal = poidsAnimal,
-                                        besoinEnergetiqueEntretien = besoinEnergetiqueEntretien
+                                        besoinEnergetiqueEntretien = besoinEnergetiqueEntretien,
+                                        referenceUtilisee = referenceUtilisee
                                 )
                                 Text(
                                         text = "Références nutritionnelles",
@@ -910,7 +916,8 @@ private fun RecapitulatifCard(
         typeExpressionBesoin: TypeExpressionBesoin,
         poidsMetabolique: Double?,
         poidsAnimal: Double?,
-        besoinEnergetiqueEntretien: Double?
+        besoinEnergetiqueEntretien: Double?,
+        referenceUtilisee: ReferenceEv? = null
 ) {
         Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -939,7 +946,8 @@ private fun RecapitulatifCard(
                                                 typeExpressionBesoin,
                                                 poidsMetabolique,
                                                 poidsAnimal,
-                                                besoinEnergetiqueEntretien
+                                                besoinEnergetiqueEntretien,
+                                                referenceUtilisee
                                         )
                                 }
                         Text(
@@ -1321,7 +1329,8 @@ private fun ReferenceLevelsList(
                                                                         typeExpressionBesoin,
                                                                         poidsMetabolique,
                                                                         poidsAnimal,
-                                                                        besoinEnergetiqueEntretien
+                                                                        besoinEnergetiqueEntretien,
+                                                                        reference
                                                                 )
                                                         Text(
                                                                 text =
