@@ -15,7 +15,12 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.TrendingUp
+import androidx.compose.material.icons.filled.ZoomIn
+import androidx.compose.material.icons.filled.ZoomOut
 import androidx.compose.runtime.*
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -360,6 +365,37 @@ private fun calculateAdaptiveRange(
         val finalUpperBound = maxOf(upperBound, lowerBound + 0.1f)
 
         return finalLowerBound..finalUpperBound
+}
+
+// Data class pour gérer l'état du zoom et du pan (privée au fichier)
+private data class ZoomPanStateView(
+        val scaleX: Float = 1f,
+        val scaleY: Float = 1f,
+        val panX: Float = 0f,
+        val panY: Float = 0f
+) {
+        fun reset(): ZoomPanStateView = ZoomPanStateView()
+}
+
+// Fonction pour calculer la plage zoomée/panée (privée au fichier)
+private fun calculateZoomedRangeView(
+        originalRange: ClosedFloatingPointRange<Float>,
+        zoomPanState: ZoomPanStateView,
+        isXAxis: Boolean = true
+): ClosedFloatingPointRange<Float> {
+        val scale = if (isXAxis) zoomPanState.scaleX else zoomPanState.scaleY
+        val pan = if (isXAxis) zoomPanState.panX else zoomPanState.panY
+        
+        val originalSize = originalRange.endInclusive - originalRange.start
+        val newSize = originalSize / scale
+        
+        val center = (originalRange.start + originalRange.endInclusive) / 2f
+        val panOffset = pan
+        
+        val newStart = center - newSize / 2f + panOffset
+        val newEnd = center + newSize / 2f + panOffset
+        
+        return newStart..newEnd
 }
 
 // Fonction pour calculer les pourcentages d'énergie des rations
@@ -1523,11 +1559,78 @@ private fun RationsEnergieChart(
                         val minY = points.minOf { it.y }.coerceAtLeast(0f)
                         val maxY = points.maxOf { it.y }.coerceAtMost(100f)
 
-                        val xRange = (minX - minX * 0.05f)..(maxX + maxX * 0.05f)
-                        val yRange = (minY - minY * 0.05f)..(maxY + maxY * 0.05f)
+                        val baseXRange = (minX - minX * 0.05f)..(maxX + maxX * 0.05f)
+                        val baseYRange = (minY - minY * 0.05f)..(maxY + maxY * 0.05f)
+                        
+                        // État du zoom/pan
+                        var zoomPanState by remember { mutableStateOf(ZoomPanStateView()) }
+                        val originalRanges = remember(baseXRange, baseYRange) {
+                                Pair(baseXRange, baseYRange)
+                        }
+                        
+                        // Réinitialiser le zoom quand les données changent
+                        LaunchedEffect(rationsEnergieData.size) {
+                                zoomPanState = ZoomPanStateView()
+                        }
+                        
+                        // Calculer les plages zoomées
+                        val xRange = calculateZoomedRangeView(originalRanges.first, zoomPanState, isXAxis = true)
+                        val yRange = calculateZoomedRangeView(originalRanges.second, zoomPanState, isXAxis = false)
+                        
+                        // Boutons de zoom (pour desktop où le pinch ne fonctionne pas)
+                        Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.End,
+                                verticalAlignment = Alignment.CenterVertically
+                        ) {
+                                IconButton(
+                                        onClick = {
+                                                // Zoom out
+                                                val newScaleX = (zoomPanState.scaleX * 0.9f).coerceIn(0.5f, 5f)
+                                                val newScaleY = (zoomPanState.scaleY * 0.9f).coerceIn(0.5f, 5f)
+                                                zoomPanState = ZoomPanStateView(
+                                                        scaleX = newScaleX,
+                                                        scaleY = newScaleY,
+                                                        panX = zoomPanState.panX,
+                                                        panY = zoomPanState.panY
+                                                )
+                                        }
+                                ) {
+                                        Icon(
+                                                imageVector = Icons.Default.ZoomOut,
+                                                contentDescription = "Zoom arrière"
+                                        )
+                                }
+                                IconButton(
+                                        onClick = {
+                                                // Zoom in
+                                                val newScaleX = (zoomPanState.scaleX * 1.1f).coerceIn(0.5f, 5f)
+                                                val newScaleY = (zoomPanState.scaleY * 1.1f).coerceIn(0.5f, 5f)
+                                                zoomPanState = ZoomPanStateView(
+                                                        scaleX = newScaleX,
+                                                        scaleY = newScaleY,
+                                                        panX = zoomPanState.panX,
+                                                        panY = zoomPanState.panY
+                                                )
+                                        }
+                                ) {
+                                        Icon(
+                                                imageVector = Icons.Default.ZoomIn,
+                                                contentDescription = "Zoom avant"
+                                        )
+                                }
+                                if (zoomPanState.scaleX != 1f || zoomPanState.scaleY != 1f || 
+                                    zoomPanState.panX != 0f || zoomPanState.panY != 0f) {
+                                        TextButton(
+                                                onClick = { zoomPanState = ZoomPanStateView() }
+                                        ) {
+                                                Text("Réinitialiser", fontSize = 12.sp)
+                                        }
+                                }
+                        }
 
                         // Graphique avec numéros superposés
-                        BoxWithConstraints(modifier = Modifier.height(400.dp)) {
+                        BoxWithConstraints(modifier = Modifier.height(400.dp).clipToBounds()) {
                                 // Graphique principal
                                 XYGraph(
                                         xAxisModel =
@@ -1540,7 +1643,31 @@ private fun RationsEnergieChart(
                                                 ),
                                         xAxisTitle = "Énergie des protéines (%)",
                                         yAxisTitle = "Énergie des lipides (%)",
-                                        modifier = Modifier.fillMaxSize()
+                                        modifier = Modifier
+                                                .fillMaxSize()
+                                                .clipToBounds()
+                                                .pointerInput(Unit) {
+                                                        detectTransformGestures { _, pan, zoom, _ ->
+                                                                // Limiter le zoom entre 0.5x et 5x
+                                                                val newScaleX = (zoomPanState.scaleX * zoom).coerceIn(0.5f, 5f)
+                                                                val newScaleY = (zoomPanState.scaleY * zoom).coerceIn(0.5f, 5f)
+                                                                
+                                                                // Calculer les plages actuelles (zoomées) pour le pan
+                                                                val currentXRange = calculateZoomedRangeView(originalRanges.first, zoomPanState, isXAxis = true)
+                                                                val currentYRange = calculateZoomedRangeView(originalRanges.second, zoomPanState, isXAxis = false)
+                                                                
+                                                                // Convertir le pan en coordonnées de données (basé sur la plage actuelle)
+                                                                val panXDelta = pan.x / size.width * (currentXRange.endInclusive - currentXRange.start)
+                                                                val panYDelta = -pan.y / size.height * (currentYRange.endInclusive - currentYRange.start)
+                                                                
+                                                                zoomPanState = ZoomPanStateView(
+                                                                        scaleX = newScaleX,
+                                                                        scaleY = newScaleY,
+                                                                        panX = zoomPanState.panX + panXDelta,
+                                                                        panY = zoomPanState.panY + panYDelta
+                                                                )
+                                                        }
+                                                }
                                 ) {
                                         // 🔸 LIGNES DE RÉFÉRENCE pour la répartition énergétique
                                         // Ligne 80-x : Protéines + Lipides = 80% (ENA = 20%)
@@ -1621,9 +1748,18 @@ private fun RationsEnergieChart(
                                                         )
                                         )
 
-                                        // Afficher chaque point individuellement
+                                        // Afficher chaque point individuellement (uniquement ceux dans la plage visible)
                                         rationsEnergieData.forEachIndexed { index, data ->
                                                 val point = points[index]
+                                                
+                                                // Vérifier si le point est dans la plage visible
+                                                val isPointVisible = point.x >= xRange.start && 
+                                                                        point.x <= xRange.endInclusive &&
+                                                                        point.y >= yRange.start && 
+                                                                        point.y <= yRange.endInclusive
+                                                
+                                                if (!isPointVisible) return@forEachIndexed
+                                                
                                                 LinePlot(
                                                         data = listOf(point),
                                                         symbol = {
@@ -1657,9 +1793,27 @@ private fun RationsEnergieChart(
                                         }
                                 }
 
-                                // Numéros superposés
+                                // Numéros superposés (uniquement ceux dans la plage visible)
+                                val leftAxisMargin = 10.dp
+                                val bottomAxisMargin = 15.dp
+                                val topMargin = 10.dp
+                                val rightMargin = 20.dp
+                                
+                                // Zone de graphique effective
+                                val effectiveGraphWidth = maxWidth - leftAxisMargin - rightMargin
+                                val effectiveGraphHeight = maxHeight - bottomAxisMargin - topMargin
+                                
                                 rationsEnergieData.forEachIndexed { index, data ->
                                         val point = points[index]
+                                        
+                                        // Vérifier si le point est dans la plage visible
+                                        val isPointVisible = point.x >= xRange.start && 
+                                                                point.x <= xRange.endInclusive &&
+                                                                point.y >= yRange.start && 
+                                                                point.y <= yRange.endInclusive
+                                        
+                                        if (!isPointVisible) return@forEachIndexed
+                                        
                                         // Calculer la position du numéro
                                         val xPosition =
                                                 ((point.x - xRange.start) /
@@ -1670,18 +1824,6 @@ private fun RationsEnergieChart(
                                                                 (yRange.endInclusive -
                                                                         yRange.start))
 
-                                        // Marges typiques des axes KoalaPlot
-                                        val leftAxisMargin = 10.dp
-                                        val bottomAxisMargin = 15.dp
-                                        val topMargin = 10.dp
-                                        val rightMargin = 20.dp
-
-                                        // Zone de graphique effective
-                                        val effectiveGraphWidth =
-                                                maxWidth - leftAxisMargin - rightMargin
-                                        val effectiveGraphHeight =
-                                                maxHeight - bottomAxisMargin - topMargin
-
                                         // Couleur selon la sélection
                                         val numeroColor =
                                                 if (data.rationId == rationSelectionnee) {
@@ -1690,25 +1832,24 @@ private fun RationsEnergieChart(
                                                         VetNutriColors.Primary // Couleur par défaut
                                                 }
 
+                                        // Vérifier si le label est visible
+                                        val labelX = leftAxisMargin + (xPosition * effectiveGraphWidth.value).dp - 10.dp
+                                        val labelY = topMargin + (yPosition * effectiveGraphHeight.value).dp - 30.dp
+                                        
+                                        val isLabelVisible = labelX >= (-20).dp && 
+                                                        labelX <= maxWidth + 20.dp &&
+                                                        labelY >= (-20).dp && 
+                                                        labelY <= maxHeight + 20.dp
+                                        
+                                        if (!isLabelVisible) return@forEachIndexed
+
                                         Box(
                                                 modifier =
                                                         Modifier.fillMaxSize()
                                                                 .wrapContentSize(Alignment.TopStart)
                                                                 .offset(
-                                                                        x =
-                                                                                leftAxisMargin +
-                                                                                        (xPosition *
-                                                                                                        effectiveGraphWidth
-                                                                                                                .value)
-                                                                                                .dp -
-                                                                                        10.dp,
-                                                                        y =
-                                                                                topMargin +
-                                                                                        (yPosition *
-                                                                                                        effectiveGraphHeight
-                                                                                                                .value)
-                                                                                                .dp -
-                                                                                        30.dp
+                                                                        x = labelX,
+                                                                        y = labelY
                                                                 ),
                                                 contentAlignment = Alignment.Center
                                         ) {
@@ -2663,8 +2804,75 @@ private fun NutrimentsRationsChart(
                                         val minY = points.minOf { it.y }.coerceAtLeast(0f)
                                         val maxY = points.maxOf { it.y }
 
-                                        val xRange = (minX - minX * 0.05f)..(maxX + maxX * 0.05f)
-                                        val yRange = (minY - minY * 0.05f)..(maxY + maxY * 0.05f)
+                                        val baseXRange = (minX - minX * 0.05f)..(maxX + maxX * 0.05f)
+                                        val baseYRange = (minY - minY * 0.05f)..(maxY + maxY * 0.05f)
+                                        
+                                        // État du zoom/pan
+                                        var zoomPanState by remember { mutableStateOf(ZoomPanStateView()) }
+                                        val originalRanges = remember(baseXRange, baseYRange) {
+                                                Pair(baseXRange, baseYRange)
+                                        }
+                                        
+                                        // Réinitialiser le zoom quand les nutriments changent
+                                        LaunchedEffect(nutrimentX, nutrimentY) {
+                                                zoomPanState = ZoomPanStateView()
+                                        }
+                                        
+                                        // Calculer les plages zoomées
+                                        val xRange = calculateZoomedRangeView(originalRanges.first, zoomPanState, isXAxis = true)
+                                        val yRange = calculateZoomedRangeView(originalRanges.second, zoomPanState, isXAxis = false)
+                                        
+                                        // Boutons de zoom (pour desktop où le pinch ne fonctionne pas)
+                                        Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.End,
+                                                verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                                IconButton(
+                                                        onClick = {
+                                                                // Zoom out
+                                                                val newScaleX = (zoomPanState.scaleX * 0.9f).coerceIn(0.5f, 5f)
+                                                                val newScaleY = (zoomPanState.scaleY * 0.9f).coerceIn(0.5f, 5f)
+                                                                zoomPanState = ZoomPanStateView(
+                                                                        scaleX = newScaleX,
+                                                                        scaleY = newScaleY,
+                                                                        panX = zoomPanState.panX,
+                                                                        panY = zoomPanState.panY
+                                                                )
+                                                        }
+                                                ) {
+                                                        Icon(
+                                                                imageVector = Icons.Default.ZoomOut,
+                                                                contentDescription = "Zoom arrière"
+                                                        )
+                                                }
+                                                IconButton(
+                                                        onClick = {
+                                                                // Zoom in
+                                                                val newScaleX = (zoomPanState.scaleX * 1.1f).coerceIn(0.5f, 5f)
+                                                                val newScaleY = (zoomPanState.scaleY * 1.1f).coerceIn(0.5f, 5f)
+                                                                zoomPanState = ZoomPanStateView(
+                                                                        scaleX = newScaleX,
+                                                                        scaleY = newScaleY,
+                                                                        panX = zoomPanState.panX,
+                                                                        panY = zoomPanState.panY
+                                                                )
+                                                        }
+                                                ) {
+                                                        Icon(
+                                                                imageVector = Icons.Default.ZoomIn,
+                                                                contentDescription = "Zoom avant"
+                                                        )
+                                                }
+                                                if (zoomPanState.scaleX != 1f || zoomPanState.scaleY != 1f || 
+                                                    zoomPanState.panX != 0f || zoomPanState.panY != 0f) {
+                                                        TextButton(
+                                                                onClick = { zoomPanState = ZoomPanStateView() }
+                                                        ) {
+                                                                Text("Réinitialiser", fontSize = 12.sp)
+                                                        }
+                                                }
+                                        }
 
                                         XYGraph(
                                                 xAxisModel =
@@ -2679,10 +2887,43 @@ private fun NutrimentsRationsChart(
                                                         "${xOption?.displayName} (${xOption?.unit})",
                                                 yAxisTitle =
                                                         "${yOption?.displayName} (${yOption?.unit})",
-                                                modifier = Modifier.height(400.dp)
+                                                modifier = Modifier
+                                                        .height(400.dp)
+                                                        .clipToBounds()
+                                                        .pointerInput(Unit) {
+                                                                detectTransformGestures { _, pan, zoom, _ ->
+                                                                        // Limiter le zoom entre 0.5x et 5x
+                                                                        val newScaleX = (zoomPanState.scaleX * zoom).coerceIn(0.5f, 5f)
+                                                                        val newScaleY = (zoomPanState.scaleY * zoom).coerceIn(0.5f, 5f)
+                                                                        
+                                                                        // Calculer les plages actuelles (zoomées) pour le pan
+                                                                        val currentXRange = calculateZoomedRangeView(originalRanges.first, zoomPanState, isXAxis = true)
+                                                                        val currentYRange = calculateZoomedRangeView(originalRanges.second, zoomPanState, isXAxis = false)
+                                                                        
+                                                                        // Convertir le pan en coordonnées de données (basé sur la plage actuelle)
+                                                                        val panXDelta = pan.x / size.width * (currentXRange.endInclusive - currentXRange.start)
+                                                                        val panYDelta = -pan.y / size.height * (currentYRange.endInclusive - currentYRange.start)
+                                                                        
+                                                                        zoomPanState = ZoomPanStateView(
+                                                                                scaleX = newScaleX,
+                                                                                scaleY = newScaleY,
+                                                                                panX = zoomPanState.panX + panXDelta,
+                                                                                panY = zoomPanState.panY + panYDelta
+                                                                        )
+                                                                }
+                                                        }
                                         ) {
                                                 rationsNutrimentData.forEachIndexed { index, data ->
                                                         val point = points[index]
+                                                        
+                                                        // Vérifier si le point est dans la plage visible
+                                                        val isPointVisible = point.x >= xRange.start && 
+                                                                        point.x <= xRange.endInclusive &&
+                                                                        point.y >= yRange.start && 
+                                                                        point.y <= yRange.endInclusive
+                                                        
+                                                        if (!isPointVisible) return@forEachIndexed
+                                                        
                                                         LinePlot(
                                                                 data = listOf(point),
                                                                 symbol = {
@@ -2778,6 +3019,17 @@ private fun NutrimentsRationsChart(
                                                                         // défaut
                                                                 }
 
+                                                        // Vérifier si le label est visible
+                                                        val labelX = leftAxisMargin + (xPosition * effectiveGraphWidth.value).dp - 10.dp
+                                                        val labelY = topMargin + (yPosition * effectiveGraphHeight.value).dp - 30.dp
+                                                        
+                                                        val isLabelVisible = labelX >= (-20).dp && 
+                                                                        labelX <= maxWidth + 20.dp &&
+                                                                        labelY >= (-20).dp && 
+                                                                        labelY <= maxHeight + 20.dp
+                                                        
+                                                        if (!isLabelVisible) return@forEachIndexed
+
                                                         Box(
                                                                 modifier =
                                                                         Modifier.fillMaxSize()
@@ -2786,20 +3038,8 @@ private fun NutrimentsRationsChart(
                                                                                                 .TopStart
                                                                                 )
                                                                                 .offset(
-                                                                                        x =
-                                                                                                leftAxisMargin +
-                                                                                                        (xPosition *
-                                                                                                                        effectiveGraphWidth
-                                                                                                                                .value)
-                                                                                                                .dp -
-                                                                                                        10.dp,
-                                                                                        y =
-                                                                                                topMargin +
-                                                                                                        (yPosition *
-                                                                                                                        effectiveGraphHeight
-                                                                                                                                .value)
-                                                                                                                .dp -
-                                                                                                        30.dp
+                                                                                        x = labelX,
+                                                                                        y = labelY
                                                                                 ),
                                                                 contentAlignment = Alignment.Center
                                                         ) {
