@@ -17,6 +17,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Components.BasicAppTextField
 import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
+import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.TextUtils
@@ -32,7 +33,8 @@ fun SectionValeursMetaboliques(
         besoinEnergetiqueTotal: Double?,
         kObserve: Double,
         kCalcule: Double,
-        energieAdditionnelle: Double? = null,   
+        energieAdditionnelle: Double? = null,
+        referenceUtilisee: ReferenceEv? = null,
         onExpand: () -> Unit,
         modifier: Modifier = Modifier
 ) {
@@ -84,7 +86,12 @@ fun SectionValeursMetaboliques(
                     )
                     LigneInfoLocaleCompacte(
                             label = "P. métabolique",
-                            value = poidsMetabolique?.let { TextUtils.formatKgPuissance075(it) }
+                            value = poidsMetabolique?.let {
+                                        TextUtils.formatKgAvecPuissanceDynamique(
+                                                it,
+                                                referenceUtilisee?.equationBW?.equationScript
+                                        )
+                                    }
                                             ?: "Non calculé"
                     )
                     LigneInfoLocaleCompacte(
@@ -130,7 +137,12 @@ fun SectionValeursMetaboliques(
                     )
                     LigneInfoLocaleCompacte(
                             label = "Poids métabolique",
-                            value = poidsMetabolique?.let { TextUtils.formatKgPuissance075(it) }
+                            value = poidsMetabolique?.let {
+                                        TextUtils.formatKgAvecPuissanceDynamique(
+                                                it,
+                                                referenceUtilisee?.equationBW?.equationScript
+                                        )
+                                    }
                                             ?: "Non calculé"
                     )
                     LigneInfoLocaleCompacte(

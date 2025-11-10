@@ -160,7 +160,7 @@ fun NumberTextField(
                 onTrailingIconClick = onTrailingIconClick,
                 isError = isError,
                 errorMessage = errorMessage,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 singleLine = singleLine,
                 readOnly = readOnly,
                 enabled = enabled
@@ -428,8 +428,8 @@ fun BasicNumberTextField(
 ) {
         val validationRegex =
                 when {
-                        allowDecimals && allowNegative -> Regex("^-?\\d*\\.?\\d*$")
-                        allowDecimals && !allowNegative -> Regex("^\\d*\\.?\\d*$")
+                        allowDecimals && allowNegative -> Regex("^-?\\d*[.,]?\\d*$")
+                        allowDecimals && !allowNegative -> Regex("^\\d*[.,]?\\d*$")
                         !allowDecimals && allowNegative -> Regex("^-?\\d*$")
                         else -> Regex("^\\d*$")
                 }
@@ -444,7 +444,7 @@ fun BasicNumberTextField(
                 onTrailingIconClick = onTrailingIconClick,
                 isError = isError,
                 errorMessage = errorMessage,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 singleLine = singleLine,
                 readOnly = readOnly,
                 enabled = enabled,

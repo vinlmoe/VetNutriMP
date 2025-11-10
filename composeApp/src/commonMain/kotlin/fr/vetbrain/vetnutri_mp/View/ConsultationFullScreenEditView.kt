@@ -288,10 +288,12 @@ fun ConsultationFullScreenEditView(
                         NumberTextField(
                                 value = weightText,
                                 onValueChange = { newValue: String ->
+                                        // Normaliser la virgule en point pour la conversion
+                                        val texteNormalise = newValue.replace(',', '.')
                                         weightText = newValue
                                         try {
-                                                if (newValue.isNotEmpty()) {
-                                                        val weight = newValue.toDouble()
+                                                if (texteNormalise.isNotEmpty()) {
+                                                        val weight = texteNormalise.toDouble()
                                                         editedConsultation =
                                                                 editedConsultation.copy(
                                                                         weight = weight
@@ -352,11 +354,13 @@ fun ConsultationFullScreenEditView(
                                 NumberTextField(
                                         value = idealWeightText,
                                         onValueChange = { newValue: String ->
+                                                // Normaliser la virgule en point pour la conversion
+                                                val texteNormalise = newValue.replace(',', '.')
                                                 idealWeightText = newValue
                                                 try {
-                                                        if (newValue.isNotEmpty()) {
+                                                        if (texteNormalise.isNotEmpty()) {
                                                                 val idealWeight =
-                                                                        newValue.toDouble()
+                                                                        texteNormalise.toDouble()
                                                                 editedConsultation =
                                                                         editedConsultation.copy(
                                                                                 idealWeight =
@@ -1782,16 +1786,30 @@ private fun VariableSupplementaireField(
                         OutlinedTextField(
                                 value = textValue,
                                 onValueChange = { newValue ->
-                                        textValue = newValue
+                                        // Filtrer pour n'accepter que les chiffres, point et virgule
+                                        val texteFiltre =
+                                                newValue.filter { char ->
+                                                        char.isDigit() || char == '.' || char == ','
+                                                }
+                                        // S'assurer qu'il n'y a qu'un seul séparateur décimal
+                                        val pointCount = texteFiltre.count { it == '.' }
+                                        val virguleCount = texteFiltre.count { it == ',' }
+                                        if (pointCount <= 1 &&
+                                                        virguleCount <= 1 &&
+                                                        pointCount + virguleCount <= 1
+                                        ) {
+                                                textValue = texteFiltre
+                                        }
                                         try {
+                                                val texteNormalise = texteFiltre.replace(',', '.')
                                                 when {
-                                                        newValue.isEmpty() -> {
+                                                        texteNormalise.isEmpty() -> {
                                                                 onValeurChange(null)
                                                                 isError = false
                                                         }
-                                                        newValue.toDoubleOrNull() != null -> {
+                                                        texteNormalise.toDoubleOrNull() != null -> {
                                                                 val doubleValue =
-                                                                        newValue.toDouble()
+                                                                        texteNormalise.toDouble()
                                                                 if (doubleValue >= 0) {
                                                                         onValeurChange(doubleValue)
                                                                         isError = false
@@ -1827,7 +1845,7 @@ private fun VariableSupplementaireField(
                                         ),
                                 keyboardOptions =
                                         KeyboardOptions(
-                                                keyboardType = KeyboardType.Number,
+                                                keyboardType = KeyboardType.Decimal,
                                                 imeAction = ImeAction.Done
                                         ),
                                 singleLine = true

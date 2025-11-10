@@ -422,7 +422,9 @@ fun AlimentItem(
 
         // Fonction de validation de la quantité
         val validateQuantity = {
-                val newQuantity = quantityText.toDoubleOrNull() ?: aliment.quantity
+                // Normaliser la virgule en point pour la conversion
+                val texteNormalise = quantityText.replace(',', '.')
+                val newQuantity = texteNormalise.toDoubleOrNull() ?: aliment.quantity
                 onQuantityChange(newQuantity)
         }
 
@@ -455,10 +457,27 @@ fun AlimentItem(
                         ) {
                                 OutlinedTextField(
                                         value = quantityText,
-                                        onValueChange = { quantityText = it },
+                                        onValueChange = { newValue ->
+                                                // Filtrer pour n'accepter que les chiffres, point et virgule
+                                                val texteFiltre =
+                                                        newValue.filter { char ->
+                                                                char.isDigit() ||
+                                                                        char == '.' ||
+                                                                        char == ','
+                                                        }
+                                                // S'assurer qu'il n'y a qu'un seul séparateur décimal
+                                                val pointCount = texteFiltre.count { it == '.' }
+                                                val virguleCount = texteFiltre.count { it == ',' }
+                                                if (pointCount <= 1 &&
+                                                                virguleCount <= 1 &&
+                                                                pointCount + virguleCount <= 1
+                                                ) {
+                                                        quantityText = texteFiltre
+                                                }
+                                        },
                                         label = { Text("Quantité") },
                                         keyboardOptions =
-                                                KeyboardOptions(keyboardType = KeyboardType.Number),
+                                                KeyboardOptions(keyboardType = KeyboardType.Decimal),
                                         singleLine = true,
                                         modifier =
                                                 Modifier.width(AppSizes.textFieldHeight.times(2.2f))

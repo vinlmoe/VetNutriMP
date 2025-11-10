@@ -58,9 +58,6 @@ import fr.vetbrain.vetnutri_mp.View.components.RecipeDialog
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailViewModel
 import kotlinx.coroutines.launch
 
-// Constante pour l'exposant formaté
-private const val EXPOSANT_075 = "⁰·⁷⁵"
-
 // Suppression du calcul local de DE : on utilisera EquationEvaluator avec nutriments
 // complémentaires
 
@@ -535,6 +532,7 @@ fun RationsView(
                                                                 kObserve = kObserve,
                                                                 kCalcule = kCalcule,
                                                                energieAdditionnelle = energieAdditionnelle,
+                                                                referenceUtilisee = referenceUtilisee,
                                                                 onExpand = {
                                                                         showMetabolicValuesDialog =
                                                                                 true
@@ -950,6 +948,7 @@ fun RationsView(
                                                                         kObserve = kObserve,
                                                                         kCalcule = kCalcule,
                                                                          energieAdditionnelle = energieAdditionnelle,
+                                                                        referenceUtilisee = referenceUtilisee,
                                                                         onExpand = {
                                                                                 showMetabolicValuesDialog =
                                                                                         true
@@ -1756,7 +1755,10 @@ private fun MetabolicValuesDialog(
                                         label = "Poids métabolique",
                                         value =
                                                 poidsMetabolique?.let {
-                                                        TextUtils.formatKgPuissance075(it)
+                                                        TextUtils.formatKgAvecPuissanceDynamique(
+                                                                it,
+                                                                referenceUtilisee?.equationBW?.equationScript
+                                                        )
                                                 }
                                                         ?: "Non calculé"
                                 )

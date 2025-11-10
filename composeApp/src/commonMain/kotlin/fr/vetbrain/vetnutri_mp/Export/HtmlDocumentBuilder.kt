@@ -47,6 +47,7 @@ object HtmlDocumentBuilder {
      * @param poidsMetabolique Poids métabolique de l'animal
      * @param poidsAnimal Poids vif de l'animal
      * @param besoinEnergetiqueEntretien Besoin énergétique d'entretien (BEE)
+     * @param referenceUtilisee Référence utilisée pour extraire la puissance de l'équation BW
      * @return Pair<valeur formatée, unité d'affichage>
      */
     private fun calculerAffichageNutriment(
@@ -54,7 +55,8 @@ object HtmlDocumentBuilder {
         typeExpressionBesoin: TypeExpressionBesoin?,
         poidsMetabolique: Double?,
         poidsAnimal: Double?,
-        besoinEnergetiqueEntretien: Double?
+        besoinEnergetiqueEntretien: Double?,
+        referenceUtilisee: ReferenceEv? = null
     ): Pair<String, String> {
 
         val valeurAbsolue = valeurNutritionnelle.valeur
@@ -94,26 +96,29 @@ object HtmlDocumentBuilder {
                     )
             }
             TypeExpressionBesoin.PAR_KG_METABOLIQUE -> {
-                // Par kg de poids métabolique (kg^0.75)
+                // Par kg de poids métabolique (kg^puissance)
+                val puissance = TextUtils.extrairePuissanceEquationBW(
+                        referenceUtilisee?.equationBW?.equationScript
+                )
                 poidsMetabolique?.let { poidsMetab ->
                     if (poidsMetab > 0) {
                         val valeurParKgMetab = valeurAbsolue / poidsMetab
                         Pair(
                             TextUtils.formatDecimal(valeurParKgMetab, 2),
-                            "$uniteOriginale/kg${TextUtils.toSuperscript("0.75")}"
+                            "$uniteOriginale/kg${TextUtils.toSuperscript(puissance)}"
                         )
                     } else {
                         // Si pas de poids métabolique disponible, garder l'unité originale mais
                         // indiquer le type d'expression
                         Pair(
                             TextUtils.formatDecimal(valeurAbsolue, 2),
-                            "$uniteOriginale (par kg^0.75 si poids métabolique disponible)"
+                            "$uniteOriginale (par kg^$puissance si poids métabolique disponible)"
                         )
                     }
                 }
                     ?: Pair(
                         TextUtils.formatDecimal(valeurAbsolue, 2),
-                        "$uniteOriginale (par kg^0.75 si poids métabolique disponible)"
+                        "$uniteOriginale (par kg^$puissance si poids métabolique disponible)"
                     )
             }
             TypeExpressionBesoin.PAR_KCAL -> {
@@ -521,7 +526,8 @@ object HtmlDocumentBuilder {
                     typeExpressionBesoin = typeExpressionBesoin,
                     poidsMetabolique = poidsMetabolique,
                     poidsAnimal = poidsAnimal,
-                    besoinEnergetiqueEntretien = besoinEnergetiqueEntretien
+                    besoinEnergetiqueEntretien = besoinEnergetiqueEntretien,
+                    referenceUtilisee = reference
                 )
                 if (unite.isNotBlank()) "$valeur $unite" else valeur
             } else {
