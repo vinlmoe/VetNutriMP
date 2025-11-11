@@ -94,6 +94,9 @@ fun StartupScreen(
         var showAppUpdateErrorDialog by remember { mutableStateOf(false) }
         var appUpdateError by remember { mutableStateOf<String?>(null) }
         var isCheckingAppUpdate by remember { mutableStateOf(false) }
+        
+        // Flag pour empêcher le réaffichage du dialogue après un import récent
+        var hasJustImported by remember { mutableStateOf(false) }
 
         val coroutineScope = rememberCoroutineScope()
 
@@ -178,7 +181,8 @@ fun StartupScreen(
                                                                 currentStoredVersion
                                                         ) > 0
                                         jsonUpdateAvailable = isUpdate
-                                        if (jsonUpdateAvailable && !isUpdatingDatabase) {
+                                        // Ne pas afficher le dialogue si un import vient d'être fait ou si une mise à jour est en cours
+                                        if (jsonUpdateAvailable && !isUpdatingDatabase && !hasJustImported) {
                                                 showJsonUpdateDialog = true
                                                 val formattedIntegrated: String =
                                                         databaseVersionManager.formatVersion(
@@ -257,7 +261,8 @@ fun StartupScreen(
                                                                                 currentStoredVersion
                                                                         ) > 0
                                                 jsonUpdateAvailable = isUpdate
-                                                if (jsonUpdateAvailable && !isUpdatingDatabase) {
+                                                // Ne pas afficher le dialogue si un import vient d'être fait ou si une mise à jour est en cours
+                                                if (jsonUpdateAvailable && !isUpdatingDatabase && !hasJustImported) {
                                                         showJsonUpdateDialog = true
                                                         val formattedIntegrated: String =
                                                                 databaseVersionManager
@@ -1130,7 +1135,8 @@ fun StartupScreen(
                 }
 
                 // Dialogue automatique de mise à jour JSON (priorité haute)
-                if (showJsonUpdateDialog && !isUpdatingDatabase && !showUpdateDialog) {
+                // Ne pas afficher si un import vient d'être fait
+                if (showJsonUpdateDialog && !isUpdatingDatabase && !showUpdateDialog && !hasJustImported) {
                         journaliserMiseAJour("Affichage du popup de mise à jour JSON")
                         JsonUpdateDialog(
                                 currentJsonVersion = currentJsonVersion,
@@ -1175,7 +1181,22 @@ fun StartupScreen(
                                                                         currentJsonVersion =
                                                                                 databaseVersionManager
                                                                                         .getStoredJsonVersion()
-                                                                        jsonUpdateAvailable = false
+                                                                        
+                                                                        // Recalculer si une mise à jour est encore nécessaire
+                                                                        // en comparant la version stockée avec la version intégrée
+                                                                        val embeddedVersion = embeddedJsonVersion
+                                                                        val currentVersion = currentJsonVersion
+                                                                        if (embeddedVersion != null && currentVersion != null) {
+                                                                                jsonUpdateAvailable = databaseVersionManager.compareVersions(
+                                                                                        embeddedVersion,
+                                                                                        currentVersion
+                                                                                ) > 0
+                                                                        } else {
+                                                                                jsonUpdateAvailable = false
+                                                                        }
+                                                                        
+                                                                        // Marquer qu'un import vient d'être fait pour éviter le réaffichage
+                                                                        hasJustImported = true
                                                                 }
                                                                 is ImportResult.Error -> {
                                                                         databaseStatus =
@@ -1213,6 +1234,8 @@ fun StartupScreen(
                                         // Désactiver l'affichage par défaut quand l'utilisateur
                                         // rejette la mise à jour JSON
                                         showUpdateButtonByDefault = false
+                                        // Marquer qu'on ne veut plus afficher le dialogue pour cette session
+                                        hasJustImported = true
                                         // L'utilisateur peut continuer sans mettre à jour
                                 }
                         )
