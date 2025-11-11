@@ -466,8 +466,20 @@ class SettingsViewModel(
      * @return Le résultat de l'importation
      */
     suspend fun relaunchAutomaticImport(forceImport: Boolean = false): ImportResult {
+        val logMessages = mutableListOf<String>()
+        fun log(message: String) {
+            logMessages.add(message)
+            println("[IMPORT] $message")
+        }
+        
         return try {
+            log("=".repeat(60))
+            log("🚀 DÉBUT DE L'IMPORT AUTOMATIQUE")
+            log("Force import: $forceImport")
+            log("=".repeat(60))
+            
             // Créer l'ExportImportRepository avec tous les repositories nécessaires
+            log("Création de l'ExportImportRepository...")
             val exportImportRepo =
                     fr.vetbrain.vetnutri_mp.Repository.ExportImportRepository(
                             animalRepository = animalRepository,
@@ -479,46 +491,66 @@ class SettingsViewModel(
                             recipeRepository = recipeRepository,
                             conseilRepository = conseilRepository
                     )
+            log("✓ ExportImportRepository créé")
 
             // Lire le fichier de ressources pour l'import automatique
+            log("Lecture du fichier JSON de ressources...")
             val json =
                     try {
                         // Essayer d'abord le chemin iOS (direct), puis le chemin Android/Desktop
                         // (data/)
                         try {
+                            log("Tentative de lecture: vetnutri_export_init.json")
                             val result = fr.vetbrain.vetnutri_mp.Localization.ResourceReader()
                                     .readResource("vetnutri_export_init.json")
+                            log("✓ Fichier lu avec succès (${result.length} caractères)")
                             result
                         } catch (e: Exception) {
+                            log("⚠ Chemin direct échoué, tentative: data/vetnutri_export_init.json")
                             val result = fr.vetbrain.vetnutri_mp.Localization.ResourceReader()
                                     .readResource("data/vetnutri_export_init.json")
+                            log("✓ Fichier lu avec succès (${result.length} caractères)")
                             result
                         }
                     } catch (e: Exception) {
+                        log("❌ ERREUR: Fichier introuvable - ${e.message}")
                         throw IllegalStateException(
                                 "Fichier vetnutri_export_init.json introuvable: ${e.message}"
                         )
                     }
 
             if (json.isEmpty()) {
+                log("❌ ERREUR: Le fichier JSON est vide")
                 throw IllegalStateException("Le fichier JSON d'import automatique est vide")
             }
 
             // Vérifier si une mise à jour est nécessaire
+            log("Vérification de la version de la base de données...")
             val databaseVersionManager = fr.vetbrain.vetnutri_mp.Utils.DatabaseVersionManager()
             val updateNeeded = databaseVersionManager.isJsonUpdateNeeded(json)
+            log("Mise à jour nécessaire: $updateNeeded")
 
             // 🔧 CORRECTION : Vérifier spécifiquement si les aliments sont manquants
+            log("Vérification de l'état actuel de la base de données...")
             val currentFoodCount = foodRepository.getAllFoods().size
             val currentReferenceCount = referenceEvRepository?.getAllReferenceEv()?.size ?: 0
             val foodsAreMissing = currentFoodCount == 0
             val databaseIsEmpty = currentFoodCount == 0 && currentReferenceCount == 0
-
+            
+            log("État actuel:")
+            log("  - Aliments: $currentFoodCount")
+            log("  - Références: $currentReferenceCount")
+            log("  - Aliments manquants: $foodsAreMissing")
+            log("  - Base vide: $databaseIsEmpty")
 
             // Si l'import n'est pas forcé, vérifier si une mise à jour est nécessaire
             if (!forceImport && !updateNeeded && !foodsAreMissing) {
                 // Aucune mise à jour nécessaire et aliments présents
                 val currentJsonVersion = databaseVersionManager.getStoredJsonVersion()
+                log("ℹ️ Aucune mise à jour nécessaire")
+                log("  Version JSON stockée: ${currentJsonVersion ?: "Aucune"}")
+                log("✓ Import annulé (base déjà à jour)")
+                log("=".repeat(60))
                 return ImportResult.Success(
                         count = currentFoodCount + currentReferenceCount,
                         importedCount = 0,
@@ -528,9 +560,11 @@ class SettingsViewModel(
 
             // 🔧 CORRECTION : Forcer l'import si les aliments sont manquants ou si la base est vide
             if (foodsAreMissing || databaseIsEmpty) {
+                log("⚠️ Import forcé: base de données incomplète ou vide")
             }
 
             // Lancer l'import avec un listener de progression
+            log("Démarrage de l'import des données...")
             val importCounts =
                     exportImportRepo.importAll(
                             apiJson = json,
@@ -540,23 +574,53 @@ class SettingsViewModel(
                                                     onProgress = { progress ->
                                                         // Mettre à jour la progression si
                                                         // nécessaire
+                                                        if ((progress * 100).toInt() % 10 == 0) {
+                                                            log("📊 Progression: ${(progress * 100).toInt()}%")
+                                                        }
                                                     },
-                                                    onLog = { }
+                                                    onLog = { message ->
+                                                        log("  → $message")
+                                                    }
                                             )
                     )
 
+            log("✓ Import terminé avec succès")
+            log("Résultats de l'import:")
+            log("  - Animaux: ${importCounts.animals}")
+            log("  - Aliments: ${importCounts.foods}")
+            log("  - Équations: ${importCounts.equations}")
+            log("  - Références: ${importCounts.references}")
+            log("  - Bibliographies: ${importCounts.biblios}")
+            log("  - Rations: ${importCounts.rations}")
+            log("  - Recettes: ${importCounts.recipes}")
+            log("  - Conseils: ${importCounts.conseils}")
 
             // Mettre à jour la version JSON après import réussi
+            log("Mise à jour de la version JSON stockée...")
             databaseVersionManager.updateJsonVersionAfterImport(json)
+            val newStoredVersion = databaseVersionManager.getStoredJsonVersion()
+            log("✓ Version JSON mise à jour: ${newStoredVersion ?: "Aucune"}")
 
             // Retourner le résultat de l'importation
             val totalCount = importCounts.animals + importCounts.foods + importCounts.equations + importCounts.references
+            log("📊 Total importé: $totalCount éléments")
+            log("=".repeat(60))
+            log("✅ IMPORT TERMINÉ AVEC SUCCÈS")
+            log("=".repeat(60))
+            
             ImportResult.Success(
                     count = totalCount,
                     importedCount = totalCount,
-                    conseils = 0
+                    conseils = importCounts.conseils
             )
         } catch (e: Exception) {
+            log("=".repeat(60))
+            log("❌ ERREUR LORS DE L'IMPORT")
+            log("Type: ${e::class.simpleName}")
+            log("Message: ${e.message}")
+            log("Stack trace:")
+            e.stackTrace.take(5).forEach { log("  at ${it}") }
+            log("=".repeat(60))
             ImportResult.Error("Erreur lors de l'import automatique: ${e.message}")
         }
     }
