@@ -394,4 +394,16 @@ class FoodListViewModel(private val foodRepository: DatabaseFoodRepository) {
                         // automatiquement
                 }
         }
+
+        /** Charge les nutriments spécifiés pour une liste d'aliments depuis la base de données */
+        suspend fun loadNutrientsForFoods(
+                foodUuids: List<String>,
+                nutrients: List<fr.vetbrain.vetnutri_mp.Enumer.Nutrient>
+        ): Map<String, Map<fr.vetbrain.vetnutri_mp.Enumer.Nutrient, Double>> {
+                return if (foodRepository is fr.vetbrain.vetnutri_mp.Repository.DatabaseFoodRepository) {
+                        foodRepository.loadNutrientsForFoods(foodUuids, nutrients)
+                } else {
+                        emptyMap()
+                }
+        }
 }

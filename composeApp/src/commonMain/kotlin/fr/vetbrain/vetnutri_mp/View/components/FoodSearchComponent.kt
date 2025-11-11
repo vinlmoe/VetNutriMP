@@ -4,6 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
@@ -15,6 +16,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -36,6 +38,37 @@ import fr.vetbrain.vetnutri_mp.Utils.DataBMapping
 import fr.vetbrain.vetnutri_mp.Utils.TextUtils
 import fr.vetbrain.vetnutri_mp.View.components.NutrientPieChart
 
+/** Filtre par nutriment avec opérateur et valeur */
+data class NutrientFilter(
+        val nutrient: Nutrient? = null,
+        val operator: NutrientOperator = NutrientOperator.GREATER_OR_EQUAL,
+        val value: Double? = null
+)
+
+/** Opérateur pour les filtres de nutriments */
+enum class NutrientOperator(val displayName: String) {
+        GREATER_OR_EQUAL("≥"),
+        LESS_OR_EQUAL("≤")
+}
+
+/** Critère de tri */
+enum class SortCriteria(val displayName: String) {
+        NAME("Nom"),
+        PROTEIN("Protéines"),
+        FAT("Lipides"),
+        CARBOHYDRATE("Glucides"),
+        FIBER("Fibres"),
+        ENERGY("Énergie"),
+        CALCIUM("Calcium"),
+        PHOSPHORUS("Phosphore")
+}
+
+/** Ordre de tri */
+enum class SortOrder(val displayName: String) {
+        ASCENDING("Croissant"),
+        DESCENDING("Décroissant")
+}
+
 /** État partagé pour les filtres de recherche d'aliments */
 data class FoodSearchFilters(
         val searchQuery: String = "",
@@ -44,7 +77,10 @@ data class FoodSearchFilters(
         val selectedEspece: Espece? = null,
         val selectedIndications: Set<AlimIndic> = emptySet(),
         val dataB: String? = null,
-        val aminoOnly: Boolean = false
+        val aminoOnly: Boolean = false,
+        val nutrientFilters: List<NutrientFilter> = emptyList(),
+        val sortCriteria: SortCriteria? = null,
+        val sortOrder: SortOrder = SortOrder.ASCENDING
 )
 
 /** Configuration du composant de recherche d'aliments */
@@ -60,7 +96,8 @@ data class FoodSearchConfig(
         val isLoading: Boolean = false,
         val selectedFood: AlimentEv? = null,
         val referenceEv: ReferenceEv? = null,
-        val equationRepository: EquationRepository? = null
+        val equationRepository: EquationRepository? = null,
+        val onLoadNutrients: (suspend (List<String>, List<Nutrient>) -> Map<String, Map<Nutrient, Double>>)? = null
 )
 
 /** Types de layout disponibles */
@@ -87,20 +124,72 @@ fun FoodSearchComponent(
         config: FoodSearchConfig = FoodSearchConfig(),
         modifier: Modifier = Modifier
 ) {
+        // État pour stocker les nutriments chargés depuis la base de données
+        var loadedNutrients by remember { 
+                mutableStateOf<Map<String, Map<Nutrient, Double>>>(emptyMap()) 
+        }
+        
+        // Charger les nutriments nécessaires depuis la base de données si on a des filtres par nutriments ou un tri par nutriment
+        LaunchedEffect(filters.nutrientFilters, filters.sortCriteria, foods.map { it.uuid }) {
+                val nutrientsForFilters = filters.nutrientFilters.mapNotNull { it.nutrient }
+                val nutrientForSort = when (filters.sortCriteria) {
+                        SortCriteria.PROTEIN -> listOf(NutrientMain.PROTEINE)
+                        SortCriteria.FAT -> listOf(NutrientMain.LIPIDE)
+                        SortCriteria.CARBOHYDRATE -> listOf(NutrientMain.GLUCIDE)
+                        SortCriteria.FIBER -> listOf(NutrientMain.FIBRE)
+                        SortCriteria.ENERGY -> listOf(NutrientMain.ENERGIE)
+                        SortCriteria.CALCIUM -> listOf(NutrientMacro.CAL)
+                        SortCriteria.PHOSPHORUS -> listOf(NutrientMacro.PHOS)
+                        else -> emptyList()
+                }
+                val requiredNutrients = (nutrientsForFilters + nutrientForSort).distinct()
+                
+                if (requiredNutrients.isNotEmpty() && config.onLoadNutrients != null) {
+                        val foodUuids = foods.map { it.uuid }
+                        val nutrientsMap = config.onLoadNutrients!!(foodUuids, requiredNutrients)
+                        loadedNutrients = nutrientsMap
+                } else {
+                        loadedNutrients = emptyMap()
+                }
+        }
+        
+        // Créer une version enrichie des aliments avec les nutriments chargés
+        val enrichedFoods = remember(foods, loadedNutrients) {
+                foods.map { aliment ->
+                        val nutrients = loadedNutrients[aliment.uuid]
+                        if (nutrients != null && nutrients.isNotEmpty()) {
+                                // Créer une copie de l'aliment avec les nutriments chargés
+                                val enrichedValMap = aliment.valMap.toMutableMap()
+                                nutrients.forEach { (nutrient, value) ->
+                                        enrichedValMap[nutrient] = fr.vetbrain.vetnutri_mp.Data.NutrientQuantity(
+                                                value, 
+                                                nutrient.label
+                                        )
+                                }
+                                aliment.copy(valMap = enrichedValMap)
+                        } else {
+                                aliment
+                        }
+                }
+        }
 
         // Filtrer les aliments selon les critères
         val filteredFoods =
                 remember(
-                        foods,
+                        enrichedFoods,
                         filters.searchQuery,
                         filters.selectedFoodType,
                         filters.selectedFoodGroup,
                         filters.selectedEspece,
                         filters.selectedIndications,
-                        filters.dataB
+                        filters.dataB,
+                        filters.nutrientFilters,
+                        filters.sortCriteria,
+                        filters.sortOrder,
+                        config.referenceEv
                 ) {
-                        val result =
-                                foods.filter { aliment ->
+                        var result =
+                                enrichedFoods.filter { aliment ->
                                         // Filtre par recherche textuelle avec recherche multi-mots
                                         // (AND)
                                         val matchesSearch =
@@ -212,13 +301,100 @@ fun FoodSearchComponent(
                                                         }
                                                 }
 
+                                        // Filtre par nutriments
+                                        val matchesNutrients =
+                                                if (filters.nutrientFilters.isEmpty()) true
+                                                else {
+                                                        filters.nutrientFilters.all { nutrientFilter ->
+                                                                if (nutrientFilter.nutrient == null || nutrientFilter.value == null) true
+                                                                else {
+                                                                        val nutrientValue = aliment.getNutrient(nutrientFilter.nutrient, config.referenceEv)
+                                                                        // Si le nutriment n'est pas disponible, on accepte l'aliment
+                                                                        // (car c'est peut-être une version légère)
+                                                                        if (nutrientValue == null) true
+                                                                        else {
+                                                                                when (nutrientFilter.operator) {
+                                                                                        NutrientOperator.GREATER_OR_EQUAL -> nutrientValue >= nutrientFilter.value!!
+                                                                                        NutrientOperator.LESS_OR_EQUAL -> nutrientValue <= nutrientFilter.value!!
+                                                                                }
+                                                                        }
+                                                                }
+                                                        }
+                                                }
+
                                         matchesSearch &&
                                                 matchesType &&
                                                 matchesGroup &&
                                                 matchesEspece &&
                                                 matchesIndications &&
-                                                matchesDataB
+                                                matchesDataB &&
+                                                matchesNutrients
                                 }
+
+                        // Trier les résultats
+                        result = if (filters.sortCriteria != null) {
+                                val sortedList = when (filters.sortCriteria) {
+                                        SortCriteria.NAME -> {
+                                                if (filters.sortOrder == SortOrder.ASCENDING) {
+                                                        result.sortedBy { it.nom ?: "" }
+                                                } else {
+                                                        result.sortedByDescending { it.nom ?: "" }
+                                                }
+                                        }
+                                        SortCriteria.PROTEIN -> {
+                                                if (filters.sortOrder == SortOrder.ASCENDING) {
+                                                        result.sortedBy { it.getNutrient(NutrientMain.PROTEINE, config.referenceEv) ?: 0.0 }
+                                                } else {
+                                                        result.sortedByDescending { it.getNutrient(NutrientMain.PROTEINE, config.referenceEv) ?: 0.0 }
+                                                }
+                                        }
+                                        SortCriteria.FAT -> {
+                                                if (filters.sortOrder == SortOrder.ASCENDING) {
+                                                        result.sortedBy { it.getNutrient(NutrientMain.LIPIDE, config.referenceEv) ?: 0.0 }
+                                                } else {
+                                                        result.sortedByDescending { it.getNutrient(NutrientMain.LIPIDE, config.referenceEv) ?: 0.0 }
+                                                }
+                                        }
+                                        SortCriteria.CARBOHYDRATE -> {
+                                                if (filters.sortOrder == SortOrder.ASCENDING) {
+                                                        result.sortedBy { it.getNutrient(NutrientMain.GLUCIDE, config.referenceEv) ?: 0.0 }
+                                                } else {
+                                                        result.sortedByDescending { it.getNutrient(NutrientMain.GLUCIDE, config.referenceEv) ?: 0.0 }
+                                                }
+                                        }
+                                        SortCriteria.FIBER -> {
+                                                if (filters.sortOrder == SortOrder.ASCENDING) {
+                                                        result.sortedBy { it.getNutrient(NutrientMain.FIBRE, config.referenceEv) ?: 0.0 }
+                                                } else {
+                                                        result.sortedByDescending { it.getNutrient(NutrientMain.FIBRE, config.referenceEv) ?: 0.0 }
+                                                }
+                                        }
+                                        SortCriteria.ENERGY -> {
+                                                if (filters.sortOrder == SortOrder.ASCENDING) {
+                                                        result.sortedBy { it.getNutrient(NutrientMain.ENERGIE, config.referenceEv) ?: 0.0 }
+                                                } else {
+                                                        result.sortedByDescending { it.getNutrient(NutrientMain.ENERGIE, config.referenceEv) ?: 0.0 }
+                                                }
+                                        }
+                                        SortCriteria.CALCIUM -> {
+                                                if (filters.sortOrder == SortOrder.ASCENDING) {
+                                                        result.sortedBy { it.getNutrient(NutrientMacro.CAL, config.referenceEv) ?: 0.0 }
+                                                } else {
+                                                        result.sortedByDescending { it.getNutrient(NutrientMacro.CAL, config.referenceEv) ?: 0.0 }
+                                                }
+                                        }
+                                        SortCriteria.PHOSPHORUS -> {
+                                                if (filters.sortOrder == SortOrder.ASCENDING) {
+                                                        result.sortedBy { it.getNutrient(NutrientMacro.PHOS, config.referenceEv) ?: 0.0 }
+                                                } else {
+                                                        result.sortedByDescending { it.getNutrient(NutrientMacro.PHOS, config.referenceEv) ?: 0.0 }
+                                                }
+                                        }
+                                }
+                                sortedList
+                        } else {
+                                result
+                        }
 
                         result
                 }
@@ -433,10 +609,36 @@ private fun FiltersSection(
         onFiltersChange: (FoodSearchFilters) -> Unit,
         modifier: Modifier = Modifier
 ) {
+        var showAdvancedSortDialog by remember { mutableStateOf(false) }
         Column(
                 modifier = modifier,
                 verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
         ) {
+                // Bouton de tri avancé
+                Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                ) {
+                        OutlinedButton(
+                                onClick = { showAdvancedSortDialog = true },
+                                border = ButtonDefaults.outlinedBorder,
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                        backgroundColor = if (filters.nutrientFilters.isNotEmpty() || filters.sortCriteria != null) VetNutriColors.Primary.copy(alpha = 0.08f) else MaterialTheme.colors.surface,
+                                        contentColor = if (filters.nutrientFilters.isNotEmpty() || filters.sortCriteria != null) VetNutriColors.Primary else MaterialTheme.colors.onSurface
+                                )
+                        ) {
+                                Icon(Icons.AutoMirrored.Default.Sort, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Tri avancé", style = MaterialTheme.typography.caption)
+                        }
+                }
+                if (showAdvancedSortDialog) {
+                        AdvancedSortDialog(
+                                filters = filters,
+                                onFiltersChange = onFiltersChange,
+                                onDismiss = { showAdvancedSortDialog = false }
+                        )
+                }
                 // Première ligne : Type d'aliment et Indications
                 Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -574,6 +776,7 @@ private fun FiltersCard(
         onFiltersChange: (FoodSearchFilters) -> Unit,
         modifier: Modifier = Modifier
 ) {
+        var showAdvancedSortDialog by remember { mutableStateOf(false) }
         Card(modifier = modifier, elevation = AppSizes.elevationSmall) {
                 Column(
                         modifier = Modifier.padding(AppSizes.paddingMedium),
@@ -608,6 +811,25 @@ private fun FiltersCard(
                                 ) {
                                         Text(text = "Ac. Aminé", style = MaterialTheme.typography.caption)
                                 }
+                                OutlinedButton(
+                                        onClick = { showAdvancedSortDialog = true },
+                                        border = ButtonDefaults.outlinedBorder,
+                                        colors = ButtonDefaults.outlinedButtonColors(
+                                                backgroundColor = if (filters.nutrientFilters.isNotEmpty() || filters.sortCriteria != null) VetNutriColors.Primary.copy(alpha = 0.08f) else MaterialTheme.colors.surface,
+                                                contentColor = if (filters.nutrientFilters.isNotEmpty() || filters.sortCriteria != null) VetNutriColors.Primary else MaterialTheme.colors.onSurface
+                                        )
+                                ) {
+                                        Icon(Icons.AutoMirrored.Default.Sort, contentDescription = null, modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("Tri", style = MaterialTheme.typography.caption)
+                                }
+                        }
+                        if (showAdvancedSortDialog) {
+                                AdvancedSortDialog(
+                                        filters = filters,
+                                        onFiltersChange = onFiltersChange,
+                                        onDismiss = { showAdvancedSortDialog = false }
+                                )
                         }
 
                         // Filtres
@@ -1115,6 +1337,248 @@ private fun DetailRow(label: String, value: String) {
                         modifier = Modifier.weight(1f)
                 )
         }
+}
+
+/** Dialog de tri avancé */
+@Composable
+fun AdvancedSortDialog(
+        filters: FoodSearchFilters,
+        onFiltersChange: (FoodSearchFilters) -> Unit,
+        onDismiss: () -> Unit,
+        availableNutrients: List<Nutrient> = getAllAvailableNutrients()
+) {
+        var localNutrientFilters by remember(filters.nutrientFilters) { 
+                mutableStateOf(filters.nutrientFilters.toMutableList()) 
+        }
+        var localSortCriteria by remember(filters.sortCriteria) { 
+                mutableStateOf(filters.sortCriteria) 
+        }
+        var localSortOrder by remember(filters.sortOrder) { 
+                mutableStateOf(filters.sortOrder) 
+        }
+        
+        // Synchroniser avec les changements externes
+        LaunchedEffect(filters.nutrientFilters, filters.sortCriteria, filters.sortOrder) {
+                localNutrientFilters = filters.nutrientFilters.toMutableList()
+                localSortCriteria = filters.sortCriteria
+                localSortOrder = filters.sortOrder
+        }
+        AlertDialog(
+                onDismissRequest = onDismiss,
+                title = { Text("Tri et filtres avancés", fontWeight = FontWeight.Bold) },
+                text = {
+                        Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
+                        ) {
+                                // Section filtres par nutriments
+                                Text(
+                                        text = "Filtres par nutriments",
+                                        style = MaterialTheme.typography.subtitle2,
+                                        fontWeight = FontWeight.Bold
+                                )
+                                LazyColumn(
+                                        modifier = Modifier.heightIn(max = 200.dp),
+                                        verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
+                                ) {
+                                        itemsIndexed(
+                                                items = localNutrientFilters,
+                                                key = { index, _ -> index }
+                                        ) { index, filter ->
+                                                NutrientFilterRow(
+                                                        filter = filter,
+                                                        availableNutrients = availableNutrients,
+                                                        onFilterChange = { newFilter ->
+                                                                val updatedList = localNutrientFilters.toMutableList()
+                                                                if (index >= 0 && index < updatedList.size) {
+                                                                        updatedList[index] = newFilter
+                                                                        localNutrientFilters = updatedList
+                                                                }
+                                                        },
+                                                        onRemove = {
+                                                                val updatedList = localNutrientFilters.toMutableList()
+                                                                if (index >= 0 && index < updatedList.size) {
+                                                                        updatedList.removeAt(index)
+                                                                        localNutrientFilters = updatedList
+                                                                }
+                                                        }
+                                                )
+                                        }
+                                        item {
+                                                Button(
+                                                        onClick = {
+                                                                localNutrientFilters = (localNutrientFilters + NutrientFilter()).toMutableList()
+                                                        },
+                                                        modifier = Modifier.fillMaxWidth()
+                                                ) {
+                                                        Icon(Icons.Default.Add, contentDescription = null)
+                                                        Spacer(modifier = Modifier.width(4.dp))
+                                                        Text("Ajouter un filtre")
+                                                }
+                                        }
+                                }
+                                Divider()
+                                // Section tri
+                                Text(
+                                        text = "Tri",
+                                        style = MaterialTheme.typography.subtitle2,
+                                        fontWeight = FontWeight.Bold
+                                )
+                                DropdownField(
+                                        label = "Critère de tri",
+                                        selectedValue = localSortCriteria,
+                                        options = listOf(null) + SortCriteria.entries,
+                                        onValueChange = { localSortCriteria = it },
+                                        valueToString = { it?.displayName ?: "Aucun" },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        height = 40.dp,
+                                        fontSize = 12.sp,
+                                        labelFontSize = 10.sp,
+                                        borderWidth = 0.5.dp
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                DropdownField(
+                                        label = "Ordre",
+                                        selectedValue = localSortOrder,
+                                        options = SortOrder.entries,
+                                        onValueChange = { localSortOrder = it },
+                                        valueToString = { it.displayName },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        height = 40.dp,
+                                        fontSize = 12.sp,
+                                        labelFontSize = 10.sp,
+                                        borderWidth = 0.5.dp
+                                )
+                        }
+                },
+                confirmButton = {
+                        Button(
+                                onClick = {
+                                        onFiltersChange(
+                                                filters.copy(
+                                                        nutrientFilters = localNutrientFilters,
+                                                        sortCriteria = localSortCriteria,
+                                                        sortOrder = localSortOrder
+                                                )
+                                        )
+                                        onDismiss()
+                                }
+                        ) {
+                                Text("Appliquer")
+                        }
+                },
+                dismissButton = {
+                        TextButton(onClick = onDismiss) {
+                                Text("Annuler")
+                        }
+                }
+        )
+}
+
+/**
+ * Obtient le nom traduit d'un nutriment selon son type en utilisant les traductions JSON
+ */
+private fun obtenirNomTraduitNutriment(nutriment: Nutrient?): String {
+        if (nutriment == null) return "Sélectionner"
+        return when (nutriment) {
+                is NutrientLipid -> nutriment.translateEnum()
+                is NutrientMacro -> nutriment.translateEnum()
+                is NutrientMain -> nutriment.translateEnum()
+                is NutrientMin -> nutriment.translateEnum()
+                is NutrientOther -> nutriment.translateEnum()
+                is NutrientVitam -> nutriment.translateEnum()
+                is AAEnum -> nutriment.translateEnum()
+                is NutrientAnalysis -> nutriment.translateEnum()
+                else -> nutriment.label // Fallback sur le label original si le type n'est pas reconnu
+        }
+}
+
+/** Ligne de filtre par nutriment */
+@Composable
+private fun NutrientFilterRow(
+        filter: NutrientFilter,
+        availableNutrients: List<Nutrient>,
+        onFilterChange: (NutrientFilter) -> Unit,
+        onRemove: () -> Unit
+) {
+        var valueText by remember { 
+                mutableStateOf(filter.value?.toString() ?: "") 
+        }
+        
+        // Synchroniser avec les changements externes du filtre
+        LaunchedEffect(filter.value) {
+                valueText = filter.value?.toString() ?: ""
+        }
+        
+        Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall),
+                verticalAlignment = Alignment.CenterVertically
+        ) {
+                // Sélection du nutriment
+                Box(modifier = Modifier.weight(2f)) {
+                        val nutrientOptions = listOf(null) + availableNutrients
+                        DropdownField(
+                                label = "Nutriment",
+                                selectedValue = filter.nutrient,
+                                options = nutrientOptions,
+                                onValueChange = { 
+                                        onFilterChange(filter.copy(nutrient = it)) 
+                                },
+                                valueToString = { obtenirNomTraduitNutriment(it) },
+                                modifier = Modifier.fillMaxWidth(),
+                                height = 40.dp,
+                                fontSize = 12.sp,
+                                labelFontSize = 10.sp,
+                                borderWidth = 0.5.dp
+                        )
+                }
+                // Opérateur
+                Box(modifier = Modifier.weight(1f)) {
+                        DropdownField(
+                                label = "Opérateur",
+                                selectedValue = filter.operator,
+                                options = NutrientOperator.entries,
+                                onValueChange = { 
+                                        onFilterChange(filter.copy(operator = it)) 
+                                },
+                                valueToString = { it.displayName },
+                                modifier = Modifier.fillMaxWidth(),
+                                height = 40.dp,
+                                fontSize = 12.sp,
+                                labelFontSize = 10.sp,
+                                borderWidth = 0.5.dp
+                        )
+                }
+                // Valeur
+                Box(modifier = Modifier.weight(1f)) {
+                        BasicAppTextField(
+                                value = valueText,
+                                onValueChange = { newText ->
+                                        valueText = newText
+                                        val doubleValue = newText.toDoubleOrNull()
+                                        onFilterChange(filter.copy(value = doubleValue))
+                                },
+                                placeholder = "Valeur",
+                                modifier = Modifier.fillMaxWidth().height(40.dp)
+                        )
+                }
+                // Bouton supprimer
+                IconButton(onClick = onRemove) {
+                        Icon(Icons.Default.Delete, contentDescription = "Supprimer")
+                }
+        }
+}
+
+/** Obtient tous les nutriments disponibles */
+private fun getAllAvailableNutrients(): List<Nutrient> {
+        val allNutrients = mutableListOf<Nutrient>()
+        allNutrients.addAll(NutrientMain.entries)
+        allNutrients.addAll(NutrientMacro.entries)
+        allNutrients.addAll(NutrientMin.entries)
+        allNutrients.addAll(NutrientVitam.entries)
+        allNutrients.addAll(NutrientLipid.entries)
+        return allNutrients
 }
 
 

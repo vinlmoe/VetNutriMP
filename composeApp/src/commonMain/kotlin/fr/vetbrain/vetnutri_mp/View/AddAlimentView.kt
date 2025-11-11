@@ -105,7 +105,10 @@ fun AddAlimentView(
                         isLoading = isLoadingFoods || isLoadingCompleteFood,
                         selectedFood = selectedFood,
                         referenceEv = referenceUtilisee,
-                        equationRepository = equationRepository
+                        equationRepository = equationRepository,
+                        onLoadNutrients = { foodUuids, nutrients ->
+                                viewModel.loadNutrientsForFoods(foodUuids, nutrients)
+                        }
                 )
                 }
 

@@ -1259,6 +1259,9 @@ private fun WideScreenLayout(
                                                                                 )
                                                                 }, // ✨ Synchroniser avec le
                                                                 // ViewModel
+                                                                onLoadNutrients = { foodUuids, nutrients ->
+                                                                        viewModel.loadNutrientsForFoods(foodUuids, nutrients)
+                                                                },
                                                                 modifier = Modifier.fillMaxSize()
                                                         )
                                                 }
@@ -2709,6 +2712,9 @@ private fun NarrowScreenLayout(
                                                                                                 .setAlimentsSelectionnes(
                                                                                                         nouvelleSelection
                                                                                                 )
+                                                                                },
+                                                                                onLoadNutrients = { foodUuids, nutrients ->
+                                                                                        viewModel.loadNutrientsForFoods(foodUuids, nutrients)
                                                                                 }, // ✨ Synchroniser
                                                                                 // avec le
                                                                                 // ViewModel

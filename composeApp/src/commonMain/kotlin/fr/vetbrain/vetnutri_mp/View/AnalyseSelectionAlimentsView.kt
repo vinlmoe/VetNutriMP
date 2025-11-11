@@ -18,10 +18,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.Button
+import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.Card
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
 import androidx.compose.material.MaterialTheme
+import androidx.compose.material.OutlinedButton
 import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
@@ -31,6 +33,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -41,6 +44,11 @@ import androidx.compose.ui.unit.sp
 import fr.vetbrain.vetnutri_mp.Data.AlimentEv
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.View.components.FoodSearchFilters
+import fr.vetbrain.vetnutri_mp.View.components.AdvancedSortDialog
+import fr.vetbrain.vetnutri_mp.View.components.NutrientOperator
+import fr.vetbrain.vetnutri_mp.View.components.SortCriteria
+import fr.vetbrain.vetnutri_mp.View.components.SortOrder
+import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
 import fr.vetbrain.vetnutri_mp.Components.BasicAppTextField
 import fr.vetbrain.vetnutri_mp.Components.DropdownField
 import fr.vetbrain.vetnutri_mp.Components.MultiSelectDropdownField
@@ -63,6 +71,7 @@ fun AnalyseSelectionAlimentsView(
     onAnalyseGraphique: ((List<AlimentEv>) -> Unit)? = null,
     alimentsInitialementSelectionnes: List<AlimentEv> = emptyList(),
     onSelectionChanged: ((List<AlimentEv>) -> Unit)? = null, // ✨ Callback pour synchroniser les changements
+    onLoadNutrients: (suspend (List<String>, List<fr.vetbrain.vetnutri_mp.Enumer.Nutrient>) -> Map<String, Map<fr.vetbrain.vetnutri_mp.Enumer.Nutrient, Double>>)? = null,
     modifier: Modifier = Modifier
 ) {
     // État pour les aliments sélectionnés (synchronisé avec le ViewModel)
@@ -83,14 +92,63 @@ fun AnalyseSelectionAlimentsView(
     // État pour les filtres de recherche (utilisant FoodSearchFilters comme AddAlimentView)
     var filters by remember { mutableStateOf(FoodSearchFilters()) }
     
+    // État pour stocker les nutriments chargés depuis la base de données
+    var loadedNutrients by remember { 
+        mutableStateOf<Map<String, Map<fr.vetbrain.vetnutri_mp.Enumer.Nutrient, Double>>>(emptyMap()) 
+    }
+    
+    // Charger les nutriments nécessaires depuis la base de données si on a des filtres par nutriments ou un tri par nutriment
+    LaunchedEffect(filters.nutrientFilters, filters.sortCriteria, aliments.map { it.uuid }) {
+        val nutrientsForFilters = filters.nutrientFilters.mapNotNull { it.nutrient }
+        val nutrientForSort = when (filters.sortCriteria) {
+            SortCriteria.PROTEIN -> listOf(fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.PROTEINE)
+            SortCriteria.FAT -> listOf(fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.LIPIDE)
+            SortCriteria.CARBOHYDRATE -> listOf(fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.GLUCIDE)
+            SortCriteria.FIBER -> listOf(fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.FIBRE)
+            SortCriteria.ENERGY -> listOf(fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.ENERGIE)
+            SortCriteria.CALCIUM -> listOf(fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro.CAL)
+            SortCriteria.PHOSPHORUS -> listOf(fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro.PHOS)
+            else -> emptyList()
+        }
+        val requiredNutrients = (nutrientsForFilters + nutrientForSort).distinct()
+        
+        if (requiredNutrients.isNotEmpty() && onLoadNutrients != null) {
+            val foodUuids = aliments.map { it.uuid }
+            val nutrientsMap = onLoadNutrients!!(foodUuids, requiredNutrients)
+            loadedNutrients = nutrientsMap
+        } else {
+            loadedNutrients = emptyMap()
+        }
+    }
+    
+    // Créer une version enrichie des aliments avec les nutriments chargés
+    val enrichedAliments = remember(aliments, loadedNutrients) {
+        aliments.map { aliment ->
+            val nutrients = loadedNutrients[aliment.uuid]
+            if (nutrients != null && nutrients.isNotEmpty()) {
+                // Créer une copie de l'aliment avec les nutriments chargés
+                val enrichedValMap = aliment.valMap.toMutableMap()
+                nutrients.forEach { (nutrient, value) ->
+                    enrichedValMap[nutrient] = fr.vetbrain.vetnutri_mp.Data.NutrientQuantity(
+                        value, 
+                        nutrient.label
+                    )
+                }
+                aliment.copy(valMap = enrichedValMap)
+            } else {
+                aliment
+            }
+        }
+    }
+    
     // Filtrer les aliments disponibles (exclure ceux déjà sélectionnés)
-    val alimentsDisponibles = aliments.filter { aliment ->
+    val alimentsDisponibles = enrichedAliments.filter { aliment ->
         !alimentsSelectionnes.any { it.uuid == aliment.uuid }
     }
     
     // Filtrer en utilisant la même logique que FoodSearchComponent (comme AddAlimentView)
     val alimentsFiltres = remember(alimentsDisponibles, filters) {
-        alimentsDisponibles.filter { aliment ->
+        var result = alimentsDisponibles.filter { aliment ->
             // Filtre par recherche textuelle avec recherche multi-mots (AND)
             val matchesSearch =
                 if (filters.searchQuery.isEmpty()) true
@@ -154,8 +212,97 @@ fun AnalyseSelectionAlimentsView(
                     else -> aliment.dataB?.trim() == dataBFilter.trim()
                 }
 
-            matchesSearch && matchesType && matchesGroup && matchesEspece && matchesIndications && matchesDataB
+            // Filtre par nutriments
+            val matchesNutrients =
+                if (filters.nutrientFilters.isEmpty()) true
+                else {
+                    filters.nutrientFilters.all { nutrientFilter ->
+                        if (nutrientFilter.nutrient == null || nutrientFilter.value == null) true
+                        else {
+                            val nutrientValue = aliment.getNutrient(nutrientFilter.nutrient, null)
+                            // Si le nutriment n'est pas disponible, on accepte l'aliment
+                            // (car c'est peut-être une version légère)
+                            if (nutrientValue == null) true
+                            else {
+                                when (nutrientFilter.operator) {
+                                    NutrientOperator.GREATER_OR_EQUAL -> nutrientValue >= nutrientFilter.value!!
+                                    NutrientOperator.LESS_OR_EQUAL -> nutrientValue <= nutrientFilter.value!!
+                                }
+                            }
+                        }
+                    }
+                }
+
+            matchesSearch && matchesType && matchesGroup && matchesEspece && matchesIndications && matchesDataB && matchesNutrients
         }
+        
+        // Trier les résultats
+        result = if (filters.sortCriteria != null) {
+            val sortCriteria = filters.sortCriteria!!
+            val sortedList = when (sortCriteria) {
+                SortCriteria.NAME -> {
+                    if (filters.sortOrder == SortOrder.ASCENDING) {
+                        result.sortedBy { it.nom ?: "" }
+                    } else {
+                        result.sortedByDescending { it.nom ?: "" }
+                    }
+                }
+                SortCriteria.PROTEIN -> {
+                    if (filters.sortOrder == SortOrder.ASCENDING) {
+                        result.sortedBy { it.getNutrient(fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.PROTEINE, null) ?: 0.0 }
+                    } else {
+                        result.sortedByDescending { it.getNutrient(fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.PROTEINE, null) ?: 0.0 }
+                    }
+                }
+                SortCriteria.FAT -> {
+                    if (filters.sortOrder == SortOrder.ASCENDING) {
+                        result.sortedBy { it.getNutrient(fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.LIPIDE, null) ?: 0.0 }
+                    } else {
+                        result.sortedByDescending { it.getNutrient(fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.LIPIDE, null) ?: 0.0 }
+                    }
+                }
+                SortCriteria.CARBOHYDRATE -> {
+                    if (filters.sortOrder == SortOrder.ASCENDING) {
+                        result.sortedBy { it.getNutrient(fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.GLUCIDE, null) ?: 0.0 }
+                    } else {
+                        result.sortedByDescending { it.getNutrient(fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.GLUCIDE, null) ?: 0.0 }
+                    }
+                }
+                SortCriteria.FIBER -> {
+                    if (filters.sortOrder == SortOrder.ASCENDING) {
+                        result.sortedBy { it.getNutrient(fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.FIBRE, null) ?: 0.0 }
+                    } else {
+                        result.sortedByDescending { it.getNutrient(fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.FIBRE, null) ?: 0.0 }
+                    }
+                }
+                SortCriteria.ENERGY -> {
+                    if (filters.sortOrder == SortOrder.ASCENDING) {
+                        result.sortedBy { it.getNutrient(fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.ENERGIE, null) ?: 0.0 }
+                    } else {
+                        result.sortedByDescending { it.getNutrient(fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.ENERGIE, null) ?: 0.0 }
+                    }
+                }
+                SortCriteria.CALCIUM -> {
+                    if (filters.sortOrder == SortOrder.ASCENDING) {
+                        result.sortedBy { it.getNutrient(fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro.CAL, null) ?: 0.0 }
+                    } else {
+                        result.sortedByDescending { it.getNutrient(fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro.CAL, null) ?: 0.0 }
+                    }
+                }
+                SortCriteria.PHOSPHORUS -> {
+                    if (filters.sortOrder == SortOrder.ASCENDING) {
+                        result.sortedBy { it.getNutrient(fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro.PHOS, null) ?: 0.0 }
+                    } else {
+                        result.sortedByDescending { it.getNutrient(fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro.PHOS, null) ?: 0.0 }
+                    }
+                }
+            }
+            sortedList
+        } else {
+            result
+        }
+        
+        result
     }
 
     Card(
@@ -177,11 +324,40 @@ fun AnalyseSelectionAlimentsView(
                     modifier = Modifier.padding(AppSizes.paddingMedium),
                     verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
                 ) {
+                    var showAdvancedSortDialog by remember { mutableStateOf(false) }
+                    
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                ) {
                     Text(
                         text = "Filtres de recherche",
                         style = MaterialTheme.typography.subtitle2,
                         fontWeight = FontWeight.Bold
                     )
+                        
+                        OutlinedButton(
+                            onClick = { showAdvancedSortDialog = true },
+                            border = ButtonDefaults.outlinedBorder,
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                backgroundColor = if (filters.nutrientFilters.isNotEmpty() || filters.sortCriteria != null) MaterialTheme.colors.primary.copy(alpha = 0.08f) else MaterialTheme.colors.surface,
+                                contentColor = if (filters.nutrientFilters.isNotEmpty() || filters.sortCriteria != null) MaterialTheme.colors.primary else MaterialTheme.colors.onSurface
+                            )
+                        ) {
+                            Icon(Icons.AutoMirrored.Default.Sort, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Tri avancé", style = MaterialTheme.typography.caption)
+                        }
+                    }
+                    
+                    if (showAdvancedSortDialog) {
+                        AdvancedSortDialog(
+                            filters = filters,
+                            onFiltersChange = { filters = it },
+                            onDismiss = { showAdvancedSortDialog = false }
+                        )
+                    }
                     
                     // Barre de recherche (même style que FoodSearchComponent)
                     BasicAppTextField(
