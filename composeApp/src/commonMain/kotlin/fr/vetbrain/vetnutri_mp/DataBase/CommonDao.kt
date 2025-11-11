@@ -201,6 +201,12 @@ interface NutrientValueDao {
         @Query("SELECT * FROM NUTRIENT_VALUES WHERE refAliment = :alimentUuid")
         suspend fun getNutrientValues(alimentUuid: String): List<NutrientValueEntity>
 
+        @Query("SELECT * FROM NUTRIENT_VALUES WHERE refAliment IN (:alimentUuids)")
+        suspend fun getNutrientValuesForAliments(alimentUuids: List<String>): List<NutrientValueEntity>
+
+        @Query("SELECT * FROM NUTRIENT_VALUES WHERE refAliment IN (:alimentUuids) AND nutrientLabel = :nutrientLabel")
+        suspend fun getNutrientValueForAliments(alimentUuids: List<String>, nutrientLabel: String): List<NutrientValueEntity>
+
         @Insert(onConflict = OnConflictStrategy.REPLACE)
         suspend fun insertNutrientValues(values: List<NutrientValueEntity>)
 

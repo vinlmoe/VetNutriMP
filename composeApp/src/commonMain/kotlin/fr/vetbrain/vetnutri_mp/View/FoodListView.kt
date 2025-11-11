@@ -85,6 +85,9 @@ fun FoodListView(
                                         "Éditer" -> onEditFood(aliment.uuid)
                                         "Supprimer" -> viewModel.deleteFood(aliment)
                                 }
+                        },
+                        onLoadNutrients = { foodUuids, nutrients ->
+                                viewModel.loadNutrientsForFoods(foodUuids, nutrients)
                         }
                 )
         }

@@ -1353,4 +1353,42 @@ class DatabaseFoodRepository(
      * notifiés des changements
      */
     fun getFoodsFlow(): Flow<List<AlimentEv>> = _foodsFlow
+
+    /**
+     * Charge les nutriments spécifiés pour une liste d'aliments depuis la base de données.
+     * Cette méthode est optimisée pour charger uniquement les nutriments nécessaires.
+     * 
+     * @param foodUuids Liste des UUID des aliments
+     * @param nutrients Liste des nutriments à charger
+     * @return Map avec l'UUID de l'aliment comme clé et une Map de nutriments avec leurs valeurs
+     */
+    suspend fun loadNutrientsForFoods(
+            foodUuids: List<String>,
+            nutrients: List<fr.vetbrain.vetnutri_mp.Enumer.Nutrient>
+    ): Map<String, Map<fr.vetbrain.vetnutri_mp.Enumer.Nutrient, Double>> {
+            return withContext(AppDispatchers.IO) {
+                    if (nutrientValueDao == null || foodUuids.isEmpty() || nutrients.isEmpty()) {
+                            return@withContext emptyMap()
+                    }
+                    
+                    val nutrientLabels = nutrients.map { it.label }
+                    val allNutrientValues = nutrientValueDao.getNutrientValuesForAliments(foodUuids)
+                    
+                    // Grouper par aliment et filtrer par nutriments demandés
+                    val result = mutableMapOf<String, MutableMap<fr.vetbrain.vetnutri_mp.Enumer.Nutrient, Double>>()
+                    
+                    allNutrientValues.forEach { nutrientValue ->
+                            if (nutrientLabels.contains(nutrientValue.nutrientLabel)) {
+                                    val nutrient = fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver
+                                            .AllNutrientResolver(nutrientValue.nutrientLabel)
+                                    if (nutrient != null) {
+                                            val alimentMap = result.getOrPut(nutrientValue.refAliment) { mutableMapOf() }
+                                            alimentMap[nutrient] = nutrientValue.value
+                                    }
+                            }
+                    }
+                    
+                    return@withContext result
+            }
+    }
 }
