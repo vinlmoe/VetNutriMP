@@ -619,7 +619,7 @@ class SettingsViewModel(
             log("Type: ${e::class.simpleName}")
             log("Message: ${e.message}")
             log("Stack trace:")
-            e.stackTrace.take(5).forEach { log("  at ${it}") }
+            e.printStackTrace()
             log("=".repeat(60))
             ImportResult.Error("Erreur lors de l'import automatique: ${e.message}")
         }
