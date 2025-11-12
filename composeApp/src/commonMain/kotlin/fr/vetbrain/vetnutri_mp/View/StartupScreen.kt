@@ -539,6 +539,46 @@ fun StartupScreen(
                                         }
                                 }
 
+                                Spacer(modifier = Modifier.height(16.dp))
+
+                                // Remerciement aux étudiants
+                                Card(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        elevation = 2.dp,
+                                        backgroundColor = VetNutriColors.Secondary.copy(alpha = 0.1f)
+                                ) {
+                                        Column(
+                                                modifier = Modifier.padding(16.dp),
+                                                horizontalAlignment = Alignment.CenterHorizontally
+                                        ) {
+                                                Text(
+                                                        text = "Remerciements",
+                                                        style = MaterialTheme.typography.caption,
+                                                        color = VetNutriColors.Secondary
+                                                )
+                                                Text(
+                                                        text = "À Antoine Rached et Mathilde Thierry",
+                                                        style = MaterialTheme.typography.h6,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = VetNutriColors.Secondary,
+                                                        textAlign = TextAlign.Center
+                                                )
+                                                Text(
+                                                        text = "Aux étudiants",
+                                                        style = MaterialTheme.typography.h6,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = VetNutriColors.Secondary,
+                                                        textAlign = TextAlign.Center
+                                                )
+                                                Text(
+                                                        text = "qui ont permis de faire progresser le logiciel par leurs retours",
+                                                        style = MaterialTheme.typography.body2,
+                                                        color = VetNutriColors.Secondary,
+                                                        textAlign = TextAlign.Center
+                                                )
+                                        }
+                                }
+
                                 Spacer(modifier = Modifier.height(32.dp))
 
                                 // État de la base de données

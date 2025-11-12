@@ -275,7 +275,12 @@ fun SectionAlimentsRation(
                         Divider()
 
                         // Liste des aliments
-                        if (selectedRation?.alimentMutableList.isNullOrEmpty()) {
+                        if (selectedRation == null) {
+                                CenteredMessage(
+                                        message = "Aucune ration sélectionnée",
+                                        modifier = Modifier.fillMaxWidth()
+                                )
+                        } else if (selectedRation.alimentMutableList.isEmpty()) {
                                 CenteredMessage(
                                         message = "Aucun aliment dans cette ration",
                                         modifier = Modifier.fillMaxWidth()
@@ -288,7 +293,7 @@ fun SectionAlimentsRation(
                                                 verticalArrangement =
                                                         Arrangement.spacedBy(AppSizes.paddingSmall)
                                         ) {
-                                                selectedRation?.alimentMutableList?.forEach { aliment ->
+                                                selectedRation.alimentMutableList.forEach { aliment ->
                                                         key(aliment.uuid) {
                                                                 AlimentItem(
                                                                         aliment = aliment,
@@ -335,8 +340,7 @@ fun SectionAlimentsRation(
                                                         Arrangement.spacedBy(AppSizes.paddingSmall)
                                         ) {
                                                 items(
-                                                        selectedRation?.alimentMutableList
-                                                                ?: emptyList(),
+                                                        selectedRation.alimentMutableList,
                                                         key = { it.uuid }
                                                 ) { aliment ->
                                                         AlimentItem(
