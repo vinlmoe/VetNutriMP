@@ -27,23 +27,43 @@ actual open class ResourceReader actual constructor() {
     /**
      * Lit seulement le début d'une ressource JSON pour extraire la version.
      * Évite de charger tout le fichier en mémoire.
+     * Essaie plusieurs chemins possibles pour trouver le fichier.
+     * Utilise une lecture progressive (4KB, 8KB, 16KB) si la version n'est pas trouvée.
      */
     actual open fun readJsonVersion(name: String): String? {
-        return try {
-            AndroidContext.appContext.assets.open(name).use { inputStream ->
-                val buffer = ByteArray(4096) // Buffer de 4KB
-                val bytesRead = inputStream.read(buffer)
-                if (bytesRead > 0) {
-                    val partialContent = String(buffer, 0, bytesRead)
-                    // Chercher la version dans les premiers 4KB
-                    extractVersionFromJson(partialContent)
-                } else {
-                    null
+        // Liste des chemins possibles à essayer
+        val candidatePaths = listOf(
+            name,
+            "data/$name"
+        )
+        
+        // Tailles de buffer progressives pour le fallback (en KB)
+        val bufferSizes = listOf(4096, 8192, 16384) // 4KB, 8KB, 16KB
+        
+        for (path in candidatePaths) {
+            try {
+                // Essayer avec des buffers de taille croissante
+                // On doit ouvrir le fichier à nouveau pour chaque taille car on ne peut pas réinitialiser un InputStream
+                for (bufferSize in bufferSizes) {
+                    AndroidContext.appContext.assets.open(path).use { inputStream ->
+                        val buffer = ByteArray(bufferSize)
+                        val bytesRead = inputStream.read(buffer)
+                        if (bytesRead > 0) {
+                            val partialContent = String(buffer, 0, bytesRead)
+                            val version = extractVersionFromJson(partialContent)
+                            if (version != null) {
+                                return version
+                            }
+                        }
+                    }
                 }
+            } catch (e: Exception) {
+                // Continuer avec le chemin suivant
+                continue
             }
-        } catch (e: Exception) {
-            null
         }
+        
+        return null
     }
     
     /**
