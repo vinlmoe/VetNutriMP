@@ -436,6 +436,20 @@ class AnimalDetailViewModel(
                 ration.alimentMutableList.forEachIndexed { alimentIndex, aliment -> }
             }
 
+            // Réinitialiser la ration sélectionnée si elle n'appartient pas à la nouvelle consultation
+            val currentRation = _selectedRation.value
+            val rationBelongsToConsultation = currentRation?.let { ration ->
+                fullConsultation?.rations?.any { it.uuid == ration.uuid } == true
+            } ?: false
+
+            // Si la consultation n'a pas de rations, réinitialiser la ration sélectionnée
+            if (fullConsultation?.rations.isNullOrEmpty()) {
+                _selectedRation.value = null
+            } else if (currentRation != null && !rationBelongsToConsultation) {
+                // Si la ration sélectionnée n'appartient pas à la nouvelle consultation, la réinitialiser
+                _selectedRation.value = null
+            }
+
             // Si aucune ration n'est sélectionnée mais qu'il y en a dans la consultation, en
             // sélectionner une
             if (_selectedRation.value == null && !fullConsultation?.rations.isNullOrEmpty()) {

@@ -609,36 +609,10 @@ private fun FiltersSection(
         onFiltersChange: (FoodSearchFilters) -> Unit,
         modifier: Modifier = Modifier
 ) {
-        var showAdvancedSortDialog by remember { mutableStateOf(false) }
         Column(
                 modifier = modifier,
                 verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
         ) {
-                // Bouton de tri avancé
-                Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End
-                ) {
-                        OutlinedButton(
-                                onClick = { showAdvancedSortDialog = true },
-                                border = ButtonDefaults.outlinedBorder,
-                                colors = ButtonDefaults.outlinedButtonColors(
-                                        backgroundColor = if (filters.nutrientFilters.isNotEmpty() || filters.sortCriteria != null) VetNutriColors.Primary.copy(alpha = 0.08f) else MaterialTheme.colors.surface,
-                                        contentColor = if (filters.nutrientFilters.isNotEmpty() || filters.sortCriteria != null) VetNutriColors.Primary else MaterialTheme.colors.onSurface
-                                )
-                        ) {
-                                Icon(Icons.AutoMirrored.Default.Sort, contentDescription = null, modifier = Modifier.size(16.dp))
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("Tri avancé", style = MaterialTheme.typography.caption)
-                        }
-                }
-                if (showAdvancedSortDialog) {
-                        AdvancedSortDialog(
-                                filters = filters,
-                                onFiltersChange = onFiltersChange,
-                                onDismiss = { showAdvancedSortDialog = false }
-                        )
-                }
                 // Première ligne : Type d'aliment et Indications
                 Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -821,7 +795,7 @@ private fun FiltersCard(
                                 ) {
                                         Icon(Icons.AutoMirrored.Default.Sort, contentDescription = null, modifier = Modifier.size(16.dp))
                                         Spacer(modifier = Modifier.width(4.dp))
-                                        Text("Tri", style = MaterialTheme.typography.caption)
+                                        Text("Tri avancé", style = MaterialTheme.typography.caption)
                                 }
                         }
                         if (showAdvancedSortDialog) {

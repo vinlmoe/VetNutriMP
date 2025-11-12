@@ -2391,13 +2391,7 @@ private fun DensiteRationsChart(
                 }
 
                 // Sélecteurs de nutriments pour l'histogramme
-                Spacer(modifier = Modifier.height(AppSizes.paddingMedium))
-                NutrimentSelector(
-                        label = "Nutriment",
-                        selectedNutriment = nutrimentX,
-                        onNutrimentSelected = { nutrimentX = it },
-                        modifier = Modifier.fillMaxWidth()
-                )
+               
         }
 }
 

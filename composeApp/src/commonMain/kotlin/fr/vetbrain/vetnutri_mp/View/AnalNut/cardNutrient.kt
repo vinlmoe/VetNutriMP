@@ -383,6 +383,16 @@ fun AnalyseNutritionnelleCard(
                                     }
                                     
                                     if (referenceUtilisee != null) {
+                                        // Obtenir l'icône de conformité pour déterminer la couleur
+                                        val iconeConformiteBullet = obtenirIconeConformite(
+                                                valeurNutritionnelle = valeur,
+                                                referenceUtilisee = referenceUtilisee,
+                                                besoinEnergetiqueEntretien = besoinEnergetiqueEntretien,
+                                                poidsAnimal = poidsAnimal,
+                                                poidsMetabolique = poidsMetabolique,
+                                                referencesMaladies = referencesMaladies
+                                        )
+                                        
                                         Row(
                                                 verticalAlignment = Alignment.CenterVertically,
                                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -396,6 +406,13 @@ fun AnalyseNutritionnelleCard(
                                                     besoinEnergetiqueEntretien = besoinEnergetiqueEntretien,
                                                     referenceUtilisee = referenceUtilisee
                                             )
+                                            
+                                            // Couleur selon l'icône de conformité : bleu si une flèche, rouge si deux
+                                            val couleurTexte = when {
+                                                iconeConformiteBullet?.isCritical == true -> VetNutriColors.Error // Rouge pour deux flèches
+                                                iconeConformiteBullet != null -> Color(0xFF2196F3) // Bleu pour une flèche
+                                                else -> MaterialTheme.colors.onSurface // Noir par défaut si aucune flèche
+                                            }
                                             
                                             Column(
                                                     modifier = Modifier.width(200.dp)
@@ -412,10 +429,7 @@ fun AnalyseNutritionnelleCard(
                                                 Text(
                                                         text = "$valeurAffichee $uniteAffichee",
                                                         style = MaterialTheme.typography.overline,
-                                                        color =
-                                                                MaterialTheme.colors.onSurface.copy(
-                                                                        alpha = 0.6f
-                                                                )
+                                                        color = couleurTexte
                                                 )
                                             }
                                             Box(modifier = Modifier.weight(1f)) {
@@ -444,6 +458,23 @@ fun AnalyseNutritionnelleCard(
                                                 referenceUtilisee = null
                                         )
                                         
+                                        // Obtenir l'icône de conformité pour déterminer la couleur (même sans référence principale)
+                                        val iconeConformiteBullet = obtenirIconeConformite(
+                                                valeurNutritionnelle = valeur,
+                                                referenceUtilisee = null,
+                                                besoinEnergetiqueEntretien = besoinEnergetiqueEntretien,
+                                                poidsAnimal = poidsAnimal,
+                                                poidsMetabolique = poidsMetabolique,
+                                                referencesMaladies = referencesMaladies
+                                        )
+                                        
+                                        // Couleur selon l'icône de conformité : bleu si une flèche, rouge si deux
+                                        val couleurTexte = when {
+                                            iconeConformiteBullet?.isCritical == true -> VetNutriColors.Error // Rouge pour deux flèches
+                                            iconeConformiteBullet != null -> Color(0xFF2196F3) // Bleu pour une flèche
+                                            else -> MaterialTheme.colors.onSurface // Noir par défaut si aucune flèche
+                                        }
+                                        
                                         Column {
                                                 Text(
                                                         text = obtenirNomTraduitNutriment(nom, valeur.nutriment),
@@ -454,7 +485,7 @@ fun AnalyseNutritionnelleCard(
                                                 Text(
                                                         text = "$valeurAffichee $uniteAffichee",
                                                         style = MaterialTheme.typography.overline,
-                                                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                                                        color = couleurTexte
                                                 )
                                         }
                                     }
@@ -873,11 +904,17 @@ private fun NutrimentCard(
                                 besoinEnergetiqueEntretien = besoinEnergetiqueEntretien,
                                 referenceUtilisee = referenceUtilisee
                         )
+                // Couleur selon l'icône de conformité : bleu si une flèche, rouge si deux
+                val couleurTexte = when {
+                    iconeConformite?.isCritical == true -> VetNutriColors.Error // Rouge pour deux flèches
+                    iconeConformite != null -> Color(0xFF2196F3) // Bleu pour une flèche
+                    else -> MaterialTheme.colors.onSurface // Noir par défaut si aucune flèche
+                }
 
                 Text(
                         text = "$valeurAffichee $uniteAffichee",
                         style = MaterialTheme.typography.overline,
-                        color = MaterialTheme.colors.onSurface,
+                        color = couleurTexte,
                         maxLines = 2
                 )
             } else {
@@ -1006,14 +1043,10 @@ private fun obtenirIconeConformite(
             }
         }
 
-        // Si il y a des références et qu'aucune n'est violée, tout est conforme
+        // Si il y a des références et qu'aucune n'est violée, retourner null (noir)
+        // On ne retourne une icône que s'il y a une violation
         if (hasReferences) {
-            return IconeConformite(
-                    icone = Icons.Filled.Check, // Icône "✓" pour conformité
-                    couleur = Color.Green,
-                    description = "Conforme : toutes les références sont respectées",
-                    isCritical = false
-            )
+            return null // Toutes les normes respectées = pas d'icône = texte noir
         }
     }
 
