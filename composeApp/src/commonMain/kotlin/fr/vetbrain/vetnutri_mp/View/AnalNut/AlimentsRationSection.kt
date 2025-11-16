@@ -294,7 +294,7 @@ fun SectionAlimentsRation(
                                                         Arrangement.spacedBy(AppSizes.paddingSmall)
                                         ) {
                                                 selectedRation.alimentMutableList.forEach { aliment ->
-                                                        key(aliment.uuid) {
+                                                        key(aliment.uuid, aliment.quantite) {
                                                                 AlimentItem(
                                                                         aliment = aliment,
                                                                         isEditing =
