@@ -77,7 +77,14 @@ fun AlimentItem(
 ) {
         // État local pour la quantité en cours d'édition
         var quantityText by
-                remember(aliment.quantite) { mutableStateOf(aliment.quantite.toString()) }
+                remember(aliment.uuid, aliment.quantite) { mutableStateOf(aliment.quantite.toString()) }
+        
+        // Synchroniser quantityText avec aliment.quantite quand on n'est pas en mode édition
+        LaunchedEffect(aliment.uuid, aliment.quantite, isEditing) {
+                if (!isEditing) {
+                        quantityText = aliment.quantite.toString()
+                }
+        }
 
         Card(
                 modifier = modifier.fillMaxWidth(),
