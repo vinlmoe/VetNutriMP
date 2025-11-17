@@ -227,9 +227,9 @@ data class AlimentRation(
                                 fr.vetbrain.vetnutri_mp.Utils.EquationEvaluator
                                         .calculerEnergiePour100g(
                                                 aliment = this,
-                                                equationRepository = equationRepository,
-                                                referenceEv = referenceEv
-                                        )
+                                        equationRepository = equationRepository,
+                                        referenceEv = referenceEv
+                                )
                         return (energiePour100g * quantite) / 100.0
                 }
 

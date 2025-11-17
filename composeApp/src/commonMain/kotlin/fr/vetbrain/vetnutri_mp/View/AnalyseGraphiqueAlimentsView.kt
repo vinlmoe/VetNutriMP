@@ -815,15 +815,15 @@ fun AnalyseGraphiqueAlimentsView(
                                 // /100g MS : convertir de g/100g as fed vers g/100g MS
                                 if (matiereSeche > 0) {
                                         (valeurAsFed * 100.0) / matiereSeche
-                                } else {
+                        } else {
                                         valeurAsFed // Fallback si pas de matière sèche
                                 }
                         } else {
                                 // /1000 kcal : calculer par 1000 kcal
-                                if (densiteEnergetique > 0) {
+                        if (densiteEnergetique > 0) {
                                         (valeurAsFed * 1000.0) / densiteEnergetique
-                                } else {
-                                        0.0
+                        } else {
+                            0.0
                                 }
                         }
                 }
