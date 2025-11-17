@@ -44,29 +44,27 @@ data class AlimentRation(
          * Cache le résultat du calcul d'énergie pour éviter la redondance
          */
         private var cachedEnergie: Double? = null
-        private var cachedEnergieParams: Triple<ReferenceEv?, PreferencesEspece?, fr.vetbrain.vetnutri_mp.Repository.EquationRepository?>? = null
+        private var cachedEnergieParams: Pair<ReferenceEv?, fr.vetbrain.vetnutri_mp.Repository.EquationRepository?>? = null
 
         /**
          * Calcule la quantité d'énergie fournie par cet aliment avec cache
          *
          * @param referenceEv Référence optionnelle pour calculer l'énergie via les équations
-         * @param preferences Préférences de l'espèce pour les équations complémentaires
-         * @param equationRepository Repository des équations pour les équations complémentaires
+         * @param equationRepository Repository des équations pour les équations énergétiques
          * @return La quantité d'énergie
          */
         suspend fun getEnergieWithCache(
                 referenceEv: ReferenceEv? = null,
-                preferences: PreferencesEspece? = null,
                 equationRepository: fr.vetbrain.vetnutri_mp.Repository.EquationRepository? = null
         ): Double {
-                val currentParams = Triple(referenceEv, preferences, equationRepository)
+                val currentParams = Pair(referenceEv, equationRepository)
 
                 // Retourner la valeur cachée si les paramètres sont identiques
                 if (cachedEnergie != null && cachedEnergieParams == currentParams) {
                         return cachedEnergie!!
                 }
 
-                val result = getEnergie(referenceEv, preferences, equationRepository)
+                val result = getEnergie(referenceEv, equationRepository)
 
                 // Mettre en cache le résultat
                 cachedEnergie = result
@@ -213,24 +211,32 @@ data class AlimentRation(
          * Calcule la quantité d'énergie fournie par cet aliment
          *
          * @param referenceEv Référence optionnelle pour calculer l'énergie via les équations
-         * @param preferences Préférences de l'espèce pour les équations complémentaires
-         * @param equationRepository Repository des équations pour les équations complémentaires
+         * @param equationRepository Repository des équations pour les équations énergétiques
          * @return La quantité d'énergie
          */
         suspend fun getEnergie(
                 referenceEv: ReferenceEv? = null,
-                preferences: PreferencesEspece? = null,
                 equationRepository: fr.vetbrain.vetnutri_mp.Repository.EquationRepository? = null
         ): Double {
-                // Si on a les dépendances, utiliser getNutrientWithComplementary pour l'énergie
-                if (referenceEv != null || (preferences != null && equationRepository != null)) {
+                // Si on a le référentiel et le repository, utiliser
+                // EquationEvaluator.calculerEnergiePour100g() qui utilise correctement
+                // l'équation énergétique du référentiel (equationDEcom ou equationDEraw)
+                // avec les valeurs directes de l'aliment (sans équations complémentaires des préférences)
+                if (referenceEv != null && equationRepository != null) {
                         val energiePour100g =
-                                getNutrientWithComplementary(
-                                        nutrient = NutrientMain.ENERGIE,
-                                        preferences = preferences,
-                                        equationRepository = equationRepository,
-                                        referenceEv = referenceEv
-                                )
+                                fr.vetbrain.vetnutri_mp.Utils.EquationEvaluator
+                                        .calculerEnergiePour100g(
+                                                aliment = this,
+                                                equationRepository = equationRepository,
+                                                referenceEv = referenceEv
+                                        )
+                        return (energiePour100g * quantite) / 100.0
+                }
+
+                // Sinon, utiliser getNutrient pour l'énergie (sans équations complémentaires)
+                if (referenceEv != null) {
+                        val energiePour100g =
+                                aliment?.getNutrient(NutrientMain.ENERGIE, referenceEv)
                                         ?: 0.0
                         return (energiePour100g * quantite) / 100.0
                 }

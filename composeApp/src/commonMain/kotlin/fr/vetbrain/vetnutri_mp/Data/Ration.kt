@@ -64,13 +64,11 @@ data class Ration(
          * Calcule la densité énergétique moyenne de la ration
          *
          * @param referenceEv Référence optionnelle pour calculer l'énergie via les équations
-         * @param preferences Préférences de l'espèce pour les équations complémentaires
-         * @param equationRepository Repository des équations pour les équations complémentaires
+         * @param equationRepository Repository des équations pour les équations énergétiques
          * @return La densité énergétique moyenne
          */
         suspend fun getDensiteEnergetiqueMoyenne(
                 referenceEv: ReferenceEv? = null,
-                preferences: PreferencesEspece? = null,
                 equationRepository: fr.vetbrain.vetnutri_mp.Repository.EquationRepository? = null
         ): Double {
                 val quantiteTotale = getQuantiteTotale()
@@ -83,7 +81,7 @@ data class Ration(
 
                 for (aliment in alimentMutableList) {
                         totalEnergie +=
-                                aliment.getEnergie(referenceEv, preferences, equationRepository)
+                                aliment.getEnergie(referenceEv, equationRepository)
                 }
 
                 return totalEnergie / quantiteTotale

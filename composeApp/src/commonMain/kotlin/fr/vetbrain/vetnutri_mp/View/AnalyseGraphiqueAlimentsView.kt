@@ -80,24 +80,25 @@ private suspend fun calculerDensiteEnergetiqueAsync(
         preferencesEspece: fr.vetbrain.vetnutri_mp.Data.PreferencesEspece?,
         useDryMatterPer100g: Boolean = false
 ): Double {
-    // ✅ UTILISER LA MÊME APPROCHE QUE RATIONSVIEW : AlimentRation transitoire
+    // ✅ UTILISER EquationEvaluator.calculerEnergiePour100g() qui utilise correctement
+    // l'équation énergétique du référentiel (equationDEcom ou equationDEraw)
+    // avec les valeurs directes de l'aliment (sans équations complémentaires des préférences)
     if (referenceEv != null && equationRepository != null) {
         try {
             val alimentRation = AlimentRation(aliment = aliment, quantite = 100.0, weight = 1.0)
 
             val _energie =
-                    alimentRation.getNutrientWithComplementary(
-                            nutrient = NutrientMain.ENERGIE,
-                            preferences = null,
+                    fr.vetbrain.vetnutri_mp.Utils.EquationEvaluator.calculerEnergiePour100g(
+                            aliment = alimentRation,
                             equationRepository = equationRepository,
                             referenceEv = referenceEv
                     )
-            if (_energie != null && _energie > 0) {
+            if (_energie > 0) {
                 // Si on veut la densité par matière sèche, on doit diviser par le pourcentage de matière sèche
                 return if (useDryMatterPer100g) {
                     val humidite = alimentRation.getNutrientWithComplementary(
                             nutrient = NutrientMain.HUMIDITE,
-                            preferences = null,
+                            preferences = preferencesEspece,
                             equationRepository = equationRepository,
                             referenceEv = referenceEv
                     ) ?: 0.0
@@ -485,8 +486,16 @@ private suspend fun AlimentAnalyseData.getNutrimentValue(
     
     // Convertir selon le mode d'affichage
     return if (useDryMatterPer100g) {
-        // Mode /100g MS : utiliser la valeur de base (par 100g)
-        baseValue
+        // Mode /100g MS : convertir de g/100g as fed vers g/100g MS
+        // Obtenir l'humidité pour calculer la matière sèche
+        val humidite = alimentRation.getNutrientWithComplementary(NutrientMain.HUMIDITE, null, equationRepository, referenceEv) ?: 0.0
+        val matiereSeche = 100.0 - humidite
+        if (matiereSeche > 0) {
+            // Convertir : valeur_MS = (valeur_as_fed * 100) / matière_sèche
+            (baseValue * 100.0) / matiereSeche
+        } else {
+            baseValue // Fallback si pas de matière sèche
+        }
     } else {
         // Mode /1000 kcal : convertir en valeur par 1000 kcal
         if (densiteEnergetique > 0) {
@@ -707,14 +716,14 @@ fun AnalyseGraphiqueAlimentsView(
                         )
                                 ?: 0.0
 
+                // Utiliser getEnergie() qui utilise EquationEvaluator.calculerEnergiePour100g()
+                // quand tous les paramètres sont disponibles, garantissant l'utilisation
+                // de l'équation énergétique du référentiel
                 val _energie =
-                        alimentRation.getNutrientWithComplementary(
-                                nutrient = NutrientMain.ENERGIE,
-                                preferences = preferencesEspece,
-                                equationRepository = equationRepository,
-                                referenceEv = referenceEv
+                        alimentRation.getEnergie(
+                                referenceEv = referenceEv,
+                                equationRepository = equationRepository
                         )
-                                ?: 0.0
 
                 // Récupération du phosphore pour le second graphique
                 val phosphore =
@@ -765,6 +774,17 @@ fun AnalyseGraphiqueAlimentsView(
                         )
                                 ?: 0.0
 
+                // Obtenir l'humidité pour la conversion en matière sèche
+                val humidite =
+                        alimentRation.getNutrientWithComplementary(
+                                nutrient = NutrientMain.HUMIDITE,
+                                preferences = preferencesEspece,
+                                equationRepository = equationRepository,
+                                referenceEv = referenceEv
+                        )
+                                ?: 0.0
+                val matiereSeche = 100.0 - humidite
+
                 val densiteEnergetiqueBase =
                         calculerDensiteEnergetiqueAsync(
                                 aliment,
@@ -789,124 +809,37 @@ fun AnalyseGraphiqueAlimentsView(
                                 preferencesEspece
                         )
 
+                // Fonction helper pour convertir en matière sèche si nécessaire
+                fun convertirEnMatiereSeche(valeurAsFed: Double): Double {
+                        return if (useDryMatterPer100g) {
+                                // /100g MS : convertir de g/100g as fed vers g/100g MS
+                                if (matiereSeche > 0) {
+                                        (valeurAsFed * 100.0) / matiereSeche
+                                } else {
+                                        valeurAsFed // Fallback si pas de matière sèche
+                                }
+                        } else {
+                                // /1000 kcal : calculer par 1000 kcal
+                                if (densiteEnergetique > 0) {
+                                        (valeurAsFed * 1000.0) / densiteEnergetique
+                                } else {
+                                        0.0
+                                }
+                        }
+                }
+
                 // Calculs pour le graphique Phosphore/Protéines (par 1000 kcal ou /100g MS)
-                val proteinePer1000Kcal =
-                        if (useDryMatterPer100g) {
-                                // /100g MS : utiliser directement les valeurs par 100g
-                                _proteines
-                        } else {
-                                // /1000 kcal : calculer par 1000 kcal
-                        if (densiteEnergetique > 0) {
-                            (_proteines * 1000.0) / densiteEnergetique
-                        } else {
-                            0.0
-                                }
-                        }
-
-                val phosphorePer1000Kcal =
-                        if (useDryMatterPer100g) {
-                                // /100g MS : utiliser directement les valeurs par 100g
-                                phosphore
-                        } else {
-                                // /1000 kcal : calculer par 1000 kcal
-                        if (densiteEnergetique > 0) {
-                            (phosphore * 1000.0) / densiteEnergetique
-                        } else {
-                            0.0
-                                }
-                        }
-
-                val calciumPer1000Kcal =
-                        if (useDryMatterPer100g) {
-                                // /100g MS : utiliser directement les valeurs par 100g
-                                calcium
-                        } else {
-                                // /1000 kcal : calculer par 1000 kcal
-                        if (densiteEnergetique > 0) {
-                            (calcium * 1000.0) / densiteEnergetique
-                        } else {
-                            0.0
-                                }
-                        }
+                val proteinePer1000Kcal = convertirEnMatiereSeche(_proteines)
+                val phosphorePer1000Kcal = convertirEnMatiereSeche(phosphore)
+                val calciumPer1000Kcal = convertirEnMatiereSeche(calcium)
 
                 // Calculs pour tous les nutriments en g/1000kcal ou /100g MS
-                val energiePer1000Kcal =
-                        if (useDryMatterPer100g) {
-                                // /100g MS : utiliser directement les valeurs par 100g
-                                _energie
-                        } else {
-                                // /1000 kcal : calculer par 1000 kcal
-                        if (densiteEnergetique > 0) {
-                            (_energie * 1000.0) / densiteEnergetique
-                        } else {
-                            0.0
-                                }
-                        }
-
-                val lipidePer1000Kcal =
-                        if (useDryMatterPer100g) {
-                                // /100g MS : utiliser directement les valeurs par 100g
-                                _lipides
-                        } else {
-                                // /1000 kcal : calculer par 1000 kcal
-                        if (densiteEnergetique > 0) {
-                            (_lipides * 1000.0) / densiteEnergetique
-                        } else {
-                            0.0
-                                }
-                        }
-
-                val glucidePer1000Kcal =
-                        if (useDryMatterPer100g) {
-                                // /100g MS : utiliser directement les valeurs par 100g
-                                _glucides
-                        } else {
-                                // /1000 kcal : calculer par 1000 kcal
-                        if (densiteEnergetique > 0) {
-                            (_glucides * 1000.0) / densiteEnergetique
-                        } else {
-                            0.0
-                                }
-                        }
-
-                val magnesiumPer1000Kcal =
-                        if (useDryMatterPer100g) {
-                                // /100g MS : utiliser directement les valeurs par 100g
-                                magnesium
-                        } else {
-                                // /1000 kcal : calculer par 1000 kcal
-                        if (densiteEnergetique > 0) {
-                            (magnesium * 1000.0) / densiteEnergetique
-                        } else {
-                            0.0
-                                }
-                        }
-
-                val sodiumPer1000Kcal =
-                        if (useDryMatterPer100g) {
-                                // /100g MS : utiliser directement les valeurs par 100g
-                                sodium
-                        } else {
-                                // /1000 kcal : calculer par 1000 kcal
-                        if (densiteEnergetique > 0) {
-                            (sodium * 1000.0) / densiteEnergetique
-                        } else {
-                            0.0
-                                }
-                        }
-
-                val potassiumPer1000Kcal =
-                        if (useDryMatterPer100g) {
-                                // /100g MS : utiliser directement les valeurs par 100g
-                                potassium
-                        } else {
-                                // /1000 kcal : calculer par 1000 kcal
-                        if (densiteEnergetique > 0) {
-                            (potassium * 1000.0) / densiteEnergetique
-                        } else {
-                            0.0
-                                }
-                        }
+                val energiePer1000Kcal = convertirEnMatiereSeche(_energie)
+                val lipidePer1000Kcal = convertirEnMatiereSeche(_lipides)
+                val glucidePer1000Kcal = convertirEnMatiereSeche(_glucides)
+                val magnesiumPer1000Kcal = convertirEnMatiereSeche(magnesium)
+                val sodiumPer1000Kcal = convertirEnMatiereSeche(sodium)
+                val potassiumPer1000Kcal = convertirEnMatiereSeche(potassium)
 
                 // 🔍 LOG DIAGNOSTIC : Vérifier les valeurs calculées
 
@@ -1097,8 +1030,73 @@ fun AnalyseGraphiqueAlimentsView(
         }
 
 
+        // Vérifier si une référence et des préférences sont disponibles
+        val hasReference = referenceEv != null
+        val hasPreferences = preferencesEspece != null
+        val hasEquationRepository = equationRepository != null
+
         // Contenu principal - responsive selon la largeur
-        if (isLoading) {
+        if (!hasReference) {
+            // Aucune référence disponible
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
+                ) {
+                    Text(
+                            text = "Aucune référence sélectionnée",
+                            style = MaterialTheme.typography.body1,
+                            fontWeight = FontWeight.Bold,
+                            color = VetNutriColors.Error
+                    )
+                    Text(
+                            text = "Veuillez sélectionner une référence dans une consultation pour calculer l'énergie avec les équations du référentiel",
+                            style = MaterialTheme.typography.body2,
+                            color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                    )
+                }
+            }
+        } else if (!hasPreferences) {
+            // Aucune préférence disponible
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
+                ) {
+                    Text(
+                            text = "Aucune préférence disponible",
+                            style = MaterialTheme.typography.body1,
+                            fontWeight = FontWeight.Bold,
+                            color = VetNutriColors.Error
+                    )
+                    Text(
+                            text = "Veuillez configurer les préférences pour l'espèce dans les paramètres",
+                            style = MaterialTheme.typography.body2,
+                            color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                    )
+                }
+            }
+        } else if (!hasEquationRepository) {
+            // Aucun repository d'équations disponible
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
+                ) {
+                    Text(
+                            text = "Repository d'équations non disponible",
+                            style = MaterialTheme.typography.body1,
+                            fontWeight = FontWeight.Bold,
+                            color = VetNutriColors.Error
+                    )
+                    Text(
+                            text = "Le repository d'équations est requis pour calculer l'énergie avec les équations du référentiel",
+                            style = MaterialTheme.typography.body2,
+                            color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                    )
+                }
+            }
+        } else if (isLoading) {
             // Indicateur de chargement
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Column(
