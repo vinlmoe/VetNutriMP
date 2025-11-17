@@ -591,7 +591,6 @@ fun MultiNutrientAdjustmentView(
                                                                                         if (alimentRation.quantite > 0.0) {
                                                                                                 val e = alimentRation.getEnergie(
                                                                                                         referenceUtilisee,
-                                                                                                        null,
                                                                                                         null
                                                                                                 )
                                                                                                 energieActuelle += e
@@ -1186,7 +1185,6 @@ suspend fun calculerAjustement(
                                         val energieAliment =
                                                 alimentRation.getEnergie(
                                                         referenceUtilisee,
-                                                        null,
                                                         null
                                                 )
                                         apportEnergetiqueTotal += energieAliment

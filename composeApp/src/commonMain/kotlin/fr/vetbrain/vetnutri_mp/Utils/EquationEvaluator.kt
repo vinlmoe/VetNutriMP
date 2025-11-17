@@ -433,36 +433,40 @@ object EquationEvaluator {
      * Calcule l'énergie pour 100 g d'un aliment en utilisant l'équation adaptée au type d'aliment.
      * - COMPLET: utilise l'équation commerciale (si disponible dans ReferenceEv, sinon fallback
      * générique)
-     * - COMPLEMENTAIRE ou autres: utilise l'autre équation (générique) Les variables de nutriments
-     * sont alimentées avec les nutriments complémentaires.
+     * - COMPLEMENTAIRE ou autres: utilise l'autre équation (générique)
+     * Les variables de nutriments sont alimentées avec les valeurs directes de l'aliment (valMap),
+     * sans utiliser les équations complémentaires des préférences.
      */
     suspend fun calculerEnergiePour100g(
             aliment: fr.vetbrain.vetnutri_mp.Data.AlimentRation,
-            preferences: PreferencesEspece,
             equationRepository: EquationRepository,
             referenceEv: ReferenceEv? = null
     ): Double {
-        // Construire variables de nutriments pour l'aliment (avec compléments)
+        // Construire variables de nutriments pour l'aliment (valeurs directes uniquement)
         val variables = mutableMapOf<String, Double>()
-        suspend fun nv(n: Nutrient): Double {
-            return aliment.getNutrientWithComplementary(
-                            nutrient = n,
-                            preferences = preferences,
-                            equationRepository = equationRepository,
-                            referenceEv = referenceEv
-                    )
-                    ?.toDouble()
-                    ?: 0.0
+        val alimentEv = aliment.aliment
+        if (alimentEv != null) {
+            // Utiliser directement les valeurs de l'aliment (valMap), pas les équations complémentaires
+            for (n in NutrientMain.entries) {
+                variables[n.label] = alimentEv.getNutrient(n, referenceEv)?.toDouble() ?: 0.0
+            }
+            for (n in NutrientLipid.entries) {
+                variables[n.label] = alimentEv.getNutrient(n, referenceEv)?.toDouble() ?: 0.0
+            }
+            for (n in NutrientVitam.entries) {
+                variables[n.label] = alimentEv.getNutrient(n, referenceEv)?.toDouble() ?: 0.0
+            }
+            for (n in NutrientMacro.entries) {
+                variables[n.label] = alimentEv.getNutrient(n, referenceEv)?.toDouble() ?: 0.0
+            }
+            for (n in NutrientMin.entries) {
+                variables[n.label] = alimentEv.getNutrient(n, referenceEv)?.toDouble() ?: 0.0
+            }
         }
-        for (n in NutrientMain.entries) variables[n.label] = nv(n)
-        for (n in NutrientLipid.entries) variables[n.label] = nv(n)
-        for (n in NutrientVitam.entries) variables[n.label] = nv(n)
-        for (n in NutrientMacro.entries) variables[n.label] = nv(n)
-        for (n in NutrientMin.entries) variables[n.label] = nv(n)
 
         // Choisir explicitement l'équation ReferenceEv: DEcom pour COMPLET/COMPLEMENTAIRE, DEraw
         // sinon
-        val kind = aliment.aliment?.typeAliment
+        val kind = alimentEv?.typeAliment
         val eq: Equation? =
                 when (kind) {
                     fr.vetbrain.vetnutri_mp.Enumer.FoodKind.COMPLET,
@@ -493,7 +497,6 @@ object EquationEvaluator {
      */
     suspend fun calculerApportEnergetiqueRation(
             ration: fr.vetbrain.vetnutri_mp.Data.Ration,
-            preferences: PreferencesEspece,
             equationRepository: EquationRepository,
             referenceEv: ReferenceEv? = null
     ): Double {
@@ -502,7 +505,6 @@ object EquationEvaluator {
             val kcal100 =
                     calculerEnergiePour100g(
                             aliment = ing,
-                            preferences = preferences,
                             equationRepository = equationRepository,
                             referenceEv = referenceEv
                     )

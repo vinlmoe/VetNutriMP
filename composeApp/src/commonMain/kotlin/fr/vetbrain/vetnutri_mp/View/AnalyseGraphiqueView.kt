@@ -211,14 +211,14 @@ private suspend fun calculerNutrimentsRation(
                                 )
                                         ?: 0.0
 
+                        // Utiliser getEnergie() qui utilise EquationEvaluator.calculerEnergiePour100g()
+                        // quand tous les paramètres sont disponibles, garantissant l'utilisation
+                        // de l'équation énergétique du référentiel
                         energie +=
-                                alimentRationTemp.getNutrientWithComplementary(
-                                        fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.ENERGIE,
-                                        preferencesEspece,
-                                        equationRepository,
-                                        referenceEv
+                                alimentRationTemp.getEnergie(
+                                        referenceEv = referenceEv,
+                                        equationRepository = equationRepository
                                 )
-                                        ?: 0.0
 
                         calcium +=
                                 alimentRationTemp.getNutrientWithComplementary(
@@ -453,7 +453,6 @@ private suspend fun calculerPourcentagesEnergieRation(
                         energieTotale +=
                                 alimentRation.getEnergie(
                                         referenceEv,
-                                        preferencesEspece,
                                         equationRepository
                                 )
                         
@@ -1494,7 +1493,81 @@ private fun RationsEnergieChart(
                 isLoading = false
         }
 
-        if (isLoading) {
+        // Vérifier si une consultation et une référence sont disponibles
+        val hasConsultations = animal?.consultations?.isNotEmpty() == true
+        val hasReference = referenceUtilisee != null
+        val hasPreferences = speciesPreferences != null
+
+        if (!hasConsultations) {
+                // Aucune consultation disponible
+                Box(
+                        modifier = Modifier.height(250.dp).fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                ) {
+                        Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
+                        ) {
+                                Text(
+                                        text = "Aucune consultation disponible",
+                                        style = MaterialTheme.typography.body1,
+                                        fontWeight = FontWeight.Bold,
+                                        color = VetNutriColors.Error
+                                )
+                                Text(
+                                        text = "Veuillez créer une consultation pour analyser les rations",
+                                        style = MaterialTheme.typography.body2,
+                                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                                )
+                        }
+                }
+        } else if (!hasReference) {
+                // Aucune référence disponible
+                Box(
+                        modifier = Modifier.height(250.dp).fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                ) {
+                        Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
+                        ) {
+                                Text(
+                                        text = "Aucune référence sélectionnée",
+                                        style = MaterialTheme.typography.body1,
+                                        fontWeight = FontWeight.Bold,
+                                        color = VetNutriColors.Error
+                                )
+                                Text(
+                                        text = "Veuillez sélectionner une référence dans une consultation pour calculer l'énergie avec les équations du référentiel",
+                                        style = MaterialTheme.typography.body2,
+                                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                                )
+                        }
+                }
+        } else if (!hasPreferences) {
+                // Aucune préférence disponible
+                Box(
+                        modifier = Modifier.height(250.dp).fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                ) {
+                        Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
+                        ) {
+                                Text(
+                                        text = "Aucune préférence disponible",
+                                        style = MaterialTheme.typography.body1,
+                                        fontWeight = FontWeight.Bold,
+                                        color = VetNutriColors.Error
+                                )
+                                Text(
+                                        text = "Veuillez configurer les préférences pour l'espèce dans les paramètres",
+                                        style = MaterialTheme.typography.body2,
+                                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                                )
+                        }
+                }
+        } else if (isLoading) {
                 // Indicateur de chargement
                 Box(
                         modifier = Modifier.height(250.dp).fillMaxWidth(),
@@ -2108,7 +2181,81 @@ private fun DensiteRationsChart(
                 isLoading = false
         }
 
-        if (isLoading) {
+        // Vérifier si une consultation et une référence sont disponibles
+        val hasConsultations = animal?.consultations?.isNotEmpty() == true
+        val hasReference = referenceUtilisee != null
+        val hasPreferences = speciesPreferences != null
+
+        if (!hasConsultations) {
+                // Aucune consultation disponible
+                Box(
+                        modifier = Modifier.height(250.dp).fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                ) {
+                        Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
+                        ) {
+                                Text(
+                                        text = "Aucune consultation disponible",
+                                        style = MaterialTheme.typography.body1,
+                                        fontWeight = FontWeight.Bold,
+                                        color = VetNutriColors.Error
+                                )
+                                Text(
+                                        text = "Veuillez créer une consultation pour analyser les rations",
+                                        style = MaterialTheme.typography.body2,
+                                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                                )
+                        }
+                }
+        } else if (!hasReference) {
+                // Aucune référence disponible
+                Box(
+                        modifier = Modifier.height(250.dp).fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                ) {
+                        Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
+                        ) {
+                                Text(
+                                        text = "Aucune référence sélectionnée",
+                                        style = MaterialTheme.typography.body1,
+                                        fontWeight = FontWeight.Bold,
+                                        color = VetNutriColors.Error
+                                )
+                                Text(
+                                        text = "Veuillez sélectionner une référence dans une consultation pour calculer l'énergie avec les équations du référentiel",
+                                        style = MaterialTheme.typography.body2,
+                                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                                )
+                        }
+                }
+        } else if (!hasPreferences) {
+                // Aucune préférence disponible
+                Box(
+                        modifier = Modifier.height(250.dp).fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                ) {
+                        Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
+                        ) {
+                                Text(
+                                        text = "Aucune préférence disponible",
+                                        style = MaterialTheme.typography.body1,
+                                        fontWeight = FontWeight.Bold,
+                                        color = VetNutriColors.Error
+                                )
+                                Text(
+                                        text = "Veuillez configurer les préférences pour l'espèce dans les paramètres",
+                                        style = MaterialTheme.typography.body2,
+                                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                                )
+                        }
+                }
+        } else if (isLoading) {
                 Box(
                         modifier = Modifier.height(250.dp).fillMaxWidth(),
                         contentAlignment = Alignment.Center
@@ -2514,7 +2661,81 @@ private fun NutrimentsRationsChart(
                 isLoading = false
         }
 
-        if (isLoading) {
+        // Vérifier si une consultation et une référence sont disponibles
+        val hasConsultations = animal?.consultations?.isNotEmpty() == true
+        val hasReference = referenceUtilisee != null
+        val hasPreferences = speciesPreferences != null
+
+        if (!hasConsultations) {
+                // Aucune consultation disponible
+                Box(
+                        modifier = Modifier.height(250.dp).fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                ) {
+                        Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
+                        ) {
+                                Text(
+                                        text = "Aucune consultation disponible",
+                                        style = MaterialTheme.typography.body1,
+                                        fontWeight = FontWeight.Bold,
+                                        color = VetNutriColors.Error
+                                )
+                                Text(
+                                        text = "Veuillez créer une consultation pour analyser les rations",
+                                        style = MaterialTheme.typography.body2,
+                                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                                )
+                        }
+                }
+        } else if (!hasReference) {
+                // Aucune référence disponible
+                Box(
+                        modifier = Modifier.height(250.dp).fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                ) {
+                        Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
+                        ) {
+                                Text(
+                                        text = "Aucune référence sélectionnée",
+                                        style = MaterialTheme.typography.body1,
+                                        fontWeight = FontWeight.Bold,
+                                        color = VetNutriColors.Error
+                                )
+                                Text(
+                                        text = "Veuillez sélectionner une référence dans une consultation pour calculer l'énergie avec les équations du référentiel",
+                                        style = MaterialTheme.typography.body2,
+                                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                                )
+                        }
+                }
+        } else if (!hasPreferences) {
+                // Aucune préférence disponible
+                Box(
+                        modifier = Modifier.height(250.dp).fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                ) {
+                        Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
+                        ) {
+                                Text(
+                                        text = "Aucune préférence disponible",
+                                        style = MaterialTheme.typography.body1,
+                                        fontWeight = FontWeight.Bold,
+                                        color = VetNutriColors.Error
+                                )
+                                Text(
+                                        text = "Veuillez configurer les préférences pour l'espèce dans les paramètres",
+                                        style = MaterialTheme.typography.body2,
+                                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                                )
+                        }
+                }
+        } else if (isLoading) {
                 Box(
                         modifier = Modifier.height(250.dp).fillMaxWidth(),
                         contentAlignment = Alignment.Center

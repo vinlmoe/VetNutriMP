@@ -237,7 +237,6 @@ fun RationsView(
                                 val densiteEnergetique =
                                         rationActuelle.getDensiteEnergetiqueMoyenne(
                                                 referenceEv = reference,
-                                                preferences = prefsEspece,
                                                 equationRepository = equationRepository
                                         )
                                 densiteEnergetique * rationActuelle.getQuantiteTotale()
