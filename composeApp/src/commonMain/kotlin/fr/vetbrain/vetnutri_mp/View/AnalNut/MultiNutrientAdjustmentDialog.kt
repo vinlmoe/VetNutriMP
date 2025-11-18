@@ -1313,18 +1313,29 @@ suspend fun calculerAjustement(
                                 var totalPhosphore: Double = 0.0
                                 
                                 // Recalculer les totaux avec les quantités actuelles (même logique que calculerQuantiteTotaleNutriment)
+                                // Utiliser getNutrientWithComplementary pour être cohérent avec le reste du système
                                 for (i in adjustedAliments.indices) {
-                                        val aliment = adjustedAliments[i].aliment ?: continue
-                                        val quantite = adjustedAliments[i].quantite.toDouble()
+                                        val alimentRation = adjustedAliments[i]
+                                        val quantite = alimentRation.quantite.toDouble()
                                         
-                                        // Calcium
-                                        val calPar100g = aliment.getNutrient(NutrientMacro.CAL)
+                                        // Calcium - utiliser getNutrientWithComplementary pour être cohérent
+                                        val calPar100g = alimentRation.getNutrientWithComplementary(
+                                                nutrient = NutrientMacro.CAL,
+                                                preferences = null,
+                                                equationRepository = equationRepository,
+                                                referenceEv = referenceUtilisee
+                                        )
                                         if (calPar100g != null) {
                                                 totalCalcium += (calPar100g * quantite) / 100.0
                                         }
                                         
-                                        // Phosphore
-                                        val pPar100g = aliment.getNutrient(NutrientMacro.PHOS)
+                                        // Phosphore - utiliser getNutrientWithComplementary pour être cohérent
+                                        val pPar100g = alimentRation.getNutrientWithComplementary(
+                                                nutrient = NutrientMacro.PHOS,
+                                                preferences = null,
+                                                equationRepository = equationRepository,
+                                                referenceEv = referenceUtilisee
+                                        )
                                         if (pPar100g != null) {
                                                 totalPhosphore += (pPar100g * quantite) / 100.0
                                         }
@@ -1348,12 +1359,33 @@ suspend fun calculerAjustement(
                                                                 it.uuid == alimentData.alimentRation.uuid 
                                                         }
                                                         if (index >= 0) {
-                                                                val quantiteActuelle: Double = adjustedAliments[index].quantite.toDouble()
-                                                                val aliment = adjustedAliments[index].aliment ?: continue
-                                                                val PhosAct: Double = adjustedAliments[index].quantite.toDouble() * (aliment.getNutrient(NutrientMacro.PHOS) ?: 0.0) / 100.0
-                                                                val CalAct: Double = adjustedAliments[index].quantite.toDouble() * (aliment.getNutrient(NutrientMacro.CAL) ?: 0.0) / 100.0
-                                                                val calPar100g = aliment.getNutrient(NutrientMacro.CAL) ?: 0.0
-                                                                val pPar100g = aliment.getNutrient(NutrientMacro.PHOS) ?: 0.0
+                                                                val alimentRation = adjustedAliments[index]
+                                                                val quantiteActuelle: Double = alimentRation.quantite.toDouble()
+                                                                // Utiliser getNutrientWithComplementary pour être cohérent
+                                                                val PhosAct: Double = alimentRation.getNutrientWithComplementary(
+                                                                        nutrient = NutrientMacro.PHOS,
+                                                                        preferences = null,
+                                                                        equationRepository = equationRepository,
+                                                                        referenceEv = referenceUtilisee
+                                                                )?.let { (it * quantiteActuelle) / 100.0 } ?: 0.0
+                                                                val CalAct: Double = alimentRation.getNutrientWithComplementary(
+                                                                        nutrient = NutrientMacro.CAL,
+                                                                        preferences = null,
+                                                                        equationRepository = equationRepository,
+                                                                        referenceEv = referenceUtilisee
+                                                                )?.let { (it * quantiteActuelle) / 100.0 } ?: 0.0
+                                                                val calPar100g = alimentRation.getNutrientWithComplementary(
+                                                                        nutrient = NutrientMacro.CAL,
+                                                                        preferences = null,
+                                                                        equationRepository = equationRepository,
+                                                                        referenceEv = referenceUtilisee
+                                                                ) ?: 0.0
+                                                                val pPar100g = alimentRation.getNutrientWithComplementary(
+                                                                        nutrient = NutrientMacro.PHOS,
+                                                                        preferences = null,
+                                                                        equationRepository = equationRepository,
+                                                                        referenceEv = referenceUtilisee
+                                                                ) ?: 0.0
                                                                 val nouvelleQuantite: Double = 1.2 * (capMinRequis * (totalPhosphore - PhosAct) - (totalCalcium - CalAct)) / ((calPar100g - capMinRequis * pPar100g) / 100.0)
                                                                 // Arrondir au centième de gramme pour éviter les erreurs de précision
                                                                 val quantiteArrondie: Double = kotlin.math.round(nouvelleQuantite * 100.0) / 100.0
@@ -1942,18 +1974,29 @@ private suspend fun adjustRationForMultipleNutrients(
                                 var totalPhosphore: Double = 0.0
                                 
                                 // Recalculer les totaux avec les quantités actuelles (même logique que calculerQuantiteTotaleNutriment)
+                                // Utiliser getNutrientWithComplementary pour être cohérent avec le reste du système
                                 for (i in adjustedAliments.indices) {
-                                        val aliment = adjustedAliments[i].aliment ?: continue
-                                        val quantite = adjustedAliments[i].quantite.toDouble()
+                                        val alimentRation = adjustedAliments[i]
+                                        val quantite = alimentRation.quantite.toDouble()
                                         
-                                        // Calcium
-                                        val calPar100g = aliment.getNutrient(NutrientMacro.CAL)
+                                        // Calcium - utiliser getNutrientWithComplementary pour être cohérent
+                                        val calPar100g = alimentRation.getNutrientWithComplementary(
+                                                nutrient = NutrientMacro.CAL,
+                                                preferences = null,
+                                                equationRepository = equationRepository,
+                                                referenceEv = referenceUtilisee
+                                        )
                                         if (calPar100g != null) {
                                                 totalCalcium += (calPar100g * quantite) / 100.0
                                         }
                                         
-                                        // Phosphore
-                                        val pPar100g = aliment.getNutrient(NutrientMacro.PHOS)
+                                        // Phosphore - utiliser getNutrientWithComplementary pour être cohérent
+                                        val pPar100g = alimentRation.getNutrientWithComplementary(
+                                                nutrient = NutrientMacro.PHOS,
+                                                preferences = null,
+                                                equationRepository = equationRepository,
+                                                referenceEv = referenceUtilisee
+                                        )
                                         if (pPar100g != null) {
                                                 totalPhosphore += (pPar100g * quantite) / 100.0
                                         }
@@ -1977,12 +2020,33 @@ private suspend fun adjustRationForMultipleNutrients(
                                                                 it.uuid == alimentData.alimentRation.uuid 
                                                         }
                                                         if (index >= 0) {
-                                                                val quantiteActuelle: Double = adjustedAliments[index].quantite.toDouble()
-                                                                val aliment = adjustedAliments[index].aliment ?: continue
-                                                                val PhosAct: Double = adjustedAliments[index].quantite.toDouble() * (aliment.getNutrient(NutrientMacro.PHOS) ?: 0.0) / 100.0
-                                                                val CalAct: Double = adjustedAliments[index].quantite.toDouble() * (aliment.getNutrient(NutrientMacro.CAL) ?: 0.0) / 100.0
-                                                                val calPar100g = aliment.getNutrient(NutrientMacro.CAL) ?: 0.0
-                                                                val pPar100g = aliment.getNutrient(NutrientMacro.PHOS) ?: 0.0
+                                                                val alimentRation = adjustedAliments[index]
+                                                                val quantiteActuelle: Double = alimentRation.quantite.toDouble()
+                                                                // Utiliser getNutrientWithComplementary pour être cohérent
+                                                                val PhosAct: Double = alimentRation.getNutrientWithComplementary(
+                                                                        nutrient = NutrientMacro.PHOS,
+                                                                        preferences = null,
+                                                                        equationRepository = equationRepository,
+                                                                        referenceEv = referenceUtilisee
+                                                                )?.let { (it * quantiteActuelle) / 100.0 } ?: 0.0
+                                                                val CalAct: Double = alimentRation.getNutrientWithComplementary(
+                                                                        nutrient = NutrientMacro.CAL,
+                                                                        preferences = null,
+                                                                        equationRepository = equationRepository,
+                                                                        referenceEv = referenceUtilisee
+                                                                )?.let { (it * quantiteActuelle) / 100.0 } ?: 0.0
+                                                                val calPar100g = alimentRation.getNutrientWithComplementary(
+                                                                        nutrient = NutrientMacro.CAL,
+                                                                        preferences = null,
+                                                                        equationRepository = equationRepository,
+                                                                        referenceEv = referenceUtilisee
+                                                                ) ?: 0.0
+                                                                val pPar100g = alimentRation.getNutrientWithComplementary(
+                                                                        nutrient = NutrientMacro.PHOS,
+                                                                        preferences = null,
+                                                                        equationRepository = equationRepository,
+                                                                        referenceEv = referenceUtilisee
+                                                                ) ?: 0.0
                                                                 val nouvelleQuantite: Double = (capMinRequis * (totalPhosphore - PhosAct) - (totalCalcium - CalAct)) / ((calPar100g - capMinRequis * pPar100g) / 100.0)
                                                                 // Arrondir au centième de gramme pour éviter les erreurs de précision
                                                                 val quantiteArrondie: Double = kotlin.math.round(nouvelleQuantite * 100.0) / 100.0

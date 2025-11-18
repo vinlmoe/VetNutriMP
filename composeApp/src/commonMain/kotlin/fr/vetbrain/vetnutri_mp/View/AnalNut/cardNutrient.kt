@@ -1154,11 +1154,12 @@ private fun calculerAffichageNutriment(
     // Cas spécial: nutriments d'analyse/ratio sans unité (ex: CAP, KNA, O6O3...)
     // - Ne pas afficher d'unité
     // - Ne pas appliquer de transformation UnitReqEnum
+    // - Utiliser 2 décimales pour les ratios pour une meilleure précision
     val isUnitEmpty = uniteOriginale.isBlank()
     val isAnalysis =
             valeurNutritionnelle.nutriment is fr.vetbrain.vetnutri_mp.Enumer.NutrientAnalysis
     if (isAnalysis && isUnitEmpty) {
-        return Pair(GraphFormattingUtils.formatSmartDecimal(valeurAbsolue), "")
+        return Pair(GraphFormattingUtils.formatDecimal(valeurAbsolue, 2), "")
     }
 
     // Si pas de type d'expression défini, affichage par défaut

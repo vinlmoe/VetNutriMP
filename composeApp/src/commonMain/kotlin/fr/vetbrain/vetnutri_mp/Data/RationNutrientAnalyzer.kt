@@ -32,11 +32,29 @@ private fun estNutrimentRatio(nutriment: Nutrient): Boolean {
 
 /**
  * Calcule la quantité totale d'un nutriment dans une ration
+ * Utilise getNutrientWithComplementary pour être cohérent avec le reste du système
  */
-private suspend fun calculerQuantiteTotaleNutriment(ration: Ration, nutriment: Nutrient): Double {
+private suspend fun calculerQuantiteTotaleNutriment(
+    ration: Ration, 
+    nutriment: Nutrient,
+    preferencesEspece: PreferencesEspece? = null,
+    equationRepository: EquationRepository? = null,
+    referenceEv: ReferenceEv? = null
+): Double {
     var total = 0.0
     for (aliment in ration.alimentMutableList) {
-        val valeur = aliment.getNutrient(nutriment)
+        val valeur = if (preferencesEspece != null && equationRepository != null) {
+            // Utiliser getNutrientWithComplementary pour être cohérent avec le reste du système
+            aliment.getNutrientWithComplementary(
+                nutrient = nutriment,
+                preferences = preferencesEspece,
+                equationRepository = equationRepository,
+                referenceEv = referenceEv
+            )
+        } else {
+            // Fallback sur getNutrient si pas de paramètres pour équations complémentaires
+            aliment.getNutrient(nutriment)
+        }
         if (valeur != null) {
             val contribution = (valeur * aliment.quantite) / 100.0
             total += contribution
@@ -114,38 +132,39 @@ private suspend fun calculerRatioGlobalRation(
             when (nutriment.label) {
                 "KNA" -> {
                     // Rapport K/Na = Potassium / Sodium
-                    val k = runBlocking { calculerQuantiteTotaleNutriment(ration, fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro.K) }
-                    val na = runBlocking { calculerQuantiteTotaleNutriment(ration, fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro.NA) }
+                    val k = runBlocking { calculerQuantiteTotaleNutriment(ration, fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro.K, preferencesEspece, equationRepository, referenceEv) }
+                    val na = runBlocking { calculerQuantiteTotaleNutriment(ration, fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro.NA, preferencesEspece, equationRepository, referenceEv) }
                     if (na > 0) k / na else 0.0
                 }
                 "CAP" -> {
                     // Rapport Ca/P = Calcium / Phosphore
-                    val ca = runBlocking { calculerQuantiteTotaleNutriment(ration, fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro.CAL) }
-                    val p = runBlocking { calculerQuantiteTotaleNutriment(ration, fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro.PHOS) }
+                    // Utiliser getNutrientWithComplementary pour être cohérent avec le reste du système
+                    val ca = runBlocking { calculerQuantiteTotaleNutriment(ration, fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro.CAL, preferencesEspece, equationRepository, referenceEv) }
+                    val p = runBlocking { calculerQuantiteTotaleNutriment(ration, fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro.PHOS, preferencesEspece, equationRepository, referenceEv) }
                     if (p > 0) ca / p else 0.0
                 }
                 "O6O3" -> {
                     // Rapport O6/O3 = Oméga 6 / Oméga 3
-                    val o6 = runBlocking { calculerQuantiteTotaleNutriment(ration, fr.vetbrain.vetnutri_mp.Enumer.NutrientLipid.O6) }
-                    val o3 = runBlocking { calculerQuantiteTotaleNutriment(ration, fr.vetbrain.vetnutri_mp.Enumer.NutrientLipid.O3) }
+                    val o6 = runBlocking { calculerQuantiteTotaleNutriment(ration, fr.vetbrain.vetnutri_mp.Enumer.NutrientLipid.O6, preferencesEspece, equationRepository, referenceEv) }
+                    val o3 = runBlocking { calculerQuantiteTotaleNutriment(ration, fr.vetbrain.vetnutri_mp.Enumer.NutrientLipid.O3, preferencesEspece, equationRepository, referenceEv) }
                     if (o3 > 0) o6 / o3 else 0.0
                 }
                 "ZNCU" -> {
                     // Rapport Zn/Cu = Zinc / Cuivre
-                    val zn = runBlocking { calculerQuantiteTotaleNutriment(ration, fr.vetbrain.vetnutri_mp.Enumer.NutrientMin.ZN) }
-                    val cu = runBlocking { calculerQuantiteTotaleNutriment(ration, fr.vetbrain.vetnutri_mp.Enumer.NutrientMin.CU) }
+                    val zn = runBlocking { calculerQuantiteTotaleNutriment(ration, fr.vetbrain.vetnutri_mp.Enumer.NutrientMin.ZN, preferencesEspece, equationRepository, referenceEv) }
+                    val cu = runBlocking { calculerQuantiteTotaleNutriment(ration, fr.vetbrain.vetnutri_mp.Enumer.NutrientMin.CU, preferencesEspece, equationRepository, referenceEv) }
                     if (cu > 0) zn / cu else 0.0
                 }
                 "PROTP" -> {
                     // Rapport Protéines/Phosphore
-                    val prot = runBlocking { calculerQuantiteTotaleNutriment(ration, fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.PROTEINE) }
-                    val p = runBlocking { calculerQuantiteTotaleNutriment(ration, fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro.PHOS) }
+                    val prot = runBlocking { calculerQuantiteTotaleNutriment(ration, fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.PROTEINE, preferencesEspece, equationRepository, referenceEv) }
+                    val p = runBlocking { calculerQuantiteTotaleNutriment(ration, fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro.PHOS, preferencesEspece, equationRepository, referenceEv) }
                     if (p > 0) prot / p else 0.0
                 }
                 "nonOsPP" -> {
                     // Ratio Prot/Phos non osseux
-                    val nonOsProt = runBlocking { calculerQuantiteTotaleNutriment(ration, fr.vetbrain.vetnutri_mp.Enumer.NutrientAnalysis.nonOsProt) }
-                    val nonOsPhos = runBlocking { calculerQuantiteTotaleNutriment(ration, fr.vetbrain.vetnutri_mp.Enumer.NutrientAnalysis.nonOsPhos) }
+                    val nonOsProt = runBlocking { calculerQuantiteTotaleNutriment(ration, fr.vetbrain.vetnutri_mp.Enumer.NutrientAnalysis.nonOsProt, preferencesEspece, equationRepository, referenceEv) }
+                    val nonOsPhos = runBlocking { calculerQuantiteTotaleNutriment(ration, fr.vetbrain.vetnutri_mp.Enumer.NutrientAnalysis.nonOsPhos, preferencesEspece, equationRepository, referenceEv) }
                     if (nonOsPhos > 0) nonOsProt / nonOsPhos else 0.0
                 }
                 else -> {
@@ -239,19 +258,19 @@ suspend fun analyserValeursNutritionnellesRationAvecEquations(
             // Pour les ratios, calculer le ratio global de la ration entière
             val quantitesTotales = mutableMapOf<String, Double>()
             for (n in fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.entries) {
-                val qte = kotlinx.coroutines.runBlocking { calculerQuantiteTotaleNutriment(ration, n) }
+                val qte = kotlinx.coroutines.runBlocking { calculerQuantiteTotaleNutriment(ration, n, preferencesEspece, equationRepository, referenceEv) }
                 quantitesTotales[n.label] = qte
             }
             for (n in fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro.entries) {
-                val qte = kotlinx.coroutines.runBlocking { calculerQuantiteTotaleNutriment(ration, n) }
+                val qte = kotlinx.coroutines.runBlocking { calculerQuantiteTotaleNutriment(ration, n, preferencesEspece, equationRepository, referenceEv) }
                 quantitesTotales[n.label] = qte
             }
             for (n in fr.vetbrain.vetnutri_mp.Enumer.NutrientLipid.entries) {
-                val qte = kotlinx.coroutines.runBlocking { calculerQuantiteTotaleNutriment(ration, n) }
+                val qte = kotlinx.coroutines.runBlocking { calculerQuantiteTotaleNutriment(ration, n, preferencesEspece, equationRepository, referenceEv) }
                 quantitesTotales[n.label] = qte
             }
             for (n in fr.vetbrain.vetnutri_mp.Enumer.NutrientMin.entries) {
-                val qte = kotlinx.coroutines.runBlocking { calculerQuantiteTotaleNutriment(ration, n) }
+                val qte = kotlinx.coroutines.runBlocking { calculerQuantiteTotaleNutriment(ration, n, preferencesEspece, equationRepository, referenceEv) }
                 quantitesTotales[n.label] = qte
             }
             
