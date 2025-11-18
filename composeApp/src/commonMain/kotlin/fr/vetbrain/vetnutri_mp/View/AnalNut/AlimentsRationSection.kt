@@ -46,6 +46,7 @@ fun SectionAlimentsRation(
         besoinEnergetiqueTotal: Double?,
         besoinEnergetiqueStandard: Double?,
         viewModel: AnimalDetailViewModel,
+        equationRepository: fr.vetbrain.vetnutri_mp.Repository.EquationRepository?,
         onAddAliment: () -> Unit,
         onMultiNutrientAdjustment: () -> Unit,
         onOpenRecipeDialog: () -> Unit,
@@ -212,7 +213,9 @@ fun SectionAlimentsRation(
                                                                                                                                 poidsAnimal =
                                                                                                                                         null, // Valeur par défaut
                                                                                                                                 poidsMetabolique =
-                                                                                                                                        null // Valeur par défaut
+                                                                                                                                        null, // Valeur par défaut
+                                                                                                                                equationRepository =
+                                                                                                                                        equationRepository
                                                                                                                         )
 
                                                                                                                 if (result.success

@@ -266,14 +266,28 @@ suspend fun analyserValeursNutritionnellesRationAvecEquations(
                 val nomIngredient = alimentRation.aliment?.nom ?: "Ingrédient inconnu"
                 val quantiteIngredient = alimentRation.quantite
 
-                // Utiliser la logique unifiée: valeur table > 0 sinon équation complémentaire
-                // (évite que 0.0 bloque l'utilisation de l'équation)
-                val valeurPour100g: Double? = alimentRation.getNutrientWithComplementary(
-                        nutrient = nutriment,
-                        preferences = preferencesEspece,
-                        equationRepository = equationRepository,
-                        referenceEv = referenceEv
-                )
+                // Pour l'énergie, utiliser getEnergie() qui sélectionne correctement equationDEcom ou equationDEraw
+                // selon le type d'aliment (COMPLET/COMPLEMENTAIRE vs autres)
+                val valeurPour100g: Double? = if (nutriment == NutrientMain.ENERGIE) {
+                    // Utiliser getEnergie() qui utilise EquationEvaluator.calculerEnergiePour100g()
+                    // pour sélectionner correctement l'équation énergétique du référentiel
+                    val energieTotale = alimentRation.getEnergie(referenceEv, equationRepository)
+                    // Convertir en valeur pour 100g
+                    if (quantiteIngredient > 0.0) {
+                        (energieTotale / quantiteIngredient) * 100.0
+                    } else {
+                        null
+                    }
+                } else {
+                    // Utiliser la logique unifiée: valeur table > 0 sinon équation complémentaire
+                    // (évite que 0.0 bloque l'utilisation de l'équation)
+                    alimentRation.getNutrientWithComplementary(
+                            nutrient = nutriment,
+                            preferences = preferencesEspece,
+                            equationRepository = equationRepository,
+                            referenceEv = referenceEv
+                    )
+                }
 
                 if (valeurPour100g != null) {
                     // Alignement avec la logique hors-équations: les AA sont exprimés en % de protéines

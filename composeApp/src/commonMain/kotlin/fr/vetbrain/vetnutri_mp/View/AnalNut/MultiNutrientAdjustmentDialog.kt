@@ -102,6 +102,7 @@ fun MultiNutrientAdjustmentView(
         besoinEnergetiqueStandard: Double,
         poidsAnimal: Double?,
         poidsMetabolique: Double?,
+        equationRepository: fr.vetbrain.vetnutri_mp.Repository.EquationRepository?,
         onConfirm: (RationAdjustmentResult) -> Unit,
         onDismiss: () -> Unit
 ) {
@@ -525,7 +526,9 @@ fun MultiNutrientAdjustmentView(
                                                                                         poidsAnimal =
                                                                                                 poidsAnimal,
                                                                                         poidsMetabolique =
-                                                                                                poidsMetabolique
+                                                                                                poidsMetabolique,
+                                                                                        equationRepository =
+                                                                                                equationRepository
                                                                                 )
                                                                         isProcessing = false
                                                                         processingMessage = ""
@@ -561,7 +564,9 @@ fun MultiNutrientAdjustmentView(
                                                                                         poidsAnimal =
                                                                                                 poidsAnimal,
                                                                                         poidsMetabolique =
-                                                                                                poidsMetabolique
+                                                                                                poidsMetabolique,
+                                                                                        equationRepository =
+                                                                                                equationRepository
                                                                                 )
                                                                         isProcessing = false
                                                                         processingMessage = ""
@@ -591,7 +596,7 @@ fun MultiNutrientAdjustmentView(
                                                                                         if (alimentRation.quantite > 0.0) {
                                                                                                 val e = alimentRation.getEnergie(
                                                                                                         referenceUtilisee,
-                                                                                                        null
+                                                                                                        equationRepository
                                                                                                 )
                                                                                                 energieActuelle += e
                                                                                         }
@@ -1025,7 +1030,8 @@ suspend fun calculerAjustement(
         besoinEnergetiqueTotal: Double,
         besoinEnergetiqueStandard: Double,
         poidsAnimal: Double?,
-        poidsMetabolique: Double?
+        poidsMetabolique: Double?,
+        equationRepository: fr.vetbrain.vetnutri_mp.Repository.EquationRepository?
 ): RationAdjustmentResult {
         try {
                 // Créer une copie des aliments pour les ajustements
@@ -1102,10 +1108,17 @@ suspend fun calculerAjustement(
                         for (i in adjustedAliments.indices) {
                                 val alimentRation = adjustedAliments[i]
                                 val aliment = alimentRation.aliment ?: continue
-                                val quantiteNutriment: Double =
-                                        (aliment.valMap?.get(nutrient)?.value ?: 0.0).toDouble()
                                 val quantiteAliment: Double = alimentRation.quantite.toDouble()
-                                apportActuel += (quantiteNutriment * quantiteAliment) / 100.0
+                                
+                                // Pour l'énergie, utiliser getEnergie() qui sélectionne correctement equationDEcom ou equationDEraw
+                                val apportNutriment: Double = if (nutrient == NutrientMain.ENERGIE) {
+                                        alimentRation.getEnergie(referenceUtilisee, equationRepository)
+                                } else {
+                                        val quantiteNutriment: Double =
+                                                (aliment.valMap?.get(nutrient)?.value ?: 0.0).toDouble()
+                                        (quantiteNutriment * quantiteAliment) / 100.0
+                                }
+                                apportActuel += apportNutriment
                         }
 
                         val manque = besoinAbsoluGrammes - apportActuel
@@ -1122,7 +1135,7 @@ suspend fun calculerAjustement(
                                                 constraints = constraintByUuid,
                                                 referenceUtilisee = referenceUtilisee,
                                                 preferences = null,
-                                                equationRepository = null
+                                                equationRepository = equationRepository
                                         )
 
                                 if (!result.success) {
@@ -1185,7 +1198,7 @@ suspend fun calculerAjustement(
                                         val energieAliment =
                                                 alimentRation.getEnergie(
                                                         referenceUtilisee,
-                                                        null
+                                                        equationRepository
                                                 )
                                         apportEnergetiqueTotal += energieAliment
                                 }
@@ -1245,7 +1258,7 @@ suspend fun calculerAjustement(
                                                 constraints = constraintByUuid,
                                                 referenceUtilisee = referenceUtilisee,
                                                 preferences = null,
-                                                equationRepository = null
+                                                equationRepository = equationRepository
                                         )
 
                                 if (result.success) {
@@ -1592,7 +1605,7 @@ private fun adjustRationForNutrient(
 }
 
 /** Ajuste les aliments pour couvrir le manque d'un nutriment spécifique */
-private fun ajusterAlimentsPourNutriment(
+private suspend fun ajusterAlimentsPourNutriment(
         nutriment: Nutrient,
         manque: Double,
         alimentsAjustables: List<AlimentAdjustmentData>,
@@ -1611,18 +1624,18 @@ private fun ajusterAlimentsPourNutriment(
                                         return@filter false
                                 val aliment = data.alimentRation.aliment ?: return@filter false
                                 if (nutriment == NutrientMain.ENERGIE) {
-                                        // Utiliser la référence pour déterminer la disponibilité
-                                        // énergétique
-                                        val energiePar100gRef: Double =
-                                                aliment.getNutrient(
-                                                        NutrientMain.ENERGIE,
-                                                        referenceUtilisee
-                                                )
-                                                        ?: 0.0
-                                        val densite: Double =
-                                                if (energiePar100gRef > 0.0)
-                                                        energiePar100gRef / 100.0
-                                                else data.alimentRation.densiteEnergetique
+                                        // Utiliser getEnergie() qui utilise EquationEvaluator.calculerEnergiePour100g()
+                                        // pour sélectionner correctement equationDEcom ou equationDEraw
+                                        val alimentRationTemp = AlimentRation(
+                                                aliment = data.alimentRation.aliment,
+                                                quantite = 100.0,
+                                                weight = 1.0
+                                        )
+                                        val energiePour100g = alimentRationTemp.getEnergie(
+                                                referenceUtilisee,
+                                                equationRepository
+                                        )
+                                        val densite: Double = energiePour100g / 100.0
                                         densite > 0.0
                                 } else {
                                         (aliment.valMap[nutriment]?.value ?: 0.0) > 0.0
@@ -1647,15 +1660,18 @@ private fun ajusterAlimentsPourNutriment(
                                 }
                         if (index < 0) continue
                         if (nutriment == NutrientMain.ENERGIE) {
-                                val energiePar100gRef: Double =
-                                        alimentData.alimentRation.aliment?.getNutrient(
-                                                NutrientMain.ENERGIE,
-                                                referenceUtilisee
-                                        )
-                                                ?: 0.0
-                                val densite: Double =
-                                        if (energiePar100gRef > 0.0) energiePar100gRef / 100.0
-                                        else adjustedAliments[index].densiteEnergetique
+                                // Utiliser getEnergie() qui utilise EquationEvaluator.calculerEnergiePour100g()
+                                // pour sélectionner correctement equationDEcom ou equationDEraw
+                                val alimentRationTemp = AlimentRation(
+                                        aliment = alimentData.alimentRation.aliment,
+                                        quantite = 100.0,
+                                        weight = 1.0
+                                )
+                                val energiePour100g = alimentRationTemp.getEnergie(
+                                        referenceUtilisee,
+                                        equationRepository
+                                )
+                                val densite: Double = energiePour100g / 100.0
                                 if (densite > 0.0) {
                                         val quantiteNecessaire = manque / densite
                                         contributions.add(
@@ -1709,16 +1725,18 @@ private fun ajusterAlimentsPourNutriment(
                                 contributions[indexContribution]
                         val quantiteAAjouter =
                                 if (nutriment == NutrientMain.ENERGIE) {
-                                        val energiePar100gRef: Double =
-                                                adjustedAliments[index].aliment?.getNutrient(
-                                                        NutrientMain.ENERGIE,
-                                                        referenceUtilisee
-                                                )
-                                                        ?: 0.0
-                                        val densite: Double =
-                                                if (energiePar100gRef > 0.0)
-                                                        energiePar100gRef / 100.0
-                                                else adjustedAliments[index].densiteEnergetique
+                                        // Utiliser getEnergie() qui utilise EquationEvaluator.calculerEnergiePour100g()
+                                        // pour sélectionner correctement equationDEcom ou equationDEraw
+                                        val alimentRationTemp = AlimentRation(
+                                                aliment = adjustedAliments[index].aliment,
+                                                quantite = 100.0,
+                                                weight = 1.0
+                                        )
+                                        val energiePour100g = alimentRationTemp.getEnergie(
+                                                referenceUtilisee,
+                                                equationRepository
+                                        )
+                                        val densite: Double = energiePour100g / 100.0
                                         if (densite <= 0.0) 0.0
                                         else if (indexContribution == contributions.size - 1) {
                                                 manqueRestant / densite
@@ -1775,20 +1793,17 @@ private fun ajusterAlimentsPourNutriment(
                                 // Mettre à jour le manque restant
                                 val apportAjoute: Double =
                                         if (nutriment == NutrientMain.ENERGIE) {
-                                                val energiePar100gRef: Double =
-                                                        adjustedAliments[index].aliment
-                                                                ?.getNutrient(
-                                                                        NutrientMain.ENERGIE,
-                                                                        referenceUtilisee
-                                                                )
-                                                                ?: 0.0
-                                                val densite: Double =
-                                                        if (energiePar100gRef > 0.0)
-                                                                energiePar100gRef / 100.0
-                                                        else
-                                                                adjustedAliments[index]
-                                                                        .densiteEnergetique
-                                                densite * quantiteAAjouter
+                                                // Utiliser getEnergie() qui utilise EquationEvaluator.calculerEnergiePour100g()
+                                                // pour sélectionner correctement equationDEcom ou equationDEraw
+                                                val alimentRationTemp = AlimentRation(
+                                                        aliment = adjustedAliments[index].aliment,
+                                                        quantite = quantiteAAjouter,
+                                                        weight = 1.0
+                                                )
+                                                alimentRationTemp.getEnergie(
+                                                        referenceUtilisee,
+                                                        equationRepository
+                                                )
                                         } else {
                                                 val aliment = alimentData.alimentRation.aliment
                                                 val quantiteNutriment: Double =
@@ -1826,11 +1841,12 @@ private fun ajusterAlimentsPourNutriment(
 }
 
 /** Ajuste la ration pour plusieurs nutriments de manière séquentielle */
-private fun adjustRationForMultipleNutrients(
+private suspend fun adjustRationForMultipleNutrients(
         besoinsNutriments: Map<String, Double>,
         alimentsParNutriment: Map<String, List<AlimentAdjustmentData>>,
         adjustedAliments: MutableList<AlimentRation>,
-        referenceUtilisee: ReferenceEv
+        referenceUtilisee: ReferenceEv,
+        equationRepository: fr.vetbrain.vetnutri_mp.Repository.EquationRepository? = null
 ): RationAdjustmentResult {
         try {
                 // Étape 1: Mettre tous les aliments à 0 (sauf ceux verrouillés)
@@ -1866,10 +1882,17 @@ private fun adjustRationForMultipleNutrients(
                         for (i in adjustedAliments.indices) {
                                 val alimentRation = adjustedAliments[i]
                                 val aliment = alimentRation.aliment ?: continue
-                                val quantiteNutriment: Double =
-                                        (aliment.valMap?.get(nutrient)?.value ?: 0.0).toDouble()
                                 val quantiteAliment: Double = alimentRation.quantite.toDouble()
-                                apportActuel += (quantiteNutriment * quantiteAliment) / 100.0
+                                
+                                // Pour l'énergie, utiliser getEnergie() qui sélectionne correctement equationDEcom ou equationDEraw
+                                val apportNutriment: Double = if (nutrient == NutrientMain.ENERGIE) {
+                                        alimentRation.getEnergie(referenceUtilisee, equationRepository)
+                                } else {
+                                        val quantiteNutriment: Double =
+                                                (aliment.valMap?.get(nutrient)?.value ?: 0.0).toDouble()
+                                        (quantiteNutriment * quantiteAliment) / 100.0
+                                }
+                                apportActuel += apportNutriment
                         }
 
                         // Étape 4: Calculer ce qui manque
@@ -1886,7 +1909,11 @@ private fun adjustRationForMultipleNutrients(
                                                 manque = manque,
                                                 alimentsAjustables = alimentsAjustables,
                                                 adjustedAliments = adjustedAliments,
-                                                alimentsVerrouilles = alimentsVerrouilles
+                                                alimentsVerrouilles = alimentsVerrouilles,
+                                                constraints = emptyMap(),
+                                                referenceUtilisee = referenceUtilisee,
+                                                preferences = null,
+                                                equationRepository = null
                                         )
 
                                 if (!result.success) {

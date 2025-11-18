@@ -494,6 +494,14 @@ fun StartupScreen(
                                         textAlign = TextAlign.Center
                                 )
 
+                                Text(
+                                        text = "Version ${TextConstant.VERSION.value}",
+                                        style = MaterialTheme.typography.caption,
+                                        color = VetNutriColors.Secondary.copy(alpha = 0.7f),
+                                        textAlign = TextAlign.Center,
+                                        modifier = Modifier.padding(top = 4.dp)
+                                )
+
                                 Spacer(modifier = Modifier.height(16.dp))
 
                                 // Informations sur l'auteur
