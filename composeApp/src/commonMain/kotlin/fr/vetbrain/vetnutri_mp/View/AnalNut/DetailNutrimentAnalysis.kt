@@ -851,7 +851,16 @@ private fun ContributionsList(
                                         referenceUtilisee
                                 ) {
                                         try {
-                                                val valeur =
+                                                // Pour l'énergie, utiliser getEnergie() qui sélectionne correctement equationDEcom ou equationDEraw
+                                                val valeur: Double? = if (nutrient == fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.ENERGIE) {
+                                                        val energieTotale = alimentRation.getEnergie(referenceUtilisee, equationRepository)
+                                                        // Convertir en valeur pour 100g
+                                                        if (quantite > 0.0) {
+                                                                (energieTotale / quantite) * 100.0
+                                                        } else {
+                                                                null
+                                                        }
+                                                } else {
                                                         alimentRation.getNutrientWithComplementary(
                                                                 nutrient = nutrient,
                                                                 preferences = null,
@@ -859,6 +868,7 @@ private fun ContributionsList(
                                                                         equationRepository,
                                                                 referenceEv = referenceUtilisee
                                                         )
+                                                }
                                                 valeurPour100gBrute = valeur?.toDouble()
                                         } catch (e: Exception) {
                                                 valeurPour100gBrute = null
@@ -1038,13 +1048,24 @@ private fun ContributionItem(
 
         LaunchedEffect(alimentRation, nutrient, equationRepository, referenceUtilisee) {
                 try {
-                        val valeur =
+                        // Pour l'énergie, utiliser getEnergie() qui sélectionne correctement equationDEcom ou equationDEraw
+                        val valeur: Double? = if (nutrient == fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.ENERGIE) {
+                                val energieTotale = alimentRation.getEnergie(referenceUtilisee, equationRepository)
+                                // Convertir en valeur pour 100g
+                                val quantite = alimentRation.quantite
+                                if (quantite > 0.0) {
+                                        (energieTotale / quantite) * 100.0
+                                } else {
+                                        null
+                                }
+                        } else {
                                 alimentRation.getNutrientWithComplementary(
                                         nutrient = nutrient,
                                         preferences = null,
                                         equationRepository = equationRepository,
                                         referenceEv = referenceUtilisee
                                 )
+                        }
                         valeurPour100gItem = valeur?.toDouble()
                 } catch (e: Exception) {
                         // Exception silencieuse

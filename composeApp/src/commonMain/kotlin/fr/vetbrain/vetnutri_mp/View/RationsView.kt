@@ -710,6 +710,7 @@ fun RationsView(
                                                                         besoinEnergetiqueStandard =
                                                                                 besoinEnergetiqueStandard,
                                                                         viewModel = viewModel,
+                                                                        equationRepository = equationRepository,
                                                                         onAddAliment = {
                                                                                 rationForAddAliment =
                                                                                         selectedRation
@@ -1190,6 +1191,7 @@ fun RationsView(
                                                                 besoinEnergetiqueStandard =
                                                                         besoinEnergetiqueStandard,
                                                                 viewModel = viewModel,
+                                                                equationRepository = equationRepository,
                                                                 onAddAliment = {
                                                                         rationForAddAliment =
                                                                                 selectedRation
@@ -1530,6 +1532,7 @@ fun RationsView(
                                 besoinEnergetiqueStandard = besoinEnergetiqueStandard!!,
                                 poidsAnimal = selectedConsultation?.effectiveWeight?.toDouble(),
                                 poidsMetabolique = poidsMetabolique,
+                                equationRepository = equationRepository,
                                 onConfirm = { result ->
                                         if (result.success) {
                                                 // Appliquer les ajustements à la ration
