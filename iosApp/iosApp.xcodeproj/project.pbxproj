@@ -10,7 +10,7 @@
 		058557BB273AAA24004C7B11 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 058557BA273AAA24004C7B11 /* Assets.xcassets */; };
 		058557D9273AAEEB004C7B11 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 058557D8273AAEEB004C7B11 /* Preview Assets.xcassets */; };
 		2152FB042600AC8F00CF470E /* iOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2152FB032600AC8F00CF470E /* iOSApp.swift */; };
-		6A4979C02EB29D2600DAFC22 /* vetnutri_export_init.json in Resources */ = {isa = PBXBuildFile; fileRef = 6A4979BF2EB29D2600DAFC22 /* vetnutri_export_init.json */; };
+		6A281A962ECC7ACD00D1B909 /* vetnutri_export_init.json in Resources */ = {isa = PBXBuildFile; fileRef = 6A281A952ECC7ACD00D1B909 /* vetnutri_export_init.json */; };
 		6A9D9E342E852BC300D4C0E1 /* strings_fr.json in Resources */ = {isa = PBXBuildFile; fileRef = 6A9D9E332E852BC300D4C0E1 /* strings_fr.json */; };
 		6AE565C02E50F3A5000F5E5C /* File.txt in Resources */ = {isa = PBXBuildFile; fileRef = 6AE565BF2E50F3A5000F5E5C /* File.txt */; };
 		7555FF83242A565900829871 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7555FF82242A565900829871 /* ContentView.swift */; };
@@ -33,7 +33,7 @@
 		058557D8273AAEEB004C7B11 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		2152FB032600AC8F00CF470E /* iOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSApp.swift; sourceTree = "<group>"; };
 		6A2107072E62300B00FE13EF /* vetnutri.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = vetnutri.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		6A4979BF2EB29D2600DAFC22 /* vetnutri_export_init.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = vetnutri_export_init.json; sourceTree = "<group>"; };
+		6A281A952ECC7ACD00D1B909 /* vetnutri_export_init.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = vetnutri_export_init.json; sourceTree = "<group>"; };
 		6A9D9E332E852BC300D4C0E1 /* strings_fr.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = strings_fr.json; sourceTree = "<group>"; };
 		6AAFF5482EAB47B900268D22 /* test.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = test.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		6AE565BF2E50F3A5000F5E5C /* File.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = File.txt; sourceTree = "<group>"; };
@@ -115,7 +115,7 @@
 				058557D7273AAEEB004C7B11 /* Preview Content */,
 				6AE565BF2E50F3A5000F5E5C /* File.txt */,
 				6A9D9E332E852BC300D4C0E1 /* strings_fr.json */,
-				6A4979BF2EB29D2600DAFC22 /* vetnutri_export_init.json */,
+				6A281A952ECC7ACD00D1B909 /* vetnutri_export_init.json */,
 			);
 			path = iosApp;
 			sourceTree = "<group>";
@@ -254,7 +254,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				6A9D9E342E852BC300D4C0E1 /* strings_fr.json in Resources */,
-				6A4979C02EB29D2600DAFC22 /* vetnutri_export_init.json in Resources */,
+				6A281A962ECC7ACD00D1B909 /* vetnutri_export_init.json in Resources */,
 				058557D9273AAEEB004C7B11 /* Preview Assets.xcassets in Resources */,
 				058557BB273AAA24004C7B11 /* Assets.xcassets in Resources */,
 				6AE565C02E50F3A5000F5E5C /* File.txt in Resources */,
