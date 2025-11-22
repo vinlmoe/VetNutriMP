@@ -651,6 +651,16 @@ fun AnalyseGraphiqueAlimentsView(
     // États pour observer les consultations et rations sélectionnées
     val selectedConsultation by viewModel?.selectedConsultation?.collectAsState() ?: remember { mutableStateOf(null) }
     val selectedRation by viewModel?.selectedRation?.collectAsState() ?: remember { mutableStateOf(null) }
+    
+    // États pour les valeurs métaboliques nécessaires à la HeatMap
+    val poidsMetabolique by viewModel?.poidsMetabolique?.collectAsState() ?: remember { mutableStateOf(null) }
+    val besoinEnergetiqueStandard by viewModel?.besoinEnergetiqueStandard?.collectAsState() ?: remember { mutableStateOf(null) }
+    val besoinEnergetiqueTotal by viewModel?.besoinEnergetiqueTotal?.collectAsState() ?: remember { mutableStateOf(null) }
+    
+    // Déclencher les calculs métaboliques si nécessaire
+    LaunchedEffect(selectedConsultation) {
+        selectedConsultation?.let { viewModel?.calculerValeursMetaboliques(it) }
+    }
 
     // CoroutineScope pour les opérations asynchrones
     val coroutineScope = rememberCoroutineScope()
@@ -1019,10 +1029,26 @@ fun AnalyseGraphiqueAlimentsView(
                             ),
                     modifier = Modifier.weight(1f)
             ) { Text("Analyse\ndétaillée") }
+
+            // ✨ Nouvel onglet HeatMap
+            Button(
+                    onClick = { ongletActif = "heatmap" },
+                    colors =
+                            ButtonDefaults.buttonColors(
+                                    backgroundColor =
+                                            if (ongletActif == "heatmap")
+                                                    VetNutriColors.Primary
+                                            else Color.Gray.copy(alpha = 0.3f),
+                                    contentColor =
+                                            if (ongletActif == "heatmap") Color.White
+                                            else Color.Black
+                            ),
+                    modifier = Modifier.weight(1f)
+            ) { Text("HeatMap") }
         }
 
-        // Toggle pour /1000 kcal vs /100g MS (pas pour les ratios énergétiques et l'analyse détaillée)
-        if (ongletActif != "protein_lipid" && ongletActif != "analyse_detaillee") {
+        // Toggle pour /1000 kcal vs /100g MS (pas pour les ratios énergétiques, l'analyse détaillée et la heatmap)
+        if (ongletActif != "protein_lipid" && ongletActif != "analyse_detaillee" && ongletActif != "heatmap") {
         Row(
                 modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.Center,
@@ -1134,7 +1160,7 @@ fun AnalyseGraphiqueAlimentsView(
 
                 if (isCompact) {
                     // Vue compacte : graphiques puis liste avec bouton retour plus visible ET
-                    // SCROLLABLE (sauf pour analyse_detaillee qui gère son propre scroll)
+                    // SCROLLABLE (sauf pour analyse_detaillee et heatmap qui gèrent leur propre scroll)
                     if (ongletActif == "analyse_detaillee") {
                         // ✨ Nouvelle vue détaillée - pas de scroll parent, le LazyColumn gère le scroll
                         AnalyseDetailleeAlimentsView(
@@ -1148,6 +1174,19 @@ fun AnalyseGraphiqueAlimentsView(
                                 alimentSelectionne = alimentSelectionne,
                                 onAlimentSelected = { uuid -> alimentSelectionne = uuid },
                                 onUseDryMatterPer100gChange = { newValue -> useDryMatterPer100g = newValue },
+                                modifier = Modifier.fillMaxSize()
+                        )
+                    } else if (ongletActif == "heatmap") {
+                        // ✨ Vue HeatMap - pas de scroll parent, le LazyColumn gère le scroll
+                        HeatMapAlimentsView(
+                                aliments = aliments,
+                                alimentsAnalyses = alimentsAnalyses,
+                                referenceEv = referenceEv,
+                                equationRepository = equationRepository,
+                                preferencesEspece = preferencesEspece,
+                                besoinEnergetiqueEntretien = besoinEnergetiqueStandard,
+                                poidsAnimal = selectedConsultation?.weight,
+                                poidsMetabolique = poidsMetabolique,
                                 modifier = Modifier.fillMaxSize()
                         )
                     } else {
@@ -1215,8 +1254,8 @@ fun AnalyseGraphiqueAlimentsView(
                             modifier = Modifier.fillMaxSize(),
                             horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
                     ) {
-                        // Colonne gauche : liste des aliments (1/4 de la largeur) - masquée pour l'analyse détaillée
-                        if (ongletActif != "analyse_detaillee") {
+                        // Colonne gauche : liste des aliments (1/4 de la largeur) - masquée pour l'analyse détaillée et la heatmap
+                        if (ongletActif != "analyse_detaillee" && ongletActif != "heatmap") {
                             Column(
                                     modifier = Modifier
                                         .weight(0.25f)
@@ -1233,7 +1272,7 @@ fun AnalyseGraphiqueAlimentsView(
                             }
                         }
 
-                        // Colonne droite : graphiques (3/4 de la largeur) ou analyse détaillée (plein écran)
+                        // Colonne droite : graphiques (3/4 de la largeur) ou analyse détaillée/heatmap (plein écran)
                         if (ongletActif == "analyse_detaillee") {
                             // ✨ Nouvelle vue détaillée - pas de scroll parent, le LazyColumn gère le scroll
                             AnalyseDetailleeAlimentsView(
@@ -1247,6 +1286,21 @@ fun AnalyseGraphiqueAlimentsView(
                                     alimentSelectionne = alimentSelectionne,
                                     onAlimentSelected = { uuid -> alimentSelectionne = uuid },
                                     onUseDryMatterPer100gChange = { newValue -> useDryMatterPer100g = newValue },
+                                    modifier = Modifier
+                                            .weight(1f)
+                                            .fillMaxHeight()
+                            )
+                        } else if (ongletActif == "heatmap") {
+                            // ✨ Vue HeatMap - pas de scroll parent, le LazyColumn gère le scroll
+                            HeatMapAlimentsView(
+                                    aliments = aliments,
+                                    alimentsAnalyses = alimentsAnalyses,
+                                    referenceEv = referenceEv,
+                                    equationRepository = equationRepository,
+                                    preferencesEspece = preferencesEspece,
+                                    besoinEnergetiqueEntretien = besoinEnergetiqueStandard,
+                                    poidsAnimal = selectedConsultation?.weight,
+                                    poidsMetabolique = poidsMetabolique,
                                     modifier = Modifier
                                             .weight(1f)
                                             .fillMaxHeight()
