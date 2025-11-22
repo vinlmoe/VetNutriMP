@@ -1003,10 +1003,26 @@ fun AnalyseGraphiqueAlimentsView(
                             ),
                     modifier = Modifier.weight(1f)
             ) { Text("Nutriments\npersonnalisés") }
+
+            // ✨ Nouvel onglet Analyse détaillée
+            Button(
+                    onClick = { ongletActif = "analyse_detaillee" },
+                    colors =
+                            ButtonDefaults.buttonColors(
+                                    backgroundColor =
+                                            if (ongletActif == "analyse_detaillee")
+                                                    VetNutriColors.Primary
+                                            else Color.Gray.copy(alpha = 0.3f),
+                                    contentColor =
+                                            if (ongletActif == "analyse_detaillee") Color.White
+                                            else Color.Black
+                            ),
+                    modifier = Modifier.weight(1f)
+            ) { Text("Analyse\ndétaillée") }
         }
 
-        // Toggle pour /1000 kcal vs /100g MS (pas pour les ratios énergétiques)
-        if (ongletActif != "protein_lipid") {
+        // Toggle pour /1000 kcal vs /100g MS (pas pour les ratios énergétiques et l'analyse détaillée)
+        if (ongletActif != "protein_lipid" && ongletActif != "analyse_detaillee") {
         Row(
                 modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.Center,
@@ -1118,93 +1134,35 @@ fun AnalyseGraphiqueAlimentsView(
 
                 if (isCompact) {
                     // Vue compacte : graphiques puis liste avec bouton retour plus visible ET
-                    // SCROLLABLE
-                    Column(
-                            modifier =
-                                    Modifier.fillMaxWidth()
-                                            .verticalScroll(
-                                                    rememberScrollState()
-                                            ), // ✨ Rendre la vue principale scrollable
-                            verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
-                    ) {
-                        // 🔧 Bouton retour plus visible en mode compact
-
-                        // Graphique principal
-                        GraphiqueNuagePoints(
+                    // SCROLLABLE (sauf pour analyse_detaillee qui gère son propre scroll)
+                    if (ongletActif == "analyse_detaillee") {
+                        // ✨ Nouvelle vue détaillée - pas de scroll parent, le LazyColumn gère le scroll
+                        AnalyseDetailleeAlimentsView(
+                                aliments = aliments,
                                 alimentsAnalyses = alimentsAnalyses,
-                                ongletActif = ongletActif,
-                                alimentSelectionne = alimentSelectionne,
-                                nutrimentX = nutrimentX,
-                                nutrimentY = nutrimentY,
-                                useDryMatterPer100g = useDryMatterPer100g,
                                 referenceEv = referenceEv,
                                 equationRepository = equationRepository,
-                                modifier = Modifier.fillMaxWidth()
-                        )
-
-                        // ✨ Sélecteurs de nutriments pour l'onglet personnalisé (sous le graphique)
-                        if (ongletActif == "nutriments_perso") {
-                            Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
-                            Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement =
-                                            Arrangement.spacedBy(AppSizes.paddingMedium)
-                            ) {
-                                NutrimentSelector(
-                                        label = "Axe X",
-                                        selectedNutriment = nutrimentX,
-                                        onNutrimentSelected = { nutrimentX = it },
-                                        modifier = Modifier.weight(1f)
-                                )
-
-                                NutrimentSelector(
-                                        label = "Axe Y",
-                                        selectedNutriment = nutrimentY,
-                                        onNutrimentSelected = { nutrimentY = it },
-                                        modifier = Modifier.weight(1f)
-                                )
-                            }
-                        }
-
-                        // Liste des aliments (sans LazyColumn en mode compact)
-                        ListeAlimentsAnalyse(
-                                alimentsAnalyses = alimentsAnalyses,
+                                preferencesEspece = preferencesEspece,
+                                viewModel = viewModel,
+                                useDryMatterPer100g = useDryMatterPer100g,
                                 alimentSelectionne = alimentSelectionne,
                                 onAlimentSelected = { uuid -> alimentSelectionne = uuid },
-                                isCompactMode = true, // ✨ Mode compact = pas de LazyColumn
-                                modifier = Modifier.fillMaxWidth()
+                                onUseDryMatterPer100gChange = { newValue -> useDryMatterPer100g = newValue },
+                                modifier = Modifier.fillMaxSize()
                         )
-                    }
-                } else {
-                    // Vue large : côte à côte avec scroll uniquement sur la partie droite
-                    Row(
-                            modifier = Modifier.fillMaxSize(),
-                            horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
-                    ) {
-                        // Colonne gauche : liste des aliments (1/4 de la largeur)
+                    } else {
                         Column(
-                                modifier = Modifier
-                                    .weight(0.25f)
-                                    .fillMaxHeight(),
-                                verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
-                        ) {
-                            ListeAlimentsAnalyse(
-                                    alimentsAnalyses = alimentsAnalyses,
-                                    alimentSelectionne = alimentSelectionne,
-                                    onAlimentSelected = { uuid -> alimentSelectionne = uuid },
-                                    isCompactMode = false, // ✨ Mode large = avec LazyColumn
-                                    modifier = Modifier.fillMaxWidth()
-                            )
-                        }
-
-                        // Colonne droite : graphiques (3/4 de la largeur) avec scroll
-                        Column(
-                                modifier = Modifier
-                                    .weight(0.75f)
-                                    .fillMaxHeight()
-                                    .verticalScroll(rememberScrollState()),
+                                modifier =
+                                        Modifier.fillMaxWidth()
+                                                .verticalScroll(
+                                                        rememberScrollState()
+                                                ), // ✨ Rendre la vue principale scrollable
                                 verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
                         ) {
+                            // 🔧 Bouton retour plus visible en mode compact
+
+                            // Graphique principal
+                            // Graphique principal
                             GraphiqueNuagePoints(
                                     alimentsAnalyses = alimentsAnalyses,
                                     ongletActif = ongletActif,
@@ -1217,8 +1175,7 @@ fun AnalyseGraphiqueAlimentsView(
                                     modifier = Modifier.fillMaxWidth()
                             )
 
-                            // ✨ Sélecteurs de nutriments pour l'onglet personnalisé (sous le
-                            // graphique)
+                            // ✨ Sélecteurs de nutriments pour l'onglet personnalisé (sous le graphique)
                             if (ongletActif == "nutriments_perso") {
                                 Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
                                 Row(
@@ -1239,6 +1196,105 @@ fun AnalyseGraphiqueAlimentsView(
                                             onNutrimentSelected = { nutrimentY = it },
                                             modifier = Modifier.weight(1f)
                                     )
+                                }
+                            }
+
+                            // Liste des aliments (sans LazyColumn en mode compact)
+                            ListeAlimentsAnalyse(
+                                    alimentsAnalyses = alimentsAnalyses,
+                                    alimentSelectionne = alimentSelectionne,
+                                    onAlimentSelected = { uuid -> alimentSelectionne = uuid },
+                                    isCompactMode = true, // ✨ Mode compact = pas de LazyColumn
+                                    modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
+                } else {
+                    // Vue large : côte à côte avec scroll uniquement sur la partie droite
+                    Row(
+                            modifier = Modifier.fillMaxSize(),
+                            horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
+                    ) {
+                        // Colonne gauche : liste des aliments (1/4 de la largeur) - masquée pour l'analyse détaillée
+                        if (ongletActif != "analyse_detaillee") {
+                            Column(
+                                    modifier = Modifier
+                                        .weight(0.25f)
+                                        .fillMaxHeight(),
+                                    verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
+                            ) {
+                                ListeAlimentsAnalyse(
+                                        alimentsAnalyses = alimentsAnalyses,
+                                        alimentSelectionne = alimentSelectionne,
+                                        onAlimentSelected = { uuid -> alimentSelectionne = uuid },
+                                        isCompactMode = false, // ✨ Mode large = avec LazyColumn
+                                        modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+                        }
+
+                        // Colonne droite : graphiques (3/4 de la largeur) ou analyse détaillée (plein écran)
+                        if (ongletActif == "analyse_detaillee") {
+                            // ✨ Nouvelle vue détaillée - pas de scroll parent, le LazyColumn gère le scroll
+                            AnalyseDetailleeAlimentsView(
+                                    aliments = aliments,
+                                    alimentsAnalyses = alimentsAnalyses,
+                                    referenceEv = referenceEv,
+                                    equationRepository = equationRepository,
+                                    preferencesEspece = preferencesEspece,
+                                    viewModel = viewModel,
+                                    useDryMatterPer100g = useDryMatterPer100g,
+                                    alimentSelectionne = alimentSelectionne,
+                                    onAlimentSelected = { uuid -> alimentSelectionne = uuid },
+                                    onUseDryMatterPer100gChange = { newValue -> useDryMatterPer100g = newValue },
+                                    modifier = Modifier
+                                            .weight(1f)
+                                            .fillMaxHeight()
+                            )
+                        } else {
+                            // Graphiques avec scroll
+                            Column(
+                                    modifier = Modifier
+                                        .weight(0.75f)
+                                        .fillMaxHeight()
+                                        .verticalScroll(rememberScrollState()),
+                                    verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
+                            ) {
+                                GraphiqueNuagePoints(
+                                        alimentsAnalyses = alimentsAnalyses,
+                                        ongletActif = ongletActif,
+                                        alimentSelectionne = alimentSelectionne,
+                                        nutrimentX = nutrimentX,
+                                        nutrimentY = nutrimentY,
+                                        useDryMatterPer100g = useDryMatterPer100g,
+                                        referenceEv = referenceEv,
+                                        equationRepository = equationRepository,
+                                        modifier = Modifier.fillMaxWidth()
+                                )
+
+                                // ✨ Sélecteurs de nutriments pour l'onglet personnalisé (sous le
+                                // graphique)
+                                if (ongletActif == "nutriments_perso") {
+                                    Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
+                                    Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement =
+                                                    Arrangement.spacedBy(AppSizes.paddingMedium)
+                                    ) {
+                                        NutrimentSelector(
+                                                label = "Axe X",
+                                                selectedNutriment = nutrimentX,
+                                                onNutrimentSelected = { nutrimentX = it },
+                                                modifier = Modifier.weight(1f)
+                                        )
+
+                                        NutrimentSelector(
+                                                label = "Axe Y",
+                                                selectedNutriment = nutrimentY,
+                                                onNutrimentSelected = { nutrimentY = it },
+                                                modifier = Modifier.weight(1f)
+                                        )
+                                    }
                                 }
                             }
                         }
