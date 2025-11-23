@@ -1,16 +1,18 @@
 package fr.vetbrain.vetnutri_mp.View
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -135,26 +137,26 @@ fun HeatMapAlimentsView(
                     modifier = Modifier.padding(start = 4.dp)
             )
             Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
-            // Jaune (0.5 <= ratio < 1.0)
+            // Jaune (0.8 <= ratio < 1.0)
             Box(
                     modifier = Modifier
                             .size(16.dp)
                             .background(Color(0xFFFFEB3B))
             )
             Text(
-                    text = " 0.5-1.0",
+                    text = " 0.8-1.0",
                     style = MaterialTheme.typography.caption,
                     modifier = Modifier.padding(start = 4.dp)
             )
             Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
-            // Rouge (ratio < 0.5)
+            // Rouge (ratio < 0.8)
             Box(
                     modifier = Modifier
                             .size(16.dp)
                             .background(Color(0xFFF44336))
             )
             Text(
-                    text = " <0.5",
+                    text = " <0.8",
                     style = MaterialTheme.typography.caption,
                     modifier = Modifier.padding(start = 4.dp)
             )
@@ -162,109 +164,213 @@ fun HeatMapAlimentsView(
         
         Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
         
-        // Tableau HeatMap avec scroll horizontal et vertical
+        // Coefficient multiplicatif
+        var coefficientText by remember { mutableStateOf("1.0") }
+        var coefficient by remember { mutableStateOf(1.0) }
+        
+        Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall),
+                verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                    text = "Coefficient multiplicatif:",
+                    style = MaterialTheme.typography.body2,
+                    fontWeight = FontWeight.Medium
+            )
+            OutlinedTextField(
+                    value = coefficientText,
+                    onValueChange = { newValue ->
+                        // Filtrer pour n'accepter que les chiffres, point et virgule
+                        val texteFiltre = newValue.filter { char ->
+                            char.isDigit() || char == '.' || char == ','
+                        }
+                        // S'assurer qu'il n'y a qu'un seul séparateur décimal
+                        val pointCount = texteFiltre.count { it == '.' }
+                        val virguleCount = texteFiltre.count { it == ',' }
+                        if (pointCount <= 1 && virguleCount <= 1 && pointCount + virguleCount <= 1) {
+                            coefficientText = texteFiltre
+                            // Convertir en double et mettre à jour le coefficient
+                            val normalizedText = texteFiltre.replace(',', '.')
+                            val value = normalizedText.toDoubleOrNull()
+                            if (value != null && value > 0) {
+                                coefficient = value
+                            } else if (normalizedText.isEmpty() || normalizedText == ".") {
+                                coefficient = 1.0
+                            }
+                        }
+                    },
+                    label = { Text("Coefficient") },
+                    placeholder = { Text("Ex: 1,0 ou 1.0") },
+                    modifier = Modifier.width(120.dp),
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Decimal
+                    )
+            )
+            Text(
+                    text = "(appliqué à toutes les valeurs)",
+                    style = MaterialTheme.typography.caption,
+                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+            )
+        }
+        
+        Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
+        
+        // Tableau HeatMap avec scroll horizontal et vertical synchronisé parfaitement
+        // Utilisation de ScrollState standards (non Lazy) pour permettre le partage d'état
+        val verticalScrollState = rememberScrollState()
+        val horizontalScrollState = rememberScrollState()
+        
         Box(
                 modifier = Modifier
                         .fillMaxSize()
                         .background(MaterialTheme.colors.surface)
         ) {
-            LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(0.dp)
+            // 1. Grille de données (Zone principale)
+            // Elle définit le scroll vertical et horizontal maître
+            Box(
+                modifier = Modifier
+                    .padding(start = 150.dp, top = 48.dp) // Décalage pour les en-têtes
+                    .fillMaxSize()
             ) {
-                // En-tête fixe avec les noms des aliments
-                item {
+                // Conteneur scrollable verticalement
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(verticalScrollState)
+                ) {
+                    // Conteneur scrollable horizontalement (le contenu complet)
                     Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(0.dp)
+                        modifier = Modifier.horizontalScroll(horizontalScrollState)
                     ) {
-                        // Cellule vide pour le coin supérieur gauche
-                        Box(
-                                modifier = Modifier
-                                        .width(150.dp)
-                                        .height(48.dp)
-                                        .background(VetNutriColors.Primary.copy(alpha = 0.1f))
-                                        .padding(AppSizes.paddingXSmall),
-                                contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                    text = "Nutriment",
-                                    style = MaterialTheme.typography.caption,
-                                    fontWeight = FontWeight.Bold,
-                                    textAlign = TextAlign.Center
-                            )
-                        }
-                        
-                        // En-têtes des colonnes (aliments)
-                        heatMapData.aliments.forEach { alimentData ->
-                            Box(
-                                    modifier = Modifier
-                                            .width(120.dp)
-                                            .height(48.dp)
-                                            .background(VetNutriColors.Primary.copy(alpha = 0.1f))
-                                            .padding(AppSizes.paddingXSmall),
-                                    contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                        text = alimentData.nom,
-                                        style = MaterialTheme.typography.caption,
-                                        fontWeight = FontWeight.Bold,
-                                        textAlign = TextAlign.Center,
-                                        maxLines = 2
-                                )
+                        // La grille de données elle-même
+                        Column {
+                            heatMapData.nutriments.forEach { nutrimentData ->
+                                Row(
+                                    modifier = Modifier.height(40.dp)
+                                ) {
+                                    heatMapData.aliments.forEach { alimentData ->
+                                        val valeur = heatMapData.valeurs[nutrimentData.nutriment]?.get(alimentData.aliment.uuid) ?: 0.0
+                                        val valeurAvecCoefficient = valeur * coefficient
+                                        val couleur = calculerCouleurHeatMap(valeurAvecCoefficient)
+                                        
+                                        Box(
+                                                modifier = Modifier
+                                                        .width(120.dp)
+                                                        .fillMaxHeight()
+                                                        .background(couleur)
+                                                        .padding(AppSizes.paddingXSmall),
+                                                contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(
+                                                    text = if (valeur > 0) {
+                                                        GraphFormattingUtils.formatDecimal(valeurAvecCoefficient, 2)
+                                                    } else {
+                                                        "-"
+                                                    },
+                                                    style = MaterialTheme.typography.caption,
+                                                    textAlign = TextAlign.Center,
+                                                    color = if (valeur > 0) Color.Black else MaterialTheme.colors.onSurface.copy(alpha = 0.5f)
+                                            )
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
                 }
-                
-                // Lignes de données (nutriments)
-                items(heatMapData.nutriments) { nutrimentData ->
-                    Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(0.dp)
+            }
+
+            // 2. Colonne fixe à gauche (Noms des nutriments)
+            // Partage le verticalScrollState pour une synchro parfaite
+            Column(
+                    modifier = Modifier
+                            .width(150.dp)
+                            .padding(top = 48.dp) // Décalage pour l'en-tête
+                            .fillMaxHeight()
+                            .verticalScroll(verticalScrollState) // Même état que les données !
+            ) {
+                heatMapData.nutriments.forEach { nutrimentData ->
+                    Box(
+                            modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(40.dp)
+                                    .background(MaterialTheme.colors.surface)
+                                    .padding(AppSizes.paddingXSmall),
+                            contentAlignment = Alignment.CenterStart
                     ) {
-                        // Nom du nutriment (en-tête de ligne)
-                        Box(
-                                modifier = Modifier
-                                        .width(150.dp)
-                                        .height(40.dp)
-                                        .background(MaterialTheme.colors.surface)
-                                        .padding(AppSizes.paddingXSmall),
-                                contentAlignment = Alignment.CenterStart
+                        Column(
+                                verticalArrangement = Arrangement.spacedBy(2.dp)
                         ) {
                             Text(
                                     text = nutrimentData.nom,
                                     style = MaterialTheme.typography.caption,
                                     maxLines = 1
                             )
-                        }
-                        
-                        // Valeurs pour chaque aliment
-                        heatMapData.aliments.forEach { alimentData ->
-                            val valeur = heatMapData.valeurs[nutrimentData.nutriment]?.get(alimentData.aliment.uuid) ?: 0.0
-                            val couleur = calculerCouleurHeatMap(valeur)
-                            
-                            Box(
-                                    modifier = Modifier
-                                            .width(120.dp)
-                                            .height(40.dp)
-                                            .background(couleur)
-                                            .padding(AppSizes.paddingXSmall),
-                                    contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                        text = if (valeur > 0) {
-                                            GraphFormattingUtils.formatDecimal(valeur, 2)
-                                        } else {
-                                            "-"
-                                        },
-                                        style = MaterialTheme.typography.caption,
-                                        textAlign = TextAlign.Center,
-                                        color = if (valeur > 0) Color.Black else MaterialTheme.colors.onSurface.copy(alpha = 0.5f)
-                                )
-                            }
+                            Text(
+                                    text = if (nutrimentData.niveau == Reflevel.OPTIMIN) "OPTIMIN" else "MIN",
+                                    style = MaterialTheme.typography.overline,
+                                    color = if (nutrimentData.niveau == Reflevel.OPTIMIN) 
+                                        VetNutriColors.Primary 
+                                    else 
+                                        MaterialTheme.colors.onSurface.copy(alpha = 0.6f),
+                                    fontSize = 9.sp
+                            )
                         }
                     }
+                }
+            }
+            
+            // 3. En-tête fixe en haut (Noms des aliments)
+            // Partage le horizontalScrollState pour une synchro parfaite
+            Row(
+                modifier = Modifier
+                    .padding(start = 150.dp) // Décalage pour la colonne fixe
+                    .height(48.dp)
+                    .fillMaxWidth()
+                    .horizontalScroll(horizontalScrollState) // Même état que les données !
+            ) {
+                heatMapData.aliments.forEach { alimentData ->
+                    Box(
+                            modifier = Modifier
+                                    .width(120.dp)
+                                    .fillMaxHeight()
+                                    .background(VetNutriColors.Primary.copy(alpha = 0.1f))
+                                    .padding(AppSizes.paddingXSmall),
+                            contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                                text = alimentData.nom,
+                                style = MaterialTheme.typography.caption,
+                                fontWeight = FontWeight.Bold,
+                                textAlign = TextAlign.Center,
+                                maxLines = 2
+                        )
+                    }
+                }
+            }
+            
+            // 4. Coin supérieur gauche fixe (Label "Nutriment")
+            Box(
+                    modifier = Modifier
+                            .width(150.dp)
+                            .height(48.dp)
+                            .background(MaterialTheme.colors.surface) // Fond opaque pour cacher le scroll
+            ) {
+                Box(
+                        modifier = Modifier
+                                .fillMaxSize()
+                                .background(VetNutriColors.Primary.copy(alpha = 0.1f))
+                                .padding(AppSizes.paddingXSmall),
+                        contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                            text = "Nutriment",
+                            style = MaterialTheme.typography.caption,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center
+                    )
                 }
             }
         }
@@ -324,10 +430,11 @@ private fun calculerHeatMapData(
         val nom = nutriment.translateEnum()
         if (referenceEv.contientNutriment(nutriment, Reflevel.MIN) ||
                 referenceEv.contientNutriment(nutriment, Reflevel.OPTIMIN)) {
-            val niveau = if (referenceEv.contientNutriment(nutriment, Reflevel.MIN)) {
-                Reflevel.MIN
-            } else {
+            // Prioriser OPTIMIN si les deux existent, sinon utiliser celui qui existe
+            val niveau = if (referenceEv.contientNutriment(nutriment, Reflevel.OPTIMIN)) {
                 Reflevel.OPTIMIN
+            } else {
+                Reflevel.MIN
             }
             nutrimentsAvecReference.add(NutrimentHeatMap(nutriment, nom, niveau))
         }
@@ -338,10 +445,11 @@ private fun calculerHeatMapData(
         val nom = nutriment.translateEnum()
         if (referenceEv.contientNutriment(nutriment, Reflevel.MIN) ||
                 referenceEv.contientNutriment(nutriment, Reflevel.OPTIMIN)) {
-            val niveau = if (referenceEv.contientNutriment(nutriment, Reflevel.MIN)) {
-                Reflevel.MIN
-            } else {
+            // Prioriser OPTIMIN si les deux existent, sinon utiliser celui qui existe
+            val niveau = if (referenceEv.contientNutriment(nutriment, Reflevel.OPTIMIN)) {
                 Reflevel.OPTIMIN
+            } else {
+                Reflevel.MIN
             }
             nutrimentsAvecReference.add(NutrimentHeatMap(nutriment, nom, niveau))
         }
@@ -352,10 +460,11 @@ private fun calculerHeatMapData(
         val nom = nutriment.translateEnum()
         if (referenceEv.contientNutriment(nutriment, Reflevel.MIN) ||
                 referenceEv.contientNutriment(nutriment, Reflevel.OPTIMIN)) {
-            val niveau = if (referenceEv.contientNutriment(nutriment, Reflevel.MIN)) {
-                Reflevel.MIN
-            } else {
+            // Prioriser OPTIMIN si les deux existent, sinon utiliser celui qui existe
+            val niveau = if (referenceEv.contientNutriment(nutriment, Reflevel.OPTIMIN)) {
                 Reflevel.OPTIMIN
+            } else {
+                Reflevel.MIN
             }
             nutrimentsAvecReference.add(NutrimentHeatMap(nutriment, nom, niveau))
         }
@@ -366,10 +475,11 @@ private fun calculerHeatMapData(
         val nom = nutriment.translateEnum()
         if (referenceEv.contientNutriment(nutriment, Reflevel.MIN) ||
                 referenceEv.contientNutriment(nutriment, Reflevel.OPTIMIN)) {
-            val niveau = if (referenceEv.contientNutriment(nutriment, Reflevel.MIN)) {
-                Reflevel.MIN
-            } else {
+            // Prioriser OPTIMIN si les deux existent, sinon utiliser celui qui existe
+            val niveau = if (referenceEv.contientNutriment(nutriment, Reflevel.OPTIMIN)) {
                 Reflevel.OPTIMIN
+            } else {
+                Reflevel.MIN
             }
             nutrimentsAvecReference.add(NutrimentHeatMap(nutriment, nom, niveau))
         }
@@ -380,10 +490,11 @@ private fun calculerHeatMapData(
         val nom = nutriment.translateEnum()
         if (referenceEv.contientNutriment(nutriment, Reflevel.MIN) ||
                 referenceEv.contientNutriment(nutriment, Reflevel.OPTIMIN)) {
-            val niveau = if (referenceEv.contientNutriment(nutriment, Reflevel.MIN)) {
-                Reflevel.MIN
-            } else {
+            // Prioriser OPTIMIN si les deux existent, sinon utiliser celui qui existe
+            val niveau = if (referenceEv.contientNutriment(nutriment, Reflevel.OPTIMIN)) {
                 Reflevel.OPTIMIN
+            } else {
+                Reflevel.MIN
             }
             nutrimentsAvecReference.add(NutrimentHeatMap(nutriment, nom, niveau))
         }
@@ -394,10 +505,11 @@ private fun calculerHeatMapData(
         val nom = nutriment.translateEnum()
         if (referenceEv.contientNutriment(nutriment, Reflevel.MIN) ||
                 referenceEv.contientNutriment(nutriment, Reflevel.OPTIMIN)) {
-            val niveau = if (referenceEv.contientNutriment(nutriment, Reflevel.MIN)) {
-                Reflevel.MIN
-            } else {
+            // Prioriser OPTIMIN si les deux existent, sinon utiliser celui qui existe
+            val niveau = if (referenceEv.contientNutriment(nutriment, Reflevel.OPTIMIN)) {
                 Reflevel.OPTIMIN
+            } else {
+                Reflevel.MIN
             }
             nutrimentsAvecReference.add(NutrimentHeatMap(nutriment, nom, niveau))
         }
@@ -408,10 +520,11 @@ private fun calculerHeatMapData(
         val nom = nutriment.translateEnum()
         if (referenceEv.contientNutriment(nutriment, Reflevel.MIN) ||
                 referenceEv.contientNutriment(nutriment, Reflevel.OPTIMIN)) {
-            val niveau = if (referenceEv.contientNutriment(nutriment, Reflevel.MIN)) {
-                Reflevel.MIN
-            } else {
+            // Prioriser OPTIMIN si les deux existent, sinon utiliser celui qui existe
+            val niveau = if (referenceEv.contientNutriment(nutriment, Reflevel.OPTIMIN)) {
                 Reflevel.OPTIMIN
+            } else {
+                Reflevel.MIN
             }
             nutrimentsAvecReference.add(NutrimentHeatMap(nutriment, nom, niveau))
         }
@@ -452,10 +565,21 @@ private fun calculerHeatMapData(
         valeursMap[nutrimentData.nutriment] = valeursAliment
     }
     
+    // Filtrer les nutriments qui n'ont aucune valeur > 0 dans aucun aliment
+    val nutrimentsFiltres = nutrimentsAvecReference.filter { nutrimentData ->
+        val valeurs = valeursMap[nutrimentData.nutriment] ?: emptyMap()
+        valeurs.values.any { it > 0.0 }
+    }
+    
+    // Filtrer aussi les valeurs pour ne garder que celles des nutriments filtrés
+    val valeursMapFiltree = valeursMap.filterKeys { nutriment ->
+        nutrimentsFiltres.any { it.nutriment == nutriment }
+    }
+    
     return HeatMapData(
-            nutriments = nutrimentsAvecReference,
+            nutriments = nutrimentsFiltres,
             aliments = alimentsHeatMap,
-            valeurs = valeursMap
+            valeurs = valeursMapFiltree
     )
 }
 
@@ -482,7 +606,8 @@ private suspend fun calculerRatioHeatMap(
             weight = 1.0
     )
     
-    val concentrationNutriment = when (nutriment) {
+    // Obtenir la valeur brute du nutriment (en % de protéines pour les acides aminés)
+    val valeurBruteNutriment = when (nutriment) {
         is NutrientMain -> alimentRation.getNutrientWithComplementary(
                 nutriment, preferencesEspece, equationRepository, referenceEv
         ) ?: 0.0
@@ -498,9 +623,16 @@ private suspend fun calculerRatioHeatMap(
         is NutrientLipid -> alimentRation.getNutrientWithComplementary(
                 nutriment, preferencesEspece, equationRepository, referenceEv
         ) ?: 0.0
-        is AAEnum -> alimentRation.getNutrientWithComplementary(
-                nutriment, preferencesEspece, equationRepository, referenceEv
-        ) ?: 0.0
+        is AAEnum -> {
+            // Pour les acides aminés, la valeur est en % de protéines, il faut convertir en valeur absolue
+            // (même logique que dans RationNutrientAnalyzer.kt ligne 313-316)
+            val valeurPourcentProteines = alimentRation.getNutrientWithComplementary(
+                    nutriment, preferencesEspece, equationRepository, referenceEv
+            ) ?: 0.0
+            val teneurProteines = alimentRation.aliment?.getNutrient(NutrientMain.PROTEINE) ?: 0.0
+            // Convertir de % de protéines vers g/100g d'aliment
+            (valeurPourcentProteines * teneurProteines) / 100.0
+        }
         is NutrientOther -> alimentRation.getNutrientWithComplementary(
                 nutriment, preferencesEspece, equationRepository, referenceEv
         ) ?: 0.0
@@ -509,7 +641,7 @@ private suspend fun calculerRatioHeatMap(
     
     // Convertir en g/1000kcal
     val concentrationPer1000Kcal = if (densiteEnergetique > 0) {
-        (concentrationNutriment * 1000.0) / densiteEnergetique
+        (valeurBruteNutriment * 1000.0) / densiteEnergetique
     } else {
         0.0
     }
@@ -585,7 +717,7 @@ private fun calculerBesoinAbsoluHeatMap(
 private fun calculerCouleurHeatMap(ratio: Double): Color {
     return when {
         ratio <= 0.0 -> Color.Transparent // Pas de données
-        ratio < 0.5 -> Color(0xFFF44336) // Rouge - carence importante
+        ratio < 0.8 -> Color(0xFFF44336) // Rouge - carence importante
         ratio < 1.0 -> Color(0xFFFFEB3B) // Jaune - carence modérée
         else -> Color(0xFF4CAF50) // Vert - besoin satisfait
     }
