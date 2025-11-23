@@ -2,6 +2,7 @@ package fr.vetbrain.vetnutri_mp.View
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.wrapContentSize
@@ -931,7 +932,9 @@ fun AnalyseGraphiqueAlimentsView(
 
         // Onglets pour choisir le type de graphique
         Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             // ✨ Onglet Histogramme Densité Énergétique (PREMIER)
@@ -946,8 +949,7 @@ fun AnalyseGraphiqueAlimentsView(
                                     contentColor =
                                             if (ongletActif == "densite_energetique") Color.White
                                             else Color.Black
-                            ),
-                    modifier = Modifier.weight(1f)
+                            )
             ) { Text("Densité énergétique") }
 
             // Onglet Protéines/Lipides
@@ -962,8 +964,7 @@ fun AnalyseGraphiqueAlimentsView(
                                     contentColor =
                                             if (ongletActif == "protein_lipid") Color.White
                                             else Color.Black
-                            ),
-                    modifier = Modifier.weight(1f)
+                            )
             ) { Text("Protéines/Lipides (%)") }
 
             // Onglet Phosphore/Protéines
@@ -978,8 +979,7 @@ fun AnalyseGraphiqueAlimentsView(
                                     contentColor =
                                             if (ongletActif == "phosphore_protein") Color.White
                                             else Color.Black
-                            ),
-                    modifier = Modifier.weight(1f)
+                            )
             ) { Text("Phosphore/Protéines") }
 
             // Onglet Calcium/Phosphore
@@ -994,8 +994,7 @@ fun AnalyseGraphiqueAlimentsView(
                                     contentColor =
                                             if (ongletActif == "calcium_phosphore") Color.White
                                             else Color.Black
-                            ),
-                    modifier = Modifier.weight(1f)
+                            )
             ) { Text("Calcium/Phosphore") }
 
             // ✨ Nouvel onglet Nutriments personnalisés
@@ -1010,8 +1009,7 @@ fun AnalyseGraphiqueAlimentsView(
                                     contentColor =
                                             if (ongletActif == "nutriments_perso") Color.White
                                             else Color.Black
-                            ),
-                    modifier = Modifier.weight(1f)
+                            )
             ) { Text("Nutriments\npersonnalisés") }
 
             // ✨ Nouvel onglet Analyse détaillée
@@ -1026,8 +1024,7 @@ fun AnalyseGraphiqueAlimentsView(
                                     contentColor =
                                             if (ongletActif == "analyse_detaillee") Color.White
                                             else Color.Black
-                            ),
-                    modifier = Modifier.weight(1f)
+                            )
             ) { Text("Analyse\ndétaillée") }
 
             // ✨ Nouvel onglet HeatMap
@@ -1042,8 +1039,7 @@ fun AnalyseGraphiqueAlimentsView(
                                     contentColor =
                                             if (ongletActif == "heatmap") Color.White
                                             else Color.Black
-                            ),
-                    modifier = Modifier.weight(1f)
+                            )
             ) { Text("HeatMap") }
         }
 

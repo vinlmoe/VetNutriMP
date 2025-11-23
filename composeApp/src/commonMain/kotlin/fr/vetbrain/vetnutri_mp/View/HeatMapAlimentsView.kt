@@ -8,6 +8,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
 import androidx.compose.runtime.*
+import fr.vetbrain.vetnutri_mp.Components.BasicNumberTextField
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -113,106 +114,91 @@ fun HeatMapAlimentsView(
             return
         }
         
-        // Légende des couleurs
-        Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                    text = "Légende: ",
-                    style = MaterialTheme.typography.caption,
-                    fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
-            // Vert (ratio >= 1.0)
-            Box(
-                    modifier = Modifier
-                            .size(16.dp)
-                            .background(Color(0xFF4CAF50))
-            )
-            Text(
-                    text = " ≥1.0",
-                    style = MaterialTheme.typography.caption,
-                    modifier = Modifier.padding(start = 4.dp)
-            )
-            Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
-            // Jaune (0.8 <= ratio < 1.0)
-            Box(
-                    modifier = Modifier
-                            .size(16.dp)
-                            .background(Color(0xFFFFEB3B))
-            )
-            Text(
-                    text = " 0.8-1.0",
-                    style = MaterialTheme.typography.caption,
-                    modifier = Modifier.padding(start = 4.dp)
-            )
-            Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
-            // Rouge (ratio < 0.8)
-            Box(
-                    modifier = Modifier
-                            .size(16.dp)
-                            .background(Color(0xFFF44336))
-            )
-            Text(
-                    text = " <0.8",
-                    style = MaterialTheme.typography.caption,
-                    modifier = Modifier.padding(start = 4.dp)
-            )
-        }
-        
-        Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
-        
-        // Coefficient multiplicatif
+        // Coefficient multiplicatif et Légende sur la même ligne
         var coefficientText by remember { mutableStateOf("1.0") }
         var coefficient by remember { mutableStateOf(1.0) }
         
         Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall),
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                    text = "Coefficient multiplicatif:",
-                    style = MaterialTheme.typography.body2,
-                    fontWeight = FontWeight.Medium
-            )
-            OutlinedTextField(
-                    value = coefficientText,
-                    onValueChange = { newValue ->
-                        // Filtrer pour n'accepter que les chiffres, point et virgule
-                        val texteFiltre = newValue.filter { char ->
-                            char.isDigit() || char == '.' || char == ','
-                        }
-                        // S'assurer qu'il n'y a qu'un seul séparateur décimal
-                        val pointCount = texteFiltre.count { it == '.' }
-                        val virguleCount = texteFiltre.count { it == ',' }
-                        if (pointCount <= 1 && virguleCount <= 1 && pointCount + virguleCount <= 1) {
-                            coefficientText = texteFiltre
+            // Légende des couleurs (à gauche)
+            Row(
+                    verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                        text = "Légende: ",
+                        style = MaterialTheme.typography.caption,
+                        fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
+                // Vert (ratio >= 1.0)
+                Box(
+                        modifier = Modifier
+                                .size(16.dp)
+                                .background(Color(0xFF4CAF50))
+                )
+                Text(
+                        text = " ≥1.0",
+                        style = MaterialTheme.typography.caption,
+                        modifier = Modifier.padding(start = 4.dp)
+                )
+                Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
+                // Jaune (0.8 <= ratio < 1.0)
+                Box(
+                        modifier = Modifier
+                                .size(16.dp)
+                                .background(Color(0xFFFFEB3B))
+                )
+                Text(
+                        text = " 0.8-1.0",
+                        style = MaterialTheme.typography.caption,
+                        modifier = Modifier.padding(start = 4.dp)
+                )
+                Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
+                // Rouge (ratio < 0.8)
+                Box(
+                        modifier = Modifier
+                                .size(16.dp)
+                                .background(Color(0xFFF44336))
+                )
+                Text(
+                        text = " <0.8",
+                        style = MaterialTheme.typography.caption,
+                        modifier = Modifier.padding(start = 4.dp)
+                )
+            }
+            
+            // Coefficient multiplicatif (à droite)
+            Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
+            ) {
+                Text(
+                        text = "Coeff.:",
+                        style = MaterialTheme.typography.body2,
+                        fontWeight = FontWeight.Medium
+                )
+                BasicNumberTextField(
+                        value = coefficientText,
+                        onValueChange = { newValue ->
+                            coefficientText = newValue
                             // Convertir en double et mettre à jour le coefficient
-                            val normalizedText = texteFiltre.replace(',', '.')
+                            val normalizedText = newValue.replace(',', '.')
                             val value = normalizedText.toDoubleOrNull()
                             if (value != null && value > 0) {
                                 coefficient = value
                             } else if (normalizedText.isEmpty() || normalizedText == ".") {
                                 coefficient = 1.0
                             }
-                        }
-                    },
-                    label = { Text("Coefficient") },
-                    placeholder = { Text("Ex: 1,0 ou 1.0") },
-                    modifier = Modifier.width(120.dp),
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Decimal
-                    )
-            )
-            Text(
-                    text = "(appliqué à toutes les valeurs)",
-                    style = MaterialTheme.typography.caption,
-                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
-            )
+                        },
+                        placeholder = "1.0",
+                        modifier = Modifier.width(80.dp),
+                        allowDecimals = true,
+                        allowNegative = false
+                )
+            }
         }
         
         Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
@@ -308,15 +294,26 @@ fun HeatMapAlimentsView(
                                     style = MaterialTheme.typography.caption,
                                     maxLines = 1
                             )
-                            Text(
-                                    text = if (nutrimentData.niveau == Reflevel.OPTIMIN) "OPTIMIN" else "MIN",
-                                    style = MaterialTheme.typography.overline,
-                                    color = if (nutrimentData.niveau == Reflevel.OPTIMIN) 
-                                        VetNutriColors.Primary 
-                                    else 
-                                        MaterialTheme.colors.onSurface.copy(alpha = 0.6f),
-                                    fontSize = 9.sp
-                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                        text = if (nutrimentData.niveau == Reflevel.OPTIMIN) "OPTIMIN" else "MIN",
+                                        style = MaterialTheme.typography.overline,
+                                        color = if (nutrimentData.niveau == Reflevel.OPTIMIN) 
+                                            VetNutriColors.Primary 
+                                        else 
+                                            MaterialTheme.colors.onSurface.copy(alpha = 0.6f),
+                                        fontSize = 9.sp
+                                )
+                                if (nutrimentData.valeurReferenceDisplay.isNotEmpty()) {
+                                    Spacer(modifier = Modifier.width(2.dp))
+                                    Text(
+                                            text = "(${nutrimentData.valeurReferenceDisplay})",
+                                            style = MaterialTheme.typography.caption,
+                                            color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f),
+                                            fontSize = 9.sp
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -392,7 +389,8 @@ private data class HeatMapData(
 private data class NutrimentHeatMap(
         val nutriment: Nutrient,
         val nom: String,
-        val niveau: Reflevel
+        val niveau: Reflevel,
+        val valeurReferenceDisplay: String = "" // Valeur de référence formatée (ex: "2.5 g/1000kcal")
 )
 
 /**
@@ -422,6 +420,30 @@ private fun calculerHeatMapData(
     // Récupérer tous les nutriments avec MIN ou OPTIMIN dans la référence
     val nutrimentsAvecReference = mutableListOf<NutrimentHeatMap>()
     
+    // Fonction locale pour calculer et formater la valeur de référence
+    fun calculerEtFormaterReference(nutriment: Nutrient, niveau: Reflevel): String {
+        val valeurRef = referenceEv.obtenirNutriment(nutriment, niveau)
+        if (valeurRef < 0) return ""
+        
+        val uniteRefId = referenceEv.obtenirUniteNutriment(nutriment, niveau)
+        val uniteRef = UnitReqEnum.getById(uniteRefId)
+        
+        val besoinAbsolu = calculerBesoinAbsoluHeatMap(
+                valeurRef = valeurRef,
+                uniteRef = uniteRef,
+                besoinEnergetiqueEntretien = besoinEnergetiqueEntretien,
+                poidsAnimal = poidsAnimal,
+                poidsMetabolique = poidsMetabolique
+        ) ?: return ""
+        
+        val besoinPer1000Kcal = (besoinAbsolu * 1000.0) / besoinEnergetiqueEntretien
+        
+        // Utiliser l'unité définie dans l'enum du nutriment
+        val uniteAffichage = nutriment.unite
+        
+        return "${GraphFormattingUtils.formatDecimal(besoinPer1000Kcal, 2)} $uniteAffichage"
+    }
+    
     // Parcourir tous les types de nutriments possibles
     val tousLesNutriments = mutableListOf<Pair<Any, String>>()
     
@@ -436,7 +458,8 @@ private fun calculerHeatMapData(
             } else {
                 Reflevel.MIN
             }
-            nutrimentsAvecReference.add(NutrimentHeatMap(nutriment, nom, niveau))
+            val valeurDisplay = calculerEtFormaterReference(nutriment, niveau)
+            nutrimentsAvecReference.add(NutrimentHeatMap(nutriment, nom, niveau, valeurDisplay))
         }
     }
     
@@ -451,7 +474,8 @@ private fun calculerHeatMapData(
             } else {
                 Reflevel.MIN
             }
-            nutrimentsAvecReference.add(NutrimentHeatMap(nutriment, nom, niveau))
+            val valeurDisplay = calculerEtFormaterReference(nutriment, niveau)
+            nutrimentsAvecReference.add(NutrimentHeatMap(nutriment, nom, niveau, valeurDisplay))
         }
     }
     
@@ -466,7 +490,8 @@ private fun calculerHeatMapData(
             } else {
                 Reflevel.MIN
             }
-            nutrimentsAvecReference.add(NutrimentHeatMap(nutriment, nom, niveau))
+            val valeurDisplay = calculerEtFormaterReference(nutriment, niveau)
+            nutrimentsAvecReference.add(NutrimentHeatMap(nutriment, nom, niveau, valeurDisplay))
         }
     }
     
@@ -481,7 +506,8 @@ private fun calculerHeatMapData(
             } else {
                 Reflevel.MIN
             }
-            nutrimentsAvecReference.add(NutrimentHeatMap(nutriment, nom, niveau))
+            val valeurDisplay = calculerEtFormaterReference(nutriment, niveau)
+            nutrimentsAvecReference.add(NutrimentHeatMap(nutriment, nom, niveau, valeurDisplay))
         }
     }
     
@@ -496,7 +522,8 @@ private fun calculerHeatMapData(
             } else {
                 Reflevel.MIN
             }
-            nutrimentsAvecReference.add(NutrimentHeatMap(nutriment, nom, niveau))
+            val valeurDisplay = calculerEtFormaterReference(nutriment, niveau)
+            nutrimentsAvecReference.add(NutrimentHeatMap(nutriment, nom, niveau, valeurDisplay))
         }
     }
     
@@ -511,7 +538,8 @@ private fun calculerHeatMapData(
             } else {
                 Reflevel.MIN
             }
-            nutrimentsAvecReference.add(NutrimentHeatMap(nutriment, nom, niveau))
+            val valeurDisplay = calculerEtFormaterReference(nutriment, niveau)
+            nutrimentsAvecReference.add(NutrimentHeatMap(nutriment, nom, niveau, valeurDisplay))
         }
     }
     
@@ -526,7 +554,8 @@ private fun calculerHeatMapData(
             } else {
                 Reflevel.MIN
             }
-            nutrimentsAvecReference.add(NutrimentHeatMap(nutriment, nom, niveau))
+            val valeurDisplay = calculerEtFormaterReference(nutriment, niveau)
+            nutrimentsAvecReference.add(NutrimentHeatMap(nutriment, nom, niveau, valeurDisplay))
         }
     }
     
