@@ -19,6 +19,8 @@ import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ZoomIn
 import androidx.compose.material.icons.filled.ZoomOut
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import kotlinx.coroutines.launch
@@ -668,6 +670,9 @@ fun AnalyseGraphiqueAlimentsView(
 
     // État pour l'aliment sélectionné (UUID de l'aliment)
     var alimentSelectionne by remember { mutableStateOf<String?>(null) }
+    
+    // État pour les aliments masqués (Set d'UUIDs)
+    var alimentsMasques by remember { mutableStateOf<Set<String>>(emptySet()) }
 
     // État pour l'onglet actif
     var ongletActif by remember { mutableStateOf("densite_energetique") }
@@ -1161,7 +1166,7 @@ fun AnalyseGraphiqueAlimentsView(
                         // ✨ Nouvelle vue détaillée - pas de scroll parent, le LazyColumn gère le scroll
                         AnalyseDetailleeAlimentsView(
                                 aliments = aliments,
-                                alimentsAnalyses = alimentsAnalyses,
+                                alimentsAnalyses = alimentsAnalyses.filter { it.aliment.uuid !in alimentsMasques },
                                 referenceEv = referenceEv,
                                 equationRepository = equationRepository,
                                 preferencesEspece = preferencesEspece,
@@ -1176,7 +1181,7 @@ fun AnalyseGraphiqueAlimentsView(
                         // ✨ Vue HeatMap - pas de scroll parent, le LazyColumn gère le scroll
                         HeatMapAlimentsView(
                                 aliments = aliments,
-                                alimentsAnalyses = alimentsAnalyses,
+                                alimentsAnalyses = alimentsAnalyses.filter { it.aliment.uuid !in alimentsMasques },
                                 referenceEv = referenceEv,
                                 equationRepository = equationRepository,
                                 preferencesEspece = preferencesEspece,
@@ -1199,7 +1204,7 @@ fun AnalyseGraphiqueAlimentsView(
                             // Graphique principal
                             // Graphique principal
                             GraphiqueNuagePoints(
-                                    alimentsAnalyses = alimentsAnalyses,
+                                    alimentsAnalyses = alimentsAnalyses.filter { it.aliment.uuid !in alimentsMasques },
                                     ongletActif = ongletActif,
                                     alimentSelectionne = alimentSelectionne,
                                     nutrimentX = nutrimentX,
@@ -1238,7 +1243,15 @@ fun AnalyseGraphiqueAlimentsView(
                             ListeAlimentsAnalyse(
                                     alimentsAnalyses = alimentsAnalyses,
                                     alimentSelectionne = alimentSelectionne,
+                                    alimentsMasques = alimentsMasques,
                                     onAlimentSelected = { uuid -> alimentSelectionne = uuid },
+                                    onToggleHidden = { uuid, isHidden ->
+                                        alimentsMasques = if (isHidden) {
+                                            alimentsMasques + uuid
+                                        } else {
+                                            alimentsMasques - uuid
+                                        }
+                                    },
                                     isCompactMode = true, // ✨ Mode compact = pas de LazyColumn
                                     modifier = Modifier.fillMaxWidth()
                             )
@@ -1261,7 +1274,15 @@ fun AnalyseGraphiqueAlimentsView(
                                 ListeAlimentsAnalyse(
                                         alimentsAnalyses = alimentsAnalyses,
                                         alimentSelectionne = alimentSelectionne,
+                                        alimentsMasques = alimentsMasques,
                                         onAlimentSelected = { uuid -> alimentSelectionne = uuid },
+                                        onToggleHidden = { uuid, isHidden ->
+                                            alimentsMasques = if (isHidden) {
+                                                alimentsMasques + uuid
+                                            } else {
+                                                alimentsMasques - uuid
+                                            }
+                                        },
                                         isCompactMode = false, // ✨ Mode large = avec LazyColumn
                                         modifier = Modifier.fillMaxWidth()
                                 )
@@ -1273,7 +1294,7 @@ fun AnalyseGraphiqueAlimentsView(
                             // ✨ Nouvelle vue détaillée - pas de scroll parent, le LazyColumn gère le scroll
                             AnalyseDetailleeAlimentsView(
                                     aliments = aliments,
-                                    alimentsAnalyses = alimentsAnalyses,
+                                    alimentsAnalyses = alimentsAnalyses.filter { it.aliment.uuid !in alimentsMasques },
                                     referenceEv = referenceEv,
                                     equationRepository = equationRepository,
                                     preferencesEspece = preferencesEspece,
@@ -1290,7 +1311,7 @@ fun AnalyseGraphiqueAlimentsView(
                             // ✨ Vue HeatMap - pas de scroll parent, le LazyColumn gère le scroll
                             HeatMapAlimentsView(
                                     aliments = aliments,
-                                    alimentsAnalyses = alimentsAnalyses,
+                                    alimentsAnalyses = alimentsAnalyses.filter { it.aliment.uuid !in alimentsMasques },
                                     referenceEv = referenceEv,
                                     equationRepository = equationRepository,
                                     preferencesEspece = preferencesEspece,
@@ -1311,7 +1332,7 @@ fun AnalyseGraphiqueAlimentsView(
                                     verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
                             ) {
                                 GraphiqueNuagePoints(
-                                        alimentsAnalyses = alimentsAnalyses,
+                                        alimentsAnalyses = alimentsAnalyses.filter { it.aliment.uuid !in alimentsMasques },
                                         ongletActif = ongletActif,
                                         alimentSelectionne = alimentSelectionne,
                                         nutrimentX = nutrimentX,
@@ -2352,7 +2373,9 @@ private fun GraphiqueNuagePoints(
 private fun AlimentRow(
         data: AlimentAnalyseData,
         isSelected: Boolean,
-        onAlimentSelected: (String?) -> Unit
+        isHidden: Boolean,
+        onAlimentSelected: (String?) -> Unit,
+        onToggleHidden: (String, Boolean) -> Unit
 ) {
     Row(
             modifier =
@@ -2375,7 +2398,7 @@ private fun AlimentRow(
                 fontWeight = FontWeight.Bold,
                 color = VetNutriColors.Primary
         )
-        Column(modifier = Modifier.weight(0.4f)) {
+        Column(modifier = Modifier.weight(0.6f)) {
                 Text(
                         text = data.aliment.nom ?: "Sans nom",
                         style = MaterialTheme.typography.caption,
@@ -2389,15 +2412,22 @@ private fun AlimentRow(
                 )
         }
         Text(
-                text = data.aliment.gamme ?: "-",
-                modifier = Modifier.weight(0.25f),
-                style = MaterialTheme.typography.caption
-        )
-        Text(
                 text = data.aliment.brand ?: "-",
-                modifier = Modifier.weight(0.25f),
+                modifier = Modifier.weight(0.3f),
                 style = MaterialTheme.typography.caption
         )
+        // Icône pour masquer/afficher l'aliment avec checkbox réduite
+        IconButton(
+                onClick = { onToggleHidden(data.aliment.uuid, !isHidden) },
+                modifier = Modifier.size(32.dp)
+        ) {
+            Icon(
+                    imageVector = if (isHidden) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                    contentDescription = if (isHidden) "Afficher l'aliment" else "Masquer l'aliment",
+                    modifier = Modifier.size(20.dp),
+                    tint = if (isHidden) MaterialTheme.colors.onSurface.copy(alpha = 0.5f) else VetNutriColors.Primary
+            )
+        }
     }
 }
 
@@ -2406,7 +2436,9 @@ private fun AlimentRow(
 private fun ListeAlimentsAnalyse(
         alimentsAnalyses: List<AlimentAnalyseData>,
         alimentSelectionne: String? = null,
+        alimentsMasques: Set<String> = emptySet(),
         onAlimentSelected: (String?) -> Unit = {},
+        onToggleHidden: (String, Boolean) -> Unit = { _, _ -> },
         isCompactMode: Boolean = false, // ✨ Mode compact pour éviter les conflits de scroll
         modifier: Modifier = Modifier
 ) {
@@ -2435,22 +2467,18 @@ private fun ListeAlimentsAnalyse(
                     )
                     Text(
                             text = "Nom",
-                            modifier = Modifier.weight(0.4f),
-                            style = MaterialTheme.typography.caption,
-                            fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                            text = "Gamme",
-                            modifier = Modifier.weight(0.25f),
+                            modifier = Modifier.weight(0.6f),
                             style = MaterialTheme.typography.caption,
                             fontWeight = FontWeight.Bold
                     )
                     Text(
                             text = "Marque",
-                            modifier = Modifier.weight(0.25f),
+                            modifier = Modifier.weight(0.3f),
                             style = MaterialTheme.typography.caption,
                             fontWeight = FontWeight.Bold
                     )
+                    // Espace pour l'icône de visibilité (pas de texte)
+                    Spacer(modifier = Modifier.width(32.dp))
                 }
 
                 Divider(modifier = Modifier.padding(vertical = AppSizes.paddingSmall))
@@ -2463,7 +2491,9 @@ private fun ListeAlimentsAnalyse(
                             AlimentRow(
                                     data = data,
                                     isSelected = data.aliment.uuid == alimentSelectionne,
-                                    onAlimentSelected = onAlimentSelected
+                                    isHidden = data.aliment.uuid in alimentsMasques,
+                                    onAlimentSelected = onAlimentSelected,
+                                    onToggleHidden = onToggleHidden
                             )
                         }
                     }
@@ -2477,7 +2507,9 @@ private fun ListeAlimentsAnalyse(
                             AlimentRow(
                                     data = data,
                                     isSelected = data.aliment.uuid == alimentSelectionne,
-                                    onAlimentSelected = onAlimentSelected
+                                    isHidden = data.aliment.uuid in alimentsMasques,
+                                    onAlimentSelected = onAlimentSelected,
+                                    onToggleHidden = onToggleHidden
                             )
                         }
                     }
