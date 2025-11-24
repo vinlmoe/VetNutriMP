@@ -26,6 +26,7 @@ import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.GraphFormattingUtils
+import fr.vetbrain.vetnutri_mp.Utils.NumberUtils
 import kotlinx.coroutines.launch
 
 /**
@@ -458,9 +459,9 @@ private fun NutrientRow(
         )
         Text(
                 text = if (unit.isEmpty()) {
-                    String.format("%.2f", valeur)
+                    NumberUtils.format(valeur, 2)
                 } else {
-                    "${String.format("%.2f", valeur)} $unit"
+                    "${NumberUtils.format(valeur, 2)} $unit"
                 },
                 style = MaterialTheme.typography.body2,
                 fontWeight = FontWeight.Medium,
