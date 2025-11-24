@@ -34,11 +34,11 @@ kotlin {
             baseName = "ComposeApp"
             isStatic = true
             linkerOpts.add("-lsqlite3")
+            binaryOption("bundleId", "fr.vetbrain.vetnutri")
         }
         // Configuration iOS - Configuration basique uniquement
         iosTarget.compilerOptions {
             freeCompilerArgs.addAll(
-                    "-Xruntime-logs=all",
                     // C'est l'argument qui désactive la phase gourmande en mémoire
                     "-Xdisable-phases=DevirtualizationAnalysis,DCEPhase,StaticInitializersOptimization,RemoveRedundantCallsToStaticInitializersPhase"
             )

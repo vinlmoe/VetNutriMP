@@ -1,0 +1,53 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.14/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+Type-safe project accessors is an incubating feature.
+> Task :composeApp:kmpPartiallyResolvedDependenciesChecker
+> Task :composeApp:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :composeApp:convertXmlValueResourcesForAppleMain NO-SOURCE
+> Task :composeApp:copyNonXmlValueResourcesForAppleMain NO-SOURCE
+> Task :composeApp:prepareComposeResourcesTaskForAppleMain NO-SOURCE
+> Task :composeApp:generateResourceAccessorsForAppleMain NO-SOURCE
+> Task :composeApp:convertXmlValueResourcesForCommonMain NO-SOURCE
+> Task :composeApp:copyNonXmlValueResourcesForCommonMain UP-TO-DATE
+> Task :composeApp:prepareComposeResourcesTaskForCommonMain UP-TO-DATE
+> Task :composeApp:generateResourceAccessorsForCommonMain UP-TO-DATE
+> Task :composeApp:convertXmlValueResourcesForIosArm64Main NO-SOURCE
+> Task :composeApp:copyNonXmlValueResourcesForIosArm64Main NO-SOURCE
+> Task :composeApp:prepareComposeResourcesTaskForIosArm64Main NO-SOURCE
+> Task :composeApp:generateResourceAccessorsForIosArm64Main NO-SOURCE
+> Task :composeApp:convertXmlValueResourcesForIosMain NO-SOURCE
+> Task :composeApp:copyNonXmlValueResourcesForIosMain NO-SOURCE
+> Task :composeApp:prepareComposeResourcesTaskForIosMain NO-SOURCE
+> Task :composeApp:generateResourceAccessorsForIosMain NO-SOURCE
+> Task :composeApp:convertXmlValueResourcesForNativeMain NO-SOURCE
+> Task :composeApp:copyNonXmlValueResourcesForNativeMain NO-SOURCE
+> Task :composeApp:prepareComposeResourcesTaskForNativeMain NO-SOURCE
+> Task :composeApp:generateResourceAccessorsForNativeMain NO-SOURCE
+> Task :composeApp:generateActualResourceCollectorsForIosArm64Main UP-TO-DATE
+> Task :composeApp:generateComposeResClass UP-TO-DATE
+> Task :composeApp:generateExpectResourceCollectorsForCommonMain UP-TO-DATE
+> Task :composeApp:kspKotlinIosArm64 UP-TO-DATE
+> Task :composeApp:copyRoomSchemas NO-SOURCE
+> Task :composeApp:compileKotlinIosArm64 UP-TO-DATE
+
+> Task :composeApp:linkDebugFrameworkIosArm64
+Failed to load native library:libjansi.jnilib. The native library file at /Users/slefebvre/.gradle/native/jansi/1.18/osx/libjansi.jnilib is not executable, make sure that the directory is mounted on a partition without the noexec flag, or set the jansi.tmpdir system property to point to a proper location.  osinfo: Mac/arm64
+java.lang.UnsatisfiedLinkError: /Users/slefebvre/.gradle/native/jansi/1.18/osx/libjansi.jnilib: dlopen(/Users/slefebvre/.gradle/native/jansi/1.18/osx/libjansi.jnilib, 0x0001): tried: '/Users/slefebvre/.gradle/native/jansi/1.18/osx/libjansi.jnilib' (mach-o file, but is an incompatible architecture (have 'x86_64', need 'arm64e' or 'arm64e.v1' or 'arm64' or 'arm64')), '/System/Volumes/Preboot/Cryptexes/OS/Users/slefebvre/.gradle/native/jansi/1.18/osx/libjansi.jnilib' (no such file), '/Users/slefebvre/.gradle/native/jansi/1.18/osx/libjansi.jnilib' (mach-o file, but is an incompatible architecture (have 'x86_64', need 'arm64e' or 'arm64e.v1' or 'arm64' or 'arm64'))
+w: Unknown binary option 'optimization'
+w: Unknown binary option 'debugInfo'
+w: freezing switch is deprecated and will be removed in a future release.
+w: Cached libraries will not be used with runtime logs
+w: Cannot infer a bundle ID from packages of source files and exported dependencies, use the bundle name instead: ComposeApp. Please specify the bundle ID explicitly using the -Xbinary=bundleId=<id> compiler flag.
+w: Failed to parse log tag at "all". No logging will be performed.
+w: Failed to parse log tag-level pair at "all". No logging will be performed.
+
+[Incubating] Problems report is available at: file:///Users/slefebvre/VetNutriMP/build/reports/problems/problems-report.html
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/8.14/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD SUCCESSFUL in 3m 12s
+10 actionable tasks: 2 executed, 8 up-to-date

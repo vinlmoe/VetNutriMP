@@ -45,6 +45,9 @@ fun HeatMapAlimentsView(
         poidsMetabolique: Double?,
         modifier: Modifier = Modifier
 ) {
+    // État pour le toggle MIN uniquement
+    var utiliserSeulementMin by remember { mutableStateOf(false) }
+    
     // Calculer les données de la heatmap
     val heatMapData = remember(
             alimentsAnalyses,
@@ -53,7 +56,8 @@ fun HeatMapAlimentsView(
             preferencesEspece,
             besoinEnergetiqueEntretien,
             poidsAnimal,
-            poidsMetabolique
+            poidsMetabolique,
+            utiliserSeulementMin
     ) {
         calculerHeatMapData(
                 alimentsAnalyses = alimentsAnalyses,
@@ -62,7 +66,8 @@ fun HeatMapAlimentsView(
                 preferencesEspece = preferencesEspece,
                 besoinEnergetiqueEntretien = besoinEnergetiqueEntretien,
                 poidsAnimal = poidsAnimal,
-                poidsMetabolique = poidsMetabolique
+                poidsMetabolique = poidsMetabolique,
+                utiliserSeulementMin = utiliserSeulementMin
         )
     }
 
@@ -170,34 +175,55 @@ fun HeatMapAlimentsView(
                 )
             }
             
-            // Coefficient multiplicatif (à droite)
+            // Contrôles à droite (Coefficient et Toggle MIN uniquement)
             Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
+                    horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
             ) {
-                Text(
-                        text = "Coeff.:",
-                        style = MaterialTheme.typography.body2,
-                        fontWeight = FontWeight.Medium
-                )
-                BasicNumberTextField(
-                        value = coefficientText,
-                        onValueChange = { newValue ->
-                            coefficientText = newValue
-                            // Convertir en double et mettre à jour le coefficient
-                            val normalizedText = newValue.replace(',', '.')
-                            val value = normalizedText.toDoubleOrNull()
-                            if (value != null && value > 0) {
-                                coefficient = value
-                            } else if (normalizedText.isEmpty() || normalizedText == ".") {
-                                coefficient = 1.0
-                            }
-                        },
-                        placeholder = "1.0",
-                        modifier = Modifier.width(80.dp),
-                        allowDecimals = true,
-                        allowNegative = false
-                )
+                // Toggle MIN uniquement
+                Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
+                ) {
+                    Text(
+                            text = "MIN uniquement:",
+                            style = MaterialTheme.typography.body2,
+                            fontWeight = FontWeight.Medium
+                    )
+                    Switch(
+                            checked = utiliserSeulementMin,
+                            onCheckedChange = { utiliserSeulementMin = it }
+                    )
+                }
+                // Coefficient multiplicatif
+                Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
+                ) {
+                    Text(
+                            text = "Coeff.:",
+                            style = MaterialTheme.typography.body2,
+                            fontWeight = FontWeight.Medium
+                    )
+                    BasicNumberTextField(
+                            value = coefficientText,
+                            onValueChange = { newValue ->
+                                coefficientText = newValue
+                                // Convertir en double et mettre à jour le coefficient
+                                val normalizedText = newValue.replace(',', '.')
+                                val value = normalizedText.toDoubleOrNull()
+                                if (value != null && value > 0) {
+                                    coefficient = value
+                                } else if (normalizedText.isEmpty() || normalizedText == ".") {
+                                    coefficient = 1.0
+                                }
+                            },
+                            placeholder = "1.0",
+                            modifier = Modifier.width(80.dp),
+                            allowDecimals = true,
+                            allowNegative = false
+                    )
+                }
             }
         }
         
@@ -411,7 +437,8 @@ private fun calculerHeatMapData(
         preferencesEspece: fr.vetbrain.vetnutri_mp.Data.PreferencesEspece?,
         besoinEnergetiqueEntretien: Double?,
         poidsAnimal: Double?,
-        poidsMetabolique: Double?
+        poidsMetabolique: Double?,
+        utiliserSeulementMin: Boolean = false
 ): HeatMapData {
     if (referenceEv == null || besoinEnergetiqueEntretien == null || besoinEnergetiqueEntretien <= 0) {
         return HeatMapData(emptyList(), emptyList(), emptyMap())
@@ -450,112 +477,168 @@ private fun calculerHeatMapData(
     // Nutriments principaux
     NutrientMain.values().forEach { nutriment ->
         val nom = nutriment.translateEnum()
-        if (referenceEv.contientNutriment(nutriment, Reflevel.MIN) ||
-                referenceEv.contientNutriment(nutriment, Reflevel.OPTIMIN)) {
-            // Prioriser OPTIMIN si les deux existent, sinon utiliser celui qui existe
-            val niveau = if (referenceEv.contientNutriment(nutriment, Reflevel.OPTIMIN)) {
-                Reflevel.OPTIMIN
-            } else {
-                Reflevel.MIN
+        if (utiliserSeulementMin) {
+            // Utiliser uniquement MIN si le toggle est activé
+            if (referenceEv.contientNutriment(nutriment, Reflevel.MIN)) {
+                val valeurDisplay = calculerEtFormaterReference(nutriment, Reflevel.MIN)
+                nutrimentsAvecReference.add(NutrimentHeatMap(nutriment, nom, Reflevel.MIN, valeurDisplay))
             }
-            val valeurDisplay = calculerEtFormaterReference(nutriment, niveau)
-            nutrimentsAvecReference.add(NutrimentHeatMap(nutriment, nom, niveau, valeurDisplay))
+        } else {
+            // Comportement par défaut : prioriser OPTIMIN si les deux existent, sinon utiliser celui qui existe
+            if (referenceEv.contientNutriment(nutriment, Reflevel.MIN) ||
+                    referenceEv.contientNutriment(nutriment, Reflevel.OPTIMIN)) {
+                val niveau = if (referenceEv.contientNutriment(nutriment, Reflevel.OPTIMIN)) {
+                    Reflevel.OPTIMIN
+                } else {
+                    Reflevel.MIN
+                }
+                val valeurDisplay = calculerEtFormaterReference(nutriment, niveau)
+                nutrimentsAvecReference.add(NutrimentHeatMap(nutriment, nom, niveau, valeurDisplay))
+            }
         }
     }
     
     // Macronutriments
     NutrientMacro.values().forEach { nutriment ->
         val nom = nutriment.translateEnum()
-        if (referenceEv.contientNutriment(nutriment, Reflevel.MIN) ||
-                referenceEv.contientNutriment(nutriment, Reflevel.OPTIMIN)) {
-            // Prioriser OPTIMIN si les deux existent, sinon utiliser celui qui existe
-            val niveau = if (referenceEv.contientNutriment(nutriment, Reflevel.OPTIMIN)) {
-                Reflevel.OPTIMIN
-            } else {
-                Reflevel.MIN
+        if (utiliserSeulementMin) {
+            // Utiliser uniquement MIN si le toggle est activé
+            if (referenceEv.contientNutriment(nutriment, Reflevel.MIN)) {
+                val valeurDisplay = calculerEtFormaterReference(nutriment, Reflevel.MIN)
+                nutrimentsAvecReference.add(NutrimentHeatMap(nutriment, nom, Reflevel.MIN, valeurDisplay))
             }
-            val valeurDisplay = calculerEtFormaterReference(nutriment, niveau)
-            nutrimentsAvecReference.add(NutrimentHeatMap(nutriment, nom, niveau, valeurDisplay))
+        } else {
+            // Comportement par défaut : prioriser OPTIMIN si les deux existent, sinon utiliser celui qui existe
+            if (referenceEv.contientNutriment(nutriment, Reflevel.MIN) ||
+                    referenceEv.contientNutriment(nutriment, Reflevel.OPTIMIN)) {
+                val niveau = if (referenceEv.contientNutriment(nutriment, Reflevel.OPTIMIN)) {
+                    Reflevel.OPTIMIN
+                } else {
+                    Reflevel.MIN
+                }
+                val valeurDisplay = calculerEtFormaterReference(nutriment, niveau)
+                nutrimentsAvecReference.add(NutrimentHeatMap(nutriment, nom, niveau, valeurDisplay))
+            }
         }
     }
     
     // Oligo-éléments
     NutrientMin.values().forEach { nutriment ->
         val nom = nutriment.translateEnum()
-        if (referenceEv.contientNutriment(nutriment, Reflevel.MIN) ||
-                referenceEv.contientNutriment(nutriment, Reflevel.OPTIMIN)) {
-            // Prioriser OPTIMIN si les deux existent, sinon utiliser celui qui existe
-            val niveau = if (referenceEv.contientNutriment(nutriment, Reflevel.OPTIMIN)) {
-                Reflevel.OPTIMIN
-            } else {
-                Reflevel.MIN
+        if (utiliserSeulementMin) {
+            // Utiliser uniquement MIN si le toggle est activé
+            if (referenceEv.contientNutriment(nutriment, Reflevel.MIN)) {
+                val valeurDisplay = calculerEtFormaterReference(nutriment, Reflevel.MIN)
+                nutrimentsAvecReference.add(NutrimentHeatMap(nutriment, nom, Reflevel.MIN, valeurDisplay))
             }
-            val valeurDisplay = calculerEtFormaterReference(nutriment, niveau)
-            nutrimentsAvecReference.add(NutrimentHeatMap(nutriment, nom, niveau, valeurDisplay))
+        } else {
+            // Comportement par défaut : prioriser OPTIMIN si les deux existent, sinon utiliser celui qui existe
+            if (referenceEv.contientNutriment(nutriment, Reflevel.MIN) ||
+                    referenceEv.contientNutriment(nutriment, Reflevel.OPTIMIN)) {
+                val niveau = if (referenceEv.contientNutriment(nutriment, Reflevel.OPTIMIN)) {
+                    Reflevel.OPTIMIN
+                } else {
+                    Reflevel.MIN
+                }
+                val valeurDisplay = calculerEtFormaterReference(nutriment, niveau)
+                nutrimentsAvecReference.add(NutrimentHeatMap(nutriment, nom, niveau, valeurDisplay))
+            }
         }
     }
     
     // Vitamines
     NutrientVitam.values().forEach { nutriment ->
         val nom = nutriment.translateEnum()
-        if (referenceEv.contientNutriment(nutriment, Reflevel.MIN) ||
-                referenceEv.contientNutriment(nutriment, Reflevel.OPTIMIN)) {
-            // Prioriser OPTIMIN si les deux existent, sinon utiliser celui qui existe
-            val niveau = if (referenceEv.contientNutriment(nutriment, Reflevel.OPTIMIN)) {
-                Reflevel.OPTIMIN
-            } else {
-                Reflevel.MIN
+        if (utiliserSeulementMin) {
+            // Utiliser uniquement MIN si le toggle est activé
+            if (referenceEv.contientNutriment(nutriment, Reflevel.MIN)) {
+                val valeurDisplay = calculerEtFormaterReference(nutriment, Reflevel.MIN)
+                nutrimentsAvecReference.add(NutrimentHeatMap(nutriment, nom, Reflevel.MIN, valeurDisplay))
             }
-            val valeurDisplay = calculerEtFormaterReference(nutriment, niveau)
-            nutrimentsAvecReference.add(NutrimentHeatMap(nutriment, nom, niveau, valeurDisplay))
+        } else {
+            // Comportement par défaut : prioriser OPTIMIN si les deux existent, sinon utiliser celui qui existe
+            if (referenceEv.contientNutriment(nutriment, Reflevel.MIN) ||
+                    referenceEv.contientNutriment(nutriment, Reflevel.OPTIMIN)) {
+                val niveau = if (referenceEv.contientNutriment(nutriment, Reflevel.OPTIMIN)) {
+                    Reflevel.OPTIMIN
+                } else {
+                    Reflevel.MIN
+                }
+                val valeurDisplay = calculerEtFormaterReference(nutriment, niveau)
+                nutrimentsAvecReference.add(NutrimentHeatMap(nutriment, nom, niveau, valeurDisplay))
+            }
         }
     }
     
     // Acides gras
     NutrientLipid.values().forEach { nutriment ->
         val nom = nutriment.translateEnum()
-        if (referenceEv.contientNutriment(nutriment, Reflevel.MIN) ||
-                referenceEv.contientNutriment(nutriment, Reflevel.OPTIMIN)) {
-            // Prioriser OPTIMIN si les deux existent, sinon utiliser celui qui existe
-            val niveau = if (referenceEv.contientNutriment(nutriment, Reflevel.OPTIMIN)) {
-                Reflevel.OPTIMIN
-            } else {
-                Reflevel.MIN
+        if (utiliserSeulementMin) {
+            // Utiliser uniquement MIN si le toggle est activé
+            if (referenceEv.contientNutriment(nutriment, Reflevel.MIN)) {
+                val valeurDisplay = calculerEtFormaterReference(nutriment, Reflevel.MIN)
+                nutrimentsAvecReference.add(NutrimentHeatMap(nutriment, nom, Reflevel.MIN, valeurDisplay))
             }
-            val valeurDisplay = calculerEtFormaterReference(nutriment, niveau)
-            nutrimentsAvecReference.add(NutrimentHeatMap(nutriment, nom, niveau, valeurDisplay))
+        } else {
+            // Comportement par défaut : prioriser OPTIMIN si les deux existent, sinon utiliser celui qui existe
+            if (referenceEv.contientNutriment(nutriment, Reflevel.MIN) ||
+                    referenceEv.contientNutriment(nutriment, Reflevel.OPTIMIN)) {
+                val niveau = if (referenceEv.contientNutriment(nutriment, Reflevel.OPTIMIN)) {
+                    Reflevel.OPTIMIN
+                } else {
+                    Reflevel.MIN
+                }
+                val valeurDisplay = calculerEtFormaterReference(nutriment, niveau)
+                nutrimentsAvecReference.add(NutrimentHeatMap(nutriment, nom, niveau, valeurDisplay))
+            }
         }
     }
     
     // Acides aminés
     AAEnum.values().forEach { nutriment ->
         val nom = nutriment.translateEnum()
-        if (referenceEv.contientNutriment(nutriment, Reflevel.MIN) ||
-                referenceEv.contientNutriment(nutriment, Reflevel.OPTIMIN)) {
-            // Prioriser OPTIMIN si les deux existent, sinon utiliser celui qui existe
-            val niveau = if (referenceEv.contientNutriment(nutriment, Reflevel.OPTIMIN)) {
-                Reflevel.OPTIMIN
-            } else {
-                Reflevel.MIN
+        if (utiliserSeulementMin) {
+            // Utiliser uniquement MIN si le toggle est activé
+            if (referenceEv.contientNutriment(nutriment, Reflevel.MIN)) {
+                val valeurDisplay = calculerEtFormaterReference(nutriment, Reflevel.MIN)
+                nutrimentsAvecReference.add(NutrimentHeatMap(nutriment, nom, Reflevel.MIN, valeurDisplay))
             }
-            val valeurDisplay = calculerEtFormaterReference(nutriment, niveau)
-            nutrimentsAvecReference.add(NutrimentHeatMap(nutriment, nom, niveau, valeurDisplay))
+        } else {
+            // Comportement par défaut : prioriser OPTIMIN si les deux existent, sinon utiliser celui qui existe
+            if (referenceEv.contientNutriment(nutriment, Reflevel.MIN) ||
+                    referenceEv.contientNutriment(nutriment, Reflevel.OPTIMIN)) {
+                val niveau = if (referenceEv.contientNutriment(nutriment, Reflevel.OPTIMIN)) {
+                    Reflevel.OPTIMIN
+                } else {
+                    Reflevel.MIN
+                }
+                val valeurDisplay = calculerEtFormaterReference(nutriment, niveau)
+                nutrimentsAvecReference.add(NutrimentHeatMap(nutriment, nom, niveau, valeurDisplay))
+            }
         }
     }
     
     // Autres nutriments
     NutrientOther.values().forEach { nutriment ->
         val nom = nutriment.translateEnum()
-        if (referenceEv.contientNutriment(nutriment, Reflevel.MIN) ||
-                referenceEv.contientNutriment(nutriment, Reflevel.OPTIMIN)) {
-            // Prioriser OPTIMIN si les deux existent, sinon utiliser celui qui existe
-            val niveau = if (referenceEv.contientNutriment(nutriment, Reflevel.OPTIMIN)) {
-                Reflevel.OPTIMIN
-            } else {
-                Reflevel.MIN
+        if (utiliserSeulementMin) {
+            // Utiliser uniquement MIN si le toggle est activé
+            if (referenceEv.contientNutriment(nutriment, Reflevel.MIN)) {
+                val valeurDisplay = calculerEtFormaterReference(nutriment, Reflevel.MIN)
+                nutrimentsAvecReference.add(NutrimentHeatMap(nutriment, nom, Reflevel.MIN, valeurDisplay))
             }
-            val valeurDisplay = calculerEtFormaterReference(nutriment, niveau)
-            nutrimentsAvecReference.add(NutrimentHeatMap(nutriment, nom, niveau, valeurDisplay))
+        } else {
+            // Comportement par défaut : prioriser OPTIMIN si les deux existent, sinon utiliser celui qui existe
+            if (referenceEv.contientNutriment(nutriment, Reflevel.MIN) ||
+                    referenceEv.contientNutriment(nutriment, Reflevel.OPTIMIN)) {
+                val niveau = if (referenceEv.contientNutriment(nutriment, Reflevel.OPTIMIN)) {
+                    Reflevel.OPTIMIN
+                } else {
+                    Reflevel.MIN
+                }
+                val valeurDisplay = calculerEtFormaterReference(nutriment, niveau)
+                nutrimentsAvecReference.add(NutrimentHeatMap(nutriment, nom, niveau, valeurDisplay))
+            }
         }
     }
     
