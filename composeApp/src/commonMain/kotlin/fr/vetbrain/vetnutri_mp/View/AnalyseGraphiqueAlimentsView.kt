@@ -35,6 +35,8 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlin.math.pow
+import kotlin.math.round
 import fr.vetbrain.vetnutri_mp.Data.AlimentEv
 import fr.vetbrain.vetnutri_mp.Data.AlimentRation
 import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
@@ -43,6 +45,7 @@ import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.GraphFormattingUtils
+import fr.vetbrain.vetnutri_mp.Utils.KoalaPlotExtensions
 import io.github.koalaplot.core.*
 import io.github.koalaplot.core.bar.DefaultVerticalBar
 import io.github.koalaplot.core.bar.VerticalBarPlot
@@ -522,6 +525,23 @@ data class ZoomPanState(
 }
 
 /**
+ * Arrondit une valeur float à un nombre raisonnable de décimales pour l'affichage
+ */
+private fun arrondirPourAffichage(value: Float, maxDecimals: Int = 2): Float {
+    val multiplier = 10.0.pow(maxDecimals.toDouble()).toFloat()
+    return (round(value * multiplier) / multiplier)
+}
+
+/**
+ * Arrondit une plage pour éviter les problèmes d'arrondi dans les labels d'axes
+ */
+private fun arrondirPlage(range: ClosedFloatingPointRange<Float>, maxDecimals: Int = 2): ClosedFloatingPointRange<Float> {
+    val start = arrondirPourAffichage(range.start, maxDecimals)
+    val endInclusive = arrondirPourAffichage(range.endInclusive, maxDecimals)
+    return start..endInclusive
+}
+
+/**
  * Calcule les nouvelles plages d'axes en fonction du zoom et du pan
  */
 private fun calculateZoomedRange(
@@ -544,8 +564,8 @@ private fun calculateZoomedRange(
     val newStart = center - newSize / 2f + panOffset
     val newEnd = center + newSize / 2f + panOffset
     
-    // Permettre le zoom au-delà des limites originales
-    return newStart..newEnd
+    // Permettre le zoom au-delà des limites originales et arrondir pour éviter les problèmes d'arrondi
+    return arrondirPlage(newStart..newEnd)
 }
 
 /**
@@ -1556,15 +1576,15 @@ private fun GraphiqueNuagePoints(
                 val minY = points.minOf { it.y }.coerceAtLeast(0f)
                 val maxY = points.maxOf { it.y }
                 
-                val xRange = when (ongletActif) {
+                val xRange = arrondirPlage(when (ongletActif) {
                     "phosphore_protein" -> (minX - minX * 0.05f)..(maxX + maxX * 0.05f)
                     else -> (minX - minX * 0.05f)..(maxX.coerceAtMost(100f) + maxX * 0.05f)
-                }
+                })
                 
-                val yRange = when (ongletActif) {
+                val yRange = arrondirPlage(when (ongletActif) {
                     "phosphore_protein" -> (minY - minY * 0.05f)..(maxY + maxY * 0.05f)
                     else -> (minY - minY * 0.05f)..(maxY.coerceAtMost(100f) + maxY * 0.05f)
-                }
+                })
                 
                 Pair(xRange, yRange)
             } else {
@@ -1904,15 +1924,15 @@ private fun GraphiqueNuagePoints(
                         val minY = points.minOf { it.y }.coerceAtLeast(0f)
                         val maxY = points.maxOf { it.y }
                         
-                        val xRange = when (ongletActif) {
+                        val xRange = arrondirPlage(when (ongletActif) {
                             "phosphore_protein" -> (minX - minX * 0.05f)..(maxX + maxX * 0.05f)
                             else -> (minX - minX * 0.05f)..(maxX.coerceAtMost(100f) + maxX * 0.05f)
-                        }
+                        })
                         
-                        val yRange = when (ongletActif) {
+                        val yRange = arrondirPlage(when (ongletActif) {
                             "phosphore_protein" -> (minY - minY * 0.05f)..(maxY + maxY * 0.05f)
                             else -> (minY - minY * 0.05f)..(maxY.coerceAtMost(100f) + maxY * 0.05f)
-                        }
+                        })
                         
                         Pair(xRange, yRange)
                     }
@@ -1977,8 +1997,8 @@ private fun GraphiqueNuagePoints(
                     BoxWithConstraints(modifier = Modifier.height(400.dp).clipToBounds()) {
                         // Graphique principal avec gestes de zoom/pan
                         XYGraph(
-                                xAxisModel = FloatLinearAxisModel(range = xRange),
-                                yAxisModel = FloatLinearAxisModel(range = yRange),
+                                xAxisModel = KoalaPlotExtensions.createSmartXAxisModel(range = xRange),
+                                yAxisModel = KoalaPlotExtensions.createSmartYAxisModel(range = yRange),
                                 xAxisTitle = when (ongletActif) {
                                     "protein_lipid" -> "Protéines (% énergie)"
                                     "phosphore_protein" -> if (useDryMatterPer100g) "Phosphore (g/100g MS)" else "Phosphore (g/1000 kcal)"
@@ -2398,19 +2418,12 @@ private fun AlimentRow(
                 fontWeight = FontWeight.Bold,
                 color = VetNutriColors.Primary
         )
-        Column(modifier = Modifier.weight(0.6f)) {
-                Text(
-                        text = data.aliment.nom ?: "Sans nom",
-                        style = MaterialTheme.typography.caption,
-                        fontWeight = FontWeight.Medium
-                )
-                Text(
-                        text = "Densité: ${GraphFormattingUtils.formatEnergyDensity(data.densiteEnergetique)}",
-                        style = MaterialTheme.typography.caption,
-                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f),
-                        fontSize = 10.sp
-                )
-        }
+        Text(
+                text = data.aliment.nom ?: "Sans nom",
+                modifier = Modifier.weight(0.6f),
+                style = MaterialTheme.typography.caption,
+                fontWeight = FontWeight.Medium
+        )
         Text(
                 text = data.aliment.brand ?: "-",
                 modifier = Modifier.weight(0.3f),
@@ -2605,12 +2618,14 @@ private fun GraphiqueNutrimentsPersonnalise(
         val safeMinY = if (minY == maxY) minY * 0.9f else minY
         val safeMaxY = if (minY == maxY) maxY * 1.1f else maxY
 
-        val baseXRange =
+        val baseXRange = arrondirPlage(
                 (safeMinX - safeMinX * 0.05f).coerceAtLeast(0f)..(safeMaxX + safeMaxX * 0.05f)
                                 .coerceAtLeast(safeMinX + 0.1f)
-        val baseYRange =
+        )
+        val baseYRange = arrondirPlage(
                 (safeMinY - safeMinY * 0.05f).coerceAtLeast(0f)..(safeMaxY + safeMaxY * 0.05f)
                                 .coerceAtLeast(safeMinY + 0.1f)
+        )
         
         // Calculer les plages zoomées
         val xRange = calculateZoomedRange(baseXRange, zoomPanState.value, isXAxis = true)
@@ -2670,8 +2685,8 @@ private fun GraphiqueNutrimentsPersonnalise(
 
         BoxWithConstraints(modifier = modifier.clipToBounds()) {
             XYGraph(
-                    xAxisModel = FloatLinearAxisModel(range = xRange),
-                    yAxisModel = FloatLinearAxisModel(range = yRange),
+                    xAxisModel = KoalaPlotExtensions.createSmartXAxisModel(range = xRange),
+                    yAxisModel = KoalaPlotExtensions.createSmartYAxisModel(range = yRange),
                     xAxisTitle = "${xOption?.displayName} (${if (useDryMatterPer100g) "/100g MS" else "/1000 kcal"})",
                     yAxisTitle = "${yOption?.displayName} (${if (useDryMatterPer100g) "/100g MS" else "/1000 kcal"})",
                     modifier = Modifier
@@ -2866,7 +2881,7 @@ private fun GraphiqueNutrimentsPersonnalise(
 
         XYGraph(
                 xAxisModel = remember(categories) { CategoryAxisModel(categories) },
-                yAxisModel = remember(yRange) { FloatLinearAxisModel(yRange) },
+                yAxisModel = remember(yRange) { KoalaPlotExtensions.createSmartYAxisModel(range = yRange) },
                 yAxisTitle = "${xOption?.displayName} (${if (useDryMatterPer100g) "/100g MS" else "/1000 kcal"})",
                 modifier = modifier
         ) {
@@ -2947,10 +2962,10 @@ private fun HistogrammeEnergieAliments(
     // Créer le graphique
     XYGraph(
             xAxisModel = remember(categories) { CategoryAxisModel(categories) },
-            yAxisModel = remember(yRange) { FloatLinearAxisModel(yRange) },
+            yAxisModel = remember(yRange) { KoalaPlotExtensions.createSmartDensityAxisModel(range = yRange) },
             yAxisTitle = if (useDryMatterPer100g) 
                     "Densité énergétique (kcal/100g MS)"
-                else 
+                else  
                     "Densité énergétique (kcal/100g)",
             modifier = modifier
     ) {

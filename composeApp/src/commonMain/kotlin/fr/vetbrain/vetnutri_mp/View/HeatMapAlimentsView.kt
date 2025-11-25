@@ -77,20 +77,6 @@ fun HeatMapAlimentsView(
                     .padding(AppSizes.paddingMedium),
             verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
     ) {
-        // En-tête
-        Text(
-                text = "HeatMap - Comparaison aux références",
-                style = MaterialTheme.typography.h6,
-                fontWeight = FontWeight.Bold,
-                color = VetNutriColors.Primary
-        )
-        
-        Text(
-                text = "Ratio = (Concentration dans l'aliment /1000 kcal) / (Besoin /1000 kcal BEE)",
-                style = MaterialTheme.typography.caption,
-                color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
-        )
-        
         if (referenceEv == null) {
             Box(
                     modifier = Modifier.fillMaxSize(),
