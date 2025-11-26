@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.TrendingUp
+import androidx.compose.material.icons.filled.TrendingDown
 import androidx.compose.material.icons.filled.ZoomIn
 import androidx.compose.material.icons.filled.ZoomOut
 import androidx.compose.runtime.*
@@ -56,8 +57,17 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.daysUntil
 import kotlinx.datetime.toLocalDateTime
+import kotlinx.datetime.DatePeriod
+import kotlinx.datetime.plus
 import kotlin.math.pow
 import kotlin.math.round
+
+// Data class pour gérer l'état du cône de perte de poids
+data class WeightConeState(
+    val startDate: LocalDate,
+    val startWeight: Double,
+    val targetWeight: Double? = null
+)
 
 // Data class pour stocker les informations d'âge d'une consultation
 data class ConsultationAgeData(
@@ -457,10 +467,15 @@ private suspend fun calculerPourcentagesEnergieRation(
                                 aliment.valMap[fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.HUMIDITE]
                                         ?.value
                                         ?: 0.0
+                        val ena =
+                                aliment.valMap[fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.ENA]
+                                        ?.value
+                                        ?: 0.0
 
                         // Calculer l'énergie des macronutriments (en kcal pour 100g)
                         val energieProteinesAliment = (proteines * quantite / 100.0) * 3.5
                         val energieLipidesAliment = (lipides * quantite / 100.0) * 8.5
+                        val energieEnaAliment = (ena * quantite / 100.0) * 3.5
 
                         // Calculer le poids et l'humidité
                         poidsTotal += quantite
@@ -469,11 +484,7 @@ private suspend fun calculerPourcentagesEnergieRation(
                         // Ajouter à l'énergie totale
                         energieProteines += energieProteinesAliment
                         energieLipides += energieLipidesAliment
-                        energieTotale +=
-                                alimentRation.getEnergie(
-                                        referenceEv,
-                                        equationRepository
-                                )
+                        energieTotale += (energieProteinesAliment + energieLipidesAliment + energieEnaAliment)
                         
                 }
 
@@ -736,6 +747,7 @@ fun AnalyseGraphiqueView(
         modifier: Modifier = Modifier
 ) {
         var selectedChart by remember { mutableStateOf(ChartType.EVOLUTION_POIDS) }
+        var weightConeState by remember { mutableStateOf<WeightConeState?>(null) }
         var useDryMatterPer100g by remember {
                 mutableStateOf(false)
         } // Toggle pour /1000 kcal vs /100g MS
@@ -790,7 +802,12 @@ fun AnalyseGraphiqueView(
 
                 // Affichage du graphique sélectionné
                 when (selectedChart) {
-                        ChartType.EVOLUTION_POIDS -> EvolutionPoidsChart(viewModel)
+                        ChartType.EVOLUTION_POIDS -> EvolutionPoidsChart(
+                            viewModel,
+                            weightConeState,
+                            onActivateConeAction = { d, w, t -> weightConeState = WeightConeState(d, w, t) },
+                            onClearCone = { weightConeState = null }
+                        )
                         ChartType.RATIONS_ENERGIE ->
                                 RationsEnergieChart(viewModel, equationRepository)
                         ChartType.DENSITE_RATIONS ->
@@ -1006,8 +1023,14 @@ private fun GraphiqueHeader(selectedChart: ChartType, onChartSelected: (ChartTyp
 
 @OptIn(ExperimentalKoalaPlotApi::class)
 @Composable
-private fun EvolutionPoidsChart(viewModel: AnimalDetailViewModel) {
+private fun EvolutionPoidsChart(
+    viewModel: AnimalDetailViewModel,
+    coneState: WeightConeState? = null,
+    onActivateConeAction: (LocalDate, Double, Double?) -> Unit = { _, _, _ -> },
+    onClearCone: () -> Unit = {}
+) {
         val animal by viewModel.animal.collectAsState()
+        val targetWeight = coneState?.targetWeight
 
         // Utiliser derivedStateOf pour forcer la recomposition quand les données changent
         val consultationsWithAge by
@@ -1125,32 +1148,94 @@ private fun EvolutionPoidsChart(viewModel: AnimalDetailViewModel) {
                 }
 
                 // Préparer données réelles (peut être vide) et fallback courbe 50% 0–12 mois
-                val donneesPoids =
-                        consultationsWithAge.map { d ->
-                                Point(x = d.ageInMonths.toFloat(), y = d.weight.toFloat())
+                // donneesPoids est calculé plus bas, après avoir fusionné les min/max avec le cône
+                
+                // Calculer les lignes du cône
+                val coneLines = remember(coneState, animal?.birthdate) {
+                    val birthDate = animal?.birthdate
+                    if (coneState != null && birthDate != null) {
+                        val startAgeDays = birthDate.daysUntil(coneState.startDate)
+                        val startAgeMonths = startAgeDays / 30.44f
+                        val startWeight = coneState.startWeight.toFloat()
+                        val targetW = coneState.targetWeight?.toFloat()
+
+                        val weeks = 26 // Default projection duration
+
+                        // Function to calculate points until target
+                        fun calculatePoints(percentagePerWeek: Float): List<Point<Float, Float>> {
+                            val points = mutableListOf<Point<Float, Float>>()
+                            points.add(Point(startAgeMonths, startWeight))
+
+                            val effectivePercentage = if (targetW != null && targetW > startWeight && percentagePerWeek < 0) {
+                                -percentagePerWeek // Invert for gain
+                            } else {
+                                percentagePerWeek
+                            }
+
+                            val endWeight26Weeks = startWeight * (1f + effectivePercentage * weeks)
+                            var endAgeMonthsCalculated = startAgeMonths + (weeks * 7 / 30.44f)
+                            var endWeightCalculated = endWeight26Weeks
+
+                            if (targetW != null && effectivePercentage != 0f) {
+                                val weeksToTarget = (targetW / startWeight - 1f) / effectivePercentage
+                                if (weeksToTarget > 0) {
+                                    val daysToTarget = (weeksToTarget * 7).toInt()
+                                    val targetDate = coneState.startDate.plus(DatePeriod(days = daysToTarget))
+                                    val targetAgeDays = birthDate.daysUntil(targetDate)
+                                    endAgeMonthsCalculated = targetAgeDays / 30.44f
+                                    endWeightCalculated = targetW
+                                }
+                            }
+
+                            points.add(Point(endAgeMonthsCalculated, endWeightCalculated))
+                            return points
                         }
+
+                        val slowLine = calculatePoints(-0.005f)
+                        val fastLine = calculatePoints(-0.02f)
+
+                        Triple(slowLine, fastLine, targetW)
+                    } else {
+                        null
+                    }
+                }
+
                 val courbeRef = selectedCurve
                 val param50 = courbeRef?.params?.find { it.name == "50%" }
                 val pointsRef0_12 =
                         param50?.let {
                                 (0..12).map { mois ->
                                         val ageInMonths = mois.toFloat()
-                                        val poids =
-                                                calculerPoidsCroissance(it, ageInMonths.toDouble())
+                                        val poids = calculerPoidsCroissance(it, ageInMonths.toDouble())
                                         Point(x = ageInMonths, y = poids.toFloat())
                                 }
-                        }
-                                ?: emptyList()
+                        } ?: emptyList<Point<Float, Float>>()
 
                 // Axes: si on a des données réelles, utiliser leur plage; sinon, utiliser 0..12
-                // mois et y basé sur la courbe
+                // mois et y basé sur la courbe. Inclure aussi le cône s'il existe.
+                val donneesPoids: List<Point<Float, Float>> =
+                        consultationsWithAge.map { d ->
+                                Point(x = d.ageInMonths.toFloat(), y = d.weight.toFloat())
+                        }
                 val useReal = donneesPoids.isNotEmpty()
-                val minX = if (useReal) donneesPoids.minOf { it.x } else 0.0f
-                val maxX = if (useReal) donneesPoids.maxOf { it.x } else 12.0f
+                val pointsCone: List<Point<Float, Float>> = if (coneLines != null) coneLines.first + coneLines.second else emptyList()
+                val targetY = coneLines?.third
+
+                val minXData: Float = if (useReal) donneesPoids.minOf { it.x } else 0.0f
+                val minXCone: Float = if (pointsCone.isNotEmpty()) pointsCone.minOf { it.x } else Float.MAX_VALUE
+                // On prend le min global, en s'assurant de ne pas casser si un est vide (MAX_VALUE)
+                val minXVal = if (minXCone < minXData) minXCone else minXData
+                val minX = if (minXVal == Float.MAX_VALUE) 0f else minXVal
+
+                val maxXData: Float = if (useReal) donneesPoids.maxOf { it.x } else 12.0f
+                val maxXCone: Float = if (pointsCone.isNotEmpty()) pointsCone.maxOf { it.x } else Float.MIN_VALUE
+                val maxXVal = if (maxXCone > maxXData) maxXCone else maxXData
+                val maxX = if (maxXVal == Float.MIN_VALUE) 12f else maxXVal
+
                 val xMargin = (maxX - minX).coerceAtLeast(1.0f) * 0.05f
                 val xRange = arrondirPlage((minX - xMargin)..(maxX + xMargin))
 
-                val yCandidates = (if (useReal) donneesPoids else pointsRef0_12).map { it.y }
+                val yCandidates = (if (useReal) donneesPoids else pointsRef0_12).map { it.y } + pointsCone.map { it.y } + (if(targetY != null) listOf(targetY) else emptyList())
                 val minY = yCandidates.minOrNull() ?: 0.0f
                 val maxY = yCandidates.maxOrNull() ?: (minY + 5.0f)
                 val yMargin = (maxY - minY).coerceAtLeast(1.0f) * 0.05f
@@ -1240,6 +1325,47 @@ private fun EvolutionPoidsChart(viewModel: AnimalDetailViewModel) {
                                                 LinePlot(data = pointsRef0_12)
                                         }
 
+                                        // Cône de perte de poids
+                                        if (coneLines != null) {
+                                            val targetW = coneLines.third
+                                            
+                                            // Ligne objectif (Target Weight) - Pointillés noirs
+                                            if (targetW != null) {
+                                                val lineTarget = listOf(
+                                                    Point(xRange.start, targetW),
+                                                    Point(xRange.endInclusive, targetW)
+                                                )
+                                                LinePlot(
+                                                    data = lineTarget,
+                                                    lineStyle = LineStyle(
+                                                        brush = SolidColor(Color.Black),
+                                                        strokeWidth = 1.5.dp,
+                                                        pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(15f, 15f), 0f)
+                                                    )
+                                                )
+                                            }
+                                            
+                                            // Ligne lente (-0.5%) - Vert
+                                            LinePlot(
+                                                data = coneLines.first,
+                                                lineStyle = LineStyle(
+                                                    brush = SolidColor(Color(0xFF4CAF50)), // Green
+                                                    strokeWidth = 2.dp,
+                                                    pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f)
+                                                )
+                                            )
+
+                                            // Ligne rapide (-2.0%) - Orange
+                                            LinePlot(
+                                                data = coneLines.second,
+                                                lineStyle = LineStyle(
+                                                    brush = SolidColor(Color(0xFFFF5722)), // Deep Orange
+                                                    strokeWidth = 2.dp,
+                                                    pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f)
+                                                )
+                                            )
+                                        }
+
                                         // Courbe des données réelles de l'animal
                                         if (donneesPoids.isNotEmpty()) {
                                                 LinePlot(
@@ -1258,16 +1384,29 @@ private fun EvolutionPoidsChart(viewModel: AnimalDetailViewModel) {
                         }
                 }
                 // Tableau des poids
-                PoidsTableau(consultationsWithAge, viewModel)
+                PoidsTableau(
+                    consultationsWithAge,
+                    viewModel,
+                    onActivateCone = onActivateConeAction,
+                    onClearCone = onClearCone,
+                    isConeActive = coneState != null
+                )
         }
 }
 
 @Composable
 private fun PoidsTableau(
         consultationsWithAge: List<ConsultationAgeData>,
-        viewModel: AnimalDetailViewModel
+        viewModel: AnimalDetailViewModel,
+        onActivateCone: (LocalDate, Double, Double?) -> Unit = { _, _, _ -> },
+        onClearCone: () -> Unit = {},
+        isConeActive: Boolean = false
 ) {
         val isAddingWeight = viewModel.isAddingWeight
+        var targetWeightInput by remember { mutableStateOf("") }
+        
+        // Helper to convert input to Double safely
+        fun getTargetWeight(): Double? = targetWeightInput.replace(',', '.').toDoubleOrNull()
 
         Card(modifier = Modifier.fillMaxWidth(), elevation = AppSizes.elevationMedium) {
                 Column(modifier = Modifier.padding(AppSizes.paddingMedium)) {
@@ -1282,6 +1421,27 @@ private fun PoidsTableau(
                                         fontWeight = FontWeight.Bold,
                                         color = VetNutriColors.Primary
                                 )
+
+                                // Champ Poids Objectif
+                                OutlinedTextField(
+                                    value = targetWeightInput,
+                                    onValueChange = { targetWeightInput = it },
+                                    label = { Text("Objectif (kg)", fontSize = 10.sp) },
+                                    singleLine = true,
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                    modifier = Modifier.width(100.dp).height(55.dp),
+                                    textStyle = MaterialTheme.typography.body2
+                                )
+
+                                if (isConeActive) {
+                                    Button(
+                                        onClick = onClearCone,
+                                        colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFFE57373)),
+                                        modifier = Modifier.padding(end = AppSizes.paddingSmall)
+                                    ) {
+                                        Text("Effacer cône", color = Color.White)
+                                    }
+                                }
 
                                 Button(
                                         onClick = { viewModel.startAddingWeight() },
@@ -1400,33 +1560,37 @@ private fun PoidsTableau(
                                                                         VetNutriColors.Primary
                                                                 else VetNutriColors.Secondary
                                                 )
-                                                // Bouton de suppression pour les poids hors
-                                                // consultation
-                                                if (!consultationData.isFromConsultation &&
-                                                                consultationData.weightUuid != null
+                                                // Actions: Cône et Suppression
+                                                Row(
+                                                    modifier = Modifier.weight(0.5f),
+                                                    horizontalArrangement = Arrangement.End,
+                                                    verticalAlignment = Alignment.CenterVertically
                                                 ) {
+                                                    IconButton(
+                                                        onClick = { onActivateCone(consultationData.date, consultationData.weight.toDouble(), getTargetWeight()) }
+                                                    ) {
+                                                        Icon(
+                                                            imageVector = Icons.Default.TrendingDown,
+                                                            contentDescription = "Cône de perte",
+                                                            tint = VetNutriColors.Secondary,
+                                                            modifier = Modifier.size(20.dp)
+                                                        )
+                                                    }
+
+                                                    if (!consultationData.isFromConsultation && consultationData.weightUuid != null) {
                                                         IconButton(
-                                                                onClick = {
-                                                                        viewModel.deleteWeight(
-                                                                                consultationData
-                                                                                        .weightUuid!!
-                                                                        )
-                                                                },
-                                                                modifier = Modifier.weight(0.5f)
+                                                            onClick = {
+                                                                viewModel.deleteWeight(consultationData.weightUuid!!)
+                                                            }
                                                         ) {
-                                                                Icon(
-                                                                        imageVector =
-                                                                                Icons.Default
-                                                                                        .Delete,
-                                                                        contentDescription =
-                                                                                "Supprimer le poids",
-                                                                        tint = Color.Red,
-                                                                        modifier =
-                                                                                Modifier.size(16.dp)
-                                                                )
+                                                            Icon(
+                                                                imageVector = Icons.Default.Delete,
+                                                                contentDescription = "Supprimer le poids",
+                                                                tint = Color.Red,
+                                                                modifier = Modifier.size(20.dp)
+                                                            )
                                                         }
-                                                } else {
-                                                        Spacer(modifier = Modifier.weight(0.5f))
+                                                    }
                                                 }
                                         }
 

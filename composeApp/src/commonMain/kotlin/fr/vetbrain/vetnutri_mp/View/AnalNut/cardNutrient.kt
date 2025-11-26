@@ -24,6 +24,14 @@ import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.TextUtils
 import fr.vetbrain.vetnutri_mp.Utils.GraphFormattingUtils
 import kotlinx.coroutines.runBlocking
+import io.github.koalaplot.core.pie.PieChart
+import io.github.koalaplot.core.pie.DefaultSlice
+import io.github.koalaplot.core.util.ExperimentalKoalaPlotApi
+import fr.vetbrain.vetnutri_mp.View.components.NutrientData
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 
 /**
  * Obtient le nom traduit d'un nutriment selon son type en utilisant les traductions JSON
@@ -171,6 +179,14 @@ fun AnalyseNutritionnelleCard(
             remember(valeursNutritionnelles) {
                 grouperNutrimentsParCategorie(valeursNutritionnelles)
             }
+            
+    // Préparer les données pour les pie charts
+    val compositionData = remember(valeursNutritionnelles) {
+        generateCompositionData(valeursNutritionnelles)
+    }
+    val energyData = remember(valeursNutritionnelles) {
+        generateEnergyData(valeursNutritionnelles)
+    }
 
     Card(modifier = modifier, elevation = AppSizes.elevationSmall) {
         Column(
@@ -274,6 +290,35 @@ fun AnalyseNutritionnelleCard(
                                 Modifier.fillMaxWidth().height(400.dp)
                             }
             ) {
+                // Ajouter les pie charts si mode bullet activé
+                if (afficherBullet) {
+                    item {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
+                        ) {
+                             if (compositionData.isNotEmpty()) {
+                                 Box(modifier = Modifier.weight(1f)) {
+                                     PieChartCard(
+                                         title = "Composition",
+                                         data = compositionData,
+                                         modifier = Modifier.fillMaxWidth()
+                                     )
+                                 }
+                             }
+                             if (energyData.isNotEmpty()) {
+                                 Box(modifier = Modifier.weight(1f)) {
+                                     PieChartCard(
+                                         title = "Origine Énergie",
+                                         data = energyData,
+                                         modifier = Modifier.fillMaxWidth()
+                                     )
+                                 }
+                             }
+                        }
+                    }
+                }
+                
                 // Ordre d'affichage des catégories
                 val ordreCategories =
                         listOf("BASE", "MACRO", "MIN", "VITAM", "LIPID", "AMA", "ANA", "OTHER")
@@ -1323,4 +1368,184 @@ private fun calculerAffichageNutriment(
                     )
         }
     }
+}
+
+@OptIn(ExperimentalKoalaPlotApi::class)
+@Composable
+private fun PieChartCard(
+    title: String,
+    data: List<NutrientData>,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier,
+        elevation = AppSizes.elevationSmall
+    ) {
+        Column(
+            modifier = Modifier.padding(AppSizes.paddingMedium),
+            verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.subtitle2,
+                fontWeight = FontWeight.Bold,
+                color = VetNutriColors.Primary
+            )
+
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                 PieChart(
+                     values = data.map { it.value.toFloat() },
+                     slice = { index ->
+                         val sliceData = data[index]
+                         DefaultSlice(sliceData.color)
+                     },
+                     modifier = Modifier.size(140.dp)
+                 )
+            }
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 150.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                data.forEach { item ->
+                    PieChartLegendItem(
+                        name = item.name,
+                        color = item.color,
+                        percentage = item.percentage
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PieChartLegendItem(
+    name: String,
+    color: Color,
+    percentage: Double
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(12.dp)
+                    .background(color, MaterialTheme.shapes.small)
+            )
+            Text(
+                text = name,
+                style = MaterialTheme.typography.caption,
+                fontWeight = FontWeight.Medium
+            )
+        }
+        
+        Text(
+            text = "${TextUtils.formatDecimal(percentage, 1)}%",
+            style = MaterialTheme.typography.caption,
+            color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+        )
+    }
+}
+
+private fun parseColor(hexColor: String): Color {
+    return try {
+        val cleanHex = hexColor.removePrefix("#")
+        val colorValue = cleanHex.toLong(16)
+        Color(colorValue or 0xFF000000L)
+    } catch (e: Exception) {
+        Color.Gray
+    }
+}
+
+private fun generateCompositionData(valeurs: Map<String, ValeurNutritionnelle>): List<NutrientData> {
+    val targetNutrients = listOf(
+        NutrientMain.HUMIDITE,
+        NutrientMain.PROTEINE,
+        NutrientMain.LIPIDE,
+        NutrientMain.ENA,
+        NutrientMain.CENDRE,
+        NutrientMain.CELLULOSE
+    )
+    
+    val data = mutableListOf<NutrientData>()
+    var total = 0.0
+    
+    targetNutrients.forEach { nutrient ->
+        val value = valeurs[nutrient.name]?.valeur ?: 0.0
+        if (value > 0) {
+            total += value
+        }
+    }
+    
+    if (total == 0.0) return emptyList()
+    
+    targetNutrients.forEach { nutrient ->
+        val value = valeurs[nutrient.name]?.valeur ?: 0.0
+        if (value > 0) {
+            data.add(NutrientData(
+                name = nutrient.translateEnum(),
+                value = value,
+                color = parseColor(nutrient.color),
+                percentage = (value / total) * 100.0
+            ))
+        }
+    }
+    return data
+}
+
+private fun generateEnergyData(valeurs: Map<String, ValeurNutritionnelle>): List<NutrientData> {
+    val prot = valeurs[NutrientMain.PROTEINE.name]?.valeur ?: 0.0
+    val lipid = valeurs[NutrientMain.LIPIDE.name]?.valeur ?: 0.0
+    val ena = valeurs[NutrientMain.ENA.name]?.valeur ?: 0.0
+    
+    val energyProt = prot * 3.5
+    val energyLipid = lipid * 8.5
+    val energyEna = ena * 3.5
+    
+    val total = energyProt + energyLipid + energyEna
+    
+    if (total == 0.0) return emptyList()
+    
+    val list = mutableListOf<NutrientData>()
+    
+    if (energyProt > 0) {
+        list.add(NutrientData(
+            name = NutrientMain.PROTEINE.translateEnum(),
+            value = energyProt,
+            color = parseColor(NutrientMain.PROTEINE.color),
+            percentage = (energyProt / total) * 100.0
+        ))
+    }
+    if (energyLipid > 0) {
+        list.add(NutrientData(
+            name = NutrientMain.LIPIDE.translateEnum(),
+            value = energyLipid,
+            color = parseColor(NutrientMain.LIPIDE.color),
+            percentage = (energyLipid / total) * 100.0
+        ))
+    }
+    if (energyEna > 0) {
+        list.add(NutrientData(
+            name = NutrientMain.ENA.translateEnum(),
+            value = energyEna,
+            color = parseColor(NutrientMain.ENA.color),
+            percentage = (energyEna / total) * 100.0
+        ))
+    }
+    
+    return list
 }
