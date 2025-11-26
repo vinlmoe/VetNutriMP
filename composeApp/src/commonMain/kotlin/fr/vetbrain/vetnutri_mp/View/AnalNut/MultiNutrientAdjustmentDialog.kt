@@ -1428,10 +1428,9 @@ suspend fun calculerAjustement(
                         }
                 }
 
-                // Arrondi final pour stabiliser l'UI - arrondi au gramme
+                // Arrondi final selon règles métier
                 for (i in adjustedAliments.indices) {
-                        val q: Double = adjustedAliments[i].quantite.toDouble()
-                        val rounded: Double = kotlin.math.round(q)
+                        val rounded: Double = arrondirQuantiteSelonRegles(adjustedAliments[i], adjustedAliments[i].quantite.toDouble())
                         adjustedAliments[i] = adjustedAliments[i].copy(quantite = rounded)
                 }
 
@@ -1614,9 +1613,9 @@ private fun adjustRationForNutrient(
                                 val quantiteActuelle: Double =
                                         alimentData.alimentRation.quantite.toDouble()
                                 val nouvelleQuantite: Double = quantiteActuelle * ratio
-                                // Arrondir au gramme
+                                // Arrondir selon règles
                                 val nouvelleQuantiteArrondie: Double =
-                                        kotlin.math.round(nouvelleQuantite)
+                                        arrondirQuantiteSelonRegles(adjustedAliments[index], nouvelleQuantite)
                                 adjustedAliments[index] =
                                         adjustedAliments[index].copy(
                                                 quantite = nouvelleQuantiteArrondie
@@ -1814,9 +1813,9 @@ private suspend fun ajusterAlimentsPourNutriment(
                                                 ?: Double.MAX_VALUE
                                 val nouvelleQuantite: Double =
                                         (quantiteActuelle + quantiteAAjouter).coerceIn(minQ, maxQ)
-                                // Arrondir au gramme
+                                // Arrondir selon règles
                                 val nouvelleQuantiteArrondie: Double =
-                                        kotlin.math.round(nouvelleQuantite)
+                                        arrondirQuantiteSelonRegles(adjustedAliments[index], nouvelleQuantite)
                                 adjustedAliments[index] =
                                         adjustedAliments[index].copy(
                                                 quantite = nouvelleQuantiteArrondie
@@ -2079,5 +2078,32 @@ private suspend fun adjustRationForMultipleNutrients(
                         success = false,
                         message = "Erreur lors de l'ajustement séquentiel: ${e.message}"
                 )
+        }
+}
+
+/**
+ * Arrondit la quantité selon les règles métier
+ * @param alimentRation L'aliment concerné
+ * @param quantite La quantité à arrondir
+ * @return La quantité arrondie
+ */
+private fun arrondirQuantiteSelonRegles(alimentRation: AlimentRation, quantite: Double): Double {
+        val aliment = alimentRation.aliment
+        if (aliment != null) {
+                val cont = aliment.cont
+                val quantInt = aliment.quantInt
+                
+                // Règle contenant: si contenant défini et quantInt > 0, arrondir au multiple de quantInt/2
+                if (cont != null && cont != ContEnum.NO && quantInt != null && quantInt > 0.0) {
+                        val step = quantInt / 2.0
+                        return kotlin.math.round(quantite / step) * step
+                }
+        }
+        
+        // Règles générales par défaut
+        return when {
+                quantite < 20.0 -> kotlin.math.round(quantite) // Arrondi au gramme
+                quantite < 200.0 -> kotlin.math.round(quantite / 5.0) * 5.0 // Arrondi aux 5g
+                else -> kotlin.math.round(quantite / 25.0) * 25.0 // Arrondi aux 25g
         }
 }

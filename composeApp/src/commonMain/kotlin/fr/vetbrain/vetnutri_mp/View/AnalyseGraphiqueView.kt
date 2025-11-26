@@ -56,6 +56,8 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.daysUntil
 import kotlinx.datetime.toLocalDateTime
+import kotlin.math.pow
+import kotlin.math.round
 
 // Data class pour stocker les informations d'âge d'une consultation
 data class ConsultationAgeData(
@@ -367,6 +369,23 @@ private fun calculateAdaptiveRange(
         return finalLowerBound..finalUpperBound
 }
 
+/**
+ * Arrondit une valeur float à un nombre raisonnable de décimales pour l'affichage
+ */
+private fun arrondirPourAffichage(value: Float, maxDecimals: Int = 2): Float {
+    val multiplier = 10.0.pow(maxDecimals.toDouble()).toFloat()
+    return (round(value * multiplier) / multiplier)
+}
+
+/**
+ * Arrondit une plage pour éviter les problèmes d'arrondi dans les labels d'axes
+ */
+private fun arrondirPlage(range: ClosedFloatingPointRange<Float>, maxDecimals: Int = 2): ClosedFloatingPointRange<Float> {
+    val start = arrondirPourAffichage(range.start, maxDecimals)
+    val endInclusive = arrondirPourAffichage(range.endInclusive, maxDecimals)
+    return start..endInclusive
+}
+
 // Data class pour gérer l'état du zoom et du pan (privée au fichier)
 private data class ZoomPanStateView(
         val scaleX: Float = 1f,
@@ -395,7 +414,7 @@ private fun calculateZoomedRangeView(
         val newStart = center - newSize / 2f + panOffset
         val newEnd = center + newSize / 2f + panOffset
         
-        return newStart..newEnd
+        return arrondirPlage(newStart..newEnd)
 }
 
 // Fonction pour calculer les pourcentages d'énergie des rations
@@ -1129,13 +1148,13 @@ private fun EvolutionPoidsChart(viewModel: AnimalDetailViewModel) {
                 val minX = if (useReal) donneesPoids.minOf { it.x } else 0.0f
                 val maxX = if (useReal) donneesPoids.maxOf { it.x } else 12.0f
                 val xMargin = (maxX - minX).coerceAtLeast(1.0f) * 0.05f
-                val xRange = (minX - xMargin)..(maxX + xMargin)
+                val xRange = arrondirPlage((minX - xMargin)..(maxX + xMargin))
 
                 val yCandidates = (if (useReal) donneesPoids else pointsRef0_12).map { it.y }
                 val minY = yCandidates.minOrNull() ?: 0.0f
                 val maxY = yCandidates.maxOrNull() ?: (minY + 5.0f)
                 val yMargin = (maxY - minY).coerceAtLeast(1.0f) * 0.05f
-                val yRange = (minY - yMargin)..(maxY + yMargin)
+                val yRange = arrondirPlage((minY - yMargin)..(maxY + yMargin))
 
                 // Créer des plages Float pour KoalaPlot (déjà Float)
                 val xRangeFloat = xRange
@@ -1154,10 +1173,8 @@ private fun EvolutionPoidsChart(viewModel: AnimalDetailViewModel) {
                         Column {
                                 XYGraph(
                                         xAxisModel =
-                                                FloatLinearAxisModel(
-                                                        range = xRangeFloat,
-                                                        minimumMajorTickIncrement =
-                                                                safeTickIncrement
+                                                KoalaPlotExtensions.createSmartXAxisModel(
+                                                        range = xRangeFloat
                                                 ),
                                         yAxisModel =
                                                 KoalaPlotExtensions.createSmartYAxisModel(
@@ -1632,8 +1649,8 @@ private fun RationsEnergieChart(
                         val minY = points.minOf { it.y }.coerceAtLeast(0f)
                         val maxY = points.maxOf { it.y }.coerceAtMost(100f)
 
-                        val baseXRange = (minX - minX * 0.05f)..(maxX + maxX * 0.05f)
-                        val baseYRange = (minY - minY * 0.05f)..(maxY + maxY * 0.05f)
+                        val baseXRange = arrondirPlage((minX - minX * 0.05f)..(maxX + maxX * 0.05f))
+                        val baseYRange = arrondirPlage((minY - minY * 0.05f)..(maxY + maxY * 0.05f))
                         
                         // État du zoom/pan
                         var zoomPanState by remember { mutableStateOf(ZoomPanStateView()) }
@@ -2331,7 +2348,7 @@ private fun DensiteRationsChart(
                                 val max = valeursValides.maxOf { it }
                                 val range = max - min
                                 val padding = maxOf(range * 0.1f, 10f)
-                                (maxOf(0f, min - padding))..(max + padding)
+                                arrondirPlage((maxOf(0f, min - padding))..(max + padding))
                         } else {
                                 0f..1f
                         }
@@ -2346,7 +2363,7 @@ private fun DensiteRationsChart(
                 ) {
                         XYGraph(
                                 xAxisModel = remember(categories) { CategoryAxisModel(categories) },
-                                yAxisModel = remember(yRange) { FloatLinearAxisModel(yRange) },
+                                yAxisModel = remember(yRange) { KoalaPlotExtensions.createSmartDensityAxisModel(yRange) },
                                 yAxisTitle =
                                         if (useDryMatterPer100g)
                                                 "Densité énergétique (kcal/100g MS)"
@@ -2824,10 +2841,11 @@ private fun NutrimentsRationsChart(
                                                 valeurs.filter { it.isFinite() && !it.isNaN() }
                                         val yRange =
                                                 if (valeursValides.isNotEmpty()) {
-                                                        calculateAdaptiveRange(
+                                                        val range = calculateAdaptiveRange(
                                                                 valeursValides,
                                                                 paddingPercent = 0.06f
                                                         )
+                                                        arrondirPlage(range)
                                                 } else {
                                                         0f..1f
                                                 }
@@ -3019,8 +3037,8 @@ private fun NutrimentsRationsChart(
                                         val minY = points.minOf { it.y }.coerceAtLeast(0f)
                                         val maxY = points.maxOf { it.y }
 
-                                        val baseXRange = (minX - minX * 0.05f)..(maxX + maxX * 0.05f)
-                                        val baseYRange = (minY - minY * 0.05f)..(maxY + maxY * 0.05f)
+                                        val baseXRange = arrondirPlage((minX - minX * 0.05f)..(maxX + maxX * 0.05f))
+                                        val baseYRange = arrondirPlage((minY - minY * 0.05f)..(maxY + maxY * 0.05f))
                                         
                                         // État du zoom/pan
                                         var zoomPanState by remember { mutableStateOf(ZoomPanStateView()) }

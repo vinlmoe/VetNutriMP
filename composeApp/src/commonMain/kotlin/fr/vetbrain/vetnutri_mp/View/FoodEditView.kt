@@ -20,6 +20,7 @@ import fr.vetbrain.vetnutri_mp.Components.NutrientSection
 import fr.vetbrain.vetnutri_mp.Components.TopBar
 import fr.vetbrain.vetnutri_mp.Enumer.*
 import fr.vetbrain.vetnutri_mp.Enumer.AAEnum
+import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.DataBMapping
 import fr.vetbrain.vetnutri_mp.ViewModel.FoodEditViewModel
@@ -818,7 +819,7 @@ fun FoodTypeDropdown(
 
         Box(modifier = modifier) {
                 OutlinedTextField(
-                        value = selectedFoodType?.toString() ?: "Sélectionner un type d'aliment",
+                        value = selectedFoodType?.translateEnum() ?: "Sélectionner un type d'aliment",
                         onValueChange = {},
                         readOnly = true,
                         trailingIcon = {
@@ -845,7 +846,7 @@ fun FoodTypeDropdown(
                                                 onFoodTypeSelected(foodType)
                                                 expanded = false
                                         }
-                                ) { Text(foodType.toString()) }
+                                ) { Text(foodType.translateEnum()) }
                         }
                 }
         }
