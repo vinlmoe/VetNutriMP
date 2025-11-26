@@ -328,7 +328,8 @@ fun AnalyseNutritionnelleCard(
                                                             },
                                                             typeExpressionBesoin =
                                                                     finalTypeExpressionBesoin,
-                                                            preferencesLoaded = preferencesLoaded
+                                                            preferencesLoaded = preferencesLoaded,
+                                                            referencesMaladies = referencesMaladies
                                                     )
                                                 }
                                                 repeat(3 - rangeeNutriments.size) {
@@ -407,8 +408,9 @@ fun AnalyseNutritionnelleCard(
                                                     referenceUtilisee = referenceUtilisee
                                             )
                                             
-                                            // Couleur selon l'icône de conformité : bleu si une flèche, rouge si deux
+                                            // Couleur selon l'icône de conformité : violet pour maladie, bleu si une flèche, rouge si deux
                                             val couleurTexte = when {
+                                                iconeConformiteBullet?.isMaladie == true -> Color(0xFF9C27B0) // Violet pour références de maladies
                                                 iconeConformiteBullet?.isCritical == true -> VetNutriColors.Error // Rouge pour deux flèches
                                                 iconeConformiteBullet != null -> Color(0xFF2196F3) // Bleu pour une flèche
                                                 else -> MaterialTheme.colors.onSurface // Noir par défaut si aucune flèche
@@ -417,15 +419,47 @@ fun AnalyseNutritionnelleCard(
                                             Column(
                                                     modifier = Modifier.width(200.dp)
                                             ) {
-                                                Text(
-                                                        text = obtenirNomTraduitNutriment(nom, valeur.nutriment),
-                                                        style = MaterialTheme.typography.caption,
-                                                        color =
-                                                                MaterialTheme.colors.onSurface.copy(
-                                                                        alpha = 0.8f
-                                                                ),
-                                                        fontWeight = FontWeight.Bold
-                                                )
+                                                // Nom du nutriment avec icône si nécessaire
+                                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                                    Text(
+                                                            text = obtenirNomTraduitNutriment(nom, valeur.nutriment),
+                                                            style = MaterialTheme.typography.caption,
+                                                            color =
+                                                                    MaterialTheme.colors.onSurface.copy(
+                                                                            alpha = 0.8f
+                                                                    ),
+                                                            fontWeight = FontWeight.Bold
+                                                    )
+                                                    
+                                                    // Icône de conformité aux références (+ ou -)
+                                                    iconeConformiteBullet?.let { conformite ->
+                                                        if (conformite.isCritical && !conformite.isMaladie) {
+                                                            // Double icône pour les références critiques (sauf maladie)
+                                                            Row(horizontalArrangement = Arrangement.spacedBy(0.dp)) {
+                                                                Icon(
+                                                                        imageVector = conformite.icone,
+                                                                        contentDescription = conformite.description,
+                                                                        tint = conformite.couleur,
+                                                                        modifier = Modifier.size(10.dp)
+                                                                )
+                                                                Icon(
+                                                                        imageVector = conformite.icone,
+                                                                        contentDescription = conformite.description,
+                                                                        tint = conformite.couleur,
+                                                                        modifier = Modifier.size(10.dp)
+                                                                )
+                                                            }
+                                                        } else {
+                                                            // Icône simple
+                                                            Icon(
+                                                                    imageVector = conformite.icone,
+                                                                    contentDescription = conformite.description,
+                                                                    tint = conformite.couleur,
+                                                                    modifier = Modifier.size(12.dp)
+                                                            )
+                                                        }
+                                                    }
+                                                }
                                                 Text(
                                                         text = "$valeurAffichee $uniteAffichee",
                                                         style = MaterialTheme.typography.overline,
@@ -468,20 +502,53 @@ fun AnalyseNutritionnelleCard(
                                                 referencesMaladies = referencesMaladies
                                         )
                                         
-                                        // Couleur selon l'icône de conformité : bleu si une flèche, rouge si deux
+                                        // Couleur selon l'icône de conformité : violet pour maladie, bleu si une flèche, rouge si deux
                                         val couleurTexte = when {
+                                            iconeConformiteBullet?.isMaladie == true -> Color(0xFF9C27B0) // Violet pour références de maladies
                                             iconeConformiteBullet?.isCritical == true -> VetNutriColors.Error // Rouge pour deux flèches
                                             iconeConformiteBullet != null -> Color(0xFF2196F3) // Bleu pour une flèche
                                             else -> MaterialTheme.colors.onSurface // Noir par défaut si aucune flèche
                                         }
                                         
                                         Column {
-                                                Text(
-                                                        text = obtenirNomTraduitNutriment(nom, valeur.nutriment),
-                                                        style = MaterialTheme.typography.caption,
-                                                        color = MaterialTheme.colors.onSurface,
-                                                        fontWeight = FontWeight.Bold
-                                                )
+                                                // Nom du nutriment avec icône si nécessaire
+                                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                                    Text(
+                                                            text = obtenirNomTraduitNutriment(nom, valeur.nutriment),
+                                                            style = MaterialTheme.typography.caption,
+                                                            color = MaterialTheme.colors.onSurface,
+                                                            fontWeight = FontWeight.Bold
+                                                    )
+                                                    
+                                                    // Icône de conformité aux références (+ ou -)
+                                                    iconeConformiteBullet?.let { conformite ->
+                                                        if (conformite.isCritical && !conformite.isMaladie) {
+                                                            // Double icône pour les références critiques (sauf maladie)
+                                                            Row(horizontalArrangement = Arrangement.spacedBy(0.dp)) {
+                                                                Icon(
+                                                                        imageVector = conformite.icone,
+                                                                        contentDescription = conformite.description,
+                                                                        tint = conformite.couleur,
+                                                                        modifier = Modifier.size(10.dp)
+                                                                )
+                                                                Icon(
+                                                                        imageVector = conformite.icone,
+                                                                        contentDescription = conformite.description,
+                                                                        tint = conformite.couleur,
+                                                                        modifier = Modifier.size(10.dp)
+                                                                )
+                                                            }
+                                                        } else {
+                                                            // Icône simple
+                                                            Icon(
+                                                                    imageVector = conformite.icone,
+                                                                    contentDescription = conformite.description,
+                                                                    tint = conformite.couleur,
+                                                                    modifier = Modifier.size(12.dp)
+                                                            )
+                                                        }
+                                                    }
+                                                }
                                                 Text(
                                                         text = "$valeurAffichee $uniteAffichee",
                                                         style = MaterialTheme.typography.overline,
@@ -852,9 +919,9 @@ private fun NutrimentCard(
                 ) {
                     // Icône de conformité aux références (+ ou -)
                     iconeConformite?.let { conformite ->
-                        if (conformite.isCritical) {
+                        if (conformite.isCritical && !conformite.isMaladie) {
                             // Double icône pour les références
-                            // critiques non respectées
+                            // critiques non respectées (sauf maladies qui utilisent une seule flèche)
                             Row(horizontalArrangement = Arrangement.spacedBy(1.dp)) {
                                 Icon(
                                         imageVector = conformite.icone,
@@ -871,7 +938,7 @@ private fun NutrimentCard(
                             }
                         } else {
                             // Icône simple pour les références
-                            // optimales
+                            // optimales ou les maladies
                             Icon(
                                     imageVector = conformite.icone,
                                     contentDescription = conformite.description,
@@ -904,8 +971,9 @@ private fun NutrimentCard(
                                 besoinEnergetiqueEntretien = besoinEnergetiqueEntretien,
                                 referenceUtilisee = referenceUtilisee
                         )
-                // Couleur selon l'icône de conformité : bleu si une flèche, rouge si deux
+                // Couleur selon l'icône de conformité : violet pour maladie, bleu si une flèche, rouge si deux
                 val couleurTexte = when {
+                    iconeConformite?.isMaladie == true -> Color(0xFF9C27B0) // Violet pour références de maladies
                     iconeConformite?.isCritical == true -> VetNutriColors.Error // Rouge pour deux flèches
                     iconeConformite != null -> Color(0xFF2196F3) // Bleu pour une flèche
                     else -> MaterialTheme.colors.onSurface // Noir par défaut si aucune flèche
@@ -936,8 +1004,9 @@ private data class IconeConformite(
         val couleur: Color,
         val description: String,
         val isCritical:
-                Boolean // true pour MIN/MAX (double icône), false pour OPTIMIN/OPTIMAX (simple
+                Boolean, // true pour MIN/MAX (double icône), false pour OPTIMIN/OPTIMAX (simple
 // icône)
+        val isMaladie: Boolean = false // true pour les références de maladies (couleur violette)
 )
 
 /**
@@ -958,6 +1027,56 @@ private fun obtenirIconeConformite(
         poidsMetabolique: Double?,
         referencesMaladies: List<ReferenceEv> = emptyList()
 ): IconeConformite? {
+
+    // Vérification des références de maladies (icône violette en cas de non-respect) - Prioritaire
+    referencesMaladies.forEach { refMaladie ->
+        val nutrient = valeurNutritionnelle.nutriment
+        val apportAbsolu = valeurNutritionnelle.valeur
+        
+        // Vérifier si c'est un nutriment de ratio pour les références de maladies aussi
+        val isNutrimentRatio = when (nutrient) {
+            is fr.vetbrain.vetnutri_mp.Enumer.NutrientAnalysis -> {
+                // Les nutriments d'analyse avec une unité vide sont des ratios
+                nutrient.unite.isEmpty()
+            }
+            else -> false
+        }
+        
+        // Contrôle MIN/MAX maladie
+        listOf(Reflevel.MIN, Reflevel.MAX).forEach { level ->
+            if (refMaladie.contientNutriment(nutrient, level)) {
+                val valeurRef = refMaladie.obtenirNutriment(nutrient, level)
+                val uniteRef =
+                        UnitReqEnum.getById(refMaladie.obtenirUniteNutriment(nutrient, level))
+                val besoinAbsolu = if (isNutrimentRatio) {
+                    // Pour les ratios, utiliser directement la valeur de référence
+                    // car ils ne dépendent pas du poids ou de l'énergie
+                    valeurRef
+                } else {
+                    calculerBesoinAbsoluLocal(
+                            valeurRef,
+                            uniteRef,
+                            besoinEnergetiqueEntretien,
+                            poidsAnimal,
+                            poidsMetabolique
+                    )
+                }
+                besoinAbsolu?.let { besoin ->
+                    val isCarence = level == Reflevel.MIN && apportAbsolu < besoin
+                    val isExces = level == Reflevel.MAX && apportAbsolu > besoin
+                    if (isCarence || isExces) {
+                        return IconeConformite(
+                                icone = if (isCarence) Icons.Filled.ArrowDownward else Icons.Filled.ArrowUpward,
+                                couleur = Color(0xFF9C27B0), // Violet
+                                description = if (isCarence) "Carence (réf. maladie)" else "Excès (réf. maladie)",
+                                isCritical = true,
+                                isMaladie = true
+                        )
+                    }
+                }
+            }
+        }
+    }
 
     referenceUtilisee?.let { reference ->
         val nutrient = valeurNutritionnelle.nutriment
@@ -1047,56 +1166,6 @@ private fun obtenirIconeConformite(
         // On ne retourne une icône que s'il y a une violation
         if (hasReferences) {
             return null // Toutes les normes respectées = pas d'icône = texte noir
-        }
-    }
-
-    // Vérification des références de maladies (icône violette en cas de non-respect)
-    referencesMaladies.forEach { refMaladie ->
-        val nutrient = valeurNutritionnelle.nutriment
-        val apportAbsolu = valeurNutritionnelle.valeur
-        
-        // Vérifier si c'est un nutriment de ratio pour les références de maladies aussi
-        val isNutrimentRatio = when (nutrient) {
-            is fr.vetbrain.vetnutri_mp.Enumer.NutrientAnalysis -> {
-                // Les nutriments d'analyse avec une unité vide sont des ratios
-                nutrient.unite.isEmpty()
-            }
-            else -> false
-        }
-        
-        // Contrôle MIN/MAX maladie
-        listOf(Reflevel.MIN, Reflevel.MAX).forEach { level ->
-            if (refMaladie.contientNutriment(nutrient, level)) {
-                val valeurRef = refMaladie.obtenirNutriment(nutrient, level)
-                val uniteRef =
-                        UnitReqEnum.getById(refMaladie.obtenirUniteNutriment(nutrient, level))
-                val besoinAbsolu = if (isNutrimentRatio) {
-                    // Pour les ratios, utiliser directement la valeur de référence
-                    // car ils ne dépendent pas du poids ou de l'énergie
-                    valeurRef
-                } else {
-                    calculerBesoinAbsoluLocal(
-                            valeurRef,
-                            uniteRef,
-                            besoinEnergetiqueEntretien,
-                            poidsAnimal,
-                            poidsMetabolique
-                    )
-                }
-                besoinAbsolu?.let { besoin ->
-                    val violation =
-                            (level == Reflevel.MIN && apportAbsolu < besoin) ||
-                                    (level == Reflevel.MAX && apportAbsolu > besoin)
-                    if (violation) {
-                        return IconeConformite(
-                                icone = Icons.Filled.Warning,
-                                couleur = Color(0xFF9C27B0), // Violet
-                                description = "Non conforme (réf. maladie)",
-                                isCritical = true
-                        )
-                    }
-                }
-            }
         }
     }
 
