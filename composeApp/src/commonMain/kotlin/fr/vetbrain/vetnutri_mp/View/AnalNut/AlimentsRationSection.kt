@@ -16,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import fr.vetbrain.vetnutri_mp.Components.AlimentItem
 import fr.vetbrain.vetnutri_mp.Components.CenteredMessage
+import fr.vetbrain.vetnutri_mp.Components.IconWithTooltip
 import fr.vetbrain.vetnutri_mp.Data.AlimentRation
 import fr.vetbrain.vetnutri_mp.Data.Ration
 import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
@@ -84,7 +85,7 @@ fun SectionAlimentsRation(
                                                 Arrangement.spacedBy(AppSizes.paddingXSmall)
                                 ) {
                                         // Sauvegarder la ration comme recette
-                                        Icon(
+                                        IconWithTooltip(
                                                 imageVector = Icons.Filled.Save,
                                                 contentDescription = "Enregistrer comme recette",
                                                 tint =
@@ -96,20 +97,18 @@ fun SectionAlimentsRation(
                                                                 VetNutriColors.Primary.copy(
                                                                         alpha = 0.5f
                                                                 ),
-                                                modifier =
-                                                        Modifier.size(AppSizes.iconSizeXSmall)
-                                                                .clickable(
-                                                                        enabled =
-                                                                                selectedRation
-                                                                                        ?.alimentMutableList
-                                                                                        ?.isNotEmpty() ==
-                                                                                        true,
-                                                                        onClick = onSaveRecipe
-                                                                )
+                                                modifier = Modifier.size(AppSizes.iconSizeXSmall),
+                                                tooltip = "Enregistrer comme recette",
+                                                enabled =
+                                                        selectedRation
+                                                                ?.alimentMutableList
+                                                                ?.isNotEmpty() ==
+                                                                true,
+                                                onClick = onSaveRecipe
                                         )
 
                                         // Bouton pour l'ajustement multi-nutriments
-                                        Icon(
+                                        IconWithTooltip(
                                                 imageVector = Icons.Filled.Tune,
                                                 contentDescription = "Ajustement multi-nutriments",
                                                 tint =
@@ -121,21 +120,18 @@ fun SectionAlimentsRation(
                                                                 VetNutriColors.Primary.copy(
                                                                         alpha = 0.5f
                                                                 ),
-                                                modifier =
-                                                        Modifier.size(AppSizes.iconSizeXSmall)
-                                                                .clickable(
-                                                                        enabled =
-                                                                                selectedRation
-                                                                                        ?.alimentMutableList
-                                                                                        ?.isNotEmpty() ==
-                                                                                        true,
-                                                                        onClick =
-                                                                                onMultiNutrientAdjustment
-                                                                )
+                                                modifier = Modifier.size(AppSizes.iconSizeXSmall),
+                                                tooltip = "Ajustement multi-nutriments",
+                                                enabled =
+                                                        selectedRation
+                                                                ?.alimentMutableList
+                                                                ?.isNotEmpty() ==
+                                                                true,
+                                                onClick = onMultiNutrientAdjustment
                                         )
 
                                         // Bouton pour ajustement rapide multi-nutriments
-                                        Icon(
+                                        IconWithTooltip(
                                                 imageVector = Icons.Filled.Balance,
                                                 contentDescription =
                                                         "Ajustement rapide multi-nutriments",
@@ -151,18 +147,17 @@ fun SectionAlimentsRation(
                                                                 VetNutriColors.Primary.copy(
                                                                         alpha = 0.5f
                                                                 ),
-                                                modifier =
-                                                        Modifier.size(AppSizes.iconSizeXSmall)
-                                                                .clickable(
-                                                                        enabled =
-                                                                                selectedRation !=
-                                                                                        null &&
-                                                                                        referenceUtilisee !=
-                                                                                                null &&
-                                                                                        (selectedRation
-                                                                                                .alimentMutableList
-                                                                                                .isNotEmpty()),
-                                                                        onClick = {
+                                                modifier = Modifier.size(AppSizes.iconSizeXSmall),
+                                                tooltip = "Ajustement rapide multi-nutriments",
+                                                enabled =
+                                                        selectedRation !=
+                                                                null &&
+                                                                referenceUtilisee !=
+                                                                        null &&
+                                                                (selectedRation
+                                                                        .alimentMutableList
+                                                                        .isNotEmpty()),
+                                                onClick = {
                                                                                 if (selectedRation !=
                                                                                                 null &&
                                                                                                 referenceUtilisee !=
@@ -248,29 +243,26 @@ fun SectionAlimentsRation(
                                                                                                 }
                                                                                 }
                                                                         }
-                                                                )
                                         )
 
                                         // Ouvrir le gestionnaire de recettes
-                                        Icon(
+                                        IconWithTooltip(
                                                 imageVector = Icons.Filled.MenuBook,
                                                 contentDescription = "Ouvrir les recettes",
                                                 tint = VetNutriColors.Primary,
-                                                modifier =
-                                                        Modifier.size(AppSizes.iconSizeXSmall)
-                                                                .clickable(
-                                                                        onClick = onOpenRecipeDialog
-                                                                )
+                                                modifier = Modifier.size(AppSizes.iconSizeXSmall),
+                                                tooltip = "Ouvrir les recettes",
+                                                onClick = onOpenRecipeDialog
                                         )
 
                                         // Bouton pour ajouter un aliment
-                                        Icon(
+                                        IconWithTooltip(
                                                 imageVector = Icons.Filled.Add,
                                                 contentDescription = "Ajouter un aliment",
                                                 tint = VetNutriColors.Primary,
-                                                modifier =
-                                                        Modifier.size(AppSizes.iconSizeXSmall)
-                                                                .clickable(onClick = onAddAliment)
+                                                modifier = Modifier.size(AppSizes.iconSizeXSmall),
+                                                tooltip = "Ajouter un aliment",
+                                                onClick = onAddAliment
                                         )
                                 }
                         }
