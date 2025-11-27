@@ -1,6 +1,7 @@
 package fr.vetbrain.vetnutri_mp.Export
 
 import com.openhtmltopdf.pdfboxout.PdfRendererBuilder
+import com.openhtmltopdf.svgsupport.BatikSVGDrawer
 import fr.vetbrain.vetnutri_mp.Utils.FileUtils
 import java.io.ByteArrayOutputStream
 
@@ -13,7 +14,12 @@ actual object PdfExporter {
         val html: String = HtmlDocumentBuilder.buildHtml(documentType, data)
         return try {
             val baos = ByteArrayOutputStream()
-            PdfRendererBuilder().withHtmlContent(html, null).toStream(baos).run()
+            val builder = PdfRendererBuilder()
+            builder.useSVGDrawer(BatikSVGDrawer())
+            builder.withHtmlContent(html, null)
+            builder.toStream(baos)
+            builder.run()
+            
             val bytes = baos.toByteArray()
             
             // Utiliser SwingUtilities.invokeAndWait comme dans exportJsonToFile
