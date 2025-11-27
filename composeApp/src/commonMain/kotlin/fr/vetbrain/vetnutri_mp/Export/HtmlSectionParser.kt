@@ -42,6 +42,7 @@ object HtmlSectionParser {
             is TextBlock.Heading -> parseHeadingToHtml(block)
             is TextBlock.ListBlock -> parseListToHtml(block)
             is TextBlock.TableBlock -> parseTableToHtml(block)
+            is TextBlock.RawHtml -> block.html
         }
     }
 

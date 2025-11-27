@@ -456,6 +456,9 @@ private fun EditableBlock(
             is TextBlock.Heading -> HeadingBlockEditor(block, onBlockChange)
             is TextBlock.ListBlock -> ListBlockEditor(block, onBlockChange)
             is TextBlock.TableBlock -> TableBlockEditor(block, onBlockChange)
+            is TextBlock.RawHtml -> {
+                Text("Bloc HTML brut (non éditable)", color = Color.Gray, style = MaterialTheme.typography.caption)
+            }
         }
 
         // Boutons d'action quand sélectionné

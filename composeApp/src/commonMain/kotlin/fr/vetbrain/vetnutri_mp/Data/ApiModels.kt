@@ -893,6 +893,12 @@ sealed class TextBlockApi {
                 val headers: List<String>,
                 val rows: List<List<String>>
         ) : TextBlockApi()
+
+        @Serializable
+        data class RawHtml(
+                override val id: String,
+                val html: String
+        ) : TextBlockApi()
 }
 
 @Serializable
@@ -961,6 +967,11 @@ fun fr.vetbrain.vetnutri_mp.Export.TextBlock.toApi(): TextBlockApi {
                                 headers = headers,
                                 rows = rows
                         )
+                is fr.vetbrain.vetnutri_mp.Export.TextBlock.RawHtml ->
+                        TextBlockApi.RawHtml(
+                                id = id,
+                                html = html
+                        )
         }
 }
 
@@ -1026,6 +1037,11 @@ fun TextBlockApi.toDomain(): fr.vetbrain.vetnutri_mp.Export.TextBlock {
                                 id = id,
                                 headers = headers,
                                 rows = rows
+                        )
+                is TextBlockApi.RawHtml ->
+                        fr.vetbrain.vetnutri_mp.Export.TextBlock.RawHtml(
+                                id = id,
+                                html = html
                         )
         }
 }
