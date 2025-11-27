@@ -36,7 +36,7 @@ import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Utils.DataB
 import fr.vetbrain.vetnutri_mp.Utils.DataBMapping
 import fr.vetbrain.vetnutri_mp.Utils.TextUtils
-import fr.vetbrain.vetnutri_mp.View.components.NutrientPieChart
+import fr.vetbrain.vetnutri_mp.Components.IconButtonWithTooltip
 
 /** Filtre par nutriment avec opérateur et valeur */
 data class NutrientFilter(
@@ -1093,22 +1093,20 @@ private fun FoodListItem(
                                                                         )
                                                         }
 
-                                                IconButton(
+                                                IconButtonWithTooltip(
                                                         onClick = {
                                                                 config.onFoodAction?.invoke(
                                                                         aliment,
                                                                         action
                                                                 )
                                                         },
-                                                        modifier = Modifier.size(24.dp)
-                                                ) {
-                                                        Icon(
-                                                                imageVector = icon,
-                                                                contentDescription = action,
-                                                                modifier = Modifier.size(16.dp),
-                                                                tint = iconColor
-                                                        )
-                                                }
+                                                        modifier = Modifier.size(24.dp),
+                                                        imageVector = icon,
+                                                        contentDescription = action,
+                                                        tooltip = action,
+                                                        tint = iconColor,
+                                                        iconModifier = Modifier.size(16.dp)
+                                                )
                                         }
                                 }
                         }
@@ -1587,9 +1585,12 @@ private fun NutrientFilterRow(
                         )
                 }
                 // Bouton supprimer
-                IconButton(onClick = onRemove) {
-                        Icon(Icons.Default.Delete, contentDescription = "Supprimer")
-                }
+                IconButtonWithTooltip(
+                        onClick = onRemove,
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Supprimer",
+                        tooltip = "Supprimer le filtre"
+                )
         }
 }
 

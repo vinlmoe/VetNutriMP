@@ -35,6 +35,7 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import fr.vetbrain.vetnutri_mp.Components.IconButtonWithTooltip
 import kotlin.math.pow
 import kotlin.math.round
 import fr.vetbrain.vetnutri_mp.Data.AlimentEv
@@ -932,13 +933,13 @@ fun AnalyseGraphiqueAlimentsView(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
             ) {
-                IconButton(onClick = onClose) {
-                    Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Retour à la sélection d'aliments",
-                            tint = VetNutriColors.Primary
-                    )
-                }
+                IconButtonWithTooltip(
+                        onClick = onClose,
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Retour à la sélection d'aliments",
+                        tooltip = "Retour",
+                        tint = VetNutriColors.Primary
+                )
                 Column {
                     Text(
                             text = "Analyse graphique de ${aliments.size} aliment(s)",
@@ -1947,7 +1948,7 @@ private fun GraphiqueNuagePoints(
                             horizontalArrangement = Arrangement.End,
                             verticalAlignment = Alignment.CenterVertically
                     ) {
-                        IconButton(
+                        IconButtonWithTooltip(
                                 onClick = {
                                     // Zoom out
                                     val newScaleX = (zoomPanState.value.scaleX * 0.9f).coerceIn(0.5f, 5f)
@@ -1958,14 +1959,12 @@ private fun GraphiqueNuagePoints(
                                             panX = zoomPanState.value.panX,
                                             panY = zoomPanState.value.panY
                                     )
-                                }
-                        ) {
-                            Icon(
-                                    imageVector = Icons.Default.ZoomOut,
-                                    contentDescription = "Zoom arrière"
-                            )
-                        }
-                        IconButton(
+                                },
+                                imageVector = Icons.Default.ZoomOut,
+                                contentDescription = "Zoom arrière",
+                                tooltip = "Zoom arrière"
+                        )
+                        IconButtonWithTooltip(
                                 onClick = {
                                     // Zoom in
                                     val newScaleX = (zoomPanState.value.scaleX * 1.1f).coerceIn(0.5f, 5f)
@@ -1976,13 +1975,11 @@ private fun GraphiqueNuagePoints(
                                             panX = zoomPanState.value.panX,
                                             panY = zoomPanState.value.panY
                                     )
-                                }
-                        ) {
-                            Icon(
-                                    imageVector = Icons.Default.ZoomIn,
-                                    contentDescription = "Zoom avant"
-                            )
-                        }
+                                },
+                                imageVector = Icons.Default.ZoomIn,
+                                contentDescription = "Zoom avant",
+                                tooltip = "Zoom avant"
+                        )
                         if (zoomPanState.value.scaleX != 1f || zoomPanState.value.scaleY != 1f || 
                             zoomPanState.value.panX != 0f || zoomPanState.value.panY != 0f) {
                             TextButton(
@@ -2430,17 +2427,15 @@ private fun AlimentRow(
                 style = MaterialTheme.typography.caption
         )
         // Icône pour masquer/afficher l'aliment avec checkbox réduite
-        IconButton(
+        IconButtonWithTooltip(
                 onClick = { onToggleHidden(data.aliment.uuid, !isHidden) },
-                modifier = Modifier.size(32.dp)
-        ) {
-            Icon(
-                    imageVector = if (isHidden) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                    contentDescription = if (isHidden) "Afficher l'aliment" else "Masquer l'aliment",
-                    modifier = Modifier.size(20.dp),
-                    tint = if (isHidden) MaterialTheme.colors.onSurface.copy(alpha = 0.5f) else VetNutriColors.Primary
-            )
-        }
+                modifier = Modifier.size(32.dp),
+                imageVector = if (isHidden) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                contentDescription = if (isHidden) "Afficher l'aliment" else "Masquer l'aliment",
+                tooltip = if (isHidden) "Afficher l'aliment" else "Masquer l'aliment",
+                iconModifier = Modifier.size(20.dp),
+                tint = if (isHidden) MaterialTheme.colors.onSurface.copy(alpha = 0.5f) else VetNutriColors.Primary
+        )
     }
 }
 
@@ -2637,7 +2632,7 @@ private fun GraphiqueNutrimentsPersonnalise(
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(
+            IconButtonWithTooltip(
                     onClick = {
                         // Zoom out
                         val newScaleX = (zoomPanState.value.scaleX * 0.9f).coerceIn(0.5f, 5f)
@@ -2648,14 +2643,12 @@ private fun GraphiqueNutrimentsPersonnalise(
                                 panX = zoomPanState.value.panX,
                                 panY = zoomPanState.value.panY
                         )
-                    }
-            ) {
-                Icon(
-                        imageVector = Icons.Default.ZoomOut,
-                        contentDescription = "Zoom arrière"
-                )
-            }
-            IconButton(
+                    },
+                    imageVector = Icons.Default.ZoomOut,
+                    contentDescription = "Zoom arrière",
+                    tooltip = "Zoom arrière"
+            )
+            IconButtonWithTooltip(
                     onClick = {
                         // Zoom in
                         val newScaleX = (zoomPanState.value.scaleX * 1.1f).coerceIn(0.5f, 5f)
@@ -2666,13 +2659,11 @@ private fun GraphiqueNutrimentsPersonnalise(
                                 panX = zoomPanState.value.panX,
                                 panY = zoomPanState.value.panY
                         )
-                    }
-            ) {
-                Icon(
-                        imageVector = Icons.Default.ZoomIn,
-                        contentDescription = "Zoom avant"
-                )
-            }
+                    },
+                    imageVector = Icons.Default.ZoomIn,
+                    contentDescription = "Zoom avant",
+                    tooltip = "Zoom avant"
+            )
             if (zoomPanState.value.scaleX != 1f || zoomPanState.value.scaleY != 1f || 
                 zoomPanState.value.panX != 0f || zoomPanState.value.panY != 0f) {
                 TextButton(

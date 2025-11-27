@@ -17,6 +17,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Service.BackupService.BackupMetadata
+import fr.vetbrain.vetnutri_mp.Components.IconButtonWithTooltip
 import fr.vetbrain.vetnutri_mp.ViewModel.BackupRestoreViewModel
 
 /**
@@ -57,9 +58,12 @@ fun BackupRestoreView(
             Row(
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Default.ArrowBack, contentDescription = "Retour")
-                }
+                IconButtonWithTooltip(
+                    onClick = onBack,
+                    imageVector = Icons.AutoMirrored.Default.ArrowBack,
+                    contentDescription = "Retour",
+                    tooltip = "Retour"
+                )
                 Text("Sauvegardes et Restauration", style = MaterialTheme.typography.h5, fontWeight = FontWeight.Bold)
             }
             

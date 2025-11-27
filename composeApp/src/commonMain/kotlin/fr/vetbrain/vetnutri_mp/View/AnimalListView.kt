@@ -6,6 +6,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import fr.vetbrain.vetnutri_mp.Components.IconButtonWithTooltip
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Search
@@ -125,16 +128,14 @@ fun AnimalListView(
                                         },
                                         trailingIcon = {
                                                 if (searchQuery.isNotEmpty()) {
-                                                        IconButton(
+                                                        IconButtonWithTooltip(
                                                                 onClick = {
                                                                         viewModel.setSearchQuery("")
-                                                                }
-                                                        ) {
-                                                                Icon(
-                                                                        Icons.Default.Clear,
-                                                                        contentDescription = null
-                                                                )
-                                                        }
+                                                                },
+                                                                imageVector = Icons.Default.Clear,
+                                                                contentDescription = "Effacer",
+                                                                tooltip = "Effacer"
+                                                        )
                                                 }
                                         },
                                         singleLine = true,
@@ -286,14 +287,19 @@ private fun AnimalCard(
                                         }
                                 }
                                 Row {
-                                        IconButton(onClick = onClick) {
-                                                // TODO: Ajouter une icône de détails
-                                                Text("→")
-                                        }
-                                        IconButton(onClick = { showDeleteConfirmation = true }) {
-                                                // TODO: Ajouter une icône de suppression
-                                                Text("🗑")
-                                        }
+                                        IconButtonWithTooltip(
+                                                onClick = onClick,
+                                                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                                contentDescription = "Détails",
+                                                tooltip = "Voir les détails"
+                                        )
+                                        IconButtonWithTooltip(
+                                                onClick = { showDeleteConfirmation = true },
+                                                imageVector = Icons.Default.Delete,
+                                                contentDescription = "Supprimer",
+                                                tooltip = "Supprimer",
+                                                tint = Color.Red
+                                        )
                                 }
                         }
                 }

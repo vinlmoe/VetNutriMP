@@ -25,6 +25,7 @@ import fr.vetbrain.vetnutri_mp.Enumer.*
 import fr.vetbrain.vetnutri_mp.Repository.ExportImportRepository
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
+import fr.vetbrain.vetnutri_mp.Components.IconButtonWithTooltip
 import fr.vetbrain.vetnutri_mp.View.SettingsComponents.SettingsTabs
 import fr.vetbrain.vetnutri_mp.View.SettingsSections.AdministrationSettings
 import fr.vetbrain.vetnutri_mp.View.SettingsSections.InterfaceSettings
@@ -449,21 +450,16 @@ fun SettingsView(
                                                                                                 1f
                                                                                         )
                                                                         )
-                                                                        IconButton(
+                                                                        IconButtonWithTooltip(
                                                                                 onClick = {
                                                                                         importViewModel
                                                                                                 .resetImportResult()
-                                                                                }
-                                                                        ) {
-                                                                                Icon(
-                                                                                        Icons.Default
-                                                                                                .Close,
-                                                                                        contentDescription =
-                                                                                                "Fermer",
-                                                                                        tint =
-                                                                                                Color.Gray
-                                                                                )
-                                                                        }
+                                                                                },
+                                                                                imageVector = Icons.Default.Close,
+                                                                                contentDescription = "Fermer",
+                                                                                tooltip = "Fermer",
+                                                                                tint = Color.Gray
+                                                                        )
                                                                 }
                                                         }
                                                 }
@@ -1375,15 +1371,12 @@ private fun SpeciesPreferenceCardWithPersistence(
                                         }
                                 }
 
-                                IconButton(onClick = { expanded = !expanded }) {
-                                        Icon(
-                                                imageVector =
-                                                        if (expanded) Icons.Default.ExpandLess
-                                                        else Icons.Default.ExpandMore,
-                                                contentDescription =
-                                                        if (expanded) "Réduire" else "Développer"
-                                        )
-                                }
+                                IconButtonWithTooltip(
+                                        onClick = { expanded = !expanded },
+                                        imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                        contentDescription = if (expanded) "Réduire" else "Développer",
+                                        tooltip = if (expanded) "Réduire" else "Développer"
+                                )
                         }
 
                         // Contenu développable
@@ -1670,15 +1663,12 @@ private fun SpeciesPreferenceCardSimplified(
                                         )
                                 }
 
-                                IconButton(onClick = { expanded = !expanded }) {
-                                        Icon(
-                                                imageVector =
-                                                        if (expanded) Icons.Default.ExpandLess
-                                                        else Icons.Default.ExpandMore,
-                                                contentDescription =
-                                                        if (expanded) "Réduire" else "Développer"
-                                        )
-                                }
+                                IconButtonWithTooltip(
+                                        onClick = { expanded = !expanded },
+                                        imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                        contentDescription = if (expanded) "Réduire" else "Développer",
+                                        tooltip = if (expanded) "Réduire" else "Développer"
+                                )
                         }
 
                         // Contenu développable

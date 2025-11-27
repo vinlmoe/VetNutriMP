@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Components.AppDatePicker
 import fr.vetbrain.vetnutri_mp.Components.AppTextField
 import fr.vetbrain.vetnutri_mp.Components.NumberTextField
+import fr.vetbrain.vetnutri_mp.Components.IconButtonWithTooltip
 import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
 import fr.vetbrain.vetnutri_mp.Data.SupplementalvariableP
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Animal
@@ -218,18 +219,16 @@ fun ConsultationFullScreenEditView(
                                         }
                                 },
                                 navigationIcon = {
-                                        IconButton(
+                                        IconButtonWithTooltip(
                                                 onClick = {
                                                         // Retour sans sauvegarde
                                                         onCancel()
-                                                }
-                                        ) {
-                                                Icon(
-                                                        AppIcons.ArrowBack,
-                                                        contentDescription = "Retour",
-                                                        tint = VetNutriColors.OnPrimary
-                                                )
-                                        }
+                                                },
+                                                imageVector = AppIcons.ArrowBack,
+                                                contentDescription = "Retour",
+                                                tooltip = "Retour",
+                                                tint = VetNutriColors.OnPrimary
+                                        )
                                 },
                                 actions = {},
                                 backgroundColor = VetNutriColors.Primary,
@@ -573,18 +572,15 @@ fun ConsultationFullScreenEditView(
                                                 readOnly = true,
                                                 modifier = Modifier.fillMaxWidth(),
                                                 trailingIcon = {
-                                                        IconButton(
+                                                        IconButtonWithTooltip(
                                                                 onClick = {
                                                                         showReferenceGeneraleDialog =
                                                                                 true
-                                                                }
-                                                        ) {
-                                                                Icon(
-                                                                        AppIcons.ArrowDropDown,
-                                                                        contentDescription =
-                                                                                "Sélectionner une référence"
-                                                                )
-                                                        }
+                                                                },
+                                                                imageVector = AppIcons.ArrowDropDown,
+                                                                contentDescription = "Sélectionner une référence",
+                                                                tooltip = "Sélectionner une référence"
+                                                        )
                                                 }
                                         )
 
@@ -674,7 +670,7 @@ fun ConsultationFullScreenEditView(
                                                                                                         )
                                                                                                 }
                                                                                         }
-                                                                                        IconButton(
+                                                                                        IconButtonWithTooltip(
                                                                                                 onClick = {
                                                                                                         val nouvellesReferences =
                                                                                                                 editedConsultation
@@ -690,16 +686,12 @@ fun ConsultationFullScreenEditView(
                                                                                                                                 referencesMaladies =
                                                                                                                                         nouvellesReferences
                                                                                                                         )
-                                                                                                }
-                                                                                        ) {
-                                                                                                Icon(
-                                                                                                        AppIcons.Delete,
-                                                                                                        contentDescription =
-                                                                                                                "Supprimer la référence",
-                                                                                                        tint =
-                                                                                                                Color.Red
-                                                                                                )
-                                                                                        }
+                                                                                                },
+                                                                                                imageVector = AppIcons.Delete,
+                                                                                                contentDescription = "Supprimer la référence",
+                                                                                                tooltip = "Supprimer la référence",
+                                                                                                tint = Color.Red
+                                                                                        )
                                                                                 }
                                                                         }
                                                                 }
@@ -1130,21 +1122,20 @@ private fun ScoreSelector(
                         trailingIcon = {
                                 Row {
                                         if (valeurSelectionnee != null) {
-                                                IconButton(onClick = { onScoreSelected(null) }) {
-                                                        Icon(
-                                                                AppIcons.Close,
-                                                                contentDescription =
-                                                                        "Effacer la note",
-                                                                tint = Color.Gray
-                                                        )
-                                                }
-                                        }
-                                        IconButton(onClick = { showDialog = true }) {
-                                                Icon(
-                                                        AppIcons.ArrowDropDown,
-                                                        contentDescription = "Sélectionner une note"
+                                                IconButtonWithTooltip(
+                                                        onClick = { onScoreSelected(null) },
+                                                        imageVector = AppIcons.Close,
+                                                        contentDescription = "Effacer la note",
+                                                        tooltip = "Effacer la note",
+                                                        tint = Color.Gray
                                                 )
                                         }
+                                        IconButtonWithTooltip(
+                                                onClick = { showDialog = true },
+                                                imageVector = AppIcons.ArrowDropDown,
+                                                contentDescription = "Sélectionner une note",
+                                                tooltip = "Sélectionner une note"
+                                        )
                                 }
                         }
                 )
@@ -1259,12 +1250,12 @@ private fun CoefficientSelector(
                         readOnly = true,
                         modifier = Modifier.fillMaxWidth(),
                         trailingIcon = {
-                                IconButton(onClick = { showDialog = true }) {
-                                        Icon(
-                                                AppIcons.ArrowDropDown,
-                                                contentDescription = "Sélectionner un coefficient"
-                                        )
-                                }
+                                IconButtonWithTooltip(
+                                        onClick = { showDialog = true },
+                                        imageVector = AppIcons.ArrowDropDown,
+                                        contentDescription = "Sélectionner un coefficient",
+                                        tooltip = "Sélectionner un coefficient"
+                                )
                         }
                 )
         }

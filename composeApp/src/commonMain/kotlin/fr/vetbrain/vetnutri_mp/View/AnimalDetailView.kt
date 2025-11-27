@@ -56,6 +56,7 @@ import kotlinx.coroutines.launch
 import fr.vetbrain.vetnutri_mp.Service.JsonShareService
 import fr.vetbrain.vetnutri_mp.Service.ShareOptions
 import fr.vetbrain.vetnutri_mp.Components.ShareLinkDialog
+import fr.vetbrain.vetnutri_mp.Components.IconButtonWithTooltip
 
 typealias RecipeRepo = fr.vetbrain.vetnutri_mp.Repository.RecipeRepository
 
@@ -1529,7 +1530,7 @@ private fun WideScreenLayout(
                                                                                                                         Color.Gray
                                                                                                         )
                                                                                                 }
-                                                                                                IconButton(
+                                                                                                IconButtonWithTooltip(
                                                                                                         onClick = {
                                                                                                                 selectedConseils =
                                                                                                                         selectedConseils
@@ -1537,16 +1538,12 @@ private fun WideScreenLayout(
                                                                                                                                         it.id !=
                                                                                                                                                 conseil.id
                                                                                                                                 }
-                                                                                                        }
-                                                                                                ) {
-                                                                                                        Icon(
-                                                                                                                Icons.Default
-                                                                                                                        .Delete,
-                                                                                                                "Supprimer",
-                                                                                                                tint =
-                                                                                                                        Color.Red
-                                                                                                        )
-                                                                                                        }
+                                                                                                        },
+                                                                                                        imageVector = Icons.Default.Delete,
+                                                                                                        contentDescription = "Supprimer",
+                                                                                                        tooltip = "Supprimer",
+                                                                                                        tint = Color.Red
+                                                                                                )
                                                                                                 }
                                                                                         }
                                                                                 }
@@ -1658,7 +1655,7 @@ private fun WideScreenLayout(
                                                                                                                         Color.Gray
                                                                                                         )
                                                                                                 }
-                                                                                                IconButton(
+                                                                                                IconButtonWithTooltip(
                                                                                                         onClick = {
                                                                                                                 localHtmlSections =
                                                                                                                         localHtmlSections
@@ -1666,16 +1663,12 @@ private fun WideScreenLayout(
                                                                                                                                         it.id !=
                                                                                                                                                 section.id
                                                                                                                                 }
-                                                                                                        }
-                                                                                                ) {
-                                                                                                        Icon(
-                                                                                                                Icons.Default
-                                                                                                                        .Delete,
-                                                                                                                "Supprimer",
-                                                                                                                tint =
-                                                                                                                        Color.Red
-                                                                                                        )
-                                                                                                }
+                                                                                                        },
+                                                                                                        imageVector = Icons.Default.Delete,
+                                                                                                        contentDescription = "Supprimer",
+                                                                                                        tooltip = "Supprimer",
+                                                                                                        tint = Color.Red
+                                                                                                )
                                                                                         }
                                                                                 }
                                                                         }
@@ -1992,22 +1985,17 @@ private fun WideScreenLayout(
                                                                                                                         .Primary
                                                                                                 )
                                                                                         } else {
-                                                                                                IconButton(
+                                                                                                IconButtonWithTooltip(
                                                                                                         onClick = {
                                                                                                                 selectedConseils =
                                                                                                                         selectedConseils +
                                                                                                                                 conseil
-                                                                                                        }
-                                                                                                ) {
-                                                                                                        Icon(
-                                                                                                                Icons.Default
-                                                                                                                        .Add,
-                                                                                                                "Ajouter",
-                                                                                                                tint =
-                                                                                                                        VetNutriColors
-                                                                                                                                .Primary
-                                                                                                        )
-                                                                                                }
+                                                                                                        },
+                                                                                                        imageVector = Icons.Default.Add,
+                                                                                                        contentDescription = "Ajouter",
+                                                                                                        tooltip = "Ajouter",
+                                                                                                        tint = VetNutriColors.Primary
+                                                                                                )
                                                                                         }
                                                                                 }
                                                                         }
@@ -2258,15 +2246,13 @@ private fun NarrowScreenLayout(
                                         horizontalArrangement = Arrangement.SpaceBetween,
                                         verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                        IconButton(
-                                                onClick = { scope.launch { drawerState.open() } }
-                                        ) {
-                                                Icon(
-                                                        imageVector = Icons.Default.Menu,
-                                                        contentDescription = "Menu",
-                                                        tint = VetNutriColors.Primary
-                                                )
-                                        }
+                                        IconButtonWithTooltip(
+                                                onClick = { scope.launch { drawerState.open() } },
+                                                imageVector = Icons.Default.Menu,
+                                                contentDescription = "Menu",
+                                                tooltip = "Menu",
+                                                tint = VetNutriColors.Primary
+                                        )
 
                                         Text(
                                                 text = animalDetails.nom,
@@ -2977,7 +2963,7 @@ private fun NarrowScreenLayout(
                                                                                                                                                 Color.Gray
                                                                                                                                 )
                                                                                                                         }
-                                                                                                                        IconButton(
+                                                                                                                        IconButtonWithTooltip(
                                                                                                                                 onClick = {
                                                                                                                                         selectedConseils =
                                                                                                                                                 selectedConseils
@@ -2985,16 +2971,12 @@ private fun NarrowScreenLayout(
                                                                                                                                                                 it.id !=
                                                                                                                                                                         conseil.id
                                                                                                                                                         }
-                                                                                                                                }
-                                                                                                                        ) {
-                                                                                                                                Icon(
-                                                                                                                                        Icons.Default
-                                                                                                                                                .Delete,
-                                                                                                                                        "Supprimer",
-                                                                                                                                        tint =
-                                                                                                                                                Color.Red
-                                                                                                                                )
-                                                                                                                        }
+                                                                                                                                },
+                                                                                                                                imageVector = Icons.Default.Delete,
+                                                                                                                                contentDescription = "Supprimer",
+                                                                                                                                tooltip = "Supprimer",
+                                                                                                                                tint = Color.Red
+                                                                                                                        )
                                                                                                                         }
                                                                                                                 }
                                                                                                         }
@@ -3127,7 +3109,7 @@ private fun NarrowScreenLayout(
                                                                                                                                                 Color.Gray
                                                                                                                                 )
                                                                                                                         }
-                                                                                                                        IconButton(
+                                                                                                                        IconButtonWithTooltip(
                                                                                                                                 onClick = {
                                                                                                                                         localHtmlSections =
                                                                                                                                                 localHtmlSections
@@ -3135,16 +3117,12 @@ private fun NarrowScreenLayout(
                                                                                                                                                                 it.id !=
                                                                                                                                                                         section.id
                                                                                                                                                         }
-                                                                                                                                }
-                                                                                                                        ) {
-                                                                                                                                Icon(
-                                                                                                                                        Icons.Default
-                                                                                                                                                .Delete,
-                                                                                                                                        "Supprimer",
-                                                                                                                                        tint =
-                                                                                                                                                Color.Red
-                                                                                                                                )
-                                                                                                                        }
+                                                                                                                                },
+                                                                                                                                imageVector = Icons.Default.Delete,
+                                                                                                                                contentDescription = "Supprimer",
+                                                                                                                                tooltip = "Supprimer",
+                                                                                                                                tint = Color.Red
+                                                                                                                        )
                                                                                                                 }
                                                                                                         }
                                                                                                 }
@@ -3447,22 +3425,17 @@ private fun NarrowScreenLayout(
                                                                                                                         .Primary
                                                                                                 )
                                                                                         } else {
-                                                                                                IconButton(
+                                                                                                IconButtonWithTooltip(
                                                                                                         onClick = {
                                                                                                                 selectedConseils =
                                                                                                                         selectedConseils +
                                                                                                                                 conseil
-                                                                                                        }
-                                                                                                ) {
-                                                                                                        Icon(
-                                                                                                                Icons.Default
-                                                                                                                        .Add,
-                                                                                                                "Ajouter",
-                                                                                                                tint =
-                                                                                                                        VetNutriColors
-                                                                                                                                .Primary
-                                                                                                        )
-                                                                                                }
+                                                                                                        },
+                                                                                                        imageVector = Icons.Default.Add,
+                                                                                                        contentDescription = "Ajouter",
+                                                                                                        tooltip = "Ajouter",
+                                                                                                        tint = VetNutriColors.Primary
+                                                                                                )
                                                                                         }
                                                                                 }
                                                                         }

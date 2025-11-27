@@ -31,6 +31,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import fr.vetbrain.vetnutri_mp.Components.IconButtonWithTooltip
 import androidx.compose.ui.unit.sp
 import fr.vetbrain.vetnutri_mp.Components.AppDatePicker
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
@@ -1566,30 +1567,26 @@ private fun PoidsTableau(
                                                     horizontalArrangement = Arrangement.End,
                                                     verticalAlignment = Alignment.CenterVertically
                                                 ) {
-                                                    IconButton(
-                                                        onClick = { onActivateCone(consultationData.date, consultationData.weight.toDouble(), getTargetWeight()) }
-                                                    ) {
-                                                        Icon(
-                                                            imageVector = Icons.Default.TrendingDown,
-                                                            contentDescription = "Cône de perte",
-                                                            tint = VetNutriColors.Secondary,
-                                                            modifier = Modifier.size(20.dp)
-                                                        )
-                                                    }
+                                                    IconButtonWithTooltip(
+                                                        onClick = { onActivateCone(consultationData.date, consultationData.weight.toDouble(), getTargetWeight()) },
+                                                        imageVector = Icons.Default.TrendingDown,
+                                                        contentDescription = "Cône de perte",
+                                                        tooltip = "Cône de perte",
+                                                        tint = VetNutriColors.Secondary,
+                                                        iconModifier = Modifier.size(20.dp)
+                                                    )
 
                                                     if (!consultationData.isFromConsultation && consultationData.weightUuid != null) {
-                                                        IconButton(
+                                                        IconButtonWithTooltip(
                                                             onClick = {
                                                                 viewModel.deleteWeight(consultationData.weightUuid!!)
-                                                            }
-                                                        ) {
-                                                            Icon(
-                                                                imageVector = Icons.Default.Delete,
-                                                                contentDescription = "Supprimer le poids",
-                                                                tint = Color.Red,
-                                                                modifier = Modifier.size(20.dp)
-                                                            )
-                                                        }
+                                                            },
+                                                            imageVector = Icons.Default.Delete,
+                                                            contentDescription = "Supprimer le poids",
+                                                            tooltip = "Supprimer le poids",
+                                                            tint = Color.Red,
+                                                            iconModifier = Modifier.size(20.dp)
+                                                        )
                                                     }
                                                 }
                                         }
@@ -1837,7 +1834,7 @@ private fun RationsEnergieChart(
                                 horizontalArrangement = Arrangement.End,
                                 verticalAlignment = Alignment.CenterVertically
                         ) {
-                                IconButton(
+                                IconButtonWithTooltip(
                                         onClick = {
                                                 // Zoom out
                                                 val newScaleX = (zoomPanState.scaleX * 0.9f).coerceIn(0.5f, 5f)
@@ -1848,14 +1845,12 @@ private fun RationsEnergieChart(
                                                         panX = zoomPanState.panX,
                                                         panY = zoomPanState.panY
                                                 )
-                                        }
-                                ) {
-                                        Icon(
-                                                imageVector = Icons.Default.ZoomOut,
-                                                contentDescription = "Zoom arrière"
-                                        )
-                                }
-                                IconButton(
+                                        },
+                                        imageVector = Icons.Default.ZoomOut,
+                                        contentDescription = "Zoom arrière",
+                                        tooltip = "Zoom arrière"
+                                )
+                                IconButtonWithTooltip(
                                         onClick = {
                                                 // Zoom in
                                                 val newScaleX = (zoomPanState.scaleX * 1.1f).coerceIn(0.5f, 5f)
@@ -1866,13 +1861,11 @@ private fun RationsEnergieChart(
                                                         panX = zoomPanState.panX,
                                                         panY = zoomPanState.panY
                                                 )
-                                        }
-                                ) {
-                                        Icon(
-                                                imageVector = Icons.Default.ZoomIn,
-                                                contentDescription = "Zoom avant"
-                                        )
-                                }
+                                        },
+                                        imageVector = Icons.Default.ZoomIn,
+                                        contentDescription = "Zoom avant",
+                                        tooltip = "Zoom avant"
+                                )
                                 if (zoomPanState.scaleX != 1f || zoomPanState.scaleY != 1f || 
                                     zoomPanState.panX != 0f || zoomPanState.panY != 0f) {
                                         TextButton(
@@ -3225,7 +3218,7 @@ private fun NutrimentsRationsChart(
                                                 horizontalArrangement = Arrangement.End,
                                                 verticalAlignment = Alignment.CenterVertically
                                         ) {
-                                                IconButton(
+                                                IconButtonWithTooltip(
                                                         onClick = {
                                                                 // Zoom out
                                                                 val newScaleX = (zoomPanState.scaleX * 0.9f).coerceIn(0.5f, 5f)
@@ -3236,14 +3229,12 @@ private fun NutrimentsRationsChart(
                                                                         panX = zoomPanState.panX,
                                                                         panY = zoomPanState.panY
                                                                 )
-                                                        }
-                                                ) {
-                                                        Icon(
-                                                                imageVector = Icons.Default.ZoomOut,
-                                                                contentDescription = "Zoom arrière"
-                                                        )
-                                                }
-                                                IconButton(
+                                                        },
+                                                        imageVector = Icons.Default.ZoomOut,
+                                                        contentDescription = "Zoom arrière",
+                                                        tooltip = "Zoom arrière"
+                                                )
+                                                IconButtonWithTooltip(
                                                         onClick = {
                                                                 // Zoom in
                                                                 val newScaleX = (zoomPanState.scaleX * 1.1f).coerceIn(0.5f, 5f)
@@ -3254,13 +3245,11 @@ private fun NutrimentsRationsChart(
                                                                         panX = zoomPanState.panX,
                                                                         panY = zoomPanState.panY
                                                                 )
-                                                        }
-                                                ) {
-                                                        Icon(
-                                                                imageVector = Icons.Default.ZoomIn,
-                                                                contentDescription = "Zoom avant"
-                                                        )
-                                                }
+                                                        },
+                                                        imageVector = Icons.Default.ZoomIn,
+                                                        contentDescription = "Zoom avant",
+                                                        tooltip = "Zoom avant"
+                                                )
                                                 if (zoomPanState.scaleX != 1f || zoomPanState.scaleY != 1f || 
                                                     zoomPanState.panX != 0f || zoomPanState.panY != 0f) {
                                                         TextButton(
