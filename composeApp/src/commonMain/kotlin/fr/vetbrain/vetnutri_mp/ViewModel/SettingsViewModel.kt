@@ -15,6 +15,11 @@ import fr.vetbrain.vetnutri_mp.Repository.AnimalRepository
 import fr.vetbrain.vetnutri_mp.Repository.DatabaseFoodRepository
 import fr.vetbrain.vetnutri_mp.Repository.FoodImportResult
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
+import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -40,6 +45,9 @@ class SettingsViewModel(
 ) {
     // Instance statique de Json pour éviter la création redondante
     private val json = Json { ignoreUnknownKeys = true }
+
+    // Scope pour les tâches en arrière-plan
+    private val viewModelScope = CoroutineScope(AppDispatchers.Main + SupervisorJob())
     
     private val _uiScale = MutableStateFlow(1.0)
     val uiScale: StateFlow<Double> = _uiScale.asStateFlow()
@@ -622,6 +630,21 @@ class SettingsViewModel(
             e.printStackTrace()
             log("=".repeat(60))
             ImportResult.Error("Erreur lors de l'import automatique: ${e.message}")
+        }
+    }
+
+    /**
+     * Lance l'import automatique en arrière-plan (survit à la destruction de la vue)
+     * @param forceImport Si true, force l'import
+     * @param onResult Callback appelé avec le résultat
+     */
+    fun launchAutomaticImport(
+        forceImport: Boolean = false,
+        onResult: (ImportResult) -> Unit
+    ) {
+        viewModelScope.launch {
+            val result = relaunchAutomaticImport(forceImport)
+            onResult(result)
         }
     }
 }
