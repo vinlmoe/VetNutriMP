@@ -3732,14 +3732,36 @@ private fun ConeZoomView(
 
         // Lignes du cône (calculées sur 26 semaines ou jusqu'à l'atteinte de l'objectif)
         val weeksDuration = 26
-        val slowLine = listOf(
-            Point(0f, startWeight.toFloat()),
-            Point(weeksDuration.toFloat(), (startWeight * (1 - 0.005 * weeksDuration)).toFloat())
-        )
-        val fastLine = listOf(
-            Point(0f, startWeight.toFloat()),
-            Point(weeksDuration.toFloat(), (startWeight * (1 - 0.02 * weeksDuration)).toFloat())
-        )
+
+        fun calculateConeLine(basePercentage: Float): List<Point<Float, Float>> {
+            val linePoints = mutableListOf<Point<Float, Float>>()
+            linePoints.add(Point(0f, startWeight.toFloat()))
+
+            // Inverser le pourcentage si prise de poids (cible > départ)
+            val effectivePercentage = if (targetWeight != null && targetWeight > startWeight && basePercentage < 0) {
+                -basePercentage
+            } else {
+                basePercentage
+            }
+
+            var finalWeeks = weeksDuration.toFloat()
+            var finalWeight = (startWeight * (1 + effectivePercentage * weeksDuration)).toFloat()
+
+            if (targetWeight != null && effectivePercentage != 0f) {
+                val weeksToTarget = ((targetWeight / startWeight - 1.0) / effectivePercentage).toFloat()
+                // Si l'objectif est atteint dans le futur, on arrête la ligne à l'objectif
+                if (weeksToTarget > 0) {
+                    finalWeeks = weeksToTarget
+                    finalWeight = targetWeight.toFloat()
+                }
+            }
+
+            linePoints.add(Point(finalWeeks, finalWeight))
+            return linePoints
+        }
+
+        val slowLine = calculateConeLine(-0.005f)
+        val fastLine = calculateConeLine(-0.02f)
         
         Triple(points, Pair(slowLine, fastLine), targetWeight)
     }
@@ -3749,7 +3771,8 @@ private fun ConeZoomView(
 
     // Calcul des plages
     val maxWeekData = realPoints.maxOfOrNull { it.second } ?: 0f
-    val maxX = maxOf(26f, maxWeekData)
+    val maxLineWeeks = maxOf(slowLine.last().x, fastLine.last().x)
+    val maxX = maxOf(maxOf(26f, maxWeekData), maxLineWeeks)
     val xRange = 0f..maxX
     
     val allY = realPoints.map { it.third.toFloat() } + 
@@ -3934,22 +3957,50 @@ private fun generateConeGraphSvg(
     sb.append("<line x1='$padding' y1='${height - padding}' x2='${width - padding}' y2='${height - padding}' stroke='black' stroke-width='1' />") // X
     sb.append("<line x1='$padding' y1='$padding' x2='$padding' y2='${height - padding}' stroke='black' stroke-width='1' />") // Y
     
-    // Grille et labels Y
-    val ySteps = 5
-    for (i in 0..ySteps) {
-        val yVal = yMin + (yMax - yMin) * i / ySteps
-        val yPos = scaleY(yVal)
-        sb.append("<line x1='$padding' y1='$yPos' x2='${width - padding}' y2='$yPos' stroke='lightgray' stroke-width='0.5' />")
-        sb.append("<text x='${padding - 5}' y='$yPos' font-family='Arial' font-size='10' text-anchor='end' dominant-baseline='middle'>${GraphFormattingUtils.formatDecimal(yVal.toDouble(), 1)}</text>")
+    // Grille et labels Y (Calcul de pas "intelligent")
+    val yRangeSpan = yMax - yMin
+    val targetYSteps = 5.0
+    val rawYStep = yRangeSpan / targetYSteps
+    val magY = 10.0.pow(kotlin.math.floor(kotlin.math.log10(rawYStep.toDouble())))
+    val normY = rawYStep / magY
+    val yStep = (when {
+        normY < 1.5 -> 1.0
+        normY < 3.5 -> 2.0
+        normY < 7.5 -> 5.0
+        else -> 10.0
+    } * magY).toFloat()
+
+    val startY = (kotlin.math.ceil(yMin / yStep) * yStep).toFloat()
+    var currentY = startY
+    
+    while (currentY <= yMax + (yStep * 0.01f)) {
+        val yPos = scaleY(currentY)
+        // Ne dessiner que si c'est dans la zone visible
+        if (yPos >= padding - 1 && yPos <= height - padding + 1) {
+            sb.append("<line x1='$padding' y1='$yPos' x2='${width - padding}' y2='$yPos' stroke='lightgray' stroke-width='0.5' />")
+            sb.append("<text x='${padding - 5}' y='$yPos' font-family='Arial' font-size='10' text-anchor='end' dominant-baseline='middle'>${GraphFormattingUtils.formatDecimal(currentY.toDouble(), 1)}</text>")
+        }
+        currentY += yStep
     }
     
-    // Labels X (Semaines)
-    val xSteps = 5
-    for (i in 0..xSteps) {
-        val xVal = xMin + (xMax - xMin) * i / xSteps
-        val xPos = scaleX(xVal)
-        sb.append("<line x1='$xPos' y1='${height - padding}' x2='$xPos' y2='${height - padding + 5}' stroke='black' stroke-width='1' />")
-        sb.append("<text x='$xPos' y='${height - padding + 15}' font-family='Arial' font-size='10' text-anchor='middle'>${xVal.toInt()}</text>")
+    // Labels X (Semaines - Pas entier)
+    val xRangeSpan = xMax - xMin
+    val xStep = when {
+        xRangeSpan <= 10 -> 1f
+        xRangeSpan <= 20 -> 2f
+        xRangeSpan <= 50 -> 5f
+        else -> 10f
+    }
+    
+    var currentX = (kotlin.math.ceil(xMin / xStep) * xStep).toFloat()
+    
+    while (currentX <= xMax + (xStep * 0.01f)) {
+        val xPos = scaleX(currentX)
+        if (xPos >= padding - 1 && xPos <= width - padding + 1) {
+            sb.append("<line x1='$xPos' y1='${height - padding}' x2='$xPos' y2='${height - padding + 5}' stroke='black' stroke-width='1' />")
+            sb.append("<text x='$xPos' y='${height - padding + 15}' font-family='Arial' font-size='10' text-anchor='middle'>${currentX.toInt()}</text>")
+        }
+        currentX += xStep
     }
     
     // Titres axes
