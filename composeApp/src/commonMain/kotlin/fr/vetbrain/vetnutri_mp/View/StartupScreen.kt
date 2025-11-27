@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -94,6 +95,7 @@ fun StartupScreen(
         var showAppUpdateErrorDialog by remember { mutableStateOf(false) }
         var appUpdateError by remember { mutableStateOf<String?>(null) }
         var isCheckingAppUpdate by remember { mutableStateOf(false) }
+        var showTestersDialog by remember { mutableStateOf(false) }
         
         // Flag pour empêcher le réaffichage du dialogue après un import récent
         var hasJustImported by remember { mutableStateOf(false) }
@@ -551,7 +553,8 @@ fun StartupScreen(
 
                                 // Remerciement aux étudiants
                                 Card(
-                                        modifier = Modifier.fillMaxWidth(),
+                                        modifier = Modifier.fillMaxWidth()
+                                                .clickable { showTestersDialog = true },
                                         elevation = 2.dp,
                                         backgroundColor = VetNutriColors.Secondary.copy(alpha = 0.1f)
                                 ) {
@@ -582,6 +585,13 @@ fun StartupScreen(
                                                         text = "qui ont permis de faire progresser le logiciel par leurs retours",
                                                         style = MaterialTheme.typography.body2,
                                                         color = VetNutriColors.Secondary,
+                                                        textAlign = TextAlign.Center
+                                                )
+                                                Spacer(modifier = Modifier.height(8.dp))
+                                                Text(
+                                                        text = "(Cliquez pour voir la liste)",
+                                                        style = MaterialTheme.typography.caption,
+                                                        color = VetNutriColors.Secondary.copy(alpha = 0.7f),
                                                         textAlign = TextAlign.Center
                                                 )
                                         }
@@ -773,7 +783,26 @@ fun StartupScreen(
                                                 Spacer(modifier = Modifier.height(32.dp))
 
                                                 // Boutons d'action
-                                                if (status.needsUpdate ||
+                                                if (isUpdatingDatabase) {
+                                                        Row(
+                                                                verticalAlignment = Alignment.CenterVertically,
+                                                                horizontalArrangement = Arrangement.Center,
+                                                                modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp)
+                                                        ) {
+                                                                CircularProgressIndicator(
+                                                                        modifier = Modifier.size(24.dp),
+                                                                        color = VetNutriColors.Primary,
+                                                                        strokeWidth = 2.dp
+                                                                )
+                                                                Spacer(modifier = Modifier.width(16.dp))
+                                                                Text(
+                                                                        text = "Mise à jour en cours...",
+                                                                        style = MaterialTheme.typography.body1,
+                                                                        color = VetNutriColors.Primary,
+                                                                        fontWeight = FontWeight.Medium
+                                                                )
+                                                        }
+                                                } else if (status.needsUpdate ||
                                                                 jsonUpdateAvailable ||
                                                                 showUpdateButtonByDefault
                                                 ) {
@@ -849,7 +878,7 @@ fun StartupScreen(
                                                                                         )
                                                                 ) {
                                                                         Text(
-                                                                                "Continuer sans mise à jour"
+                                                                                if (isUpdatingDatabase) "Continuer en arrière-plan" else "Continuer sans mise à jour"
                                                                         )
                                                                 }
 
@@ -1200,15 +1229,9 @@ fun StartupScreen(
                                                 "Début d'import JSON (isUpdatingDatabase=true)"
                                         )
 
-                                        coroutineScope.launch {
-                                                try {
-                                                        // Lancer la mise à jour automatique des
-                                                        // données JSON
-                                                        val result =
-                                                                settingsViewModel
-                                                                        .relaunchAutomaticImport()
-
-                                                        // Mettre à jour le statut
+                                        settingsViewModel.launchAutomaticImport { result ->
+                                                // Mettre à jour le statut
+                                                coroutineScope.launch {
                                                         when (result) {
                                                                 is ImportResult.Success -> {
                                                                         databaseStatus =
@@ -1245,6 +1268,11 @@ fun StartupScreen(
                                                                         
                                                                         // Marquer qu'un import vient d'être fait pour éviter le réaffichage
                                                                         hasJustImported = true
+
+                                                                        // Passer à l'application après la mise à
+                                                                        // jour
+                                                                        showStartupScreen = false
+                                                                        onDatabaseReady()
                                                                 }
                                                                 is ImportResult.Error -> {
                                                                         databaseStatus =
@@ -1254,23 +1282,8 @@ fun StartupScreen(
                                                                                                         "Erreur lors de la mise à jour JSON : ${result.message}"
                                                                                         )
                                                                         isUpdatingDatabase = false
-                                                                        return@launch
                                                                 }
                                                         }
-
-                                                        // Passer à l'application après la mise à
-                                                        // jour
-                                                        showStartupScreen = false
-                                                        onDatabaseReady()
-                                                } catch (e: Exception) {
-                                                        // En cas d'erreur, afficher le message et
-                                                        // permettre de continuer
-                                                        databaseStatus =
-                                                                databaseStatus?.copy(
-                                                                        error =
-                                                                                "Erreur lors de la mise à jour JSON : ${e.message}"
-                                                                )
-                                                        isUpdatingDatabase = false
                                                 }
                                         }
                                 },
@@ -1306,56 +1319,36 @@ fun StartupScreen(
                                                 "Début d'import base (isUpdatingDatabase=true)"
                                         )
 
-                                        coroutineScope.launch {
-                                                try {
-                                                        // Lancer la mise à jour de la base de
-                                                        // données (forcée)
-                                                        val result =
-                                                                settingsViewModel
-                                                                        .relaunchAutomaticImport(
-                                                                                forceImport = true
-                                                                        )
+                                        settingsViewModel.launchAutomaticImport(forceImport = true) { result ->
+                                                // Mettre à jour le statut
+                                                when (result) {
+                                                        is SettingsViewModel.ImportResult.Success -> {
+                                                                databaseStatus =
+                                                                        databaseStatus
+                                                                                ?.copy(
+                                                                                        foodCount =
+                                                                                                result.count,
+                                                                                        referenceCount =
+                                                                                                result.count,
+                                                                                        needsUpdate =
+                                                                                                false
+                                                                                )
+                                                                isUpdatingDatabase = false
 
-                                                        // Mettre à jour le statut
-                                                        when (result) {
-                                                                is SettingsViewModel.ImportResult.Success -> {
-                                                                        databaseStatus =
-                                                                                databaseStatus
-                                                                                        ?.copy(
-                                                                                                foodCount =
-                                                                                                        result.count,
-                                                                                                referenceCount =
-                                                                                                        result.count,
-                                                                                                needsUpdate =
-                                                                                                        false
-                                                                                        )
-                                                                        isUpdatingDatabase = false
-
-                                                                        // Passer à l'application
-                                                                        // après la mise à jour
-                                                                        showStartupScreen = false
-                                                                        onDatabaseReady()
-                                                                }
-                                                                is SettingsViewModel.ImportResult.Error -> {
-                                                                        databaseStatus =
-                                                                                databaseStatus
-                                                                                        ?.copy(
-                                                                                                error =
-                                                                                                        "Erreur lors de la mise à jour : ${result.message}"
-                                                                                        )
-                                                                        isUpdatingDatabase = false
-                                                                        return@launch
-                                                                }
+                                                                // Passer à l'application
+                                                                // après la mise à jour
+                                                                showStartupScreen = false
+                                                                onDatabaseReady()
                                                         }
-                                                } catch (e: Exception) {
-                                                        // En cas d'erreur, afficher le message et
-                                                        // permettre de continuer
-                                                        databaseStatus =
-                                                                databaseStatus?.copy(
-                                                                        error =
-                                                                                "Erreur lors de la mise à jour : ${e.message}"
-                                                                )
-                                                        isUpdatingDatabase = false
+                                                        is SettingsViewModel.ImportResult.Error -> {
+                                                                databaseStatus =
+                                                                        databaseStatus
+                                                                                ?.copy(
+                                                                                        error =
+                                                                                                "Erreur lors de la mise à jour : ${result.message}"
+                                                                                )
+                                                                isUpdatingDatabase = false
+                                                        }
                                                 }
                                         }
                                 },
@@ -1386,51 +1379,6 @@ fun StartupScreen(
                         )
                 }
 
-                // Indicateur de progression pendant la mise à jour
-                if (isUpdatingDatabase) {
-                        Box(
-                                modifier = Modifier.fillMaxSize(),
-                                contentAlignment = Alignment.Center
-                        ) {
-                                Surface(
-                                        modifier = Modifier.padding(32.dp),
-                                        color = MaterialTheme.colors.surface,
-                                        elevation = 8.dp
-                                ) {
-                                        Column(
-                                                modifier = Modifier.padding(32.dp),
-                                                horizontalAlignment = Alignment.CenterHorizontally
-                                        ) {
-                                                CircularProgressIndicator(
-                                                        color = VetNutriColors.Primary,
-                                                        modifier = Modifier.size(48.dp)
-                                                )
-
-                                                Spacer(modifier = Modifier.height(16.dp))
-
-                                                Text(
-                                                        text =
-                                                                "Mise à jour de la base de données...",
-                                                        style = MaterialTheme.typography.h6,
-                                                        textAlign = TextAlign.Center
-                                                )
-
-                                                Spacer(modifier = Modifier.height(8.dp))
-
-                                                Text(
-                                                        text =
-                                                                "Veuillez patienter pendant l'importation des données.",
-                                                        style = MaterialTheme.typography.body2,
-                                                        textAlign = TextAlign.Center,
-                                                        color =
-                                                                MaterialTheme.colors.onSurface.copy(
-                                                                        alpha = 0.7f
-                                                                )
-                                                )
-                                        }
-                                }
-                        }
-                }
         }
         
         // Dialogues de mise à jour de l'application
@@ -1449,6 +1397,10 @@ fun StartupScreen(
                                 appUpdateError = null
                         }
                 )
+        }
+
+        if (showTestersDialog) {
+                TestersDialog(onDismiss = { showTestersDialog = false })
         }
 }
 
@@ -1829,5 +1781,58 @@ private fun TermsAndConditionsDialog(onAccept: () -> Unit, onDismiss: () -> Unit
                         ) { Text("J'accepte les conditions") }
                 },
                 dismissButton = { OutlinedButton(onClick = onDismiss) { Text("Fermer") } }  
+        )
+}
+
+/** Dialogue affichant la liste des testeurs */
+@Composable
+private fun TestersDialog(onDismiss: () -> Unit) {
+        val testers = listOf(
+                "Virginie Durand Lefebvre",
+                "Tiphaine Blanchard",
+                "Mathilde Thierry",
+                "Antoine Rached"
+        ).sorted()
+
+        AlertDialog(
+                onDismissRequest = onDismiss,
+                title = {
+                        Text(
+                                text = "Testeurs",
+                                style = MaterialTheme.typography.h6,
+                                fontWeight = FontWeight.Bold
+                        )
+                },
+                text = {
+                        Column(
+                                modifier = Modifier
+                                        .heightIn(max = 400.dp)
+                                        .verticalScroll(rememberScrollState())
+                        ) {
+                                Text(
+                                        text = "Un grand merci aux testeurs pour leur aide précieuse :",
+                                        style = MaterialTheme.typography.body2,
+                                        modifier = Modifier.padding(bottom = 16.dp)
+                                )
+
+                                testers.forEach { tester ->
+                                        Text(
+                                                text = "• $tester",
+                                                style = MaterialTheme.typography.body2,
+                                                modifier = Modifier.padding(vertical = 2.dp)
+                                        )
+                                }
+                        }
+                },
+                confirmButton = {
+                        Button(
+                                onClick = onDismiss,
+                                colors = ButtonDefaults.buttonColors(
+                                        backgroundColor = VetNutriColors.Primary
+                                )
+                        ) {
+                                Text("Fermer")
+                        }
+                }
         )
 }

@@ -346,40 +346,43 @@ fun SectionAlimentsRation(
                                                         selectedRation.alimentMutableList,
                                                         key = { it.uuid }
                                                 ) { aliment ->
-                                                        AlimentItem(
-                                                                aliment = aliment,
-                                                                isEditing =
-                                                                        editingAlimentId ==
-                                                                                aliment.uuid,
-                                                                onStartEditing = {
-                                                                        if (editingAlimentId !=
-                                                                                        null &&
-                                                                                        editingAlimentId !=
-                                                                                                aliment.uuid
-                                                                        ) {
-                                                                                editingAlimentId =
-                                                                                        null
-                                                                        }
-                                                                        editingAlimentId =
-                                                                                aliment.uuid
-                                                                },
-                                                                onQuantityChange = { newQuantity ->
-                                                                        viewModel
-                                                                                .updateAlimentQuantity(
+                                                        // Force la recomposition visuelle si la quantité change
+                                                        key(aliment.quantite) {
+                                                                AlimentItem(
+                                                                        aliment = aliment,
+                                                                        isEditing =
+                                                                                editingAlimentId ==
                                                                                         aliment.uuid,
-                                                                                        newQuantity
-                                                                                )
-                                                                },
-                                                                onFinishEditing = {
-                                                                        editingAlimentId = null
-                                                                },
-                                                                onDelete = {
-                                                                        viewModel
-                                                                                .removeAlimentFromRation(
+                                                                        onStartEditing = {
+                                                                                if (editingAlimentId !=
+                                                                                                null &&
+                                                                                                editingAlimentId !=
+                                                                                                        aliment.uuid
+                                                                                ) {
+                                                                                        editingAlimentId =
+                                                                                                null
+                                                                                }
+                                                                                editingAlimentId =
                                                                                         aliment.uuid
-                                                                                )
-                                                                }
-                                                        )
+                                                                        },
+                                                                        onQuantityChange = { newQuantity ->
+                                                                                viewModel
+                                                                                        .updateAlimentQuantity(
+                                                                                                aliment.uuid,
+                                                                                                newQuantity
+                                                                                        )
+                                                                        },
+                                                                        onFinishEditing = {
+                                                                                editingAlimentId = null
+                                                                        },
+                                                                        onDelete = {
+                                                                                viewModel
+                                                                                        .removeAlimentFromRation(
+                                                                                                aliment.uuid
+                                                                                        )
+                                                                        }
+                                                                )
+                                                        }
                                                 }
                                         }
                                 }
