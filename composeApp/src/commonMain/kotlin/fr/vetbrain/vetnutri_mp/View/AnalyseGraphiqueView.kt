@@ -36,9 +36,19 @@ import androidx.compose.ui.unit.sp
 import fr.vetbrain.vetnutri_mp.Components.AppDatePicker
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
+import androidx.compose.ui.draw.rotate
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.ZoomIn
 import fr.vetbrain.vetnutri_mp.Utils.GraphFormattingUtils
 import fr.vetbrain.vetnutri_mp.Utils.KoalaPlotExtensions
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailViewModel
+import fr.vetbrain.vetnutri_mp.Export.PdfExporter
+import fr.vetbrain.vetnutri_mp.Export.DocumentType
+import fr.vetbrain.vetnutri_mp.Export.ExportData
+import fr.vetbrain.vetnutri_mp.Export.HtmlSection
+import fr.vetbrain.vetnutri_mp.Export.RichTextContent
+import fr.vetbrain.vetnutri_mp.Export.TextBlock
+import fr.vetbrain.vetnutri_mp.Utils.genUUID
 import io.github.koalaplot.core.*
 import io.github.koalaplot.core.bar.DefaultVerticalBar
 import io.github.koalaplot.core.bar.VerticalBarPlot
@@ -1030,7 +1040,14 @@ private fun EvolutionPoidsChart(
     onActivateConeAction: (LocalDate, Double, Double?) -> Unit = { _, _, _ -> },
     onClearCone: () -> Unit = {}
 ) {
-        val animal by viewModel.animal.collectAsState()
+    var showZoom by remember { mutableStateOf(false) }
+
+    if (showZoom && coneState != null) {
+        ConeZoomView(viewModel, coneState!!, onClose = { showZoom = false })
+        return
+    }
+
+    val animal by viewModel.animal.collectAsState()
         val targetWeight = coneState?.targetWeight
 
         // Utiliser derivedStateOf pour forcer la recomposition quand les données changent
@@ -1137,6 +1154,18 @@ private fun EvolutionPoidsChart(
                                                 ) { Text(text = courbe.description) }
                                         }
                                 }
+                        }
+
+                        if (coneState != null) {
+                            Button(
+                                onClick = { showZoom = true },
+                                colors = ButtonDefaults.buttonColors(backgroundColor = VetNutriColors.Secondary),
+                                modifier = Modifier.padding(horizontal = 8.dp)
+                            ) {
+                                Icon(Icons.Default.ZoomIn, contentDescription = null)
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Zoom Cône & Rapport")
+                            }
                         }
 
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -3670,4 +3699,294 @@ private fun GraphiqueLegend(selectedChart: ChartType) {
                         )
                 }
         }
+}
+
+@OptIn(ExperimentalKoalaPlotApi::class)
+@Composable
+private fun ConeZoomView(
+    viewModel: AnimalDetailViewModel,
+    coneState: WeightConeState,
+    onClose: () -> Unit
+) {
+    val animal by viewModel.animal.collectAsState()
+    val scope = rememberCoroutineScope()
+
+    // Préparer les données
+    val zoomData = remember(animal, coneState) {
+        val startDate = coneState.startDate
+        val startWeight = coneState.startWeight
+        val targetWeight = coneState.targetWeight
+        
+        // Points réels filtrés et convertis en semaines
+        val points = animal?.consultations?.flatMap { c ->
+            val cDate = c.date
+            if (cDate != null && cDate >= startDate && c.effectiveWeight != null) {
+                listOf(Pair(cDate, c.effectiveWeight!!))
+            } else emptyList()
+        }?.plus(
+            animal?.weightHistory?.filter { it.date >= startDate }?.map { Pair(it.date, it.value) } ?: emptyList()
+        )?.distinctBy { it.first }?.sortedBy { it.first }?.map { (date, weight) ->
+            val weeks = startDate.daysUntil(date) / 7.0f
+            Triple(date, weeks, weight)
+        } ?: emptyList()
+
+        // Lignes du cône (calculées sur 26 semaines ou jusqu'à l'atteinte de l'objectif)
+        val weeksDuration = 26
+        val slowLine = listOf(
+            Point(0f, startWeight.toFloat()),
+            Point(weeksDuration.toFloat(), (startWeight * (1 - 0.005 * weeksDuration)).toFloat())
+        )
+        val fastLine = listOf(
+            Point(0f, startWeight.toFloat()),
+            Point(weeksDuration.toFloat(), (startWeight * (1 - 0.02 * weeksDuration)).toFloat())
+        )
+        
+        Triple(points, Pair(slowLine, fastLine), targetWeight)
+    }
+
+    val (realPoints, coneLines, targetW) = zoomData
+    val (slowLine, fastLine) = coneLines
+
+    // Calcul des plages
+    val maxWeekData = realPoints.maxOfOrNull { it.second } ?: 0f
+    val maxX = maxOf(26f, maxWeekData)
+    val xRange = 0f..maxX
+    
+    val allY = realPoints.map { it.third.toFloat() } + 
+               slowLine.map { it.y } + 
+               fastLine.map { it.y } + 
+               (if (targetW != null) listOf(targetW.toFloat()) else emptyList())
+               
+    val minY = allY.minOrNull() ?: 0f
+    val maxY = allY.maxOrNull() ?: 10f
+    val yRange = calculateAdaptiveRange(allY.map { it }, paddingPercent = 0.05f)
+
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
+    ) {
+        // Header avec bouton retour et export
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Button(onClick = onClose) {
+                Icon(Icons.Default.ArrowDropDown, contentDescription = null, modifier = Modifier.rotate(90f))
+                Text("Retour")
+            }
+            
+            Button(
+                onClick = {
+                    val svgGraph = generateConeGraphSvg(
+                        realPoints, slowLine, fastLine, targetW, xRange, yRange
+                    )
+                    
+                    val exportData = ExportData(
+                        animal = animal,
+                        ration = null,
+                        reference = null,
+                        title = "Suivi Perte de Poids - ${animal?.nom}",
+                        additionalText = "Rapport généré le ${Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date}",
+                        htmlSections = listOf(
+                            HtmlSection(
+                                id = genUUID(),
+                                title = "Graphique d'évolution",
+                                content = RichTextContent(
+                                    blocks = listOf(
+                                        TextBlock.RawHtml(
+                                            id = genUUID(),
+                                            html = svgGraph
+                                        )
+                                    )
+                                )
+                            ),
+                            HtmlSection(
+                                id = genUUID(),
+                                title = "Données détaillées",
+                                content = RichTextContent(
+                                    blocks = listOf(
+                                        TextBlock.Paragraph(
+                                            id = genUUID(), 
+                                            text = "Début du régime: ${coneState.startDate} | Poids initial: ${coneState.startWeight}kg${if(coneState.targetWeight != null) " | Objectif: ${coneState.targetWeight}kg" else ""}"
+                                        ),
+                                        TextBlock.TableBlock(
+                                            id = genUUID(),
+                                            headers = listOf("Date", "Semaine", "Poids (kg)"),
+                                            rows = realPoints.map { (date, week, weight) ->
+                                                listOf(
+                                                    date.toString(),
+                                                    GraphFormattingUtils.formatDecimal(week.toDouble(), 1),
+                                                    GraphFormattingUtils.formatDecimal(weight, 2)
+                                                )
+                                            }
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    )
+                    PdfExporter.exportDocument(DocumentType.RATION_ANALYSIS, exportData, "suivi_poids_${animal?.nom ?: "animal"}.pdf")
+                },
+                colors = ButtonDefaults.buttonColors(backgroundColor = VetNutriColors.Secondary)
+            ) {
+                Icon(Icons.Default.Share, contentDescription = null)
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Export PDF (Données + Graph)")
+            }
+        }
+
+        // Graphique Zoomé
+        GraphCard(
+            titre = "Zoom sur le cône de perte de poids",
+            sousTitre = "Évolution en semaines depuis le début du régime (${coneState.startDate})"
+        ) {
+            XYGraph(
+                xAxisModel = FloatLinearAxisModel(xRange, minimumMajorTickIncrement = 2f),
+                yAxisModel = KoalaPlotExtensions.createSmartYAxisModel(yRange),
+                xAxisTitle = "Semaines",
+                yAxisTitle = "Poids (kg)",
+                modifier = Modifier.height(400.dp)
+            ) {
+                // Cône
+                LinePlot(
+                    data = slowLine,
+                    lineStyle = LineStyle(brush = SolidColor(Color(0xFF4CAF50)), strokeWidth = 2.dp, pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f))
+                )
+                LinePlot(
+                    data = fastLine,
+                    lineStyle = LineStyle(brush = SolidColor(Color(0xFFFF5722)), strokeWidth = 2.dp, pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f))
+                )
+                
+                if (targetW != null) {
+                    val lineTarget = listOf(Point(xRange.start, targetW.toFloat()), Point(xRange.endInclusive, targetW.toFloat()))
+                    LinePlot(
+                        data = lineTarget,
+                        lineStyle = LineStyle(brush = SolidColor(Color.Black), strokeWidth = 1.5.dp, pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(15f, 15f), 0f))
+                    )
+                }
+
+                // Points réels
+                if (realPoints.isNotEmpty()) {
+                    LinePlot(
+                        data = realPoints.map { Point(it.second, it.third.toFloat()) },
+                        symbol = {
+                            androidx.compose.foundation.Canvas(modifier = Modifier.size(8.dp)) {
+                                drawCircle(color = Color.Blue)
+                            }
+                        }
+                    )
+                }
+            }
+        }
+        
+        // Tableau des données
+        Card(modifier = Modifier.fillMaxWidth(), elevation = AppSizes.elevationSmall) {
+            Column(modifier = Modifier.padding(AppSizes.paddingMedium)) {
+                Text("Données de la période", fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(8.dp))
+                realPoints.forEach { (date, week, weight) ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(date.toString(), style = MaterialTheme.typography.body2)
+                        Text("Semaine ${GraphFormattingUtils.formatDecimal(week.toDouble(), 1)}", style = MaterialTheme.typography.body2)
+                        Text("${GraphFormattingUtils.formatDecimal(weight, 2)} kg", style = MaterialTheme.typography.body2, fontWeight = FontWeight.Bold)
+                    }
+                    Divider(color = Color.LightGray.copy(alpha = 0.5f))
+                }
+            }
+        }
+    }
+}
+
+// Fonction pour générer un SVG du graphique de cône
+private fun generateConeGraphSvg(
+    realPoints: List<Triple<LocalDate, Float, Double>>,
+    slowLine: List<Point<Float, Float>>,
+    fastLine: List<Point<Float, Float>>,
+    targetWeight: Double?,
+    xRange: ClosedFloatingPointRange<Float>,
+    yRange: ClosedFloatingPointRange<Float>,
+    width: Int = 600,
+    height: Int = 400
+): String {
+    val padding = 40.0
+    val graphWidth = width - 2 * padding
+    val graphHeight = height - 2 * padding
+    
+    val xMin = xRange.start
+    val xMax = xRange.endInclusive
+    val yMin = yRange.start
+    val yMax = yRange.endInclusive
+    
+    fun scaleX(x: Float): Double = padding + (x - xMin) / (xMax - xMin) * graphWidth
+    fun scaleY(y: Float): Double = height - padding - (y - yMin) / (yMax - yMin) * graphHeight
+    
+    val sb = StringBuilder()
+    sb.append("<svg width='$width' height='$height' xmlns='http://www.w3.org/2000/svg'>")
+    
+    // Fond blanc
+    sb.append("<rect width='$width' height='$height' fill='white' />")
+    
+    // Axes
+    sb.append("<line x1='$padding' y1='${height - padding}' x2='${width - padding}' y2='${height - padding}' stroke='black' stroke-width='1' />") // X
+    sb.append("<line x1='$padding' y1='$padding' x2='$padding' y2='${height - padding}' stroke='black' stroke-width='1' />") // Y
+    
+    // Grille et labels Y
+    val ySteps = 5
+    for (i in 0..ySteps) {
+        val yVal = yMin + (yMax - yMin) * i / ySteps
+        val yPos = scaleY(yVal)
+        sb.append("<line x1='$padding' y1='$yPos' x2='${width - padding}' y2='$yPos' stroke='lightgray' stroke-width='0.5' />")
+        sb.append("<text x='${padding - 5}' y='$yPos' font-family='Arial' font-size='10' text-anchor='end' dominant-baseline='middle'>${GraphFormattingUtils.formatDecimal(yVal.toDouble(), 1)}</text>")
+    }
+    
+    // Labels X (Semaines)
+    val xSteps = 5
+    for (i in 0..xSteps) {
+        val xVal = xMin + (xMax - xMin) * i / xSteps
+        val xPos = scaleX(xVal)
+        sb.append("<line x1='$xPos' y1='${height - padding}' x2='$xPos' y2='${height - padding + 5}' stroke='black' stroke-width='1' />")
+        sb.append("<text x='$xPos' y='${height - padding + 15}' font-family='Arial' font-size='10' text-anchor='middle'>${xVal.toInt()}</text>")
+    }
+    
+    // Titres axes
+    sb.append("<text x='${width / 2}' y='${height - 5}' font-family='Arial' font-size='12' text-anchor='middle'>Semaines</text>")
+    sb.append("<text x='10' y='${height / 2}' font-family='Arial' font-size='12' text-anchor='middle' transform='rotate(-90 10,${height / 2})'>Poids (kg)</text>")
+
+    // Ligne Objectif
+    if (targetWeight != null) {
+        val yTarget = scaleY(targetWeight.toFloat())
+        sb.append("<line x1='${scaleX(xMin)}' y1='$yTarget' x2='${scaleX(xMax)}' y2='$yTarget' stroke='black' stroke-width='1.5' stroke-dasharray='5,5' />")
+    }
+    
+    // Ligne Lente (Verte)
+    if (slowLine.size >= 2) {
+        val x1 = scaleX(slowLine[0].x)
+        val y1 = scaleY(slowLine[0].y)
+        val x2 = scaleX(slowLine[1].x)
+        val y2 = scaleY(slowLine[1].y)
+        sb.append("<line x1='$x1' y1='$y1' x2='$x2' y2='$y2' stroke='#4CAF50' stroke-width='2' stroke-dasharray='10,5' />")
+    }
+    
+    // Ligne Rapide (Orange)
+    if (fastLine.size >= 2) {
+        val x1 = scaleX(fastLine[0].x)
+        val y1 = scaleY(fastLine[0].y)
+        val x2 = scaleX(fastLine[1].x)
+        val y2 = scaleY(fastLine[1].y)
+        sb.append("<line x1='$x1' y1='$y1' x2='$x2' y2='$y2' stroke='#FF5722' stroke-width='2' stroke-dasharray='10,5' />")
+    }
+    
+    // Points réels (Bleu)
+    realPoints.forEach { (_, week, weight) ->
+        val cx = scaleX(week)
+        val cy = scaleY(weight.toFloat())
+        sb.append("<circle cx='$cx' cy='$cy' r='4' fill='blue' />")
+    }
+    
+    sb.append("</svg>")
+    return sb.toString()
 }
