@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import fr.vetbrain.vetnutri_mp.Components.IconButtonWithTooltip
 import fr.vetbrain.vetnutri_mp.Components.DropdownField
 import fr.vetbrain.vetnutri_mp.Components.MultiSelectionCard
 import fr.vetbrain.vetnutri_mp.Components.NutrientSection
@@ -823,9 +824,12 @@ fun FoodTypeDropdown(
                         onValueChange = {},
                         readOnly = true,
                         trailingIcon = {
-                                IconButton(onClick = { expanded = !expanded }) {
-                                        Icon(Icons.Default.ArrowDropDown, contentDescription = null)
-                                }
+                                IconButtonWithTooltip(
+                                        onClick = { expanded = !expanded },
+                                        imageVector = Icons.Default.ArrowDropDown,
+                                        contentDescription = null,
+                                        tooltip = "Sélectionner un type d'aliment"
+                                )
                         },
                         colors =
                                 TextFieldDefaults.outlinedTextFieldColors(
@@ -868,9 +872,12 @@ fun FoodGroupDropdown(
                         onValueChange = {},
                         readOnly = true,
                         trailingIcon = {
-                                IconButton(onClick = { expanded = !expanded }) {
-                                        Icon(Icons.Default.ArrowDropDown, contentDescription = null)
-                                }
+                                IconButtonWithTooltip(
+                                        onClick = { expanded = !expanded },
+                                        imageVector = Icons.Default.ArrowDropDown,
+                                        contentDescription = null,
+                                        tooltip = "Sélectionner un groupe d'aliment"
+                                )
                         },
                         colors =
                                 TextFieldDefaults.outlinedTextFieldColors(
@@ -914,9 +921,12 @@ private fun ContDropdown(
                         readOnly = true,
                         label = { Text("Contenant") },
                         trailingIcon = {
-                                IconButton(onClick = { expanded = !expanded }) {
-                                        Icon(Icons.Default.ArrowDropDown, contentDescription = null)
-                                }
+                                IconButtonWithTooltip(
+                                        onClick = { expanded = !expanded },
+                                        imageVector = Icons.Default.ArrowDropDown,
+                                        contentDescription = null,
+                                        tooltip = "Sélectionner un contenant"
+                                )
                         },
                         colors =
                                 TextFieldDefaults.outlinedTextFieldColors(

@@ -21,7 +21,7 @@ import androidx.compose.material.Button
 import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.Card
 import androidx.compose.material.Icon
-import androidx.compose.material.IconButton
+import fr.vetbrain.vetnutri_mp.Components.IconButtonWithTooltip
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.OutlinedButton
 import androidx.compose.material.Text
@@ -675,15 +675,21 @@ private fun AlimentItem(
             }
             
             if (showAddButton && onAdd != null) {
-                IconButton(onClick = onAdd) {
-                    Icon(Icons.Default.Add, contentDescription = "Ajouter")
-                }
+                IconButtonWithTooltip(
+                    onClick = onAdd,
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "Ajouter",
+                    tooltip = "Ajouter"
+                )
             }
             
             if (showRemoveButton && onRemove != null) {
-                IconButton(onClick = onRemove) {
-                    Icon(Icons.Default.Remove, contentDescription = "Retirer")
-                }
+                IconButtonWithTooltip(
+                    onClick = onRemove,
+                    imageVector = Icons.Default.Remove,
+                    contentDescription = "Retirer",
+                    tooltip = "Retirer"
+                )
             }
         }
     }

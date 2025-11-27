@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.text.font.FontWeight
+import fr.vetbrain.vetnutri_mp.Components.IconButtonWithTooltip
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -245,33 +246,29 @@ fun ConsultationCard(
                                 verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
                         ) {
                                 // Bouton d'édition
-                                IconButton(
+                                IconButtonWithTooltip(
                                         onClick = onEdit,
-                                        modifier = Modifier.size(AppSizes.iconSizeMedium)
-                                ) {
-                                        Icon(
-                                                imageVector = AppIcons.Edit,
-                                                contentDescription = "Modifier la consultation",
-                                                tint = VetNutriColors.Primary,
-                                                modifier = Modifier.size(AppSizes.iconSizeSmall)
-                                        )
-                                }
+                                        modifier = Modifier.size(AppSizes.iconSizeMedium),
+                                        imageVector = AppIcons.Edit,
+                                        contentDescription = "Modifier la consultation",
+                                        tooltip = "Modifier la consultation",
+                                        tint = VetNutriColors.Primary,
+                                        iconModifier = Modifier.size(AppSizes.iconSizeSmall)
+                                )
 
                                 // Bouton de suppression
-                                IconButton(
+                                IconButtonWithTooltip(
                                         onClick = onDelete,
                                         enabled = isDeleteEnabled,
-                                        modifier = Modifier.size(AppSizes.iconSizeMedium)
-                                ) {
-                                        Icon(
-                                                imageVector = AppIcons.Delete,
-                                                contentDescription = "Supprimer la consultation",
-                                                tint =
-                                                        if (isDeleteEnabled) Color.Red
-                                                        else Color.Gray.copy(alpha = 0.5f),
-                                                modifier = Modifier.size(AppSizes.iconSizeSmall)
-                                        )
-                                }
+                                        modifier = Modifier.size(AppSizes.iconSizeMedium),
+                                        imageVector = AppIcons.Delete,
+                                        contentDescription = "Supprimer la consultation",
+                                        tooltip = "Supprimer la consultation",
+                                        tint =
+                                                if (isDeleteEnabled) Color.Red
+                                                else Color.Gray.copy(alpha = 0.5f),
+                                        iconModifier = Modifier.size(AppSizes.iconSizeSmall)
+                                )
                         }
                 }
         }
@@ -352,41 +349,35 @@ fun RationItem(
                         horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingXSmall),
                         verticalAlignment = Alignment.CenterVertically
                 ) {
-                        IconButton(
+                        IconButtonWithTooltip(
                                 onClick = { onEdit() },
-                                modifier = Modifier.size(AppSizes.iconSizeLarge)
-                        ) {
-                                Icon(
-                                        Icons.Default.Edit,
-                                        contentDescription = "Modifier",
-                                        tint = VetNutriColors.Primary.copy(alpha = 0.8f)
-                                )
-                        }
+                                modifier = Modifier.size(AppSizes.iconSizeLarge),
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = "Modifier",
+                                tooltip = "Modifier",
+                                tint = VetNutriColors.Primary.copy(alpha = 0.8f)
+                        )
 
-                        IconButton(
+                        IconButtonWithTooltip(
                                 onClick = { onDuplicate() },
-                                modifier = Modifier.size(AppSizes.iconSizeLarge)
-                        ) {
-                                Icon(
-                                        AppIcons.ContentCopy,
-                                        contentDescription = "Dupliquer",
-                                        tint = VetNutriColors.Primary.copy(alpha = 0.8f)
-                                )
-                        }
+                                modifier = Modifier.size(AppSizes.iconSizeLarge),
+                                imageVector = AppIcons.ContentCopy,
+                                contentDescription = "Dupliquer",
+                                tooltip = "Dupliquer",
+                                tint = VetNutriColors.Primary.copy(alpha = 0.8f)
+                        )
 
-                        IconButton(
+                        IconButtonWithTooltip(
                                 onClick = { onDelete() },
                                 modifier = Modifier.size(AppSizes.iconSizeLarge),
-                                enabled = isDeleteEnabled
-                        ) {
-                                Icon(
-                                        AppIcons.Delete,
-                                        contentDescription = "Supprimer",
-                                        tint =
-                                                if (isDeleteEnabled) Color.Red.copy(alpha = 0.8f)
-                                                else Color.Gray.copy(alpha = 0.5f)
-                                )
-                        }
+                                enabled = isDeleteEnabled,
+                                imageVector = AppIcons.Delete,
+                                contentDescription = "Supprimer",
+                                tooltip = "Supprimer",
+                                tint =
+                                        if (isDeleteEnabled) Color.Red.copy(alpha = 0.8f)
+                                        else Color.Gray.copy(alpha = 0.5f)
+                        )
                 }
         }
 }
@@ -483,20 +474,20 @@ fun AlimentItem(
                                                 Modifier.width(AppSizes.textFieldHeight.times(2.2f))
                                 )
                                 Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
-                                IconButton(onClick = validateQuantity) {
-                                        Icon(
-                                                AppIcons.Check,
-                                                contentDescription = "Valider",
-                                                tint = Color.Green
-                                        )
-                                }
-                                IconButton(onClick = cancelEdit) {
-                                        Icon(
-                                                AppIcons.Close,
-                                                contentDescription = "Annuler",
-                                                tint = Color.Red.copy(alpha = 0.8f)
-                                        )
-                                }
+                                IconButtonWithTooltip(
+                                        onClick = validateQuantity,
+                                        imageVector = AppIcons.Check,
+                                        contentDescription = "Valider",
+                                        tooltip = "Valider",
+                                        tint = Color.Green
+                                )
+                                IconButtonWithTooltip(
+                                        onClick = cancelEdit,
+                                        imageVector = AppIcons.Close,
+                                        contentDescription = "Annuler",
+                                        tooltip = "Annuler",
+                                        tint = Color.Red.copy(alpha = 0.8f)
+                                )
                         }
                 } else {
                         // Mode affichage de la quantité
@@ -510,20 +501,20 @@ fun AlimentItem(
                                         fontWeight = FontWeight.Bold,
                                         modifier = Modifier.clickable(onClick = onStartEditing)
                                 )
-                                IconButton(onClick = onStartEditing) {
-                                        Icon(
-                                                AppIcons.Edit,
-                                                contentDescription = "Modifier la quantité",
-                                                tint = VetNutriColors.Primary
-                                        )
-                                }
-                                IconButton(onClick = onDelete) {
-                                        Icon(
-                                                AppIcons.Delete,
-                                                contentDescription = "Supprimer",
-                                                tint = Color.Red.copy(alpha = 0.8f)
-                                        )
-                                }
+                                IconButtonWithTooltip(
+                                        onClick = onStartEditing,
+                                        imageVector = AppIcons.Edit,
+                                        contentDescription = "Modifier la quantité",
+                                        tooltip = "Modifier la quantité",
+                                        tint = VetNutriColors.Primary
+                                )
+                                IconButtonWithTooltip(
+                                        onClick = onDelete,
+                                        imageVector = AppIcons.Delete,
+                                        contentDescription = "Supprimer",
+                                        tooltip = "Supprimer",
+                                        tint = Color.Red.copy(alpha = 0.8f)
+                                )
                         }
                 }
         }

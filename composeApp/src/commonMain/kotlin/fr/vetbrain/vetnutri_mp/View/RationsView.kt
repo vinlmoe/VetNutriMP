@@ -28,6 +28,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontStyle
+import fr.vetbrain.vetnutri_mp.Components.IconButtonWithTooltip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -1944,7 +1945,7 @@ private fun CoefficientEditableRow(
                                         Row {
                                                 // Bouton de validation (uniquement en mode édition)
                                                 if (isEditing) {
-                                                        IconButton(
+                                                        IconButtonWithTooltip(
                                                                 onClick = {
                                                                         // Valider et sortir du mode
                                                                         // édition
@@ -1977,41 +1978,26 @@ private fun CoefficientEditableRow(
                                                                                 )
                                                                         }
                                                                         isEditing = false
-                                                                }
-                                                        ) {
-                                                                Icon(
-                                                                        imageVector =
-                                                                                Icons.Default.Check,
-                                                                        contentDescription =
-                                                                                "Valider",
-                                                                        tint =
-                                                                                VetNutriColors
-                                                                                        .Primary
-                                                                )
-                                                        }
+                                                                },
+                                                                imageVector = Icons.Default.Check,
+                                                                contentDescription = "Valider",
+                                                                tooltip = "Valider",
+                                                                tint = VetNutriColors.Primary
+                                                        )
                                                 }
 
                                                 // Bouton dropdown (toujours présent)
-                                                IconButton(
+                                                IconButtonWithTooltip(
                                                         onClick = {
                                                                 showDropdown = true
                                                                 isEditing = false // Sortir du mode
                                                                 // édition si
                                                                 // on ouvre le dropdown
-                                                        }
-                                                ) {
-                                                        Icon(
-                                                                imageVector =
-                                                                        if (showDropdown)
-                                                                                Icons.Default
-                                                                                        .KeyboardArrowUp
-                                                                        else
-                                                                                Icons.Default
-                                                                                        .KeyboardArrowDown,
-                                                                contentDescription =
-                                                                        "Sélectionner un coefficient"
-                                                        )
-                                                }
+                                                        },
+                                                        imageVector = if (showDropdown) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                                                        contentDescription = "Sélectionner un coefficient",
+                                                        tooltip = "Sélectionner un coefficient"
+                                                )
                                         }
                                 }
                         )
@@ -2049,19 +2035,12 @@ private fun CoefficientEditableRow(
                                         modifier = Modifier.fillMaxWidth(),
                                         trailingIcon = {
                                                 // Bouton dropdown (toujours présent)
-                                                IconButton(onClick = { showDropdown = true }) {
-                                                        Icon(
-                                                                imageVector =
-                                                                        if (showDropdown)
-                                                                                Icons.Default
-                                                                                        .KeyboardArrowUp
-                                                                        else
-                                                                                Icons.Default
-                                                                                        .KeyboardArrowDown,
-                                                                contentDescription =
-                                                                        "Sélectionner un coefficient"
-                                                        )
-                                                }
+                                                IconButtonWithTooltip(
+                                                        onClick = { showDropdown = true },
+                                                        imageVector = if (showDropdown) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                                                        contentDescription = "Sélectionner un coefficient",
+                                                        tooltip = "Sélectionner un coefficient"
+                                                )
                                         }
                                 )
 
@@ -2361,7 +2340,7 @@ private fun CoefficientsDialog(
                                                                                                         .Number
                                                                                 )
                                                                 )
-                                                                IconButton(
+                                                                IconButtonWithTooltip(
                                                                         onClick = {
                                                                                 coefficientText
                                                                                         .toDoubleOrNull()
@@ -2382,16 +2361,13 @@ private fun CoefficientsDialog(
                                                                                         }
                                                                                 isEditingCoefficient =
                                                                                         false
-                                                                        }
-                                                                ) {
-                                                                        Icon(
-                                                                                Icons.Filled.Check,
-                                                                                contentDescription =
-                                                                                        "Valider",
-                                                                                tint = Color.Green
-                                                                        )
-                                                                }
-                                                                IconButton(
+                                                                        },
+                                                                        imageVector = Icons.Filled.Check,
+                                                                        contentDescription = "Valider",
+                                                                        tooltip = "Valider",
+                                                                        tint = Color.Green
+                                                                )
+                                                                IconButtonWithTooltip(
                                                                         onClick = {
                                                                                 coefficientText =
                                                                                         selectedConsultation
@@ -2400,15 +2376,12 @@ private fun CoefficientsDialog(
                                                                                                 ?: "1.0"
                                                                                 isEditingCoefficient =
                                                                                         false
-                                                                        }
-                                                                ) {
-                                                                        Icon(
-                                                                                Icons.Filled.Close,
-                                                                                contentDescription =
-                                                                                        "Annuler",
-                                                                                tint = Color.Red
-                                                                        )
-                                                                }
+                                                                        },
+                                                                        imageVector = Icons.Filled.Close,
+                                                                        contentDescription = "Annuler",
+                                                                        tooltip = "Annuler",
+                                                                        tint = Color.Red
+                                                                )
                                                         }
                                                 } else {
                                                         Row(
@@ -2436,7 +2409,7 @@ private fun CoefficientsDialog(
                                                                         fontWeight =
                                                                                 FontWeight.Medium
                                                                 )
-                                                                IconButton(
+                                                                IconButtonWithTooltip(
                                                                         onClick = {
                                                                                 coefficientText =
                                                                                         selectedConsultation
@@ -2445,14 +2418,11 @@ private fun CoefficientsDialog(
                                                                                                 ?: "1.0"
                                                                                 isEditingCoefficient =
                                                                                         true
-                                                                        }
-                                                                ) {
-                                                                        Icon(
-                                                                                Icons.Filled.Edit,
-                                                                                contentDescription =
-                                                                                        "Éditer"
-                                                                        )
-                                                                }
+                                                                        },
+                                                                        imageVector = Icons.Filled.Edit,
+                                                                        contentDescription = "Éditer",
+                                                                        tooltip = "Éditer"
+                                                                )
                                                         }
                                                 }
                                         }

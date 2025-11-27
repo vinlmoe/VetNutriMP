@@ -26,6 +26,35 @@ import androidx.compose.ui.window.PopupProperties
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+import androidx.compose.foundation.layout.defaultMinSize
+
+/**
+ * Composant IconButton avec Tooltip intégré.
+ * Simule le comportement de IconButton (taille min 48dp) avec gestion du tooltip.
+ */
+@Composable
+fun IconButtonWithTooltip(
+    imageVector: ImageVector,
+    contentDescription: String?,
+    tooltip: String,
+    onClick: () -> Unit,
+    enabled: Boolean = true,
+    tint: Color = LocalContentColor.current,
+    modifier: Modifier = Modifier,
+    iconModifier: Modifier = Modifier
+) {
+    IconWithTooltip(
+        imageVector = imageVector,
+        contentDescription = contentDescription,
+        tooltip = tooltip,
+        onClick = onClick,
+        enabled = enabled,
+        tint = tint,
+        modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 48.dp).then(modifier),
+        iconModifier = iconModifier
+    )
+}
+
 /**
  * Composant Icon avec Tooltip intégré.
  * Remplace le composant Icon standard + clickable.
@@ -40,7 +69,8 @@ fun IconWithTooltip(
     onClick: () -> Unit,
     enabled: Boolean = true,
     tint: Color = LocalContentColor.current,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    iconModifier: Modifier = Modifier
 ) {
     var isHovering by remember { mutableStateOf(false) }
     var showHoverTooltip by remember { mutableStateOf(false) }
@@ -67,6 +97,7 @@ fun IconWithTooltip(
     val showTooltip = showHoverTooltip || showLongPressTooltip
 
     Box(
+        contentAlignment = Alignment.Center,
         modifier = modifier
             .combinedClickable(
                 enabled = enabled,
@@ -93,7 +124,8 @@ fun IconWithTooltip(
         Icon(
             imageVector = imageVector,
             contentDescription = contentDescription,
-            tint = tint
+            tint = tint,
+            modifier = iconModifier
         )
 
         if (showTooltip) {
