@@ -1,0 +1,317 @@
+package fr.vetbrain.vetnutri_mp.View.AnalyseGraphique
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.TrendingUp
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import fr.vetbrain.vetnutri_mp.Components.AppDatePicker
+import fr.vetbrain.vetnutri_mp.Theme.AppSizes
+import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
+import fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailViewModel
+import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
+
+@Composable
+fun GraphCard(titre: String, sousTitre: String? = null, content: @Composable () -> Unit) {
+        Card(modifier = Modifier.fillMaxWidth(), elevation = AppSizes.elevationMedium) {
+                Column(
+                        modifier = Modifier.padding(AppSizes.paddingMedium),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                        Text(
+                                text = titre,
+                                style = MaterialTheme.typography.subtitle1,
+                                fontWeight = FontWeight.Bold,
+                                color = VetNutriColors.Primary
+                        )
+
+                        if (sousTitre != null) {
+                                Text(
+                                        text = sousTitre,
+                                        style = MaterialTheme.typography.caption,
+                                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                                )
+                        }
+
+                        Spacer(modifier = Modifier.height(AppSizes.paddingMedium))
+
+                        content()
+                }
+        }
+}
+
+@Composable
+fun GraphiqueHeader(selectedChart: ChartType, onChartSelected: (ChartType) -> Unit) {
+        Card(modifier = Modifier.fillMaxWidth(), elevation = AppSizes.elevationSmall) {
+                Column(modifier = Modifier.padding(AppSizes.paddingMedium)) {
+                        Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
+                        ) {
+                                Icon(
+                                        imageVector = Icons.Filled.TrendingUp,
+                                        contentDescription = null,
+                                        tint = VetNutriColors.Primary
+                                )
+                                Text(
+                                        text = "Analyse Graphique",
+                                        style = MaterialTheme.typography.h6,
+                                        fontWeight = FontWeight.Bold,
+                                        color = VetNutriColors.Primary
+                                )
+                        }
+
+                        Spacer(modifier = Modifier.height(AppSizes.paddingMedium))
+
+                        // Sélecteur de type de graphique avec Row normale
+                        Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
+                        ) {
+                                ChartType.values().forEach { chartType ->
+                                        Button(
+                                                onClick = { onChartSelected(chartType) },
+                                                colors =
+                                                        ButtonDefaults.buttonColors(
+                                                                backgroundColor =
+                                                                        if (selectedChart ==
+                                                                                        chartType
+                                                                        )
+                                                                                VetNutriColors
+                                                                                        .Primary
+                                                                        else
+                                                                                MaterialTheme.colors
+                                                                                        .surface
+                                                        ),
+                                                modifier = Modifier.weight(1f)
+                                        ) {
+                                                Text(
+                                                        text = chartType.displayName,
+                                                        style = MaterialTheme.typography.caption,
+                                                        color =
+                                                                if (selectedChart == chartType)
+                                                                        Color.White
+                                                                else MaterialTheme.colors.onSurface
+                                                )
+                                        }
+                                }
+                        }
+                }
+        }
+}
+
+@Composable
+fun GraphiqueLegend(selectedChart: ChartType) {
+        Card(
+                modifier = Modifier.fillMaxWidth(),
+                elevation = AppSizes.elevationSmall,
+                backgroundColor = MaterialTheme.colors.surface.copy(alpha = 0.8f)
+        ) {
+                Column(modifier = Modifier.padding(AppSizes.paddingMedium)) {
+                        Text(
+                                text = "Informations",
+                                style = MaterialTheme.typography.subtitle2,
+                                fontWeight = FontWeight.Bold,
+                                color = VetNutriColors.Primary
+                        )
+
+                        Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
+
+                        val infoText =
+                                when (selectedChart) {
+                                        ChartType.EVOLUTION_POIDS ->
+                                                "Suivez l'évolution du poids de l'animal sur plusieurs mois pour détecter les tendances."
+                                        ChartType.RATIONS_ENERGIE ->
+                                                "Analysez la répartition énergétique des rations de chaque consultation. Chaque point représente une ration avec ses pourcentages de protéines et lipides."
+                                        ChartType.DENSITE_RATIONS ->
+                                                "Visualisez la densité énergétique de chaque ration. Les rations actuelles sont en orange."
+                                        ChartType.NUTRIMENTS_RATIONS ->
+                                                "Analysez les nutriments personnalisés des rations. Choisissez les axes X et Y pour des comparaisons spécifiques."
+                                }
+
+                        Text(
+                                text = infoText,
+                                style = MaterialTheme.typography.body2,
+                                color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                        )
+                }
+        }
+}
+
+@Composable
+fun AddWeightForm(viewModel: AnimalDetailViewModel) {
+        var selectedDate by remember {
+                mutableStateOf(
+                        Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+                )
+        }
+        var weightText by remember { mutableStateOf("") }
+        var showDatePicker by remember { mutableStateOf(false) }
+
+        Card(
+                modifier = Modifier.fillMaxWidth(),
+                elevation = AppSizes.elevationSmall,
+                backgroundColor = MaterialTheme.colors.surface.copy(alpha = 0.8f)
+        ) {
+                Column(modifier = Modifier.padding(AppSizes.paddingMedium)) {
+                        Text(
+                                text = "Ajouter un nouveau poids",
+                                style = MaterialTheme.typography.subtitle2,
+                                fontWeight = FontWeight.Bold,
+                                color = VetNutriColors.Primary
+                        )
+
+                        Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
+
+                        // Sélecteur de date
+                        Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                        ) {
+                                Text(
+                                        text = "Date: ${selectedDate}",
+                                        modifier = Modifier.weight(1f),
+                                        style = MaterialTheme.typography.body2
+                                )
+
+                                Button(
+                                        onClick = { showDatePicker = true },
+                                        colors =
+                                                ButtonDefaults.buttonColors(
+                                                        backgroundColor = VetNutriColors.Primary
+                                                )
+                                ) { Text("Choisir une date") }
+                        }
+
+                        Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
+
+                        // Champ de poids
+                        OutlinedTextField(
+                                value = weightText,
+                                onValueChange = { nouveauTexte ->
+                                        // Filtrer pour n'accepter que les chiffres, point et virgule
+                                        val texteFiltre =
+                                                nouveauTexte.filter { char ->
+                                                        char.isDigit() || char == '.' || char == ','
+                                                }
+                                        // S'assurer qu'il n'y a qu'un seul séparateur décimal
+                                        val pointCount = texteFiltre.count { it == '.' }
+                                        val virguleCount = texteFiltre.count { it == ',' }
+                                        if (pointCount <= 1 && virguleCount <= 1 && pointCount + virguleCount <= 1) {
+                                                weightText = texteFiltre
+                                        }
+                                },
+                                label = { Text("Poids (kg)") },
+                                keyboardOptions =
+                                        KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true
+                        )
+
+                        Spacer(modifier = Modifier.height(AppSizes.paddingMedium))
+
+                        // Boutons d'action
+                        Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.End
+                        ) {
+                                TextButton(onClick = { viewModel.stopAddingWeight() }) {
+                                        Text("Annuler")
+                                }
+
+                                Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
+
+                                val poidsValide = convertirTexteEnPoids(weightText)
+                                val isPoidsValide = poidsValide != null && poidsValide > 0
+
+                                Button(
+                                        onClick = {
+                                                val weight = convertirTexteEnPoids(weightText)
+                                                if (weight != null && weight > 0) {
+                                                        viewModel.addWeight(selectedDate, weight)
+                                                        weightText = ""
+                                                }
+                                        },
+                                        enabled = isPoidsValide,
+                                        colors =
+                                                ButtonDefaults.buttonColors(
+                                                        backgroundColor = VetNutriColors.Primary
+                                                )
+                                ) { Text("Ajouter") }
+                        }
+                }
+        }
+
+        // Date picker
+        if (showDatePicker) {
+                AppDatePicker(
+                        selectedDate = selectedDate,
+                        onDateSelected = {
+                                selectedDate = it
+                                showDatePicker = false
+                        },
+                        label = "Date de mesure"
+                )
+        }
+}
+
+/** Sélecteur de nutriment avec dropdown */
+@Composable
+fun NutrimentSelector(
+        label: String,
+        selectedNutriment: String?,
+        onNutrimentSelected: (String) -> Unit,
+        modifier: Modifier = Modifier
+) {
+        var expanded by remember { mutableStateOf(false) }
+        Column(modifier = modifier) {
+                Text(
+                        text = label,
+                        style = MaterialTheme.typography.caption,
+                        fontWeight = FontWeight.Bold,
+                        color = VetNutriColors.Primary
+                )
+                Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
+                OutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth()) {
+                        val selectedOption =
+                                VIEW_NUTRIMENT_OPTIONS.find { it.key == selectedNutriment }
+                        Text(
+                                text = selectedOption?.displayName ?: "Sélectionner...",
+                                style = MaterialTheme.typography.body2
+                        )
+                        Spacer(modifier = Modifier.weight(1f))
+                        Icon(
+                                imageVector = Icons.Default.ArrowDropDown,
+                                contentDescription = "Déplier"
+                        )
+                }
+                DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                        VIEW_NUTRIMENT_OPTIONS.forEach { option ->
+                                DropdownMenuItem(
+                                        onClick = {
+                                                onNutrimentSelected(option.key)
+                                                expanded = false
+                                        }
+                                ) {
+                                        Text(
+                                                text = "${option.displayName} (${option.unit})",
+                                                style = MaterialTheme.typography.body2
+                                        )
+                                }
+                        }
+                }
+        }
+}
+
