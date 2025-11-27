@@ -3925,7 +3925,7 @@ private fun generateConeGraphSvg(
     fun scaleY(y: Float): Double = height - padding - (y - yMin) / (yMax - yMin) * graphHeight
     
     val sb = StringBuilder()
-    sb.append("<svg width='$width' height='$height' xmlns='http://www.w3.org/2000/svg'>")
+    sb.append("<svg width='$width' height='$height' viewBox='0 0 $width $height' xmlns='http://www.w3.org/2000/svg' version='1.1'>")
     
     // Fond blanc
     sb.append("<rect width='$width' height='$height' fill='white' />")
@@ -3954,7 +3954,7 @@ private fun generateConeGraphSvg(
     
     // Titres axes
     sb.append("<text x='${width / 2}' y='${height - 5}' font-family='Arial' font-size='12' text-anchor='middle'>Semaines</text>")
-    sb.append("<text x='10' y='${height / 2}' font-family='Arial' font-size='12' text-anchor='middle' transform='rotate(-90 10,${height / 2})'>Poids (kg)</text>")
+    sb.append("<text x='10' y='${height / 2}' font-family='Arial' font-size='12' text-anchor='middle' transform='rotate(-90 10 ${height / 2})'>Poids (kg)</text>")
 
     // Ligne Objectif
     if (targetWeight != null) {

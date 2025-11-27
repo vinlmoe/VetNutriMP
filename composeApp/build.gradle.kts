@@ -102,6 +102,7 @@ kotlin {
                 implementation(libs.compose.ui.test.manifest)
                 implementation("com.openhtmltopdf:openhtmltopdf-core:1.0.10")
                 implementation("com.openhtmltopdf:openhtmltopdf-pdfbox:1.0.10")
+                implementation("com.openhtmltopdf:openhtmltopdf-svg-support:1.0.10")
                 implementation(libs.ktor.client.okhttp)
                 implementation(libs.ktor.client.content.negotiation)
             }
