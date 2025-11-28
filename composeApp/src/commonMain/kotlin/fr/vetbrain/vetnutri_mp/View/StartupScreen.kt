@@ -568,25 +568,13 @@ fun StartupScreen(
                                                         color = VetNutriColors.Secondary
                                                 )
                                                 Text(
-                                                        text = "À Antoine Rached et Mathilde Thierry",
-                                                        style = MaterialTheme.typography.h6,
+                                                        text = "À tous ceux qui ont contribué par leurs retours à la création de cet outil, et notamment aux étudiants trop nombreux pour être listés",
+                                                        style = MaterialTheme.typography.body1,
                                                         fontWeight = FontWeight.Bold,
                                                         color = VetNutriColors.Secondary,
                                                         textAlign = TextAlign.Center
                                                 )
-                                                Text(
-                                                        text = "Aux étudiants",
-                                                        style = MaterialTheme.typography.h6,
-                                                        fontWeight = FontWeight.Bold,
-                                                        color = VetNutriColors.Secondary,
-                                                        textAlign = TextAlign.Center
-                                                )
-                                                Text(
-                                                        text = "qui ont permis de faire progresser le logiciel par leurs retours",
-                                                        style = MaterialTheme.typography.body2,
-                                                        color = VetNutriColors.Secondary,
-                                                        textAlign = TextAlign.Center
-                                                )
+                                               
                                                 Spacer(modifier = Modifier.height(8.dp))
                                                 Text(
                                                         text = "(Cliquez pour voir la liste)",
