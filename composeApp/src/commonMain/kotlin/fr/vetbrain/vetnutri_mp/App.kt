@@ -178,7 +178,18 @@ fun App(appDatabase: AppDatabase) {
     }
 
     // Création des ViewModels
-    val animalListViewModel = remember { AnimalListViewModel(animalRepository) }
+    val animalListViewModel = remember { 
+        AnimalListViewModel(
+            animalRepository = animalRepository,
+            foodRepository = foodRepository,
+            recipeRepository = recipeRepository,
+            referenceEvRepository = databaseReferenceEvRepository,
+            equationRepository = equationRepository,
+            biblioRefRepository = biblioRefRepository,
+            consultationRepository = consultationRepository,
+            conseilRepository = conseilRepository
+        ) 
+    }
 
     val animalDetailViewModel = remember {
         AnimalDetailViewModel(
