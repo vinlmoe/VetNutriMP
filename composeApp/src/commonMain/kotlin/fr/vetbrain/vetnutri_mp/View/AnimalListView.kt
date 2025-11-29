@@ -1,16 +1,19 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import fr.vetbrain.vetnutri_mp.Components.IconButtonWithTooltip
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Components.ConfirmDialog
+import fr.vetbrain.vetnutri_mp.Components.IconButtonWithTooltip
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Animal
@@ -28,6 +32,7 @@ import fr.vetbrain.vetnutri_mp.Theme.AppIcons
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalListViewModel
 import kotlin.uuid.ExperimentalUuidApi
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalUuidApi::class, ExperimentalMaterialApi::class)
 @Composable
@@ -43,6 +48,27 @@ fun AnimalListView(
         val animals: List<AnimalEv> = viewModel.animals.collectAsState().value
         val searchQuery = viewModel.searchQuery.collectAsState().value
         val selectedEspece = viewModel.selectedEspece.collectAsState().value
+        val coroutineScope = rememberCoroutineScope()
+
+        // États pour l'import rapide
+        var showImportDialog by remember { mutableStateOf(false) }
+        var importCode by remember { mutableStateOf("") }
+        
+        // États pour le suivi de l'import API
+        val apiImportResult = viewModel.importResult.collectAsState().value
+        val apiImporting = viewModel.isApiImporting.collectAsState().value
+        val apiProgress = viewModel.apiImportProgress.collectAsState().value
+        val apiLogs = viewModel.apiImportLogs.collectAsState().value
+        var showApiResultDialog by remember { mutableStateOf(false) }
+
+        LaunchedEffect(apiImportResult) {
+            if (apiImportResult != null && apiImportResult is AnimalListViewModel.ImportResult.Success) {
+                showApiResultDialog = true
+                showImportDialog = false
+            } else if (apiImportResult != null && apiImportResult is AnimalListViewModel.ImportResult.Error) {
+                showApiResultDialog = true
+            }
+        }
 
         LaunchedEffect(Unit) { viewModel.loadAnimals() }
 
@@ -89,9 +115,7 @@ fun AnimalListView(
                                                 )
                                 ) { Text("Liste des aliments") }
 
-                                // Bouton pour accéder aux données de calcul (remplace les deux
-                                // boutons
-                                // précédents)
+                                // Bouton pour accéder aux données de calcul
                                 Button(
                                         onClick = onShowCalculationTabs,
                                         modifier = Modifier.weight(1f),
@@ -101,6 +125,17 @@ fun AnimalListView(
                                                         contentColor = VetNutriColors.OnPrimary
                                                 )
                                 ) { Text("Données de calcul") }
+
+                                // Bouton Import Rapide
+                                Button(
+                                        onClick = { showImportDialog = true },
+                                        modifier = Modifier.weight(1f),
+                                        colors =
+                                                ButtonDefaults.buttonColors(
+                                                        backgroundColor = VetNutriColors.Secondary,
+                                                        contentColor = Color.White
+                                                )
+                                ) { Text("Import Rapide") }
                         }
 
                         Spacer(modifier = Modifier.height(16.dp))
@@ -190,6 +225,127 @@ fun AnimalListView(
                                 }
                         }
                 }
+        }
+
+        if (showImportDialog) {
+            var showScannerNotImpl by remember { mutableStateOf(false) }
+
+            if (showScannerNotImpl) {
+                AlertDialog(
+                    onDismissRequest = { showScannerNotImpl = false },
+                    title = { Text("Scanner QR Code") },
+                    text = { Text("La fonctionnalité de scan par caméra sera disponible prochainement. Veuillez entrer le code manuellement.") },
+                    confirmButton = {
+                        Button(onClick = { showScannerNotImpl = false }) { Text("OK") }
+                    }
+                )
+            }
+
+            AlertDialog(
+                onDismissRequest = { showImportDialog = false },
+                title = { Text("Import Rapide via Internet") },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                        Text("Entrez le code de partage ou l'URL jsonbin.io :")
+                        OutlinedTextField(
+                            value = importCode,
+                            onValueChange = { importCode = it },
+                            label = { Text("Code ou URL") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+
+                        // Ou scanner
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Text("- OU -", color = Color.Gray)
+                        }
+
+                        Button(
+                            onClick = { showScannerNotImpl = true },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(backgroundColor = Color.DarkGray, contentColor = Color.White)
+                        ) {
+                            Icon(Icons.Default.QrCodeScanner, contentDescription = null)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Scanner un QR Code")
+                        }
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            if (importCode.isNotBlank()) {
+                                coroutineScope.launch {
+                                    viewModel.importFromJsonBin(importCode)
+                                }
+                                // On ne ferme pas le dialog tout de suite, le progress va s'afficher
+                            }
+                        },
+                        enabled = importCode.isNotBlank(),
+                        colors = ButtonDefaults.buttonColors(backgroundColor = VetNutriColors.Primary, contentColor = Color.White)
+                    ) { Text("Importer") }
+                },
+                dismissButton = {
+                    Button(onClick = { showImportDialog = false }) { Text("Annuler") }
+                }
+            )
+        }
+
+        if (apiImporting) {
+             AlertDialog(
+                onDismissRequest = {},
+                title = { Text("Importation en cours...") },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        LinearProgressIndicator(progress = apiProgress.toFloat(), modifier = Modifier.fillMaxWidth())
+                        Text("Progression: ${(apiProgress * 100).toInt()}%")
+
+                        Box(modifier = Modifier.fillMaxWidth().height(100.dp).background(Color.LightGray.copy(alpha = 0.3f)).padding(4.dp)) {
+                            LazyColumn {
+                                items(apiLogs.takeLast(5)) { log ->
+                                    Text(log, style = MaterialTheme.typography.caption)
+                                }
+                            }
+                        }
+                    }
+                },
+                confirmButton = {}
+            )
+        }
+
+        if (showApiResultDialog) {
+            AlertDialog(
+                onDismissRequest = {
+                    showApiResultDialog = false
+                    viewModel.resetImportResult() // Reset result
+                },
+                title = {
+                    Text(if (apiImportResult is AnimalListViewModel.ImportResult.Success) "Succès" else "Erreur")
+                },
+                text = {
+                    when (apiImportResult) {
+                        is AnimalListViewModel.ImportResult.Success -> {
+                            Column {
+                                Text("Import terminé avec succès!")
+                                Text("Total éléments: ${apiImportResult.count}")
+                            }
+                        }
+                        is AnimalListViewModel.ImportResult.Error -> {
+                            Text(apiImportResult.message)
+                        }
+                        null -> {}
+                    }
+                },
+                confirmButton = {
+                    Button(onClick = {
+                        showApiResultDialog = false
+                        viewModel.resetImportResult()
+                    }) { Text("OK") }
+                }
+            )
         }
 }
 
