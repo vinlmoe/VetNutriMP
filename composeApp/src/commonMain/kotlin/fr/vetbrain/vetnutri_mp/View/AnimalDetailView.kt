@@ -57,6 +57,8 @@ import fr.vetbrain.vetnutri_mp.Service.JsonShareService
 import fr.vetbrain.vetnutri_mp.Service.ShareOptions
 import fr.vetbrain.vetnutri_mp.Components.ShareLinkDialog
 import fr.vetbrain.vetnutri_mp.Components.IconButtonWithTooltip
+import fr.vetbrain.vetnutri_mp.Components.AnonymizationDialog
+import fr.vetbrain.vetnutri_mp.Utils.anonymizeExportJson
 
 typealias RecipeRepo = fr.vetbrain.vetnutri_mp.Repository.RecipeRepository
 
@@ -199,6 +201,7 @@ private suspend fun exporterAnimalComplet(
 /**
  * Fonction pour partager un animal complet en ligne via jsonbin.io
  * Génère un lien de partage unique que l'utilisateur peut partager
+ * @param shouldAnonymize Si true, anonymise les données avant l'export
  */
 private suspend fun partagerAnimalEnLigne(
         animal: AnimalEv,
@@ -208,7 +211,8 @@ private suspend fun partagerAnimalEnLigne(
         recipeRepository: RecipeRepository,
         conseilRepository: fr.vetbrain.vetnutri_mp.Repository.ConseilRepository,
         snackbarHostState: SnackbarHostState,
-        onShareLinkGenerated: (fr.vetbrain.vetnutri_mp.Service.ShareLink) -> Unit
+        onShareLinkGenerated: (fr.vetbrain.vetnutri_mp.Service.ShareLink) -> Unit,
+        shouldAnonymize: Boolean = false
 ) {
         try {
                 // Créer le repository d'export/import avec tous les repositories nécessaires depuis settingsViewModel (sur IO)
@@ -268,7 +272,7 @@ private suspend fun partagerAnimalEnLigne(
                 }
                 
                 // Exporter avec sélection (sur IO)
-                val jsonContent = withContext(AppDispatchers.IO) {
+                var jsonContent = withContext(AppDispatchers.IO) {
                         val exportOptions = ExportImportRepository.ExportSelectionOptions(
                                 includeAnimals = true,
                                 includeFoods = true,
@@ -282,6 +286,13 @@ private suspend fun partagerAnimalEnLigne(
                                 equationIds = equationIds
                         )
                         exportImportRepository.exportWithSelection(exportOptions)
+                }
+                
+                // Anonymiser le JSON si demandé
+                if (shouldAnonymize) {
+                        jsonContent = withContext(AppDispatchers.IO) {
+                                anonymizeExportJson(jsonContent)
+                        }
                 }
                 
                 // Générer le nom de fichier
@@ -769,6 +780,7 @@ private fun WideScreenLayout(
         // État pour le partage en ligne
         var shareLink by remember { mutableStateOf<fr.vetbrain.vetnutri_mp.Service.ShareLink?>(null) }
         var showShareDialog by remember { mutableStateOf(false) }
+        var showAnonymizationDialog by remember { mutableStateOf(false) }
         val shareLauncher = fr.vetbrain.vetnutri_mp.Utils.rememberShareLauncher()
         
         // État pour l'éditeur de texte enrichi
@@ -890,21 +902,7 @@ private fun WideScreenLayout(
                         Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
                         Button(
                                 onClick = {
-                                        scope.launch {
-                                                partagerAnimalEnLigne(
-                                                        animal = animalDetails,
-                                                        viewModel = viewModel,
-                                                        settingsViewModel = settingsViewModel,
-                                                        equationRepository = equationRepository,
-                                                        recipeRepository = recipeRepository,
-                                                        conseilRepository = conseilRepository,
-                                                        snackbarHostState = snackbarHostState,
-                                                        onShareLinkGenerated = { link ->
-                                                                shareLink = link
-                                                                showShareDialog = true
-                                                        }
-                                                )
-                                        }
+                                        showAnonymizationDialog = true
                                 },
                                 colors =
                                         ButtonDefaults.buttonColors(
@@ -958,7 +956,35 @@ private fun WideScreenLayout(
                 Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
                         SnackbarHost(hostState = snackbarHostState)
                         
-                        // Dialog de partage
+                        // Dialog d'anonymisation
+                        if (showAnonymizationDialog) {
+                                AnonymizationDialog(
+                                        onConfirm = { shouldAnonymize ->
+                                                showAnonymizationDialog = false
+                                                scope.launch {
+                                                        partagerAnimalEnLigne(
+                                                                animal = animalDetails,
+                                                                viewModel = viewModel,
+                                                                settingsViewModel = settingsViewModel,
+                                                                equationRepository = equationRepository,
+                                                                recipeRepository = recipeRepository,
+                                                                conseilRepository = conseilRepository,
+                                                                snackbarHostState = snackbarHostState,
+                                                                onShareLinkGenerated = { link ->
+                                                                        shareLink = link
+                                                                        showShareDialog = true
+                                                                },
+                                                                shouldAnonymize = shouldAnonymize
+                                                        )
+                                                }
+                                        },
+                                        onDismiss = {
+                                                showAnonymizationDialog = false
+                                        }
+                                )
+                        }
+                        
+                        // Dialog de partage avec QR Code
                         shareLink?.let { link ->
                                 if (showShareDialog) {
                                         ShareLinkDialog(
@@ -967,7 +993,7 @@ private fun WideScreenLayout(
                                                         showShareDialog = false
                                                         shareLink = null
                                                 },
-                                                onShare = { shareLauncher(link.url) }
+                                                onShare = { shareLauncher(link.binId) }
                                         )
                                 }
                         }
@@ -2042,6 +2068,7 @@ private fun NarrowScreenLayout(
         // État pour le partage en ligne
         var shareLink by remember { mutableStateOf<fr.vetbrain.vetnutri_mp.Service.ShareLink?>(null) }
         var showShareDialog by remember { mutableStateOf(false) }
+        var showAnonymizationDialog by remember { mutableStateOf(false) }
         val shareLauncher = fr.vetbrain.vetnutri_mp.Utils.rememberShareLauncher()
         
         // État pour l'éditeur de texte enrichi
@@ -2170,21 +2197,7 @@ private fun NarrowScreenLayout(
                                 Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
                                 Button(
                                         onClick = {
-                                                scope.launch {
-                                                        partagerAnimalEnLigne(
-                                                                animal = animalDetails,
-                                                                viewModel = viewModel,
-                                                                settingsViewModel = settingsViewModel,
-                                                                equationRepository = equationRepository,
-                                                                recipeRepository = recipeRepository,
-                                                                conseilRepository = conseilRepository,
-                                                                snackbarHostState = snackbarHostState,
-                                                                onShareLinkGenerated = { link ->
-                                                                        shareLink = link
-                                                                        showShareDialog = true
-                                                                }
-                                                        )
-                                                }
+                                                showAnonymizationDialog = true
                                         },
                                         colors =
                                                 ButtonDefaults.buttonColors(
@@ -2275,7 +2288,35 @@ private fun NarrowScreenLayout(
                                 Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                                         SnackbarHost(hostState = snackbarHostState)
 
-                                        // Dialog de partage
+                                        // Dialog d'anonymisation
+                                        if (showAnonymizationDialog) {
+                                                AnonymizationDialog(
+                                                        onConfirm = { shouldAnonymize ->
+                                                                showAnonymizationDialog = false
+                                                                scope.launch {
+                                                                        partagerAnimalEnLigne(
+                                                                                animal = animalDetails,
+                                                                                viewModel = viewModel,
+                                                                                settingsViewModel = settingsViewModel,
+                                                                                equationRepository = equationRepository,
+                                                                                recipeRepository = recipeRepository,
+                                                                                conseilRepository = conseilRepository,
+                                                                                snackbarHostState = snackbarHostState,
+                                                                                onShareLinkGenerated = { link ->
+                                                                                        shareLink = link
+                                                                                        showShareDialog = true
+                                                                                },
+                                                                                shouldAnonymize = shouldAnonymize
+                                                                        )
+                                                                }
+                                                        },
+                                                        onDismiss = {
+                                                                showAnonymizationDialog = false
+                                                        }
+                                                )
+                                        }
+                                        
+                                        // Dialog de partage avec QR Code
                                         shareLink?.let { link ->
                                                 if (showShareDialog) {
                                                         ShareLinkDialog(
@@ -2284,7 +2325,7 @@ private fun NarrowScreenLayout(
                                                                         showShareDialog = false
                                                                         shareLink = null
                                                                 },
-                                                                onShare = { shareLauncher(link.url) }
+                                                                onShare = { shareLauncher(link.binId) }
                                                         )
                                                 }
                                         }
