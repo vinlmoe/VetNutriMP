@@ -46,6 +46,7 @@ sqliteBundled = "2.5.0-beta01"
 coroutines = "1.7.3"
 materialIconsExtended = "1.7.8"
 jansi = "2.4.1"
+qrKit = "3.0.0"
 
 [libraries]
 koalaPlot-core = { module = "io.github.koalaplot:koalaplot-core", version.ref = "koalaPlot" }
@@ -111,6 +112,7 @@ kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-c
 kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "kotlinx-coroutines" }
 androidx-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended", version.ref = "materialIconsExtended" }
 jansi = { group = "org.fusesource.jansi", name = "jansi", version.ref = "jansi" }
+qr-kit = { module = "network.chaintech:qr-kit", version.ref = "qrKit" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
