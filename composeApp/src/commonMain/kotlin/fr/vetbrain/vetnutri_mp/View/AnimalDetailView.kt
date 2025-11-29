@@ -769,6 +769,7 @@ private fun WideScreenLayout(
         // État pour le partage en ligne
         var shareLink by remember { mutableStateOf<fr.vetbrain.vetnutri_mp.Service.ShareLink?>(null) }
         var showShareDialog by remember { mutableStateOf(false) }
+        val shareLauncher = fr.vetbrain.vetnutri_mp.Utils.rememberShareLauncher()
         
         // État pour l'éditeur de texte enrichi
         var currentHtmlContent by remember {
@@ -966,7 +967,7 @@ private fun WideScreenLayout(
                                                         showShareDialog = false
                                                         shareLink = null
                                                 },
-                                                onShare = null // Peut être utilisé pour ouvrir le Share Sheet natif
+                                                onShare = { shareLauncher(link.url) }
                                         )
                                 }
                         }
@@ -2041,6 +2042,7 @@ private fun NarrowScreenLayout(
         // État pour le partage en ligne
         var shareLink by remember { mutableStateOf<fr.vetbrain.vetnutri_mp.Service.ShareLink?>(null) }
         var showShareDialog by remember { mutableStateOf(false) }
+        val shareLauncher = fr.vetbrain.vetnutri_mp.Utils.rememberShareLauncher()
         
         // État pour l'éditeur de texte enrichi
         var currentHtmlContent by remember {
@@ -2272,6 +2274,21 @@ private fun NarrowScreenLayout(
                                 // Contenu principal avec SnackbarHost
                                 Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                                         SnackbarHost(hostState = snackbarHostState)
+
+                                        // Dialog de partage
+                                        shareLink?.let { link ->
+                                                if (showShareDialog) {
+                                                        ShareLinkDialog(
+                                                                shareLink = link,
+                                                                onDismiss = {
+                                                                        showShareDialog = false
+                                                                        shareLink = null
+                                                                },
+                                                                onShare = { shareLauncher(link.url) }
+                                                        )
+                                                }
+                                        }
+
                                         when (currentSection) {
                                                 AnimalDetailSection.IDENTIFICATION -> {
                                                         if (isEditing) {
