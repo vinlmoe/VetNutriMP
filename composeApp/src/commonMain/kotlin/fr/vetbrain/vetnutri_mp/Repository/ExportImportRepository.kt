@@ -195,9 +195,15 @@ class ExportImportRepository(
                 val foods: List<FoodApi> =
                         allFoods.asSequence()
                                 .filter {
-                                        // Si foodIds est vide, exporter TOUS les aliments
-                                        // Si foodIds n'est pas vide, exporter seulement ceux dans la liste
-                                        options.foodIds.isEmpty() || options.foodIds.contains(it.uuid)
+                                        // Logique de filtrage des aliments :
+                                        // - Si foodIds est vide ET animalIds est vide → export général : exporter TOUS les aliments
+                                        // - Si foodIds est vide ET animalIds n'est PAS vide → export sélectif : exporter AUCUN aliment (l'animal n'en utilise pas)
+                                        // - Si foodIds n'est pas vide → exporter seulement ceux dans la liste
+                                        when {
+                                                options.foodIds.isNotEmpty() -> options.foodIds.contains(it.uuid)
+                                                options.animalIds.isEmpty() -> true // Export général : tous les aliments
+                                                else -> false // Export sélectif sans aliments spécifiés : aucun aliment
+                                        }
                                 }
                                 .map { it.toApi() }
                                 .toList()

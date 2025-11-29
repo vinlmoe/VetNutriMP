@@ -106,6 +106,7 @@ kotlin {
                 implementation("com.openhtmltopdf:openhtmltopdf-svg-support:1.0.10")
                 implementation(libs.ktor.client.okhttp)
                 implementation(libs.ktor.client.content.negotiation)
+                implementation("io.github.g0dkar:qrcode-kotlin:4.5.0")
             }
         }
 

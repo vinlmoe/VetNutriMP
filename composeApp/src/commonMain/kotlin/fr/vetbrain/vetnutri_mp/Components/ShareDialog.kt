@@ -16,9 +16,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Service.ShareLink
 import fr.vetbrain.vetnutri_mp.Utils.copyToClipboardComposable
+import fr.vetbrain.vetnutri_mp.Components.QRCodeView
 
 /**
- * Dialog pour afficher le lien de partage JSON
+ * Dialog pour afficher le QR Code avec le BinID de l'export
  */
 @Composable
 fun ShareLinkDialog(
@@ -26,14 +27,14 @@ fun ShareLinkDialog(
     onDismiss: () -> Unit,
     onShare: (() -> Unit)? = null
 ) {
-    var linkCopied by remember { mutableStateOf(false) }
+    var binIdCopied by remember { mutableStateOf(false) }
     var shouldCopy by remember { mutableStateOf(false) }
     
     // Effectuer la copie dans le contexte Composable
     if (shouldCopy) {
-        copyToClipboardComposable(shareLink.url)
+        copyToClipboardComposable(shareLink.binId)
         shouldCopy = false
-        linkCopied = true
+        binIdCopied = true
     }
     
     AlertDialog(
@@ -44,7 +45,7 @@ fun ShareLinkDialog(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Icon(Icons.Default.Share, contentDescription = null)
-                Text("Lien de partage généré")
+                Text("Export généré avec succès")
             }
         },
         text = {
@@ -52,7 +53,8 @@ fun ShareLinkDialog(
                 modifier = Modifier
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Text(
                     "Votre fichier JSON a été uploadé avec succès.",
@@ -60,19 +62,19 @@ fun ShareLinkDialog(
                 )
                 
                 Text(
-                    "Partagez ce lien avec l'autre utilisateur :",
+                    "ID de l'export (BinID) :",
                     style = MaterialTheme.typography.body2,
                     fontWeight = FontWeight.Bold
                 )
                 
-                // Champ de texte avec le lien (sélectionnable)
+                // Champ de texte avec le BinID (sélectionnable)
                 SelectionContainer {
                     OutlinedTextField(
-                        value = shareLink.url,
+                        value = shareLink.binId,
                         onValueChange = { },
                         readOnly = true,
                         modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Lien de partage") },
+                        label = { Text("BinID") },
                         colors = TextFieldDefaults.outlinedTextFieldColors(
                             disabledTextColor = MaterialTheme.colors.onSurface,
                             disabledBorderColor = MaterialTheme.colors.primary
@@ -80,17 +82,30 @@ fun ShareLinkDialog(
                     )
                 }
                 
+                // QR Code avec le BinID
+                Text(
+                    "Scannez ce QR Code pour récupérer l'ID de l'export :",
+                    style = MaterialTheme.typography.body2,
+                    fontWeight = FontWeight.Bold
+                )
+                
+                QRCodeView(
+                    text = shareLink.binId,
+                    size = 256,
+                    modifier = Modifier.padding(16.dp)
+                )
+                
                 // Informations supplémentaires
                 if (shareLink.expiresAt != null) {
                     val expiresIn = (shareLink.expiresAt - kotlinx.datetime.Clock.System.now().toEpochMilliseconds()) / (1000 * 60 * 60)
                     Text(
-                        "⚠️ Ce lien expirera dans ${expiresIn.toInt()} heures",
+                        "⚠️ Cet export expirera dans ${expiresIn.toInt()} heures",
                         style = MaterialTheme.typography.caption,
                         color = MaterialTheme.colors.secondary
                     )
                 } else {
                     Text(
-                        "ℹ️ Ce lien ne expire pas automatiquement",
+                        "ℹ️ Cet export ne expire pas automatiquement",
                         style = MaterialTheme.typography.caption,
                         color = MaterialTheme.colors.secondary
                     )
@@ -101,22 +116,22 @@ fun ShareLinkDialog(
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Bouton copier
+                // Bouton copier le BinID
                 Button(
                     onClick = {
                         shouldCopy = true
                     },
                     colors = ButtonDefaults.buttonColors(
-                        backgroundColor = if (linkCopied) MaterialTheme.colors.primary.copy(alpha = 0.7f)
+                        backgroundColor = if (binIdCopied) MaterialTheme.colors.primary.copy(alpha = 0.7f)
                         else MaterialTheme.colors.primary
                     )
                 ) {
                     Icon(
-                        if (linkCopied) Icons.Default.Check else Icons.Default.ContentCopy,
+                        if (binIdCopied) Icons.Default.Check else Icons.Default.ContentCopy,
                         contentDescription = null
                     )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text(if (linkCopied) "Copié !" else "Copier")
+                    Text(if (binIdCopied) "Copié !" else "Copier BinID")
                 }
                 
                 // Bouton partager (si onShare est fourni)
