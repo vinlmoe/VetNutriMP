@@ -85,6 +85,7 @@ kotlin {
             implementation(libs.ktor.client.core)
             implementation(libs.ktor.serialization.kotlinx.json)
             implementation(libs.androidx.paging.common)
+            implementation(libs.qr.kit)
         }
 
         val desktopMain by getting {
@@ -129,8 +130,8 @@ android {
         applicationId = "fr.vetbrain.vetnutri_mp"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 200
-        versionName = "3.2.00"
+        versionCode = 201
+        versionName = "3.2.01"
 
         // Configuration de Room
 
@@ -168,7 +169,7 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Exe, TargetFormat.Deb)
             packageName = "VetNutriMP"
-            packageVersion = "3.2.00"
+            packageVersion = "3.2.01"
             description = "Application de nutrition vétérinaire multiplateforme"
             copyright = "© 2025 VetBrain"
             vendor = "VetBrain"

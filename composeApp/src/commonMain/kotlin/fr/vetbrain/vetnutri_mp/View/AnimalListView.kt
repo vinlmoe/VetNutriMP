@@ -20,6 +20,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import fr.vetbrain.vetnutri_mp.Components.ConfirmDialog
 import fr.vetbrain.vetnutri_mp.Components.IconButtonWithTooltip
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
@@ -31,6 +33,7 @@ import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Theme.AppIcons
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalListViewModel
+import fr.vetbrain.vetnutri_mp.View.Components.QRCodeScannerView
 import kotlin.uuid.ExperimentalUuidApi
 import kotlinx.coroutines.launch
 
@@ -228,17 +231,37 @@ fun AnimalListView(
         }
 
         if (showImportDialog) {
-            var showScannerNotImpl by remember { mutableStateOf(false) }
+            var showScanner by remember { mutableStateOf(false) }
 
-            if (showScannerNotImpl) {
-                AlertDialog(
-                    onDismissRequest = { showScannerNotImpl = false },
-                    title = { Text("Scanner QR Code") },
-                    text = { Text("La fonctionnalité de scan par caméra sera disponible prochainement. Veuillez entrer le code manuellement.") },
-                    confirmButton = {
-                        Button(onClick = { showScannerNotImpl = false }) { Text("OK") }
+            if (showScanner) {
+                Dialog(
+                    onDismissRequest = { showScanner = false },
+                    properties = DialogProperties(usePlatformDefaultWidth = false)
+                ) {
+                    Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+                        QRCodeScannerView(
+                            onCodeScanned = { code ->
+                                showScanner = false
+                                importCode = code
+                                // Optionnel: lancer l'import automatiquement
+                                // coroutineScope.launch { viewModel.importFromJsonBin(code) }
+                            },
+                            onClose = { showScanner = false }
+                        )
+                        
+                        // Bouton fermer le scanner
+                        IconButton(
+                            onClick = { showScanner = false },
+                            modifier = Modifier.align(Alignment.TopEnd).padding(16.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Clear,
+                                contentDescription = "Fermer",
+                                tint = Color.White
+                            )
+                        }
                     }
-                )
+                }
             }
 
             AlertDialog(
@@ -264,7 +287,7 @@ fun AnimalListView(
                         }
 
                         Button(
-                            onClick = { showScannerNotImpl = true },
+                            onClick = { showScanner = true },
                             modifier = Modifier.fillMaxWidth(),
                             colors = ButtonDefaults.buttonColors(backgroundColor = Color.DarkGray, contentColor = Color.White)
                         ) {
