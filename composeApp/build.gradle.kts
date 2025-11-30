@@ -132,19 +132,23 @@ android {
         applicationId = "fr.vetbrain.vetnutri_mp"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 204
+        versionCode = 207
         versionName = "3.2.04"
 
         // Configuration de Room
 
         // Configuration pour la compatibilité avec les pages mémoire de 16KB (Android 15+)
-        // Cette configuration permet à l'application de fonctionner sur les appareils
-        // avec des pages mémoire de 16KB en s'assurant que les bibliothèques natives
-        // sont compatibles avec cette taille de page
+        // Référence: https://developer.android.com/guide/practices/page-sizes?hl=fr#compile-16-kb-alignment
+        // AGP 8.5.1+ (nous avons 8.7.3) applique automatiquement l'alignement 16KB
+        // lors du packaging des bibliothèques partagées non compressées
         ndk {
             // Filtrer les ABI pour ne garder que celles compatibles avec 16KB
             // arm64-v8a est compatible avec 16KB pages sur Android 15+
-            abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
+            // IMPORTANT: armeabi-v7a est exclu car souvent problématique avec 16KB
+            // Les bibliothèques natives tierces peuvent ne pas être alignées pour armeabi-v7a
+            // La plupart des appareils modernes utilisent arm64-v8a
+            abiFilters += listOf("arm64-v8a", "x86", "x86_64")
+            // armeabi-v7a retiré pour éviter les problèmes de compatibilité 16KB
         }
     }
 
@@ -153,13 +157,24 @@ android {
             // excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
         // Configuration pour la compatibilité avec les pages mémoire de 16KB
-        // S'assure que les bibliothèques natives sont correctement incluses
-        jniLibs { useLegacyPackaging = false }
+        // Référence: https://developer.android.com/guide/practices/page-sizes?hl=fr#compile-16-kb-alignment
+        // AGP 8.5.1+ applique automatiquement l'alignement 16KB pour les bibliothèques non compressées
+        jniLibs {
+            // useLegacyPackaging = false permet à AGP d'appliquer l'alignement 16KB automatiquement
+            useLegacyPackaging = false
+            // Préserver les symboles de debug pour faciliter le diagnostic si nécessaire
+            keepDebugSymbols += "**/*.so"
+            // Exclure les bibliothèques natives non compatibles si nécessaire
+            // Cette configuration permet de filtrer les bibliothèques problématiques
+        }
     }
     buildTypes {
         getByName("release") {
             isMinifyEnabled = false
             versionNameSuffix = rootProject.extra["releaseVersionNameSuffix"] as String
+            // AGP 8.5.1+ applique automatiquement l'alignement 16KB lors du packaging
+            // Référence: https://developer.android.com/guide/practices/page-sizes?hl=fr#compile-16-kb-alignment
+            isDebuggable = false
         }
     }
     compileOptions {
