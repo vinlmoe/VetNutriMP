@@ -54,6 +54,7 @@ kotlin {
             implementation(libs.androidx.room.paging)
             // implementation(libs.androidx.sqlite.sqlite.ktx)
             implementation(libs.ktor.client.android)
+            implementation(libs.qr.kit)
         }
 
         commonMain.dependencies {
@@ -85,7 +86,6 @@ kotlin {
             implementation(libs.ktor.client.core)
             implementation(libs.ktor.serialization.kotlinx.json)
             implementation(libs.androidx.paging.common)
-            implementation(libs.qr.kit)
         }
 
         val desktopMain by getting {
@@ -110,11 +110,12 @@ kotlin {
             }
         }
 
-        val iosMain by creating { 
-            dependencies { 
+        val iosMain by creating {
+            dependencies {
                 implementation(libs.sqliter.driver)
                 implementation(libs.ktor.client.darwin)
-            } 
+                implementation(libs.qr.kit)
+            }
         }
     }
 }
@@ -131,17 +132,29 @@ android {
         applicationId = "fr.vetbrain.vetnutri_mp"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 201
-        versionName = "3.2.01"
+        versionCode = 204
+        versionName = "3.2.04"
 
         // Configuration de Room
 
+        // Configuration pour la compatibilité avec les pages mémoire de 16KB (Android 15+)
+        // Cette configuration permet à l'application de fonctionner sur les appareils
+        // avec des pages mémoire de 16KB en s'assurant que les bibliothèques natives
+        // sont compatibles avec cette taille de page
+        ndk {
+            // Filtrer les ABI pour ne garder que celles compatibles avec 16KB
+            // arm64-v8a est compatible avec 16KB pages sur Android 15+
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
+        }
     }
 
     packaging {
         resources {
             // excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
+        // Configuration pour la compatibilité avec les pages mémoire de 16KB
+        // S'assure que les bibliothèques natives sont correctement incluses
+        jniLibs { useLegacyPackaging = false }
     }
     buildTypes {
         getByName("release") {
@@ -161,16 +174,12 @@ compose.desktop {
     application {
         mainClass = "fr.vetbrain.vetnutri_mp.MainKt"
 
-        buildTypes.release {
-            proguard {
-                isEnabled.set(false)
-            }
-        }
+        buildTypes.release { proguard { isEnabled.set(false) } }
 
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Exe, TargetFormat.Deb)
             packageName = "VetNutriMP"
-            packageVersion = "3.2.01"
+            packageVersion = "3.2.03"
             description = "Application de nutrition vétérinaire multiplateforme"
             copyright = "© 2025 VetBrain"
             vendor = "VetBrain"
@@ -179,7 +188,8 @@ compose.desktop {
             macOS {
                 iconFile.set(project.file("src/desktopMain/resources/icon.icns"))
                 bundleID = "fr.vetbrain.vetnutri_mp"
-                // Note: La signature est effectuée après compilation via le script compile_and_sign_macos.sh
+                // Note: La signature est effectuée après compilation via le script
+                // compile_and_sign_macos.sh
                 // Compose Desktop ne supporte pas encore la signature automatique dans Gradle
             }
             windows {
@@ -212,4 +222,9 @@ dependencies {
 }
 
 room { schemaDirectory("$projectDir/schemas") }
-
+// Force exclude kotlinx-coroutines-android from desktop configurations
+configurations.configureEach {
+    if (name.lowercase().contains("desktop")) {
+        exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-android")
+    }
+}

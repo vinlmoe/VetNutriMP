@@ -43,11 +43,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import fr.vetbrain.vetnutri_mp.Data.AlimentEv
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
-import fr.vetbrain.vetnutri_mp.View.components.FoodSearchFilters
+import fr.vetbrain.vetnutri_mp.Data.FoodSearchFilters
+import fr.vetbrain.vetnutri_mp.Data.NutrientOperator
+import fr.vetbrain.vetnutri_mp.Data.SortCriteria
+import fr.vetbrain.vetnutri_mp.Data.SortOrder
 import fr.vetbrain.vetnutri_mp.View.components.AdvancedSortDialog
-import fr.vetbrain.vetnutri_mp.View.components.NutrientOperator
-import fr.vetbrain.vetnutri_mp.View.components.SortCriteria
-import fr.vetbrain.vetnutri_mp.View.components.SortOrder
 import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
 import fr.vetbrain.vetnutri_mp.Components.BasicAppTextField
 import fr.vetbrain.vetnutri_mp.Components.DropdownField

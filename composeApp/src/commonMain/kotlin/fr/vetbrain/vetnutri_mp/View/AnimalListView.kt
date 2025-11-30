@@ -34,6 +34,7 @@ import fr.vetbrain.vetnutri_mp.Theme.AppIcons
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalListViewModel
 import fr.vetbrain.vetnutri_mp.View.Components.QRCodeScannerView
+import fr.vetbrain.vetnutri_mp.getPlatform
 import kotlin.uuid.ExperimentalUuidApi
 import kotlinx.coroutines.launch
 
@@ -231,6 +232,8 @@ fun AnimalListView(
         }
 
         if (showImportDialog) {
+            val platform = getPlatform()
+            val isDesktop = platform.name.contains("Java") || platform.name.contains("Windows") || platform.name.contains("Linux")
             var showScanner by remember { mutableStateOf(false) }
 
             if (showScanner) {
@@ -278,22 +281,24 @@ fun AnimalListView(
                             singleLine = true
                         )
 
-                        // Ou scanner
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            Text("- OU -", color = Color.Gray)
-                        }
+                        // Ou scanner (uniquement sur mobile)
+                        if (!isDesktop) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Text("- OU -", color = Color.Gray)
+                            }
 
-                        Button(
-                            onClick = { showScanner = true },
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(backgroundColor = Color.DarkGray, contentColor = Color.White)
-                        ) {
-                            Icon(Icons.Default.QrCodeScanner, contentDescription = null)
-                            Spacer(Modifier.width(8.dp))
-                            Text("Scanner un QR Code")
+                            Button(
+                                onClick = { showScanner = true },
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.buttonColors(backgroundColor = Color.DarkGray, contentColor = Color.White)
+                            ) {
+                                Icon(Icons.Default.QrCodeScanner, contentDescription = null)
+                                Spacer(Modifier.width(8.dp))
+                                Text("Scanner un QR Code")
+                            }
                         }
                     }
                 },

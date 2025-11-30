@@ -31,6 +31,3 @@ actual fun QRCodeScannerView(
         )
     }
 }
-
-
-

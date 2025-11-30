@@ -24,16 +24,7 @@ import kotlinx.coroutines.runBlocking
 import io.github.koalaplot.core.*
 import io.github.koalaplot.core.pie.*
 import io.github.koalaplot.core.util.ExperimentalKoalaPlotApi
-
-/**
- * Données d'un nutriment pour le graphique en secteurs
- */
-data class NutrientData(
-    val name: String,
-    val value: Double,
-    val color: Color,
-    val percentage: Double
-)
+import fr.vetbrain.vetnutri_mp.Data.NutrientPieData
 
 /**
  * Composant graphique en secteurs pour afficher la répartition des nutriments
@@ -98,11 +89,11 @@ fun NutrientPieChart(
                 modifier = Modifier.fillMaxWidth(),
                 contentAlignment = Alignment.Center
             ) {
-                 PieChart(
+                    PieChart(
                      values = nutrientData.map { it.value.toFloat() },
                      slice = { index ->
                          val data = nutrientData[index]
-                         DefaultSlice(data.color)
+                         DefaultSlice(Color(data.colorValue.toULong()))
                      },
                      modifier = Modifier.size(200.dp)
                  )
@@ -120,7 +111,7 @@ fun NutrientPieChart(
                     NutrientLegendItem(
                         name = data.name,
                         value = data.value,
-                        color = data.color,
+                        color = Color(data.colorValue.toULong()),
                         percentage = data.percentage
                     )
                 }
@@ -179,7 +170,7 @@ private fun NutrientLegendItem(
  * @param referenceEv Référence pour calculer les nutriments complémentaires
  * @return Liste des données de nutriments
  */
-private fun extractNutrientDataWithComplementary(aliment: AlimentEv, referenceEv: ReferenceEv?, equationRepository: EquationRepository?): List<NutrientData> {
+private fun extractNutrientDataWithComplementary(aliment: AlimentEv, referenceEv: ReferenceEv?, equationRepository: EquationRepository?): List<NutrientPieData> {
     val targetNutrients = listOf(
         NutrientMain.HUMIDITE,
         NutrientMain.PROTEINE,
@@ -189,7 +180,7 @@ private fun extractNutrientDataWithComplementary(aliment: AlimentEv, referenceEv
         NutrientMain.CELLULOSE
     )
 
-    val nutrientData = mutableListOf<NutrientData>()
+    val nutrientData = mutableListOf<NutrientPieData>()
     var totalValue = 0.0
 
     // D'abord, calculer toutes les valeurs des nutriments (directes + équations)
@@ -233,10 +224,10 @@ private fun extractNutrientDataWithComplementary(aliment: AlimentEv, referenceEv
         val color = parseColor(nutrient.color)
         
         nutrientData.add(
-            NutrientData(
+            NutrientPieData(
                 name = getNutrientDisplayName(nutrient),
                 value = nutrientValue,
-                color = color,
+                colorValue = color.value.toLong(),
                 percentage = percentage
             )
         )

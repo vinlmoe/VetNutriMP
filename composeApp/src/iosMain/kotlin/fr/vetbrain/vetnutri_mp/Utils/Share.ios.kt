@@ -5,7 +5,9 @@ import androidx.compose.runtime.remember
 import platform.UIKit.UIActivityViewController
 import platform.UIKit.UIApplication
 import platform.UIKit.UIWindow
+import platform.UIKit.popoverPresentationController
 import platform.Foundation.NSURL
+import kotlinx.cinterop.ExperimentalForeignApi
 
 @Composable
 actual fun rememberShareLauncher(): (String) -> Unit {
@@ -21,13 +23,20 @@ actual fun rememberShareLauncher(): (String) -> Unit {
             val rootViewController = window?.rootViewController
             
             // Configuration pour iPad
-            controller.popoverPresentationController?.sourceView = window
-            controller.popoverPresentationController?.sourceRect = window?.bounds ?: platform.CoreGraphics.CGRectMake(0.0, 0.0, 0.0, 0.0)
+            @OptIn(ExperimentalForeignApi::class)
+            val popover = controller.popoverPresentationController
+            if (popover != null) {
+                popover.sourceView = window
+                @OptIn(ExperimentalForeignApi::class)
+                popover.sourceRect = window?.bounds ?: platform.CoreGraphics.CGRectMake(0.0, 0.0, 0.0, 0.0)
+            }
 
             rootViewController?.presentViewController(controller, true, null)
         }
     }
 }
+
+
 
 
 
