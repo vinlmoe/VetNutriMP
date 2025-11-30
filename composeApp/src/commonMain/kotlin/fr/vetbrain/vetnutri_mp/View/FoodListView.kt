@@ -28,7 +28,7 @@ import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.FoodListViewModel
 import fr.vetbrain.vetnutri_mp.View.components.FoodSearchComponent
 import fr.vetbrain.vetnutri_mp.View.components.FoodSearchConfig
-import fr.vetbrain.vetnutri_mp.View.components.FoodSearchFilters
+import fr.vetbrain.vetnutri_mp.Data.FoodSearchFilters
 import fr.vetbrain.vetnutri_mp.View.components.FoodSearchLayout
 import kotlin.uuid.ExperimentalUuidApi
 import kotlinx.coroutines.launch

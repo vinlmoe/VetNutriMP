@@ -27,7 +27,7 @@ import kotlinx.coroutines.runBlocking
 import io.github.koalaplot.core.pie.PieChart
 import io.github.koalaplot.core.pie.DefaultSlice
 import io.github.koalaplot.core.util.ExperimentalKoalaPlotApi
-import fr.vetbrain.vetnutri_mp.View.components.NutrientData
+import fr.vetbrain.vetnutri_mp.Data.NutrientPieData
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
@@ -1374,7 +1374,7 @@ private fun calculerAffichageNutriment(
 @Composable
 private fun PieChartCard(
     title: String,
-    data: List<NutrientData>,
+    data: List<NutrientPieData>,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -1401,7 +1401,7 @@ private fun PieChartCard(
                      values = data.map { it.value.toFloat() },
                      slice = { index ->
                          val sliceData = data[index]
-                         DefaultSlice(sliceData.color)
+                         DefaultSlice(Color(sliceData.colorValue.toULong()))
                      },
                      modifier = Modifier.size(140.dp)
                  )
@@ -1417,7 +1417,7 @@ private fun PieChartCard(
                 data.forEach { item ->
                     PieChartLegendItem(
                         name = item.name,
-                        color = item.color,
+                        color = Color(item.colorValue.toULong()),
                         percentage = item.percentage
                     )
                 }
@@ -1471,7 +1471,7 @@ private fun parseColor(hexColor: String): Color {
     }
 }
 
-private fun generateCompositionData(valeurs: Map<String, ValeurNutritionnelle>): List<NutrientData> {
+private fun generateCompositionData(valeurs: Map<String, ValeurNutritionnelle>): List<NutrientPieData> {
     val targetNutrients = listOf(
         NutrientMain.HUMIDITE,
         NutrientMain.PROTEINE,
@@ -1481,7 +1481,7 @@ private fun generateCompositionData(valeurs: Map<String, ValeurNutritionnelle>):
         NutrientMain.CELLULOSE
     )
     
-    val data = mutableListOf<NutrientData>()
+    val data = mutableListOf<NutrientPieData>()
     var total = 0.0
     
     targetNutrients.forEach { nutrient ->
@@ -1496,10 +1496,10 @@ private fun generateCompositionData(valeurs: Map<String, ValeurNutritionnelle>):
     targetNutrients.forEach { nutrient ->
         val value = valeurs[nutrient.name]?.valeur ?: 0.0
         if (value > 0) {
-            data.add(NutrientData(
+            data.add(NutrientPieData(
                 name = nutrient.translateEnum(),
                 value = value,
-                color = parseColor(nutrient.color),
+                colorValue = parseColor(nutrient.color).value.toLong(),
                 percentage = (value / total) * 100.0
             ))
         }
@@ -1507,7 +1507,7 @@ private fun generateCompositionData(valeurs: Map<String, ValeurNutritionnelle>):
     return data
 }
 
-private fun generateEnergyData(valeurs: Map<String, ValeurNutritionnelle>): List<NutrientData> {
+private fun generateEnergyData(valeurs: Map<String, ValeurNutritionnelle>): List<NutrientPieData> {
     val prot = valeurs[NutrientMain.PROTEINE.name]?.valeur ?: 0.0
     val lipid = valeurs[NutrientMain.LIPIDE.name]?.valeur ?: 0.0
     val ena = valeurs[NutrientMain.ENA.name]?.valeur ?: 0.0
@@ -1520,29 +1520,29 @@ private fun generateEnergyData(valeurs: Map<String, ValeurNutritionnelle>): List
     
     if (total == 0.0) return emptyList()
     
-    val list = mutableListOf<NutrientData>()
+    val list = mutableListOf<NutrientPieData>()
     
     if (energyProt > 0) {
-        list.add(NutrientData(
+        list.add(NutrientPieData(
             name = NutrientMain.PROTEINE.translateEnum(),
             value = energyProt,
-            color = parseColor(NutrientMain.PROTEINE.color),
+            colorValue = parseColor(NutrientMain.PROTEINE.color).value.toLong(),
             percentage = (energyProt / total) * 100.0
         ))
     }
     if (energyLipid > 0) {
-        list.add(NutrientData(
+        list.add(NutrientPieData(
             name = NutrientMain.LIPIDE.translateEnum(),
             value = energyLipid,
-            color = parseColor(NutrientMain.LIPIDE.color),
+            colorValue = parseColor(NutrientMain.LIPIDE.color).value.toLong(),
             percentage = (energyLipid / total) * 100.0
         ))
     }
     if (energyEna > 0) {
-        list.add(NutrientData(
+        list.add(NutrientPieData(
             name = NutrientMain.ENA.translateEnum(),
             value = energyEna,
-            color = parseColor(NutrientMain.ENA.color),
+            colorValue = parseColor(NutrientMain.ENA.color).value.toLong(),
             percentage = (energyEna / total) * 100.0
         ))
     }

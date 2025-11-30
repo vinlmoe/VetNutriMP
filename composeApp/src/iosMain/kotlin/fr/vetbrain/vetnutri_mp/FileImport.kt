@@ -17,6 +17,8 @@ import platform.Foundation.dataUsingEncoding
 import platform.UIKit.UIActivityViewController
 import platform.UIKit.UIApplication
 import platform.UIKit.UIWindow
+import platform.UIKit.popoverPresentationController
+import kotlinx.cinterop.ExperimentalForeignApi
 
 actual fun importAnimalsFromFile(viewModel: AnimalListViewModel) {
         viewModel.setImportError("L'importation de fichiers n'est pas encore implémentée sur iOS.")
@@ -67,8 +69,13 @@ actual fun exportJsonToFile(content: String, defaultFileName: String): Boolean {
                 val rootViewController = window?.rootViewController
                 
                 // Sur iPad, le popover est nécessaire
-                activityViewController.popoverPresentationController?.sourceView = window
-                activityViewController.popoverPresentationController?.sourceRect = window?.bounds ?: platform.CoreGraphics.CGRectMake(0.0, 0.0, 0.0, 0.0)
+                @OptIn(ExperimentalForeignApi::class)
+                val popover = activityViewController.popoverPresentationController
+                if (popover != null) {
+                    popover.sourceView = window
+                    @OptIn(ExperimentalForeignApi::class)
+                    popover.sourceRect = window?.bounds ?: platform.CoreGraphics.CGRectMake(0.0, 0.0, 0.0, 0.0)
+                }
                 
                 rootViewController?.presentViewController(activityViewController, true, null)
                 return true
