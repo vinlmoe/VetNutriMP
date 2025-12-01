@@ -9,10 +9,22 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.*
 import androidx.compose.material.LocalTextStyle
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -210,18 +222,54 @@ fun BasicAppTextField(
         maxLines: Int = Int.MAX_VALUE,
         readOnly: Boolean = false,
         enabled: Boolean = true,
-        validationRegex: Regex? = null
+        validationRegex: Regex? = null,
+        focusRequester: FocusRequester? = null,
+        selectAllOnFocus: Boolean = false
 ) {
+        var textFieldValue by remember(value) { mutableStateOf(TextFieldValue(value, TextRange(value.length))) }
+        var isFocused by remember { mutableStateOf(false) }
+        var hasSelectedOnFocus by remember { mutableStateOf(false) }
+        
+        // Synchroniser textFieldValue avec value quand value change de l'extérieur
+        // Ne pas toucher à la sélection si l'utilisateur est en train de taper (isFocused && hasSelectedOnFocus)
+        LaunchedEffect(value) {
+                if (textFieldValue.text != value) {
+                        // Si l'utilisateur est en train de taper, ne pas mettre à jour
+                        // (hasSelectedOnFocus est true seulement après la sélection initiale)
+                        if (!isFocused || !hasSelectedOnFocus) {
+                                textFieldValue = TextFieldValue(value, TextRange(value.length))
+                        }
+                }
+        }
+        
+        // Réinitialiser le flag de sélection quand le focus est perdu
+        LaunchedEffect(isFocused) {
+                if (!isFocused) {
+                        hasSelectedOnFocus = false
+                }
+        }
+        
+        // Sélectionner tout le texte uniquement au début de l'édition (première fois qu'on obtient le focus)
+        LaunchedEffect(isFocused, selectAllOnFocus) {
+                if (isFocused && selectAllOnFocus && !hasSelectedOnFocus && textFieldValue.text.isNotEmpty()) {
+                        // Petit délai pour s'assurer que le focus est bien établi
+                        kotlinx.coroutines.delay(50)
+                        textFieldValue = TextFieldValue(textFieldValue.text, TextRange(0, textFieldValue.text.length))
+                        hasSelectedOnFocus = true
+                }
+        }
+        
         Column(modifier = modifier) {
                 BasicTextField(
-                        value = value,
+                        value = textFieldValue,
                         onValueChange = { newValue ->
                                 // Appliquer la validation si un regex est fourni
                                 if (validationRegex == null ||
-                                                newValue.isEmpty() ||
-                                                newValue.matches(validationRegex)
+                                                newValue.text.isEmpty() ||
+                                                newValue.text.matches(validationRegex)
                                 ) {
-                                        onValueChange(newValue)
+                                        textFieldValue = newValue
+                                        onValueChange(newValue.text)
                                 }
                         },
                         textStyle =
@@ -239,7 +287,22 @@ fun BasicAppTextField(
                         singleLine = singleLine,
                         maxLines = maxLines,
                         readOnly = readOnly,
-                        modifier = Modifier.fillMaxWidth().height(40.dp),
+                        modifier = Modifier
+                                .fillMaxWidth()
+                                .height(40.dp)
+                                .then(
+                                        if (focusRequester != null) {
+                                                Modifier
+                                                        .focusRequester(focusRequester)
+                                                        .onFocusChanged { focusState ->
+                                                                isFocused = focusState.isFocused
+                                                        }
+                                        } else {
+                                                Modifier.onFocusChanged { focusState ->
+                                                        isFocused = focusState.isFocused
+                                                }
+                                        }
+                                ),
                         decorationBox = { innerTextField ->
                                 Box(
                                         modifier =
@@ -308,7 +371,7 @@ fun BasicAppTextField(
 
                                                 // Champ de texte
                                                 Box(modifier = Modifier.weight(1f)) {
-                                                        if (value.isEmpty() && placeholder != null
+                                                        if (textFieldValue.text.isEmpty() && placeholder != null
                                                         ) {
                                                                 Text(
                                                                         text = placeholder,
@@ -424,7 +487,9 @@ fun BasicNumberTextField(
         readOnly: Boolean = false,
         enabled: Boolean = true,
         allowDecimals: Boolean = true,
-        allowNegative: Boolean = false
+        allowNegative: Boolean = false,
+        focusRequester: FocusRequester? = null,
+        selectAllOnFocus: Boolean = false
 ) {
         val validationRegex =
                 when {
@@ -444,10 +509,12 @@ fun BasicNumberTextField(
                 onTrailingIconClick = onTrailingIconClick,
                 isError = isError,
                 errorMessage = errorMessage,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 singleLine = singleLine,
                 readOnly = readOnly,
                 enabled = enabled,
-                validationRegex = validationRegex
+                validationRegex = validationRegex,
+                focusRequester = focusRequester,
+                selectAllOnFocus = selectAllOnFocus
         )
 }

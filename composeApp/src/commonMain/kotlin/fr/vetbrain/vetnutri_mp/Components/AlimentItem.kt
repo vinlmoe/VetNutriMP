@@ -9,6 +9,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -81,10 +82,22 @@ fun AlimentItem(
         var quantityText by
                 remember(aliment.uuid, aliment.quantite) { mutableStateOf(aliment.quantite.toString()) }
         
+        // FocusRequester pour gérer le focus automatique
+        val focusRequester = remember { FocusRequester() }
+        
         // Synchroniser quantityText avec aliment.quantite quand on n'est pas en mode édition
         LaunchedEffect(aliment.uuid, aliment.quantite, isEditing) {
                 if (!isEditing) {
                         quantityText = aliment.quantite.toString()
+                }
+        }
+        
+        // Demander le focus automatiquement quand on passe en mode édition
+        LaunchedEffect(isEditing) {
+                if (isEditing) {
+                        // Petit délai pour s'assurer que le composant est bien rendu
+                        kotlinx.coroutines.delay(50)
+                        focusRequester.requestFocus()
                 }
         }
 
@@ -281,7 +294,9 @@ fun AlimentItem(
                                                                                         false
                                                                                 }
                                                                         },
-                                                        singleLine = true
+                                                        singleLine = true,
+                                                        focusRequester = focusRequester,
+                                                        selectAllOnFocus = true
                                                 )
 
                                                 Button(
