@@ -18,5 +18,6 @@ data class AlimentEvLight(
         val gamme: String? = null,
         val especes: List<String> = emptyList(),
         val indicat: List<AlimIndic> = emptyList(),
-        val deprecated: Boolean = false
+        val deprecated: Boolean = false,
+        val dataB: String? = null
 )

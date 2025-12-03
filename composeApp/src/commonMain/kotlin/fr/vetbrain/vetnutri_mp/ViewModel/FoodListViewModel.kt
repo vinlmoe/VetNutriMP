@@ -22,6 +22,7 @@ class FoodListViewModel(private val foodRepository: DatabaseFoodRepository) {
 
         // Liste des aliments (non filtrée)
         private val _allFoods = MutableStateFlow<List<AlimentEv>>(emptyList())
+        val allFoods: StateFlow<List<AlimentEv>> = _allFoods.asStateFlow()
 
         // Liste des aliments filtrés
         private val _foods = MutableStateFlow<List<AlimentEv>>(emptyList())
@@ -104,6 +105,7 @@ class FoodListViewModel(private val foodRepository: DatabaseFoodRepository) {
                                         typeAliment = light.typeAliment,
                                         gamme = light.gamme,
                                         deprecated = light.deprecated,
+                                        dataB = light.dataB,
                                         especes = light.especes.toMutableList(),
                                         indicat = light.indicat.toMutableList(),
                                         valMap = mutableMapOf()

@@ -1,4 +1,4 @@
-package fr.vetbrain.vetnutri_mp.View.components
+package fr.vetbrain.vetnutri_mp.View.Components
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -82,7 +82,8 @@ fun FoodSearchComponent(
         filters: FoodSearchFilters,
         onFiltersChange: (FoodSearchFilters) -> Unit,
         config: FoodSearchConfig = FoodSearchConfig(),
-        modifier: Modifier = Modifier
+        modifier: Modifier = Modifier,
+        allFoods: List<AlimentEv>? = null
 ) {
         // État pour stocker les nutriments chargés depuis la base de données
         var loadedNutrients by remember { 
@@ -359,10 +360,11 @@ fun FoodSearchComponent(
                         result
                 }
 
+        val foodsForFilters = allFoods ?: foods
         when (config.layout) {
                 FoodSearchLayout.VERTICAL ->
                         VerticalLayout(
-                                allFoods = foods,
+                                allFoods = foodsForFilters,
                                 filteredFoods = filteredFoods,
                                 filters = filters,
                                 onFiltersChange = onFiltersChange,
@@ -371,7 +373,7 @@ fun FoodSearchComponent(
                         )
                 FoodSearchLayout.HORIZONTAL ->
                         HorizontalLayout(
-                                allFoods = foods,
+                                allFoods = foodsForFilters,
                                 filteredFoods = filteredFoods,
                                 filters = filters,
                                 onFiltersChange = onFiltersChange,
@@ -380,7 +382,7 @@ fun FoodSearchComponent(
                         )
                 FoodSearchLayout.COMPACT ->
                         CompactLayout(
-                                allFoods = foods,
+                                allFoods = foodsForFilters,
                                 filteredFoods = filteredFoods,
                                 filters = filters,
                                 onFiltersChange = onFiltersChange,

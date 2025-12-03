@@ -207,13 +207,14 @@ object HtmlDocumentBuilder {
         return when (documentType) {
             DocumentType.RATION_ANALYSIS ->
                     buildRationAnalysisHtml(
-                            data.animal,
-                            data.ration,
-                            data.reference,
-                            data.title,
-                            data.additionalText,
-                            data.htmlSections,
-                            data.bulletGraphImages
+                            animal = data.animal,
+                            ration = data.ration,
+                            reference = data.reference,
+                            title = data.title,
+                            additionalText = data.additionalText,
+                            htmlSections = data.htmlSections,
+                            bulletGraphImages = data.bulletGraphImages,
+                            isLandscape = data.isLandscape
                     )
             DocumentType.PRESCRIPTION ->
                     buildPrescriptionHtml(
@@ -234,7 +235,7 @@ object HtmlDocumentBuilder {
         }
     }
 
-    private fun buildHeader(title: String): String =
+    private fun buildHeader(title: String, isLandscape: Boolean): String =
             """
         <!DOCTYPE html>
         <html>
@@ -259,6 +260,11 @@ object HtmlDocumentBuilder {
                 .bullet-graph-item { margin-bottom: 20px; padding: 12px; border: 1px solid #ddd; border-radius: 6px; background: #fafafa; }
                 .bullet-graph-item h3 { margin: 0 0 8px 0; font-size: 12pt; color: #333; }
                 .bullet-graph-image { max-width: 100%; height: auto; border: 1px solid #ccc; border-radius: 4px; }
+                ${
+                        if (isLandscape)
+                                "@page { size: A4 landscape; margin: 1cm; }"
+                        else ""
+                }
             </style>
             <title>${title}</title>
         </head>
@@ -393,9 +399,13 @@ object HtmlDocumentBuilder {
             title: String,
             additionalText: String,
             htmlSections: List<HtmlSection> = emptyList(),
-            bulletGraphImages: Map<String, Map<String, String>> = emptyMap()
+            bulletGraphImages: Map<String, Map<String, String>> = emptyMap(),
+            isLandscape: Boolean = false
     ): String {
-        return buildHeader(if (title.isNotBlank()) title else "Analyse de ration") +
+        return buildHeader(
+                        if (title.isNotBlank()) title else "Analyse de ration",
+                        isLandscape
+                ) +
                 buildAnimalBlock(animal) +
                 
                 buildReferencesBlock(reference) +
@@ -429,7 +439,10 @@ object HtmlDocumentBuilder {
             besoinEnergetiqueEntretien: Double? = null,
             bulletGraphImages: Map<String, Map<String, String>> = emptyMap()
     ): String {
-        return buildHeader(if (title.isNotBlank()) title else "Ordonnance nutritionnelle") +
+        return buildHeader(
+                        if (title.isNotBlank()) title else "Ordonnance nutritionnelle",
+                        false
+                ) +
                 buildPractitionerHeader(practitioner) +
                 buildAnimalBlock(animal) +
                 buildRationsBlocks(rations, reference, animal, preferences, poidsAnimal, poidsMetabolique, besoinEnergetiqueEntretien, bulletGraphImages, includeBulletGraphs = false) +

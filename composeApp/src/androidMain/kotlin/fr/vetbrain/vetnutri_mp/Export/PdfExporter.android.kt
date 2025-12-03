@@ -39,6 +39,7 @@ actual object PdfExporter {
                                                                 .setMediaSize(
                                                                         PrintAttributes.MediaSize
                                                                                 .ISO_A4
+                                                                                .asLandscape()
                                                                 )
                                                                 .setResolution(
                                                                         PrintAttributes.Resolution(

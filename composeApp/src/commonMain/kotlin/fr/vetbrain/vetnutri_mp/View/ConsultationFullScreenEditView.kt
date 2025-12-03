@@ -73,6 +73,11 @@ fun ConsultationFullScreenEditView(
         var showMissingVariablesDialog by remember { mutableStateOf(false) }
         var missingVariables by remember { mutableStateOf<List<String>>(emptyList()) }
 
+        // États pour la confirmation de sortie et les avertissements de données manquantes
+        var showExitConfirmationDialog by remember { mutableStateOf(false) }
+        var showMissingDataDialog by remember { mutableStateOf(false) }
+        var missingDataMessage by remember { mutableStateOf("") }
+
         // États pour les dialogues de sélection de références
         var showReferenceGeneraleDialog by remember(consultation) { mutableStateOf(false) }
         var showReferenceMaladieDialog by remember(consultation) { mutableStateOf(false) }
@@ -180,14 +185,15 @@ fun ConsultationFullScreenEditView(
         }
 
         // Effet pour sauvegarder automatiquement quand le composant est détruit
+        var shouldAutoSave by remember { mutableStateOf(true) }
         DisposableEffect(Unit) {
                 onDispose {
-                        // Sauvegarder automatiquement les modifications en cours
-                        autoSave()
+                        // Sauvegarder automatiquement les modifications en cours sauf si l'utilisateur a validé ou annulé explicitement
+                        if (shouldAutoSave) {
+                                autoSave()
+                        }
                 }
         }
-
-        var showNoReferenceDialog by remember { mutableStateOf(false) }
 
         Scaffold(
                 topBar = {
@@ -221,8 +227,8 @@ fun ConsultationFullScreenEditView(
                                 navigationIcon = {
                                         IconButtonWithTooltip(
                                                 onClick = {
-                                                        // Retour sans sauvegarde
-                                                        onCancel()
+                                                        // Demander confirmation avant d'annuler la saisie
+                                                        showExitConfirmationDialog = true
                                                 },
                                                 imageVector = AppIcons.ArrowBack,
                                                 contentDescription = "Retour",
@@ -239,14 +245,25 @@ fun ConsultationFullScreenEditView(
                         FloatingActionButton(
                                 onClick = {
                                         // Empêcher la sauvegarde si aucune référence générale n'est
-                                        // sélectionnée
+                                        // sélectionnée et si aucun poids n'est saisi
                                         val hasGeneralRef =
                                                 !editedConsultation.referenceGeneraleId
                                                         .isNullOrBlank()
-                                        if (!hasGeneralRef) {
-                                                showNoReferenceDialog = true
+                                        val hasWeight = editedConsultation.weight != null
+                                        if (!hasGeneralRef || !hasWeight) {
+                                                missingDataMessage =
+                                                        when {
+                                                                !hasGeneralRef && !hasWeight ->
+                                                                        "Veuillez sélectionner une référence générale et saisir un poids avant de valider la consultation."
+                                                                !hasGeneralRef ->
+                                                                        "Veuillez sélectionner une référence générale avant de valider la consultation."
+                                                                else ->
+                                                                        "Veuillez saisir un poids avant de valider la consultation."
+                                                        }
+                                                showMissingDataDialog = true
                                                 return@FloatingActionButton
                                         }
+                                        shouldAutoSave = false
                                         saveAndGoBack()
                                 },
                                 backgroundColor = VetNutriColors.Primary
@@ -1084,6 +1101,49 @@ fun ConsultationFullScreenEditView(
                                 }
                         }
                 )
+        }
+
+        // Dialogue de confirmation pour l'annulation de la saisie
+        if (showExitConfirmationDialog) {
+                AlertDialog(
+                        onDismissRequest = { showExitConfirmationDialog = false },
+                        title = { Text("Annuler la saisie ?") },
+                        text = {
+                                Text(
+                                        "Si vous retournez en arrière, les modifications en cours de saisie seront perdues."
+                                )
+                        },
+                        confirmButton = {
+                                TextButton(
+                                        onClick = {
+                                                shouldAutoSave = false
+                                                showExitConfirmationDialog = false
+                                                onCancel()
+                                        }
+                                ) {
+                                        Text("Oui, annuler")
+                                }
+                        },
+                        dismissButton = {
+                                TextButton(onClick = { showExitConfirmationDialog = false }) {
+                                        Text("Continuer la saisie")
+                                }
+                        }
+                )
+        }
+
+        // Dialogue d'avertissement pour référence ou poids manquants à la validation
+        if (showMissingDataDialog) {
+            AlertDialog(
+                    onDismissRequest = { showMissingDataDialog = false },
+                    title = { Text("Informations manquantes") },
+                    text = { Text(missingDataMessage) },
+                    confirmButton = {
+                            TextButton(onClick = { showMissingDataDialog = false }) {
+                                    Text("OK")
+                            }
+                    }
+            )
         }
 }
 

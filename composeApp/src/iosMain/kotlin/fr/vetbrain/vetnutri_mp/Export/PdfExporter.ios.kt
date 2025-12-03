@@ -16,6 +16,7 @@ import platform.UIKit.UIGraphicsBeginPDFPage
 import platform.UIKit.UIGraphicsEndPDFContext
 import platform.UIKit.UIGraphicsGetPDFContextBounds
 import platform.UIKit.UIMarkupTextPrintFormatter
+import platform.UIKit.UIPrintInfoOrientation
 import platform.UIKit.UIPrintPageRenderer
 import platform.UIKit.UIViewController
 import platform.UIKit.popoverPresentationController
@@ -24,8 +25,9 @@ import platform.darwin.dispatch_get_main_queue
 
 @OptIn(ExperimentalForeignApi::class)
 actual object PdfExporter {
-        private const val a4Width: Double = 595.0
-        private const val a4Height: Double = 842.0
+        // A4 paysage (largeur > hauteur)
+        private const val a4Width: Double = 842.0
+        private const val a4Height: Double = 595.0
         private const val margin: Double = 20.0
 
         actual fun exportDocument(
@@ -94,6 +96,7 @@ actual object PdfExporter {
                         val printInfo = platform.UIKit.UIPrintInfo.printInfo()
                         printInfo.outputType = platform.UIKit.UIPrintInfoOutputType.UIPrintInfoOutputGeneral
                         printInfo.jobName = "Document VetNutri"
+                        printInfo.orientation = UIPrintInfoOrientation.UIPrintInfoOrientationLandscape
                         printController.printInfo = printInfo
                         
                         // Présenter le dialogue d'impression
@@ -135,6 +138,7 @@ actual object PdfExporter {
                         val printInfo = platform.UIKit.UIPrintInfo.printInfo()
                         printInfo.outputType = platform.UIKit.UIPrintInfoOutputType.UIPrintInfoOutputGeneral
                         printInfo.jobName = "Document VetNutri"
+                        printInfo.orientation = UIPrintInfoOrientation.UIPrintInfoOrientationLandscape
                         printController.printInfo = printInfo
                         
                         // Présenter le dialogue d'impression

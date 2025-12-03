@@ -55,7 +55,7 @@ import fr.vetbrain.vetnutri_mp.View.AnalNut.SectionAlimentsRation
 import fr.vetbrain.vetnutri_mp.View.AnalNut.SectionBilanEnergetique
 import fr.vetbrain.vetnutri_mp.View.AnalNut.SectionCoefficients
 import fr.vetbrain.vetnutri_mp.View.AnalNut.SectionValeursMetaboliques
-import fr.vetbrain.vetnutri_mp.View.components.RecipeDialog
+import fr.vetbrain.vetnutri_mp.View.Components.RecipeDialog
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailViewModel
 import kotlinx.coroutines.launch
 

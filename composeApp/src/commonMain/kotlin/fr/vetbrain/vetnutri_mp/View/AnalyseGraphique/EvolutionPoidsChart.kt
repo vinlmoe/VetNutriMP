@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.draw.rotate
 import fr.vetbrain.vetnutri_mp.Components.IconButtonWithTooltip
+import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.GraphFormattingUtils
@@ -69,6 +70,7 @@ fun EvolutionPoidsChart(
     onClearCone: () -> Unit = {}
 ) {
     var showZoom by remember { mutableStateOf(false) }
+    var showGrowthZoom by remember { mutableStateOf(false) }
 
     if (showZoom && coneState != null) {
         ConeZoomView(viewModel, coneState!!, onClose = { showZoom = false })
@@ -150,9 +152,31 @@ fun EvolutionPoidsChart(
                 verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
         ) {
                 // États UI: sélection de la courbe de référence et affichage
-                var selectedCurveIndex by remember { mutableStateOf(0) }
+                val especeAnimal: Espece =
+                        animal?.getEspece() ?: Espece.CHIEN
+                val courbesDisponibles: List<CurveP> =
+                        when (especeAnimal) {
+                                Espece.CHAT -> courbesCroissanceChat
+                                else -> courbesCroissanceChien
+                        }
+                var selectedCurveIndex by remember(especeAnimal, courbesDisponibles.size) {
+                        mutableStateOf(0)
+                }
                 var showReferenceCurves by remember { mutableStateOf(true) }
-                val selectedCurve = courbesCroissanceChien.getOrNull(selectedCurveIndex)
+                val selectedCurve = courbesDisponibles.getOrNull(selectedCurveIndex)
+
+                val useYearsScale: Boolean =
+                        consultationsWithAge.maxOfOrNull { it.ageInYears }?.let { it > 1.0 }
+                                ?: false
+
+                if (showGrowthZoom && selectedCurve != null) {
+                        GrowthZoomView(
+                                viewModel = viewModel,
+                                selectedCurve = selectedCurve,
+                                onClose = { showGrowthZoom = false }
+                        )
+                        return
+                }
 
                 // Contrôles: ComboBox (Dropdown) + Checkbox
                 Row(
@@ -173,7 +197,7 @@ fun EvolutionPoidsChart(
                                         expanded = expanded,
                                         onDismissRequest = { expanded = false }
                                 ) {
-                                        courbesCroissanceChien.forEachIndexed { index, courbe ->
+                                        courbesDisponibles.forEachIndexed { index, courbe ->
                                                 DropdownMenuItem(
                                                         onClick = {
                                                                 selectedCurveIndex = index
@@ -182,6 +206,18 @@ fun EvolutionPoidsChart(
                                                 ) { Text(text = courbe.description) }
                                         }
                                 }
+                        }
+
+                        if (selectedCurve != null) {
+                            Button(
+                                onClick = { showGrowthZoom = true },
+                                colors = ButtonDefaults.buttonColors(backgroundColor = VetNutriColors.Secondary),
+                                modifier = Modifier.padding(horizontal = 8.dp)
+                            ) {
+                                Icon(Icons.Default.ZoomIn, contentDescription = null)
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Zoom croissance & PDF")
+                            }
                         }
 
                         if (coneState != null) {
@@ -261,11 +297,21 @@ fun EvolutionPoidsChart(
                 val courbeRef = selectedCurve
                 val param50 = courbeRef?.params?.find { it.name == "50%" }
                 val pointsRef0_12 =
-                        param50?.let {
+                        param50?.let { param ->
                                 (0..12).map { mois ->
                                         val ageInMonths = mois.toFloat()
-                                        val poids = calculerPoidsCroissance(it, ageInMonths.toDouble())
-                                        Point(x = ageInMonths, y = poids.toFloat())
+                                        val ageAxis =
+                                                if (useYearsScale) {
+                                                        ageInMonths / 12f
+                                                } else {
+                                                        ageInMonths
+                                                }
+                                        val poids =
+                                                calculerPoidsCroissance(
+                                                        param,
+                                                        ageInMonths.toDouble()
+                                                )
+                                        Point(x = ageAxis, y = poids.toFloat())
                                 }
                         } ?: emptyList<Point<Float, Float>>()
 
@@ -273,11 +319,44 @@ fun EvolutionPoidsChart(
                 // mois et y basé sur la courbe. Inclure aussi le cône s'il existe.
                 val donneesPoids: List<Point<Float, Float>> =
                         consultationsWithAge.map { d ->
-                                Point(x = d.ageInMonths.toFloat(), y = d.weight.toFloat())
+                                val xAxisValue =
+                                        if (useYearsScale) {
+                                                d.ageInYears.toFloat()
+                                        } else {
+                                                d.ageInMonths.toFloat()
+                                        }
+                                Point(x = xAxisValue, y = d.weight.toFloat())
                         }
                 val useReal = donneesPoids.isNotEmpty()
-                val pointsCone: List<Point<Float, Float>> = if (coneLines != null) coneLines.first + coneLines.second else emptyList()
-                val targetY = coneLines?.third
+                val displayConeLines: Triple<List<Point<Float, Float>>, List<Point<Float, Float>>, Float?>? =
+                        if (coneLines != null) {
+                                if (useYearsScale) {
+                                        val slow =
+                                                coneLines.first.map { p ->
+                                                        Point(
+                                                                x = p.x / 12f,
+                                                                y = p.y
+                                                        )
+                                                }
+                                        val fast =
+                                                coneLines.second.map { p ->
+                                                        Point(
+                                                                x = p.x / 12f,
+                                                                y = p.y
+                                                        )
+                                                }
+                                        Triple(slow, fast, coneLines.third)
+                                } else {
+                                        coneLines
+                                }
+                        } else {
+                                null
+                        }
+
+                val pointsCone: List<Point<Float, Float>> =
+                        if (displayConeLines != null) displayConeLines.first + displayConeLines.second
+                        else emptyList()
+                val targetY = displayConeLines?.third
                 val targetPoints = if (targetY != null) listOf(Point(0f, targetY)) else emptyList() // Dummy point for Y range
 
                 val minXData: Float = if (useReal) donneesPoids.minOf { it.x } else 0.0f
@@ -310,9 +389,16 @@ fun EvolutionPoidsChart(
                         if (xRangeWidth > 0.0f) xTickIncrement.coerceAtMost(xRangeWidth) else 1.0f
 
                 // Graphique
+                val sousTitreGraphique =
+                        if (useYearsScale) {
+                                "Poids en kg selon l'âge (années, avec courbes de référence)"
+                        } else {
+                                "Poids en kg selon l'âge (mois, avec courbes de référence)"
+                        }
+
                 GraphCard(
                         titre = "Évolution du poids corporel",
-                        sousTitre = "Poids en kg selon l'âge (avec courbes de référence)"
+                        sousTitre = sousTitreGraphique
                 ) {
                         Column {
                                 XYGraph(
@@ -324,6 +410,10 @@ fun EvolutionPoidsChart(
                                                 KoalaPlotExtensions.createSmartYAxisModel(
                                                         yRangeFloat
                                                 ),
+                                        xAxisTitle =
+                                                if (useYearsScale) "Âge (années)"
+                                                else "Âge (mois)",
+                                        yAxisTitle = "Poids (kg)",
                                         modifier = Modifier.height(500.dp)
                                 ) {
                                         // Courbes de référence: toutes les percentiles si demandé
@@ -333,6 +423,13 @@ fun EvolutionPoidsChart(
                                                                 (0..12).map { mois ->
                                                                         val ageInMonths =
                                                                                 mois.toFloat()
+                                                                        val xAxisValue =
+                                                                                if (useYearsScale) {
+                                                                                        ageInMonths /
+                                                                                                12f
+                                                                                } else {
+                                                                                        ageInMonths
+                                                                                }
                                                                         val y =
                                                                                 calculerPoidsCroissance(
                                                                                         param,
@@ -340,7 +437,7 @@ fun EvolutionPoidsChart(
                                                                                                 .toDouble()
                                                                                 )
                                                                         Point(
-                                                                                x = ageInMonths,
+                                                                                x = xAxisValue,
                                                                                 y = y.toFloat()
                                                                         )
                                                                 }
@@ -380,8 +477,8 @@ fun EvolutionPoidsChart(
                                         }
 
                                         // Cône de perte de poids
-                                        if (coneLines != null) {
-                                            val targetW = coneLines.third
+                                        if (displayConeLines != null) {
+                                            val targetW = displayConeLines.third
                                             
                                             // Ligne objectif (Target Weight) - Pointillés noirs
                                             if (targetW != null) {
@@ -401,7 +498,7 @@ fun EvolutionPoidsChart(
                                             
                                             // Ligne lente (-0.5%) - Vert
                                             LinePlot(
-                                                data = coneLines.first,
+                                                data = displayConeLines.first,
                                                 lineStyle = LineStyle(
                                                     brush = SolidColor(Color(0xFF4CAF50)), // Green
                                                     strokeWidth = 2.dp,
@@ -411,7 +508,7 @@ fun EvolutionPoidsChart(
 
                                             // Ligne rapide (-2.0%) - Orange
                                             LinePlot(
-                                                data = coneLines.second,
+                                                data = displayConeLines.second,
                                                 lineStyle = LineStyle(
                                                     brush = SolidColor(Color(0xFFFF5722)), // Deep Orange
                                                     strokeWidth = 2.dp,
@@ -767,13 +864,20 @@ fun ConeZoomView(
                     val svgGraph = generateConeGraphSvg(
                         realPoints, slowLine, fastLine, targetW, xRange, yRange
                     )
+                    val landscapeGraphHtml =
+                        """
+                        <div style="width: 100%; height: 17cm;">
+                        $svgGraph
+                        </div>
+                        <div style="page-break-after: always;"></div>
+                        """.trimIndent()
                     
                     val exportData = ExportData(
-                        animal = animal,
+                        animal = null,
                         ration = null,
                         reference = null,
                         title = "Suivi Perte de Poids - ${animal?.nom}",
-                        additionalText = "Rapport généré le ${Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date}",
+                        additionalText = "",
                         htmlSections = listOf(
                             HtmlSection(
                                 id = genUUID(),
@@ -782,7 +886,7 @@ fun ConeZoomView(
                                     blocks = listOf(
                                         TextBlock.RawHtml(
                                             id = genUUID(),
-                                            html = svgGraph
+                                            html = landscapeGraphHtml
                                         )
                                     )
                                 )
@@ -810,7 +914,8 @@ fun ConeZoomView(
                                     )
                                 )
                             )
-                        )
+                        ),
+                        isLandscape = true
                     )
                     PdfExporter.exportDocument(DocumentType.RATION_ANALYSIS, exportData, "suivi_poids_${animal?.nom ?: "animal"}.pdf")
                 },
@@ -911,7 +1016,7 @@ fun generateConeGraphSvg(
     fun scaleY(y: Float): Double = height - padding - (y - yMin) / (yMax - yMin) * graphHeight
     
     val sb = StringBuilder()
-    sb.append("<svg width='$width' height='$height' viewBox='0 0 $width $height' xmlns='http://www.w3.org/2000/svg' version='1.1'>")
+    sb.append("<svg width='100%' height='100%' viewBox='0 0 $width $height' xmlns='http://www.w3.org/2000/svg' version='1.1'>")
     
     // Fond blanc
     sb.append("<rect width='$width' height='$height' fill='white' />")
@@ -947,19 +1052,16 @@ fun generateConeGraphSvg(
     }
     
     // Labels X (Semaines - Pas entier)
-    val xRangeSpan = xMax - xMin
-    val xStep = when {
-        xRangeSpan <= 10 -> 1f
-        xRangeSpan <= 20 -> 2f
-        xRangeSpan <= 50 -> 5f
-        else -> 10f
-    }
+    val xStep = 2f // Grille toutes les 2 semaines
     
     var currentX = (ceil(xMin / xStep) * xStep).toFloat()
     
     while (currentX <= xMax + (xStep * 0.01f)) {
         val xPos = scaleX(currentX)
         if (xPos >= padding - 1 && xPos <= width - padding + 1) {
+            // Ligne de grille verticale
+            sb.append("<line x1='$xPos' y1='$padding' x2='$xPos' y2='${height - padding}' stroke='lightgray' stroke-width='0.5' />")
+            // Graduation X
             sb.append("<line x1='$xPos' y1='${height - padding}' x2='$xPos' y2='${height - padding + 5}' stroke='black' stroke-width='1' />")
             sb.append("<text x='$xPos' y='${height - padding + 15}' font-family='Arial' font-size='10' text-anchor='middle'>${currentX.toInt()}</text>")
         }
@@ -1001,6 +1103,394 @@ fun generateConeGraphSvg(
         sb.append("<circle cx='$cx' cy='$cy' r='4' fill='blue' />")
     }
     
+    sb.append("</svg>")
+    return sb.toString()
+}
+
+@OptIn(ExperimentalKoalaPlotApi::class)
+@Composable
+fun GrowthZoomView(
+    viewModel: AnimalDetailViewModel,
+    selectedCurve: CurveP,
+    onClose: () -> Unit
+) {
+    val animal by viewModel.animal.collectAsState()
+
+    val birthDate = animal?.birthdate
+    if (birthDate == null) {
+        onClose()
+        return
+    }
+
+    val zoomData =
+            remember(animal, selectedCurve) {
+                val realPoints =
+                        buildList {
+                            val consultations = animal?.consultations ?: emptyList()
+                            consultations.forEach { consultation ->
+                                val date = consultation.date
+                                val weight = consultation.effectiveWeight
+                                if (date != null && weight != null) {
+                                    val ageDays = birthDate.daysUntil(date)
+                                    val weeks = ageDays / 7.0f
+                                    add(Triple(date, weeks, weight))
+                                }
+                            }
+
+                            val history = animal?.weightHistory ?: emptyList()
+                            history.forEach { weightEntry ->
+                                val date = weightEntry.date
+                                val ageDays = birthDate.daysUntil(date)
+                                val weeks = ageDays / 7.0f
+                                add(Triple(date, weeks, weightEntry.value))
+                            }
+                        }
+                                .sortedBy { it.second }
+
+                val referenceCurves =
+                        selectedCurve.params.map { param ->
+                            val points =
+                                    (12..70).map { week ->
+                                        val ageInWeeks = week.toFloat()
+                                        val ageInMonths = ageInWeeks / 4.345f
+                                        val poids =
+                                                calculerPoidsCroissance(
+                                                        param,
+                                                        ageInMonths.toDouble()
+                                                )
+                                        Point(x = ageInWeeks, y = poids.toFloat())
+                                    }
+                            param.name to points
+                        }
+
+                Triple(realPoints, referenceCurves, 70f)
+            }
+
+    val (realPoints, referenceCurves, maxWeeks) = zoomData
+
+    val allYValues =
+            buildList {
+                addAll(realPoints.map { it.third.toFloat() })
+                referenceCurves.forEach { (_, pts) -> addAll(pts.map { it.y }) }
+            }
+
+    val yRange =
+            if (allYValues.isNotEmpty()) {
+                calculateAdaptiveRange(allYValues, paddingPercent = 0.05f)
+            } else {
+                0f..10f
+            }
+
+    val xRange = 0f..70f
+
+    Column(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
+    ) {
+        Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+        ) {
+                Button(onClick = onClose) {
+                        Icon(
+                                Icons.Default.ArrowDropDown,
+                                contentDescription = null,
+                                modifier = Modifier.rotate(90f)
+                        )
+                        Text("Retour")
+                }
+
+                Button(
+                        onClick = {
+                                val svgGraph =
+                                        generateGrowthGraphSvg(
+                                                realPoints = realPoints,
+                                                referenceCurves = referenceCurves,
+                                                xRange = xRange,
+                                                yRange = yRange
+                                        )
+                                val landscapeGraphHtml =
+                                        """
+                                        <div style="width: 100%; height: 17cm;">
+                                        $svgGraph
+                                        </div>
+                                        <div style="page-break-after: always;"></div>
+                                        """.trimIndent()
+
+                                val exportData =
+                                        ExportData(
+                                                animal = null,
+                                                ration = null,
+                                                reference = null,
+                                                title =
+                                                        "Courbe de croissance - ${animal?.nom ?: ""}",
+                                                additionalText = "",
+                                                htmlSections =
+                                                        listOf(
+                                                                HtmlSection(
+                                                                        id = genUUID(),
+                                                                        title =
+                                                                                "Graphique de croissance avec courbes de référence",
+                                                                        content =
+                                                                                RichTextContent(
+                                                                                        blocks =
+                                                                                                listOf(
+                                                                                                        TextBlock
+                                                                                                                .RawHtml(
+                                                                                                                        id =
+                                                                                                                                genUUID(),
+                                                                                                                        html =
+                                                                                                                                landscapeGraphHtml
+                                                                                                                )
+                                                                                                )
+                                                                                )
+                                                                ),
+                                                                HtmlSection(
+                                                                        id = genUUID(),
+                                                                        title =
+                                                                                "Données de poids",
+                                                                        content =
+                                                                                RichTextContent(
+                                                                                        blocks =
+                                                                                                listOf(
+                                                                                                        TextBlock
+                                                                                                                .TableBlock(
+                                                                                                                        id =
+                                                                                                                                genUUID(),
+                                                                                                                        headers =
+                                                                                                                                listOf(
+                                                                                                                                        "Date",
+                                                                                                                                        "Semaine depuis naissance",
+                                                                                                                                        "Poids (kg)"
+                                                                                                                                ),
+                                                                                                                        rows =
+                                                                                                                                realPoints
+                                                                                                                                        .map {
+                                                                                                                                                listOf(
+                                                                                                                                                        it
+                                                                                                                                                                .first
+                                                                                                                                                                .toString(),
+                                                                                                                                                        GraphFormattingUtils
+                                                                                                                                                                .formatDecimal(
+                                                                                                                                                                        it
+                                                                                                                                                                                .second
+                                                                                                                                                                                .toDouble(),
+                                                                                                                                                                        1
+                                                                                                                                                                ),
+                                                                                                                                                        GraphFormattingUtils
+                                                                                                                                                                .formatDecimal(
+                                                                                                                                                                        it
+                                                                                                                                                                                .third,
+                                                                                                                                                                        2
+                                                                                                                                                                )
+                                                                                                                                                )
+                                                                                                                                        }
+                                                                                                                )
+                                                                                                )
+                                                                                )
+                                                                )
+                                                        ),
+                                                isLandscape = true
+                                        )
+
+                                PdfExporter.exportDocument(
+                                        DocumentType.RATION_ANALYSIS,
+                                        exportData,
+                                        "croissance_${animal?.nom ?: "animal"}.pdf"
+                                )
+                        },
+                        colors =
+                                ButtonDefaults.buttonColors(
+                                        backgroundColor = VetNutriColors.Secondary
+                                )
+                ) {
+                        Icon(Icons.Default.Share, contentDescription = null)
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Export PDF (croissance)")
+                }
+        }
+
+        GraphCard(
+                titre = "Zoom sur la courbe de croissance",
+                sousTitre = "Poids en fonction du temps (semaines depuis la naissance)"
+        ) {
+                XYGraph(
+                        xAxisModel = FloatLinearAxisModel(
+                                range = xRange,
+                                minimumMajorTickIncrement = 2f
+                        ),
+                        yAxisModel = KoalaPlotExtensions.createSmartYAxisModel(
+                                range = yRange
+                        ),
+                        xAxisTitle = "Semaines depuis la naissance",
+                        yAxisTitle = "Poids (kg)",
+                        modifier = Modifier.height(400.dp)
+                ) {
+                        referenceCurves.forEach { (name, points) ->
+                                if (points.isNotEmpty()) {
+                                        val isMedian = name == "50%"
+                                        LinePlot(
+                                                data = points,
+                                                lineStyle =
+                                                        LineStyle(
+                                                                brush =
+                                                                        SolidColor(
+                                                                                if (isMedian)
+                                                                                        Color
+                                                                                                .DarkGray
+                                                                                else Color.Gray
+                                                                        ),
+                                                                strokeWidth =
+                                                                        if (isMedian) 2.dp
+                                                                        else 1.dp
+                                                        )
+                                        )
+                                }
+                        }
+
+                        if (realPoints.isNotEmpty()) {
+                                LinePlot(
+                                        data =
+                                                realPoints.map {
+                                                    Point(
+                                                            x = it.second,
+                                                            y = it.third.toFloat()
+                                                    )
+                                                },
+                                        symbol = {
+                                                androidx.compose.foundation.Canvas(
+                                                        modifier = Modifier.size(6.dp)
+                                                ) { drawCircle(color = Color.Blue) }
+                                        }
+                                )
+                        }
+                }
+        }
+    }
+}
+
+fun generateGrowthGraphSvg(
+    realPoints: List<Triple<LocalDate, Float, Double>>,
+    referenceCurves: List<Pair<String, List<Point<Float, Float>>>>,
+    xRange: ClosedFloatingPointRange<Float>,
+    yRange: ClosedFloatingPointRange<Float>,
+    width: Int = 600,
+    height: Int = 400
+): String {
+    val padding = 40.0
+    val graphWidth = width - 2 * padding
+    val graphHeight = height - 2 * padding
+
+    val xMin = xRange.start
+    val xMax = xRange.endInclusive
+    val yMin = yRange.start
+    val yMax = yRange.endInclusive
+
+    fun scaleX(x: Float): Double = padding + (x - xMin) / (xMax - xMin) * graphWidth
+    fun scaleY(y: Float): Double =
+            height - padding - (y - yMin) / (yMax - yMin) * graphHeight
+
+    val sb = StringBuilder()
+    sb.append(
+            "<svg width='100%' height='100%' viewBox='0 0 $width $height' xmlns='http://www.w3.org/2000/svg' version='1.1'>"
+    )
+
+    sb.append("<rect width='$width' height='$height' fill='white' />")
+
+    sb.append(
+            "<line x1='$padding' y1='${height - padding}' x2='${width - padding}' y2='${height - padding}' stroke='black' stroke-width='1' />"
+    )
+    sb.append(
+            "<line x1='$padding' y1='$padding' x2='$padding' y2='${height - padding}' stroke='black' stroke-width='1' />"
+    )
+
+    val yRangeSpan = yMax - yMin
+    val targetYSteps = 5.0
+    val rawYStep = yRangeSpan / targetYSteps
+    val magY = 10.0.pow(floor(log10(rawYStep.toDouble())))
+    val normY = rawYStep / magY
+    val yStep =
+            (when {
+                        normY < 1.5 -> 1.0
+                        normY < 3.5 -> 2.0
+                        normY < 7.5 -> 5.0
+                        else -> 10.0
+                } * magY)
+                    .toFloat()
+
+    val startY = (ceil(yMin / yStep) * yStep).toFloat()
+    var currentY = startY
+
+    while (currentY <= yMax + (yStep * 0.01f)) {
+        val yPos = scaleY(currentY)
+        if (yPos >= padding - 1 && yPos <= height - padding + 1) {
+            sb.append(
+                    "<line x1='$padding' y1='$yPos' x2='${width - padding}' y2='$yPos' stroke='lightgray' stroke-width='0.5' />"
+            )
+            sb.append(
+                    "<text x='${padding - 5}' y='$yPos' font-family='Arial' font-size='10' text-anchor='end' dominant-baseline='middle'>${GraphFormattingUtils.formatDecimal(currentY.toDouble(), 1)}</text>"
+            )
+        }
+        currentY += yStep
+    }
+
+    val xStep = 2f // Grille toutes les 2 semaines
+
+    var currentX = (ceil(xMin / xStep) * xStep).toFloat()
+
+    while (currentX <= xMax + (xStep * 0.01f)) {
+        val xPos = scaleX(currentX)
+        if (xPos >= padding - 1 && xPos <= width - padding + 1) {
+            // Ligne de grille verticale
+            sb.append(
+                    "<line x1='$xPos' y1='$padding' x2='$xPos' y2='${height - padding}' stroke='lightgray' stroke-width='0.5' />"
+            )
+            // Graduation X
+            sb.append(
+                    "<line x1='$xPos' y1='${height - padding}' x2='$xPos' y2='${height - padding + 5}' stroke='black' stroke-width='1' />"
+            )
+            sb.append(
+                    "<text x='$xPos' y='${height - padding + 15}' font-family='Arial' font-size='10' text-anchor='middle'>${currentX.toInt()}</text>"
+            )
+        }
+        currentX += xStep
+    }
+
+    sb.append(
+            "<text x='${width / 2}' y='${height - 5}' font-family='Arial' font-size='12' text-anchor='middle'>Semaines depuis la naissance</text>"
+    )
+    sb.append(
+            "<text x='10' y='${height / 2}' font-family='Arial' font-size='12' text-anchor='middle' transform='rotate(-90 10 ${height / 2})'>Poids (kg)</text>"
+    )
+
+    referenceCurves.forEach { (name, points) ->
+        if (points.size >= 2) {
+            val isMedian = name == "50%"
+            val strokeColor = if (isMedian) "#444444" else "#AAAAAA"
+            val strokeWidth = if (isMedian) 2.0 else 1.0
+
+            val pathData =
+                    points.joinToString(" ") { p ->
+                        val x = scaleX(p.x)
+                        val y = scaleY(p.y)
+                        "L$x,$y"
+                    }
+            val first = points.first()
+            val startX = scaleX(first.x)
+            val startY = scaleY(first.y)
+            sb.append(
+                    "<path d='M$startX,$startY $pathData' fill='none' stroke='$strokeColor' stroke-width='$strokeWidth' />"
+            )
+        }
+    }
+
+    realPoints.forEach { (_, week, weight) ->
+        val cx = scaleX(week)
+        val cy = scaleY(weight.toFloat())
+        sb.append("<circle cx='$cx' cy='$cy' r='4' fill='blue' />")
+    }
+
     sb.append("</svg>")
     return sb.toString()
 }

@@ -185,3 +185,44 @@ val courbesCroissanceChien =
                 )
         )
 
+// Données des courbes de croissance pour chats
+val courbesCroissanceChat =
+        listOf(
+                CurveP(
+                        "Male",
+                        listOf(
+                                CurveParamP("0.4%", 2.621383, 18.16063, 2.310782),
+                                CurveParamP("2%", 3.138453, 18.40044, 2.191952),
+                                CurveParamP("9%", 3.760312, 18.46435, 2.085706),
+                                CurveParamP("25%", 4.349757, 18.41921, 2.004995),
+                                CurveParamP("50%", 4.947434, 18.29311, 1.936083),
+                                CurveParamP("75%", 5.548362, 18.05176, 1.876363),
+                                CurveParamP("91%", 6.128, 17.57646, 1.831757),
+                                CurveParamP("98%", 6.747282, 16.90209, 1.778598),
+                                CurveParamP("99.6%", 7.266061, 16.24581, 1.733618)
+                        ),
+                        "Référence bibliographique",
+                        "Felis catus",
+                        "1",
+                        8
+                ),
+                CurveP(
+                        "Female",
+                        listOf(
+                                CurveParamP("0.4%", 2.177195, 16.09012, 1.736256),
+                                CurveParamP("2%", 2.44958, 15.96038, 1.709933),
+                                CurveParamP("9%", 2.850394, 16.07073, 1.629348),
+                                CurveParamP("25%", 3.304537, 16.46494, 1.540884),
+                                CurveParamP("50%", 3.88999, 17.46718, 1.44539),
+                                CurveParamP("75%", 4.597917, 18.81171, 1.351468),
+                                CurveParamP("91%", 5.364967, 19.83963, 1.287748),
+                                CurveParamP("98%", 6.523333, 22.34698, 1.179895),
+                                CurveParamP("99.6%", 7.582508, 24.24353, 1.12117)
+                        ),
+                        "Référence bibliographique",
+                        "Felis catus",
+                        "1",
+                        8
+                )
+        )
+
