@@ -528,7 +528,8 @@ object Mappers {
                         gamme = this.gamme ?: "",
                         especes = especesList,
                         indicat = indicatList,
-                        deprecated = this.deprecated == 1
+                        deprecated = this.deprecated == 1,
+                        dataB = this.DataB
                 )
         }
 

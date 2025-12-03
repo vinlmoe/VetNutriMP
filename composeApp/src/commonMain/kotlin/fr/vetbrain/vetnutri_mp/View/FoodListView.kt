@@ -26,10 +26,10 @@ import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.FoodListViewModel
-import fr.vetbrain.vetnutri_mp.View.components.FoodSearchComponent
-import fr.vetbrain.vetnutri_mp.View.components.FoodSearchConfig
+import fr.vetbrain.vetnutri_mp.View.Components.FoodSearchComponent
+import fr.vetbrain.vetnutri_mp.View.Components.FoodSearchConfig
 import fr.vetbrain.vetnutri_mp.Data.FoodSearchFilters
-import fr.vetbrain.vetnutri_mp.View.components.FoodSearchLayout
+import fr.vetbrain.vetnutri_mp.View.Components.FoodSearchLayout
 import kotlin.uuid.ExperimentalUuidApi
 import kotlinx.coroutines.launch
 
@@ -44,6 +44,7 @@ fun FoodListView(
         modifier: Modifier = Modifier
 ) {
         val foods: List<AlimentEv> = viewModel.foods.collectAsState().value
+        val allFoods: List<AlimentEv> = viewModel.allFoods.collectAsState().value
         val searchQuery = viewModel.searchQuery.collectAsState().value
         val selectedFoodType = viewModel.selectedFoodType.collectAsState().value
         val selectedEspece = viewModel.selectedEspece.collectAsState().value
@@ -127,8 +128,10 @@ fun FoodListView(
                         horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                         // Utilisation du composant partagé FoodSearchComponent
+                        // Passer allFoods (liste complète) comme foods, comme dans AddAlimentView
+                        // FoodSearchComponent gère le filtrage lui-même
                         FoodSearchComponent(
-                                foods = foods,
+                                foods = allFoods,
                                 filters = filters,
                                 onFiltersChange = { newFilters ->
                                         // Mettre à jour le ViewModel avec les nouveaux filtres
@@ -142,7 +145,7 @@ fun FoodListView(
                                         viewModel.setSelectedDataB(newFilters.dataB)
                                 },
                                 config = searchConfig,
-                                        modifier = Modifier.fillMaxWidth()
+                                modifier = Modifier.fillMaxWidth()
                                 )
                 }
         }

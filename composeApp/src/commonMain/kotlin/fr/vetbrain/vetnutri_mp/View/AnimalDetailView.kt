@@ -384,6 +384,7 @@ private fun handlePdfExport(
     animalDetails: AnimalEv,
     selectedConsultation: ConsultationEv?,
     selectedRation: Ration?,
+    selectedRationsForPrescription: List<Ration>?,
     referenceUtilisee: fr.vetbrain.vetnutri_mp.Data.ReferenceEv?,
     additionalText: String,
     getSelectedConseils: () -> List<fr.vetbrain.vetnutri_mp.Export.HtmlSection>,
@@ -394,7 +395,8 @@ private fun handlePdfExport(
 ) {
     val isPrescription = previewHtml.contains("Ordonnance nutritionnelle")
     if (isPrescription) {
-        // Export ordonnance avec informations praticien
+        val rationsForPrescription: List<Ration> = selectedRationsForPrescription ?: selectedConsultation?.rations?.toList()
+                ?: emptyList()
         val prefsStorage = createPreferencesStorage()
         val prefsRepo = PreferencesRepository(prefsStorage)
         scope.launch(fr.vetbrain.vetnutri_mp.Utils.AppDispatchers.Main) {
@@ -410,8 +412,6 @@ private fun handlePdfExport(
                     telephone = prefs.telephone,
                     email = prefs.email
                 )
-                val allRations = selectedConsultation?.rations?.toList() ?: emptyList()
-                
                 fr.vetbrain.vetnutri_mp.exportPdfDocument(
                     documentType = DocumentType.PRESCRIPTION,
                     data = ExportData(
@@ -422,7 +422,7 @@ private fun handlePdfExport(
                         title = "Ordonnance nutritionnelle",
                         additionalText = additionalText,
                         htmlSections = getSelectedConseils(),
-                        rations = allRations,
+                        rations = rationsForPrescription,
                         practitioner = practitioner,
                         preferences = null,
                         poidsAnimal = selectedConsultation?.effectiveWeight?.toDouble(),
@@ -432,7 +432,6 @@ private fun handlePdfExport(
                     defaultFileName = generateDefaultPdfFileName(animalDetails, selectedConsultation)
                 )
             } catch (e: Exception) {
-                // En cas d'erreur, exporter sans les informations du prescripteur
                 fr.vetbrain.vetnutri_mp.exportPdfDocument(
                     documentType = DocumentType.PRESCRIPTION,
                     data = ExportData(
@@ -443,7 +442,7 @@ private fun handlePdfExport(
                         title = "Ordonnance nutritionnelle",
                         additionalText = additionalText,
                         htmlSections = getSelectedConseils(),
-                        rations = selectedConsultation?.rations?.toList() ?: emptyList(),
+                        rations = rationsForPrescription,
                         practitioner = null,
                         preferences = null,
                         poidsAnimal = selectedConsultation?.effectiveWeight?.toDouble(),
@@ -1332,6 +1331,14 @@ private fun WideScreenLayout(
                                                 viewModel.referenceUtilisee.collectAsState()
                                         val besoinEnergetiqueStandard by viewModel.besoinEnergetiqueStandard.collectAsState()
                                         val poidsMetabolique by viewModel.poidsMetabolique.collectAsState()
+                                        var selectedRationIdsForPrescription by remember(selectedConsultation?.uuid) {
+                                                val initialSelection: Set<String> =
+                                                        selectedConsultation?.rations
+                                                                ?.filter { ration: Ration -> !ration.actual }
+                                                                ?.map { ration: Ration -> ration.uuid }
+                                                                ?.toSet() ?: emptySet()
+                                                mutableStateOf(initialSelection)
+                                        }
 
                                         if (showRichTextEditor) {
                                                 // Éditeur de texte enrichi
@@ -1470,19 +1477,98 @@ private fun WideScreenLayout(
                                                                 color = VetNutriColors.Primary
                                                         )
                                                         }
+                                                        // Ligne d'information sur la ration sélectionnée supprimée pour alléger l'UI
                                                         item {
-                                                        Text(
-                                                                text =
-                                                                        if (selectedRation != null)
-                                                                                "Ration sélectionnée: ${selectedRation!!.name}"
-                                                                        else
-                                                                                "Aucune ration sélectionnée",
-                                                                color =
-                                                                        MaterialTheme.colors
-                                                                                .onSurface.copy(
-                                                                                alpha = 0.7f
+                                                        if (selectedConsultation == null) {
+                                                                Text(
+                                                                        "Aucune consultation sélectionnée pour l'ordonnance",
+                                                                        style =
+                                                                                MaterialTheme
+                                                                                        .typography
+                                                                                        .subtitle1,
+                                                                        color = VetNutriColors.Primary
+                                                                )
+                                                        } else {
+                                                                Text(
+                                                                        "Sélection des rations à inclure dans l'ordonnance :",
+                                                                        style =
+                                                                                MaterialTheme
+                                                                                        .typography
+                                                                                        .subtitle1,
+                                                                        color = VetNutriColors.Primary
+                                                                )
+                                                        }
+                                                        }
+
+                                                        val currentConsultation: ConsultationEv? = selectedConsultation
+                                                        if (currentConsultation != null && currentConsultation.rations.isNotEmpty()) {
+                                                                items(currentConsultation.rations) { ration ->
+                                                                Row(
+                                                                        modifier =
+                                                                                Modifier.fillMaxWidth()
+                                                                                        .padding(
+                                                                                                vertical =
+                                                                                                        0.dp
+                                                                                        ),
+                                                                        verticalAlignment =
+                                                                                Alignment.CenterVertically
+                                                                ) {
+                                                                        val isSelectedRation: Boolean =
+                                                                                selectedRationIdsForPrescription
+                                                                                        .contains(
+                                                                                                ration.uuid
+                                                                                        )
+                                                                        Checkbox(
+                                                                                checked = isSelectedRation,
+                                                                                onCheckedChange = { isChecked: Boolean ->
+                                                                                        selectedRationIdsForPrescription =
+                                                                                                if (isChecked) {
+                                                                                                        selectedRationIdsForPrescription +
+                                                                                                                ration.uuid
+                                                                                                } else {
+                                                                                                        selectedRationIdsForPrescription -
+                                                                                                                ration.uuid
+                                                                                                }
+                                                                                }
                                                                         )
-                                                        )
+                                                                        Spacer(
+                                                                                modifier =
+                                                                                        Modifier.width(
+                                                                                                8.dp
+                                                                                        )
+                                                                        )
+                                                                        Column {
+                                                                                val rationLabel: String =
+                                                                                        if (ration.actual) "Ration actuelle" else "Ration proposée"
+                                                                                Text(
+                                                                                        text =
+                                                                                                "${ration.name} - $rationLabel (${ration.getQuantiteTotale()} g/jour)",
+                                                                                        style =
+                                                                                                MaterialTheme
+                                                                                                        .typography
+                                                                                                        .body2
+                                                                                )
+                                                                        }
+                                                                }
+                                                                }
+                                                        } else {
+                                                                item {
+                                                                Text(
+                                                                        "Aucune ration disponible pour la consultation sélectionnée",
+                                                                        style =
+                                                                                MaterialTheme
+                                                                                        .typography
+                                                                                        .body2,
+                                                                        color =
+                                                                                MaterialTheme
+                                                                                        .colors
+                                                                                        .onSurface
+                                                                                        .copy(
+                                                                                                alpha =
+                                                                                                        0.7f
+                                                                                        )
+                                                                )
+                                                                }
                                                         }
 
                                                         // Section pour les conseils personnalisés
@@ -1770,7 +1856,6 @@ private fun WideScreenLayout(
                                                         ) {
                                                                 Button(
                                                                         onClick = {
-                                                                                // Charger les préférences utilisateur pour l'en-tête praticien
                                                                                 val prefsStorage = createPreferencesStorage()
                                                                                 val prefsRepo = PreferencesRepository(prefsStorage)
                                                                                 kotlinx.coroutines.GlobalScope.launch {
@@ -1786,9 +1871,16 @@ private fun WideScreenLayout(
                                                                                                         telephone = prefs.telephone,
                                                                                                         email = prefs.email
                                                                                                 )
-                                                                                                val allRations = selectedConsultation?.rations?.toList() ?: emptyList()
-                                                                                                
-                                                                                                // Générer la prévisualisation (sans bullet graphs pour l'ordonnance)
+                                                                                                val selectedRationsForPrescription: List<Ration> =
+                                                                                                        selectedConsultation?.rations
+                                                                                                                ?.filter { ration: Ration ->
+                                                                                                                        selectedRationIdsForPrescription
+                                                                                                                                .contains(
+                                                                                                                                        ration.uuid
+                                                                                                                                )
+                                                                                                                }
+                                                                                                                ?.toList()
+                                                                                                                        ?: emptyList()
                                                                                                 previewHtml =
                                                                                                         HtmlDocumentBuilder
                                                                                                                 .buildHtml(
@@ -1803,7 +1895,6 @@ private fun WideScreenLayout(
                                                                                                                                         referenceUtilisee,
                                                                                                                                 conseils =
                                                                                                                                         listOf(
-                                                                                                                                               
                                                                                                                                                 "Veiller à l'hydratation"
                                                                                                                                         ),
                                                                                                                                 title =
@@ -1812,7 +1903,7 @@ private fun WideScreenLayout(
                                                                                                                                         additionalText,
                                                                                                                                 htmlSections =
                                                                                                                                         getSelectedConseils(),
-                                                                                                                                rations = allRations,
+                                                                                                                                rations = selectedRationsForPrescription,
                                                                                                                                 practitioner = practitioner,
                                                                                                                                 preferences = null,
                                                                                                                                 poidsAnimal = selectedConsultation?.effectiveWeight?.toDouble(),
@@ -1822,9 +1913,16 @@ private fun WideScreenLayout(
                                                                                                                 )
                                                                                                 showPreview = true
                                                                                         } catch (e: Exception) {
-                                                                                                // En cas d'erreur, prévisualiser sans les informations du prescripteur
-                                                                                                val allRations = selectedConsultation?.rations?.toList() ?: emptyList()
-                                                                                                
+                                                                                                val selectedRationsForPrescription: List<Ration> =
+                                                                                                        selectedConsultation?.rations
+                                                                                                                ?.filter { ration: Ration ->
+                                                                                                                        selectedRationIdsForPrescription
+                                                                                                                                .contains(
+                                                                                                                                        ration.uuid
+                                                                                                                                )
+                                                                                                                }
+                                                                                                                ?.toList()
+                                                                                                                        ?: emptyList()
                                                                                                 previewHtml = HtmlDocumentBuilder.buildHtml(
                                                                                                         DocumentType.PRESCRIPTION,
                                                                                                         ExportData(
@@ -1835,7 +1933,7 @@ private fun WideScreenLayout(
                                                                                                                 title = "Ordonnance nutritionnelle",
                                                                                                                 additionalText = additionalText,
                                                                                                                 htmlSections = getSelectedConseils(),
-                                                                                                                rations = allRations,
+                                                                                                                rations = selectedRationsForPrescription,
                                                                                                                 practitioner = null,
                                                                                                                 preferences = null,
                                                                                                                 poidsAnimal = selectedConsultation?.effectiveWeight?.toDouble(),
@@ -1865,16 +1963,27 @@ private fun WideScreenLayout(
                                                                 html = previewHtml,
                                                                 isVisible = showPreview,
                                                                 onConfirmExport = {
+                                                                        val selectedRationsForPrescription: List<Ration> =
+                                                                                selectedConsultation?.rations
+                                                                                        ?.filter { ration: Ration ->
+                                                                                                selectedRationIdsForPrescription
+                                                                                                        .contains(
+                                                                                                                ration.uuid
+                                                                                                        )
+                                                                                        }
+                                                                                        ?.toList()
+                                                                                                ?: emptyList()
                                                                         handlePdfExport(
                                                                                 previewHtml = previewHtml,
                                                                                 animalDetails = animalDetails,
                                                                                 selectedConsultation = selectedConsultation,
                                                                                 selectedRation = selectedRation,
+                                                                                selectedRationsForPrescription = selectedRationsForPrescription,
                                                                                 referenceUtilisee = referenceUtilisee,
-                                                                                                additionalText = additionalText,
+                                                                                additionalText = additionalText,
                                                                                 getSelectedConseils = getSelectedConseils,
                                                                                 besoinEnergetiqueStandard = besoinEnergetiqueStandard,
-                                                                                                                poidsMetabolique = poidsMetabolique,
+                                                                                poidsMetabolique = poidsMetabolique,
                                                                                 equationRepository = equationRepository,
                                                                                 scope = scope
                                                                         )
@@ -2727,6 +2836,14 @@ private fun NarrowScreenLayout(
                                                                         .collectAsState()
                                                         val besoinEnergetiqueStandard by viewModel.besoinEnergetiqueStandard.collectAsState()
                                                         val poidsMetabolique by viewModel.poidsMetabolique.collectAsState()
+                                                        var selectedRationIdsForPrescription by remember(selectedConsultation?.uuid) {
+                                                                val initialSelection: Set<String> =
+                                                                        selectedConsultation?.rations
+                                                                                ?.filter { ration: Ration -> !ration.actual }
+                                                                                ?.map { ration: Ration -> ration.uuid }
+                                                                                ?.toSet() ?: emptySet()
+                                                                mutableStateOf(initialSelection)
+                                                        }
 
                                                         // Variables pour la prévisualisation et l'export
                                                         var showPreview by remember {
@@ -2744,11 +2861,22 @@ private fun NarrowScreenLayout(
                                                                 html = previewHtml,
                                                                 isVisible = showPreview,
                                                                 onConfirmExport = {
+                                                                        val selectedRationsForPrescription: List<Ration> =
+                                                                                selectedConsultation?.rations
+                                                                                        ?.filter { ration: Ration ->
+                                                                                                selectedRationIdsForPrescription
+                                                                                                        .contains(
+                                                                                                                ration.uuid
+                                                                                                        )
+                                                                                        }
+                                                                                        ?.toList()
+                                                                                                ?: emptyList()
                                                                         handlePdfExport(
                                                                                 previewHtml = previewHtml,
                                                                                 animalDetails = animalDetails,
                                                                                 selectedConsultation = selectedConsultation,
                                                                                 selectedRation = selectedRation,
+                                                                                selectedRationsForPrescription = selectedRationsForPrescription,
                                                                                 referenceUtilisee = referenceUtilisee,
                                                                                 additionalText = additionalText,
                                                                                 getSelectedConseils = getSelectedConseils,
@@ -2920,24 +3048,103 @@ private fun NarrowScreenLayout(
                                                                                                 .Primary
                                                                         )
                                                                         }
+                                                                        // Ligne d'information sur la ration sélectionnée supprimée pour alléger l'UI
                                                                         item {
-                                                                        Text(
-                                                                                text =
-                                                                                        if (selectedRation !=
-                                                                                                        null
+                                                                        if (selectedConsultation == null) {
+                                                                                Text(
+                                                                                        "Aucune consultation sélectionnée pour l'ordonnance",
+                                                                                        style =
+                                                                                                MaterialTheme
+                                                                                                        .typography
+                                                                                                        .subtitle1,
+                                                                                        color =
+                                                                                                VetNutriColors
+                                                                                                        .Primary
+                                                                                )
+                                                                        } else {
+                                                                                Text(
+                                                                                        "Sélection des rations à inclure dans l'ordonnance :",
+                                                                                        style =
+                                                                                                MaterialTheme
+                                                                                                        .typography
+                                                                                                        .subtitle1,
+                                                                                        color =
+                                                                                                VetNutriColors
+                                                                                                        .Primary
+                                                                                )
+                                                                        }
+                                                                        }
+
+                                                                        val currentConsultation: ConsultationEv? = selectedConsultation
+                                                                        if (currentConsultation != null && currentConsultation.rations.isNotEmpty()) {
+                                                                                items(currentConsultation.rations) { ration ->
+                                                                                Row(
+                                                                                        modifier =
+                                                                                                Modifier.fillMaxWidth()
+                                                                                                        .padding(
+                                                                                                                vertical =
+                                                                                                                        0.dp
+                                                                                                        ),
+                                                                                        verticalAlignment =
+                                                                                                Alignment
+                                                                                                        .CenterVertically
+                                                                                ) {
+                                                                                        val isSelectedRation: Boolean =
+                                                                                                selectedRationIdsForPrescription
+                                                                                                        .contains(
+                                                                                                                ration.uuid
+                                                                                                        )
+                                                                                        Checkbox(
+                                                                                                checked = isSelectedRation,
+                                                                                                onCheckedChange = { isChecked: Boolean ->
+                                                                                                        selectedRationIdsForPrescription =
+                                                                                                                if (isChecked) {
+                                                                                                                        selectedRationIdsForPrescription +
+                                                                                                                                ration.uuid
+                                                                                                                } else {
+                                                                                                                        selectedRationIdsForPrescription -
+                                                                                                                                ration.uuid
+                                                                                                                }
+                                                                                                }
                                                                                         )
-                                                                                                "Ration sélectionnée: ${selectedRation!!.name}"
-                                                                                        else
-                                                                                                "Aucune ration sélectionnée",
-                                                                                color =
-                                                                                        MaterialTheme
-                                                                                                .colors
-                                                                                                .onSurface
-                                                                                                .copy(
-                                                                                                        alpha =
-                                                                                                                0.7f
+                                                                                        Spacer(
+                                                                                                modifier =
+                                                                                                        Modifier.width(
+                                                                                                                8.dp
+                                                                                                        )
+                                                                                        )
+                                                                                        Column {
+                                                                                                val rationLabel: String =
+                                                                                                        if (ration.actual) "Ration actuelle" else "Ration proposée"
+                                                                                                Text(
+                                                                                                        text =
+                                                                                                                "${ration.name} - $rationLabel (${ration.getQuantiteTotale()} g/jour)",
+                                                                                                        style =
+                                                                                                                MaterialTheme
+                                                                                                                        .typography
+                                                                                                                        .body2
                                                                                                 )
-                                                                        )
+                                                                                        }
+                                                                                }
+                                                                                }
+                                                                        } else {
+                                                                                item {
+                                                                                Text(
+                                                                                        "Aucune ration disponible pour la consultation sélectionnée",
+                                                                                        style =
+                                                                                                MaterialTheme
+                                                                                                        .typography
+                                                                                                        .body2,
+                                                                                        color =
+                                                                                                MaterialTheme
+                                                                                                        .colors
+                                                                                                        .onSurface
+                                                                                                        .copy(
+                                                                                                                alpha =
+                                                                                                                        0.7f
+                                                                                                        )
+                                                                                )
+                                                                                }
                                                                         }
 
                                                                         // Section pour les conseils
@@ -3263,13 +3470,10 @@ private fun NarrowScreenLayout(
 
                                                                                 Button(
                                                                                         onClick = {
-                                                                                                // Utiliser une coroutine pour éviter le freeze sur iOS
                                                                                                 scope.launch {
                                                                                                         try {
-                                                                                                                // Charger les préférences utilisateur pour l'en-tête praticien
                                                                                                                 val prefsStorage = createPreferencesStorage()
                                                                                                                 val prefsRepo = PreferencesRepository(prefsStorage)
-                                                                                                                
                                                                                                                 prefsRepo.loadPreferences()
                                                                                                                 val prefs = prefsRepo.preferences
                                                                                                                 val practitioner = fr.vetbrain.vetnutri_mp.Export.PractitionerInfo(
@@ -3281,33 +3485,29 @@ private fun NarrowScreenLayout(
                                                                                                                         telephone = prefs.telephone,
                                                                                                                         email = prefs.email
                                                                                                                 )
-                                                                                                                val allRations = selectedConsultation?.rations?.toList() ?: emptyList()
-                                                                                                                
-                                                                                                                // Générer la prévisualisation (sans bullet graphs pour l'ordonnance)
+                                                                                                                val selectedRationsForPrescription: List<Ration> =
+                                                                                                                        selectedConsultation?.rations
+                                                                                                                                ?.filter { ration: Ration ->
+                                                                                                                                        selectedRationIdsForPrescription
+                                                                                                                                                .contains(
+                                                                                                                                                        ration.uuid
+                                                                                                                                                )
+                                                                                                                                }
+                                                                                                                                ?.toList()
+                                                                                                                                        ?: emptyList()
                                                                                                                 previewHtml =
                                                                                                                         HtmlDocumentBuilder
                                                                                                                                 .buildHtml(
-                                                                                                                DocumentType
-                                                                                                                        .PRESCRIPTION,
-                                                                                                                ExportData(
-                                                                                                                        animal =
-                                                                                                                                animalDetails,
-                                                                                                                        ration =
-                                                                                                                                null,
-                                                                                                                                                reference =
-                                                                                                                                                        referenceUtilisee,
-                                                                                                                        conseils =
-                                                                                                                                listOf(
-                                                                                                                                        
-                                                                                                                                                                "Veiller à l'hydratation"
-                                                                                                                                ),
-                                                                                                                        title =
-                                                                                                                                "Ordonnance nutritionnelle",
-                                                                                                                                                additionalText =
-                                                                                                                                                        additionalText,
-                                                                                                                        htmlSections =
-                                                                                                                                                        getSelectedConseils(),
-                                                                                                                                                rations = allRations,
+                                                                                                                                        DocumentType.PRESCRIPTION,
+                                                                                                                                        ExportData(
+                                                                                                                                                animal = animalDetails,
+                                                                                                                                                ration = null,
+                                                                                                                                                reference = referenceUtilisee,
+                                                                                                                                                conseils = listOf("Veiller à l'hydratation"),
+                                                                                                                                                title = "Ordonnance nutritionnelle",
+                                                                                                                                                additionalText = additionalText,
+                                                                                                                                                htmlSections = getSelectedConseils(),
+                                                                                                                                                rations = selectedRationsForPrescription,
                                                                                                                                                 practitioner = practitioner,
                                                                                                                                                 preferences = null,
                                                                                                                                                 poidsAnimal = selectedConsultation?.effectiveWeight?.toDouble(),
@@ -3317,9 +3517,16 @@ private fun NarrowScreenLayout(
                                                                                                                                 )
                                                                                                                 showPreview = true
                                                                                                         } catch (e: Exception) {
-                                                                                                                // En cas d'erreur, prévisualiser sans les informations du prescripteur
-                                                                                                                val allRations = selectedConsultation?.rations?.toList() ?: emptyList()
-                                                                                                                
+                                                                                                                val selectedRationsForPrescription: List<Ration> =
+                                                                                                                        selectedConsultation?.rations
+                                                                                                                                ?.filter { ration: Ration ->
+                                                                                                                                        selectedRationIdsForPrescription
+                                                                                                                                                .contains(
+                                                                                                                                                        ration.uuid
+                                                                                                                                                )
+                                                                                                                                }
+                                                                                                                                ?.toList()
+                                                                                                                                        ?: emptyList()
                                                                                                                 previewHtml = HtmlDocumentBuilder.buildHtml(
                                                                                                                         DocumentType.PRESCRIPTION,
                                                                                                                         ExportData(
@@ -3330,7 +3537,7 @@ private fun NarrowScreenLayout(
                                                                                                                                 title = "Ordonnance nutritionnelle",
                                                                                                                                 additionalText = additionalText,
                                                                                                                                 htmlSections = getSelectedConseils(),
-                                                                                                                                rations = allRations,
+                                                                                                                                rations = selectedRationsForPrescription,
                                                                                                                                 practitioner = null,
                                                                                                                                 preferences = null,
                                                                                                                                 poidsAnimal = selectedConsultation?.effectiveWeight?.toDouble(),

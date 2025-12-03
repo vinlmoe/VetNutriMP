@@ -1,4 +1,4 @@
-package fr.vetbrain.vetnutri_mp.View.components
+package fr.vetbrain.vetnutri_mp.View.Components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*

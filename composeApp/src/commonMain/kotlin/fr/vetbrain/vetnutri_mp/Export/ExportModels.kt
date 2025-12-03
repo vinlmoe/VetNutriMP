@@ -34,5 +34,6 @@ data class ExportData(
         val poidsAnimal: Double? = null,
         val poidsMetabolique: Double? = null,
         val besoinEnergetiqueEntretien: Double? = null,
-        val bulletGraphImages: Map<String, Map<String, String>> = emptyMap()
+        val bulletGraphImages: Map<String, Map<String, String>> = emptyMap(),
+        val isLandscape: Boolean = false
 )

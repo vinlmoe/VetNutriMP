@@ -308,16 +308,19 @@ fun StartupScreen(
                                 )
                         }
 
-                        // Vérification de mise à jour de l'application (desktop uniquement)
+                        // Vérification de mise à jour de l'application (desktop et iOS)
                         val platform = getPlatform()
                         val isDesktop = platform.name.contains("Java") || platform.name.contains("Windows") || platform.name.contains("Linux")
+                        val isAppleMobile = platform.name.contains("iOS")
+                        val isUpdateCheckSupported = isDesktop || isAppleMobile
                         
                         journaliserMiseAJour("=".repeat(50))
                         journaliserMiseAJour("🔍 DÉBUT VÉRIFICATION MISE À JOUR")
                         journaliserMiseAJour("Plateforme détectée: ${platform.name}")
                         journaliserMiseAJour("Est desktop: $isDesktop")
+                        journaliserMiseAJour("Est iOS/iPadOS: $isAppleMobile")
                         
-                        if (isDesktop) {
+                        if (isUpdateCheckSupported) {
                                 try {
                                         isCheckingAppUpdate = true
                                         journaliserMiseAJour("Initialisation de UpdateChecker...")
@@ -373,7 +376,7 @@ fun StartupScreen(
                                         journaliserMiseAJour("Vérification terminée (isCheckingAppUpdate = false)")
                                 }
                         } else {
-                                journaliserMiseAJour("Vérification de mise à jour ignorée (plateforme non-desktop: ${platform.name})")
+                                journaliserMiseAJour("Vérification de mise à jour ignorée (plateforme non prise en charge: ${platform.name})")
                         }
                         
                         journaliserMiseAJour("=".repeat(50))
@@ -602,11 +605,13 @@ fun StartupScreen(
                                                 textAlign = TextAlign.Center
                                         )
                                         
-                                        // Indicateur de vérification de mise à jour (desktop uniquement)
+                                        // Indicateur de vérification de mise à jour (desktop et iOS)
                                         val platform = getPlatform()
                                         val isDesktop = platform.name.contains("Java") || platform.name.contains("Windows") || platform.name.contains("Linux")
+                                        val isAppleMobile = platform.name.contains("iOS")
+                                        val isUpdateCheckSupported = isDesktop || isAppleMobile
                                         
-                                        if (isDesktop && isCheckingAppUpdate) {
+                                        if (isUpdateCheckSupported && isCheckingAppUpdate) {
                                                 Spacer(modifier = Modifier.height(16.dp))
                                                 
                                                 CircularProgressIndicator(

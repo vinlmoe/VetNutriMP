@@ -47,7 +47,7 @@ import fr.vetbrain.vetnutri_mp.Data.FoodSearchFilters
 import fr.vetbrain.vetnutri_mp.Data.NutrientOperator
 import fr.vetbrain.vetnutri_mp.Data.SortCriteria
 import fr.vetbrain.vetnutri_mp.Data.SortOrder
-import fr.vetbrain.vetnutri_mp.View.components.AdvancedSortDialog
+import fr.vetbrain.vetnutri_mp.View.Components.AdvancedSortDialog
 import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
 import fr.vetbrain.vetnutri_mp.Components.BasicAppTextField
 import fr.vetbrain.vetnutri_mp.Components.DropdownField

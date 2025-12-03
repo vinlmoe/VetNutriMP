@@ -21,10 +21,10 @@ import fr.vetbrain.vetnutri_mp.Repository.FoodRepository
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.TextUtils
-import fr.vetbrain.vetnutri_mp.View.components.FoodSearchComponent
+import fr.vetbrain.vetnutri_mp.View.Components.FoodSearchComponent
 import fr.vetbrain.vetnutri_mp.Data.FoodSearchFilters
-import fr.vetbrain.vetnutri_mp.View.components.FoodSearchConfig
-import fr.vetbrain.vetnutri_mp.View.components.FoodSearchLayout
+import fr.vetbrain.vetnutri_mp.View.Components.FoodSearchConfig
+import fr.vetbrain.vetnutri_mp.View.Components.FoodSearchLayout
 import fr.vetbrain.vetnutri_mp.ViewModel.RecipeEditViewModel
 
 /**
