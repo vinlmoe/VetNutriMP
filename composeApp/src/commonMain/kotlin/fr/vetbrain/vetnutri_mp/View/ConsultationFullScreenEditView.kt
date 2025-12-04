@@ -11,8 +11,6 @@ import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusManager
-import androidx.compose.ui.focus.LocalFocusManager
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -20,7 +18,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Components.AppDatePicker
 import fr.vetbrain.vetnutri_mp.Components.AppTextField
-import fr.vetbrain.vetnutri_mp.Components.NumberTextField
 import fr.vetbrain.vetnutri_mp.Components.IconButtonWithTooltip
 import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
 import fr.vetbrain.vetnutri_mp.Data.SupplementalvariableP
@@ -198,6 +195,7 @@ fun ConsultationFullScreenEditView(
         }
 
         Scaffold(
+                modifier = Modifier.fillMaxSize(),
                 topBar = {
                         TopAppBar(
                                 title = {
@@ -278,13 +276,11 @@ fun ConsultationFullScreenEditView(
                         }
                 }
         ) { paddingValues ->
-                val focusManager: FocusManager = LocalFocusManager.current
-                val scrollState = rememberScrollState()
                 Column(
                         modifier =
                                 Modifier.fillMaxSize()
                                         .padding(paddingValues)
-                                        .verticalScroll(scrollState)
+                                        .verticalScroll(rememberScrollState())
                                         .padding(AppSizes.paddingLarge),
                         verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
                 ) {
@@ -304,42 +300,75 @@ fun ConsultationFullScreenEditView(
                                 modifier = Modifier.fillMaxWidth()
                         )
 
-                        // Poids
-                        NumberTextField(
-                                value = weightText,
-                                onValueChange = { newValue: String ->
-                                        // Normaliser la virgule en point pour la conversion
-                                        val texteNormalise = newValue.replace(',', '.')
-                                        weightText = newValue
-                                        try {
-                                                if (texteNormalise.isNotEmpty()) {
-                                                        val weight = texteNormalise.toDouble()
-                                                        editedConsultation =
-                                                                editedConsultation.copy(
-                                                                        weight = weight
-                                                                )
-                                                        showWeightError = false
-                                                        weightErrorMessage = null
-                                                } else {
-                                                        editedConsultation =
-                                                                editedConsultation.copy(
-                                                                        weight = null
-                                                                )
-                                                        showWeightError = false
-                                                        weightErrorMessage = null
+                        // Poids (grand clavier numérique via OutlinedTextField)
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                                OutlinedTextField(
+                                        value = weightText,
+                                        onValueChange = { newValue: String ->
+                                                // Filtrer pour n'accepter que les chiffres, point et virgule
+                                                val texteFiltre =
+                                                        newValue.filter { char ->
+                                                                char.isDigit() || char == '.' || char == ','
+                                                        }
+                                                // S'assurer qu'il n'y a qu'un seul séparateur décimal
+                                                val pointCount = texteFiltre.count { it == '.' }
+                                                val virguleCount = texteFiltre.count { it == ',' }
+                                                if (pointCount <= 1 &&
+                                                                virguleCount <= 1 &&
+                                                                pointCount + virguleCount <= 1
+                                                ) {
+                                                        weightText = texteFiltre
+                                                        val texteNormalise = texteFiltre.replace(',', '.')
+                                                        try {
+                                                                if (texteNormalise.isNotEmpty()) {
+                                                                        val weight = texteNormalise.toDouble()
+                                                                        editedConsultation =
+                                                                                editedConsultation.copy(
+                                                                                        weight = weight
+                                                                                )
+                                                                        showWeightError = false
+                                                                        weightErrorMessage = null
+                                                                } else {
+                                                                        editedConsultation =
+                                                                                editedConsultation.copy(
+                                                                                        weight = null
+                                                                                )
+                                                                        showWeightError = false
+                                                                        weightErrorMessage = null
+                                                                }
+                                                        } catch (e: Exception) {
+                                                                showWeightError = true
+                                                                weightErrorMessage =
+                                                                        "Format de poids invalide (nombre décimal)"
+                                                        }
                                                 }
-                                        } catch (e: Exception) {
-                                                showWeightError = true
-                                                weightErrorMessage =
-                                                        "Format de poids invalide (nombre décimal)"
-                                        }
-                                },
-                                label = Animal.WEIGHT.translate(),
-                                leadingIcon = AppIcons.Weight,
-                                isError = showWeightError,
-                                errorMessage = weightErrorMessage,
-                                modifier = Modifier.fillMaxWidth()
-                        )
+                                        },
+                                        label = { Text(Animal.WEIGHT.translate()) },
+                                        leadingIcon = {
+                                                Icon(
+                                                        imageVector = AppIcons.Weight,
+                                                        contentDescription = null
+                                                )
+                                        },
+                                        isError = showWeightError,
+                                        modifier = Modifier.fillMaxWidth(),
+                                        keyboardOptions =
+                                                KeyboardOptions(
+                                                        keyboardType = KeyboardType.Text,
+                                                        imeAction = ImeAction.Done
+                                                ),
+                                        singleLine = true
+                                )
+                                val currentWeightErrorMessage = weightErrorMessage
+                                if (showWeightError && currentWeightErrorMessage != null) {
+                                        Text(
+                                                text = currentWeightErrorMessage,
+                                                color = MaterialTheme.colors.error,
+                                                style = MaterialTheme.typography.caption,
+                                                modifier = Modifier.padding(start = 4.dp, top = 2.dp)
+                                        )
+                                }
+                        }
 
                         // Poids idéal
                         var idealWeightText by
@@ -370,44 +399,75 @@ fun ConsultationFullScreenEditView(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
                         ) {
-                                // Champ de saisie du poids idéal
-                                NumberTextField(
-                                        value = idealWeightText,
-                                        onValueChange = { newValue: String ->
-                                                // Normaliser la virgule en point pour la conversion
-                                                val texteNormalise = newValue.replace(',', '.')
-                                                idealWeightText = newValue
-                                                try {
-                                                        if (texteNormalise.isNotEmpty()) {
-                                                                val idealWeight =
-                                                                        texteNormalise.toDouble()
-                                                                editedConsultation =
-                                                                        editedConsultation.copy(
-                                                                                idealWeight =
-                                                                                        idealWeight
-                                                                        )
-                                                                showIdealWeightError = false
-                                                                idealWeightErrorMessage = null
-                                                        } else {
-                                                                editedConsultation =
-                                                                        editedConsultation.copy(
-                                                                                idealWeight = null
-                                                                        )
-                                                                showIdealWeightError = false
-                                                                idealWeightErrorMessage = null
+                                // Champ de saisie du poids idéal (grand clavier numérique)
+                                Column(modifier = Modifier.weight(1f)) {
+                                        OutlinedTextField(
+                                                value = idealWeightText,
+                                                onValueChange = { newValue: String ->
+                                                        val texteFiltre =
+                                                                newValue.filter { char ->
+                                                                        char.isDigit() || char == '.' || char == ','
+                                                                }
+                                                        val pointCount = texteFiltre.count { it == '.' }
+                                                        val virguleCount = texteFiltre.count { it == ',' }
+                                                        if (pointCount <= 1 &&
+                                                                        virguleCount <= 1 &&
+                                                                        pointCount + virguleCount <= 1
+                                                        ) {
+                                                                idealWeightText = texteFiltre
+                                                                val texteNormalise = texteFiltre.replace(',', '.')
+                                                                try {
+                                                                        if (texteNormalise.isNotEmpty()) {
+                                                                                val idealWeight =
+                                                                                        texteNormalise.toDouble()
+                                                                                editedConsultation =
+                                                                                        editedConsultation.copy(
+                                                                                                idealWeight =
+                                                                                                        idealWeight
+                                                                                        )
+                                                                                showIdealWeightError = false
+                                                                                idealWeightErrorMessage = null
+                                                                        } else {
+                                                                                editedConsultation =
+                                                                                        editedConsultation.copy(
+                                                                                                idealWeight = null
+                                                                                        )
+                                                                                showIdealWeightError = false
+                                                                                idealWeightErrorMessage = null
+                                                                        }
+                                                                } catch (e: Exception) {
+                                                                        showIdealWeightError = true
+                                                                        idealWeightErrorMessage =
+                                                                                "Format de poids idéal invalide (nombre décimal)"
+                                                                }
                                                         }
-                                                } catch (e: Exception) {
-                                                        showIdealWeightError = true
-                                                        idealWeightErrorMessage =
-                                                                "Format de poids idéal invalide (nombre décimal)"
-                                                }
-                                        },
-                                        label = "Poids idéal (kg)",
-                                        leadingIcon = AppIcons.Weight,
-                                        isError = showIdealWeightError,
-                                        errorMessage = idealWeightErrorMessage,
-                                        modifier = Modifier.weight(1f)
-                                )
+                                                },
+                                                label = { Text("Poids idéal (kg)") },
+                                                leadingIcon = {
+                                                        Icon(
+                                                                imageVector = AppIcons.Weight,
+                                                                contentDescription = null
+                                                        )
+                                                },
+                                                isError = showIdealWeightError,
+                                                modifier = Modifier.fillMaxWidth(),
+                                                keyboardOptions =
+                                                        KeyboardOptions(
+                                                                keyboardType = KeyboardType.Text,
+                                                                imeAction = ImeAction.Done
+                                                        ),
+                                                singleLine = true
+                                        )
+                                        val currentIdealWeightErrorMessage = idealWeightErrorMessage
+                                        if (showIdealWeightError && currentIdealWeightErrorMessage != null) {
+                                                Text(
+                                                        text = currentIdealWeightErrorMessage,
+                                                        color = MaterialTheme.colors.error,
+                                                        style = MaterialTheme.typography.caption,
+                                                        modifier = Modifier.padding(start = 4.dp, top = 2.dp)
+                                                )
+                                        }
+                                }
 
                                 // Affichage de l'estimation
                                 if (estimatedIdealWeight != null) {
@@ -840,13 +900,13 @@ fun ConsultationFullScreenEditView(
                                                                                         )
                                                                         }
 
-                                                                        editedConsultation =
-                                                                                editedConsultation
-                                                                                        .copy(
-                                                                                                suppVarp =
-                                                                                                        variablesModifiees
-                                                                                        )
-                                                                },
+                                                editedConsultation =
+                                                        editedConsultation
+                                                                .copy(
+                                                                        suppVarp =
+                                                                                variablesModifiees
+                                                                )
+                                        },
                                                                 modifier =
                                                                         Modifier.padding(
                                                                                 vertical =
@@ -1837,16 +1897,14 @@ private fun VariableSupplementaireField(
                                 )
                         }
 
-                        // Champ de saisie
+                        // Champ de saisie (grand clavier numérique)
                         OutlinedTextField(
                                 value = textValue,
                                 onValueChange = { newValue ->
-                                        // Filtrer pour n'accepter que les chiffres, point et virgule
                                         val texteFiltre =
                                                 newValue.filter { char ->
                                                         char.isDigit() || char == '.' || char == ','
                                                 }
-                                        // S'assurer qu'il n'y a qu'un seul séparateur décimal
                                         val pointCount = texteFiltre.count { it == '.' }
                                         val virguleCount = texteFiltre.count { it == ',' }
                                         if (pointCount <= 1 &&
@@ -1854,30 +1912,30 @@ private fun VariableSupplementaireField(
                                                         pointCount + virguleCount <= 1
                                         ) {
                                                 textValue = texteFiltre
-                                        }
-                                        try {
-                                                val texteNormalise = texteFiltre.replace(',', '.')
-                                                when {
-                                                        texteNormalise.isEmpty() -> {
-                                                                onValeurChange(null)
-                                                                isError = false
-                                                        }
-                                                        texteNormalise.toDoubleOrNull() != null -> {
-                                                                val doubleValue =
-                                                                        texteNormalise.toDouble()
-                                                                if (doubleValue >= 0) {
-                                                                        onValeurChange(doubleValue)
+                                                try {
+                                                        val texteNormalise = texteFiltre.replace(',', '.')
+                                                        when {
+                                                                texteNormalise.isEmpty() -> {
+                                                                        onValeurChange(null)
                                                                         isError = false
-                                                                } else {
+                                                                }
+                                                                texteNormalise.toDoubleOrNull() != null -> {
+                                                                        val doubleValue =
+                                                                                texteNormalise.toDouble()
+                                                                        if (doubleValue >= 0) {
+                                                                                onValeurChange(doubleValue)
+                                                                                isError = false
+                                                                        } else {
+                                                                                isError = true
+                                                                        }
+                                                                }
+                                                                else -> {
                                                                         isError = true
                                                                 }
                                                         }
-                                                        else -> {
-                                                                isError = true
-                                                        }
+                                                } catch (e: NumberFormatException) {
+                                                        isError = true
                                                 }
-                                        } catch (e: NumberFormatException) {
-                                                isError = true
                                         }
                                 },
                                 label = { Text("Valeur") },
@@ -1900,26 +1958,11 @@ private fun VariableSupplementaireField(
                                         ),
                                 keyboardOptions =
                                         KeyboardOptions(
-                                                keyboardType = KeyboardType.Decimal,
+                                                keyboardType = KeyboardType.Text,
                                                 imeAction = ImeAction.Done
                                         ),
-                                singleLine = true,
-                                onImeActionPerformed = {
-                                        if (it == ImeAction.Done) {
-                                                focusManager.clearFocus()
-                                        }
-                                }
+                                singleLine = true
                         )
-
-                        // Message d'erreur
-                        if (isError) {
-                                Text(
-                                        text = "Veuillez saisir une valeur numérique positive",
-                                        style = MaterialTheme.typography.caption,
-                                        color = MaterialTheme.colors.error,
-                                        modifier = Modifier.padding(top = 4.dp)
-                                )
-                        }
                 }
 
                 // (supprimé) pas de dialog ici; géré au niveau supérieur de l'écran

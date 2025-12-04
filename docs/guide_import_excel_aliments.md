@@ -333,7 +333,7 @@ Le système détecte automatiquement l'unité depuis l'en-tête de colonne (entr
 - `K (g/100g)`
 - `CHL (g/100g)`
 
-### Lipides
+### Lipides **IMPORTANT** O6 et O3 sont pour Oméga 6 et Omega 3
 
 - `AGSATURE (g/100g)`
 - `AGMONO (g/100g)`
