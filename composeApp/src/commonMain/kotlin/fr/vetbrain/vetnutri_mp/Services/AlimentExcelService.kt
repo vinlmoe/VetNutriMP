@@ -36,8 +36,10 @@ class AlimentExcelService {
 
     /**
      * Importe des aliments depuis un CSV avec logs détaillés pour le débogage
+     * @param csvContent Le contenu du fichier CSV
+     * @param dataB La base de données à utiliser (prioritaire sur celle du CSV, null pour utiliser celle du CSV)
      */
-    fun importFromCsv(csvContent: String): ImportResult {
+    fun importFromCsv(csvContent: String, dataB: String? = null): ImportResult {
         val errors = mutableListOf<String>()
         val warnings = mutableListOf<String>()
         
@@ -74,11 +76,11 @@ class AlimentExcelService {
                     logInfo("--- Traitement ligne ${index + 2} ---")
                     logInfo("Contenu ligne: ${line.take(100)}${if (line.length > 100) "..." else ""}")
                     
-                    val row = parseCsvLine(line, headers, index + 2)
-                    logInfo("AlimentExcelRow créé: nom='${row.nom}', nutriments=${row.nutriments.size}")
+                    val row = parseCsvLine(line, headers, index + 2, dataB)
+                    logInfo("AlimentExcelRow créé: nom='${row.nom}', nutriments=${row.nutriments.size}, dataB='${row.dataB}'")
                     
                     val aliment = AlimentExcelRow.toAlimentEv(row)
-                    logInfo("AlimentEv créé: nom='${aliment.nom}', nutriments=${aliment.valMap.size}")
+                    logInfo("AlimentEv créé: nom='${aliment.nom}', nutriments=${aliment.valMap.size}, dataB='${aliment.dataB}'")
                     
                     aliments.add(aliment)
                     successCount++
@@ -210,8 +212,12 @@ class AlimentExcelService {
 
     /**
      * Parse une ligne CSV en AlimentExcelRow avec logs détaillés
+     * @param line La ligne CSV à parser
+     * @param headers Les en-têtes de colonnes
+     * @param lineNumber Le numéro de ligne (pour les logs)
+     * @param dataBPriority La base de données à utiliser en priorité (null pour utiliser celle du CSV)
      */
-    private fun parseCsvLine(line: String, headers: List<String>, lineNumber: Int): AlimentExcelRow {
+    private fun parseCsvLine(line: String, headers: List<String>, lineNumber: Int, dataBPriority: String? = null): AlimentExcelRow {
         logInfo("Parsing ligne $lineNumber: ${line.take(50)}...")
         
         val values = parseCsvValues(line)
@@ -247,18 +253,20 @@ class AlimentExcelService {
         logInfo("Classification - Groupe: '$groupAlim', Type: '$typeAliment', Conditionnement: '$contEnum'")
 
         // Prix et quantité
-        val price = headerValueMap["Prix"]?.toDoubleOrNull()
+        val price = headerValueMap["Prix"]?.toDoubleOrNullWithComma()
         val categPrice = headerValueMap["Catégorie Prix"]?.takeIf { it.isNotBlank() }
-        val quantInt = headerValueMap["Quantité Interne"]?.toDoubleOrNull()
+        val quantInt = headerValueMap["Quantité Interne"]?.toDoubleOrNullWithComma()
         
         logInfo("Prix/Quantité - Prix: $price, Catégorie: '$categPrice', Quantité: $quantInt")
 
         // Statuts
         val consistent = headerValueMap["Consistant"]?.toBooleanStrictOrNull() ?: false
         val deprecated = headerValueMap["Obsolète"]?.toBooleanStrictOrNull() ?: false
-        val dataB = headerValueMap["Données Base"]?.takeIf { it.isNotBlank() }
+        val dataBFromCsv = headerValueMap["Données Base"]?.takeIf { it.isNotBlank() }
+        // Utiliser la valeur prioritaire si fournie, sinon celle du CSV
+        val dataB = dataBPriority?.takeIf { it.isNotBlank() } ?: dataBFromCsv
         
-        logInfo("Statuts - Consistant: $consistent, Obsolète: $deprecated, DataB: '$dataB'")
+        logInfo("Statuts - Consistant: $consistent, Obsolète: $deprecated, DataB (CSV): '$dataBFromCsv', DataB (prioritaire): '$dataBPriority', DataB (final): '$dataB'")
 
         // Espèces et indications
         val especes = headerValueMap["Espèces"]?.takeIf { it.isNotBlank() }
@@ -304,29 +312,35 @@ class AlimentExcelService {
                 val rawName = header.substringBefore("(").trim().removeSuffix("")
                 val valueStr = headerValueMap[header]
                 
+                // Extraire l'unité depuis l'en-tête (entre parenthèses)
+                val unitInHeader = extractUnitFromHeader(header)
+                
                 // Vérifier si c'est vraiment une colonne de nutriment
                 if (isNutrientColumn(rawName)) {
-                    val value = valueStr?.toDoubleOrNull()
+                    val rawValue = valueStr?.toDoubleOrNullWithComma()
                     
-                    if (value != null) {
-                        logInfo("Traitement nutriment: '$rawName' = $value")
+                    if (rawValue != null) {
+                        // Convertir la valeur selon l'unité détectée
+                        val convertedValue = convertNutrientValue(rawValue, unitInHeader, rawName)
+                        
+                        logInfo("Traitement nutriment: '$rawName' = $rawValue (unité: '$unitInHeader' -> converti: $convertedValue)")
                         
                         val resolved = fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver.AllNutrientResolver(rawName)
                         if (resolved != null) {
-                            nutrimentsMap[resolved.label] = value
+                            nutrimentsMap[resolved.label] = convertedValue
                             nutrimentCount++
-                            logInfo("✅ Nutriment résolu: '$rawName' -> '${resolved.label}'")
+                            logInfo("✅ Nutriment résolu: '$rawName' -> '${resolved.label}' (valeur: $convertedValue)")
                         } else {
                             // Fallback: essayer aussi sans espaces/avec normalisation simple
                             val alt = rawName.replace("_", " ").replace("-", " ").trim()
                             val resolvedAlt = fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver.AllNutrientResolver(alt)
                             if (resolvedAlt != null) {
-                                nutrimentsMap[resolvedAlt.label] = value
+                                nutrimentsMap[resolvedAlt.label] = convertedValue
                                 nutrimentCount++
-                                logInfo("✅ Nutriment résolu (fallback): '$rawName' -> '$alt' -> '${resolvedAlt.label}'")
+                                logInfo("✅ Nutriment résolu (fallback): '$rawName' -> '$alt' -> '${resolvedAlt.label}' (valeur: $convertedValue)")
                             } else {
                                 nutrimentErrorCount++
-                                logError("❌ Nutriment non résolu: '$rawName' (valeur: $value)")
+                                logError("❌ Nutriment non résolu: '$rawName' (valeur: $rawValue)")
                             }
                         }
                     } else if (valueStr?.isNotBlank() == true) {
@@ -354,7 +368,7 @@ class AlimentExcelService {
             quantInt = quantInt,
             consistent = consistent,
             deprecated = deprecated,
-            dataB = dataB,
+            dataB = dataB, // Sera remplacé par la valeur prioritaire si fournie
             especes = especes,
             indications = indications,
             rationUUID = rationUUID,
@@ -445,6 +459,71 @@ class AlimentExcelService {
         // Vérifier avec le NutrientResolver
         val resolved = fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver.AllNutrientResolver(columnName)
         return resolved != null
+    }
+
+    /**
+     * Convertit une chaîne en Double en gérant les séparateurs décimaux européens (virgule) et anglo-saxons (point)
+     */
+    private fun String.toDoubleOrNullWithComma(): Double? {
+        if (this.isBlank()) return null
+        // Remplacer la virgule par un point pour le format européen
+        val normalized = this.replace(",", ".")
+        return normalized.toDoubleOrNull()
+    }
+
+    /**
+     * Extrait l'unité depuis l'en-tête de colonne (entre parenthèses)
+     * Exemples: "LIPIDE (%)" -> "%", "CA (g/100g)" -> "g/100g", "P (g/kg)" -> "g/kg"
+     * @return L'unité extraite ou null si aucune parenthèse n'est trouvée
+     */
+    private fun extractUnitFromHeader(header: String): String? {
+        val startIndex = header.indexOf("(")
+        val endIndex = header.indexOf(")")
+        if (startIndex != -1 && endIndex != -1 && endIndex > startIndex) {
+            return header.substring(startIndex + 1, endIndex).trim()
+        }
+        return null
+    }
+
+    /**
+     * Convertit une valeur de nutriment selon l'unité détectée dans l'en-tête
+     * - Si l'unité est "/kg" ou "g/kg": convertit en "/100g" (divise par 10)
+     * - Si l'unité est "%": pas de conversion (déjà en pourcentage)
+     * - Si l'unité est "/100g" ou "g/100g" ou rien: pas de conversion (déjà la bonne unité)
+     * 
+     * @param value La valeur brute à convertir
+     * @param unit L'unité extraite de l'en-tête (peut être null)
+     * @param nutrientName Le nom du nutriment (pour les cas spéciaux)
+     * @return La valeur convertie
+     */
+    private fun convertNutrientValue(value: Double, unit: String?, nutrientName: String): Double {
+        if (unit == null) {
+            // Pas d'unité dans les parenthèses, supposer /100g (pas de conversion)
+            return value
+        }
+
+        val unitLower = unit.lowercase()
+        
+        // Détecter si c'est en /kg (g/kg, mg/kg, UI/kg, etc.)
+        if (unitLower.contains("/kg") || unitLower.endsWith("/kg")) {
+            // Convertir de /kg vers /100g: diviser par 10
+            // Exemple: 100 g/kg = 10 g/100g (car 100g = 0.1kg, donc 100/10 = 10)
+            return value / 10.0
+        }
+        
+        // Si c'est en %, pas de conversion (déjà en pourcentage)
+        if (unitLower == "%" || unitLower.contains("%")) {
+            return value
+        }
+        
+        // Si c'est en /100g ou g/100g, pas de conversion
+        if (unitLower.contains("/100g") || unitLower.endsWith("/100g")) {
+            return value
+        }
+        
+        // Pour les autres unités (mg/100g, UI/kg, etc.), on ne convertit pas
+        // car elles sont déjà dans la bonne unité ou nécessitent une conversion plus complexe
+        return value
     }
 
     /**

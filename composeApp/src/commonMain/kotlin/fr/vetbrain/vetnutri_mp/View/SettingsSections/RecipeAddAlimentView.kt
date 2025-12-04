@@ -8,6 +8,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.runtime.*
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -38,36 +39,15 @@ fun RecipeAddAlimentView(
     modifier: Modifier = Modifier
 ) {
     // États pour les filtres de recherche
-    var searchFilters by remember { 
-        mutableStateOf(FoodSearchFilters()) 
-    }
-    
+    var searchFilters by remember { mutableStateOf(FoodSearchFilters()) }
     // État pour l'aliment sélectionné et la quantité
     var selectedFood by remember { mutableStateOf<AlimentEv?>(null) }
     var quantite by remember { mutableStateOf("100") }
     var quantiteError by remember { mutableStateOf(false) }
-    
-    // Charger les aliments
-    val allFoods = remember {
-        mutableStateListOf<AlimentEv>()
-    }
-    var isLoading by remember { mutableStateOf(true) }
-    
-    LaunchedEffect(Unit) {
-        try {
-            kotlinx.coroutines.withContext(fr.vetbrain.vetnutri_mp.Utils.AppDispatchers.IO) {
-                val foods = recipeEditViewModel.foodRepository.getAllFoods()
-                kotlinx.coroutines.withContext(fr.vetbrain.vetnutri_mp.Utils.AppDispatchers.Main) {
-                    allFoods.clear()
-                    allFoods.addAll(foods)
-                    isLoading = false
-                }
-            }
-        } catch (e: Exception) {
-            
-            isLoading = false
-        }
-    }
+    // Aliments observés via le Flow du repository pour éviter les problèmes de chargement manuel
+    val foodsFlow = remember { recipeEditViewModel.foodRepository.observeAllFoods() }
+    val allFoods by foodsFlow.collectAsState(initial = emptyList())
+    val isLoading = allFoods.isEmpty()
     
     Scaffold(
         topBar = {

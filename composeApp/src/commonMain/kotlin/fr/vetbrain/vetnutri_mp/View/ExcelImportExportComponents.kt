@@ -20,6 +20,8 @@ import fr.vetbrain.vetnutri_mp.Data.AlimentEv
 import fr.vetbrain.vetnutri_mp.Services.ExcelFoodService
 import fr.vetbrain.vetnutri_mp.ExcelPlatform.*
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
+import fr.vetbrain.vetnutri_mp.Utils.DataBMapping
+import fr.vetbrain.vetnutri_mp.Components.DropdownField
 import kotlinx.coroutines.launch
 
 /**
@@ -42,6 +44,17 @@ fun ExcelImportExportSection(
         var exportResult by remember { mutableStateOf<String?>(null) }
         var importResult by remember { mutableStateOf<ExcelFoodService.ExcelImportResult?>(null) }
         var showImportDialog by remember { mutableStateOf(false) }
+        
+        // État pour la base de données sélectionnée (prioritaire sur celle du CSV)
+        var selectedDataB by remember { mutableStateOf<String?>(null) }
+        
+        // Options de bases de données
+        val dataBOptions = remember {
+            buildList {
+                add("") // Option vide pour "Utiliser celle du CSV"
+                addAll(DataBMapping.getAllMappings().keys.sorted())
+            }
+        }
 
         val coroutineScope = rememberCoroutineScope()
         
@@ -184,8 +197,27 @@ fun ExcelImportExportSection(
                                 Text(
                                         "Importer des aliments depuis un fichier CSV. Une prévisualisation vous permettra de vérifier les données avant confirmation.",
                                         style = MaterialTheme.typography.body2,
-                                        modifier = Modifier.padding(bottom = 16.dp)
+                                        modifier = Modifier.padding(bottom = 8.dp)
                                 )
+                                
+                                // Sélecteur de base de données
+                                Spacer(modifier = Modifier.height(8.dp))
+                                DropdownField(
+                                        label = "Base de données (prioritaire sur celle du CSV)",
+                                        selectedValue = selectedDataB ?: "",
+                                        options = dataBOptions,
+                                        onValueChange = { selectedDataB = if (it.isEmpty()) null else it },
+                                        valueToString = { code ->
+                                                if (code.isEmpty()) {
+                                                        "Utiliser celle du CSV"
+                                                } else {
+                                                        "${DataBMapping.getDisplayName(code)} ($code)"
+                                                }
+                                        },
+                                        modifier = Modifier.fillMaxWidth()
+                                )
+                                
+                                Spacer(modifier = Modifier.height(8.dp))
 
                                 Button(
                                         onClick = {
@@ -198,14 +230,14 @@ fun ExcelImportExportSection(
                                                                         if (excelFoodService != null && csvSupported) {
                                                                                 // Import réel avec le contenu du fichier
                                                                                 csvContent = csv
-                                                                                val result = excelFoodService.importFoodsFromCsv(csv)
+                                                                                val result = excelFoodService.importFoodsFromCsv(csv, selectedDataB)
                                                                                 importResult = result
                                                                                 showImportDialog = true
                                                                         } else {
                                                                                 // Fallback: utiliser l'exemple
                                                                                 val csvExample = excelFoodService?.generateExampleCsv() ?: "Exemple CSV"
                                                                                 csvContent = csvExample
-                                                                                val result = excelFoodService?.previewCsvImport(csvExample) ?: ExcelFoodService.ExcelImportResult(
+                                                                                val result = excelFoodService?.previewCsvImport(csvExample, selectedDataB) ?: ExcelFoodService.ExcelImportResult(
                                                                                         success = false,
                                                                                         message = "Service non disponible"
                                                                                 )
@@ -348,7 +380,7 @@ fun ExcelImportExportSection(
                                 if (csvContent != null && excelFoodService != null) {
                                         coroutineScope.launch {
                                                 try {
-                                                        val finalResult = excelFoodService.importFoodsFromCsv(csvContent!!)
+                                                        val finalResult = excelFoodService.importFoodsFromCsv(csvContent!!, selectedDataB)
                                                         importResult = finalResult
                                                         showImportDialog = false
                                                 } catch (e: Exception) {
