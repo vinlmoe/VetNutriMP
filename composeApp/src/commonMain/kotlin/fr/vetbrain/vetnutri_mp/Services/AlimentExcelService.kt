@@ -252,10 +252,17 @@ class AlimentExcelService {
         
         logInfo("Classification - Groupe: '$groupAlim', Type: '$typeAliment', Conditionnement: '$contEnum'")
 
-        // Prix et quantité
+        // Prix et quantité (recherche tolérante pour gérer les problèmes d'encodage d'accents)
         val price = headerValueMap["Prix"]?.toDoubleOrNullWithComma()
         val categPrice = headerValueMap["Catégorie Prix"]?.takeIf { it.isNotBlank() }
-        val quantInt = headerValueMap["Quantité Interne"]?.toDoubleOrNullWithComma()
+        val quantIntRaw = headerValueMap.trouverValeurColonne(
+            listOf(
+                "Quantité Interne",
+                "Quantite Interne",
+                "Quantit� Interne"
+            )
+        )
+        val quantInt = quantIntRaw?.toDoubleOrNullWithComma()
         
         logInfo("Prix/Quantité - Prix: $price, Catégorie: '$categPrice', Quantité: $quantInt")
 
@@ -268,8 +275,15 @@ class AlimentExcelService {
         
         logInfo("Statuts - Consistant: $consistent, Obsolète: $deprecated, DataB (CSV): '$dataBFromCsv', DataB (prioritaire): '$dataBPriority', DataB (final): '$dataB'")
 
-        // Espèces et indications
-        val especes = headerValueMap["Espèces"]?.takeIf { it.isNotBlank() }
+        // Espèces et indications (recherche tolérante)
+        val especesRaw = headerValueMap.trouverValeurColonne(
+            listOf(
+                "Espèces",
+                "Especes",
+                "Esp�ces"
+            )
+        )
+        val especes = especesRaw?.takeIf { it.isNotBlank() }
         val indications = headerValueMap["Indications"]?.takeIf { it.isNotBlank() }
         
         logInfo("Espèces/Indications - Espèces: '$especes', Indications: '$indications'")
@@ -524,6 +538,45 @@ class AlimentExcelService {
         // Pour les autres unités (mg/100g, UI/kg, etc.), on ne convertit pas
         // car elles sont déjà dans la bonne unité ou nécessitent une conversion plus complexe
         return value
+    }
+
+    /**
+     * Trouve la valeur d'une colonne en testant plusieurs noms possibles
+     * et en tolérant les différences d'accents / encodage.
+     */
+    private fun Map<String, String>.trouverValeurColonne(nomsPossibles: List<String>): String? {
+        if (this.isEmpty()) return null
+        val clesNormalisees = this.keys.associateBy { it.normaliserNomColonne() }
+        val nomTrouve = nomsPossibles.firstNotNullOfOrNull { nom ->
+            val cleNormalisee = nom.normaliserNomColonne()
+            clesNormalisees[cleNormalisee]
+        }
+        return nomTrouve?.let { this[it] }
+    }
+
+    /**
+     * Normalise un nom de colonne pour comparaison robuste
+     * (majuscules, suppression des espaces et remplacement d'accents / caractères invalides).
+     */
+    private fun String.normaliserNomColonne(): String {
+        val sansAccents = this.uppercase()
+            .replace("�", "E")
+            .replace("É", "E")
+            .replace("È", "E")
+            .replace("Ê", "E")
+            .replace("Ë", "E")
+            .replace("À", "A")
+            .replace("Â", "A")
+            .replace("Ä", "A")
+            .replace("Ô", "O")
+            .replace("Ö", "O")
+            .replace("Û", "U")
+            .replace("Ü", "U")
+            .replace("Î", "I")
+            .replace("Ï", "I")
+        return sansAccents
+            .replace(" ", "")
+            .replace("_", "")
     }
 
     /**
