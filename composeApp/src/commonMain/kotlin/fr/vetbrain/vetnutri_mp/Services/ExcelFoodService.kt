@@ -37,10 +37,12 @@ class ExcelFoodService(
 
     /**
      * Importe des aliments depuis un fichier CSV
+     * @param csvContent Le contenu du fichier CSV
+     * @param dataB La base de données à utiliser (prioritaire sur celle du CSV, null pour utiliser celle du CSV)
      */
-    suspend fun importFoodsFromCsv(csvContent: String): ExcelImportResult = withContext(AppDispatchers.IO) {
+    suspend fun importFoodsFromCsv(csvContent: String, dataB: String? = null): ExcelImportResult = withContext(AppDispatchers.IO) {
         
-        val parseResult = csvService.importFromCsv(csvContent)
+        val parseResult = csvService.importFromCsv(csvContent, dataB)
         
         if (parseResult.aliments.isEmpty()) {
             return@withContext ExcelImportResult(
@@ -96,9 +98,11 @@ class ExcelFoodService(
 
     /**
      * Prépare un import CSV pour prévisualisation (sans sauvegarder)
+     * @param csvContent Le contenu du fichier CSV
+     * @param dataB La base de données à utiliser (prioritaire sur celle du CSV, null pour utiliser celle du CSV)
      */
-    suspend fun previewCsvImport(csvContent: String): ExcelImportResult = withContext(AppDispatchers.IO) {
-        val parseResult = csvService.importFromCsv(csvContent)
+    suspend fun previewCsvImport(csvContent: String, dataB: String? = null): ExcelImportResult = withContext(AppDispatchers.IO) {
+        val parseResult = csvService.importFromCsv(csvContent, dataB)
         
         ExcelImportResult(
             success = parseResult.aliments.isNotEmpty(),

@@ -30,6 +30,7 @@ import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.GraphFormattingUtils
 import fr.vetbrain.vetnutri_mp.Utils.KoalaPlotExtensions
+import fr.vetbrain.vetnutri_mp.Utils.isIosPlatform
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailViewModel
 import fr.vetbrain.vetnutri_mp.Export.PdfExporter
 import fr.vetbrain.vetnutri_mp.Export.DocumentType
@@ -861,6 +862,11 @@ fun ConeZoomView(
             
             Button(
                 onClick = {
+                    if (isIosPlatform) {
+                        // iOS : désactiver l'export graphique pour éviter les problèmes mémoire
+                        return@Button
+                    }
+
                     val svgGraph = generateConeGraphSvg(
                         realPoints, slowLine, fastLine, targetW, xRange, yRange
                     )
@@ -917,7 +923,11 @@ fun ConeZoomView(
                         ),
                         isLandscape = true
                     )
-                    PdfExporter.exportDocument(DocumentType.RATION_ANALYSIS, exportData, "suivi_poids_${animal?.nom ?: "animal"}.pdf")
+                    PdfExporter.exportDocument(
+                        DocumentType.RATION_ANALYSIS,
+                        exportData,
+                        "suivi_poids_${animal?.nom ?: "animal"}.pdf"
+                    )
                 },
                 colors = ButtonDefaults.buttonColors(backgroundColor = VetNutriColors.Secondary)
             ) {
@@ -1203,6 +1213,11 @@ fun GrowthZoomView(
 
                 Button(
                         onClick = {
+                                if (isIosPlatform) {
+                                        // iOS : désactiver l'export graphique pour éviter les problèmes mémoire
+                                        return@Button
+                                }
+
                                 val svgGraph =
                                         generateGrowthGraphSvg(
                                                 realPoints = realPoints,

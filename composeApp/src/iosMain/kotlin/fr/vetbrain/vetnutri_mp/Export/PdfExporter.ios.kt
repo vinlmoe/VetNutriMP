@@ -47,16 +47,29 @@ actual object PdfExporter {
                                 return false
                         }
                         
+                        // Détecter si le HTML contient des SVG (graphiques complexes)
+                        val contientSvg = cleanHtml.contains("<svg", ignoreCase = true)
                         
                         // Exécuter toute la logique d'impression sur le thread principal
                         dispatch_async(dispatch_get_main_queue()) {
                                 try {
-                val controleur: UIViewController? = obtenirTopViewController()
+                                        val controleur: UIViewController? = obtenirTopViewController()
                                         if (controleur == null) {
                                                 return@dispatch_async
                                         }
                                         
-                                        // Essayer d'abord avec UIMarkupTextPrintFormatter
+                                        // Si le document contient des SVG, essayer la génération directe de PDF
+                                        // mais seulement si le HTML n'est pas trop volumineux
+                                        if (contientSvg && cleanHtml.length <= 1_500_000) {
+                                                val pdfData = genererPdfDepuisHtml(cleanHtml)
+                                                if (pdfData != null) {
+                                                        partagerPdfDirect(pdfData, controleur)
+                                                        return@dispatch_async
+                                                }
+                                                // Si la génération échoue, continuer avec le dialogue d'impression
+                                        }
+                                        
+                                        // Sinon, essayer d'abord avec UIMarkupTextPrintFormatter
                                         val success = imprimerAvecMarkupFormatter(cleanHtml, controleur)
                                         if (success) {
                                                 return@dispatch_async
@@ -185,11 +198,12 @@ actual object PdfExporter {
                                 return null
                         }
                         
-                        // Vérification de la taille du HTML (limite de sécurité)
-                        if (cleanHtml.length > 10_000_000) { // 10MB
+                        // Vérification de la taille du HTML (limite réduite pour éviter OOM)
+                        // Les SVG complexes peuvent consommer beaucoup de mémoire
+                        // Si le HTML est trop volumineux, ne pas essayer de générer le PDF directement
+                        if (cleanHtml.length > 1_500_000) { // 1.5MB max pour éviter OOM
                                 return null
                         }
-                        
                         
                         // Essayer d'abord avec UIMarkupTextPrintFormatter
                         val result = genererPdfAvecMarkupFormatter(cleanHtml)
@@ -228,13 +242,20 @@ actual object PdfExporter {
                         
                         renderer.addPrintFormatter(formatteur, startingAtPageAtIndex = 0)
                         
+                        // Limiter le nombre de pages pour éviter la surconsommation mémoire
+                        val maxPages = 5
+                        val estimatedPages = renderer.numberOfPages.toInt()
+                        if (estimatedPages > maxPages) {
+                                // Trop de pages, risque d'OOM
+                                return null
+                        }
+                        
                         val data: NSMutableData = NSMutableData()
                         UIGraphicsBeginPDFContextToData(data, pageRect, null)
                         
-                        val pages: Int = renderer.numberOfPages.toInt()
-                        
+                        // Générer les pages une par une
                         var i: Int = 0
-                        while (i < pages) {
+                        while (i < estimatedPages) {
                                 UIGraphicsBeginPDFPage()
                                 renderer.drawPageAtIndex(
                                         pageIndex = i.toLong(),
@@ -246,6 +267,7 @@ actual object PdfExporter {
                         
                         data
                 } catch (t: Throwable) {
+                        t.printStackTrace()
                         null
                 }
         }
@@ -317,5 +339,38 @@ actual object PdfExporter {
                 while (controleur?.presentedViewController != null) controleur =
                         controleur?.presentedViewController
                 return controleur
+        }
+        
+        private fun partagerPdfDirect(pdfData: NSData, controleur: UIViewController) {
+                try {
+                        // Sauvegarder temporairement le PDF
+                        val tempDir = NSTemporaryDirectory()
+                        val tempFile = "${tempDir}document_vetnutri.pdf"
+                        pdfData.writeToFile(tempFile, atomically = true)
+                        
+                        val fileUrl = NSURL.fileURLWithPath(tempFile)
+                        
+                        // Créer un UIActivityViewController pour partager le PDF
+                        val activityController = UIActivityViewController(
+                                activityItems = listOf(fileUrl),
+                                applicationActivities = null
+                        )
+                        
+                        // Configurer pour iPad (popover)
+                        val popover = activityController.popoverPresentationController
+                        if (popover != null) {
+                                popover.sourceView = controleur.view
+                                popover.sourceRect = controleur.view.bounds ?: CGRectMake(0.0, 0.0, 0.0, 0.0)
+                        }
+                        
+                        // Présenter le contrôleur de partage
+                        controleur.presentViewController(
+                                viewControllerToPresent = activityController,
+                                animated = true,
+                                completion = null
+                        )
+                } catch (t: Throwable) {
+                        t.printStackTrace()
+                }
         }
 }

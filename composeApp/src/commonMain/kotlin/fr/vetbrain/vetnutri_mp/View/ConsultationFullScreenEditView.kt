@@ -11,6 +11,8 @@ import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusManager
+import androidx.compose.ui.focus.LocalFocusManager
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -276,11 +278,13 @@ fun ConsultationFullScreenEditView(
                         }
                 }
         ) { paddingValues ->
+                val focusManager: FocusManager = LocalFocusManager.current
+                val scrollState = rememberScrollState()
                 Column(
                         modifier =
                                 Modifier.fillMaxSize()
                                         .padding(paddingValues)
-                                        .verticalScroll(rememberScrollState())
+                                        .verticalScroll(scrollState)
                                         .padding(AppSizes.paddingLarge),
                         verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
                 ) {
@@ -1899,7 +1903,12 @@ private fun VariableSupplementaireField(
                                                 keyboardType = KeyboardType.Decimal,
                                                 imeAction = ImeAction.Done
                                         ),
-                                singleLine = true
+                                singleLine = true,
+                                onImeActionPerformed = {
+                                        if (it == ImeAction.Done) {
+                                                focusManager.clearFocus()
+                                        }
+                                }
                         )
 
                         // Message d'erreur

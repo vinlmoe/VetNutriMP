@@ -18,11 +18,14 @@ import androidx.compose.runtime.setValue
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusManager
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.VisualTransformation
@@ -68,8 +71,10 @@ fun AppTextField(
         singleLine: Boolean = false,
         maxLines: Int = Int.MAX_VALUE,
         readOnly: Boolean = false,
-        enabled: Boolean = true
+        enabled: Boolean = true,
+        onImeAction: (() -> Unit)? = null
 ) {
+        val focusManager: FocusManager = LocalFocusManager.current
         val textFieldColors =
                 TextFieldDefaults.outlinedTextFieldColors(
                         textColor = MaterialTheme.colors.onSurface,
@@ -115,7 +120,13 @@ fun AppTextField(
                         readOnly = readOnly,
                         enabled = enabled,
                         modifier = Modifier.fillMaxWidth(),
-                        colors = textFieldColors
+                        colors = textFieldColors,
+                        onImeActionPerformed = {
+                                if (it == ImeAction.Done || it == ImeAction.Next) {
+                                        focusManager.clearFocus()
+                                        onImeAction?.invoke()
+                                }
+                        }
                 )
 
                 if (isError && errorMessage != null) {
@@ -161,6 +172,7 @@ fun NumberTextField(
         readOnly: Boolean = false,
         enabled: Boolean = true
 ) {
+        val focusManager: FocusManager = LocalFocusManager.current
         AppTextField(
                 value = value,
                 onValueChange = onValueChange,
@@ -172,10 +184,16 @@ fun NumberTextField(
                 onTrailingIconClick = onTrailingIconClick,
                 isError = isError,
                 errorMessage = errorMessage,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Decimal,
+                        imeAction = ImeAction.Done
+                ),
                 singleLine = singleLine,
                 readOnly = readOnly,
-                enabled = enabled
+                enabled = enabled,
+                onImeAction = {
+                        focusManager.clearFocus()
+                }
         )
 }
 
@@ -282,7 +300,9 @@ fun BasicAppTextField(
                                                                 alpha = 0.6f
                                                         )
                                 ),
-                        keyboardOptions = keyboardOptions,
+                        keyboardOptions = keyboardOptions.copy(
+                                imeAction = keyboardOptions.imeAction.takeIf { it != ImeAction.Default } ?: ImeAction.Done
+                        ),
                         visualTransformation = VisualTransformation.None,
                         singleLine = singleLine,
                         maxLines = maxLines,
@@ -303,6 +323,11 @@ fun BasicAppTextField(
                                                 }
                                         }
                                 ),
+                        onImeActionPerformed = {
+                                if (it == ImeAction.Done || it == ImeAction.Next) {
+                                        androidx.compose.ui.focus.LocalFocusManager.current.clearFocus()
+                                }
+                        },
                         decorationBox = { innerTextField ->
                                 Box(
                                         modifier =

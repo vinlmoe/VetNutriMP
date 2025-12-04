@@ -207,7 +207,7 @@ data class AlimentExcelRow(
             }
             
             val cont = row.contEnum?.let {
-                val result = ContEnum.getByName(it)
+                val result = ContEnum.getByLabel(it)
                 result
             }
             
