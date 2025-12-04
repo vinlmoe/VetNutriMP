@@ -45,9 +45,18 @@ private suspend fun calculerQuantiteTotaleNutriment(
     for (aliment in ration.alimentMutableList) {
         val valeur = if (preferencesEspece != null && equationRepository != null) {
             // Utiliser getNutrientWithComplementary pour être cohérent avec le reste du système
+            // Cas particulier ENA : si une ReferenceEv est fournie, ne PAS utiliser les
+            // équations complémentaires des préférences d'espèce pour ENA. Seules les
+            // équations de ReferenceEv doivent alors s'appliquer.
+            val preferencesPourCalcul =
+                    if (nutriment == NutrientMain.ENA && referenceEv != null) {
+                        null
+                    } else {
+                        preferencesEspece
+                    }
             aliment.getNutrientWithComplementary(
                 nutrient = nutriment,
-                preferences = preferencesEspece,
+                preferences = preferencesPourCalcul,
                 equationRepository = equationRepository,
                 referenceEv = referenceEv
             )
@@ -300,12 +309,30 @@ suspend fun analyserValeursNutritionnellesRationAvecEquations(
                 } else {
                     // Utiliser la logique unifiée: valeur table > 0 sinon équation complémentaire
                     // (évite que 0.0 bloque l'utilisation de l'équation)
-                    alimentRation.getNutrientWithComplementary(
+                    // Cas particulier ENA : si une ReferenceEv est fournie, ne PAS utiliser les
+                    // équations complémentaires des préférences d'espèce pour ENA. Seules les
+                    // équations de ReferenceEv doivent alors s'appliquer.
+                    val preferencesPourCalcul =
+                            if (nutriment == NutrientMain.ENA && referenceEv != null) {
+                                null
+                            } else {
+                                preferencesEspece
+                            }
+                    val valeurCalculee =
+                            alimentRation.getNutrientWithComplementary(
                             nutrient = nutriment,
-                            preferences = preferencesEspece,
+                            preferences = preferencesPourCalcul,
                             equationRepository = equationRepository,
                             referenceEv = referenceEv
                     )
+                    if (nutriment == NutrientMain.ENA) {
+                        try {
+                            println(
+                                    "VN_DEBUG_ENA: RationAnalyse ingr='${alimentRation.aliment?.nom}' qte=${quantiteIngredient} ENA_100g=$valeurCalculee ref=${referenceEv?.nom} prefs=${preferencesPourCalcul != null}"
+                            )
+                        } catch (_: Throwable) {}
+                    }
+                    valeurCalculee
                 }
 
                 if (valeurPour100g != null) {
@@ -570,21 +597,44 @@ suspend fun analyserValeursNutritionnellesRationSelective(
                 val nomIngredient = alimentRation.aliment?.nom ?: "Ingrédient inconnu"
                 val quantiteIngredient = alimentRation.quantite
 
-                val valeurPour100g: Double? = alimentRation.getNutrientWithComplementary(
-                        nutrient = nutriment,
-                        preferences = preferencesEspece,
-                        equationRepository = equationRepository,
-                        referenceEv = referenceEv
-                )
+                // Cas particulier ENA : si une ReferenceEv est fournie, ne PAS utiliser les
+                // équations complémentaires des préférences d'espèce pour ENA. Seules les
+                // équations de ReferenceEv doivent alors s'appliquer.
+                val preferencesPourCalcul =
+                        if (nutriment == NutrientMain.ENA && referenceEv != null) {
+                            null
+                        } else {
+                            preferencesEspece
+                        }
+                val valeurPour100g: Double? =
+                        alimentRation.getNutrientWithComplementary(
+                                nutrient = nutriment,
+                                preferences = preferencesPourCalcul,
+                                equationRepository = equationRepository,
+                                referenceEv = referenceEv
+                        )
+
+                if (nutriment == NutrientMain.ENA) {
+                    try {
+                        println(
+                                "VN_DEBUG_ENA: RationSelective ingr='${alimentRation.aliment?.nom}' qte=${quantiteIngredient} ENA_100g=$valeurPour100g ref=${referenceEv?.nom} prefs=${preferencesPourCalcul != null}"
+                        )
+                    } catch (_: Throwable) {}
+                }
 
                 if (valeurPour100g != null) {
-                    val contributionIngredient = if (nutriment is AAEnum) {
-                        val teneurProteines = alimentRation.aliment?.getNutrient(NutrientMain.PROTEINE) ?: 0.0
-                        val valeurAA100g = (valeurPour100g * teneurProteines) / 100.0
-                        (valeurAA100g * quantiteIngredient) / 100.0
-                    } else {
-                        (valeurPour100g * quantiteIngredient) / 100.0
-                    }
+                    val contributionIngredient =
+                            if (nutriment is AAEnum) {
+                                val teneurProteines =
+                                        alimentRation.aliment
+                                                ?.getNutrient(NutrientMain.PROTEINE)
+                                                ?: 0.0
+                                val valeurAA100g =
+                                        (valeurPour100g * teneurProteines) / 100.0
+                                (valeurAA100g * quantiteIngredient) / 100.0
+                            } else {
+                                (valeurPour100g * quantiteIngredient) / 100.0
+                            }
                     valeurTotale += contributionIngredient
                     auMoinsUnIngredientAUneValeur = true
                     contributrionsIngredients.add("$nomIngredient:$contributionIngredient")

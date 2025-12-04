@@ -87,15 +87,10 @@ data class AlimentEv(
                         return null
                 }
 
-                // Créer les variables pour l'évaluation
-                val variables = mutableMapOf<String, Double>()
-
-                // Ajouter les nutriments principaux nécessaires aux formules
+                val variables: MutableMap<String, Double> = mutableMapOf()
                 valMap.forEach { (nutrient, quantity) ->
                         variables[nutrient.label] = quantity.value
                 }
-
-                // Évaluer l'équation
                 return try {
                         fr.vetbrain.vetnutri_mp.Utils.ExpressionMathematique.evaluer(
                                 equation.equationScript,

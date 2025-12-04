@@ -39,6 +39,71 @@ object EquationEvaluator {
     /** Taille maximale du cache pour éviter la fuite mémoire */
     private const val MAX_CACHE_SIZE = 1000
 
+    /**
+     * Injecte dans la map de variables certains nutriments calculés à partir des équations
+     * complémentaires de la `ReferenceEv` lorsque leur valeur n'est pas renseignée.
+     *
+     * Actuellement, cette fonction est utilisée surtout pour l'ENA dans les équations énergétiques.
+     * Elle n'utilise que les équations portées par `ReferenceEv` (et pas les préférences d'espèce).
+     */
+    private fun injecterNutrimentsDepuisReference(
+            variables: MutableMap<String, Double>,
+            referenceEv: ReferenceEv?
+    ) {
+        if (referenceEv == null) return
+        try {
+            println(
+                    "VN_DEBUG_ENA: injecterNutrimentsDepuisReference start ref='${referenceEv.nom}' ENERGIE=${variables["ENERGIE"] ?: 0.0} PROTEINE=${variables["PROTEINE"] ?: 0.0} LIPIDE=${variables["LIPIDE"] ?: 0.0} ENA=${variables["ENA"] ?: 0.0}"
+            )
+        } catch (_: Throwable) {}
+        val equationsComplementaires =
+                referenceEv.equationsNut.filter {
+                    it.kind == fr.vetbrain.vetnutri_mp.Enumer.EquationKind.COMPLEMENTARY_NUTRIENT &&
+                            it.equationScript.isNotBlank()
+                }
+        if (equationsComplementaires.isEmpty()) return
+        val nutrimentsCibles = setOf(NutrientMain.ENA.label)
+        val equationsParNutriment =
+                equationsComplementaires.groupBy { eq -> eq.nutrient?.label ?: "" }
+        nutrimentsCibles.forEach { label ->
+            val listeEquations = equationsParNutriment[label] ?: emptyList()
+            if (listeEquations.isEmpty()) return@forEach
+            val valeurExistante = variables[label] ?: 0.0
+            if (valeurExistante > 0.0) {
+                try {
+                    println(
+                            "VN_DEBUG_ENA: ENA déjà définie (${valeurExistante}) pour ref='${referenceEv.nom}', aucune équation appliquée"
+                    )
+                } catch (_: Throwable) {}
+                return@forEach
+            }
+            var accumulation: Double? = null
+            listeEquations.forEach { eq ->
+                val res = ExpressionMathematique.evaluer(eq.equationScript, variables) ?: 0.0
+                try {
+                    println(
+                            "VN_DEBUG_ENA: évaluation équation ENA uuid=${eq.uuid} ratio=${eq.ratio} res=$res"
+                    )
+                } catch (_: Throwable) {}
+                accumulation =
+                        if (eq.ratio) {
+                            res
+                        } else {
+                            (accumulation ?: 0.0) + res
+                        }
+            }
+            val valeurFinale = accumulation
+            if (valeurFinale != null && !valeurFinale.isNaN() && !valeurFinale.isInfinite()) {
+                variables[label] = valeurFinale
+                try {
+                    println(
+                            "VN_DEBUG_ENA: ENA injectée depuis ReferenceEv ref='${referenceEv.nom}' valeur=$valeurFinale"
+                    )
+                } catch (_: Throwable) {}
+            }
+        }
+    }
+
     /** Initialise les variables de base de manière paresseuse */
     private fun initializeVariables() {
         if (variablesDeBase == null) {
@@ -380,7 +445,7 @@ object EquationEvaluator {
      * @return Le résultat de l'évaluation ou null en cas d'erreur
      */
     fun evaluerDensiteEnergetique(expression: String, aliment: AlimentRation): Double? {
-        val variables = mutableMapOf<String, Double>()
+        val variables: MutableMap<String, Double> = mutableMapOf()
 
         // Ajouter tous les nutriments de l'aliment
         for (nutrient in NutrientMain.entries) {
@@ -401,7 +466,7 @@ object EquationEvaluator {
             equationRepository: EquationRepository,
             referenceEv: ReferenceEv? = null
     ): Double? {
-        val variables = mutableMapOf<String, Double>()
+        val variables: MutableMap<String, Double> = mutableMapOf()
         suspend fun valueOf(n: Nutrient): Double {
             return aliment.getNutrientWithComplementary(
                             nutrient = n,
@@ -433,20 +498,18 @@ object EquationEvaluator {
      * Calcule l'énergie pour 100 g d'un aliment en utilisant l'équation adaptée au type d'aliment.
      * - COMPLET: utilise l'équation commerciale (si disponible dans ReferenceEv, sinon fallback
      * générique)
-     * - COMPLEMENTAIRE ou autres: utilise l'autre équation (générique)
-     * Les variables de nutriments sont alimentées avec les valeurs directes de l'aliment (valMap),
-     * sans utiliser les équations complémentaires des préférences.
+     * - COMPLEMENTAIRE ou autres: utilise l'autre équation (générique) Les variables de nutriments
+     * sont alimentées avec les valeurs directes de l'aliment (valMap), sans utiliser les équations
+     * complémentaires des préférences.
      */
     suspend fun calculerEnergiePour100g(
             aliment: fr.vetbrain.vetnutri_mp.Data.AlimentRation,
             equationRepository: EquationRepository,
             referenceEv: ReferenceEv? = null
     ): Double {
-        // Construire variables de nutriments pour l'aliment (valeurs directes uniquement)
-        val variables = mutableMapOf<String, Double>()
+        val variables: MutableMap<String, Double> = mutableMapOf()
         val alimentEv = aliment.aliment
         if (alimentEv != null) {
-            // Utiliser directement les valeurs de l'aliment (valMap), pas les équations complémentaires
             for (n in NutrientMain.entries) {
                 variables[n.label] = alimentEv.getNutrient(n, referenceEv)?.toDouble() ?: 0.0
             }
@@ -463,6 +526,33 @@ object EquationEvaluator {
                 variables[n.label] = alimentEv.getNutrient(n, referenceEv)?.toDouble() ?: 0.0
             }
         }
+
+        // Harmoniser ENA avec le système d'analyse de ration :
+        // si une ReferenceEv est fournie, calculer ENA via getNutrientWithComplementary
+        // en n'utilisant PAS les préférences d'espèce (uniquement ReferenceEv).
+        if (referenceEv != null) {
+            try {
+                val enaFromRefEv =
+                        aliment.getNutrientWithComplementary(
+                                nutrient = NutrientMain.ENA,
+                                preferences = null,
+                                equationRepository = equationRepository,
+                                referenceEv = referenceEv
+                        )
+                if (enaFromRefEv != null && enaFromRefEv > 0.0) {
+                    variables[NutrientMain.ENA.label] = enaFromRefEv
+                    println(
+                            "VN_DEBUG_ENA: Energie100g override ENA depuis ReferenceEv alim='${alimentEv?.nom}' ENA_100g=$enaFromRefEv ref='${referenceEv.nom}'"
+                    )
+                } else {
+                    println(
+                            "VN_DEBUG_ENA: Energie100g ENA via ReferenceEv indisponible ou nulle pour alim='${alimentEv?.nom}' ref='${referenceEv.nom}' (ENA=${enaFromRefEv ?: 0.0})"
+                    )
+                }
+            } catch (_: Throwable) {}
+        }
+
+        injecterNutrimentsDepuisReference(variables = variables, referenceEv = referenceEv)
 
         // Choisir explicitement l'équation ReferenceEv: DEcom pour COMPLET/COMPLEMENTAIRE, DEraw
         // sinon
