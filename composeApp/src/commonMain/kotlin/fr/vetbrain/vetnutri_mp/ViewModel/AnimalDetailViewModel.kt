@@ -1098,8 +1098,11 @@ class AnimalDetailViewModel(
      * @param aliments Nouvelle liste d'aliments
      */
     fun updateRationAliments(ration: Ration, aliments: List<AlimentRation>) {
+        // Créer une nouvelle liste avec de nouveaux objets pour forcer la recomposition
+        val newAliments = aliments.map { it.copy() }.toMutableList()
+        
         // Créer une copie de la ration avec la liste d'aliments mise à jour
-        val updatedRation = ration.copy(alimentMutableList = aliments.toMutableList())
+        val updatedRation = ration.copy(alimentMutableList = newAliments)
 
         // Mettre à jour la ration sélectionnée pour rafraîchir l'UI
         _selectedRation.value = updatedRation
