@@ -16,8 +16,13 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 
+/**
+ * Liste des aliments avec filtres réactifs.
+ * - S'abonne au flow `observeAllFoods` et dérive les filtres en mémoire.
+ * - N'étend pas `ViewModel` pour rester multiplateforme; utilise un scope dédié.
+ */
 class FoodListViewModel(private val foodRepository: DatabaseFoodRepository) {
-        // Scope pour les coroutines du ViewModel
+        // Scope dédié (pas de ViewModel Android ici)
         private val viewModelScope = CoroutineScope(AppDispatchers.Main)
 
         // Liste des aliments (non filtrée)

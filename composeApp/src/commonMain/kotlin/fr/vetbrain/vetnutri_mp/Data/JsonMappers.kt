@@ -11,7 +11,7 @@ import fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum
 import fr.vetbrain.vetnutri_mp.Enumer.VariableKind
 import kotlinx.datetime.LocalDate
 
-/** Fonctions d'extension pour convertir entre les classes de données et les structures JSON */
+/** Mappers JSON <-> domaine (aliments, animaux, rations, préférences, etc.). */
 
 // AlimentEv <-> AlimentEvJson
 fun AlimentEv.toJson(): AlimentEvJson {

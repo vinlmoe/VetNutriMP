@@ -93,11 +93,11 @@ fun EvolutionPoidsChart(
                                 // Combiner les poids des consultations et de l'historique
                                 val allWeights = mutableListOf<ConsultationAgeData>()
 
-                                // Ajouter les poids des consultations
+                                // Ajouter les poids des consultations (poids réels uniquement)
                                 consultations.forEach { consultation ->
                                         val birthDate = animal?.birthdate
                                         val consultationDate = consultation.date
-                                        val weight = consultation.effectiveWeight
+                                        val weight = consultation.weight
 
                                         if (birthDate != null &&
                                                         consultationDate != null &&
@@ -781,8 +781,9 @@ fun ConeZoomView(
         // Points réels filtrés et convertis en semaines
         val points = animal?.consultations?.flatMap { c ->
             val cDate = c.date
-            if (cDate != null && cDate >= startDate && c.effectiveWeight != null) {
-                listOf(Pair(cDate, c.effectiveWeight!!))
+            val cWeight = c.weight
+            if (cDate != null && cDate >= startDate && cWeight != null) {
+                listOf(Pair(cDate, cWeight))
             } else emptyList()
         }?.plus(
             animal?.weightHistory?.filter { it.date >= startDate }?.map { Pair(it.date, it.value) } ?: emptyList()
@@ -1139,7 +1140,7 @@ fun GrowthZoomView(
                             val consultations = animal?.consultations ?: emptyList()
                             consultations.forEach { consultation ->
                                 val date = consultation.date
-                                val weight = consultation.effectiveWeight
+                                val weight = consultation.weight
                                 if (date != null && weight != null) {
                                     val ageDays = birthDate.daysUntil(date)
                                     val weeks = ageDays / 7.0f

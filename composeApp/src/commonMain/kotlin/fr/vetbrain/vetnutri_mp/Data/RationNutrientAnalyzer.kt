@@ -16,6 +16,8 @@ import fr.vetbrain.vetnutri_mp.Utils.NutrientUtils
 import fr.vetbrain.vetnutri_mp.Utils.TextUtils
 import kotlinx.coroutines.runBlocking
 
+/** Utilitaires d'analyse nutritionnelle d'une ration (totaux, ratios, sélection par préférences). */
+
 /**
  * Vérifie si un nutriment est un ratio (ne doit pas être multiplié par la quantité)
  */

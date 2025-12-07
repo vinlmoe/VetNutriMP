@@ -48,6 +48,13 @@ enum class AnimalDetailSection {
     EXPORT
 }
 
+/**
+ * Détails animal (consultations, rations, analyses).
+ * - Charge/observe animal, consultations, rations, préférences espèce et références.
+ * - Fournit analyses nutritionnelles (cache court terme) et calculs métaboliques.
+ * - Gère états d'édition (consultation/ration/animal), imports/export et navigation de section.
+ * - Multiplateforme : scope coroutines interne (pas de ViewModel Android).
+ */
 class AnimalDetailViewModel(
         private val consultationRepository: ConsultationRepository,
         private val animalRepository: AnimalRepository,

@@ -79,11 +79,10 @@ private fun LocalInfoRow(label: String, value: String) {
 }
 
 /**
- * Vue pour afficher les rations d'un animal
- *
- * @param viewModel ViewModel contenant les données de l'animal
- * @param showSnackbar Action à exécuter pour afficher un message snackbar
- * @param modifier Modificateur optionnel pour personnaliser l'apparence
+ * Rations d'un animal.
+ * - S'appuie sur `AnimalDetailViewModel` pour les consultations/rations/ref. nutritionnelles.
+ * - Calcule BE/K/énergie additionnelle et affiche les rations + analyses associées.
+ * - Gère export/partage et feedback via `showSnackbar`.
  */
 @Composable
 fun RationsView(

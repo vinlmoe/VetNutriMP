@@ -9,6 +9,12 @@ import fr.vetbrain.vetnutri_mp.Utils.ImportUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
+/**
+ * Import de données (animaux, références nutritionnelles).
+ * - Orchestration multiplateforme sans `ViewModel` Android, scope AppDispatchers.Main.
+ * - Délègue l'import animaux à `AnimalListViewModel` et expose messages/flags d'état.
+ * - Peut purger les aliments avant import selon le flag `shouldClearFoodsBeforeImport`.
+ */
 class ImportViewModel(
         private val animalRepository: AnimalRepository,
         val databaseReferenceEvRepository: DatabaseReferenceEvRepository? = null,

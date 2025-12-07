@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.ViewModel
 
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import fr.vetbrain.vetnutri_mp.Data.AlimentEvJson
@@ -15,10 +17,6 @@ import fr.vetbrain.vetnutri_mp.Repository.AnimalRepository
 import fr.vetbrain.vetnutri_mp.Repository.DatabaseFoodRepository
 import fr.vetbrain.vetnutri_mp.Repository.FoodImportResult
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
-import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -42,12 +40,9 @@ class SettingsViewModel(
                 fr.vetbrain.vetnutri_mp.Repository.ConsultationRepository? =
                 null,
         internal val conseilRepository: fr.vetbrain.vetnutri_mp.Repository.ConseilRepository? = null
-) {
+) : ViewModel() {
     // Instance statique de Json pour éviter la création redondante
     private val json = Json { ignoreUnknownKeys = true }
-
-    // Scope pour les tâches en arrière-plan
-    private val viewModelScope = CoroutineScope(AppDispatchers.Main + SupervisorJob())
     
     private val _uiScale = MutableStateFlow(1.0)
     val uiScale: StateFlow<Double> = _uiScale.asStateFlow()

@@ -38,6 +38,11 @@ import fr.vetbrain.vetnutri_mp.getPlatform
 import kotlin.uuid.ExperimentalUuidApi
 import kotlinx.coroutines.launch
 
+/**
+ * Liste des animaux.
+ * - Observe les flux filtrés du `AnimalListViewModel` (recherche + espèce).
+ * - Pilote les imports (rapide/API) et la navigation vers aliments / calculs.
+ */
 @OptIn(ExperimentalUuidApi::class, ExperimentalMaterialApi::class)
 @Composable
 fun AnimalListView(
@@ -98,7 +103,7 @@ fun AnimalListView(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                                // Boutons d'import supprimés
+                                // Espace réservé pour éventuels raccourcis (imports désactivés)
                         }
 
                         Spacer(modifier = Modifier.height(8.dp))
