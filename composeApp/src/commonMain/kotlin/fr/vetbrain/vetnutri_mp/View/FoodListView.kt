@@ -33,6 +33,11 @@ import fr.vetbrain.vetnutri_mp.View.Components.FoodSearchLayout
 import kotlin.uuid.ExperimentalUuidApi
 import kotlinx.coroutines.launch
 
+/**
+ * Liste des aliments.
+ * - Utilise `FoodSearchComponent` pour filtrer côté UI à partir de `allFoods`.
+ * - Synchronise les filtres saisis avec le `FoodListViewModel` (flow interne).
+ */
 @OptIn(ExperimentalUuidApi::class, ExperimentalMaterialApi::class)
 @Composable
 fun FoodListView(
@@ -127,9 +132,9 @@ fun FoodListView(
                                         .padding(AppSizes.paddingMedium),
                         horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                        // Utilisation du composant partagé FoodSearchComponent
-                        // Passer allFoods (liste complète) comme foods, comme dans AddAlimentView
-                        // FoodSearchComponent gère le filtrage lui-même
+                        // Composant partagé FoodSearchComponent :
+                        // - allFoods (liste complète) en entrée
+                        // - filtrage géré côté composant, ViewModel conservant les filtres
                         FoodSearchComponent(
                                 foods = allFoods,
                                 filters = filters,

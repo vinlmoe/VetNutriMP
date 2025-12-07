@@ -235,23 +235,15 @@ fun AlimentItem(
                                         if (isEditing) {
                                                 val onValidate = {
                                                         // Normaliser la virgule en point pour la conversion
-                                                        val texteNormalise =
+                                                        val texteNormalise: String =
                                                                 quantityText.replace(
                                                                         ',',
                                                                         '.'
                                                                 )
-                                                        val newQuantity =
-                                                                texteNormalise
-                                                                        .toDoubleOrNull()
+                                                        val nouvelleQuantite: Double =
+                                                                texteNormalise.toDoubleOrNull()
                                                                         ?: aliment.quantite
-                                                        // Arrondir au gramme
-                                                        val newQuantityArrondie =
-                                                                kotlin.math.round(
-                                                                        newQuantity
-                                                                )
-                                                        onQuantityChange(
-                                                                newQuantityArrondie
-                                                        )
+                                                        onQuantityChange(nouvelleQuantite)
                                                         onFinishEditing()
                                                 }
 

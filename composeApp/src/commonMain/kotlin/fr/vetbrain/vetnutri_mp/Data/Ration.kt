@@ -5,6 +5,11 @@ import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
 import fr.vetbrain.vetnutri_mp.Utils.genUUID
 import kotlin.uuid.ExperimentalUuidApi
 
+/**
+ * Ration alimentaire (liste d'aliments + méta).
+ * - Stocke quantités, espèce, statut actuel/recette, description.
+ * - Fournit accès nutriments, quantités totales et densité énergétique (sync/suspend).
+ */
 @OptIn(ExperimentalUuidApi::class)
 data class Ration(
         var uuid: String = genUUID(),

@@ -4,10 +4,8 @@ import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.TypeExpressionBesoin
 
 /**
- * Configuration des préférences par défaut de l'application
- *
- * Ce fichier centralise toutes les valeurs par défaut pour faciliter la personnalisation des
- * préférences initiales de l'application.
+ * Configuration centralisée des préférences par défaut (versionnée).
+ * - Type d'expression par défaut, sélections de nutriments par catégorie, version.
  */
 object DefaultPreferencesConfig {
 

@@ -5,12 +5,9 @@ import fr.vetbrain.vetnutri_mp.Enumer.MainNutrientEnum
 import fr.vetbrain.vetnutri_mp.Enumer.TypeExpressionBesoin
 
 /**
- * Préférences spécifiques à une espèce
- * @param espece L'espèce concernée
- * @param typeExpressionBesoinId ID du type d'expression des besoins (voir TypeExpressionBesoin.id)
- * @param nutrimentsSelectionnes Map des catégories de nutriments vers les listes de nutriments
- * sélectionnés
- * @param equationsComplementaires Map des nutriments vers les UUIDs des équations complémentaires
+ * Préférences par espèce (type d'expression des besoins, nutriments sélectionnés, équations compl.).
+ * - `nutrimentsSelectionnes`: clés = catégories (enum name), valeurs = coefs de nutriments.
+ * - `equationsComplementaires`: nutriment -> UUID d'équation complémentaire.
  */
 data class PreferencesEspece(
         val espece: String = Espece.CHIEN.name,

@@ -7,17 +7,22 @@ import fr.vetbrain.vetnutri_mp.Data.AnimalEvJson
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Repository.AnimalRepository
 import fr.vetbrain.vetnutri_mp.Repository.FoodImportResult
-import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import kotlin.uuid.ExperimentalUuidApi
 
+/**
+ * ViewModel liste animaux.
+ * - Maintient une liste complète et expose un flux filtré (recherche + espèce) via combine/stateIn.
+ * - Gère les imports (local/API) et les logs de progression.
+ * - Certains repositories sont optionnels et uniquement requis pour l'import complet API.
+ */
 @OptIn(ExperimentalUuidApi::class)
 class AnimalListViewModel(
     private val animalRepository: AnimalRepository,
@@ -50,38 +55,10 @@ class AnimalListViewModel(
      * - La race de l'animal Les résultats sont triés par ordre alphabétique du nom de l'animal.
      */
     val animals: StateFlow<List<AnimalEv>> =
-            _searchQuery
-                    .map { query ->
-                        if (query.isBlank() && _selectedEspece.value == null) {
-                            _allAnimals.value.sortedBy { it.nom }
-                        } else {
-                            _allAnimals.value
-                                    .filter { animal ->
-                                        val matchesQuery =
-                                                query.isBlank() ||
-                                                        animal.nom.contains(
-                                                                query,
-                                                                ignoreCase = true
-                                                        ) ||
-                                                        animal.ownerName.contains(
-                                                                query,
-                                                                ignoreCase = true
-                                                        ) ||
-                                                        animal.race.contains(
-                                                                query,
-                                                                ignoreCase = true
-                                                        )
-
-                                        val matchesEspece =
-                                                _selectedEspece.value == null ||
-                                                        animal.getEspece() == _selectedEspece.value
-
-                                        matchesQuery && matchesEspece
-                                    }
-                                    .sortedBy { it.nom }
-                        }
+            combine(_allAnimals, _searchQuery, _selectedEspece) { all, query, espece ->
+                        filterAnimals(all, query, espece)
                     }
-                    .let { MutableStateFlow(emptyList()) }
+                    .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     private val _importResult = MutableStateFlow<ImportResult?>(null)
     val importResult: StateFlow<ImportResult?> = _importResult
@@ -99,49 +76,41 @@ class AnimalListViewModel(
     fun loadAnimals() {
         viewModelScope.launch {
             _allAnimals.value = animalRepository.getAllAnimals()
-            updateFilteredAnimals()
         }
     }
 
     fun setSearchQuery(query: String) {
         _searchQuery.value = query
-        updateFilteredAnimals()
     }
 
     fun setSelectedEspece(espece: Espece?) {
         _selectedEspece.value = espece
-        updateFilteredAnimals()
     }
 
-    /**
-     * Met à jour la liste des animaux filtrés en fonction du terme de recherche et de l'espèce
-     * sélectionnée.
-     */
-    private fun updateFilteredAnimals() {
-        val query = _searchQuery.value
-        val espece = _selectedEspece.value
+    private fun filterAnimals(
+            animals: List<AnimalEv>,
+            query: String,
+            espece: Espece?
+    ): List<AnimalEv> {
+        val trimmedQuery = query.trim()
 
-        (animals as MutableStateFlow).value =
-                if (query.isBlank() && espece == null) {
-                    _allAnimals.value.sortedBy { it.nom }
-                } else {
-                    _allAnimals.value
-                            .filter { animal ->
-                                val matchesQuery =
-                                        query.isBlank() ||
-                                                animal.nom.contains(query, ignoreCase = true) ||
-                                                animal.ownerName.contains(
-                                                        query,
-                                                        ignoreCase = true
-                                                ) ||
-                                                animal.race.contains(query, ignoreCase = true)
+        return if (trimmedQuery.isBlank() && espece == null) {
+            animals.sortedBy { it.nom }
+        } else {
+            animals
+                    .filter { animal ->
+                        val matchesQuery =
+                                trimmedQuery.isBlank() ||
+                                        animal.nom.contains(trimmedQuery, ignoreCase = true) ||
+                                        animal.ownerName.contains(trimmedQuery, ignoreCase = true) ||
+                                        animal.race.contains(trimmedQuery, ignoreCase = true)
 
-                                val matchesEspece = espece == null || animal.getEspece() == espece
+                        val matchesEspece = espece == null || animal.getEspece() == espece
 
-                                matchesQuery && matchesEspece
-                            }
-                            .sortedBy { it.nom }
-                }
+                        matchesQuery && matchesEspece
+                    }
+                    .sortedBy { it.nom }
+        }
     }
 
     fun deleteAnimal(animal: AnimalEv) {

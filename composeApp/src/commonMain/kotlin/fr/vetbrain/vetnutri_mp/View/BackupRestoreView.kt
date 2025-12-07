@@ -21,7 +21,9 @@ import fr.vetbrain.vetnutri_mp.Components.IconButtonWithTooltip
 import fr.vetbrain.vetnutri_mp.ViewModel.BackupRestoreViewModel
 
 /**
- * Vue pour la gestion des sauvegardes et de la restauration
+ * Vue sauvegardes/restauration.
+ * - Liste les backups, création, suppression, restauration avec dialogues de confirmation.
+ * - Affiche progression/log et bilan de restauration.
  */
 @Composable
 fun BackupRestoreView(

@@ -11,6 +11,11 @@ import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.ViewModel.ImportViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.rememberViewModel
 
+/**
+ * Vue d'import (animaux + références nutritionnelles).
+ * - Déclenche les imports plateforme via `ImportViewModel`.
+ * - Affiche les messages de résultat et confirmations (vider DB, import réf. .vbnr.json).
+ */
 @Composable
 fun ImportView(viewModel: ImportViewModel = rememberViewModel(), onNavigateBack: () -> Unit) {
     var showImportDialog by remember { mutableStateOf(false) }

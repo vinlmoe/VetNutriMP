@@ -3,6 +3,12 @@ package fr.vetbrain.vetnutri_mp.Data
 import fr.vetbrain.vetnutri_mp.Utils.genUUID
 import kotlinx.datetime.LocalDate
 
+/**
+ * Consultation d'un animal.
+ * - Données cliniques (poids, BCS, coefficients K, observations).
+ * - Rations associées et références nutritionnelles (générale + maladies).
+ * - Fournit `effectiveWeight` (poids idéal prioritaire) avec cache simple.
+ */
 data class ConsultationEv(
         var uuid: String = genUUID(),
         var idAnim: String = "",

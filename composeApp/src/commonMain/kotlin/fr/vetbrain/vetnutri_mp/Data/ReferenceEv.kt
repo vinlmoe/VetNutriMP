@@ -11,8 +11,10 @@ import fr.vetbrain.vetnutri_mp.Utils.genUUID
 import kotlin.collections.HashMap
 
 /**
- * Classe représentant une référence évaluée basée sur la classe ReferenceEv du projet Java original
- * Cette classe gère les références nutritionnelles pour les différents nutriments
+ * Référence nutritionnelle (espèce/stade, valeurs min/max/optimales + équations).
+ * - Stocke valeurs par nutriment et niveau (MIN/MAX/OPTIMIN/OPTIMAX) avec biblio/unités.
+ * - Contient équations énergétiques (BEE/BW/DEcom/DEraw/ME) et équations nutriments.
+ * - Fournit accès cache pour compter/savoir s'il y a des équations et des helpers d'accès.
  */
 data class ReferenceEv(
         val uuid: String = genUUID(),

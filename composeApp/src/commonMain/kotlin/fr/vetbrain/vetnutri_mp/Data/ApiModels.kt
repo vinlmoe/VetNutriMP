@@ -5,8 +5,8 @@ import kotlinx.datetime.LocalDate
 import kotlinx.serialization.Serializable
 
 /**
- * Modèles JSON actuels pour l’API (nouveau format, distinct des anciens JSON). Tous les modèles
- * sont stables et versionnés pour une future REST API.
+ * Modèles JSON (nouveau format API, versionné).
+ * Distinct des anciens JSON ; utilisés pour import/export et future REST.
  */
 @Serializable
 data class ApiEnvelope(

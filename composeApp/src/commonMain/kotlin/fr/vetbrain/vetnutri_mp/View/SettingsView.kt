@@ -101,6 +101,11 @@ fun SettingsDialog(
         )
 }
 
+/**
+ * Écran des paramètres.
+ * - Regroupe les onglets Interface, Préférences et Import/Export.
+ * - S'appuie sur `SettingsViewModel` pour l'état UI et `ImportViewModel` pour les imports.
+ */
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun SettingsView(
