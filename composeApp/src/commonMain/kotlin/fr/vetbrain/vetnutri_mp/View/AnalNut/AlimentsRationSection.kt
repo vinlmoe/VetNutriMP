@@ -289,7 +289,7 @@ fun SectionAlimentsRation(
                                                         Arrangement.spacedBy(AppSizes.paddingSmall)
                                         ) {
                                                 selectedRation.alimentMutableList.forEach { aliment ->
-                                                        key(aliment.uuid, aliment.quantite) {
+                                                        key("${aliment.uuid}-${aliment.quantite}") {
                                                                 AlimentItem(
                                                                         aliment = aliment,
                                                                         isEditing =
@@ -336,45 +336,42 @@ fun SectionAlimentsRation(
                                         ) {
                                                 items(
                                                         selectedRation.alimentMutableList,
-                                                        key = { it.uuid }
+                                                        key = { "${it.uuid}-${it.quantite}" }
                                                 ) { aliment ->
-                                                        // Force la recomposition visuelle si la quantité change
-                                                        key(aliment.quantite) {
-                                                                AlimentItem(
-                                                                        aliment = aliment,
-                                                                        isEditing =
-                                                                                editingAlimentId ==
-                                                                                        aliment.uuid,
-                                                                        onStartEditing = {
-                                                                                if (editingAlimentId !=
-                                                                                                null &&
-                                                                                                editingAlimentId !=
-                                                                                                        aliment.uuid
-                                                                                ) {
-                                                                                        editingAlimentId =
-                                                                                                null
-                                                                                }
-                                                                                editingAlimentId =
-                                                                                        aliment.uuid
-                                                                        },
-                                                                        onQuantityChange = { newQuantity ->
-                                                                                viewModel
-                                                                                        .updateAlimentQuantity(
-                                                                                                aliment.uuid,
-                                                                                                newQuantity
-                                                                                        )
-                                                                        },
-                                                                        onFinishEditing = {
-                                                                                editingAlimentId = null
-                                                                        },
-                                                                        onDelete = {
-                                                                                viewModel
-                                                                                        .removeAlimentFromRation(
+                                                        AlimentItem(
+                                                                aliment = aliment,
+                                                                isEditing =
+                                                                        editingAlimentId ==
+                                                                                aliment.uuid,
+                                                                onStartEditing = {
+                                                                        if (editingAlimentId !=
+                                                                                        null &&
+                                                                                        editingAlimentId !=
                                                                                                 aliment.uuid
-                                                                                        )
+                                                                        ) {
+                                                                                editingAlimentId =
+                                                                                        null
                                                                         }
-                                                                )
-                                                        }
+                                                                        editingAlimentId =
+                                                                                aliment.uuid
+                                                                },
+                                                                onQuantityChange = { newQuantity ->
+                                                                        viewModel
+                                                                                .updateAlimentQuantity(
+                                                                                        aliment.uuid,
+                                                                                        newQuantity
+                                                                                )
+                                                                },
+                                                                onFinishEditing = {
+                                                                        editingAlimentId = null
+                                                                },
+                                                                onDelete = {
+                                                                        viewModel
+                                                                                .removeAlimentFromRation(
+                                                                                        aliment.uuid
+                                                                                )
+                                                                }
+                                                        )
                                                 }
                                         }
                                 }
