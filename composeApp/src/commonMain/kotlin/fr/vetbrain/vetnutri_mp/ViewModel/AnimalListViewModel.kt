@@ -57,7 +57,7 @@ class AnimalListViewModel(
     val animals: StateFlow<List<AnimalEv>> =
             combine(_allAnimals, _searchQuery, _selectedEspece) { all, query, espece ->
                         filterAnimals(all, query, espece)
-                    }
+                                    }
                     .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     private val _importResult = MutableStateFlow<ImportResult?>(null)
@@ -96,21 +96,21 @@ class AnimalListViewModel(
 
         return if (trimmedQuery.isBlank() && espece == null) {
             animals.sortedBy { it.nom }
-        } else {
+                } else {
             animals
-                    .filter { animal ->
-                        val matchesQuery =
+                            .filter { animal ->
+                                val matchesQuery =
                                 trimmedQuery.isBlank() ||
                                         animal.nom.contains(trimmedQuery, ignoreCase = true) ||
                                         animal.ownerName.contains(trimmedQuery, ignoreCase = true) ||
                                         animal.race.contains(trimmedQuery, ignoreCase = true)
 
-                        val matchesEspece = espece == null || animal.getEspece() == espece
+                                val matchesEspece = espece == null || animal.getEspece() == espece
 
-                        matchesQuery && matchesEspece
-                    }
-                    .sortedBy { it.nom }
-        }
+                                matchesQuery && matchesEspece
+                            }
+                            .sortedBy { it.nom }
+                }
     }
 
     fun deleteAnimal(animal: AnimalEv) {

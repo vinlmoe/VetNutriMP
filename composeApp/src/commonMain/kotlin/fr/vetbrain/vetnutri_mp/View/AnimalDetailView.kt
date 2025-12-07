@@ -1,6 +1,8 @@
 package fr.vetbrain.vetnutri_mp.View
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.*
@@ -841,6 +843,7 @@ private fun WideScreenLayout(
                         modifier =
                                 Modifier.width(250.dp)
                                         .fillMaxHeight()
+                                        .verticalScroll(rememberScrollState())
                                         .padding(AppSizes.paddingMedium),
                         verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
                 ) {
@@ -2240,6 +2243,7 @@ private fun NarrowScreenLayout(
                                 modifier =
                                         Modifier.fillMaxHeight()
                                                 .width(250.dp)
+                                                .verticalScroll(rememberScrollState())
                                                 .padding(AppSizes.paddingMedium),
                                 verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
                         ) {
