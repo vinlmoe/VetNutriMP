@@ -245,41 +245,6 @@ class CrossConsultationAnalysisViewModel(
                             else if (energyTotalKcal > 0) lipids / energyTotalKcal * 1000.0
                             else 0.0
 
-                    println(
-                            "[CrossAnalysis] Ration ${ration.uuid} '${ration.name}' " +
-                                    "qty=${qty}g E=${energyDensity}kcal/100g E_tot=${energyTotalKcal}kcal " +
-                                    "Prot=${proteins}g (=${proteinsPerMcal} g/Mcal BEE) " +
-                                    "Lip=${lipids}g (=${lipidsPerMcal} g/Mcal BEE) " +
-                                    "BEE=${beeKcal ?: 0.0}kcal " +
-                                    "Ca/P=${ratioCaP} O6/O3=${ratioOmega}"
-                    )
-                    if (energyTotalKcal <= 0.0) {
-                        println(
-                                "[CrossAnalysis][WARN] Énergie totale nulle ou négative pour ration ${ration.uuid}, " +
-                                        "les ratios g/Mcal seront à 0. Vérifier densité énergétique et quantités."
-                        )
-                    }
-                    ration.alimentMutableList.forEach { alim ->
-                        val alimEnergy = alim.getEnergie(referenceEv, equationRepository)
-                        val alimProt =
-                                alim.getNutrientWithComplementary(
-                                        nutrient = NutrientMain.PROTEINE,
-                                        preferences = null,
-                                        equationRepository = equationRepository,
-                                        referenceEv = referenceEv
-                                ) ?: 0.0
-                        val alimLip =
-                                alim.getNutrientWithComplementary(
-                                        nutrient = NutrientMain.LIPIDE,
-                                        preferences = null,
-                                        equationRepository = equationRepository,
-                                        referenceEv = referenceEv
-                                ) ?: 0.0
-                        println(
-                                "[CrossAnalysis][Alim] ${alim.aliment?.nom ?: "?"} qty=${alim.quantite}g " +
-                                        "E=${alimEnergy} Prot=${alimProt} Lip=${alimLip}"
-                        )
-                    }
                     RationSummary(
                             rationId = ration.uuid,
                             name = ration.name.ifBlank { "Ration" },
@@ -337,12 +302,6 @@ class CrossConsultationAnalysisViewModel(
         val bee =
                 beeFromReference?.takeIf { it > 0.0 }
                         ?: EquationEvaluator.calculerBesoinEnergetiqueBase(poids)
-
-        println(
-                "[CrossAnalysis][BEE] consult=${consultation.uuid} poids=${poids} " +
-                        "ref=${referenceEv?.nom ?: "Aucune"} " +
-                        "eq=${equationScript ?: "defaut 130*BW^0.75"} bee=${bee}"
-        )
 
         return bee
     }
