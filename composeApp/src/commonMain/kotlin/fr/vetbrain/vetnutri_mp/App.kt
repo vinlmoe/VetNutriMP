@@ -290,6 +290,16 @@ fun App(appDatabase: AppDatabase) {
         )
     }
 
+    // Analyses croisées multi-consultations
+    val crossAnalysisViewModel = remember {
+        CrossConsultationAnalysisViewModel(
+                animalRepository = animalRepository,
+                consultationRepository = consultationRepository,
+                referenceEvRepository = databaseReferenceEvRepository,
+                equationRepository = equationRepository
+        )
+    }
+
     LaunchedEffect(importResult) {
         if (importResult != null) {
             showImportResult = true
@@ -397,6 +407,9 @@ fun App(appDatabase: AppDatabase) {
                                         onShowFoodList = { currentScreen = Screen.FoodList },
                                         onShowCalculationTabs = {
                                             currentScreen = Screen.CalculationTabs
+                                        },
+                                        onShowCrossAnalysis = {
+                                            currentScreen = Screen.CrossAnalysis
                                         },
                                         modifier = Modifier.fillMaxWidth().weight(1f)
                                 )
@@ -704,6 +717,21 @@ fun App(appDatabase: AppDatabase) {
                                         currentScreen = Screen.Settings
                                     }
                         }
+                        Screen.CrossAnalysis -> {
+                            CrossConsultationAnalysisView(
+                                    viewModel = crossAnalysisViewModel,
+                                    onNavigateBack = { currentScreen = Screen.List },
+                                    onOpenResults = { currentScreen = Screen.CrossAnalysisResults },
+                                    modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                        Screen.CrossAnalysisResults -> {
+                            CrossConsultationResultsView(
+                                    viewModel = crossAnalysisViewModel,
+                                    onNavigateBack = { currentScreen = Screen.CrossAnalysis },
+                                    modifier = Modifier.fillMaxSize()
+                            )
+                        }
                         Screen.BackupRestore -> {
                             backupRestoreViewModel?.let { viewModel ->
                                 BackupRestoreView(
@@ -864,4 +892,6 @@ private sealed class Screen {
     object SpeciesPreferences : Screen()
     object ConseilEdit : Screen()
     object BackupRestore : Screen()
+    object CrossAnalysis : Screen()
+    object CrossAnalysisResults : Screen()
 }
