@@ -337,18 +337,14 @@ fun AnalyseSelectionAlimentsView(
                         fontWeight = FontWeight.Bold
                     )
                         
-                        OutlinedButton(
+                        IconButtonWithTooltip(
+                            imageVector = Icons.AutoMirrored.Default.Sort,
+                            contentDescription = "Tri avancé",
+                            tooltip = "Ouvrir le tri avancé",
                             onClick = { showAdvancedSortDialog = true },
-                            border = ButtonDefaults.outlinedBorder,
-                            colors = ButtonDefaults.outlinedButtonColors(
-                                backgroundColor = if (filters.nutrientFilters.isNotEmpty() || filters.sortCriteria != null) MaterialTheme.colors.primary.copy(alpha = 0.08f) else MaterialTheme.colors.surface,
-                                contentColor = if (filters.nutrientFilters.isNotEmpty() || filters.sortCriteria != null) MaterialTheme.colors.primary else MaterialTheme.colors.onSurface
-                            )
-                        ) {
-                            Icon(Icons.AutoMirrored.Default.Sort, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Tri avancé", style = MaterialTheme.typography.caption)
-                        }
+                            tint = if (filters.nutrientFilters.isNotEmpty() || filters.sortCriteria != null) MaterialTheme.colors.primary else MaterialTheme.colors.onSurface,
+                            iconModifier = Modifier.size(18.dp)
+                        )
                     }
                     
                     if (showAdvancedSortDialog) {

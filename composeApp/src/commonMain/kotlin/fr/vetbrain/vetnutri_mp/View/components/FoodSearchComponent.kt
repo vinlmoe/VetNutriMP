@@ -21,6 +21,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import fr.vetbrain.vetnutri_mp.Components.BasicAppTextField
@@ -42,6 +44,14 @@ import fr.vetbrain.vetnutri_mp.Utils.DataB
 import fr.vetbrain.vetnutri_mp.Utils.DataBMapping
 import fr.vetbrain.vetnutri_mp.Utils.TextUtils
 import fr.vetbrain.vetnutri_mp.Components.IconButtonWithTooltip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathFillType
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.ImageVector.Builder
+import androidx.compose.ui.graphics.vector.path
 
 /** Configuration du composant de recherche d'aliments */
 data class FoodSearchConfig(
@@ -1487,12 +1497,15 @@ private fun NutrientFilterRow(
         var valueText by remember { 
                 mutableStateOf(filter.value?.toString() ?: "") 
         }
-        
-        // Synchroniser avec les changements externes du filtre
+
+        // Ne pas écraser la saisie en cours si la valeur convertie est identique
         LaunchedEffect(filter.value) {
-                valueText = filter.value?.toString() ?: ""
+                val currentNumericValue = valueText.replace(',', '.').toDoubleOrNull()
+                if (currentNumericValue != filter.value) {
+                        valueText = filter.value?.toString() ?: ""
+                }
         }
-        
+
         Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall),
@@ -1539,10 +1552,11 @@ private fun NutrientFilterRow(
                                 value = valueText,
                                 onValueChange = { newText ->
                                         valueText = newText
-                                        val doubleValue = newText.toDoubleOrNull()
+                                        val doubleValue = newText.replace(',', '.').toDoubleOrNull()
                                         onFilterChange(filter.copy(value = doubleValue))
                                 },
                                 placeholder = "Valeur",
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                                 modifier = Modifier.fillMaxWidth().height(40.dp)
                         )
                 }
