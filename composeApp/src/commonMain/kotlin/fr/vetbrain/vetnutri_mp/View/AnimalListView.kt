@@ -52,6 +52,7 @@ fun AnimalListView(
         onEditAnimal: (AnimalEv) -> Unit,
         onShowFoodList: () -> Unit,
         onShowCalculationTabs: () -> Unit,
+        onShowCrossAnalysis: () -> Unit,
         modifier: Modifier = Modifier
 ) {
         val animals: List<AnimalEv> = viewModel.animals.collectAsState().value
@@ -145,6 +146,17 @@ fun AnimalListView(
                                                         contentColor = Color.White
                                                 )
                                 ) { Text("Import Rapide") }
+
+                                // Analyses croisées
+                                Button(
+                                        onClick = onShowCrossAnalysis,
+                                        modifier = Modifier.weight(1f),
+                                        colors =
+                                                ButtonDefaults.buttonColors(
+                                                        backgroundColor = VetNutriColors.Primary,
+                                                        contentColor = VetNutriColors.OnPrimary
+                                                )
+                                ) { Text("Analyses croisées") }
                         }
 
                         Spacer(modifier = Modifier.height(16.dp))
