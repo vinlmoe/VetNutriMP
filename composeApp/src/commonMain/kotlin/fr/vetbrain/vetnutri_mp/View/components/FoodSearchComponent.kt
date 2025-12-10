@@ -10,6 +10,7 @@ import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Analytics
+import androidx.compose.material.icons.filled.BubbleChart
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Compare
 import androidx.compose.material.icons.filled.Delete
@@ -44,14 +45,6 @@ import fr.vetbrain.vetnutri_mp.Utils.DataB
 import fr.vetbrain.vetnutri_mp.Utils.DataBMapping
 import fr.vetbrain.vetnutri_mp.Utils.TextUtils
 import fr.vetbrain.vetnutri_mp.Components.IconButtonWithTooltip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.PathFillType
-import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.StrokeJoin
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.graphics.vector.ImageVector.Builder
-import androidx.compose.ui.graphics.vector.path
 
 /** Configuration du composant de recherche d'aliments */
 data class FoodSearchConfig(
@@ -737,86 +730,34 @@ private fun FiltersCard(
                         // Barre de recherche + raccourci Ac. Aminé avec disposition adaptative
                         BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
                                 val isCompact = maxWidth < 600.dp
-                                if (isCompact) {
-                                        // Disposition verticale pour les petits écrans
-                                        Column(
-                                                modifier = Modifier.fillMaxWidth(),
-                                                verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
-                                        ) {
-                                                SearchBar(
-                                                        searchQuery = filters.searchQuery,
-                                                        onSearchQueryChange = {
-                                                                onFiltersChange(filters.copy(searchQuery = it))
-                                                        },
-                                                        modifier = Modifier.fillMaxWidth()
-                                                )
-                                                Row(
-                                                        modifier = Modifier.fillMaxWidth(),
-                                                        horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
-                                                ) {
-                                                        OutlinedButton(
-                                                                onClick = { onFiltersChange(filters.copy(aminoOnly = !filters.aminoOnly)) },
-                                                                border = ButtonDefaults.outlinedBorder,
-                                                                colors = ButtonDefaults.outlinedButtonColors(
-                                                                        backgroundColor = if (filters.aminoOnly) VetNutriColors.Primary.copy(alpha = 0.08f) else MaterialTheme.colors.surface,
-                                                                        contentColor = if (filters.aminoOnly) VetNutriColors.Primary else MaterialTheme.colors.onSurface
-                                                                ),
-                                                                modifier = Modifier.weight(1f)
-                                                        ) {
-                                                                Text(text = "Ac. Aminé", style = MaterialTheme.typography.caption)
-                                                        }
-                                                        OutlinedButton(
-                                                                onClick = { showAdvancedSortDialog = true },
-                                                                border = ButtonDefaults.outlinedBorder,
-                                                                colors = ButtonDefaults.outlinedButtonColors(
-                                                                        backgroundColor = if (filters.nutrientFilters.isNotEmpty() || filters.sortCriteria != null) VetNutriColors.Primary.copy(alpha = 0.08f) else MaterialTheme.colors.surface,
-                                                                        contentColor = if (filters.nutrientFilters.isNotEmpty() || filters.sortCriteria != null) VetNutriColors.Primary else MaterialTheme.colors.onSurface
-                                                                ),
-                                                                modifier = Modifier.weight(1f)
-                                                        ) {
-                                                                Icon(Icons.AutoMirrored.Default.Sort, contentDescription = null, modifier = Modifier.size(16.dp))
-                                                                Spacer(modifier = Modifier.width(4.dp))
-                                                                Text("Tri avancé", style = MaterialTheme.typography.caption)
-                                                        }
-                                                }
-                                        }
-                                } else {
-                                        // Disposition horizontale pour les grands écrans
-                                        Row(
-                                                modifier = Modifier.fillMaxWidth(),
-                                                horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall),
-                                                verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                                SearchBar(
-                                                        searchQuery = filters.searchQuery,
-                                                        onSearchQueryChange = {
-                                                                onFiltersChange(filters.copy(searchQuery = it))
-                                                        },
-                                                        modifier = Modifier.weight(1f)
-                                                )
-                                                OutlinedButton(
-                                                        onClick = { onFiltersChange(filters.copy(aminoOnly = !filters.aminoOnly)) },
-                                                        border = ButtonDefaults.outlinedBorder,
-                                                        colors = ButtonDefaults.outlinedButtonColors(
-                                                                backgroundColor = if (filters.aminoOnly) VetNutriColors.Primary.copy(alpha = 0.08f) else MaterialTheme.colors.surface,
-                                                                contentColor = if (filters.aminoOnly) VetNutriColors.Primary else MaterialTheme.colors.onSurface
-                                                        )
-                                                ) {
-                                                        Text(text = "Ac. Aminé", style = MaterialTheme.typography.caption)
-                                                }
-                                                OutlinedButton(
-                                                        onClick = { showAdvancedSortDialog = true },
-                                                        border = ButtonDefaults.outlinedBorder,
-                                                        colors = ButtonDefaults.outlinedButtonColors(
-                                                                backgroundColor = if (filters.nutrientFilters.isNotEmpty() || filters.sortCriteria != null) VetNutriColors.Primary.copy(alpha = 0.08f) else MaterialTheme.colors.surface,
-                                                                contentColor = if (filters.nutrientFilters.isNotEmpty() || filters.sortCriteria != null) VetNutriColors.Primary else MaterialTheme.colors.onSurface
-                                                        )
-                                                ) {
-                                                        Icon(Icons.AutoMirrored.Default.Sort, contentDescription = null, modifier = Modifier.size(16.dp))
-                                                        Spacer(modifier = Modifier.width(4.dp))
-                                                        Text("Tri avancé", style = MaterialTheme.typography.caption)
-                                                }
-                                        }
+                                Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall),
+                                        verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                        SearchBar(
+                                                searchQuery = filters.searchQuery,
+                                                onSearchQueryChange = {
+                                                        onFiltersChange(filters.copy(searchQuery = it))
+                                                },
+                                                modifier = Modifier.weight(1f)
+                                        )
+                                        IconButtonWithTooltip(
+                                                imageVector = Icons.Default.BubbleChart,
+                                                contentDescription = "Filtrer acides aminés",
+                                                tooltip = "Basculer le filtre acides aminés",
+                                                onClick = { onFiltersChange(filters.copy(aminoOnly = !filters.aminoOnly)) },
+                                                tint = if (filters.aminoOnly) VetNutriColors.Primary else MaterialTheme.colors.onSurface,
+                                                iconModifier = Modifier.size(18.dp)
+                                        )
+                                        IconButtonWithTooltip(
+                                                imageVector = Icons.AutoMirrored.Default.Sort,
+                                                contentDescription = "Tri avancé",
+                                                tooltip = "Ouvrir le tri avancé",
+                                                onClick = { showAdvancedSortDialog = true },
+                                                tint = if (filters.nutrientFilters.isNotEmpty() || filters.sortCriteria != null) VetNutriColors.Primary else MaterialTheme.colors.onSurface,
+                                                iconModifier = Modifier.size(18.dp)
+                                        )
                                 }
                         }
                         if (showAdvancedSortDialog) {
