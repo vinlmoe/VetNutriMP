@@ -23,6 +23,8 @@ fun AnalyseGraphiqueView(
 ) {
         var selectedChart by remember { mutableStateOf(ChartType.EVOLUTION_POIDS) }
         var weightConeState by remember { mutableStateOf<WeightConeState?>(null) }
+        var minVariationPercent by remember { mutableStateOf<Double>(DEFAULT_MIN_VARIATION_PERCENT) }
+        var maxVariationPercent by remember { mutableStateOf<Double>(DEFAULT_MAX_VARIATION_PERCENT) }
         var useDryMatterPer100g by remember {
                 mutableStateOf(false)
         } // Toggle pour /1000 kcal vs /100g MS
@@ -81,7 +83,11 @@ fun AnalyseGraphiqueView(
                             viewModel,
                             weightConeState,
                             onActivateConeAction = { d, w, t -> weightConeState = WeightConeState(d, w, t) },
-                            onClearCone = { weightConeState = null }
+                            onClearCone = { weightConeState = null },
+                            minVariationPercent = minVariationPercent,
+                            maxVariationPercent = maxVariationPercent,
+                            onUpdateMinVariation = { minVariationPercent = it },
+                            onUpdateMaxVariation = { maxVariationPercent = it }
                         )
                         ChartType.RATIONS_ENERGIE ->
                                 RationsEnergieChart(viewModel, equationRepository)

@@ -61,6 +61,22 @@ import kotlin.math.pow
 import kotlin.math.floor
 import kotlin.math.log10
 import kotlin.math.ceil
+import kotlin.math.abs
+
+const val DEFAULT_MIN_VARIATION_PERCENT: Double = 0.5
+const val DEFAULT_MAX_VARIATION_PERCENT: Double = 2.0
+
+fun calculerVariationsHebdomadaires(
+    minVariationPercent: Double,
+    maxVariationPercent: Double
+): Pair<Float, Float> {
+    val minAbsolu: Float = abs(minVariationPercent).toFloat()
+    val maxAbsolu: Float = abs(maxVariationPercent).toFloat()
+    val valeursTriees: List<Float> = listOf(minAbsolu, maxAbsolu).sorted()
+    val variationMin: Float = -valeursTriees.first() / 100f
+    val variationMax: Float = -valeursTriees.last() / 100f
+    return Pair(variationMin, variationMax)
+}
 
 @OptIn(ExperimentalKoalaPlotApi::class)
 @Composable
@@ -68,13 +84,23 @@ fun EvolutionPoidsChart(
     viewModel: AnimalDetailViewModel,
     coneState: WeightConeState? = null,
     onActivateConeAction: (LocalDate, Double, Double?) -> Unit = { _, _, _ -> },
-    onClearCone: () -> Unit = {}
+    onClearCone: () -> Unit = {},
+    minVariationPercent: Double = DEFAULT_MIN_VARIATION_PERCENT,
+    maxVariationPercent: Double = DEFAULT_MAX_VARIATION_PERCENT,
+    onUpdateMinVariation: (Double) -> Unit = {},
+    onUpdateMaxVariation: (Double) -> Unit = {}
 ) {
     var showZoom by remember { mutableStateOf(false) }
     var showGrowthZoom by remember { mutableStateOf(false) }
 
     if (showZoom && coneState != null) {
-        ConeZoomView(viewModel, coneState!!, onClose = { showZoom = false })
+        ConeZoomView(
+            viewModel = viewModel,
+            coneState = coneState,
+            minVariationPercent = minVariationPercent,
+            maxVariationPercent = maxVariationPercent,
+            onClose = { showZoom = false }
+        )
         return
     }
 
@@ -246,7 +272,7 @@ fun EvolutionPoidsChart(
                 // donneesPoids est calculé plus bas, après avoir fusionné les min/max avec le cône
                 
                 // Calculer les lignes du cône
-                val coneLines = remember(coneState, animal?.birthdate) {
+                val coneLines = remember(coneState, animal?.birthdate, minVariationPercent, maxVariationPercent) {
                     val birthDate = animal?.birthdate
                     if (coneState != null && birthDate != null) {
                         val startAgeDays = birthDate.daysUntil(coneState.startDate)
@@ -254,7 +280,8 @@ fun EvolutionPoidsChart(
                         val startWeight = coneState.startWeight.toFloat()
                         val targetW = coneState.targetWeight?.toFloat()
 
-                        val weeks = 26 // Default projection duration
+                        val semainesProjection = 26
+                        val variations = calculerVariationsHebdomadaires(minVariationPercent, maxVariationPercent)
 
                         // Function to calculate points until target
                         fun calculatePoints(percentagePerWeek: Float): List<Point<Float, Float>> {
@@ -267,8 +294,8 @@ fun EvolutionPoidsChart(
                                 percentagePerWeek
                             }
 
-                            val endWeight26Weeks = startWeight * (1f + effectivePercentage * weeks)
-                            var endAgeMonthsCalculated = startAgeMonths + (weeks * 7 / 30.44f)
+                            val endWeight26Weeks = startWeight * (1f + effectivePercentage * semainesProjection)
+                            var endAgeMonthsCalculated = startAgeMonths + (semainesProjection * 7 / 30.44f)
                             var endWeightCalculated = endWeight26Weeks
 
                             if (targetW != null && effectivePercentage != 0f) {
@@ -286,8 +313,8 @@ fun EvolutionPoidsChart(
                             return points
                         }
 
-                        val slowLine = calculatePoints(-0.005f)
-                        val fastLine = calculatePoints(-0.02f)
+                        val slowLine = calculatePoints(variations.first)
+                        val fastLine = calculatePoints(variations.second)
 
                         Triple(slowLine, fastLine, targetW)
                     } else {
@@ -541,7 +568,11 @@ fun EvolutionPoidsChart(
                     viewModel,
                     onActivateCone = onActivateConeAction,
                     onClearCone = onClearCone,
-                    isConeActive = coneState != null
+                    isConeActive = coneState != null,
+                    minVariationPercent = minVariationPercent,
+                    maxVariationPercent = maxVariationPercent,
+                    onUpdateMinVariation = onUpdateMinVariation,
+                    onUpdateMaxVariation = onUpdateMaxVariation
                 )
         }
 }
@@ -552,13 +583,20 @@ fun PoidsTableau(
         viewModel: AnimalDetailViewModel,
         onActivateCone: (LocalDate, Double, Double?) -> Unit = { _, _, _ -> },
         onClearCone: () -> Unit = {},
-        isConeActive: Boolean = false
+        isConeActive: Boolean = false,
+        minVariationPercent: Double = DEFAULT_MIN_VARIATION_PERCENT,
+        maxVariationPercent: Double = DEFAULT_MAX_VARIATION_PERCENT,
+        onUpdateMinVariation: (Double) -> Unit = {},
+        onUpdateMaxVariation: (Double) -> Unit = {}
 ) {
         val isAddingWeight = viewModel.isAddingWeight
         var targetWeightInput by remember { mutableStateOf("") }
+        var minVariationInput by remember(minVariationPercent) { mutableStateOf(GraphFormattingUtils.formatDecimal(minVariationPercent, 1)) }
+        var maxVariationInput by remember(maxVariationPercent) { mutableStateOf(GraphFormattingUtils.formatDecimal(maxVariationPercent, 1)) }
         
         // Helper to convert input to Double safely
         fun getTargetWeight(): Double? = targetWeightInput.replace(',', '.').toDoubleOrNull()
+        fun convertirPourcentage(value: String): Double? = value.replace(',', '.').toDoubleOrNull()
 
         Card(modifier = Modifier.fillMaxWidth(), elevation = AppSizes.elevationMedium) {
                 Column(modifier = Modifier.padding(AppSizes.paddingMedium)) {
@@ -572,6 +610,32 @@ fun PoidsTableau(
                                         style = MaterialTheme.typography.subtitle1,
                                         fontWeight = FontWeight.Bold,
                                         color = VetNutriColors.Primary
+                                )
+
+                                OutlinedTextField(
+                                    value = minVariationInput,
+                                    onValueChange = {
+                                        minVariationInput = it
+                                        convertirPourcentage(it)?.let { valeur -> onUpdateMinVariation(valeur) }
+                                    },
+                                    label = { Text("Perte min (%/sem)", fontSize = 10.sp) },
+                                    singleLine = true,
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                    modifier = Modifier.width(110.dp).height(55.dp),
+                                    textStyle = MaterialTheme.typography.body2
+                                )
+
+                                OutlinedTextField(
+                                    value = maxVariationInput,
+                                    onValueChange = {
+                                        maxVariationInput = it
+                                        convertirPourcentage(it)?.let { valeur -> onUpdateMaxVariation(valeur) }
+                                    },
+                                    label = { Text("Perte max (%/sem)", fontSize = 10.sp) },
+                                    singleLine = true,
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                    modifier = Modifier.width(110.dp).height(55.dp),
+                                    textStyle = MaterialTheme.typography.body2
                                 )
 
                                 // Champ Poids Objectif
@@ -767,13 +831,15 @@ fun PoidsTableau(
 fun ConeZoomView(
     viewModel: AnimalDetailViewModel,
     coneState: WeightConeState,
+    minVariationPercent: Double,
+    maxVariationPercent: Double,
     onClose: () -> Unit
 ) {
     val animal by viewModel.animal.collectAsState()
     val scope = rememberCoroutineScope()
 
     // Préparer les données
-    val zoomData = remember(animal, coneState) {
+    val zoomData = remember(animal, coneState, minVariationPercent, maxVariationPercent) {
         val startDate = coneState.startDate
         val startWeight = coneState.startWeight
         val targetWeight = coneState.targetWeight
@@ -794,6 +860,7 @@ fun ConeZoomView(
 
         // Lignes du cône (calculées sur 26 semaines ou jusqu'à l'atteinte de l'objectif)
         val weeksDuration = 26
+        val variations = calculerVariationsHebdomadaires(minVariationPercent, maxVariationPercent)
 
         fun calculateConeLine(basePercentage: Float): List<Point<Float, Float>> {
             val linePoints = mutableListOf<Point<Float, Float>>()
@@ -822,8 +889,8 @@ fun ConeZoomView(
             return linePoints
         }
 
-        val slowLine = calculateConeLine(-0.005f)
-        val fastLine = calculateConeLine(-0.02f)
+        val slowLine = calculateConeLine(variations.first)
+        val fastLine = calculateConeLine(variations.second)
         
         Triple(points, Pair(slowLine, fastLine), targetWeight)
     }

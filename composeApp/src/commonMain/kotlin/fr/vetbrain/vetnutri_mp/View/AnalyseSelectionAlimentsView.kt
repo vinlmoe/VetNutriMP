@@ -56,6 +56,7 @@ import fr.vetbrain.vetnutri_mp.Enumer.FoodKind
 import fr.vetbrain.vetnutri_mp.Enumer.GroupAlim
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.AlimIndic
+import fr.vetbrain.vetnutri_mp.Enumer.AAEnum
 import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Utils.DataB
 
@@ -97,8 +98,8 @@ fun AnalyseSelectionAlimentsView(
         mutableStateOf<Map<String, Map<fr.vetbrain.vetnutri_mp.Enumer.Nutrient, Double>>>(emptyMap()) 
     }
     
-    // Charger les nutriments nécessaires depuis la base de données si on a des filtres par nutriments ou un tri par nutriment
-    LaunchedEffect(filters.nutrientFilters, filters.sortCriteria, aliments.map { it.uuid }) {
+    // Charger les nutriments nécessaires depuis la base de données si on a des filtres par nutriments, un tri par nutriment ou le filtre AA
+    LaunchedEffect(filters.nutrientFilters, filters.sortCriteria, filters.aminoOnly, aliments.map { it.uuid }) {
         val nutrientsForFilters = filters.nutrientFilters.mapNotNull { it.nutrient }
         val nutrientForSort = when (filters.sortCriteria) {
             SortCriteria.PROTEIN -> listOf(fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.PROTEINE)
@@ -110,7 +111,8 @@ fun AnalyseSelectionAlimentsView(
             SortCriteria.PHOSPHORUS -> listOf(fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro.PHOS)
             else -> emptyList()
         }
-        val requiredNutrients = (nutrientsForFilters + nutrientForSort).distinct()
+        val aminoNutrients = if (filters.aminoOnly) listOf(AAEnum.LYSINE, AAEnum.METHIONINE) else emptyList()
+        val requiredNutrients = (nutrientsForFilters + nutrientForSort + aminoNutrients).distinct()
         
         if (requiredNutrients.isNotEmpty() && onLoadNutrients != null) {
             val foodUuids = aliments.map { it.uuid }
@@ -233,7 +235,15 @@ fun AnalyseSelectionAlimentsView(
                     }
                 }
 
-            matchesSearch && matchesType && matchesGroup && matchesEspece && matchesIndications && matchesDataB && matchesNutrients
+            val matchesAmino =
+                if (!filters.aminoOnly) true
+                else {
+                    val lysine = aliment.getNutrient(AAEnum.LYSINE, null)
+                    val methionine = aliment.getNutrient(AAEnum.METHIONINE, null)
+                    lysine != null && lysine > 0.0 && methionine != null && methionine > 0.0
+                }
+
+            matchesSearch && matchesType && matchesGroup && matchesEspece && matchesIndications && matchesDataB && matchesNutrients && matchesAmino
         }
         
         // Trier les résultats
