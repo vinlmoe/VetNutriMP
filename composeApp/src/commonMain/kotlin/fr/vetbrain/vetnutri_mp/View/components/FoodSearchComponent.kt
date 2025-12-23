@@ -93,8 +93,8 @@ fun FoodSearchComponent(
                 mutableStateOf<Map<String, Map<Nutrient, Double>>>(emptyMap()) 
         }
         
-        // Charger les nutriments nécessaires depuis la base de données si on a des filtres par nutriments ou un tri par nutriment
-        LaunchedEffect(filters.nutrientFilters, filters.sortCriteria, foods.map { it.uuid }) {
+        // Charger les nutriments nécessaires depuis la base de données si on a des filtres par nutriments, un tri par nutriment ou le filtre AA
+        LaunchedEffect(filters.nutrientFilters, filters.sortCriteria, filters.aminoOnly, foods.map { it.uuid }) {
                 val nutrientsForFilters = filters.nutrientFilters.mapNotNull { it.nutrient }
                 val nutrientForSort = when (filters.sortCriteria) {
                         SortCriteria.PROTEIN -> listOf(NutrientMain.PROTEINE)
@@ -106,7 +106,8 @@ fun FoodSearchComponent(
                         SortCriteria.PHOSPHORUS -> listOf(NutrientMacro.PHOS)
                         else -> emptyList()
                 }
-                val requiredNutrients = (nutrientsForFilters + nutrientForSort).distinct()
+                val aminoNutrients = if (filters.aminoOnly) listOf(AAEnum.LYSINE, AAEnum.METHIONINE) else emptyList()
+                val requiredNutrients = (nutrientsForFilters + nutrientForSort + aminoNutrients).distinct()
                 
                 if (requiredNutrients.isNotEmpty() && config.onLoadNutrients != null) {
                         val foodUuids = foods.map { it.uuid }
@@ -147,6 +148,7 @@ fun FoodSearchComponent(
                         filters.selectedEspece,
                         filters.selectedIndications,
                         filters.dataB,
+                        filters.aminoOnly,
                         filters.nutrientFilters,
                         filters.sortCriteria,
                         filters.sortOrder,
@@ -286,13 +288,22 @@ fun FoodSearchComponent(
                                                         }
                                                 }
 
+                                        val matchesAmino =
+                                                if (!filters.aminoOnly) true
+                                                else {
+                                                        val lysine = aliment.getNutrient(AAEnum.LYSINE, config.referenceEv)
+                                                        val methionine = aliment.getNutrient(AAEnum.METHIONINE, config.referenceEv)
+                                                        lysine != null && lysine > 0.0 && methionine != null && methionine > 0.0
+                                                }
+
                                         matchesSearch &&
                                                 matchesType &&
                                                 matchesGroup &&
                                                 matchesEspece &&
                                                 matchesIndications &&
                                                 matchesDataB &&
-                                                matchesNutrients
+                                                matchesNutrients &&
+                                                matchesAmino
                                 }
 
                         // Trier les résultats
@@ -1519,6 +1530,7 @@ private fun getAllAvailableNutrients(): List<Nutrient> {
         allNutrients.addAll(NutrientMin.entries)
         allNutrients.addAll(NutrientVitam.entries)
         allNutrients.addAll(NutrientLipid.entries)
+        allNutrients.addAll(AAEnum.entries)
         return allNutrients
 }
 
