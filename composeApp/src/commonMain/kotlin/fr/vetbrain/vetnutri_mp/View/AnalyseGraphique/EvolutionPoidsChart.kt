@@ -63,6 +63,19 @@ import kotlin.math.log10
 import kotlin.math.ceil
 import kotlin.math.abs
 
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
+
+/**
+ * Point de poids pour la courbe de croissance
+ */
+data class GrowthWeightPoint(
+    val date: LocalDate,
+    val weeks: Float,
+    val weight: Double,
+    val isConsultation: Boolean
+)
+
 const val DEFAULT_MIN_VARIATION_PERCENT: Double = 0.5
 const val DEFAULT_MAX_VARIATION_PERCENT: Double = 2.0
 
@@ -216,8 +229,8 @@ fun EvolutionPoidsChart(
                         Box {
                                 Button(onClick = { expanded = true }) {
                                         Text(
-                                                text = selectedCurve?.description
-                                                                ?: "Sélectionner courbe"
+                                                text = selectedCurve?.let { translate(it.description) }
+                                                                ?: translate(LocalizationKeys.Graph.SELECT_CURVE)
                                         )
                                 }
                                 DropdownMenu(
@@ -230,7 +243,7 @@ fun EvolutionPoidsChart(
                                                                 selectedCurveIndex = index
                                                                 expanded = false
                                                         }
-                                                ) { Text(text = courbe.description) }
+                                                ) { Text(text = translate(courbe.description)) }
                                         }
                                 }
                         }
@@ -243,7 +256,7 @@ fun EvolutionPoidsChart(
                             ) {
                                 Icon(Icons.Default.ZoomIn, contentDescription = null)
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text("Zoom croissance & PDF")
+                                Text(translate(LocalizationKeys.Graph.ZOOM_GROWTH_PDF))
                             }
                         }
 
@@ -255,7 +268,7 @@ fun EvolutionPoidsChart(
                             ) {
                                 Icon(Icons.Default.ZoomIn, contentDescription = null)
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text("Zoom Cône & Rapport")
+                                Text(translate(LocalizationKeys.Graph.ZOOM_CONE_REPORT))
                             }
                         }
 
@@ -264,7 +277,7 @@ fun EvolutionPoidsChart(
                                         checked = showReferenceCurves,
                                         onCheckedChange = { showReferenceCurves = it }
                                 )
-                                Text(text = "Afficher courbes de référence")
+                                Text(text = translate(LocalizationKeys.Graph.SHOW_REF_CURVES))
                         }
                 }
 
@@ -419,13 +432,13 @@ fun EvolutionPoidsChart(
                 // Graphique
                 val sousTitreGraphique =
                         if (useYearsScale) {
-                                "Poids en kg selon l'âge (années, avec courbes de référence)"
+                                translate(LocalizationKeys.Graph.WEIGHT_EVOLUTION_SUBTITLE_YEARS)
                         } else {
-                                "Poids en kg selon l'âge (mois, avec courbes de référence)"
+                                translate(LocalizationKeys.Graph.WEIGHT_EVOLUTION_SUBTITLE_MONTHS)
                         }
 
                 GraphCard(
-                        titre = "Évolution du poids corporel",
+                        titre = translate(LocalizationKeys.Graph.WEIGHT_EVOLUTION_TITLE),
                         sousTitre = sousTitreGraphique
                 ) {
                         Column {
@@ -439,9 +452,9 @@ fun EvolutionPoidsChart(
                                                         yRangeFloat
                                                 ),
                                         xAxisTitle =
-                                                if (useYearsScale) "Âge (années)"
-                                                else "Âge (mois)",
-                                        yAxisTitle = "Poids (kg)",
+                                                if (useYearsScale) translate(LocalizationKeys.Graph.AXIS_AGE_YEARS)
+                                                else translate(LocalizationKeys.Graph.AXIS_AGE_MONTHS),
+                                        yAxisTitle = translate(LocalizationKeys.Graph.AXIS_WEIGHT),
                                         modifier = Modifier.height(500.dp)
                                 ) {
                                         // Courbes de référence: toutes les percentiles si demandé
@@ -606,7 +619,7 @@ fun PoidsTableau(
                                 verticalAlignment = Alignment.CenterVertically
                         ) {
                                 Text(
-                                        text = "Historique des poids",
+                                        text = translate(LocalizationKeys.Graph.HISTORY_TITLE),
                                         style = MaterialTheme.typography.subtitle1,
                                         fontWeight = FontWeight.Bold,
                                         color = VetNutriColors.Primary
@@ -618,7 +631,7 @@ fun PoidsTableau(
                                         minVariationInput = it
                                         convertirPourcentage(it)?.let { valeur -> onUpdateMinVariation(valeur) }
                                     },
-                                    label = { Text("Perte min (%/sem)", fontSize = 10.sp) },
+                                    label = { Text(translate(LocalizationKeys.Graph.MIN_LOSS_LABEL), fontSize = 10.sp) },
                                     singleLine = true,
                                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                                     modifier = Modifier.width(110.dp).height(55.dp),
@@ -631,7 +644,7 @@ fun PoidsTableau(
                                         maxVariationInput = it
                                         convertirPourcentage(it)?.let { valeur -> onUpdateMaxVariation(valeur) }
                                     },
-                                    label = { Text("Perte max (%/sem)", fontSize = 10.sp) },
+                                    label = { Text(translate(LocalizationKeys.Graph.MAX_LOSS_LABEL), fontSize = 10.sp) },
                                     singleLine = true,
                                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                                     modifier = Modifier.width(110.dp).height(55.dp),
@@ -642,7 +655,7 @@ fun PoidsTableau(
                                 OutlinedTextField(
                                     value = targetWeightInput,
                                     onValueChange = { targetWeightInput = it },
-                                    label = { Text("Objectif (kg)", fontSize = 10.sp) },
+                                    label = { Text(translate(LocalizationKeys.Graph.TARGET_WEIGHT_LABEL), fontSize = 10.sp) },
                                     singleLine = true,
                                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                                     modifier = Modifier.width(100.dp).height(55.dp),
@@ -655,7 +668,7 @@ fun PoidsTableau(
                                         colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFFE57373)),
                                         modifier = Modifier.padding(end = AppSizes.paddingSmall)
                                     ) {
-                                        Text("Effacer cône", color = Color.White)
+                                        Text(translate(LocalizationKeys.Graph.CLEAR_CONE), color = Color.White)
                                     }
                                 }
 
@@ -668,11 +681,11 @@ fun PoidsTableau(
                                 ) {
                                         Icon(
                                                 imageVector = Icons.Default.Add,
-                                                contentDescription = "Ajouter un poids",
+                                                contentDescription = translate(LocalizationKeys.Graph.ADD_WEIGHT_ACTION),
                                                 tint = Color.White
                                         )
                                         Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
-                                        Text("Ajouter un poids")
+                                        Text(translate(LocalizationKeys.Graph.ADD_WEIGHT_ACTION))
                                 }
                         }
 
@@ -686,7 +699,7 @@ fun PoidsTableau(
 
                         if (consultationsWithAge.isEmpty()) {
                                 Text(
-                                        text = "Aucun poids enregistré",
+                                        text = translate(LocalizationKeys.Graph.NO_WEIGHT_RECORDED),
                                         style = MaterialTheme.typography.body2,
                                         color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                                 )
@@ -697,31 +710,31 @@ fun PoidsTableau(
                                         horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
                                         Text(
-                                                text = "Date",
+                                                text = translate(LocalizationKeys.Graph.HEADER_DATE),
                                                 modifier = Modifier.weight(1f),
                                                 style = MaterialTheme.typography.caption,
                                                 fontWeight = FontWeight.Bold
                                         )
                                         Text(
-                                                text = "Âge",
+                                                text = translate(LocalizationKeys.Graph.HEADER_AGE),
                                                 modifier = Modifier.weight(1f),
                                                 style = MaterialTheme.typography.caption,
                                                 fontWeight = FontWeight.Bold
                                         )
                                         Text(
-                                                text = "Poids (kg)",
+                                                text = translate(LocalizationKeys.Graph.HEADER_WEIGHT),
                                                 modifier = Modifier.weight(1f),
                                                 style = MaterialTheme.typography.caption,
                                                 fontWeight = FontWeight.Bold
                                         )
                                         Text(
-                                                text = "Source",
+                                                text = translate(LocalizationKeys.Graph.HEADER_SOURCE),
                                                 modifier = Modifier.weight(1f),
                                                 style = MaterialTheme.typography.caption,
                                                 fontWeight = FontWeight.Bold
                                         )
                                         Text(
-                                                text = "Actions",
+                                                text = translate(LocalizationKeys.Graph.HEADER_ACTIONS),
                                                 modifier = Modifier.weight(0.5f),
                                                 style = MaterialTheme.typography.caption,
                                                 fontWeight = FontWeight.Bold
@@ -785,8 +798,8 @@ fun PoidsTableau(
                                                     IconButtonWithTooltip(
                                                         onClick = { onActivateCone(consultationData.date, consultationData.weight.toDouble(), getTargetWeight()) },
                                                         imageVector = Icons.Default.TrendingDown,
-                                                        contentDescription = "Cône de perte",
-                                                        tooltip = "Cône de perte",
+                                                        contentDescription = translate(LocalizationKeys.Graph.TOOLTIP_LOSS_CONE),
+                                                        tooltip = translate(LocalizationKeys.Graph.TOOLTIP_LOSS_CONE),
                                                         tint = VetNutriColors.Secondary,
                                                         iconModifier = Modifier.size(20.dp)
                                                     )
@@ -797,8 +810,8 @@ fun PoidsTableau(
                                                                 viewModel.deleteWeight(consultationData.weightUuid!!)
                                                             },
                                                             imageVector = Icons.Default.Delete,
-                                                            contentDescription = "Supprimer le poids",
-                                                            tooltip = "Supprimer le poids",
+                                                            contentDescription = translate(LocalizationKeys.Graph.TOOLTIP_DELETE_WEIGHT),
+                                                            tooltip = translate(LocalizationKeys.Graph.TOOLTIP_DELETE_WEIGHT),
                                                             tint = Color.Red,
                                                             iconModifier = Modifier.size(20.dp)
                                                         )
@@ -855,7 +868,7 @@ fun ConeZoomView(
             animal?.weightHistory?.filter { it.date >= startDate }?.map { Pair(it.date, it.value) } ?: emptyList()
         )?.distinctBy { it.first }?.sortedBy { it.first }?.map { (date, weight) ->
             val weeks = startDate.daysUntil(date) / 7.0f
-            Triple(date, weeks, weight)
+            GrowthWeightPoint(date, weeks, weight, true)
         } ?: emptyList()
 
         // Lignes du cône (calculées sur 26 semaines ou jusqu'à l'atteinte de l'objectif)
@@ -899,12 +912,12 @@ fun ConeZoomView(
     val (slowLine, fastLine) = coneLines
 
     // Calcul des plages
-    val maxWeekData = realPoints.maxOfOrNull { it.second } ?: 0f
+    val maxWeekData = realPoints.maxOfOrNull { it.weeks } ?: 0f
     val maxLineWeeks = maxOf(slowLine.last().x, fastLine.last().x)
     val maxX = maxOf(maxOf(26f, maxWeekData), maxLineWeeks)
     val xRange = 0f..maxX
     
-    val allY = realPoints.map { it.third.toFloat() } + 
+    val allY = realPoints.map { it.weight.toFloat() } + 
                slowLine.map { it.y } + 
                fastLine.map { it.y } + 
                (if (targetW != null) listOf(targetW.toFloat()) else emptyList())
@@ -925,7 +938,7 @@ fun ConeZoomView(
         ) {
             Button(onClick = onClose) {
                 Icon(Icons.Default.ArrowDropDown, contentDescription = null, modifier = Modifier.rotate(90f))
-                Text("Retour")
+                Text(translate(LocalizationKeys.Graph.BACK))
             }
             
             Button(
@@ -950,12 +963,12 @@ fun ConeZoomView(
                         animal = null,
                         ration = null,
                         reference = null,
-                        title = "Suivi Perte de Poids - ${animal?.nom}",
+                        title = "${translate(LocalizationKeys.Graph.EXPORT_TITLE_WEIGHT_LOSS)} - ${animal?.nom}",
                         additionalText = "",
                         htmlSections = listOf(
                             HtmlSection(
                                 id = genUUID(),
-                                title = "Graphique d'évolution",
+                                title = translate(LocalizationKeys.Graph.SECTION_GRAPH_EVOLUTION),
                                 content = RichTextContent(
                                     blocks = listOf(
                                         TextBlock.RawHtml(
@@ -967,16 +980,16 @@ fun ConeZoomView(
                             ),
                             HtmlSection(
                                 id = genUUID(),
-                                title = "Données détaillées",
+                                title = translate(LocalizationKeys.Graph.SECTION_DETAILED_DATA),
                                 content = RichTextContent(
                                     blocks = listOf(
                                         TextBlock.Paragraph(
                                             id = genUUID(), 
-                                            text = "Début du régime: ${coneState.startDate} | Poids initial: ${coneState.startWeight}kg${if(coneState.targetWeight != null) " | Objectif: ${coneState.targetWeight}kg" else ""}"
+                                            text = "${translate(LocalizationKeys.Graph.DIET_START)}: ${coneState.startDate} | ${translate(LocalizationKeys.Graph.INITIAL_WEIGHT)}: ${coneState.startWeight}kg${if(coneState.targetWeight != null) " | ${translate(LocalizationKeys.Graph.TARGET)}: ${coneState.targetWeight}kg" else ""}"
                                         ),
                                         TextBlock.TableBlock(
                                             id = genUUID(),
-                                            headers = listOf("Date", "Semaine", "Poids (kg)"),
+                                            headers = listOf(translate(LocalizationKeys.Graph.HEADER_DATE), translate(LocalizationKeys.Graph.WEEK_LABEL), translate(LocalizationKeys.Graph.HEADER_WEIGHT)),
                                             rows = realPoints.map { (date, week, weight) ->
                                                 listOf(
                                                     date.toString(),
@@ -1001,20 +1014,20 @@ fun ConeZoomView(
             ) {
                 Icon(Icons.Default.Share, contentDescription = null)
                 Spacer(modifier = Modifier.width(4.dp))
-                Text("Export PDF (Données + Graph)")
+                Text(translate(LocalizationKeys.Graph.EXPORT_PDF_FULL))
             }
         }
 
         // Graphique Zoomé
         GraphCard(
-            titre = "Zoom sur le cône de perte de poids",
-            sousTitre = "Évolution en semaines depuis le début du régime (${coneState.startDate})"
+            titre = translate(LocalizationKeys.Graph.ZOOM_CONE_TITLE),
+            sousTitre = "${translate(LocalizationKeys.Graph.ZOOM_CONE_SUBTITLE)} (${coneState.startDate})"
         ) {
             XYGraph(
                 xAxisModel = FloatLinearAxisModel(xRange, minimumMajorTickIncrement = 2f),
                 yAxisModel = KoalaPlotExtensions.createSmartYAxisModel(yRange),
-                xAxisTitle = "Semaines",
-                yAxisTitle = "Poids (kg)",
+                xAxisTitle = translate(LocalizationKeys.Graph.AXIS_WEEKS),
+                yAxisTitle = translate(LocalizationKeys.Graph.AXIS_WEIGHT),
                 modifier = Modifier.height(400.dp)
             ) {
                 // Cône
@@ -1038,7 +1051,7 @@ fun ConeZoomView(
                 // Points réels
                 if (realPoints.isNotEmpty()) {
                     LinePlot(
-                        data = realPoints.map { Point(it.second, it.third.toFloat()) },
+                        data = realPoints.map { Point(it.weeks, it.weight.toFloat()) },
                         symbol = {
                             androidx.compose.foundation.Canvas(modifier = Modifier.size(8.dp)) {
                                 drawCircle(color = Color.Blue)
@@ -1052,15 +1065,18 @@ fun ConeZoomView(
         // Tableau des données
         Card(modifier = Modifier.fillMaxWidth(), elevation = AppSizes.elevationSmall) {
             Column(modifier = Modifier.padding(AppSizes.paddingMedium)) {
-                Text("Données de la période", fontWeight = FontWeight.Bold)
+                Text(translate(LocalizationKeys.Graph.PERIOD_DATA_TITLE), fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(8.dp))
-                realPoints.forEach { (date, week, weight) ->
+                realPoints.forEach { p ->
+                    val date = p.date
+                    val week = p.weeks
+                    val weight = p.weight
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(date.toString(), style = MaterialTheme.typography.body2)
-                        Text("Semaine ${GraphFormattingUtils.formatDecimal(week.toDouble(), 1)}", style = MaterialTheme.typography.body2)
+                        Text("${translate(LocalizationKeys.Graph.WEEK_LABEL)} ${GraphFormattingUtils.formatDecimal(week.toDouble(), 1)}", style = MaterialTheme.typography.body2)
                         Text("${GraphFormattingUtils.formatDecimal(weight, 2)} kg", style = MaterialTheme.typography.body2, fontWeight = FontWeight.Bold)
                     }
                     Divider(color = Color.LightGray.copy(alpha = 0.5f))
@@ -1072,7 +1088,7 @@ fun ConeZoomView(
 
 // Fonction pour générer un SVG du graphique de cône
 fun generateConeGraphSvg(
-    realPoints: List<Triple<LocalDate, Float, Double>>,
+    realPoints: List<GrowthWeightPoint>,
     slowLine: List<Point<Float, Float>>,
     fastLine: List<Point<Float, Float>>,
     targetWeight: Double?,
@@ -1147,8 +1163,8 @@ fun generateConeGraphSvg(
     }
     
     // Titres axes
-    sb.append("<text x='${width / 2}' y='${height - 5}' font-family='Arial' font-size='12' text-anchor='middle'>Semaines</text>")
-    sb.append("<text x='10' y='${height / 2}' font-family='Arial' font-size='12' text-anchor='middle' transform='rotate(-90 10 ${height / 2})'>Poids (kg)</text>")
+    sb.append("<text x='${width / 2}' y='${height - 5}' font-family='Arial' font-size='12' text-anchor='middle'>${translate(LocalizationKeys.Graph.AXIS_WEEKS)}</text>")
+    sb.append("<text x='10' y='${height / 2}' font-family='Arial' font-size='12' text-anchor='middle' transform='rotate(-90 10 ${height / 2})'>${translate(LocalizationKeys.Graph.AXIS_WEIGHT)}</text>")
 
     // Ligne Objectif
     if (targetWeight != null) {
@@ -1175,7 +1191,9 @@ fun generateConeGraphSvg(
     }
     
     // Points réels (Bleu)
-    realPoints.forEach { (_, week, weight) ->
+    realPoints.forEach { p ->
+        val week = p.weeks
+        val weight = p.weight
         val cx = scaleX(week)
         val cy = scaleY(weight.toFloat())
         sb.append("<circle cx='$cx' cy='$cy' r='4' fill='blue' />")
@@ -1211,7 +1229,7 @@ fun GrowthZoomView(
                                 if (date != null && weight != null) {
                                     val ageDays = birthDate.daysUntil(date)
                                     val weeks = ageDays / 7.0f
-                                    add(Triple(date, weeks, weight))
+                                    add(GrowthWeightPoint(date, weeks, weight, true))
                                 }
                             }
 
@@ -1220,10 +1238,10 @@ fun GrowthZoomView(
                                 val date = weightEntry.date
                                 val ageDays = birthDate.daysUntil(date)
                                 val weeks = ageDays / 7.0f
-                                add(Triple(date, weeks, weightEntry.value))
+                                add(GrowthWeightPoint(date, weeks, weightEntry.value, false))
                             }
                         }
-                                .sortedBy { it.second }
+                                .sortedBy { it.weeks }
 
                 val referenceCurves =
                         selectedCurve.params.map { param ->
@@ -1248,7 +1266,7 @@ fun GrowthZoomView(
 
     val allYValues =
             buildList {
-                addAll(realPoints.map { it.third.toFloat() })
+                addAll(realPoints.map { it.weight.toFloat() })
                 referenceCurves.forEach { (_, pts) -> addAll(pts.map { it.y }) }
             }
 
@@ -1276,7 +1294,7 @@ fun GrowthZoomView(
                                 contentDescription = null,
                                 modifier = Modifier.rotate(90f)
                         )
-                        Text("Retour")
+                        Text(translate(LocalizationKeys.Graph.BACK))
                 }
 
                 Button(
@@ -1307,14 +1325,14 @@ fun GrowthZoomView(
                                                 ration = null,
                                                 reference = null,
                                                 title =
-                                                        "Courbe de croissance - ${animal?.nom ?: ""}",
+                                                        "${translate(LocalizationKeys.Graph.EXPORT_TITLE_GROWTH)} - ${animal?.nom ?: ""}",
                                                 additionalText = "",
                                                 htmlSections =
                                                         listOf(
                                                                 HtmlSection(
                                                                         id = genUUID(),
                                                                         title =
-                                                                                "Graphique de croissance avec courbes de référence",
+                                                                                translate(LocalizationKeys.Graph.SECTION_GROWTH_GRAPH),
                                                                         content =
                                                                                 RichTextContent(
                                                                                         blocks =
@@ -1332,7 +1350,7 @@ fun GrowthZoomView(
                                                                 HtmlSection(
                                                                         id = genUUID(),
                                                                         title =
-                                                                                "Données de poids",
+                                                                                translate(LocalizationKeys.Graph.SECTION_WEIGHT_DATA),
                                                                         content =
                                                                                 RichTextContent(
                                                                                         blocks =
@@ -1343,30 +1361,21 @@ fun GrowthZoomView(
                                                                                                                                 genUUID(),
                                                                                                                         headers =
                                                                                                                                 listOf(
-                                                                                                                                        "Date",
-                                                                                                                                        "Semaine depuis naissance",
-                                                                                                                                        "Poids (kg)"
+                                                                                                                                        translate(LocalizationKeys.Graph.HEADER_DATE),
+                                                                                                                                        translate(LocalizationKeys.Graph.AXIS_WEEKS_SINCE_BIRTH),
+                                                                                                                                        translate(LocalizationKeys.Graph.HEADER_SOURCE),
+                                                                                                                                        translate(LocalizationKeys.Graph.HEADER_WEIGHT)
                                                                                                                                 ),
                                                                                                                         rows =
                                                                                                                                 realPoints
                                                                                                                                         .map {
                                                                                                                                                 listOf(
-                                                                                                                                                        it
-                                                                                                                                                                .first
-                                                                                                                                                                .toString(),
-                                                                                                                                                        GraphFormattingUtils
-                                                                                                                                                                .formatDecimal(
-                                                                                                                                                                        it
-                                                                                                                                                                                .second
-                                                                                                                                                                                .toDouble(),
-                                                                                                                                                                        1
-                                                                                                                                                                ),
-                                                                                                                                                        GraphFormattingUtils
-                                                                                                                                                                .formatDecimal(
-                                                                                                                                                                        it
-                                                                                                                                                                                .third,
-                                                                                                                                                                        2
-                                                                                                                                                                )
+                                                                                                                                                        it.date.toString(),
+                                                                                                                                                        GraphFormattingUtils.formatDecimal(it.weeks.toDouble(), 1),
+                                                                                                                                                        if (it.isConsultation)
+                                                                                                                                                                translate(LocalizationKeys.Graph.SOURCE_CONSULTATION)
+                                                                                                                                                        else translate(LocalizationKeys.Graph.SOURCE_OTHER),
+                                                                                                                                                        GraphFormattingUtils.formatDecimal(it.weight, 2)
                                                                                                                                                 )
                                                                                                                                         }
                                                                                                                 )
@@ -1390,13 +1399,13 @@ fun GrowthZoomView(
                 ) {
                         Icon(Icons.Default.Share, contentDescription = null)
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Export PDF (croissance)")
+                        Text(translate(LocalizationKeys.Graph.EXPORT_PDF_GROWTH))
                 }
         }
 
         GraphCard(
-                titre = "Zoom sur la courbe de croissance",
-                sousTitre = "Poids en fonction du temps (semaines depuis la naissance)"
+                titre = translate(LocalizationKeys.Graph.GROWTH_ZOOM_TITLE),
+                sousTitre = translate(LocalizationKeys.Graph.GROWTH_ZOOM_SUBTITLE)
         ) {
                 XYGraph(
                         xAxisModel = FloatLinearAxisModel(
@@ -1406,8 +1415,8 @@ fun GrowthZoomView(
                         yAxisModel = KoalaPlotExtensions.createSmartYAxisModel(
                                 range = yRange
                         ),
-                        xAxisTitle = "Semaines depuis la naissance",
-                        yAxisTitle = "Poids (kg)",
+                        xAxisTitle = translate(LocalizationKeys.Graph.AXIS_WEEKS_SINCE_BIRTH),
+                        yAxisTitle = translate(LocalizationKeys.Graph.AXIS_WEIGHT),
                         modifier = Modifier.height(400.dp)
                 ) {
                         referenceCurves.forEach { (name, points) ->
@@ -1437,8 +1446,8 @@ fun GrowthZoomView(
                                         data =
                                                 realPoints.map {
                                                     Point(
-                                                            x = it.second,
-                                                            y = it.third.toFloat()
+                                                            x = it.weeks,
+                                                            y = it.weight.toFloat()
                                                     )
                                                 },
                                         symbol = {
@@ -1454,7 +1463,7 @@ fun GrowthZoomView(
 }
 
 fun generateGrowthGraphSvg(
-    realPoints: List<Triple<LocalDate, Float, Double>>,
+    realPoints: List<GrowthWeightPoint>,
     referenceCurves: List<Pair<String, List<Point<Float, Float>>>>,
     xRange: ClosedFloatingPointRange<Float>,
     yRange: ClosedFloatingPointRange<Float>,
@@ -1541,10 +1550,10 @@ fun generateGrowthGraphSvg(
     }
 
     sb.append(
-            "<text x='${width / 2}' y='${height - 5}' font-family='Arial' font-size='12' text-anchor='middle'>Semaines depuis la naissance</text>"
+            "<text x='${width / 2}' y='${height - 5}' font-family='Arial' font-size='12' text-anchor='middle'>${translate(LocalizationKeys.Graph.AXIS_WEEKS_SINCE_BIRTH)}</text>"
     )
     sb.append(
-            "<text x='10' y='${height / 2}' font-family='Arial' font-size='12' text-anchor='middle' transform='rotate(-90 10 ${height / 2})'>Poids (kg)</text>"
+            "<text x='10' y='${height / 2}' font-family='Arial' font-size='12' text-anchor='middle' transform='rotate(-90 10 ${height / 2})'>${translate(LocalizationKeys.Graph.AXIS_WEIGHT)}</text>"
     )
 
     referenceCurves.forEach { (name, points) ->
@@ -1568,9 +1577,9 @@ fun generateGrowthGraphSvg(
         }
     }
 
-    realPoints.forEach { (_, week, weight) ->
-        val cx = scaleX(week)
-        val cy = scaleY(weight.toFloat())
+    realPoints.forEach { p ->
+        val cx = scaleX(p.weeks)
+        val cy = scaleY(p.weight.toFloat())
         sb.append("<circle cx='$cx' cy='$cy' r='4' fill='blue' />")
     }
 

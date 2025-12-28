@@ -21,6 +21,8 @@ import fr.vetbrain.vetnutri_mp.Data.AlimentRation
 import fr.vetbrain.vetnutri_mp.Data.Ration
 import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
 import fr.vetbrain.vetnutri_mp.Enumer.*
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailViewModel
@@ -75,7 +77,7 @@ fun SectionAlimentsRation(
                                 verticalAlignment = Alignment.CenterVertically
                         ) {
                                 Text(
-                                        text = "Aliments de la ration",
+                                        text = translate(LocalizationKeys.AnalNut.RATION_ALIMENTS_TITLE),
                                         style = MaterialTheme.typography.subtitle2,
                                         color = VetNutriColors.Primary
                                 )
@@ -87,7 +89,7 @@ fun SectionAlimentsRation(
                                         // Sauvegarder la ration comme recette
                                         IconWithTooltip(
                                                 imageVector = Icons.Filled.Save,
-                                                contentDescription = "Enregistrer comme recette",
+                                                contentDescription = translate(LocalizationKeys.AnalNut.SAVE_AS_RECIPE),
                                                 tint =
                                                         if (selectedRation?.alimentMutableList
                                                                         ?.isNotEmpty() == true
@@ -98,7 +100,7 @@ fun SectionAlimentsRation(
                                                                         alpha = 0.5f
                                                                 ),
                                                 modifier = Modifier.size(AppSizes.iconSizeXSmall),
-                                                tooltip = "Enregistrer comme recette",
+                                                tooltip = translate(LocalizationKeys.AnalNut.SAVE_AS_RECIPE),
                                                 enabled =
                                                         selectedRation
                                                                 ?.alimentMutableList
@@ -110,7 +112,7 @@ fun SectionAlimentsRation(
                                         // Bouton pour l'ajustement multi-nutriments
                                         IconWithTooltip(
                                                 imageVector = Icons.Filled.Tune,
-                                                contentDescription = "Ajustement multi-nutriments",
+                                                contentDescription = translate(LocalizationKeys.AnalNut.MULTI_NUTRIENT_ADJUSTMENT),
                                                 tint =
                                                         if (selectedRation?.alimentMutableList
                                                                         ?.isNotEmpty() == true
@@ -121,7 +123,7 @@ fun SectionAlimentsRation(
                                                                         alpha = 0.5f
                                                                 ),
                                                 modifier = Modifier.size(AppSizes.iconSizeXSmall),
-                                                tooltip = "Ajustement multi-nutriments",
+                                                tooltip = translate(LocalizationKeys.AnalNut.MULTI_NUTRIENT_ADJUSTMENT),
                                                 enabled =
                                                         selectedRation
                                                                 ?.alimentMutableList
@@ -134,7 +136,7 @@ fun SectionAlimentsRation(
                                         IconWithTooltip(
                                                 imageVector = Icons.Filled.Balance,
                                                 contentDescription =
-                                                        "Ajustement rapide multi-nutriments",
+                                                        translate(LocalizationKeys.AnalNut.QUICK_MULTI_NUTRIENT_ADJUSTMENT),
                                                 tint =
                                                         if (selectedRation != null &&
                                                                         referenceUtilisee != null &&
@@ -148,7 +150,7 @@ fun SectionAlimentsRation(
                                                                         alpha = 0.5f
                                                                 ),
                                                 modifier = Modifier.size(AppSizes.iconSizeXSmall),
-                                                tooltip = "Ajustement rapide multi-nutriments",
+                                                tooltip = translate(LocalizationKeys.AnalNut.QUICK_MULTI_NUTRIENT_ADJUSTMENT),
                                                 enabled =
                                                         selectedRation !=
                                                                 null &&
@@ -225,19 +227,19 @@ fun SectionAlimentsRation(
                                                                                                                                                         adjustedAliments
                                                                                                                                                 )
                                                                                                                                         showSnackbar(
-                                                                                                                                                "Ajustement rapide réussi : ${result.message}"
+                                                                                                                                                translate(LocalizationKeys.AnalNut.QUICK_ADJUST_SUCCESS, result.message)
                                                                                                                                         )
                                                                                                                                 }
                                                                                                                 } else {
                                                                                                                         showSnackbar(
-                                                                                                                                "Erreur lors de l'ajustement : ${result.message}"
+                                                                                                                                translate(LocalizationKeys.AnalNut.ADJUST_ERROR, result.message)
                                                                                                                         )
                                                                                                                 }
                                                                                                         } catch (
                                                                                                                 e:
                                                                                                                         Exception) {
                                                                                                                 showSnackbar(
-                                                                                                                        "Erreur lors de l'ajustement : ${e.message}"
+                                                                                                                        translate(LocalizationKeys.AnalNut.ADJUST_ERROR, e.message ?: "Unknown error")
                                                                                                                 )
                                                                                                         }
                                                                                                 }
@@ -248,20 +250,20 @@ fun SectionAlimentsRation(
                                         // Ouvrir le gestionnaire de recettes
                                         IconWithTooltip(
                                                 imageVector = Icons.Filled.MenuBook,
-                                                contentDescription = "Ouvrir les recettes",
+                                                contentDescription = translate(LocalizationKeys.AnalNut.OPEN_RECIPES),
                                                 tint = VetNutriColors.Primary,
                                                 modifier = Modifier.size(AppSizes.iconSizeXSmall),
-                                                tooltip = "Ouvrir les recettes",
+                                                tooltip = translate(LocalizationKeys.AnalNut.OPEN_RECIPES),
                                                 onClick = onOpenRecipeDialog
                                         )
 
                                         // Bouton pour ajouter un aliment
                                         IconWithTooltip(
                                                 imageVector = Icons.Filled.Add,
-                                                contentDescription = "Ajouter un aliment",
+                                                contentDescription = translate(LocalizationKeys.AnalNut.ADD_ALIMENT),
                                                 tint = VetNutriColors.Primary,
                                                 modifier = Modifier.size(AppSizes.iconSizeXSmall),
-                                                tooltip = "Ajouter un aliment",
+                                                tooltip = translate(LocalizationKeys.AnalNut.ADD_ALIMENT),
                                                 onClick = onAddAliment
                                         )
                                 }
@@ -272,12 +274,12 @@ fun SectionAlimentsRation(
                         // Liste des aliments
                         if (selectedRation == null) {
                                 CenteredMessage(
-                                        message = "Aucune ration sélectionnée",
+                                        message = translate(LocalizationKeys.AnalNut.NO_RATION_SELECTED),
                                         modifier = Modifier.fillMaxWidth()
                                 )
                         } else if (selectedRation.alimentMutableList.isEmpty()) {
                                 CenteredMessage(
-                                        message = "Aucun aliment dans cette ration",
+                                        message = translate(LocalizationKeys.AnalNut.NO_ALIMENT_IN_RATION),
                                         modifier = Modifier.fillMaxWidth()
                                 )
                         } else {

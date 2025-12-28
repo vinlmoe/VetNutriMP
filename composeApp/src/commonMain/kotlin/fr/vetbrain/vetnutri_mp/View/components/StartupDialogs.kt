@@ -12,6 +12,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.DatabaseStatus
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 
 /**
  * Dialog optimisé pour la mise à jour de la base de données
@@ -28,14 +30,14 @@ fun UpdateDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = "Mise à jour de la base de données",
+                text = translate(LocalizationKeys.Database.UPDATE_TITLE),
                 fontWeight = FontWeight.Bold
             )
         },
         text = {
             Column {
                 Text(
-                    text = "La base de données nécessite une mise à jour pour fonctionner correctement.",
+                    text = translate(LocalizationKeys.Database.UPDATE_MSG),
                     style = MaterialTheme.typography.body1,
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
@@ -72,7 +74,7 @@ fun UpdateDialog(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Mise à jour en cours...",
+                            text = translate(LocalizationKeys.Database.UPDATING),
                             style = MaterialTheme.typography.body2,
                             color = VetNutriColors.Secondary
                         )
@@ -88,7 +90,7 @@ fun UpdateDialog(
                     backgroundColor = VetNutriColors.Primary
                 )
             ) {
-                Text("Mettre à jour")
+                Text(translate(LocalizationKeys.Update.UPDATE_BUTTON))
             }
         },
         dismissButton = {
@@ -96,7 +98,7 @@ fun UpdateDialog(
                 onClick = onDismiss,
                 enabled = !isUpdatingDatabase
             ) {
-                Text("Annuler")
+                Text(translate(LocalizationKeys.General.CANCEL))
             }
         },
         modifier = modifier
@@ -116,14 +118,14 @@ fun TermsDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = "Conditions générales d'utilisation",
+                text = translate(LocalizationKeys.Terms.TITLE),
                 fontWeight = FontWeight.Bold
             )
         },
         text = {
             Column {
                 Text(
-                    text = "⚠️ IMPORTANT : Ces conditions doivent être acceptées à CHAQUE démarrage",
+                    text = translate(LocalizationKeys.Terms.WARNING),
                     style = MaterialTheme.typography.body2,
                     color = MaterialTheme.colors.error,
                     fontWeight = FontWeight.Bold,
@@ -131,34 +133,34 @@ fun TermsDialog(
                 )
 
                 Text(
-                    text = "En utilisant ce logiciel, vous acceptez les conditions suivantes :",
+                    text = translate(LocalizationKeys.Terms.ACCEPT_HEADER),
                     style = MaterialTheme.typography.body1,
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
 
                 Text(
-                    text = "• Ce logiciel est destiné aux professionnels de santé vétérinaire",
+                    text = translate(LocalizationKeys.Terms.CONDITION_PRO),
                     style = MaterialTheme.typography.body2,
                     modifier = Modifier.padding(bottom = 4.dp)
                 )
                 Text(
-                    text = "• Les calculs et recommandations sont fournis à titre informatif",
+                    text = translate(LocalizationKeys.Terms.CONDITION_INFO),
                     style = MaterialTheme.typography.body2,
                     modifier = Modifier.padding(bottom = 4.dp)
                 )
                 Text(
-                    text = "• La responsabilité de l'utilisateur reste entière dans l'application",
+                    text = translate(LocalizationKeys.Terms.CONDITION_RESPONSIBILITY),
                     style = MaterialTheme.typography.body2,
                     modifier = Modifier.padding(bottom = 4.dp)
                 )
                 Text(
-                    text = "• Les données saisies restent confidentielles et locales",
+                    text = translate(LocalizationKeys.Terms.CONDITION_PRIVACY),
                     style = MaterialTheme.typography.body2,
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
 
                 Text(
-                    text = "Développé par S. Lefebvre, Dr Vétérinaire, PhD, HDR, Maître de conférence en nutrition à VetAgro Sup.",
+                    text = translate(LocalizationKeys.Terms.CREDITS),
                     style = MaterialTheme.typography.caption,
                     color = VetNutriColors.Secondary,
                     textAlign = TextAlign.Center
@@ -172,12 +174,12 @@ fun TermsDialog(
                     backgroundColor = VetNutriColors.Primary
                 )
             ) {
-                Text("J'accepte les conditions")
+                Text(translate(LocalizationKeys.Terms.ACCEPT_BUTTON))
             }
         },
         dismissButton = {
             OutlinedButton(onClick = onDismiss) {
-                Text("Fermer")
+                Text(translate(LocalizationKeys.AnalNut.CLOSE))
             }
         }
     )
@@ -198,21 +200,21 @@ fun JsonUpdateDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = "Mise à jour des données JSON",
+                text = translate(LocalizationKeys.Update.JSON_TITLE),
                 fontWeight = FontWeight.Bold
             )
         },
         text = {
             Column {
                 Text(
-                    text = "Une nouvelle version des données JSON est disponible.",
+                    text = translate(LocalizationKeys.Update.JSON_MSG),
                     style = MaterialTheme.typography.body1,
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
                 
                 currentJsonVersion?.let { current ->
                     Text(
-                        text = "Version actuelle : $current",
+                        text = translate(LocalizationKeys.Update.JSON_CURRENT, current),
                         style = MaterialTheme.typography.body2,
                         modifier = Modifier.padding(bottom = 4.dp)
                     )
@@ -220,7 +222,7 @@ fun JsonUpdateDialog(
                 
                 newJsonVersion?.let { new ->
                     Text(
-                        text = "Nouvelle version : $new",
+                        text = translate(LocalizationKeys.Update.JSON_NEW, new),
                         style = MaterialTheme.typography.body2,
                         fontWeight = FontWeight.Medium,
                         color = VetNutriColors.Primary
@@ -235,12 +237,12 @@ fun JsonUpdateDialog(
                     backgroundColor = VetNutriColors.Primary
                 )
             ) {
-                Text("Mettre à jour")
+                Text(translate(LocalizationKeys.Update.UPDATE_BUTTON))
             }
         },
         dismissButton = {
             OutlinedButton(onClick = onDismiss) {
-                Text("Plus tard")
+                Text(translate(LocalizationKeys.Update.LATER_BUTTON))
             }
         },
         modifier = modifier

@@ -25,6 +25,8 @@ import io.github.koalaplot.core.*
 import io.github.koalaplot.core.pie.*
 import io.github.koalaplot.core.util.ExperimentalKoalaPlotApi
 import fr.vetbrain.vetnutri_mp.Data.NutrientPieData
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 
 /**
  * Composant graphique en secteurs pour afficher la répartition des nutriments
@@ -59,7 +61,7 @@ fun NutrientPieChart(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "Aucune donnée nutritionnelle disponible",
+                    text = translate(LocalizationKeys.Chart.NO_DATA),
                     style = MaterialTheme.typography.body2,
                     color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
                 )
@@ -78,7 +80,7 @@ fun NutrientPieChart(
         ) {
             // Titre du graphique
             Text(
-                text = "Répartition des nutriments",
+                text = translate(LocalizationKeys.Chart.DISTRIBUTION_TITLE),
                 style = MaterialTheme.typography.subtitle1,
                 fontWeight = FontWeight.Bold,
                 color = VetNutriColors.Primary
@@ -251,12 +253,12 @@ private fun parseColor(hexColor: String): Color {
  */
 private fun getNutrientDisplayName(nutrient: NutrientMain): String {
     return when (nutrient) {
-        NutrientMain.HUMIDITE -> "Humidité"
-        NutrientMain.PROTEINE -> "Protéines"
-        NutrientMain.LIPIDE -> "Lipides"
-        NutrientMain.ENA -> "ENA"
-        NutrientMain.CENDRE -> "Cendres"
-        NutrientMain.CELLULOSE -> "Cellulose"
+        NutrientMain.HUMIDITE -> translate(LocalizationKeys.Chart.MOISTURE)
+        NutrientMain.PROTEINE -> translate(LocalizationKeys.Chart.PROTEIN)
+        NutrientMain.LIPIDE -> translate(LocalizationKeys.Chart.FAT)
+        NutrientMain.ENA -> translate(LocalizationKeys.Chart.ENA)
+        NutrientMain.CENDRE -> translate(LocalizationKeys.Chart.ASH)
+        NutrientMain.CELLULOSE -> translate(LocalizationKeys.Chart.FIBER)
         else -> nutrient.name
     }
 }

@@ -27,6 +27,7 @@ import fr.vetbrain.vetnutri_mp.Components.IconButtonWithTooltip
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Animal
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.AnimalList
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.General
 import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Localization.translateEnum
@@ -123,7 +124,7 @@ fun AnimalListView(
                                                         backgroundColor = VetNutriColors.Primary,
                                                         contentColor = VetNutriColors.OnPrimary
                                                 )
-                                ) { Text("Liste des aliments") }
+                                ) { Text(translate(AnimalList.FOOD_LIST)) }
 
                                 // Bouton pour accéder aux données de calcul
                                 Button(
@@ -134,7 +135,7 @@ fun AnimalListView(
                                                         backgroundColor = VetNutriColors.Primary,
                                                         contentColor = VetNutriColors.OnPrimary
                                                 )
-                                ) { Text("Données de calcul") }
+                                ) { Text(translate(AnimalList.CALCULATION_DATA)) }
 
                                 // Bouton Import Rapide
                                 Button(
@@ -145,7 +146,7 @@ fun AnimalListView(
                                                         backgroundColor = VetNutriColors.Secondary,
                                                         contentColor = Color.White
                                                 )
-                                ) { Text("Import Rapide") }
+                                ) { Text(translate(AnimalList.QUICK_IMPORT)) }
 
                                 // Analyses croisées
                                 Button(
@@ -156,7 +157,7 @@ fun AnimalListView(
                                                         backgroundColor = VetNutriColors.Primary,
                                                         contentColor = VetNutriColors.OnPrimary
                                                 )
-                                ) { Text("Analyses croisées") }
+                                ) { Text(translate(AnimalList.CROSS_ANALYSIS)) }
                         }
 
                         Spacer(modifier = Modifier.height(16.dp))
@@ -173,7 +174,7 @@ fun AnimalListView(
                                         modifier = Modifier.weight(2f),
                                         placeholder = {
                                                 Text(
-                                                        "${General.SEARCH.translate()} (nom, propriétaire, race)"
+                                                        "${General.SEARCH.translate()} (${Animal.NAME.translate()}, ${Animal.OWNER.translate()}, ${Animal.BREED.translate()})"
                                                 )
                                         },
                                         leadingIcon = {
@@ -223,9 +224,9 @@ fun AnimalListView(
                                                         if (searchQuery.isEmpty() &&
                                                                         selectedEspece == null
                                                         )
-                                                                "Aucun animal trouvé"
+                                                                translate(AnimalList.NO_ANIMAL_FOUND)
                                                         else
-                                                                "Aucun résultat pour les filtres sélectionnés",
+                                                                translate(AnimalList.NO_FILTER_RESULTS),
                                                 style = MaterialTheme.typography.body1
                                         )
                                 }
@@ -286,14 +287,14 @@ fun AnimalListView(
 
             AlertDialog(
                 onDismissRequest = { showImportDialog = false },
-                title = { Text("Import Rapide via Internet") },
+                title = { Text(translate(AnimalList.QUICK_IMPORT_TITLE)) },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                        Text("Entrez le code de partage ou l'URL jsonbin.io :")
+                        Text(translate(AnimalList.ENTER_CODE))
                         OutlinedTextField(
                             value = importCode,
                             onValueChange = { importCode = it },
-                            label = { Text("Code ou URL") },
+                            label = { Text(translate(AnimalList.CODE_OR_URL)) },
                             modifier = Modifier.fillMaxWidth(),
                             singleLine = true
                         )
@@ -304,7 +305,7 @@ fun AnimalListView(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.Center
                             ) {
-                                Text("- OU -", color = Color.Gray)
+                                Text(translate(General.OR), color = Color.Gray)
                             }
 
                             Button(
@@ -314,7 +315,7 @@ fun AnimalListView(
                             ) {
                                 Icon(Icons.Default.QrCodeScanner, contentDescription = null)
                                 Spacer(Modifier.width(8.dp))
-                                Text("Scanner un QR Code")
+                                Text(translate(AnimalList.SCAN_QR))
                             }
                         }
                     }
@@ -340,13 +341,13 @@ fun AnimalListView(
         }
 
         if (apiImporting) {
-             AlertDialog(
+            AlertDialog(
                 onDismissRequest = {},
-                title = { Text("Importation en cours...") },
+                title = { Text(translate(General.IMPORTING)) },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         LinearProgressIndicator(progress = apiProgress.toFloat(), modifier = Modifier.fillMaxWidth())
-                        Text("Progression: ${(apiProgress * 100).toInt()}%")
+                        Text("${translate("progress")}: ${(apiProgress * 100).toInt()}%") // Assuming progress is not localized or generic
 
                         Box(modifier = Modifier.fillMaxWidth().height(100.dp).background(Color.LightGray.copy(alpha = 0.3f)).padding(4.dp)) {
                             LazyColumn {
@@ -368,14 +369,14 @@ fun AnimalListView(
                     viewModel.resetImportResult() // Reset result
                 },
                 title = {
-                    Text(if (apiImportResult is AnimalListViewModel.ImportResult.Success) "Succès" else "Erreur")
+                    Text(if (apiImportResult is AnimalListViewModel.ImportResult.Success) translate(General.SUCCESS) else translate(General.ERROR))
                 },
                 text = {
                     when (apiImportResult) {
                         is AnimalListViewModel.ImportResult.Success -> {
                             Column {
-                                Text("Import terminé avec succès!")
-                                Text("Total éléments: ${apiImportResult.count}")
+                                Text(translate(General.IMPORT_SUCCESS))
+                                Text("${translate(General.TOTAL_ELEMENTS)} ${apiImportResult.count}")
                             }
                         }
                         is AnimalListViewModel.ImportResult.Error -> {

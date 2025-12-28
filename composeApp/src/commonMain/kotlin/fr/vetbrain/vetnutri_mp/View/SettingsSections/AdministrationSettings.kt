@@ -18,6 +18,8 @@ import fr.vetbrain.vetnutri_mp.View.SettingsComponents.FullScreenProgressIndicat
 import fr.vetbrain.vetnutri_mp.View.SettingsComponents.SettingsSection
 import fr.vetbrain.vetnutri_mp.View.SettingsComponents.WarningSection
 import fr.vetbrain.vetnutri_mp.ViewModel.SettingsViewModel
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import kotlinx.coroutines.launch
 
 /**
@@ -55,8 +57,8 @@ fun AdministrationSettings(
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(24.dp)) {
         // Section d'administration
         SettingsSection(
-                title = "Administration de la base de données",
-                subtitle = "Actions d'administration et de maintenance de la base de données",
+                title = translate(LocalizationKeys.Administration.TITLE),
+                subtitle = translate(LocalizationKeys.Administration.SUBTITLE),
                 icon = Icons.Default.AdminPanelSettings,
                 content = {
                     Column(
@@ -74,18 +76,18 @@ fun AdministrationSettings(
                                             when (result) {
                                                 is SettingsViewModel.ImportResult.Success -> {
                                                     autoImportResult =
-                                                            "✅ Import automatique réussi: ${result.count} éléments importés"
+                                                            translate(LocalizationKeys.Administration.AUTO_IMPORT_SUCCESS, result.count.toString())
                                                     // Rafraîchir les listes après l'import
                                                     onAnimalListRefresh()
                                                     onFoodListRefresh()
                                                 }
                                                 is SettingsViewModel.ImportResult.Error -> {
                                                     autoImportResult =
-                                                            "❌ Erreur lors de l'import: ${result.message}"
+                                                            translate(LocalizationKeys.Administration.AUTO_IMPORT_ERROR, result.message)
                                                 }
                                             }
                                         } catch (e: Exception) {
-                                            autoImportResult = "❌ Erreur inattendue: ${e.message}"
+                                            autoImportResult = translate(LocalizationKeys.Administration.UNEXPECTED_ERROR, e.message ?: "")
                                         } finally {
                                             isAutoImporting = false
                                         }
@@ -114,8 +116,8 @@ fun AdministrationSettings(
                             }
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                    if (isAutoImporting) "Import en cours..."
-                                    else "Relancer l'import automatique des données initiales"
+                                    if (isAutoImporting) translate(LocalizationKeys.Administration.AUTO_IMPORT_RUNNING)
+                                    else translate(LocalizationKeys.Administration.AUTO_IMPORT_ACTION)
                             )
                         }
 
@@ -134,7 +136,7 @@ fun AdministrationSettings(
                                     modifier = Modifier.size(20.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Gérer les sauvegardes")
+                            Text(translate(LocalizationKeys.Administration.MANAGE_BACKUPS))
                         }
 
                         // Affichage du résultat de l'import automatique
@@ -164,7 +166,7 @@ fun AdministrationSettings(
                                     IconButton(onClick = { autoImportResult = null }) {
                                         Icon(
                                                 Icons.Default.Delete,
-                                                contentDescription = "Fermer",
+                                                contentDescription = translate(LocalizationKeys.AnalNut.CLOSE),
                                                 tint = Color.Gray
                                         )
                                     }
@@ -174,9 +176,8 @@ fun AdministrationSettings(
 
                         // Avertissement général
                         WarningSection(
-                                title = "⚠️ Actions irréversibles",
-                                message =
-                                        "Ces actions sont irréversibles et supprimeront définitivement les données. Utilisez avec précaution."
+                                title = translate(LocalizationKeys.Administration.IRREVERSIBLE_TITLE),
+                                message = translate(LocalizationKeys.Administration.IRREVERSIBLE_MSG)
                         )
 
                         // Boutons d'action
@@ -197,7 +198,7 @@ fun AdministrationSettings(
                                         modifier = Modifier.size(20.dp)
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text("Vider la base de données des aliments")
+                                Text(translate(LocalizationKeys.Administration.CLEAR_FOODS))
                             }
 
                             // Supprimer les animaux
@@ -216,7 +217,7 @@ fun AdministrationSettings(
                                         modifier = Modifier.size(20.dp)
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text("Vider la base de données des animaux")
+                                Text(translate(LocalizationKeys.Administration.CLEAR_ANIMALS))
                             }
 
                             // Supprimer les références nutritionnelles
@@ -235,7 +236,7 @@ fun AdministrationSettings(
                                         modifier = Modifier.size(20.dp)
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text("Vider la base de données des références nutritionnelles")
+                                Text(translate(LocalizationKeys.Administration.CLEAR_REFS))
                             }
 
                             // Supprimer les équations
@@ -254,7 +255,7 @@ fun AdministrationSettings(
                                         modifier = Modifier.size(20.dp)
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text("Vider la base de données des équations")
+                                Text(translate(LocalizationKeys.Administration.CLEAR_EQUATIONS))
                             }
 
                             // Supprimer les bibliographies
@@ -273,7 +274,7 @@ fun AdministrationSettings(
                                         modifier = Modifier.size(20.dp)
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text("Vider la base de données des bibliographies")
+                                Text(translate(LocalizationKeys.Administration.CLEAR_BIBLIO))
                             }
                         }
                     }

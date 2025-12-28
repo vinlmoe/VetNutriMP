@@ -27,6 +27,8 @@ import fr.vetbrain.vetnutri_mp.Data.Ration
 import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
 import fr.vetbrain.vetnutri_mp.Data.ValeurNutritionnelle
 import fr.vetbrain.vetnutri_mp.Enumer.*
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Utils.GraphFormattingUtils
 import fr.vetbrain.vetnutri_mp.Utils.NumberUtils
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
@@ -232,7 +234,7 @@ fun NutrientDetailDialog(
         AlertDialog(
                 modifier = Modifier.fillMaxWidth().fillMaxHeight(0.9f),
                 onDismissRequest = onDismiss,
-                title = { DialogTitre(titre = "Détails : $nom", onDismiss = onDismiss) },
+                title = { DialogTitre(titre = translate(LocalizationKeys.AnalNut.DETAILS_TITLE, nom), onDismiss = onDismiss) },
                 text = {
                         Column(modifier = Modifier.fillMaxWidth().fillMaxHeight()) {
 
@@ -246,7 +248,7 @@ fun NutrientDetailDialog(
                                         referenceUtilisee = referenceUtilisee
                                 )
                                 Text(
-                                        text = "Références nutritionnelles",
+                                        text = translate(LocalizationKeys.AnalNut.NUTRITIONAL_REFERENCES),
                                         style = MaterialTheme.typography.subtitle1,
                                         fontWeight = FontWeight.Bold,
                                         color = VetNutriColors.Primary
@@ -285,7 +287,7 @@ fun NutrientDetailDialog(
                                                         item {
                                                                 ReferenceCard(
                                                                         titre =
-                                                                                "Références nutritionnelles - ${ref.nom}",
+                                                                                "${translate(LocalizationKeys.AnalNut.NUTRITIONAL_REFERENCES)} - ${ref.nom}",
                                                                         reference = ref,
                                                                         valeurNutritionnelle =
                                                                                 valeurNutritionnelle,
@@ -306,7 +308,6 @@ fun NutrientDetailDialog(
                                         // Section des références maladies (après les références
                                         // générales)
                                         if (referencesMaladies.isNotEmpty()) {
-                                                
                                                 referencesMaladies.forEach { refMaladie ->
                                                         val nutrient: Nutrient =
                                                                 valeurNutritionnelle.nutriment
@@ -328,7 +329,7 @@ fun NutrientDetailDialog(
                                                                 item {
                                                                         ReferenceCard(
                                                                                 titre =
-                                                                                        "Références maladies - ${refMaladie.nom}",
+                                                                                        "${translate(LocalizationKeys.AnalNut.DISEASE_REFERENCES)} - ${refMaladie.nom}",
                                                                                 reference =
                                                                                         refMaladie,
                                                                                 valeurNutritionnelle =
@@ -479,13 +480,13 @@ fun ReferenceBulletGraph(
                         ) {
                                 Icon(
                                         imageVector = Icons.Filled.Info,
-                                        contentDescription = "Cliquer pour plus de détails",
+                                        contentDescription = translate(LocalizationKeys.AnalNut.CLICK_DETAILS),
                                         tint = VetNutriColors.Primary.copy(alpha = 0.7f),
                                         modifier = Modifier.size(16.dp)
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text(
-                                        text = "Cliquer pour plus de détails",
+                                        text = translate(LocalizationKeys.AnalNut.CLICK_DETAILS),
                                         style = MaterialTheme.typography.caption,
                                         color = VetNutriColors.Primary.copy(alpha = 0.7f)
                                 )

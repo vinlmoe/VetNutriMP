@@ -75,10 +75,10 @@ fun ConsultationsView(
         if (showNoReferenceDialog) {
             AlertDialog(
                     onDismissRequest = { showNoReferenceDialog = false },
-                    title = { Text("Référence générale manquante") },
+                    title = { Text(translate(Consultation.MISSING_REF_TITLE)) },
                     text = {
                         Text(
-                                "Veuillez sélectionner une référence générale avant de valider la consultation."
+                                translate(Consultation.MISSING_REF_MESSAGE)
                         )
                     },
                     confirmButton = {
@@ -162,7 +162,7 @@ private fun ConsultationsMainView(
                 ) {
                     Icon(
                             imageVector = AppIcons.Add,
-                            contentDescription = "Ajouter une consultation",
+                            contentDescription = translate(Consultation.ADD),
                             tint = VetNutriColors.OnPrimary
                     )
                 }
@@ -183,7 +183,7 @@ private fun ConsultationsMainView(
                 )
 
                 Text(
-                        text = "Consultations",
+                        text = translate(Consultation.TITLE),
                         style = MaterialTheme.typography.h6,
                         color = VetNutriColors.Primary
                 )
@@ -195,7 +195,7 @@ private fun ConsultationsMainView(
                                 contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                    text = "Aucune consultation",
+                                    text = translate(Consultation.NONE),
                                     style = MaterialTheme.typography.body1,
                                     color = Color.Gray
                             )
@@ -275,7 +275,7 @@ private fun ConsultationsMainView(
             } else {
                 // Message indiquant de sélectionner une consultation
                 CenteredMessage(
-                        message = "Sélectionnez une consultation pour afficher les détails",
+                        message = translate(Consultation.SELECT_DETAIL_HINT),
                         modifier = Modifier.weight(0.6f).fillMaxHeight()
                 )
             }

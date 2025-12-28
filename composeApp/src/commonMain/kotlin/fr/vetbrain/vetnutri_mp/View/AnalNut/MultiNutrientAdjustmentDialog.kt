@@ -27,6 +27,8 @@ import fr.vetbrain.vetnutri_mp.Enumer.*
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.TextUtils
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import kotlinx.coroutines.launch
 
 /** Données d'ajustement pour un aliment spécifique */
@@ -147,7 +149,7 @@ fun MultiNutrientAdjustmentView(
                                 verticalAlignment = Alignment.CenterVertically
                         ) {
                                 Text(
-                                        text = "Ajustement Multi-Nutriments",
+                                        text = translate(LocalizationKeys.AnalNut.ADJUSTMENT_TITLE),
                                         style = MaterialTheme.typography.h5,
                                         fontWeight = FontWeight.Bold
                                 )
@@ -155,7 +157,7 @@ fun MultiNutrientAdjustmentView(
                                 IconButton(onClick = onDismiss, modifier = Modifier.size(48.dp)) {
                                         Icon(
                                                 imageVector = Icons.Default.Close,
-                                                contentDescription = "Fermer",
+                                                contentDescription = translate(LocalizationKeys.AnalNut.CLOSE),
                                                 tint = MaterialTheme.colors.onSurface
                                         )
                                 }
@@ -169,7 +171,7 @@ fun MultiNutrientAdjustmentView(
                         ) {
                                 Column(modifier = Modifier.padding(AppSizes.paddingMedium)) {
                                         Text(
-                                                text = "Actions rapides",
+                                                text = translate(LocalizationKeys.AnalNut.QUICK_ACTIONS),
                                                 style = MaterialTheme.typography.subtitle1,
                                                 fontWeight = FontWeight.Bold,
                                                 modifier =
@@ -200,7 +202,7 @@ fun MultiNutrientAdjustmentView(
                                                                 imageVector =
                                                                         Icons.Default.LockPerson,
                                                                 contentDescription =
-                                                                        "Tout verrouiller",
+                                                                        translate(LocalizationKeys.AnalNut.LOCK_ALL),
                                                                 tint = VetNutriColors.Primary
                                                         )
                                                 }
@@ -222,7 +224,7 @@ fun MultiNutrientAdjustmentView(
                                                                 imageVector =
                                                                         Icons.Default.LockOpen,
                                                                 contentDescription =
-                                                                        "Tout déverrouiller",
+                                                                        translate(LocalizationKeys.AnalNut.UNLOCK_ALL),
                                                                 tint = VetNutriColors.Secondary
                                                         )
                                                 }
@@ -255,7 +257,7 @@ fun MultiNutrientAdjustmentView(
                                                                 imageVector =
                                                                         Icons.Default.AutoAwesome,
                                                                 contentDescription =
-                                                                        "Sélection automatique",
+                                                                        translate(LocalizationKeys.AnalNut.AUTO_SELECT),
                                                                 tint = VetNutriColors.Primary
                                                         )
                                                 }
@@ -292,7 +294,7 @@ fun MultiNutrientAdjustmentView(
                                                         Icon(
                                                                 imageVector = Icons.Default.Refresh,
                                                                 contentDescription =
-                                                                        "Réinitialiser",
+                                                                        translate(LocalizationKeys.AnalNut.RESET),
                                                                 tint = VetNutriColors.Error
                                                         )
                                                 }
@@ -308,7 +310,7 @@ fun MultiNutrientAdjustmentView(
                         ) {
                                 Column(modifier = Modifier.padding(AppSizes.paddingMedium)) {
                                         Text(
-                                                text = "Configuration des aliments",
+                                                text = translate(LocalizationKeys.AnalNut.FOOD_CONFIG),
                                                 style = MaterialTheme.typography.subtitle1,
                                                 fontWeight = FontWeight.Bold,
                                                 modifier =
@@ -402,7 +404,7 @@ fun MultiNutrientAdjustmentView(
                                                 modifier = Modifier.padding(AppSizes.paddingMedium)
                                         ) {
                                                 Text(
-                                                        text = "Niveaux de référence par nutriment",
+                                                        text = translate(LocalizationKeys.AnalNut.REF_LEVELS_BY_NUTRIENT),
                                                         style = MaterialTheme.typography.subtitle1,
                                                         fontWeight = FontWeight.Bold,
                                                         modifier =
@@ -492,7 +494,7 @@ fun MultiNutrientAdjustmentView(
                         ) {
                                 Column(modifier = Modifier.padding(AppSizes.paddingMedium)) {
                                         Text(
-                                                text = "Actions",
+                                                text = translate(LocalizationKeys.AnalNut.ACTIONS),
                                                 style = MaterialTheme.typography.subtitle1,
                                                 fontWeight = FontWeight.Bold,
                                                 modifier =
@@ -510,7 +512,7 @@ fun MultiNutrientAdjustmentView(
                                                                 scope.launch {
                                                                         isProcessing = true
                                                                         processingMessage =
-                                                                                "Calcul en cours..."
+                                                                                translate(LocalizationKeys.AnalNut.CALCULATING)
                                                                         preview =
                                                                                 calculerAjustement(
                                                                                         ration =
@@ -541,14 +543,14 @@ fun MultiNutrientAdjustmentView(
                                                                                         null
                                                                         },
                                                         modifier = Modifier.weight(1f)
-                                                ) { Text("Prévisualiser") }
+                                                ) { Text(translate(LocalizationKeys.AnalNut.PREVIEW)) }
 
                                                 Button(
                                                         onClick = {
                                                                 scope.launch {
                                                                         isProcessing = true
                                                                         processingMessage =
-                                                                                "Ajustement en cours..."
+                                                                                translate(LocalizationKeys.AnalNut.ADJUSTING_MSG)
                                                                         val result =
                                                                                 calculerAjustement(
                                                                                         ration =
@@ -580,14 +582,14 @@ fun MultiNutrientAdjustmentView(
                                                                                         null
                                                                         },
                                                         modifier = Modifier.weight(1f)
-                                                ) { Text("Ajuster") }
+                                                ) { Text(translate(LocalizationKeys.AnalNut.ADJUST)) }
 
                                                 // Nouveau bouton: Ajuster l'énergie en conservant les proportions (quantités égales)
                                                 OutlinedButton(
                                                         onClick = {
                                                                 scope.launch {
                                                                         isProcessing = true
-                                                                        processingMessage = "Ajustement énergie (quantités égales) en cours..."
+                                                                        processingMessage = translate(LocalizationKeys.AnalNut.ADJUSTING_ENERGY_MSG)
 
                                                                         try {
                                                                                 // Calculer l'énergie actuelle de la ration
@@ -605,7 +607,7 @@ fun MultiNutrientAdjustmentView(
                                                                                 if (energieActuelle <= 0.0) {
                                                                                         val result = RationAdjustmentResult(
                                                                                                 success = false,
-                                                                                                message = "Énergie actuelle nulle, ajustement impossible",
+                                                                                                message = translate(LocalizationKeys.AnalNut.ENERGY_NULL_ERROR),
                                                                                                 adjustedAliments = null
                                                                                         )
                                                                                         preview = result
@@ -618,7 +620,7 @@ fun MultiNutrientAdjustmentView(
                                                                                         }
                                                                                         val result = RationAdjustmentResult(
                                                                                                 success = true,
-                                                                                                message = "Ajustement énergie (quantités égales) appliqué. Facteur: ${TextUtils.formatDecimal(facteur, 3)}",
+                                                                                                message = translate(LocalizationKeys.AnalNut.ADJUST_ENERGY_SUCCESS, TextUtils.formatDecimal(facteur, 3)),
                                                                                                 adjustedAliments = adjustedAliments
                                                                                         )
                                                                                         preview = result
@@ -628,7 +630,7 @@ fun MultiNutrientAdjustmentView(
                                                                         } catch (e: Exception) {
                                                                                 val result = RationAdjustmentResult(
                                                                                         success = false,
-                                                                                        message = "Erreur: ${e.message}"
+                                                                                        message = translate(LocalizationKeys.AnalNut.ADJUST_FAIL) + ": ${e.message}"
                                                                                 )
                                                                                 preview = result
                                                                         } finally {
@@ -639,7 +641,7 @@ fun MultiNutrientAdjustmentView(
                                                         },
                                                         enabled = !isProcessing,
                                                         modifier = Modifier.weight(1f)
-                                                ) { Text("Quantité égale (Sanalio)") }
+                                                ) { Text(translate(LocalizationKeys.AnalNut.ADJUST_ENERGY_EQUAL)) }
                                         }
 
                                         // Affichage du message de traitement
@@ -689,8 +691,8 @@ fun MultiNutrientAdjustmentView(
                                                 Text(
                                                         text =
                                                                 if (result.success)
-                                                                        "✅ Ajustement réussi"
-                                                                else "❌ Échec de l'ajustement",
+                                                                        translate(LocalizationKeys.AnalNut.ADJUST_SUCCESS)
+                                                                else translate(LocalizationKeys.AnalNut.ADJUST_FAIL),
                                                         fontWeight = FontWeight.Bold,
                                                         color =
                                                                 if (result.success)
@@ -977,8 +979,8 @@ private fun AlimentAdjustmentItem(
                                                                 else Icons.Filled.LockOpen,
                                                         contentDescription =
                                                                 if (alimentData.isLocked)
-                                                                        "Déverrouiller"
-                                                                else "Verrouiller",
+                                                                        translate(LocalizationKeys.AnalNut.UNLOCK)
+                                                                else translate(LocalizationKeys.AnalNut.LOCK),
                                                         tint =
                                                                 if (alimentData.isLocked) Color.Gray
                                                                 else VetNutriColors.Primary
@@ -994,7 +996,7 @@ private fun AlimentAdjustmentItem(
                         ) {
                                 Text(
                                         text =
-                                                "Quantité actuelle: ${alimentData.alimentRation.quantite}g",
+                                                translate(LocalizationKeys.AnalNut.CURRENT_QUANTITY, alimentData.alimentRation.quantite.toString()),
                                         style = MaterialTheme.typography.caption,
                                         color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                                 )
@@ -1002,7 +1004,7 @@ private fun AlimentAdjustmentItem(
 
                         if (!alimentData.isLocked) {
                                 DropdownField(
-                                        label = "Nutriment cible",
+                                        label = translate(LocalizationKeys.AnalNut.TARGET_NUTRIENT),
                                         selectedValue = alimentData.selectedNutrient,
                                         onValueChange = { value -> onNutrientChange(value) },
                                         options = availableNutrients,
@@ -1012,7 +1014,7 @@ private fun AlimentAdjustmentItem(
                                 )
                         } else {
                                 Text(
-                                        text = "Verrouillé - Aucun ajustement",
+                                        text = translate(LocalizationKeys.AnalNut.LOCKED_NO_ADJUSTMENT),
                                         style = MaterialTheme.typography.caption,
                                         color = Color.Gray,
                                         modifier = Modifier.padding(vertical = 8.dp)
@@ -1269,7 +1271,7 @@ suspend fun calculerAjustement(
                                         return RationAdjustmentResult(
                                                 success = false,
                                                 message =
-                                                        "Échec de l'ajustement énergétique: ${result.message}",
+                                                        translate(LocalizationKeys.AnalNut.ADJUST_FAIL) + ": ${result.message}",
                                                 adjustedAliments = null
                                         )
                                 }
@@ -1596,7 +1598,7 @@ private fun adjustRationForNutrient(
                 if (apportActuel <= 0) {
                         return RationAdjustmentResult(
                                 success = false,
-                                message = "Aucun apport en ${nutrient.label} détecté"
+                                message = translate(LocalizationKeys.AnalNut.NO_INTAKE_DETECTED, nutrient.label)
                         )
                 }
 
@@ -1625,12 +1627,12 @@ private fun adjustRationForNutrient(
 
                 return RationAdjustmentResult(
                         success = true,
-                        message = "Ajustement pour ${nutrient.label} réussi"
+                        message = translate(LocalizationKeys.AnalNut.ADJUST_NUTRIENT_SUCCESS, nutrient.label)
                 )
         } catch (e: Exception) {
                 return RationAdjustmentResult(
                         success = false,
-                        message = "Erreur lors de l'ajustement: ${e.message}"
+                        message = translate(LocalizationKeys.AnalNut.ADJUST_FAIL) + ": ${e.message}"
                 )
         }
 }
@@ -1677,7 +1679,7 @@ private suspend fun ajusterAlimentsPourNutriment(
                         return RationAdjustmentResult(
                                 success = false,
                                 message =
-                                        "Aucun aliment disponible pour le nutriment ${nutriment.label}"
+                                        translate(LocalizationKeys.AnalNut.NO_FOOD_FOR_NUTRIENT, nutriment.label)
                         )
                 }
 
@@ -1729,7 +1731,7 @@ private suspend fun ajusterAlimentsPourNutriment(
                         return RationAdjustmentResult(
                                 success = false,
                                 message =
-                                        "Aucune contribution possible pour le nutriment ${nutriment.label}"
+                                        translate(LocalizationKeys.AnalNut.NO_CONTRIBUTION_POSSIBLE, nutriment.label)
                         )
                 }
 
@@ -1853,20 +1855,20 @@ private suspend fun ajusterAlimentsPourNutriment(
                         return RationAdjustmentResult(
                                 success = false,
                                 message =
-                                        "Impossible de couvrir complètement le besoin en ${nutriment.label}. Manque: ${TextUtils.formatDecimal(manqueRestant, 2)}g, Ajouté: ${TextUtils.formatDecimal(totalAjoute, 2)}g"
+                                        translate(LocalizationKeys.AnalNut.IMPOSSIBLE_COVERAGE, nutriment.label, TextUtils.formatDecimal(manqueRestant, 2), TextUtils.formatDecimal(totalAjoute, 2))
                         )
                 }
 
                 return RationAdjustmentResult(
                         success = true,
                         message =
-                                "Ajustement réussi pour ${nutriment.label}: ajouté ${TextUtils.formatDecimal(totalAjoute, 2)}g"
+                                translate(LocalizationKeys.AnalNut.ADJUST_NUTRIENT_ADDED, nutriment.label, TextUtils.formatDecimal(totalAjoute, 2))
                 )
         } catch (e: Exception) {
                 return RationAdjustmentResult(
                         success = false,
                         message =
-                                "Erreur lors de l'ajustement pour ${nutriment.label}: ${e.message}"
+                                translate(LocalizationKeys.AnalNut.ADJUST_FAIL) + ": ${e.message}"
                 )
         }
 }
