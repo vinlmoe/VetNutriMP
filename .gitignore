@@ -35,3 +35,4 @@ composeApp/release/
 *.7z
 *.jar
 *.aar
+.notarization_config
