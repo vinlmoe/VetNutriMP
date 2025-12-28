@@ -36,6 +36,9 @@ import fr.vetbrain.vetnutri_mp.ViewModel.SettingsViewModel
 import fr.vetbrain.vetnutri_mp.Services.ExcelFoodService
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Settings
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.General
+import fr.vetbrain.vetnutri_mp.Localization.translate
 
 /**
  * Dialogue simple pour les paramètres d'affichage
@@ -52,14 +55,14 @@ fun SettingsDialog(
 
         AlertDialog(
                 onDismissRequest = onDismiss,
-                title = { Text("Paramètres d'affichage", style = MaterialTheme.typography.h6) },
+                title = { Text(translate(Settings.DISPLAY_SETTINGS), style = MaterialTheme.typography.h6) },
                 text = {
                         Column(
                                 modifier = Modifier.padding(AppSizes.paddingMedium),
                                 verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
                         ) {
                                 Text(
-                                        "Taille de l'interface",
+                                        translate(Settings.UI_SCALE),
                                         style = MaterialTheme.typography.subtitle1
                                 )
 
@@ -95,7 +98,7 @@ fun SettingsDialog(
                                                 backgroundColor = VetNutriColors.Primary,
                                                 contentColor = Color.White
                                         )
-                        ) { Text("Fermer") }
+                        ) { Text(translate(Settings.CLOSE)) }
                 },
                 backgroundColor = MaterialTheme.colors.surface
         )
@@ -209,7 +212,7 @@ fun SettingsView(
                                                         Spacer(modifier = Modifier.width(8.dp))
                                                         Text(
                                                                 text =
-                                                                        "Conseils dans la base : $conseilsCount",
+                                                                        "${translate(Settings.CONSEILS_COUNT)}$conseilsCount",
                                                                 style =
                                                                         MaterialTheme.typography
                                                                                 .body2,
@@ -279,7 +282,7 @@ fun SettingsView(
                                                                         } catch (e: Exception) {}
                                                                 }
                                                         }
-                                                ) { Text("Sélectionner animaux (toggle tout)") }
+                                                ) { Text(translate(Settings.SELECT_ANIMALS)) }
 
                                                 // Bouton: choisir aliments à exporter
                                                 // (toggle tout)
@@ -305,7 +308,7 @@ fun SettingsView(
                                                                         } catch (e: Exception) {}
                                                                 }
                                                         }
-                                                ) { Text("Sélectionner aliments (toggle tout)") }
+                                                ) { Text(translate(Settings.SELECT_FOODS)) }
 
                                                 // Cases à cocher d’inclusion
                                                 Row(
@@ -318,7 +321,7 @@ fun SettingsView(
                                                                         includeAnimals = it
                                                                 }
                                                         )
-                                                        Text("Inclure animaux")
+                                                        Text(translate(Settings.INCLUDE_ANIMALS))
                                                 }
                                                 Row(
                                                         verticalAlignment =
@@ -330,7 +333,7 @@ fun SettingsView(
                                                                         includeFoods = it
                                                                 }
                                                         )
-                                                        Text("Inclure aliments")
+                                                        Text(translate(Settings.INCLUDE_FOODS))
                                                 }
                                                 Row(
                                                         verticalAlignment =
@@ -342,7 +345,7 @@ fun SettingsView(
                                                                         includeEquations = it
                                                                 }
                                                         )
-                                                        Text("Inclure équations")
+                                                        Text(translate(Settings.INCLUDE_EQUATIONS))
                                                 }
                                                 Row(
                                                         verticalAlignment =
@@ -354,7 +357,7 @@ fun SettingsView(
                                                                         includeRations = it
                                                                 }
                                                         )
-                                                        Text("Inclure rations (sommaire)")
+                                                        Text(translate(Settings.INCLUDE_RATIONS))
                                                 }
                                                 Row(
                                                         verticalAlignment =
@@ -366,7 +369,7 @@ fun SettingsView(
                                                                         includeRecipes = it
                                                                 }
                                                         )
-                                                        Text("Inclure recettes")
+                                                        Text(translate(Settings.INCLUDE_RECIPES))
                                                 }
                                                 Row(
                                                         verticalAlignment =
@@ -378,7 +381,7 @@ fun SettingsView(
                                                                         includeConseils = it
                                                                 }
                                                         )
-                                                        Text("Inclure conseils")
+                                                        Text(translate(Settings.INCLUDE_CONSEILS))
                                                 }
                                                 // Affichage du message de résultat
                                                 // d'importation des références
@@ -480,7 +483,7 @@ fun SettingsView(
                                                         modifier = Modifier.fillMaxWidth()
                                                 ) {
                                                         Text(
-                                                                "Importer des animaux",
+                                                                translate(Settings.IMPORT_ANIMALS),
                                                                 color = Color.White
                                                         )
                                                 }
@@ -569,7 +572,7 @@ fun SettingsView(
                                                         modifier = Modifier.fillMaxWidth()
                                                 ) {
                                                         Text(
-                                                                "Exporter (nouveau format API)",
+                                                                translate(Settings.EXPORT_API),
                                                                 color = Color.White
                                                         )
                                                 }
@@ -589,7 +592,7 @@ fun SettingsView(
                                                         modifier = Modifier.fillMaxWidth()
                                                 ) {
                                                         Text(
-                                                                "Importer (nouveau format API)",
+                                                                translate(Settings.IMPORT_API),
                                                                 color = Color.White
                                                         )
                                                 }
@@ -615,7 +618,7 @@ fun SettingsView(
                                                         modifier = Modifier.fillMaxWidth()
                                                 ) {
                                                         Text(
-                                                                "Importer depuis jsonbin.io",
+                                                                translate(Settings.IMPORT_JSONBIN),
                                                                 color = Color.White
                                                         )
                                                 }
@@ -628,7 +631,7 @@ fun SettingsView(
                                                                         jsonBinUrlOrId = ""
                                                                 },
                                                                 title = {
-                                                                        Text("Importer depuis jsonbin.io")
+                                                                        Text(translate(Settings.JSONBIN_TITLE))
                                                                 },
                                                                 text = {
                                                                         Column(
@@ -639,7 +642,7 @@ fun SettingsView(
                                                                                                 )
                                                                         ) {
                                                                                 Text(
-                                                                                        "Entrez l'URL ou l'ID du bin jsonbin.io à importer:",
+                                                                                        translate(Settings.JSONBIN_MESSAGE),
                                                                                         style =
                                                                                                 MaterialTheme
                                                                                                         .typography
@@ -653,14 +656,14 @@ fun SettingsView(
                                                                                                         it
                                                                                         },
                                                                                         label = {
-                                                                                                Text(
-                                                                                                        "URL ou ID du bin"
-                                                                                                )
+                                                                                                 Text(
+                                                                                                         translate(Settings.JSONBIN_LABEL)
+                                                                                                 )
                                                                                         },
                                                                                         placeholder = {
-                                                                                                Text(
-                                                                                                        "Ex: https://jsonbin.io/690a000643b1c97be9982db5 ou 690a000643b1c97be9982db5"
-                                                                                                )
+                                                                                                 Text(
+                                                                                                         translate(Settings.JSONBIN_PLACEHOLDER)
+                                                                                                 )
                                                                                         },
                                                                                         modifier =
                                                                                                 Modifier.fillMaxWidth(),
@@ -698,7 +701,7 @@ fun SettingsView(
                                                                                         )
                                                                         ) {
                                                                                 Text(
-                                                                                        "Importer",
+                                                                                        translate(General.IMPORT),
                                                                                         color =
                                                                                                 Color.White
                                                                                 )
@@ -713,7 +716,7 @@ fun SettingsView(
                                                                                                 ""
                                                                                 }
                                                                         ) {
-                                                                                Text("Annuler")
+                                                                                Text(translate(General.CANCEL))
                                                                         }
                                                                 }
                                                         )
@@ -736,7 +739,7 @@ fun SettingsView(
                                                         AlertDialog(
                                                                 onDismissRequest = {},
                                                                 title = {
-                                                                        Text("Import API en cours…")
+                                                                         Text(translate(Settings.IMPORT_RUNNING))
                                                                 },
                                                                 text = {
                                                                         Column(

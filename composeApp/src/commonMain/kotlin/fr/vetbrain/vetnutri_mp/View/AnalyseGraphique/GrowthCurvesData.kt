@@ -1,10 +1,12 @@
 package fr.vetbrain.vetnutri_mp.View.AnalyseGraphique
 
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+
 // Données des courbes de croissance pour chiens
 val courbesCroissanceChien =
         listOf(
                 CurveP(
-                        "Female < 6.5kg",
+                        LocalizationKeys.Graph.CURVE_DOG_FEMALE_LT_6_5,
                         listOf(
                                 CurveParamP("0.4%", 1.109854, 12.08458, 1.810753),
                                 CurveParamP("2%", 1.535427, 14.0034, 1.597385),
@@ -16,13 +18,13 @@ val courbesCroissanceChien =
                                 CurveParamP("98%", 5.349884, 13.75693, 1.760424),
                                 CurveParamP("99.6%", 6.165964, 12.8673, 1.828332)
                         ),
-                        "Référence bibliographique",
+                        LocalizationKeys.Graph.REF_BIBLIO,
                         "Canis familiaris",
                         "0",
                         12
                 ),
                 CurveP(
-                        "Male < 6.5kg",
+                        LocalizationKeys.Graph.CURVE_DOG_MALE_LT_6_5,
                         listOf(
                                 CurveParamP("0.4%", 1.272559, 12.78178, 2.038467),
                                 CurveParamP("2%", 1.687415, 14.07996, 1.904777),
@@ -34,13 +36,13 @@ val courbesCroissanceChien =
                                 CurveParamP("98%", 6.330286, 15.13836, 1.820627),
                                 CurveParamP("99.6%", 7.250097, 14.11965, 1.82745)
                         ),
-                        "Référence bibliographique",
+                        LocalizationKeys.Graph.REF_BIBLIO,
                         "Canis familiaris",
                         "0",
                         12
                 ),
                 CurveP(
-                        "Female [6.5-9]kg",
+                        LocalizationKeys.Graph.CURVE_DOG_FEMALE_6_5_9,
                         listOf(
                                 CurveParamP("0.4%", 2.863651, 16.3876, 1.835619),
                                 CurveParamP("2%", 3.459252, 16.58917, 1.845262),
@@ -52,13 +54,13 @@ val courbesCroissanceChien =
                                 CurveParamP("98%", 8.969031, 15.0315, 1.936451),
                                 CurveParamP("99.6%", 10.213104, 14.70955, 1.943391)
                         ),
-                        "Référence bibliographique",
+                        LocalizationKeys.Graph.REF_BIBLIO,
                         "Canis familiaris",
                         "0",
                         12
                 ),
                 CurveP(
-                        "Female [9-15]kg",
+                        LocalizationKeys.Graph.CURVE_DOG_FEMALE_9_15,
                         listOf(
                                 CurveParamP("0.4%", 3.935947, 19.21075, 1.68409),
                                 CurveParamP("2%", 5.565112, 20.72705, 1.629216),
@@ -70,13 +72,13 @@ val courbesCroissanceChien =
                                 CurveParamP("98%", 14.178662, 16.33742, 1.797089),
                                 CurveParamP("99.6%", 15.292909, 15.58999, 1.824913)
                         ),
-                        "Référence bibliographique",
+                        LocalizationKeys.Graph.REF_BIBLIO,
                         "Canis familiaris",
                         "0",
                         12
                 ),
                 CurveP(
-                        "Female [15-30]kg",
+                        LocalizationKeys.Graph.CURVE_DOG_FEMALE_15_30,
                         listOf(
                                 CurveParamP("0.4%", 12.48477, 20.53315, 2.285163),
                                 CurveParamP("2%", 14.89311, 19.4463, 2.321938),
@@ -88,13 +90,13 @@ val courbesCroissanceChien =
                                 CurveParamP("98%", 30.07991, 16.82682, 2.333136),
                                 CurveParamP("99.6%", 31.97356, 16.1728, 2.357102)
                         ),
-                        "Référence bibliographique",
+                        LocalizationKeys.Graph.REF_BIBLIO,
                         "Canis familiaris",
                         "0",
                         12
                 ),
                 CurveP(
-                        "Female [30-40]kg",
+                        LocalizationKeys.Graph.CURVE_DOG_FEMALE_30_40,
                         listOf(
                                 CurveParamP("0.4%", 19.73027, 23.17412, 2.201269),
                                 CurveParamP("2%", 22.28789, 21.42993, 2.20492),
@@ -106,13 +108,13 @@ val courbesCroissanceChien =
                                 CurveParamP("98%", 37.94763, 16.67522, 2.318143),
                                 CurveParamP("99.6%", 40.90867, 16.4006, 2.296036)
                         ),
-                        "Référence bibliographique",
+                        LocalizationKeys.Graph.REF_BIBLIO,
                         "Canis familiaris",
                         "0",
                         12
                 ),
                 CurveP(
-                        "Male [6.5-9]kg",
+                        LocalizationKeys.Graph.CURVE_DOG_MALE_6_5_9,
                         listOf(
                                 CurveParamP("0.4%", 3.347141, 17.37989, 2.040052),
                                 CurveParamP("2%", 4.102578, 17.57553, 2.009356),
@@ -124,13 +126,13 @@ val courbesCroissanceChien =
                                 CurveParamP("98%", 10.163427, 14.78888, 2.065822),
                                 CurveParamP("99.6%", 11.483938, 14.29, 2.088452)
                         ),
-                        "Référence bibliographique",
+                        LocalizationKeys.Graph.REF_BIBLIO,
                         "Canis familiaris",
                         "0",
                         12
                 ),
                 CurveP(
-                        "Male [9-15]kg",
+                        LocalizationKeys.Graph.CURVE_DOG_MALE_9_15,
                         listOf(
                                 CurveParamP("0.4%", 5.984049, 20.14643, 1.967823),
                                 CurveParamP("2%", 9.846229, 19.27645, 2.022343),
@@ -142,13 +144,13 @@ val courbesCroissanceChien =
                                 CurveParamP("98%", 16.172128, 15.87276, 2.149589),
                                 CurveParamP("99.6%", 17.471866, 14.94524, 2.197558)
                         ),
-                        "Référence bibliographique",
+                        LocalizationKeys.Graph.REF_BIBLIO,
                         "Canis familiaris",
                         "0",
                         12
                 ),
                 CurveP(
-                        "Male [15-30]kg",
+                        LocalizationKeys.Graph.CURVE_DOG_MALE_15_30,
                         listOf(
                                 CurveParamP("0.4%", 14.24569, 21.71184, 2.494588),
                                 CurveParamP("2%", 18.17658, 20.35052, 2.479084),
@@ -160,13 +162,13 @@ val courbesCroissanceChien =
                                 CurveParamP("98%", 35.93635, 17.49292, 2.234906),
                                 CurveParamP("99.6%", 38.02187, 16.82385, 2.191478)
                         ),
-                        "Référence bibliographique",
+                        LocalizationKeys.Graph.REF_BIBLIO,
                         "Canis familiaris",
                         "0",
                         12
                 ),
                 CurveP(
-                        "Male [30-40]kg",
+                        LocalizationKeys.Graph.CURVE_DOG_MALE_30_40,
                         listOf(
                                 CurveParamP("0.4%", 23.20063, 24.57251, 2.338363),
                                 CurveParamP("2%", 26.14607, 22.2654, 2.399394),
@@ -178,7 +180,7 @@ val courbesCroissanceChien =
                                 CurveParamP("98%", 43.82808, 16.94919, 2.413749),
                                 CurveParamP("99.6%", 47.07196, 16.65365, 2.365383)
                         ),
-                        "Référence bibliographique",
+                        LocalizationKeys.Graph.REF_BIBLIO,
                         "Canis familiaris",
                         "0",
                         12
@@ -189,7 +191,7 @@ val courbesCroissanceChien =
 val courbesCroissanceChat =
         listOf(
                 CurveP(
-                        "Male",
+                        LocalizationKeys.Graph.CURVE_CAT_MALE,
                         listOf(
                                 CurveParamP("0.4%", 2.621383, 18.16063, 2.310782),
                                 CurveParamP("2%", 3.138453, 18.40044, 2.191952),
@@ -201,13 +203,13 @@ val courbesCroissanceChat =
                                 CurveParamP("98%", 6.747282, 16.90209, 1.778598),
                                 CurveParamP("99.6%", 7.266061, 16.24581, 1.733618)
                         ),
-                        "Référence bibliographique",
+                        LocalizationKeys.Graph.REF_BIBLIO,
                         "Felis catus",
                         "1",
                         8
                 ),
                 CurveP(
-                        "Female",
+                        LocalizationKeys.Graph.CURVE_CAT_FEMALE,
                         listOf(
                                 CurveParamP("0.4%", 2.177195, 16.09012, 1.736256),
                                 CurveParamP("2%", 2.44958, 15.96038, 1.709933),
@@ -219,7 +221,7 @@ val courbesCroissanceChat =
                                 CurveParamP("98%", 6.523333, 22.34698, 1.179895),
                                 CurveParamP("99.6%", 7.582508, 24.24353, 1.12117)
                         ),
-                        "Référence bibliographique",
+                        LocalizationKeys.Graph.REF_BIBLIO,
                         "Felis catus",
                         "1",
                         8

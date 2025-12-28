@@ -37,6 +37,7 @@ import fr.vetbrain.vetnutri_mp.Data.NutrientOperator
 import fr.vetbrain.vetnutri_mp.Data.SortCriteria
 import fr.vetbrain.vetnutri_mp.Data.SortOrder
 import fr.vetbrain.vetnutri_mp.Enumer.*
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
 import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
@@ -989,27 +990,27 @@ private fun FoodListItem(
                                         verticalArrangement =
                                                 Arrangement.spacedBy(AppSizes.paddingXSmall)
                                 ) {
-                                        config.availableActions.forEach { action ->
+                                        config.availableActions.forEach { actionKey ->
                                                 val icon =
-                                                        when (action) {
-                                                                "Éditer" -> Icons.Default.Edit
-                                                                "Supprimer" -> Icons.Default.Delete
-                                                                "Analyser" ->
+                                                        when (actionKey) {
+                                                                LocalizationKeys.General.EDIT -> Icons.Default.Edit
+                                                                LocalizationKeys.General.DELETE -> Icons.Default.Delete
+                                                                LocalizationKeys.General.ANALYSE ->
                                                                         Icons.Default.Analytics
-                                                                "Comparer" -> Icons.Default.Compare
-                                                                "Ajouter" -> Icons.Default.Add
+                                                                LocalizationKeys.General.COMPARE -> Icons.Default.Compare
+                                                                LocalizationKeys.General.ADD -> Icons.Default.Add
                                                                 else -> Icons.Default.MoreVert
                                                         }
 
                                                 val iconColor =
-                                                        when (action) {
-                                                                "Éditer" -> VetNutriColors.Primary
-                                                                "Supprimer" ->
+                                                        when (actionKey) {
+                                                                LocalizationKeys.General.EDIT -> VetNutriColors.Primary
+                                                                LocalizationKeys.General.DELETE ->
                                                                         MaterialTheme.colors.error
-                                                                "Analyser" ->
+                                                                LocalizationKeys.General.ANALYSE ->
                                                                         VetNutriColors.Secondary
-                                                                "Comparer" -> VetNutriColors.Primary
-                                                                "Ajouter" -> VetNutriColors.Primary
+                                                                LocalizationKeys.General.COMPARE -> VetNutriColors.Primary
+                                                                LocalizationKeys.General.ADD -> VetNutriColors.Primary
                                                                 else ->
                                                                         MaterialTheme.colors
                                                                                 .onSurface.copy(
@@ -1017,17 +1018,19 @@ private fun FoodListItem(
                                                                         )
                                                         }
 
+                                                val tooltipText = fr.vetbrain.vetnutri_mp.Localization.LocalizationManager.translate(actionKey)
+
                                                 IconButtonWithTooltip(
                                                         onClick = {
                                                                 config.onFoodAction?.invoke(
                                                                         aliment,
-                                                                        action
+                                                                        actionKey
                                                                 )
                                                         },
                                                         modifier = Modifier.size(24.dp),
                                                         imageVector = icon,
-                                                        contentDescription = action,
-                                                        tooltip = action,
+                                                        contentDescription = tooltipText,
+                                                        tooltip = tooltipText,
                                                         tint = iconColor,
                                                         iconModifier = Modifier.size(16.dp)
                                                 )

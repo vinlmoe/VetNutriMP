@@ -24,6 +24,8 @@ import io.github.koalaplot.core.bar.DefaultVerticalBar
 import io.github.koalaplot.core.bar.VerticalBarPlot
 import io.github.koalaplot.core.util.ExperimentalKoalaPlotApi
 import io.github.koalaplot.core.xygraph.*
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 
 /** Graphique d'histogramme de la densité énergétique des rations */
 @OptIn(ExperimentalKoalaPlotApi::class)
@@ -97,13 +99,13 @@ fun DensiteRationsChart(
                                 verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
                         ) {
                                 Text(
-                                        text = "Aucune consultation disponible",
+                                        text = translate(LocalizationKeys.Graph.NO_CONSULTATION),
                                         style = MaterialTheme.typography.body1,
                                         fontWeight = FontWeight.Bold,
                                         color = VetNutriColors.Error
                                 )
                                 Text(
-                                        text = "Veuillez créer une consultation pour analyser les rations",
+                                        text = translate(LocalizationKeys.Graph.CREATE_CONSULTATION_HINT),
                                         style = MaterialTheme.typography.body2,
                                         color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                                 )
@@ -120,13 +122,13 @@ fun DensiteRationsChart(
                                 verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
                         ) {
                                 Text(
-                                        text = "Aucune référence sélectionnée",
+                                        text = translate(LocalizationKeys.Graph.NO_REFERENCE),
                                         style = MaterialTheme.typography.body1,
                                         fontWeight = FontWeight.Bold,
                                         color = VetNutriColors.Error
                                 )
                                 Text(
-                                        text = "Veuillez sélectionner une référence dans une consultation pour calculer l'énergie avec les équations du référentiel",
+                                        text = translate(LocalizationKeys.Graph.SELECT_REFERENCE_HINT),
                                         style = MaterialTheme.typography.body2,
                                         color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                                 )
@@ -143,13 +145,13 @@ fun DensiteRationsChart(
                                 verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
                         ) {
                                 Text(
-                                        text = "Aucune préférence disponible",
+                                        text = translate(LocalizationKeys.Graph.NO_PREFERENCE),
                                         style = MaterialTheme.typography.body1,
                                         fontWeight = FontWeight.Bold,
                                         color = VetNutriColors.Error
                                 )
                                 Text(
-                                        text = "Veuillez configurer les préférences pour l'espèce dans les paramètres",
+                                        text = translate(LocalizationKeys.Graph.CONFIG_PREFERENCE_HINT),
                                         style = MaterialTheme.typography.body2,
                                         color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                                 )
@@ -166,7 +168,7 @@ fun DensiteRationsChart(
                         ) {
                                 CircularProgressIndicator(color = VetNutriColors.Primary)
                                 Text(
-                                        text = "Calcul des données énergétiques des rations...",
+                                        text = translate(LocalizationKeys.Graph.CALCULATING),
                                         style = MaterialTheme.typography.body2,
                                         color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                                 )
@@ -178,7 +180,7 @@ fun DensiteRationsChart(
                         contentAlignment = Alignment.Center
                 ) {
                         Text(
-                                text = "Aucune ration disponible pour l'analyse de densité",
+                                text = translate(LocalizationKeys.Graph.NO_RATION_DENSITY),
                                 style = MaterialTheme.typography.body2,
                                 color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                         )
@@ -238,19 +240,19 @@ fun DensiteRationsChart(
 
                 // Graphique d'histogramme
                 GraphCard(
-                        titre = "Densité énergétique des rations",
+                        titre = translate(LocalizationKeys.Graph.DENSITY_TITLE),
                         sousTitre =
                                 if (useDryMatterPer100g)
-                                        "Énergie pour 100g de matière sèche (kcal/100g MS)"
-                                else "Poids pour 1000 kcal (g/1000 kcal)"
+                                        translate(LocalizationKeys.Graph.DENSITY_SUBTITLE_DM)
+                                else translate(LocalizationKeys.Graph.DENSITY_SUBTITLE_CAL)
                 ) {
                         XYGraph(
                                 xAxisModel = remember(categories) { CategoryAxisModel(categories) },
                                 yAxisModel = remember(yRange) { KoalaPlotExtensions.createSmartDensityAxisModel(yRange) },
                                 yAxisTitle =
                                         if (useDryMatterPer100g)
-                                                "Densité énergétique (kcal/100g MS)"
-                                        else "Densité énergétique (g/1000 kcal)",
+                                                translate(LocalizationKeys.Graph.DENSITY_AXIS_DM)
+                                        else translate(LocalizationKeys.Graph.DENSITY_AXIS_CAL),
                                 modifier = Modifier.height(400.dp)
                         ) {
                                 VerticalBarPlot(
@@ -290,7 +292,7 @@ fun DensiteRationsChart(
                                         verticalAlignment = Alignment.CenterVertically
                                 ) {
                                         Text(
-                                                text = "Légende des rations :",
+                                                text = translate(LocalizationKeys.Graph.LEGEND_RATIONS),
                                                 style = MaterialTheme.typography.caption,
                                                 fontWeight = FontWeight.Bold
                                         )
@@ -310,7 +312,7 @@ fun DensiteRationsChart(
                                                         )
                                                 }
                                                 Text(
-                                                        text = "Rations actuelles",
+                                                        text = translate(LocalizationKeys.Graph.LEGEND_CURRENT_RATIONS),
                                                         style = MaterialTheme.typography.caption,
                                                         color = Color(0xFFFF9800)
                                                 )
@@ -405,9 +407,9 @@ fun DensiteRationsChart(
                                                                         text =
                                                                                 if (useDryMatterPer100g
                                                                                 )
-                                                                                        "Densité: ${GraphFormattingUtils.formatEnergyDensity(data.energieTotale / data.matiereSeche * 100.0)}"
+                                                                                        "${translate(LocalizationKeys.Graph.DENSITY_LABEL)}${GraphFormattingUtils.formatEnergyDensity(data.energieTotale / data.matiereSeche * 100.0)}"
                                                                                 else
-                                                                                        "Densité: ${GraphFormattingUtils.formatEnergyDensity(data.poidsTotal / data.energieTotale * 1000.0)}",
+                                                                                        "${translate(LocalizationKeys.Graph.DENSITY_LABEL)}${GraphFormattingUtils.formatEnergyDensity(data.poidsTotal / data.energieTotale * 1000.0)}",
                                                                         style =
                                                                                 MaterialTheme
                                                                                         .typography
@@ -425,7 +427,7 @@ fun DensiteRationsChart(
                                                 }
                                                 Text(
                                                         text =
-                                                                "${data.consultationDate?.toString() ?: "Date inconnue"}",
+                                                                "${data.consultationDate?.toString() ?: translate(LocalizationKeys.Graph.DATE_UNKNOWN)}",
                                                         style = MaterialTheme.typography.caption,
                                                         color =
                                                                 MaterialTheme.colors.onSurface.copy(

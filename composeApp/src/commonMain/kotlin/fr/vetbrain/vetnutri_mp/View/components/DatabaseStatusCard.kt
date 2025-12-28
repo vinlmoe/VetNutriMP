@@ -12,6 +12,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.DatabaseStatus
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 
 /**
  * Composant optimisé pour afficher le statut de la base de données
@@ -30,22 +32,22 @@ fun DatabaseStatusCard(
             when {
                 status.needsUpdate -> StatusInfo(
                     icon = Icons.Default.Warning,
-                    title = "Base de données incomplète",
-                    description = "Mise à jour requise",
+                    title = translate(LocalizationKeys.Database.INCOMPLETE_TITLE),
+                    description = translate(LocalizationKeys.Database.UPDATE_REQUIRED),
                     color = androidx.compose.ui.graphics.Color.Red,
                     isError = true
                 )
                 status.foodCount > 0 && status.referenceCount > 0 -> StatusInfo(
                     icon = Icons.Default.CheckCircle,
-                    title = "Base de données complète",
-                    description = "${status.foodCount} aliments, ${status.referenceCount} références",
+                    title = translate(LocalizationKeys.Database.COMPLETE_TITLE),
+                    description = translate(LocalizationKeys.Database.COMPLETE_DESC, status.foodCount.toString(), status.referenceCount.toString()),
                     color = VetNutriColors.Primary,
                     isError = false
                 )
                 else -> StatusInfo(
                     icon = Icons.Default.Info,
-                    title = "Vérification en cours...",
-                    description = "Chargement des données",
+                    title = translate(LocalizationKeys.Database.CHECKING),
+                    description = translate(LocalizationKeys.Database.LOADING),
                     color = VetNutriColors.Secondary,
                     isError = false
                 )
@@ -71,7 +73,7 @@ fun DatabaseStatusCard(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Vérification de la base de données...",
+                        text = translate(LocalizationKeys.Database.CHECKING_DB),
                         style = MaterialTheme.typography.body2,
                         color = VetNutriColors.Secondary
                     )
@@ -83,7 +85,7 @@ fun DatabaseStatusCard(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Mise à jour en cours...",
+                        text = translate(LocalizationKeys.Database.UPDATING),
                         style = MaterialTheme.typography.body2,
                         color = VetNutriColors.Secondary
                     )

@@ -14,6 +14,8 @@ import fr.vetbrain.vetnutri_mp.Components.CenteredMessage
 import fr.vetbrain.vetnutri_mp.Components.RationItem
 import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
 import fr.vetbrain.vetnutri_mp.Data.Ration
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 
@@ -56,7 +58,7 @@ fun SectionRationsConsultation(
                                 verticalAlignment = Alignment.CenterVertically
                         ) {
                                 Text(
-                                        text = "Rations de la consultation",
+                                        text = translate(LocalizationKeys.Ration.CONSULTATION_RATIONS),
                                         style = MaterialTheme.typography.subtitle2,
                                         color = VetNutriColors.Primary
                                 )
@@ -66,7 +68,7 @@ fun SectionRationsConsultation(
                                 ) {
                                         Icon(
                                                 Icons.Filled.Add,
-                                                contentDescription = "Ajouter une ration",
+                                                contentDescription = translate(LocalizationKeys.AnalNut.ADD_RATION),
                                                 tint = VetNutriColors.Primary
                                         )
                                 }
@@ -74,7 +76,7 @@ fun SectionRationsConsultation(
                         Divider()
                         if (consultation?.rations.isNullOrEmpty()) {
                                 CenteredMessage(
-                                        message = "Aucune ration disponible",
+                                        message = translate(LocalizationKeys.Ration.NO_RATION_AVAILABLE),
                                         modifier = Modifier.weight(1f)
                                 )
                         } else {

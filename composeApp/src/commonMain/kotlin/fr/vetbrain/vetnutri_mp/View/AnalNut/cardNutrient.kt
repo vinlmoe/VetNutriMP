@@ -14,15 +14,23 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import fr.vetbrain.vetnutri_mp.Data.*
-import fr.vetbrain.vetnutri_mp.Enumer.*
+import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
+import fr.vetbrain.vetnutri_mp.Data.ValeurNutritionnelle
+import fr.vetbrain.vetnutri_mp.Data.Ration
+import fr.vetbrain.vetnutri_mp.Data.AnimalEv
+import fr.vetbrain.vetnutri_mp.Data.PreferencesEspece
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Localization.translateEnum
+import fr.vetbrain.vetnutri_mp.Enumer.*
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Repository.PreferencesRepository
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.TextUtils
 import fr.vetbrain.vetnutri_mp.Utils.GraphFormattingUtils
+import fr.vetbrain.vetnutri_mp.Data.analyserValeursNutritionnellesRation
+import fr.vetbrain.vetnutri_mp.Data.analyserValeursNutritionnellesRationSelective
 import kotlinx.coroutines.runBlocking
 import io.github.koalaplot.core.pie.PieChart
 import io.github.koalaplot.core.pie.DefaultSlice
@@ -202,7 +210,7 @@ fun AnalyseNutritionnelleCard(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                            text = "Analyse nutritionnelle",
+                            text = translate(LocalizationKeys.AnalNut.NUTR_ANALYSIS_TITLE),
                             style = MaterialTheme.typography.subtitle1,
                             fontWeight = FontWeight.Bold,
                             color = VetNutriColors.Primary
@@ -211,7 +219,7 @@ fun AnalyseNutritionnelleCard(
                     // Indicateur des préférences d'affichage
                     finalTypeExpressionBesoin?.let { typeExpr ->
                         Text(
-                                text = "Affichage: ${typeExpr.displayName}",
+                                text = translate(LocalizationKeys.AnalNut.DISPLAY_MODE, typeExpr.displayName),
                                 style = MaterialTheme.typography.caption,
                                 color =
                                         if (preferencesLoaded) VetNutriColors.Primary
@@ -226,7 +234,7 @@ fun AnalyseNutritionnelleCard(
                         horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingXSmall)
                 ) {
                     Text(
-                            text = if (afficherTousLesNutriments) "Tous" else "Sélectionnés",
+                            text = if (afficherTousLesNutriments) translate(LocalizationKeys.AnalNut.ALL) else translate(LocalizationKeys.AnalNut.SELECTED),
                             style = MaterialTheme.typography.caption,
                             color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                     )
@@ -241,8 +249,8 @@ fun AnalyseNutritionnelleCard(
                                         else Icons.Filled.ToggleOff,
                                 contentDescription =
                                         if (afficherTousLesNutriments)
-                                                "Afficher seulement les nutriments sélectionnés"
-                                        else "Afficher tous les nutriments",
+                                                translate(LocalizationKeys.AnalNut.SHOW_SELECTED_ONLY)
+                                        else translate(LocalizationKeys.AnalNut.SHOW_ALL),
                                 tint =
                                         if (afficherTousLesNutriments) VetNutriColors.Primary
                                         else MaterialTheme.colors.onSurface.copy(alpha = 0.5f),
@@ -252,7 +260,7 @@ fun AnalyseNutritionnelleCard(
 
                     // Toggle d'affichage BulletGraph
                     Text(
-                            text = if (afficherBullet) "Bullet" else "Cartes",
+                            text = if (afficherBullet) translate(LocalizationKeys.AnalNut.BULLET_VIEW) else translate(LocalizationKeys.AnalNut.CARDS_VIEW),
                             style = MaterialTheme.typography.caption,
                             color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                     )
@@ -265,8 +273,8 @@ fun AnalyseNutritionnelleCard(
                                         if (afficherBullet) Icons.Filled.ToggleOn
                                         else Icons.Filled.ToggleOff,
                                 contentDescription =
-                                        if (afficherBullet) "Afficher en cartes"
-                                        else "Afficher en bullet graphs",
+                                        if (afficherBullet) translate(LocalizationKeys.AnalNut.SHOW_CARDS)
+                                        else translate(LocalizationKeys.AnalNut.SHOW_BULLETS),
                                 tint =
                                         if (afficherBullet) VetNutriColors.Primary
                                         else MaterialTheme.colors.onSurface.copy(alpha = 0.5f),
@@ -300,7 +308,7 @@ fun AnalyseNutritionnelleCard(
                              if (compositionData.isNotEmpty()) {
                                  Box(modifier = Modifier.weight(1f)) {
                                      PieChartCard(
-                                         title = "Composition",
+                                         title = translate(LocalizationKeys.AnalNut.COMPOSITION),
                                          data = compositionData,
                                          modifier = Modifier.fillMaxWidth()
                                      )
@@ -309,7 +317,7 @@ fun AnalyseNutritionnelleCard(
                              if (energyData.isNotEmpty()) {
                                  Box(modifier = Modifier.weight(1f)) {
                                      PieChartCard(
-                                         title = "Origine Énergie",
+                                         title = translate(LocalizationKeys.AnalNut.ENERGY_ORIGIN),
                                          data = energyData,
                                          modifier = Modifier.fillMaxWidth()
                                      )

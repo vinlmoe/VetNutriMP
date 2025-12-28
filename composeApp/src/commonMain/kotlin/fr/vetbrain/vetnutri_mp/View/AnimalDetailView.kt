@@ -39,6 +39,10 @@ import fr.vetbrain.vetnutri_mp.Export.HtmlDocumentBuilder
 import fr.vetbrain.vetnutri_mp.Export.HtmlPreviewDialog
 import fr.vetbrain.vetnutri_mp.Export.PdfExporter
 import fr.vetbrain.vetnutri_mp.Localization.translateEnum
+import fr.vetbrain.vetnutri_mp.Localization.translate
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.AnimalDetail
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.General
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Settings
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Repository.ExportImportRepository
 import fr.vetbrain.vetnutri_mp.Repository.PreferencesRepository
@@ -182,19 +186,19 @@ private suspend fun exporterAnimalComplet(
                 // Afficher le résultat (déjà sur Main)
                 if (success) {
                         snackbarHostState.showSnackbar(
-                                message = "Animal exporté avec succès: $fileName",
+                                message = "${translate(AnimalDetail.EXPORT_SUCCESS)}$fileName",
                                 duration = SnackbarDuration.Short
                         )
                 } else {
                         snackbarHostState.showSnackbar(
-                                message = "Export annulé ou erreur lors de l'export",
+                                message = translate(AnimalDetail.EXPORT_CANCELLED),
                                 duration = SnackbarDuration.Long
                         )
                 }
         } catch (e: Exception) {
                 e.printStackTrace()
                 snackbarHostState.showSnackbar(
-                        message = "Erreur lors de l'export: ${e.message}",
+                        message = "${translate(AnimalDetail.EXPORT_ERROR)}${e.message}",
                         duration = SnackbarDuration.Long
                 )
         }
@@ -350,9 +354,9 @@ private suspend fun partagerAnimalEnLigne(
                                         }
                                         onShareLinkGenerated(shareLink)
                                         val message = if (existingBinId != null) {
-                                                "Fichier mis à jour avec succès !"
+                                                translate(AnimalDetail.SHARE_SUCCESS)
                                         } else {
-                                                "Fichier uploadé avec succès !"
+                                                translate(AnimalDetail.SHARE_SUCCESS)
                                         }
                                         snackbarHostState.showSnackbar(
                                                 message = message,
@@ -361,7 +365,7 @@ private suspend fun partagerAnimalEnLigne(
                                 },
                                 onFailure = { error ->
                                         snackbarHostState.showSnackbar(
-                                                message = "Erreur lors du partage en ligne: ${error.message}",
+                                                message = "${translate(AnimalDetail.SHARE_ERROR)}${error.message}",
                                                 duration = SnackbarDuration.Long
                                         )
                                 }
@@ -371,7 +375,7 @@ private suspend fun partagerAnimalEnLigne(
                 e.printStackTrace()
                 withContext(AppDispatchers.Main) {
                         snackbarHostState.showSnackbar(
-                                message = "Erreur lors du partage: ${e.message}",
+                                message = "${translate(AnimalDetail.SHARE_ERROR)}${e.message}",
                                 duration = SnackbarDuration.Long
                         )
                 }
@@ -395,7 +399,7 @@ private fun handlePdfExport(
     equationRepository: EquationRepository,
     scope: CoroutineScope
 ) {
-    val isPrescription = previewHtml.contains("Ordonnance nutritionnelle")
+    val isPrescription = previewHtml.contains(translate(AnimalDetail.PRESCRIPTION_TITLE))
     if (isPrescription) {
         val rationsForPrescription: List<Ration> = selectedRationsForPrescription ?: selectedConsultation?.rations?.toList()
                 ?: emptyList()
@@ -421,7 +425,7 @@ private fun handlePdfExport(
                         ration = null,
                         reference = referenceUtilisee,
                         conseils = listOf("Veiller à l'hydratation"),
-                        title = "Ordonnance nutritionnelle",
+                        title = translate(AnimalDetail.PRESCRIPTION_TITLE),
                         additionalText = additionalText,
                         htmlSections = getSelectedConseils(),
                         rations = rationsForPrescription,
@@ -441,7 +445,7 @@ private fun handlePdfExport(
                         ration = null,
                         reference = referenceUtilisee,
                         conseils = emptyList(),
-                        title = "Ordonnance nutritionnelle",
+                        title = translate(AnimalDetail.PRESCRIPTION_TITLE),
                         additionalText = additionalText,
                         htmlSections = getSelectedConseils(),
                         rations = rationsForPrescription,
@@ -516,7 +520,7 @@ private fun handlePdfExport(
                 animal = animalDetails,
                 ration = selectedRation,
                 reference = referenceUtilisee,
-                title = "Analyse de ration",
+                title = translate(AnimalDetail.RATION_ANALYSIS_TITLE),
                 additionalText = additionalText,
                 htmlSections = getSelectedConseils(),
                 preferences = null,
@@ -626,32 +630,32 @@ fun AnimalDetailView(
                 listOf(
                         MenuOption(
                                 section = AnimalDetailSection.IDENTIFICATION,
-                                title = "Identification",
+                                title = translate(AnimalDetail.IDENTIFICATION),
                                 icon = Icons.Default.Person
                         ),
                         MenuOption(
                                 section = AnimalDetailSection.CONSULTATIONS,
-                                title = "Consultations",
+                                title = translate(AnimalDetail.CONSULTATIONS),
                                 icon = Icons.Default.Info
                         ),
                         MenuOption(
                                 section = AnimalDetailSection.RATIONS,
-                                title = "Rations",
+                                title = translate(AnimalDetail.RATIONS),
                                 icon = Icons.AutoMirrored.Filled.List
                         ),
                         MenuOption(
                                 section = AnimalDetailSection.GRAPHIQUE,
-                                title = "Graphique",
+                                title = translate(AnimalDetail.GRAPH),
                                 icon = AppIcons.Analytics
                         ),
                         MenuOption(
                                 section = AnimalDetailSection.GRAPHIQUE_ALIMENTS,
-                                title = "Graphique Aliments",
+                                title = translate(AnimalDetail.FOOD_GRAPH),
                                 icon = AppIcons.Analytics
                         ),
                         MenuOption(
                                 section = AnimalDetailSection.EXPORT,
-                                title = "Export",
+                                title = translate(AnimalDetail.EXPORT),
                                 icon = Icons.Default.Settings
                         )
                 )
@@ -713,8 +717,8 @@ fun AnimalDetailView(
                         // Boîte de dialogue de confirmation de suppression
                         if (showDeleteConfirmation) {
                                 ConfirmDialog(
-                                        title = "Confirmation de suppression",
-                                        message = "Êtes-vous sûr de vouloir supprimer cet animal ?",
+                                        title = translate(General.CONFIRM_DELETE),
+                                        message = translate(AnimalDetail.DELETE_CONFIRM_MESSAGE),
                                         onConfirm = {
                                                 // Sauvegarder automatiquement si une édition est en
                                                 // cours
@@ -894,10 +898,10 @@ private fun WideScreenLayout(
                         ) {
                                 Icon(
                                         imageVector = Icons.Default.Download,
-                                        contentDescription = "Exporter"
+                                        contentDescription = translate(AnimalDetail.EXPORT_ANIMAL)
                                 )
                                 Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
-                                Text(text = "Exporter animal")
+                                Text(text = translate(AnimalDetail.EXPORT_ANIMAL))
                         }
                         
                         // Bouton partager en ligne
@@ -915,10 +919,10 @@ private fun WideScreenLayout(
                         ) {
                                 Icon(
                                         imageVector = Icons.Default.Share,
-                                        contentDescription = "Partager"
+                                        contentDescription = translate(AnimalDetail.SHARE_ONLINE)
                                 )
                                 Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
-                                Text(text = "Partager en ligne")
+                                Text(text = translate(AnimalDetail.SHARE_ONLINE))
                         }
 
                         // Bouton retour
@@ -934,10 +938,10 @@ private fun WideScreenLayout(
                         ) {
                                 Icon(
                                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                        contentDescription = "Retour"
+                                        contentDescription = translate(AnimalDetail.BACK)
                                 )
                                 Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
-                                Text(text = "Retour")
+                                Text(text = translate(AnimalDetail.BACK))
                         }
 
                         // Ajout de l'option Paramètres en bas du menu
@@ -946,7 +950,7 @@ private fun WideScreenLayout(
                                 option =
                                         MenuOption(
                                                 section = AnimalDetailSection.IDENTIFICATION,
-                                                title = "Paramètres",
+                                                title = translate(Settings.TITLE),
                                                 icon = Icons.Default.Settings
                                         ),
                                 isSelected = false,
@@ -1107,7 +1111,7 @@ private fun WideScreenLayout(
                                                                         )
                                                         )
                                                         Text(
-                                                                "Chargement des aliments...",
+                                                                translate(AnimalDetail.LOADING_FOODS),
                                                                 style =
                                                                         MaterialTheme.typography
                                                                                 .body1,
@@ -1220,7 +1224,7 @@ private fun WideScreenLayout(
                                                                                 )
                                                                                 Text(
                                                                                         text =
-                                                                                                "Chargement des valeurs nutritionnelles...",
+                                                                                                translate(AnimalDetail.LOADING_NUTRITION),
                                                                                         style =
                                                                                                 MaterialTheme
                                                                                                         .typography
@@ -1307,12 +1311,12 @@ private fun WideScreenLayout(
                                                                 Alignment.CenterHorizontally
                                                 ) {
                                                         Text(
-                                                                "Aucun aliment disponible",
+                                                                translate(AnimalDetail.NO_FOOD_AVAILABLE),
                                                                 style = MaterialTheme.typography.h5,
                                                                 color = VetNutriColors.Primary
                                                         )
                                                         Text(
-                                                                "Aucun aliment n'est disponible pour l'analyse graphique",
+                                                                translate(AnimalDetail.NO_FOOD_GRAPH_AVAILABLE),
                                                                 style =
                                                                         MaterialTheme.typography
                                                                                 .body1,
@@ -1358,7 +1362,7 @@ private fun WideScreenLayout(
                                                                         Alignment.CenterVertically
                                                         ) {
                                                                 Text(
-                                                                        "Éditeur de sections HTML",
+                                                                        translate(AnimalDetail.HTML_EDITOR),
                                                                         style =
                                                                                 MaterialTheme
                                                                                         .typography
@@ -1382,7 +1386,7 @@ private fun WideScreenLayout(
                                                                                                         VetNutriColors
                                                                                                                 .OnSecondary
                                                                                         )
-                                                                ) { Text("Retour à l'export") }
+                                                                ) { Text(translate(AnimalDetail.BACK_TO_EXPORT)) }
                                                         }
 
                                                         RichTextEditor(
@@ -2938,7 +2942,7 @@ private fun NarrowScreenLayout(
                                                                                                                         VetNutriColors
                                                                                                                                 .OnSecondary
                                                                                                         )
-                                                                                ) { Text("Retour") }
+                                                                                ) { Text(translate(AnimalDetail.BACK_TO_EXPORT)) }
                                                                         }
 
                                                                         RichTextEditor(

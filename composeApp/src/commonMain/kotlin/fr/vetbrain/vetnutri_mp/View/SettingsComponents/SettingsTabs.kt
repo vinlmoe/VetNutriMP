@@ -14,6 +14,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.View.SettingsSection
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Settings
+import fr.vetbrain.vetnutri_mp.Localization.translate
 
 /**
  * Navigation par onglets pour les paramètres avec animations
@@ -26,32 +28,32 @@ fun SettingsTabs(selectedTab: Int, onTabSelected: (Int) -> Unit, modifier: Modif
     val tabs =
             listOf(
                     TabInfo(
-                            title = "Interface",
+                            title = translate(Settings.TAB_INTERFACE),
                             icon = Icons.Default.Settings,
                             section = SettingsSection.INTERFACE
                     ),
                     TabInfo(
-                            title = "Préférences",
+                            title = translate(Settings.TAB_PREFERENCES),
                             icon = Icons.Default.Person,
                             section = SettingsSection.PREFERENCES
                     ),
                     TabInfo(
-                            title = "Import/Export",
+                            title = translate(Settings.TAB_IMPORT),
                             icon = Icons.Default.Build,
                             section = SettingsSection.IMPORTATION
                     ),
                     TabInfo(
-                            title = "Excel",
+                            title = translate(Settings.TAB_EXCEL),
                             icon = Icons.Default.TableChart,
                             section = SettingsSection.EXCEL
                     ),
                     TabInfo(
-                            title = "Recettes",
+                            title = translate(Settings.TAB_RECIPES),
                             icon = Icons.Default.Restaurant,
                             section = SettingsSection.RECIPES
                     ),
                     TabInfo(
-                            title = "Administration",
+                            title = translate(Settings.TAB_ADMINISTRATION),
                             icon = Icons.Default.AdminPanelSettings,
                             section = SettingsSection.ADMINISTRATION
                     )

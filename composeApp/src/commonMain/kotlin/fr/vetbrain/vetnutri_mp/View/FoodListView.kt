@@ -21,6 +21,7 @@ import fr.vetbrain.vetnutri_mp.Enumer.AlimIndic
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.FoodKind
 import fr.vetbrain.vetnutri_mp.Enumer.GroupAlim
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.General
 import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
@@ -85,11 +86,11 @@ fun FoodListView(
                         showFilters = true,
                         showSearchBar = true,
                         showResultsCount = true,
-                        availableActions = listOf("Éditer", "Supprimer"),
-                        onFoodAction = { aliment, action ->
-                                when (action) {
-                                        "Éditer" -> onEditFood(aliment.uuid)
-                                        "Supprimer" -> viewModel.deleteFood(aliment)
+                        availableActions = listOf(LocalizationKeys.General.EDIT, LocalizationKeys.General.DELETE),
+                        onFoodAction = { aliment, actionKey ->
+                                when (actionKey) {
+                                        LocalizationKeys.General.EDIT -> onEditFood(aliment.uuid)
+                                        LocalizationKeys.General.DELETE -> viewModel.deleteFood(aliment)
                                 }
                         },
                         onLoadNutrients = { foodUuids, nutrients ->
@@ -104,7 +105,7 @@ fun FoodListView(
                 modifier = modifier,
                 topBar = {
                         TopBar(
-                                title = "Liste des aliments",
+                                title = translate(LocalizationKeys.Food.LIST_TITLE),
                                 onBackClick = onNavigateBack,
                                 onSettingsClick = onOpenSettings
                         )

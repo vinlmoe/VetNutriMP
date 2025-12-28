@@ -13,6 +13,8 @@ import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
 import fr.vetbrain.vetnutri_mp.Theme.AppIcons
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 
 /**
  * Composant pour sélectionner une référence nutritionnelle
@@ -30,7 +32,7 @@ fun ReferenceSelector(
         selectedReferenceId: String?,
         onReferenceSelected: (String?) -> Unit,
         onDismiss: () -> Unit,
-        title: String = "Sélectionner une référence",
+        title: String = translate(LocalizationKeys.Reference.SELECT_TITLE),
         allowNone: Boolean = true,
         modifier: Modifier = Modifier
 ) {
@@ -51,7 +53,7 @@ fun ReferenceSelector(
                                 contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                    text = "Aucune référence disponible",
+                                    text = translate(LocalizationKeys.Reference.NONE_AVAILABLE),
                                     style = MaterialTheme.typography.body2,
                                     color = Color.Gray
                             )
@@ -88,7 +90,7 @@ fun ReferenceSelector(
             },
             confirmButton = {
                 TextButton(onClick = onDismiss) {
-                    Text(text = "Fermer", color = VetNutriColors.Primary)
+                    Text(text = translate(LocalizationKeys.AnalNut.CLOSE), color = VetNutriColors.Primary)
                 }
             },
             modifier = modifier
@@ -117,7 +119,7 @@ private fun ReferenceItem(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                        text = reference?.nom ?: "Aucune référence",
+                        text = reference?.nom ?: translate(LocalizationKeys.Reference.NONE),
                         style = MaterialTheme.typography.subtitle1,
                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                         color =
@@ -127,7 +129,7 @@ private fun ReferenceItem(
 
                 if (reference != null) {
                     Text(
-                            text = "Espèce: ${reference.espece.label}",
+                            text = translate(LocalizationKeys.Reference.SPECIES_PREFIX, reference.espece.label),
                             style = MaterialTheme.typography.body2,
                             color = Color.Gray
                     )
@@ -142,7 +144,7 @@ private fun ReferenceItem(
 
                     if (reference.maladie && reference.nomMaladie.isNotBlank()) {
                         Text(
-                                text = "Maladie: ${reference.nomMaladie}",
+                                text = translate(LocalizationKeys.Reference.DISEASE_PREFIX, reference.nomMaladie),
                                 style = MaterialTheme.typography.caption,
                                 color = VetNutriColors.Secondary
                         )
@@ -156,7 +158,7 @@ private fun ReferenceItem(
                         imageVector =
                                 if (isSelected) AppIcons.Check
                                 else AppIcons.Add,
-                        contentDescription = if (isSelected) "Sélectionné" else "Sélectionner",
+                        contentDescription = if (isSelected) translate(LocalizationKeys.Reference.SELECTED) else translate(LocalizationKeys.Reference.SELECT),
                         tint = if (isSelected) VetNutriColors.Primary else Color.Gray
                 )
             }
@@ -182,7 +184,7 @@ fun ReferencesSummary(
                 verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
         ) {
             Text(
-                    text = "Références nutritionnelles actives",
+                    text = translate(LocalizationKeys.Reference.ACTIVE_REFS_TITLE),
                     style = MaterialTheme.typography.subtitle1,
                     fontWeight = FontWeight.Bold,
                     color = VetNutriColors.Primary
@@ -203,7 +205,7 @@ fun ReferencesSummary(
                         fontWeight = FontWeight.Medium
                 )
                 Text(
-                        text = referenceGenerale?.nom ?: "Aucune",
+                        text = referenceGenerale?.nom ?: translate(LocalizationKeys.General.NONE),
                         style = MaterialTheme.typography.body2,
                         color =
                                 if (referenceGenerale != null) VetNutriColors.Primary
@@ -218,14 +220,14 @@ fun ReferencesSummary(
                     verticalAlignment = Alignment.Top
             ) {
                 Text(
-                        text = "Références de maladies:",
+                        text = translate(LocalizationKeys.Reference.DISEASE_REFS_LABEL),
                         style = MaterialTheme.typography.body2,
                         fontWeight = FontWeight.Medium
                 )
                 Column {
                     if (referencesMaladies.isEmpty()) {
                         Text(
-                                text = "Aucune",
+                                text = translate(LocalizationKeys.General.NONE),
                                 style = MaterialTheme.typography.body2,
                                 color = Color.Gray
                         )
@@ -233,7 +235,7 @@ fun ReferencesSummary(
                         referencesMaladies.forEach { referenceId ->
                             val reference = availableReferences.find { it.uuid == referenceId }
                             Text(
-                                    text = "• ${reference?.nom ?: "Référence inconnue"}",
+                                    text = "• ${reference?.nom ?: translate(LocalizationKeys.Reference.UNKNOWN)}",
                                     style = MaterialTheme.typography.body2,
                                     color = VetNutriColors.Secondary
                             )

@@ -35,6 +35,9 @@ import io.github.koalaplot.core.style.LineStyle
 import io.github.koalaplot.core.util.ExperimentalKoalaPlotApi
 import io.github.koalaplot.core.xygraph.*
 
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
+
 @OptIn(ExperimentalKoalaPlotApi::class)
 @Composable
 fun RationsEnergieChart(
@@ -111,13 +114,13 @@ fun RationsEnergieChart(
                                 verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
                         ) {
                                 Text(
-                                        text = "Aucune consultation disponible",
+                                        text = translate(LocalizationKeys.Graph.NO_CONSULTATION),
                                         style = MaterialTheme.typography.body1,
                                         fontWeight = FontWeight.Bold,
                                         color = VetNutriColors.Error
                                 )
                                 Text(
-                                        text = "Veuillez créer une consultation pour analyser les rations",
+                                        text = translate(LocalizationKeys.Graph.CREATE_CONSULTATION_HINT),
                                         style = MaterialTheme.typography.body2,
                                         color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                                 )
@@ -134,13 +137,13 @@ fun RationsEnergieChart(
                                 verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
                         ) {
                                 Text(
-                                        text = "Aucune référence sélectionnée",
+                                        text = translate(LocalizationKeys.Graph.NO_REFERENCE),
                                         style = MaterialTheme.typography.body1,
                                         fontWeight = FontWeight.Bold,
                                         color = VetNutriColors.Error
                                 )
                                 Text(
-                                        text = "Veuillez sélectionner une référence dans une consultation pour calculer l'énergie avec les équations du référentiel",
+                                        text = translate(LocalizationKeys.Graph.SELECT_REFERENCE_HINT),
                                         style = MaterialTheme.typography.body2,
                                         color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                                 )
@@ -157,13 +160,13 @@ fun RationsEnergieChart(
                                 verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
                         ) {
                                 Text(
-                                        text = "Aucune préférence disponible",
+                                        text = translate(LocalizationKeys.Graph.NO_PREFERENCE),
                                         style = MaterialTheme.typography.body1,
                                         fontWeight = FontWeight.Bold,
                                         color = VetNutriColors.Error
                                 )
                                 Text(
-                                        text = "Veuillez configurer les préférences pour l'espèce dans les paramètres",
+                                        text = translate(LocalizationKeys.Graph.CONFIG_PREFERENCE_HINT),
                                         style = MaterialTheme.typography.body2,
                                         color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                                 )
@@ -181,7 +184,7 @@ fun RationsEnergieChart(
                         ) {
                                 CircularProgressIndicator(color = VetNutriColors.Primary)
                                 Text(
-                                        text = "Calcul des données énergétiques des rations...",
+                                        text = translate(LocalizationKeys.Graph.CALCULATING),
                                         style = MaterialTheme.typography.body2,
                                         color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                                 )
@@ -194,7 +197,7 @@ fun RationsEnergieChart(
                         contentAlignment = Alignment.Center
                 ) {
                         Text(
-                                text = "Aucune ration disponible pour l'analyse",
+                                text = translate(LocalizationKeys.Graph.NO_RATION),
                                 style = MaterialTheme.typography.body2,
                                 color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                         )
@@ -216,8 +219,8 @@ fun RationsEnergieChart(
 
                 // Graphique des rations
                 GraphCard(
-                        titre = "Répartition énergétique des rations",
-                        sousTitre = "Pourcentages d'énergie des protéines vs lipides par ration"
+                        titre = translate(LocalizationKeys.Graph.ENERGY_DISTRIBUTION_TITLE),
+                        sousTitre = translate(LocalizationKeys.Graph.ENERGY_DISTRIBUTION_SUBTITLE)
                 ) {
                         // Préparer les données pour le graphique
                         val points =
@@ -271,8 +274,8 @@ fun RationsEnergieChart(
                                                 )
                                         },
                                         imageVector = Icons.Default.ZoomOut,
-                                        contentDescription = "Zoom arrière",
-                                        tooltip = "Zoom arrière"
+                                        contentDescription = translate(LocalizationKeys.Graph.ZOOM_OUT),
+                                        tooltip = translate(LocalizationKeys.Graph.ZOOM_OUT)
                                 )
                                 IconButtonWithTooltip(
                                         onClick = {
@@ -287,15 +290,15 @@ fun RationsEnergieChart(
                                                 )
                                         },
                                         imageVector = Icons.Default.ZoomIn,
-                                        contentDescription = "Zoom avant",
-                                        tooltip = "Zoom avant"
+                                        contentDescription = translate(LocalizationKeys.Graph.ZOOM_IN),
+                                        tooltip = translate(LocalizationKeys.Graph.ZOOM_IN)
                                 )
                                 if (zoomPanState.scaleX != 1f || zoomPanState.scaleY != 1f || 
                                     zoomPanState.panX != 0f || zoomPanState.panY != 0f) {
                                         TextButton(
                                                 onClick = { zoomPanState = ZoomPanStateView() }
                                         ) {
-                                                Text("Réinitialiser", fontSize = 12.sp)
+                                                Text(translate(LocalizationKeys.Graph.RESET), fontSize = 12.sp)
                                         }
                                 }
                         }
@@ -312,8 +315,8 @@ fun RationsEnergieChart(
                                                 KoalaPlotExtensions.createSmartPercentageAxisModel(
                                                         yRange
                                                 ),
-                                        xAxisTitle = "Énergie des protéines (%)",
-                                        yAxisTitle = "Énergie des lipides (%)",
+                                        xAxisTitle = translate(LocalizationKeys.Graph.PROTEIN_ENERGY),
+                                        yAxisTitle = translate(LocalizationKeys.Graph.LIPID_ENERGY),
                                         modifier = Modifier
                                                 .fillMaxSize()
                                                 .clipToBounds()
@@ -584,7 +587,7 @@ fun RationsEnergieChart(
                                 }
                                 Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
                                 Text(
-                                        text = "80-x: 20% ENA",
+                                        text = translate(LocalizationKeys.Graph.LEGEND_ENA_20),
                                         style = MaterialTheme.typography.caption,
                                         color = Color.Magenta.copy(alpha = 0.7f)
                                 )
@@ -612,7 +615,7 @@ fun RationsEnergieChart(
                                 }
                                 Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
                                 Text(
-                                        text = "60-x: 40% ENA",
+                                        text = translate(LocalizationKeys.Graph.LEGEND_ENA_40),
                                         style = MaterialTheme.typography.caption,
                                         color = Color.Cyan.copy(alpha = 0.7f)
                                 )
@@ -640,7 +643,7 @@ fun RationsEnergieChart(
                                 }
                                 Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
                                 Text(
-                                        text = "40-x: 60% ENA",
+                                        text = translate(LocalizationKeys.Graph.LEGEND_ENA_60),
                                         style = MaterialTheme.typography.caption,
                                         color = Color.Yellow.copy(alpha = 0.7f)
                                 )
@@ -653,7 +656,7 @@ fun RationsEnergieChart(
                                 verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
                         ) {
                                 Text(
-                                        text = "Légende des rations :",
+                                        text = translate(LocalizationKeys.Graph.LEGEND_RATIONS),
                                         style = MaterialTheme.typography.caption,
                                         fontWeight = FontWeight.Bold
                                 )
@@ -709,7 +712,7 @@ fun RationsEnergieChart(
                                                 }
                                                 Text(
                                                         text =
-                                                                "${data.consultationDate?.toString() ?: "Date inconnue"}",
+                                                                "${data.consultationDate?.toString() ?: translate(LocalizationKeys.Graph.DATE_UNKNOWN)}",
                                                         style = MaterialTheme.typography.caption,
                                                         color =
                                                                 MaterialTheme.colors.onSurface.copy(

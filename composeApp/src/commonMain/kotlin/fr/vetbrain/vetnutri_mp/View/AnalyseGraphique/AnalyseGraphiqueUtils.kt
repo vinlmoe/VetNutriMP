@@ -9,6 +9,8 @@ import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Data.AlimentRation
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientMain
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 
 // Fonction pour calculer le poids selon l'équation de croissance
 fun calculerPoidsCroissance(param: CurveParamP, ageInMonths: Double): Double {
@@ -383,15 +385,17 @@ fun formatAge(ageInYears: Double, ageInMonths: Double): String {
                 ageInYears >= 1.0 -> {
                         val years = ageInYears.toInt()
                         val remainingMonths = ((ageInYears - years) * 12).toInt()
+                        val yearUnit = if (years > 1) translate(LocalizationKeys.General.UNIT_YEARS) else translate(LocalizationKeys.General.UNIT_YEAR)
+                        
                         if (remainingMonths > 0) {
-                                "$years an${if (years > 1) "s" else ""} $remainingMonths mois"
+                                "$years $yearUnit $remainingMonths ${translate(LocalizationKeys.General.UNIT_MONTH)}"
                         } else {
-                                "$years an${if (years > 1) "s" else ""}"
+                                "$years $yearUnit"
                         }
                 }
                 else -> {
                         val months = ageInMonths.toInt()
-                        "$months mois"
+                        "$months ${translate(LocalizationKeys.General.UNIT_MONTH)}"
                 }
         }
 }

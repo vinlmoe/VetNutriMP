@@ -25,6 +25,8 @@ import androidx.compose.ui.unit.sp
 import fr.vetbrain.vetnutri_mp.Components.IconButtonWithTooltip
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Utils.GraphFormattingUtils
 import fr.vetbrain.vetnutri_mp.Utils.KoalaPlotExtensions
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailViewModel
@@ -123,13 +125,13 @@ fun NutrimentsRationsChart(
                                 verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
                         ) {
                                 Text(
-                                        text = "Aucune consultation disponible",
+                                        text = translate(LocalizationKeys.Graph.NO_CONSULTATION),
                                         style = MaterialTheme.typography.body1,
                                         fontWeight = FontWeight.Bold,
                                         color = VetNutriColors.Error
                                 )
                                 Text(
-                                        text = "Veuillez créer une consultation pour analyser les rations",
+                                        text = translate(LocalizationKeys.Graph.CREATE_CONSULTATION_HINT),
                                         style = MaterialTheme.typography.body2,
                                         color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                                 )
@@ -146,13 +148,13 @@ fun NutrimentsRationsChart(
                                 verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
                         ) {
                                 Text(
-                                        text = "Aucune référence sélectionnée",
+                                        text = translate(LocalizationKeys.Graph.NO_REFERENCE),
                                         style = MaterialTheme.typography.body1,
                                         fontWeight = FontWeight.Bold,
                                         color = VetNutriColors.Error
                                 )
                                 Text(
-                                        text = "Veuillez sélectionner une référence dans une consultation pour calculer l'énergie avec les équations du référentiel",
+                                        text = translate(LocalizationKeys.Graph.SELECT_REFERENCE_HINT),
                                         style = MaterialTheme.typography.body2,
                                         color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                                 )
@@ -169,13 +171,13 @@ fun NutrimentsRationsChart(
                                 verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
                         ) {
                                 Text(
-                                        text = "Aucune préférence disponible",
+                                        text = translate(LocalizationKeys.Graph.NO_PREFERENCE),
                                         style = MaterialTheme.typography.body1,
                                         fontWeight = FontWeight.Bold,
                                         color = VetNutriColors.Error
                                 )
                                 Text(
-                                        text = "Veuillez configurer les préférences pour l'espèce dans les paramètres",
+                                        text = translate(LocalizationKeys.Graph.CONFIG_PREFERENCE_HINT),
                                         style = MaterialTheme.typography.body2,
                                         color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                                 )
@@ -192,7 +194,7 @@ fun NutrimentsRationsChart(
                         ) {
                                 CircularProgressIndicator(color = VetNutriColors.Primary)
                                 Text(
-                                        text = "Calcul des données des rations...",
+                                        text = translate(LocalizationKeys.Graph.CALCULATING),
                                         style = MaterialTheme.typography.body2,
                                         color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                                 )
@@ -204,7 +206,7 @@ fun NutrimentsRationsChart(
                         contentAlignment = Alignment.Center
                 ) {
                         Text(
-                                text = "Aucune ration disponible pour l'analyse des nutriments",
+                                text = translate(LocalizationKeys.Graph.NO_RATION),
                                 style = MaterialTheme.typography.body2,
                                 color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                         )
@@ -212,9 +214,9 @@ fun NutrimentsRationsChart(
         } else {
                 // Graphique personnalisé des nutriments des rations
                 GraphCard(
-                        titre = "Analyse nutritionnelle des rations",
+                        titre = translate(LocalizationKeys.Graph.NUTRIMENTS_ANALYSIS_TITLE),
                         sousTitre =
-                                "Visualisation personnalisée des caractéristiques nutritionnelles"
+                                translate(LocalizationKeys.Graph.NUTRIMENTS_ANALYSIS_SUBTITLE)
                 ) {
                         // Récupérer les informations des nutriments sélectionnés
                         val xOption = VIEW_NUTRIMENT_OPTIONS.find { it.key == nutrimentX }
@@ -223,7 +225,7 @@ fun NutrimentsRationsChart(
                         // Titre dynamique selon le type de graphique
                         val titre =
                                 if (nutrimentY.isNullOrEmpty()) {
-                                        "Distribution de ${xOption?.displayName ?: "Nutriment"}"
+                                        "${translate(LocalizationKeys.Graph.DISTRIBUTION_OF)} ${xOption?.displayName ?: "Nutriment"}"
                                 } else {
                                         "${xOption?.displayName ?: "X"} vs ${yOption?.displayName ?: "Y"}"
                                 }
@@ -240,7 +242,7 @@ fun NutrimentsRationsChart(
                         if (nutrimentX.isNullOrEmpty()) {
                                 Text(
                                         text =
-                                                "Veuillez sélectionner au moins un nutriment pour l'axe X",
+                                                translate(LocalizationKeys.Graph.SELECT_NUTRIMENTS_X_HINT),
                                         style = MaterialTheme.typography.body1,
                                         color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                                 )
@@ -257,7 +259,7 @@ fun NutrimentsRationsChart(
                                 // Vérifier que nous avons des données valides
                                 if (valeurs.isEmpty() || valeurs.all { it == 0f }) {
                                         Text(
-                                                text = "Données insuffisantes pour l'histogramme",
+                                                text = translate(LocalizationKeys.Graph.INSUFFICIENT_DATA_HISTOGRAM),
                                                 style = MaterialTheme.typography.body1,
                                                 color =
                                                         MaterialTheme.colors.onSurface.copy(
@@ -452,7 +454,7 @@ fun NutrimentsRationsChart(
                                 if (points.isEmpty() || points.all { it.x == 0f && it.y == 0f }) {
                                         Text(
                                                 text =
-                                                        "Données insuffisantes pour le graphique scatter plot",
+                                                        translate(LocalizationKeys.Graph.INSUFFICIENT_DATA_SCATTER),
                                                 style = MaterialTheme.typography.body1,
                                                 color =
                                                         MaterialTheme.colors.onSurface.copy(
@@ -503,8 +505,8 @@ fun NutrimentsRationsChart(
                                                                 )
                                                         },
                                                         imageVector = Icons.Default.ZoomOut,
-                                                        contentDescription = "Zoom arrière",
-                                                        tooltip = "Zoom arrière"
+                                                        contentDescription = translate(LocalizationKeys.Graph.ZOOM_OUT_TOOLTIP),
+                                                        tooltip = translate(LocalizationKeys.Graph.ZOOM_OUT_TOOLTIP)
                                                 )
                                                 IconButtonWithTooltip(
                                                         onClick = {
@@ -519,15 +521,15 @@ fun NutrimentsRationsChart(
                                                                 )
                                                         },
                                                         imageVector = Icons.Default.ZoomIn,
-                                                        contentDescription = "Zoom avant",
-                                                        tooltip = "Zoom avant"
+                                                        contentDescription = translate(LocalizationKeys.Graph.ZOOM_IN_TOOLTIP),
+                                                        tooltip = translate(LocalizationKeys.Graph.ZOOM_IN_TOOLTIP)
                                                 )
                                                 if (zoomPanState.scaleX != 1f || zoomPanState.scaleY != 1f || 
                                                     zoomPanState.panX != 0f || zoomPanState.panY != 0f) {
                                                         TextButton(
                                                                 onClick = { zoomPanState = ZoomPanStateView() }
                                                         ) {
-                                                                Text("Réinitialiser", fontSize = 12.sp)
+                                                                Text(translate(LocalizationKeys.Graph.RESET_ZOOM), fontSize = 12.sp)
                                                         }
                                                 }
                                         }
@@ -751,13 +753,13 @@ fun NutrimentsRationsChart(
                         horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
                 ) {
                         NutrimentSelector(
-                                label = "Axe X",
+                                label = translate(LocalizationKeys.Graph.AXIS_X_LABEL),
                                 selectedNutriment = nutrimentX,
                                 onNutrimentSelected = { nutrimentX = it },
                                 modifier = Modifier.weight(1f)
                         )
                         NutrimentSelector(
-                                label = "Axe Y",
+                                label = translate(LocalizationKeys.Graph.AXIS_Y_LABEL),
                                 selectedNutriment = nutrimentY,
                                 onNutrimentSelected = { nutrimentY = it },
                                 modifier = Modifier.weight(1f)
@@ -771,7 +773,7 @@ fun NutrimentsRationsChart(
                         verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
                 ) {
                         Text(
-                                text = "Légende des rations :",
+                                text = translate(LocalizationKeys.Graph.LEGEND_RATIONS),
                                 style = MaterialTheme.typography.caption,
                                 fontWeight = FontWeight.Bold
                         )

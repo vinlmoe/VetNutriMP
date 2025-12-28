@@ -22,6 +22,8 @@ import fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailViewModel
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 
 @Composable
 fun GraphCard(titre: String, sousTitre: String? = null, content: @Composable () -> Unit) {
@@ -66,7 +68,7 @@ fun GraphiqueHeader(selectedChart: ChartType, onChartSelected: (ChartType) -> Un
                                         tint = VetNutriColors.Primary
                                 )
                                 Text(
-                                        text = "Analyse Graphique",
+                                        text = translate(LocalizationKeys.Graph.GRAPHIC_ANALYSIS_TITLE),
                                         style = MaterialTheme.typography.h6,
                                         fontWeight = FontWeight.Bold,
                                         color = VetNutriColors.Primary
@@ -121,7 +123,7 @@ fun GraphiqueLegend(selectedChart: ChartType) {
         ) {
                 Column(modifier = Modifier.padding(AppSizes.paddingMedium)) {
                         Text(
-                                text = "Informations",
+                                text = translate(LocalizationKeys.Graph.LEGEND_INFO_TITLE),
                                 style = MaterialTheme.typography.subtitle2,
                                 fontWeight = FontWeight.Bold,
                                 color = VetNutriColors.Primary
@@ -132,13 +134,13 @@ fun GraphiqueLegend(selectedChart: ChartType) {
                         val infoText =
                                 when (selectedChart) {
                                         ChartType.EVOLUTION_POIDS ->
-                                                "Suivez l'évolution du poids de l'animal sur plusieurs mois pour détecter les tendances."
+                                                translate(LocalizationKeys.Graph.LEGEND_INFO_EVOLUTION)
                                         ChartType.RATIONS_ENERGIE ->
-                                                "Analysez la répartition énergétique des rations de chaque consultation. Chaque point représente une ration avec ses pourcentages de protéines et lipides."
+                                                translate(LocalizationKeys.Graph.LEGEND_INFO_RATIONS)
                                         ChartType.DENSITE_RATIONS ->
-                                                "Visualisez la densité énergétique de chaque ration. Les rations actuelles sont en orange."
+                                                translate(LocalizationKeys.Graph.LEGEND_INFO_DENSITY)
                                         ChartType.NUTRIMENTS_RATIONS ->
-                                                "Analysez les nutriments personnalisés des rations. Choisissez les axes X et Y pour des comparaisons spécifiques."
+                                                translate(LocalizationKeys.Graph.LEGEND_INFO_NUTRIMENTS)
                                 }
 
                         Text(
@@ -167,7 +169,7 @@ fun AddWeightForm(viewModel: AnimalDetailViewModel) {
         ) {
                 Column(modifier = Modifier.padding(AppSizes.paddingMedium)) {
                         Text(
-                                text = "Ajouter un nouveau poids",
+                                text = translate(LocalizationKeys.Graph.ADD_WEIGHT_TITLE),
                                 style = MaterialTheme.typography.subtitle2,
                                 fontWeight = FontWeight.Bold,
                                 color = VetNutriColors.Primary
@@ -181,7 +183,7 @@ fun AddWeightForm(viewModel: AnimalDetailViewModel) {
                                 verticalAlignment = Alignment.CenterVertically
                         ) {
                                 Text(
-                                        text = "Date: ${selectedDate}",
+                                        text = "${translate(LocalizationKeys.Graph.DATE_PREFIX)}${selectedDate}",
                                         modifier = Modifier.weight(1f),
                                         style = MaterialTheme.typography.body2
                                 )
@@ -192,7 +194,7 @@ fun AddWeightForm(viewModel: AnimalDetailViewModel) {
                                                 ButtonDefaults.buttonColors(
                                                         backgroundColor = VetNutriColors.Primary
                                                 )
-                                ) { Text("Choisir une date") }
+                                ) { Text(translate(LocalizationKeys.Graph.PICK_DATE_BUTTON)) }
                         }
 
                         Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
@@ -213,7 +215,7 @@ fun AddWeightForm(viewModel: AnimalDetailViewModel) {
                                                 weightText = texteFiltre
                                         }
                                 },
-                                label = { Text("Poids (kg)") },
+                                label = { Text(translate(LocalizationKeys.Graph.WEIGHT_KG_LABEL)) },
                                 keyboardOptions =
                                         KeyboardOptions(keyboardType = KeyboardType.Decimal),
                                 modifier = Modifier.fillMaxWidth(),
@@ -228,7 +230,7 @@ fun AddWeightForm(viewModel: AnimalDetailViewModel) {
                                 horizontalArrangement = Arrangement.End
                         ) {
                                 TextButton(onClick = { viewModel.stopAddingWeight() }) {
-                                        Text("Annuler")
+                                        Text(translate(LocalizationKeys.General.CANCEL))
                                 }
 
                                 Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
@@ -249,7 +251,7 @@ fun AddWeightForm(viewModel: AnimalDetailViewModel) {
                                                 ButtonDefaults.buttonColors(
                                                         backgroundColor = VetNutriColors.Primary
                                                 )
-                                ) { Text("Ajouter") }
+                                ) { Text(translate(LocalizationKeys.General.ADD)) }
                         }
                 }
         }
@@ -262,7 +264,7 @@ fun AddWeightForm(viewModel: AnimalDetailViewModel) {
                                 selectedDate = it
                                 showDatePicker = false
                         },
-                        label = "Date de mesure"
+                        label = translate(LocalizationKeys.General.MEASURE_DATE)
                 )
         }
 }
@@ -288,13 +290,13 @@ fun NutrimentSelector(
                         val selectedOption =
                                 VIEW_NUTRIMENT_OPTIONS.find { it.key == selectedNutriment }
                         Text(
-                                text = selectedOption?.displayName ?: "Sélectionner...",
+                                text = selectedOption?.displayName ?: translate(LocalizationKeys.General.SELECT_PLACEHOLDER),
                                 style = MaterialTheme.typography.body2
                         )
                         Spacer(modifier = Modifier.weight(1f))
                         Icon(
                                 imageVector = Icons.Default.ArrowDropDown,
-                                contentDescription = "Déplier"
+                                contentDescription = translate(LocalizationKeys.General.EXPAND)
                         )
                 }
                 DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {

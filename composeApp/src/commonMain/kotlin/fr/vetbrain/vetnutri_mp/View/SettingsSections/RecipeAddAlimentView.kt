@@ -21,6 +21,8 @@ import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Repository.FoodRepository
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Utils.TextUtils
 import fr.vetbrain.vetnutri_mp.View.Components.FoodSearchComponent
 import fr.vetbrain.vetnutri_mp.Data.FoodSearchFilters
@@ -52,7 +54,7 @@ fun RecipeAddAlimentView(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Ajouter un aliment à la recette") },
+                title = { Text(translate(LocalizationKeys.Recipe.ADD_FOOD_TITLE)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Default.ArrowBack, contentDescription = "Retour")
@@ -87,7 +89,7 @@ fun RecipeAddAlimentView(
             ) {
                 Icon(
                     imageVector = Icons.Default.Add,
-                    contentDescription = "Ajouter l'aliment sélectionné",
+                    contentDescription = translate(LocalizationKeys.Recipe.ADD_SELECTED),
                     modifier = Modifier.size(24.dp)
                 )
             }
@@ -133,7 +135,7 @@ fun RecipeAddAlimentView(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "Sélectionnez un aliment\npour voir ses détails",
+                            text = translate(LocalizationKeys.Recipe.SELECT_FOOD_HINT),
                             style = MaterialTheme.typography.body1,
                             color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
                         )
@@ -179,7 +181,7 @@ private fun AlimentDetailsPanel(
     ) {
         item {
             Text(
-                text = "Détails de l'aliment",
+                text = translate(LocalizationKeys.Recipe.FOOD_DETAILS),
                 style = MaterialTheme.typography.h6,
                 color = VetNutriColors.Primary
             )
@@ -217,7 +219,7 @@ private fun AlimentDetailsPanel(
             .filter { it != Espece.CH }
             .map { it.translateEnum() }
         if (species.isNotEmpty()) {
-            item { DetailRow("Espèces", species.joinToString(", ")) }
+            item { DetailRow(translate(LocalizationKeys.Recipe.SPECIES), species.joinToString(", ")) }
         }
         
         // Indications
@@ -225,11 +227,11 @@ private fun AlimentDetailsPanel(
             .filter { it != AlimIndic.ALL && it != AlimIndic.AUTRE }
             .map { it.translateEnum() }
         if (indications.isNotEmpty()) {
-            item { DetailRow("Indications", indications.joinToString(", ")) }
+            item { DetailRow(translate(LocalizationKeys.Recipe.INDICATIONS), indications.joinToString(", ")) }
         }
         
         if (!aliment.ingredients.isNullOrEmpty()) {
-            item { DetailRow("Ingrédients", aliment.ingredients!!) }
+            item { DetailRow(translate(LocalizationKeys.Recipe.INGREDIENTS), aliment.ingredients!!) }
         }
         
         item { Divider() }
@@ -237,7 +239,7 @@ private fun AlimentDetailsPanel(
         // Section quantité
         item {
             Text(
-                text = "Quantité à ajouter",
+                text = translate(LocalizationKeys.Recipe.QUANTITY_ADD),
                 style = MaterialTheme.typography.subtitle1,
                 fontWeight = FontWeight.Bold
             )
@@ -247,10 +249,9 @@ private fun AlimentDetailsPanel(
             BasicAppTextField(
                 value = quantite,
                 onValueChange = onQuantiteChange,
-                placeholder = "Quantité (g)",
-                modifier = Modifier.fillMaxWidth(),
+                placeholder = translate(LocalizationKeys.Recipe.QUANTITY_PLACEHOLDER),
                 isError = quantiteError,
-                errorMessage = if (quantiteError) "Veuillez entrer une quantité valide > 0" else null
+                errorMessage = if (quantiteError) translate(LocalizationKeys.Recipe.QUANTITY_ERROR) else null
             )
         }
         
@@ -260,14 +261,19 @@ private fun AlimentDetailsPanel(
             
             item {
                 Text(
-                    text = "Composition nutritionnelle (pour 100g)",
+                    text = translate(LocalizationKeys.Recipe.NUTRITIONAL_COMPOSITION),
                     style = MaterialTheme.typography.subtitle1,
                     fontWeight = FontWeight.Bold
                 )
             }
             
             val nutrientsToShow = listOf(
-                "PROTEINE", "LIPIDE", "ENA", "CELLULOSE", "CENDRE", "HUMIDITE"
+                translate(LocalizationKeys.Chart.PROTEIN),
+                translate(LocalizationKeys.Chart.FAT),
+                translate(LocalizationKeys.Chart.ENA),
+                translate(LocalizationKeys.Chart.FIBER),
+                translate(LocalizationKeys.Chart.ASH),
+                translate(LocalizationKeys.Chart.MOISTURE)
             )
             
             nutrientsToShow.forEach { nutrientLabel ->

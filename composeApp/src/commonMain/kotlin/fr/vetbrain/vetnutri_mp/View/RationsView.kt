@@ -38,6 +38,11 @@ import fr.vetbrain.vetnutri_mp.Data.*
 import fr.vetbrain.vetnutri_mp.Data.ValeurNutritionnelle
 import fr.vetbrain.vetnutri_mp.Data.convertirPreferencesVersLabelsNutriments
 import fr.vetbrain.vetnutri_mp.Enumer.*
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Animal
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Consultation
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.General
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Ration as RationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Repository.FoodRepository
 import fr.vetbrain.vetnutri_mp.Repository.PreferencesRepository
@@ -289,19 +294,19 @@ fun RationsView(
         if (showSaveRecipeDialog) {
                 AlertDialog(
                         onDismissRequest = { showSaveRecipeDialog = false },
-                        title = { Text("Créer une recette") },
+                        title = { Text(translate(RationKeys.CREATE_RECIPE)) },
                         text = {
                                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                         OutlinedTextField(
                                                 value = newRecipeName,
                                                 onValueChange = { newRecipeName = it },
-                                                label = { Text("Nom de la recette") },
+                                                label = { Text(translate(RationKeys.RECIPE_NAME)) },
                                                 modifier = Modifier.fillMaxWidth()
                                         )
                                         val especeLabel = selectedRation?.espece ?: ""
                                         if (especeLabel.isNotEmpty()) {
                                                 Text(
-                                                        "Espèce: $especeLabel",
+                                                        "${translate(Animal.SPECIES)}: $especeLabel",
                                                         style = MaterialTheme.typography.body2
                                                 )
                                         }
@@ -330,11 +335,11 @@ fun RationsView(
                                                                                         ration.alimentMutableList
                                                                                 )
                                                                         showSnackbar(
-                                                                                "Recette créée: $newRecipeName"
+                                                                                "${translate(RationKeys.RECIPE_CREATED)} $newRecipeName"
                                                                         )
                                                                 } catch (err: Exception) {
                                                                         showSnackbar(
-                                                                                "Erreur: ${err.message ?: "création recette"}"
+                                                                                "${translate(General.ERROR)}: ${err.message ?: "création recette"}"
                                                                         )
                                                                 } finally {
                                                                         showSaveRecipeDialog = false
@@ -342,11 +347,11 @@ fun RationsView(
                                                         }
                                                 }
                                         }
-                                ) { Text("Créer") }
+                                ) { Text(translate(General.CREATE)) }
                         },
                         dismissButton = {
                                 OutlinedButton(onClick = { showSaveRecipeDialog = false }) {
-                                        Text("Annuler")
+                                        Text(translate(General.CANCEL))
                                 }
                         }
                 )
@@ -436,7 +441,7 @@ fun RationsView(
                                                 }
 
                                                 showSnackbar(
-                                                        "Aliment '${alimentComplet.nom}' ajouté à la ration (${quantite}g)"
+                                                        "${translate(RationKeys.ADD_FOOD_TO_RATION)} '${alimentComplet.nom}' (${quantite}g)"
                                                 )
                                         } else {
                                                 showSnackbar(
@@ -457,7 +462,7 @@ fun RationsView(
                                 Box(
                                         modifier = Modifier.fillMaxSize(),
                                         contentAlignment = Alignment.Center
-                                ) { Text("Sélectionnez une consultation pour voir les rations") }
+                                ) { Text(translate(Consultation.SELECT_HINT)) }
                         } else {
                                 // En-tête avec nom de la consultation
                                 Card(
@@ -473,7 +478,7 @@ fun RationsView(
                                         ) {
                                                 Text(
                                                         text =
-                                                                "Consultation du " +
+                                                                "${translate(Consultation.OF_DATE)} " +
                                                                         (selectedConsultation?.date
                                                                                 ?: ""),
                                                         style =
@@ -598,7 +603,7 @@ fun RationsView(
                                                                         ) {
                                                                                 Text(
                                                                                         text =
-                                                                                                "Rations de la consultation",
+                                                                                                translate(RationKeys.CONSULTATION_RATIONS),
                                                                                         style =
                                                                                                 MaterialTheme
                                                                                                         .typography
@@ -612,7 +617,7 @@ fun RationsView(
                                                                                                 Icons.Filled
                                                                                                         .Add,
                                                                                         contentDescription =
-                                                                                                "Ajouter une ration",
+                                                                                                translate(General.ADD) + " ration",
                                                                                         tint =
                                                                                                 VetNutriColors
                                                                                                         .Primary,
@@ -637,7 +642,7 @@ fun RationsView(
                                                                         ) {
                                                                                 CenteredMessage(
                                                                                         message =
-                                                                                                "Aucune ration disponible",
+                                                                                                translate(RationKeys.NO_RATION_AVAILABLE),
                                                                                         modifier =
                                                                                                 Modifier.fillMaxWidth()
                                                                                 )
@@ -681,7 +686,7 @@ fun RationsView(
                                                                                                                                         ration
                                                                                                                                 )
                                                                                                                         showSnackbar(
-                                                                                                                                "Ration '${ration.name}' dupliquée"
+                                                                                                                                "${translate(RationKeys.DUPLICATED)} '${ration.name}'"
                                                                                                                         )
                                                                                                                 },
                                                                                                                 onDelete = {
@@ -746,7 +751,7 @@ fun RationsView(
                                                                                 contentAlignment = Alignment.Center
                                                                         ) {
                                                                                 Text(
-                                                                                        "Sélectionnez une ration pour voir les aliments",
+                                                                                        translate(RationKeys.SELECT_RATION_HINT),
                                                                                         style = MaterialTheme.typography.body1,
                                                                                         color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                                                                                 )

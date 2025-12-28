@@ -25,6 +25,8 @@ import fr.vetbrain.vetnutri_mp.Data.Ration
 import fr.vetbrain.vetnutri_mp.Repository.FoodRepository
 import fr.vetbrain.vetnutri_mp.Repository.RecipeRepository
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import kotlinx.coroutines.launch
 
 @Composable
@@ -65,7 +67,7 @@ fun RecipeDialog(
 
     AlertDialog(
             onDismissRequest = onClose,
-            title = { Text("Recettes") },
+            title = { Text(translate(LocalizationKeys.Recipe.TITLE)) },
             text = {
                 if (isLoading) {
                     CircularProgressIndicator()
@@ -119,7 +121,7 @@ fun RecipeDialog(
                                             // Bouton Appliquer avec icône
                                             Icon(
                                                     imageVector = Icons.Default.Check,
-                                                    contentDescription = "Appliquer la recette",
+                                                    contentDescription = translate(LocalizationKeys.Recipe.CONTENT_APPLY),
                                                     tint = VetNutriColors.Primary,
                                                     modifier =
                                                             Modifier.size(24.dp).clickable {
@@ -130,7 +132,7 @@ fun RecipeDialog(
                                             // Bouton Cloner avec icône
                                             Icon(
                                                     imageVector = Icons.Default.ContentCopy,
-                                                    contentDescription = "Cloner la recette",
+                                                    contentDescription = translate(LocalizationKeys.Recipe.CONTENT_CLONE),
                                                     tint = VetNutriColors.Secondary,
                                                     modifier =
                                                             Modifier.size(24.dp).clickable {
@@ -145,7 +147,7 @@ fun RecipeDialog(
                                             // Bouton Supprimer avec icône
                                             Icon(
                                                     imageVector = Icons.Default.Delete,
-                                                    contentDescription = "Supprimer la recette",
+                                                    contentDescription = translate(LocalizationKeys.Recipe.CONTENT_DELETE),
                                                     tint = Color.Red,
                                                     modifier =
                                                             Modifier.size(24.dp).clickable {
@@ -187,7 +189,7 @@ fun RecipeDialog(
             confirmButton = {
                 Icon(
                         imageVector = Icons.Default.Close,
-                        contentDescription = "Fermer",
+                        contentDescription = translate(LocalizationKeys.AnalNut.CLOSE),
                         tint = VetNutriColors.Primary,
                         modifier = Modifier.size(24.dp).clickable { onClose() }
                 )
@@ -202,13 +204,13 @@ fun RecipeDialog(
                     OutlinedTextField(
                             value = newName,
                             onValueChange = { newName = it },
-                            label = { Text("Nom de la recette") }
+                            label = { Text(translate(LocalizationKeys.Recipe.NAME_LABEL)) }
                     )
                 },
                 confirmButton = {
                     Icon(
                             imageVector = Icons.Default.Check,
-                            contentDescription = "Créer la recette",
+                            contentDescription = translate(LocalizationKeys.Recipe.CONTENT_CREATE),
                             tint = if (newName.isNotBlank()) VetNutriColors.Primary else Color.Gray,
                             modifier =
                                     Modifier.size(24.dp)
@@ -232,7 +234,7 @@ fun RecipeDialog(
                 dismissButton = {
                     Icon(
                             imageVector = Icons.Default.Close,
-                            contentDescription = "Annuler",
+                            contentDescription = translate(LocalizationKeys.General.CANCEL),
                             tint = Color.Gray,
                             modifier = Modifier.size(24.dp).clickable { showCreateDialog = false }
                     )
